@@ -3153,6 +3153,21 @@ new Vue({
       if (beasts.length) {
         map["いずれかの獣霊"] = { name: "いずれかの獣霊", _multiCards: beasts };
       }
+      // ヤマタノオロチ説明文内カード参照（ジェネシス等）→クリックで通常プレビューを開く
+      const orochiRefs = [
+        { textName: "終焉龍・ディエスイレ", no: "198" },
+        { textName: "隷属の竜血",           no: "187" },
+        { textName: "天喰らう咆哮",         no: "188" },
+      ];
+      for (const ref of orochiRefs) {
+        const card = this.allCards.find(c => String(c.no) === ref.no);
+        if (!card) continue;
+        const entry = { ...card, _isCardRef: true };
+        map[ref.textName] = entry;
+        // カードの実際の fullName が textName と異なる場合も両方登録
+        const fn = card.nickname ? `${card.nickname}・${card.name}` : card.name;
+        if (fn && fn !== ref.textName) map[fn] = entry;
+      }
       return map;
     },
     sbMyFinalDeck() {
@@ -3212,13 +3227,13 @@ new Vue({
             nickname: (r[1] || "").replace(/[​-‍﻿­‎‏]/g, ""),
             name: (r[2] || "").replace(/[​-‍﻿­‎‏]/g, ""),
             type: r[3] || "",          // 種別（アマテラス等）
-            trigger: r[4] || "",        // 天力トリガー
+            trigger: (r[4] || "").replace(/[​-‍﻿­‎‏]/g, ""),
             skill1name: r[5] || "",
             skill1cost: r[6] || "",
-            skill1effect: r[7] || "",
+            skill1effect: (r[7] || "").replace(/[​-‍﻿­‎‏]/g, ""),
             skill2name: r[8] || "",
             skill2cost: r[9] || "",
-            skill2effect: r[10] || "",
+            skill2effect: (r[10] || "").replace(/[​-‍﻿­‎‏]/g, ""),
             category: "カミ",
             color: "",
             cost: "",
@@ -3610,10 +3625,8 @@ new Vue({
     /* トークンカードのポップアップ表示 */
     openTokenPopup(card) {
       if (!card) return;
-      if (card._multiCards) {
-        this.tokenMultiPopup = card._multiCards;
-        return;
-      }
+      if (card._multiCards) { this.tokenMultiPopup = card._multiCards; return; }
+      if (card._isCardRef)  { this.openPreview(card); return; }
       this.tokenPopupCard = card;
     },
     closeTokenPopup() {
