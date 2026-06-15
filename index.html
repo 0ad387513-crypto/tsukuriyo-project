@@ -797,6 +797,36 @@
   }
   /* トークンポップアップはプレビューより上 / キーワードはさらに上 */
   .token-popup-bg { z-index: 680; }
+
+  /* いずれかの獣霊等：複数トークン選択ポップアップ */
+  .token-multi-bg { z-index: 700; }
+  .token-multi-popup {
+    cursor: default; width: min(600px, 94vw);
+    background: linear-gradient(180deg, #1b2030 0%, #12141c 100%);
+    border: 1px solid #3a4256; border-radius: 10px;
+    box-shadow: 0 12px 60px rgba(0,0,0,0.85);
+    overflow: hidden; padding: 20px 20px 16px;
+  }
+  .tmp-title {
+    font-size: 18px; font-weight: 700; color: #d8c89a;
+    margin-bottom: 4px; letter-spacing: 0.05em;
+  }
+  .tmp-subtitle { font-size: 13px; color: #9aa; margin-bottom: 16px; }
+  .tmp-cards {
+    display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .tmp-card {
+    cursor: pointer; width: 140px; border-radius: 6px; overflow: hidden;
+    border: 1px solid #2a2f3d; transition: border-color 0.12s, transform 0.12s;
+  }
+  .tmp-card:hover { border-color: #dc9f50; transform: translateY(-2px); }
+  .tmp-img { width: 100%; aspect-ratio: 744/1039; background: #0a0c12 center/cover no-repeat; }
+  .tmp-name {
+    background: #1a1d28; padding: 5px 6px;
+    font-size: 11px; text-align: center; color: #e0d4a0; line-height: 1.3;
+  }
+  .tmp-actions { text-align: center; }
   .kw-popup-bg {
     position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 720;
     display: flex; align-items: center; justify-content: center; padding: 24px;
@@ -2228,6 +2258,25 @@
     </div>
   </div>
 
+  <!-- ===== いずれかの獣霊 等：複数トークン選択ポップアップ ===== -->
+  <div v-if="tokenMultiPopup" class="modal-bg token-multi-bg" @click.self="closeTokenMultiPopup">
+    <div class="token-multi-popup">
+      <div class="tmp-title">いずれかの獣霊</div>
+      <div class="tmp-subtitle">場に出すトークンを確認できます</div>
+      <div class="tmp-cards">
+        <div v-for="card in tokenMultiPopup" :key="card.no"
+             class="tmp-card"
+             @click="closeTokenMultiPopup(); openTokenPopup(card)">
+          <div class="tmp-img" :style="cardImageStyle(card)"></div>
+          <div class="tmp-name">{{ fullName(card) }}</div>
+        </div>
+      </div>
+      <div class="tmp-actions">
+        <button class="close" @click="closeTokenMultiPopup">閉じる</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== キーワード能力 説明ポップアップ ===== -->
   <div v-if="keywordPopup" class="kw-popup-bg" @click.self="closeKeywordPopup">
     <div class="kw-popup">
@@ -2470,6 +2519,7 @@ new Vue({
     keywordGlossary: KEYWORD_GLOSSARY, // キーワード能力辞書
     keywordPopup: null,      // { name, desc } キーワード説明ポップアップ
     tokenPopupCard: null,    // クリックされたトークンカード
+    tokenMultiPopup: null,   // 「いずれかの獣霊」等、複数トークン選択ポップアップ
     deckExpanded: false,
     capturing: false,
     returnModeActive: false, // 返還モード：-→返還 / +→取消 に変化
@@ -3096,6 +3146,13 @@ new Vue({
       for (const c of this.allCards) {
         if (c.isToken && c.name) map[c.name] = c;
       }
+      // 「いずれかの獣霊」はNo.183・184・185のいずれかを指す複合エントリ
+      const beasts = ["183","184","185"]
+        .map(no => this.allCards.find(c => String(c.no) === no))
+        .filter(Boolean);
+      if (beasts.length) {
+        map["いずれかの獣霊"] = { name: "いずれかの獣霊", _multiCards: beasts };
+      }
       return map;
     },
     sbMyFinalDeck() {
@@ -3252,8 +3309,8 @@ new Vue({
             return: r[9] || "",
             attack: r[10] || "",
             power: r[11] || "",
-            text: r[12] || "",
-            flavor: r[13] || "",
+            text: (r[12] || "").replace(/[​-‍﻿­‎‏]/g, ""),
+            flavor: (r[13] || "").replace(/[​-‍﻿­‎‏]/g, ""),
             subType: subType,
             isToken: isToken,
             bgY: r[19] !== undefined && r[19] !== "" ? Number(r[19]) : null, // T列：デッキ背景Y位置（%）
@@ -3553,17 +3610,25 @@ new Vue({
     /* トークンカードのポップアップ表示 */
     openTokenPopup(card) {
       if (!card) return;
+      if (card._multiCards) {
+        this.tokenMultiPopup = card._multiCards;
+        return;
+      }
       this.tokenPopupCard = card;
     },
     closeTokenPopup() {
       this.tokenPopupCard = null;
     },
+    closeTokenMultiPopup() {
+      this.tokenMultiPopup = null;
+    },
     onKeyDown(e) {
       if (e.key === "Escape") {
         // 上に重なっているものから順に閉じる
-        if (this.keywordPopup)       this.closeKeywordPopup();
-        else if (this.tokenPopupCard) this.closeTokenPopup();
-        else if (this.previewCard)   this.closePreview();
+        if (this.keywordPopup)        this.closeKeywordPopup();
+        else if (this.tokenMultiPopup) this.closeTokenMultiPopup();
+        else if (this.tokenPopupCard)  this.closeTokenPopup();
+        else if (this.previewCard)     this.closePreview();
         this.deckSortOpen = false;
       }
     },
