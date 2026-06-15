@@ -1,0 +1,4131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<title>ツクリヨ デッキビルダー</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: 'Hiragino Sans', 'ヒラギノ角ゴシック', 'Meiryo', sans-serif; background: #1b1f2a; color: #eee; }
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* ===== 左：カードプール ===== */
+  .pool { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .header {
+    background: linear-gradient(180deg, #232838 0%, #1b1f2a 100%);
+    border-bottom: 1px solid #333;
+    padding: 10px 40px 10px 14px;  /* 右側にトグルボタン分の余白を確保 */
+  }
+  .title-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .title-row h1 { font-size: 18px; margin: 0; letter-spacing: 0.05em; }
+  .title-row .total { color: #9aa; font-size: 13px; }
+  .title-row .spacer { flex: 1; }
+
+  .filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .filter-row input[type="text"] {
+    flex: 1 1 200px; min-width: 160px;
+    background: #11141c; border: 1px solid #444; color: #eee;
+    padding: 6px 10px; border-radius: 4px; font-size: 14px;
+  }
+  .filter-row select {
+    background: #11141c; border: 1px solid #444; color: #eee;
+    padding: 6px 8px; border-radius: 4px; font-size: 13px;
+  }
+  .folder-btn {
+    background: #2e7d32; border: none; color: #fff; padding: 6px 12px;
+    border-radius: 4px; cursor: pointer; font-size: 13px;
+  }
+  .folder-btn:hover { background: #387f3a; }
+  .reload-btn {
+    background: #1565c0; border: none; color: #fff; padding: 6px 12px;
+    border-radius: 4px; cursor: pointer; font-size: 13px;
+  }
+  .reload-btn:hover { background: #1976d2; }
+  .clear-btn {
+    background: #b33; border: none; color: #fff; padding: 6px 14px;
+    border-radius: 4px; cursor: pointer; font-size: 13px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .chip-group { display: flex; align-items: center; gap: 6px; }
+  .chip-label { font-size: 11px; color: #9aa; letter-spacing: 0.05em; }
+  .cost-chips { display: flex; gap: 4px; }
+  .cost-chips button {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #2a2f3d; border: 1px solid #444; color: #ccc;
+    cursor: pointer; font-size: 12px; padding: 0;
+  }
+  .cost-chips button.active { background: #4a7; color: #fff; border-color: #5b8; }
+
+  /* ラウンドチップ：横長ボタンで「Nラウンド」のラベルを直接表示 */
+  .round-chips { display: flex; gap: 4px; }
+  .round-chips button {
+    height: 28px; padding: 0 12px;
+    border-radius: 14px;
+    background: #2a2f3d; border: 1px solid #555; color: #ccc;
+    cursor: pointer; font-size: 12px; font-weight: 500;
+    white-space: nowrap;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  .round-chips button:hover { background: #3a4055; }
+  .round-chips button.active {
+    background: #4a7a4a; color: #fff; border-color: #6c9;
+  }
+
+  /* ソートはtitle-row右端へ移動 */
+  .pool-sort-dropdown { right: 0; left: auto; }
+
+  .grid-area { flex: 1; overflow-y: auto; padding: 14px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    position: relative;
+    background: #11141c; border-radius: 6px; overflow: hidden;
+    cursor: pointer; transition: transform 0.1s ease, box-shadow 0.1s ease;
+    border: 1px solid #2a2f3d;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.5); border-color: #5b8; }
+  .card .img-wrap {
+    width: 100%; aspect-ratio: 744 / 1039;
+    background: #0a0c12 center/cover no-repeat;
+    display: flex; align-items: center; justify-content: center;
+    color: #555; font-size: 11px; text-align: center; padding: 4px;
+  }
+  .card .img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card .meta {
+    position: absolute; top: 4px; left: 4px; right: 4px;
+    display: flex; justify-content: space-between; pointer-events: none;
+  }
+  .card .cost-badge {
+    background: #1a5b1a; color: #fff; width: 28px; height: 28px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 14px; border: 2px solid #fff;
+  }
+  .card .name-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.85) 70%);
+    color: #fff; font-size: 12px; padding: 14px 6px 6px;
+    text-align: center; pointer-events: none;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .card { display: flex; flex-direction: column; }
+  /* 右上のプレビューアイコン（虫眼鏡）= モーダルを開く */
+  .card .preview-btn {
+    position: absolute; top: 4px; right: 4px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(20,28,40,0.85); color: #ddd;
+    border: 2px solid rgba(255,255,255,0.9);
+    cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.12s ease, color 0.12s ease;
+    z-index: 2;
+  }
+  .card .preview-btn:hover { background: rgba(60,90,140,0.95); color: #fff; }
+  .card .preview-btn svg { display: block; }
+
+  /* カード下部 = ±ボタン+枚数のストリップ */
+  .card .card-qty {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 5px 6px;
+    background: #15171f;
+    border-top: 1px solid #2a2f3d;
+  }
+  .card .card-qty button {
+    width: 36px; height: 26px; border: none; border-radius: 3px;
+    background: #2a2f3d; color: #fff; cursor: pointer;
+    font-size: 16px; font-weight: bold; padding: 0; line-height: 1;
+    transition: background 0.12s ease;
+  }
+  .card .card-qty button:hover:not(:disabled) { background: #3a4055; }
+  .card .card-qty button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .card .card-qty .qm { background: #4a2a2a; }
+  .card .card-qty .qm:hover:not(:disabled) { background: #6a3a3a; }
+  .card .card-qty .qp { background: #2a4a30; }
+  .card .card-qty .qp:hover:not(:disabled) { background: #386c40; }
+  .card .card-qty .n {
+    min-width: 26px; text-align: center;
+    font-weight: bold; font-size: 16px; color: #fff;
+  }
+
+  .card.in-deck { box-shadow: 0 0 0 2px #5b8 inset; }
+  /* トークン：クリックで追加できないことをカーソルで示す */
+  .card.is-token .img-wrap { cursor: not-allowed; }
+
+  /* ぼかし（ネタバレ防止）カード */
+  .card.is-spoiler .img-wrap {
+    filter: blur(7px) brightness(0.7);
+  }
+  /* 「？」マークは .card 直下に置き、img-wrap の blur の影響を受けずくっきり表示 */
+  .card .spoiler-mark {
+    position: absolute; top: 0; left: 0; right: 0;
+    aspect-ratio: 744 / 1039;   /* 画像部分に重ねる */
+    display: flex; align-items: center; justify-content: center;
+    font-size: 56px; font-weight: bold; color: rgba(255,255,255,0.9);
+    text-shadow: 0 2px 10px rgba(0,0,0,0.9);
+    cursor: pointer; z-index: 2;
+  }
+
+  /* 縦リスト用：返還モード中の横長ボタン（右寄せ） */
+  .mode-action-btn {
+    width: 56px; height: 26px; border-radius: 3px;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    border: 1px solid; color: #fff; padding: 0;
+    flex-shrink: 0; margin-left: auto;
+  }
+  .mode-action-return { background: #8a6535; border-color: #c95; }
+  .mode-action-return:hover { background: #b07840; }
+  .mode-action-unreturn { background: #2a5a32; border-color: #5b8; }
+  .mode-action-unreturn:hover { background: #3a7a42; }
+
+  /* 展開グリッド用：カード下部中央の横長ボタン */
+  .deck-grid-mode-btn {
+    position: absolute; bottom: 6px;
+    left: 50%; transform: translateX(-50%);
+    width: 55%; height: 28px; border-radius: 4px;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    border: 1px solid; color: #fff; padding: 0;
+    z-index: 2;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+  }
+  .deck-grid-return-btn { background: rgba(138,101,53,0.92); border-color: #c95; }
+  .deck-grid-return-btn:hover { background: rgba(176,120,64,1); }
+  .deck-grid-unreturn-btn { background: rgba(42,90,50,0.92); border-color: #5b8; }
+  .deck-grid-unreturn-btn:hover { background: rgba(58,122,66,1); }
+
+  /* 返還モードON中はトグルボタンを橙色に */
+  .deck-stats-return .mt-return.active { background: #c95; color: #fff; border-color: #fc8; box-shadow: 0 0 0 1px #fc8 inset; }
+
+  /* 返還済みカード（展開モード deck-grid-card）
+     filter:grayscale はキャプチャ時に効かないため、
+     ::after の半透明オーバーレイで暗くする方式に統一 */
+  .card.is-returned .img-wrap::after {
+    content: ''; position: absolute; inset: 0;
+    background: rgba(15,18,30,0.7);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .card.is-returned .img-wrap > .return-btn-ov,
+  .card.is-returned .img-wrap > .unreturn-btn-ov { z-index: 2; }
+  .card.is-returned.in-deck { box-shadow: 0 0 0 2px #888 inset; }
+  .card.is-returned .card-qty { background: #1a1d25; color: #aaa; }
+  .card.is-returned .card-qty .n { color: #ccc; font-size: 13px; letter-spacing: 0.03em; }
+  /* カード左下の返還/取消ボタンオーバーレイ（img-wrap内）
+     カード下端のストリップより上、画像最下部に配置 */
+  .card .img-wrap { position: relative; }
+  /* 展開デッキグリッドの±ボタン（カード画像の左下・右下に重ねる） */
+  .deck-grid-btn {
+    position: absolute; bottom: 6px;
+    width: 32px; height: 26px; border-radius: 3px;
+    color: #fff; border: 1px solid rgba(255,255,255,0.7);
+    cursor: pointer; font-size: 16px; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; line-height: 1; z-index: 2;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.55);
+    transition: background 0.12s ease;
+  }
+  .deck-grid-btn-m { left: 6px; background: rgba(160,50,50,0.92); }
+  .deck-grid-btn-m:hover { background: rgba(200,70,70,1); }
+  .deck-grid-btn-p { right: 6px; background: rgba(40,130,60,0.92); }
+  .deck-grid-btn-p:hover { background: rgba(50,170,80,1); }
+  .deck-grid-btn-p:disabled { background: rgba(80,80,80,0.7); cursor: not-allowed; }
+  .deck-grid-returned-badge {
+    position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,25,35,0.88); color: #aaa; font-size: 11px;
+    border: 1px solid #555; border-radius: 3px; padding: 3px 8px;
+    z-index: 2; white-space: nowrap;
+  }
+
+  .card .return-btn-ov,
+  .card .unreturn-btn-ov {
+    position: absolute; bottom: 6px; left: 6px;
+    background: rgba(80,60,30,0.92); color: #fc8;
+    border: 1px solid #c95;
+    border-radius: 4px; padding: 3px 9px;
+    font-size: 11px; font-weight: bold;
+    cursor: pointer; z-index: 2;
+    line-height: 1; letter-spacing: 0.05em;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  }
+  .card .return-btn-ov:hover { background: rgba(130,90,40,0.95); color: #fff; }
+  .card .unreturn-btn-ov { background: rgba(40,80,50,0.92); color: #afd; border-color: #5b8; }
+  .card .unreturn-btn-ov:hover { background: rgba(60,120,70,0.95); color: #fff; }
+
+  /* ===== 画像キャプチャ中：操作系UIを非表示にしてクリーンな画像にする ===== */
+  .app.capturing .preview-btn,
+  .app.capturing .deck-controls,
+  .app.capturing .deck-toggle,
+  .app.capturing .return-btn,
+  .app.capturing .unreturn-btn,
+  .app.capturing .return-btn-ov,
+  .app.capturing .unreturn-btn-ov,
+  .app.capturing .mode-toggle,
+  .app.capturing .kami-clear,
+  .app.capturing .deck-grid-btn,
+  .app.capturing .deck-grid-toolbar,
+  .app.capturing .deck-grid-returned-badge { display: none !important; }
+  /* カード下の+/-ボタンだけ非表示。枚数表示は残す */
+  .app.capturing .card .card-qty .qm,
+  .app.capturing .card .card-qty .qp { display: none !important; }
+  .app.capturing .card .card-qty {
+    padding: 6px;
+    gap: 0;
+  }
+  .app.capturing .card .card-qty .n {
+    font-size: 18px; font-weight: bold; color: #fff;
+    letter-spacing: 0.05em;
+  }
+  /* × の prefix は active カードだけ。
+     returned カードは既に "×N 返還済" と表示されているため二重 × を防ぐ */
+  .app.capturing .card:not(.is-returned) .card-qty .n::before {
+    content: '×';
+    margin-right: 3px;
+    color: #9ca;
+    font-weight: normal;
+  }
+  /* スクロール領域も全展開して全カードがキャプチャされるように */
+  .app.capturing .deck-cards,
+  .app.capturing .deck-grid-area { overflow: visible !important; height: auto !important; }
+  .app.capturing .deck { height: auto !important; min-height: 100vh; }
+  .app.capturing .deck-info { overflow: visible !important; }
+  /* 上限到達カード：画像をグレースケール+減光して「もう入れられない」を視覚化 */
+  .card.maxed .img-wrap { filter: grayscale(85%) brightness(0.45); transition: filter 0.15s ease; }
+  .card.maxed:hover { transform: none; box-shadow: 0 0 0 1px #444 inset; border-color: #2a2f3d; }
+  .card.maxed.in-deck { box-shadow: 0 0 0 2px #386 inset; }
+  .card.maxed .img-wrap { cursor: not-allowed; }
+  .card .count-overlay {
+    position: absolute; bottom: 6px; right: 6px;
+    background: #b22; color: #fff; font-size: 13px; font-weight: bold;
+    border-radius: 50%; width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  }
+
+  /* ===== 右：デッキパネル ===== */
+  .deck {
+    width: 360px; min-width: 320px; max-width: 420px;
+    background: #15171f; border-left: 1px solid #2a2f3d;
+    display: flex; flex-direction: column;
+    /* overflow: hidden は外す（トグルボタンが左にはみ出すため） */
+    position: relative;
+    transition: width 0.25s ease, max-width 0.25s ease;
+  }
+  .deck-info {
+    display: flex; flex-direction: column; flex: 0 0 auto;
+    position: relative;  /* トグルボタンの基準 */
+  }
+  /* 子要素（カーブ/統計/カミスロット等）を縮小させない
+     → カミ画像が大きくてもマナカーブが潰れず常に表示される */
+  .deck-info > * { flex-shrink: 0; }
+  .deck-cards {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .deck-cards .deck-list,
+  .deck-cards .deck-grid-area { flex: 1; overflow-y: auto; }
+
+  /* ===== デッキ展開トグル（タイトル行内のボタン） ===== */
+  .deck-toggle {
+    margin-left: 8px;
+    background: #2e3548; border: 1px solid #4a5066;
+    color: #fff; cursor: pointer;
+    padding: 6px 10px; border-radius: 5px;
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 600;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .deck-toggle:hover { background: #4a5476; border-color: #6c8; }
+  .deck-toggle .dt-icon {
+    width: 14px; height: 14px;
+    display: block;
+  }
+  .deck-toggle .dt-label {
+    white-space: nowrap;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+
+  /* ===== 展開モード：左=カードグリッド / 右=情報サイドバー ===== */
+  .app.deck-expanded .pool { display: none; }
+  .app.deck-expanded .deck {
+    width: auto; max-width: none; flex: 1;
+    border-left: none;
+    flex-direction: row-reverse;     /* deck-info を右に */
+  }
+  .app.deck-expanded .deck-info {
+    width: 360px; flex: 0 0 360px;
+    border-left: 1px solid #2a2f3d;
+    background: #15171f;
+    overflow-y: auto;   /* カミ画像で総高がはみ出す場合はスクロール（カーブを潰さない） */
+  }
+  .app.deck-expanded .deck-cards {
+    flex: 1; overflow: hidden;
+  }
+  /* サイドバー内：通常時と同等の控えめなサイズ */
+  .app.deck-expanded .deck-header { padding: 12px 16px; }
+  .app.deck-expanded .deck-title h2 { font-size: 15px; }
+  .app.deck-expanded .deck-title .count { font-size: 16px; }
+  .app.deck-expanded .deck-controls { gap: 6px; margin-top: 8px; }
+  .app.deck-expanded .deck-controls button { padding: 5px 8px; font-size: 12px; }
+  .app.deck-expanded .curve {
+    height: 130px; padding: 10px 14px 6px;
+    justify-content: center;
+    gap: 5px;
+  }
+  .app.deck-expanded .curve .bar-col {
+    flex: 0 0 32px;
+    max-width: 32px;
+  }
+  .app.deck-expanded .curve .bar-num { font-size: 14px; min-height: 16px; font-weight: bold; }
+  .app.deck-expanded .curve .bar-label { font-size: 12px; margin-top: 4px; }
+  .app.deck-expanded .deck-stats {
+    padding: 8px 14px 12px; font-size: 12px;
+    justify-content: center; gap: 14px;
+  }
+  .app.deck-expanded .deck-stats span b { font-size: 14px; }
+
+  /* 展開時：円グラフを小さめに横並び配置（縦スペース節約）*/
+  .app.deck-expanded .deck-stats-colors {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 14px 10px;
+    flex-wrap: nowrap;
+  }
+  .app.deck-expanded .color-pie {
+    width: 130px; height: 130px;
+    border-width: 2px;
+    flex-shrink: 0;
+  }
+  .app.deck-expanded .color-pie-labels {
+    justify-content: flex-start;
+    gap: 6px 12px;
+    flex: 1;
+  }
+  .app.deck-expanded .color-pie-labels .cc { font-size: 13px; }
+  .app.deck-expanded .color-pie-labels .cc b { font-size: 15px; }
+
+  /* カードグリッド：少し小さめにして一覧性UP */
+  .deck-grid-area { padding: 0 18px 14px; }
+  .deck-grid-toolbar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 10px 0 6px;
+    position: sticky; top: 0; z-index: 3;
+    background: #15171f;
+  }
+  .deck-grid-toolbar .deck-search { flex: 1; min-width: 160px; height: 28px; }
+  .deck-grid-toolbar .deck-sort-wrap .deck-sort-dropdown { right: 0; }
+  .deck-grid-toolbar select {
+    height: 28px; background: #11141c; border: 1px solid #444; color: #eee;
+    padding: 0 6px; border-radius: 3px; font-size: 12px; flex-shrink: 0;
+  }
+  .deck-grid-area .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+    gap: 12px;
+  }
+  .deck-header { padding: 12px 14px; border-bottom: 1px solid #2a2f3d; background: #1b1e28; }
+  .deck-title { display: flex; align-items: center; gap: 8px; }
+  .deck-title h2 { font-size: 15px; margin: 0; }
+  .deck-title .count { margin-left: auto; margin-right: auto; font-weight: bold; color: #eee; }
+  .deck-title .count.warn { color: #fb7; }
+  .deck-title .count.ok { color: #eee; }
+  .deck-controls { display: flex; gap: 6px; margin-top: 8px; }
+  .deck-controls button {
+    flex: 1; padding: 5px; font-size: 12px; cursor: pointer;
+    background: #2a2f3d; border: 1px solid #444; color: #ccc; border-radius: 3px;
+  }
+  .deck-controls button:hover { background: #3a3f4d; }
+  .udon-import-btn {
+    flex: 1; padding: 5px; font-size: 12px; cursor: pointer;
+    background: #2a2f3d; border: 1px solid #444; color: #ccc;
+    border-radius: 3px; text-align: center;
+  }
+  .udon-import-btn:hover { background: #3a3f4d; color: #ccc; }
+
+  .curve { display: flex; align-items: flex-end; gap: 3px; height: 64px; padding: 10px 14px 4px; background: #1b1e28; }
+  .curve .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
+  .curve .bar-num { font-size: 11px; color: #ccc; line-height: 1; margin-bottom: 2px; min-height: 12px; }
+  .curve .bar-bg { width: 100%; flex: 1; background: #11141c; border-radius: 2px 2px 0 0; display: flex; align-items: flex-end; overflow: hidden; }
+  .curve .bar-fill { width: 100%; background: linear-gradient(180deg, #6c9 0%, #386 100%); border-radius: 2px 2px 0 0; min-height: 0; transition: height 0.2s ease; }
+  .curve .bar-label { font-size: 11px; color: #9aa; line-height: 1; margin-top: 2px; }
+
+  .deck-stats {
+    display: flex; flex-wrap: wrap; gap: 8px 12px; padding: 6px 14px;
+    background: #1b1e28;
+    font-size: 12px; color: #ccc;
+  }
+  .deck-stats span b { color: #fff; margin-left: 3px; font-size: 13px; }
+  .deck-stats-cats { padding-top: 8px; }
+  /* 種族カウント行 */
+  .deck-stats-types { gap: 8px 12px; padding-top: 2px; }
+  .deck-stats-types .tc { font-size: 12px; color: #ccc; }
+  .deck-stats-types .tc b { color: #fff; margin-left: 3px; font-size: 13px; }
+
+  .deck-stats-return {
+    padding-bottom: 10px;
+    border-bottom: 1px solid #2a2f3d;
+    align-items: center;
+    gap: 6px;
+  }
+  .deck-stats-return .return-total { margin-left: auto; font-size: 13px; }
+  .deck-stats-return .return-total b { font-size: 15px; color: #8df; }
+  /* モード切替トグルボタン */
+  .deck-stats-return .mode-toggle {
+    background: #2a2f3d; border: 1px solid #444;
+    color: #ccc; cursor: pointer;
+    padding: 4px 11px; border-radius: 4px;
+    font-size: 12px; font-weight: 600;
+    line-height: 1;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+  .deck-stats-return .mode-toggle:hover { background: #3a4055; color: #fff; }
+  .deck-stats-return .mt-return.active {
+    background: #c95; color: #fff; border-color: #fc8;
+    box-shadow: 0 0 0 1px #fc8 inset;
+  }
+  .deck-stats-return .mt-unreturn.active {
+    background: #4a7a4a; color: #fff; border-color: #6c9;
+    box-shadow: 0 0 0 1px #6c9 inset;
+  }
+
+  .deck-return-hint {
+    padding: 6px 14px 8px;
+    font-size: 12px;
+    color: #fc8;
+    border-bottom: 1px solid #2a2f3d;
+  }
+
+  /* 属性カウントは色つきドット付き */
+  .deck-stats-colors {
+    gap: 12px;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+  .color-pie {
+    width: 60px; height: 60px; border-radius: 50%;
+    flex-shrink: 0;
+    border: 2px solid #2a2f3d;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(0,0,0,0.4);
+  }
+  .color-pie-labels {
+    display: flex; flex-wrap: wrap; gap: 4px 10px;
+    flex: 1; min-width: 0;
+  }
+  .deck-stats .cc {
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .deck-stats .cc::before {
+    content: ''; display: inline-block; width: 9px; height: 9px;
+    border-radius: 50%; border: 1px solid rgba(255,255,255,0.4);
+    flex-shrink: 0;
+  }
+  .deck-stats .cc-red::before { background: #b22; }
+  .deck-stats .cc-blue::before { background: #25a; }
+  .deck-stats .cc-green::before { background: #292; }
+  .deck-stats .cc-yellow::before { background: #b92; }
+  .deck-stats .cc-purple::before { background: #82b; }
+  .deck-stats .cc-genesis::before {
+    background: conic-gradient(from -90deg,
+      #b22 0deg 72deg, #b92 72deg 144deg, #292 144deg 216deg,
+      #25a 216deg 288deg, #82b 288deg 360deg);
+  }
+
+  .deck-list { flex: 1; overflow-y: auto; }
+  .deck-section-label {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px;
+    background: #1a1d28; border-bottom: 1px solid #2a2f3d;
+    position: sticky; top: 0; z-index: 3;
+  }
+  .deck-section-title {
+    font-size: 11px; color: #9aa; font-weight: 600;
+    letter-spacing: 0.08em; flex-shrink: 0;
+  }
+  .deck-search {
+    flex: 1; min-width: 0; height: 24px;
+    background: #11141c; border: 1px solid #444; color: #eee;
+    padding: 0 8px; border-radius: 3px; font-size: 12px;
+  }
+  .deck-sort-wrap { position: relative; flex-shrink: 0; }
+  .pool-sort-wrap { position: relative; flex-shrink: 0; }
+  .deck-sort-btn {
+    height: 28px; padding: 0 12px; border-radius: 3px;
+    background: #2a2f3d; border: 1px solid #444; color: #ccc;
+    font-size: 12px; cursor: pointer; white-space: nowrap;
+    min-width: max-content; flex-shrink: 0;
+  }
+  .deck-sort-btn:hover, .deck-sort-btn.active { background: #3a4055; color: #fff; }
+  .deck-sort-dropdown {
+    position: absolute; right: 0; top: calc(100% + 4px);
+    background: #232838; border: 1px solid #444; border-radius: 4px;
+    min-width: 110px; z-index: 10;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+  .deck-sort-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 12px; font-size: 13px; color: #ccc;
+    cursor: pointer; white-space: nowrap;
+  }
+  .deck-sort-item:hover { background: #2e3550; color: #fff; }
+  .deck-sort-item.selected { color: #fff; font-weight: 600; }
+  .deck-sort-item .check { width: 14px; color: #5b8; font-size: 13px; flex-shrink: 0; }
+  .deck-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px; border-bottom: 1px solid #232838;
+    position: relative; cursor: pointer;
+    min-height: 56px;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: right top 12%;   /* カードの「顔」付近を出す */
+    transition: filter 0.1s ease;
+    /* 右端のカード枠部分を影で隠す */
+    box-shadow: inset -55px 0 24px -8px rgba(10,12,18,1);
+  }
+  .deck-item:hover { filter: brightness(1.15); }
+  .deck-item::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      /* 右上コーナーだけを狙った楕円の影 */
+      radial-gradient(ellipse 95px 52px at 100% 0%,
+        rgba(10,12,18,1) 0%,
+        rgba(10,12,18,1) 55%,
+        rgba(10,12,18,0) 100%),
+      /* 左→右の基本グラデーション */
+      linear-gradient(90deg,
+        rgba(21,23,31,1) 0%,
+        rgba(21,23,31,1) 25%,
+        rgba(21,23,31,0.85) 35%,
+        rgba(21,23,31,0.65) 47%,
+        rgba(21,23,31,0.45) 62%,
+        rgba(21,23,31,0.28) 80%,
+        rgba(21,23,31,0.15) 100%);
+    pointer-events: none;
+  }
+  .deck-item > *:not(.deck-bg) { position: relative; z-index: 1; }
+  .deck-item .cost {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #2a6a2a; color: #fff; font-size: 12px; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid #fff; flex-shrink: 0;
+    text-shadow: 0 0 2px rgba(0,0,0,0.8), 1px 1px 1px rgba(0,0,0,0.6);
+  }
+  .deck-item .name { flex: 0 1 auto; font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .deck-item .name small { display: block; color: #9aa; font-size: 10px; }
+  .deck-item .qty {
+    display: flex; align-items: center; gap: 4px;
+    background: rgba(0,0,0,0.4); border-radius: 3px; padding: 2px;
+    margin-left: auto;
+  }
+  .deck-item .qty-returned { margin-left: auto; }
+  .deck-item .qty button {
+    width: 22px; height: 22px; border: none; border-radius: 2px;
+    background: #2a2f3d; color: #fff; cursor: pointer; font-size: 13px; padding: 0;
+    line-height: 1;
+  }
+  .deck-item .qty button:hover { background: #3a4055; }
+  .deck-item .qty .n { min-width: 18px; text-align: center; font-weight: bold; font-size: 13px; }
+
+  /* 返還・取消ボタン（通常モード deck-list 用） */
+  .deck-item .return-btn,
+  .deck-item .unreturn-btn {
+    background: #5a4525; border: 1px solid #876;
+    color: #fff; cursor: pointer;
+    padding: 4px 9px; border-radius: 3px;
+    font-size: 11px; font-weight: 600;
+    margin-right: 6px; flex-shrink: 0;
+  }
+  .deck-item .return-btn:hover { background: #8a6635; }
+  .deck-item .unreturn-btn { background: #2a4a30; border-color: #6a8; }
+  .deck-item .unreturn-btn:hover { background: #3a6a40; }
+  .deck-item .qty-returned {
+    color: #aaa; font-weight: bold; font-size: 13px;
+    padding: 3px 9px; min-width: 40px; text-align: center;
+  }
+
+  /* 返還済み行のグレーアウト */
+  .deck-item.is-returned { opacity: 0.65; }
+  .deck-item.is-returned .name { color: #999; }
+  .deck-item.is-returned .cost { filter: grayscale(50%) brightness(0.85); }
+  .returned-tag { color: #fb7; font-style: normal; font-weight: bold; }
+
+  .empty { padding: 30px 14px; text-align: center; color: #667; font-size: 13px; }
+  .loading { padding: 30px; text-align: center; color: #9aa; }
+
+  /* ===== カミ枠 ===== */
+  .kami-slot {
+    background: #1a1d28; border-top: 1px solid #2a2f3d;
+    padding: 10px 14px;
+  }
+  .kami-slot-label {
+    font-size: 11px; color: #9aa; letter-spacing: 0.08em;
+    font-weight: 600; margin-bottom: 8px;
+  }
+  .kami-empty {
+    border: 2px dashed #3a3f55; border-radius: 6px;
+    padding: 10px; text-align: center; cursor: pointer;
+    color: #667; transition: border-color 0.15s, color 0.15s;
+  }
+  .kami-empty:hover { border-color: #cc9; color: #cc9; }
+  .kami-empty span { font-size: 13px; font-weight: 600; }
+
+  .kami-selected { position: relative; }
+  .kami-bg {
+    width: 100%; height: 80px;
+    border-radius: 6px; overflow: hidden;
+    /* 右端の黒いカード枠を削るため 108% 幅で拡大し左寄せ
+       → 右側 ~8% (約60px) がコンテナ外にはみ出して見えなくなる */
+    background: #0a0c12 left top 15% / 108% auto no-repeat;
+    cursor: pointer; position: relative;
+    border: 2px solid #cc9;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    display: flex; align-items: flex-end;
+    transition: border-color 0.15s;
+  }
+  .kami-bg:hover { border-color: #ffe; }
+  .kami-bg-overlay {
+    position: absolute; inset: 0;
+    /* デッキリストと同じ左側グラデーション（左1/4は真っ黒、右へ段階的にフェード） */
+    background: linear-gradient(90deg,
+      rgba(21,23,31,1) 0%,
+      rgba(21,23,31,1) 25%,
+      rgba(21,23,31,0.85) 35%,
+      rgba(21,23,31,0.65) 47%,
+      rgba(21,23,31,0.45) 62%,
+      rgba(21,23,31,0.28) 80%,
+      rgba(21,23,31,0.15) 100%);
+  }
+  .kami-name {
+    position: relative; z-index: 1;
+    color: #fff; font-weight: bold;
+    padding: 6px 10px; text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+    display: flex; flex-direction: column; gap: 1px;
+    width: 100%;
+  }
+  .kami-nickname {
+    font-size: 10px; color: #ccc; font-weight: 400;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+  .kami-cardname {
+    font-size: 13px; color: #fff; font-weight: bold;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+  .kami-clear {
+    position: absolute; top: 4px; right: 4px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(40,25,25,0.85); border: 1px solid #866;
+    color: #ccc; cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+    z-index: 2;
+  }
+  .kami-clear:hover { background: rgba(80,40,40,0.95); color: #fff; }
+
+  /* 拡大モード：カミ枠は残りスペースを吸収（下部の余白/境界線を消す）。
+     画像自体は控えめなサイズで、枠の中央に配置する。 */
+  .app.deck-expanded .kami-slot {
+    padding: 8px 14px 12px;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .app.deck-expanded .kami-selected {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .app.deck-expanded .kami-bg {
+    height: auto;
+    width: 68%;
+    margin: 0 auto;
+    /* 拡大時はカード全体を表示（右枠を含む） */
+    aspect-ratio: 744 / 1039;
+    background-size: contain;
+    background-position: center center;
+    background-color: #0a0c12;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .app.deck-expanded .kami-bg-overlay { display: none; }  /* 拡大時はグラデ不要 */
+  .app.deck-expanded .kami-name { display: none; }        /* 拡大時はカード名不要 */
+  .app.deck-expanded .kami-empty { padding: 20px; font-size: 14px; }
+
+  /* カミカードのプール表示：選択中は金枠ハイライト */
+  .card.is-kami-card .card-qty.kami-qty {
+    background: #1a1d2a;
+    padding: 5px 6px;
+  }
+  .card.is-kami-card .card-qty.kami-qty .qp {
+    width: 100%; padding: 4px 6px; border-radius: 3px;
+    font-size: 11px; font-weight: 600; background: #2a3a4a; color: #acd;
+    border-color: #4a6a8a;
+  }
+  .card.is-kami-card .card-qty.kami-qty .qp.active-leader {
+    background: #3a6a3a; color: #afd; border-color: #5b8;
+  }
+  .card.is-leader { box-shadow: 0 0 0 2px #cc9 inset; }
+  .card.is-leader .img-wrap { outline: 2px solid #cc9; outline-offset: -2px; }
+
+  /* ===== カード画像ホバープレビュー ===== */
+  .card-hover-preview {
+    position: fixed; z-index: 250; /* シールドオーバーレイ(200)より上 */
+    width: 360px;
+    pointer-events: none;
+    border-radius: 8px; overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.75);
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .chp-img {
+    width: 100%; aspect-ratio: 744 / 1039;
+    background: #0a0c12 center / contain no-repeat;
+  }
+
+  /* ===== プレビュー モーダル ===== */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.78); z-index: 600;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    cursor: pointer;
+  }
+  /* トークンポップアップはプレビューより上 / キーワードはさらに上 */
+  .token-popup-bg { z-index: 680; }
+  .kw-popup-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 720;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    cursor: pointer;
+  }
+
+  /* クリック可能なキーワード／トークン */
+  .rt-kw {
+    color: #8fd0ff; cursor: pointer;
+    text-decoration: underline; text-decoration-style: dotted;
+    text-underline-offset: 2px;
+  }
+  .rt-kw:hover { color: #c2e7ff; background: rgba(80,150,220,0.18); border-radius: 3px; }
+  .rt-token {
+    color: #ffcf8f; cursor: pointer; font-weight: 700;
+    text-decoration: underline; text-decoration-style: dotted;
+    text-underline-offset: 2px;
+  }
+  .rt-token:hover { color: #ffe2b8; background: rgba(220,160,80,0.18); border-radius: 3px; }
+
+  /* キーワード能力 説明ポップアップ */
+  .kw-popup {
+    cursor: default; width: min(560px, 92vw);
+    background: linear-gradient(180deg, #1b2030 0%, #12141c 100%);
+    border: 1px solid #3a4256; border-radius: 10px;
+    box-shadow: 0 12px 60px rgba(0,0,0,0.85);
+    overflow: hidden;
+  }
+  .kw-popup-head {
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(180deg, #2a3045 0%, #1b2030 100%);
+    padding: 12px 18px; border-bottom: 1px solid #3a4256;
+  }
+  .kw-popup-headlabel {
+    font-size: 16px; font-weight: 700; color: #d8c89a; letter-spacing: 0.08em;
+  }
+  .kw-popup-close {
+    background: #2a2f3d; color: #ccc; border: none; border-radius: 4px;
+    width: 30px; height: 30px; font-size: 15px; cursor: pointer;
+  }
+  .kw-popup-close:hover { background: #3a4150; color: #fff; }
+  .kw-popup-name {
+    font-size: 22px; font-weight: 700; color: #fff;
+    padding: 16px 20px 4px;
+  }
+  .kw-popup-body {
+    padding: 8px 20px 22px; font-size: 16px; line-height: 1.75;
+    color: #e6e6e6; white-space: pre-wrap;
+  }
+  .token-tag {
+    margin-left: 10px; background: #5a4520; color: #ffcf8f;
+    font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+    letter-spacing: 0.04em;
+  }
+  .modal-card {
+    cursor: default; display: flex; gap: 24px;
+    background: #15171f; border-radius: 10px; padding: 22px;
+    max-width: 90vw; max-height: 90vh;
+    box-shadow: 0 10px 50px rgba(0,0,0,0.75);
+  }
+  .modal-img {
+    flex: 0 0 auto;
+    width: min(480px, 42vw); aspect-ratio: 744/1039;
+    background: #0a0c12 center/contain no-repeat;
+    border-radius: 6px;
+  }
+  .modal-info {
+    flex: 1; min-width: 340px; max-width: 700px;
+    display: flex; flex-direction: column; color: #eee; overflow: hidden;
+  }
+  .modal-info .mi-no { color: #9aa; font-size: 14px; letter-spacing: 0.05em; }
+  .modal-info .mi-name { font-size: 32px; font-weight: bold; margin: 6px 0 4px; line-height: 1.2; }
+  .modal-info .mi-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 16px; }
+  .modal-info .mi-tags span {
+    background: #2a2f3d; color: #fff; padding: 5px 12px;
+    border-radius: 4px; font-size: 14px; font-weight: 500;
+  }
+  .modal-info .mi-stats {
+    display: flex; gap: 18px; margin-bottom: 14px; padding: 12px 16px;
+    background: #11141c; border-radius: 6px; font-size: 15px;
+  }
+  .modal-info .mi-stats div { color: #ccc; }
+  .modal-info .mi-stats div b { color: #fff; margin-left: 6px; font-size: 20px; }
+  .modal-info .mi-text {
+    flex: 1; overflow-y: auto; white-space: pre-wrap;
+    background: #11141c; padding: 16px 18px; border-radius: 6px;
+    font-size: 19px; line-height: 1.7; color: #eee;
+    min-height: 130px;
+  }
+  /* カミカード専用テキストレイアウト */
+  .kami-text { gap: 0; padding: 14px 16px; }
+  .kami-section { margin-bottom: 14px; }
+  .kami-section:last-child { margin-bottom: 0; }
+  .kami-section-label {
+    font-size: 17px; color: #cde; font-weight: 700;
+    letter-spacing: 0.04em; margin-bottom: 0;
+  }
+  .kami-section-body {
+    font-size: 17px; line-height: 1.65; color: #eee;
+    white-space: pre-wrap;
+  }
+  .kami-skill-header {
+    display: flex; align-items: flex-end;
+    justify-content: space-between; gap: 12px;
+    margin-bottom: 0;
+    border-bottom: 1px solid #2a2f3d;
+    padding-bottom: 2px;
+  }
+  .kami-skill-names { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .kami-skill-furigana {
+    font-size: 12px; color: #9aa; line-height: 1.3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .kami-skill-name {
+    font-size: 20px; font-weight: bold; color: #fff;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .kami-skill-cost {
+    flex-shrink: 0;
+    font-size: 16px; color: #cde; font-weight: bold;
+    white-space: nowrap;
+  }
+
+  .modal-info .mi-flavor {
+    margin-top: 14px; color: #aab; font-size: 16px;
+    font-style: italic; white-space: pre-wrap;
+    word-break: normal; overflow-wrap: break-word;
+    line-height: 1.55;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    line-clamp: 3;
+    overflow: hidden;
+  }
+  .modal-info .mi-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .modal-info .mi-actions button {
+    flex: 1; padding: 12px; border: none; border-radius: 5px; cursor: pointer;
+    font-size: 15px; font-weight: bold;
+  }
+  .modal-info .mi-actions .add {
+    background: #2e7d32; color: #fff;
+  }
+  .modal-info .mi-actions .add:hover { background: #387f3a; }
+  .modal-info .mi-actions .add:disabled { background: #555; cursor: not-allowed; }
+  .modal-info .mi-actions .close { background: #333; color: #ccc; }
+  .modal-info .mi-actions .close:hover { background: #444; }
+  @media (max-width: 900px) {
+    .modal-card { flex-direction: column; gap: 16px; padding: 16px; }
+    .modal-img { width: min(360px, 70vw); }
+    .modal-info { min-width: 0; }
+    .modal-info .mi-name { font-size: 24px; }
+    .modal-info .mi-text { font-size: 15px; }
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #11141c; }
+  ::-webkit-scrollbar-thumb { background: #3a3f4d; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #4a4f5d; }
+
+  /* ===== シールド戦ボタン（ヘッダー右上） ===== */
+  .shield-open-btn {
+    background: linear-gradient(135deg, #4a3a6a, #6a3a8a);
+    border: 1px solid #9a6abb; color: #fff;
+    padding: 6px 14px; border-radius: 4px;
+    cursor: pointer; font-size: 13px; font-weight: 700;
+    letter-spacing: 0.04em; flex-shrink: 0;
+    transition: background 0.15s ease;
+  }
+  .shield-open-btn:hover { background: linear-gradient(135deg, #5a4a7a, #7a4a9a); }
+
+  /* ===== ユドナリウム出力ボタン ===== */
+  .udon-export-btn {
+    flex: 1; padding: 5px; font-size: 12px; cursor: pointer;
+    background: #2a3a5a; border: 1px solid #4a6aaa; color: #ace;
+    border-radius: 3px; text-align: center;
+    transition: background 0.12s ease;
+  }
+  .udon-export-btn:hover { background: #3a5080; color: #fff; }
+  .udon-export-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ===== シールド戦モーダル オーバーレイ ===== */
+  .shield-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.92);
+    display: flex; align-items: stretch; justify-content: center;
+    overflow: hidden;
+  }
+  .shield-panel {
+    width: 100%; max-width: 1600px;
+    background: #13161f; display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ヘッダー */
+  .sp-header {
+    background: linear-gradient(180deg, #1e2235 0%, #13161f 100%);
+    border-bottom: 1px solid #2a2f3d;
+    padding: 14px 20px; display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0;
+  }
+  .sp-header h2 { font-size: 18px; margin: 0; letter-spacing: 0.06em; }
+  .sp-header .sp-phase-badge {
+    background: #2a3a4a; color: #8cf; border: 1px solid #4a6a8a;
+    padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 700;
+  }
+  .sp-header .sp-close {
+    margin-left: auto; background: #2a2f3d; border: 1px solid #444;
+    color: #ccc; cursor: pointer; width: 30px; height: 30px;
+    border-radius: 50%; font-size: 16px; display: flex;
+    align-items: center; justify-content: center; padding: 0;
+  }
+  .sp-header .sp-close:hover { background: #444; color: #fff; }
+
+  /* スクロール可能なボディ */
+  .sp-body { flex: 1; overflow-y: auto; padding: 20px; }
+
+  /* ===== ロビー画面 ===== */
+  .sp-lobby { max-width: 480px; margin: 40px auto; display: flex; flex-direction: column; gap: 16px; }
+  .sp-lobby h3 { font-size: 16px; margin: 0 0 4px; color: #cde; }
+  .sp-lobby .sp-input {
+    background: #11141c; border: 1px solid #444; color: #eee;
+    padding: 8px 12px; border-radius: 4px; font-size: 14px; width: 100%;
+  }
+  .sp-lobby .sp-btn {
+    padding: 10px; border-radius: 4px; font-size: 14px; font-weight: 700;
+    cursor: pointer; border: none; width: 100%;
+    transition: background 0.12s ease;
+  }
+  .sp-btn-create { background: #2e7d32; color: #fff; }
+  .sp-btn-create:hover { background: #388e3c; }
+  .sp-btn-join { background: #1565c0; color: #fff; }
+  .sp-btn-join:hover { background: #1976d2; }
+  .sp-btn-disabled { background: #333; color: #888; cursor: not-allowed; }
+
+  .sp-divider { border: none; border-top: 1px solid #2a2f3d; margin: 8px 0; }
+  .sp-room-code-display {
+    background: #1a1d28; border: 2px solid #4a7a4a; border-radius: 6px;
+    padding: 16px; text-align: center;
+  }
+  .sp-room-code-display .rc-label { font-size: 12px; color: #9aa; margin-bottom: 6px; }
+  .sp-room-code-display .rc-code {
+    font-size: 36px; font-weight: 900; letter-spacing: 0.2em;
+    color: #6c9; font-family: monospace;
+  }
+  .sp-room-code-display .rc-note { font-size: 12px; color: #9aa; margin-top: 6px; }
+
+  /* 待機画面 */
+  .sp-waiting { text-align: center; padding: 40px; color: #9aa; }
+  .sp-waiting .sp-spinner {
+    width: 40px; height: 40px; border: 3px solid #2a2f3d;
+    border-top-color: #5b8; border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .sp-players-row {
+    display: flex; gap: 16px; justify-content: center;
+    margin-bottom: 16px;
+  }
+  .sp-player-chip {
+    background: #1a1d28; border: 1px solid #2a2f3d;
+    border-radius: 6px; padding: 10px 18px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14px;
+  }
+  .sp-player-chip.ready { border-color: #4a7a4a; }
+  .sp-player-chip .pc-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #666; flex-shrink: 0;
+  }
+  .sp-player-chip.ready .pc-dot { background: #6c9; }
+  .sp-player-chip.you { border-color: #4a6a9a; }
+
+  /* コイントス */
+  .sp-coin-toss { text-align: center; padding: 40px 20px; }
+  .sp-coin-toss .ct-result {
+    font-size: 28px; font-weight: 900; margin: 20px 0;
+    color: #fc8;
+  }
+  .sp-coin-toss .ct-note { color: #9aa; font-size: 14px; }
+
+  /* ===== パックピック画面 ===== */
+  .sp-pick-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .sp-pick-header .ph-turn {
+    font-size: 15px; font-weight: 700;
+    padding: 6px 14px; border-radius: 4px;
+  }
+  .ph-turn.my-turn   { background: #2a4a30; color: #6c9; border: 1px solid #5b8; }
+  .ph-turn.wait-turn { background: #2a2f3d; color: #9aa; border: 1px solid #444; }
+  .sp-pick-counter { font-size: 13px; color: #9aa; }
+
+  .sp-packs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .sp-pack-card {
+    background: #1a1d28; border: 1px solid #2a2f3d;
+    border-radius: 8px; overflow: hidden;
+    cursor: pointer; transition: transform 0.12s, border-color 0.12s;
+    display: flex; flex-direction: column;
+  }
+  .sp-pack-card:hover:not(.taken):not(.disabled) {
+    transform: translateY(-3px); border-color: #5b8;
+  }
+  .sp-pack-card.taken { opacity: 0.4; cursor: default; }
+  .sp-pack-card.taken-by-me { border-color: #4a7a4a; opacity: 0.85; }
+  .sp-pack-card.disabled { cursor: not-allowed; }
+
+  /* 選択ボタン */
+  .sp-pick-btn {
+    margin: 0 10px 10px; padding: 7px 0;
+    background: #2e7d32; color: #fff; border: none;
+    border-radius: 4px; font-size: 13px; font-weight: 700;
+    cursor: pointer; width: calc(100% - 20px);
+    transition: background 0.12s;
+  }
+  .sp-pick-btn:hover { background: #43a047; }
+
+  /* パックピック：左パック＋右デッキプレビューの2カラム */
+  .sp-picking-layout {
+    display: flex; gap: 18px; align-items: flex-start;
+  }
+  .sp-picking-main { flex: 1; min-width: 0; }
+  .sp-deck-side {
+    flex: 0 0 320px; width: 320px;
+    position: sticky; top: 0;
+    background: #11141c; border: 1px solid #2a2f3d; border-radius: 8px;
+    display: flex; flex-direction: column;
+    max-height: calc(100vh - 130px); overflow: hidden;
+  }
+  .sp-deck-side-head {
+    padding: 10px 14px; font-size: 14px; font-weight: 700; color: #cde;
+    border-bottom: 1px solid #2a2f3d; flex-shrink: 0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sp-deck-side-count {
+    margin-left: auto; font-size: 12px; color: #6c9; font-weight: 700;
+  }
+  .sp-deck-detail-btn {
+    margin: 8px 10px 0; padding: 8px 0; flex-shrink: 0;
+    background: #2a4a6a; color: #cfe6ff; border: 1px solid #3a6a9a;
+    border-radius: 5px; font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: background 0.12s;
+  }
+  .sp-deck-detail-btn:hover:not(:disabled) { background: #356092; }
+  .sp-deck-detail-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .sp-deck-side-list { overflow-y: auto; padding: 8px; }
+
+  /* デッキ詳細プレビュー中の「パックピックに戻る」フローティングボタン */
+  .sb-peek-back-btn {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+    z-index: 500; padding: 10px 22px;
+    background: #2e7d32; color: #fff; border: 1px solid #5b8;
+    border-radius: 6px; font-size: 14px; font-weight: 700;
+    cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,0.6);
+    transition: background 0.12s;
+  }
+  .sb-peek-back-btn:hover { background: #43a047; }
+  .sp-deck-side-empty {
+    color: #778; font-size: 13px; text-align: center; padding: 30px 12px;
+  }
+  .sp-deck-side .deck-item { cursor: default; }
+
+  /* シールド戦カード大型プレビュー（クリックで全画面表示） */
+  .shield-preview-overlay {
+    position: fixed; inset: 0; z-index: 400;
+    background: rgba(0,0,0,0.82);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .shield-preview-img {
+    max-height: 90vh; aspect-ratio: 744/1039;
+    background: #0a0c12 center/cover no-repeat;
+    border-radius: 10px;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.95);
+    border: 3px solid #5b8;
+    pointer-events: none;
+  }
+  .sp-pack-vis-thumb { cursor: default; }
+  .sp-pack-vis-thumb:hover { border-color: #5b8; }
+
+  /* シールド戦ホバープレビュー（オーバーレイ内部に配置してz-index競合を回避） */
+  .sb-hover-popup {
+    position: fixed; z-index: 9999; pointer-events: none;
+    width: 440px;
+    border-radius: 8px; overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.95);
+    border: 2px solid rgba(255,255,255,0.2);
+  }
+  .sb-hover-popup .sb-hp-img {
+    width: 100%; aspect-ratio: 744/1039;
+    background: #0a0c12 center/contain no-repeat;
+  }
+
+  /* ヤマタノオロチ：カードに付くバッジ */
+  .sp-orochi-badge {
+    background: linear-gradient(135deg, #7b3f00, #b85c00);
+    color: #ffd580; font-size: 11px; font-weight: 700;
+    text-align: center; padding: 4px 6px;
+    border-top: 1px solid #d4820a;
+    letter-spacing: 0.04em;
+  }
+  .sp-kami-card.orochi-kami { border-color: #b85c00; }
+  .sp-kami-card.orochi-kami.selected { border-color: #ffa040; box-shadow: 0 0 0 2px #ffa04066; }
+
+  /* ヤマタノオロチ選択中：ディエスイレ自動追加プレビューバー */
+  .sp-orochi-bonus-bar {
+    margin: 16px 0 8px;
+    background: linear-gradient(135deg, #1a1000, #2a1800);
+    border: 1px solid #b85c00; border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .sp-orochi-bonus-label {
+    font-size: 12px; color: #ffa040; font-weight: 700;
+    margin-bottom: 10px; letter-spacing: 0.03em;
+  }
+  .sp-orochi-bonus-card {
+    display: flex; align-items: center; gap: 14px;
+    cursor: default;
+  }
+  .sp-orochi-bonus-thumb {
+    flex: 0 0 72px; width: 72px;
+    aspect-ratio: 744/1039;
+    background: #0a0c12 center/cover no-repeat;
+    border-radius: 5px; border: 1px solid #b85c00;
+  }
+  .sp-orochi-bonus-info { flex: 1; min-width: 0; }
+  .sp-orochi-bonus-name {
+    font-size: 15px; font-weight: 700; color: #ffd580;
+    margin-bottom: 4px;
+  }
+  .sp-orochi-bonus-sub { font-size: 12px; color: #c8a060; }
+
+  /* カミ選択 確定ボタン */
+  .sp-kami-confirm-bar {
+    margin-top: 20px; text-align: center;
+  }
+  .sp-kami-confirm-btn {
+    padding: 12px 40px; font-size: 15px; font-weight: 700;
+    background: #7b1fa2; color: #fff; border: none;
+    border-radius: 6px; cursor: pointer;
+    transition: background 0.12s;
+    box-shadow: 0 4px 12px rgba(123,31,162,0.5);
+  }
+  .sp-kami-confirm-btn:hover:not(:disabled) { background: #9c27b0; }
+  .sp-kami-confirm-btn:disabled { background: #333; color: #666; cursor: not-allowed; box-shadow: none; }
+
+  .sp-pack-header {
+    padding: 10px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .sp-pack-header .ph-no { font-size: 12px; color: #9aa; }
+  .sp-pack-header .ph-status {
+    font-size: 11px; font-weight: 700; padding: 2px 7px;
+    border-radius: 10px;
+  }
+  .ph-status.available { background: #2a3a2a; color: #6c9; }
+  .ph-status.mine  { background: #2a4a30; color: #afd; }
+  .ph-status.enemy { background: #3a2a2a; color: #f88; }
+
+  /* 可視カード3枚のサムネイル */
+  .sp-pack-visible {
+    display: flex; gap: 4px; padding: 6px 10px;
+  }
+  .sp-pack-vis-thumb {
+    flex: 1; aspect-ratio: 744/1039;
+    background: #0a0c12 center/cover no-repeat;
+    border-radius: 3px; border: 1px solid #333;
+  }
+  .sp-pack-sum {
+    padding: 6px 12px 10px;
+    font-size: 12px; color: #9aa; text-align: right;
+  }
+
+  /* ===== 除外画面（48枚→40枚） ===== */
+  .sp-exclude-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .sp-exclude-header h3 { font-size: 16px; margin: 0; }
+  .sp-exclude-counter {
+    margin-left: auto; font-size: 14px; font-weight: 700;
+    color: #fc8;
+  }
+  .sp-exclude-counter.done { color: #6c9; }
+  .sp-exclude-btn {
+    padding: 10px; border: none; border-radius: 4px;
+    background: #2a4a30; color: #afd; font-size: 14px; font-weight: 700;
+    cursor: pointer; width: 100%; margin-top: 12px;
+    transition: background 0.12s ease;
+  }
+  .sp-exclude-btn:hover:not(:disabled) { background: #3a6a40; }
+  .sp-exclude-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .sp-exclude-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+  }
+  .sp-exc-card {
+    position: relative; border-radius: 6px; overflow: hidden;
+    cursor: pointer; border: 2px solid transparent;
+    transition: border-color 0.12s, opacity 0.12s;
+  }
+  .sp-exc-card .img-wrap {
+    width: 100%; aspect-ratio: 744/1039;
+    background: #0a0c12 center/cover no-repeat;
+  }
+  .sp-exc-card .name-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.85));
+    color: #fff; font-size: 11px; padding: 12px 5px 5px;
+    text-align: center; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sp-exc-card:hover { border-color: #fb7; }
+  .sp-exc-card.selected { border-color: #f55; opacity: 0.5; }
+  .sp-exc-card.selected .name-bar::after { content: '✕ 除外'; color: #f88; }
+
+  /* ===== カミ選択画面 ===== */
+  .sp-kami-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(85px, 1fr));
+    gap: 8px;
+  }
+  .sp-kami-card {
+    border-radius: 8px; overflow: hidden;
+    cursor: pointer; border: 2px solid #2a2f3d;
+    transition: border-color 0.12s, transform 0.12s;
+  }
+  .sp-kami-card:hover:not(.wait-mode):not(.opponent-taken) { border-color: #cc9; transform: translateY(-2px); }
+  .sp-kami-card.selected { border-color: #fc8; box-shadow: 0 0 0 3px #fc8; transform: translateY(-2px); }
+  .sp-kami-card.confirmed { border-color: #9c27b0; box-shadow: 0 0 0 3px #9c27b0; opacity: 0.9; }
+  .sp-kami-card.wait-mode { cursor: default; opacity: 0.75; }
+  .sp-kami-card.opponent-taken { opacity: 0.45; border-color: #555 !important; cursor: not-allowed; transform: none !important; }
+  .sp-opponent-badge {
+    background: #2a1a1a; color: #f88; font-size: 10px; font-weight: 700;
+    text-align: center; padding: 3px 6px; border-top: 1px solid #554;
+    letter-spacing: 0.03em;
+  }
+  .sp-kami-card .img-wrap {
+    width: 100%; aspect-ratio: 744/1039;
+    background: #0a0c12 center/cover no-repeat;
+  }
+  .sp-kami-card .name-bar {
+    background: #1a1d28; padding: 6px 8px;
+    font-size: 12px; text-align: center; color: #fff;
+  }
+
+  /* ===== 完了画面 ===== */
+  .sp-complete { text-align: center; padding: 30px 20px; }
+  .sp-complete h3 { font-size: 20px; color: #6c9; margin-bottom: 20px; }
+  .sp-complete-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .sp-complete-actions button {
+    padding: 12px 24px; border-radius: 6px; font-size: 14px; font-weight: 700;
+    cursor: pointer; border: none; transition: background 0.12s;
+  }
+  .sp-btn-export  { background: #1565c0; color: #fff; }
+  .sp-btn-export:hover  { background: #1976d2; }
+  .sp-btn-view-unused { background: #2a2f3d; color: #ccc; border: 1px solid #444 !important; }
+  .sp-btn-view-unused:hover { background: #3a3f4d; }
+  .sp-btn-to-builder { background: #2e7d32; color: #fff; }
+  .sp-btn-to-builder:hover { background: #388e3c; }
+
+  /* 未使用パック確認 */
+  .sp-unused-section { margin-top: 20px; text-align: left; }
+  .sp-unused-section h4 { font-size: 14px; color: #9aa; margin-bottom: 10px; }
+
+  /* デッキ詳細：パック番号バッジ */
+  .pack-no-badge {
+    display: inline-block;
+    margin-left: 6px;
+    background: #1a2a44; color: #7ab4f0;
+    font-size: 10px; font-weight: 700;
+    padding: 1px 6px; border-radius: 3px;
+    border: 1px solid #2a4a7a;
+    vertical-align: middle; white-space: nowrap;
+  }
+  .pack-no-badge-grid {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 3;
+    background: rgba(10,20,50,0.92); color: #7ab4f0;
+    font-size: 10px; font-weight: 700;
+    padding: 1px 5px; border-radius: 0 0 4px 4px;
+    border: 1px solid #2a4a7a; border-top: none;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  /* デッキ詳細：キーワードフィルターチップ */
+  .deck-kw-chips {
+    display: flex; flex-wrap: wrap; gap: 5px;
+    padding: 6px 14px 4px;
+    border-bottom: 1px solid #2a2f3d;
+  }
+  .deck-kw-chip {
+    background: #1e2230; border: 1px solid #3a4256;
+    color: #8ab; font-size: 11px; font-weight: 600;
+    padding: 3px 9px; border-radius: 12px; cursor: pointer;
+    transition: background 0.1s, border-color 0.1s, color 0.1s;
+    white-space: nowrap;
+  }
+  .deck-kw-chip:hover { background: #2a3450; border-color: #5a7aaa; color: #cde; }
+  .deck-kw-chip.active { background: #1e4080; border-color: #5b8fdd; color: #cef; }
+  .deck-cat-chip { background: #28243a; border-color: #5a4a7a; color: #c8b8e8; }
+  .deck-cat-chip:hover { background: #352a50; border-color: #8a6aaa; color: #ddd; }
+  .deck-cat-chip.active { background: #4a2880; border-color: #9a60dd; color: #e8d8ff; }
+
+  /* シールド戦中：カードプールの+/-ボタン非表示用 */
+  .shield-active .card-qty:not(.kami-qty) { display: none; }
+</style>
+</head>
+<body>
+<div id="app" class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': shieldOpen }">
+  <!-- ===== 左：カードプール ===== -->
+  <div class="pool">
+    <div class="header">
+      <div class="title-row">
+        <h1>ツクリヨ デッキビルダー</h1>
+        <span class="total">全 {{ filteredCards.length }} 枚<span v-if="driveError" style="color:#fb7"> / Drive読込失敗</span></span>
+        <button class="shield-open-btn" @click="openShield">⚔ シールド戦</button>
+        <div class="spacer"></div>
+        <!-- カードプール ソート（右端） -->
+        <div class="pool-sort-wrap">
+          <button class="deck-sort-btn" @click.stop="poolSortOpen = !poolSortOpen"
+                  :class="{ active: poolSortOpen }">
+            ↕ {{ deckSortOptions.find(o => o.key === poolSortKey).label }}
+          </button>
+          <div v-if="poolSortOpen" class="deck-sort-dropdown pool-sort-dropdown" @click.stop>
+            <div v-for="opt in deckSortOptions" :key="opt.key"
+                 class="deck-sort-item"
+                 :class="{ selected: poolSortKey === opt.key }"
+                 @click="poolSortKey = opt.key; poolSortOpen = false">
+              <span class="check">{{ poolSortKey === opt.key ? '✓' : '　' }}</span>
+              {{ opt.label }}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="filter-row">
+        <input type="text" v-model="searchText" placeholder="No / カード名 / 効果テキストで検索">
+        <select v-model="filterCategory">
+          <option value="">種別すべて</option>
+          <option v-for="c in categories" :value="c">{{ c }}</option>
+        </select>
+        <select v-model="filterColor">
+          <option value="">属性すべて</option>
+          <option v-for="c in colors" :value="c">{{ c }}</option>
+        </select>
+        <select v-model="filterType">
+          <option value="">種族すべて</option>
+          <option v-for="t in types" :value="t">{{ t }}</option>
+        </select>
+        <select v-model="filterCost">
+          <option value="">コストすべて</option>
+          <option v-for="n in costRange" :key="'c'+n" :value="String(n)">{{ n === 10 ? '10+' : n }}</option>
+        </select>
+        <select v-model="filterReturn">
+          <option value="">返還値すべて</option>
+          <option value="2">返還値2</option>
+          <option value="1">返還値1</option>
+          <option value="0">返還値0</option>
+          <option value="none">返還値なし</option>
+        </select>
+        <select v-model="filterKeyword">
+          <option value="">キーワードすべて</option>
+          <option v-for="kw in Object.keys(keywordGlossary)" :key="kw" :value="kw">{{ kw }}</option>
+        </select>
+        <div class="round-chips">
+          <button v-for="n in [1,2,3]" :key="'r'+n"
+                  :class="{active: filterRound === String(n)}"
+                  @click="filterRound = filterRound === String(n) ? '' : String(n)">{{ n }}ラウンド</button>
+        </div>
+        <button class="clear-btn" @click="clearFilters">フィルタをクリア</button>
+      </div>
+    </div>
+
+    <div class="grid-area">
+      <div class="loading" v-if="loading">カード情報を読み込み中…</div>
+      <div class="empty" v-else-if="filteredCards.length === 0">該当するカードがありません</div>
+      <div class="grid" v-else>
+        <div v-for="card in filteredCards" :key="(card.isKami?'k:':'') + card.no"
+             class="card"
+             :class="{
+               'in-deck': !card.isKami && deckCount(card.no) > 0,
+               'maxed': !card.isKami && !canAdd(card) && !card.isToken,
+               'is-token': card.isToken,
+               'is-kami-card': card.isKami,
+               'is-leader': card.isKami && selectedKami && selectedKami.no === card.no,
+               'is-spoiler': isSpoilerHidden(card),
+             }">
+          <div class="img-wrap" :style="cardImageStyle(card)"
+               @click="onPoolCardClick(card)"
+               @contextmenu.prevent="!returnModeActive && onPoolCardRightClick(card)"
+               @mouseenter="showCardHover(card, $event)"
+               @mouseleave="hideCardHover">
+            <span v-if="!cardImageUrl(card)">{{ card.no }}<br>{{ card.name }}</span>
+          </div>
+          <div v-if="isSpoilerHidden(card)" class="spoiler-mark"
+               @click="onPoolCardClick(card)">？</div>
+          <button class="preview-btn" @click.stop="onPoolPreviewClick(card)" title="カード詳細を表示">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          </button>
+          <!-- カミカード：リーダー選択ボタン（+/-不要） -->
+          <div v-if="card.isKami" class="card-qty kami-qty" @click.stop>
+            <button class="qp" @click="setLeader(card)"
+                    :class="{ 'active-leader': selectedKami && selectedKami.no === card.no }">
+              {{ selectedKami && selectedKami.no === card.no ? '✓ 選択中' : 'カミに設定' }}
+            </button>
+          </div>
+          <!-- 通常カード：- n + -->
+          <div v-else class="card-qty" @click.stop>
+            <button class="qm" @click="removeCard(card.no)" :disabled="deckCount(card.no) <= 0" title="1枚減らす">−</button>
+            <span class="n">{{ deckCount(card.no) }}</span>
+            <button class="qp" @click="addCard(card)" :disabled="!canAdd(card)" title="1枚増やす">＋</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 右：デッキパネル ===== -->
+  <div class="deck">
+    <!-- 情報セクション（normal: 上部 / expanded: 右サイドバー） -->
+    <div class="deck-info">
+      <div class="deck-header">
+        <div class="deck-title">
+          <h2>現在のデッキ</h2>
+          <span class="count" :class="deckCountClass">カード {{ totalDeckCount }}</span>
+          <button class="deck-toggle"
+                  @click="deckExpanded = !deckExpanded"
+                  :title="deckExpanded ? 'デッキパネルを縮小して通常表示に戻す' : 'デッキパネルを全画面に拡大表示'">
+            <svg v-if="!deckExpanded" class="dt-icon" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <polyline points="9 21 3 21 3 15"></polyline>
+              <line x1="21" y1="3" x2="14" y2="10"></line>
+              <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+            <svg v-else class="dt-icon" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 14 10 14 10 20"></polyline>
+              <polyline points="20 10 14 10 14 4"></polyline>
+              <line x1="14" y1="10" x2="21" y2="3"></line>
+              <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+            <span class="dt-label">{{ deckExpanded ? '元に戻す' : 'デッキ詳細' }}</span>
+          </button>
+        </div>
+        <div class="deck-controls">
+          <button @click="saveDeckImage" :disabled="capturing">{{ capturing ? '保存中…' : 'デッキを画像で保存' }}</button>
+          <button @click="clearDeck">デッキをクリア</button>
+        </div>
+        <div class="deck-controls" style="margin-top:6px;">
+          <button class="udon-import-btn"
+                  @click="$refs.udonFileInput.click()"
+                  :disabled="importing">
+            {{ importing ? '読込中…' : 'ユドナリウム読込' }}
+          </button>
+          <input ref="udonFileInput" type="file" accept=".zip,.xml"
+                 @change="onUdonImport" :disabled="importing" style="display:none;">
+          <button class="udon-export-btn"
+                  @click="onUdonExport"
+                  :disabled="udonExporting || deckEntriesGrouped.length === 0"
+                  title="デッキ40枚＋カミをユドナリウム用zipで出力">
+            {{ udonExporting
+              ? `画像取得中 ${udonProgress.current}/${udonProgress.total}…`
+              : 'ユドナリウム出力' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="curve">
+        <div class="bar-col" v-for="(n, i) in curveBuckets" :key="i">
+          <div class="bar-num">{{ n || '' }}</div>
+          <div class="bar-bg"><div class="bar-fill" :style="{height: curveBarHeight(n) + '%'}"></div></div>
+          <div class="bar-label">{{ i === curveBuckets.length - 1 ? (i) + '+' : i }}</div>
+        </div>
+      </div>
+
+      <div class="deck-stats deck-stats-cats">
+        <span>レガシー<b>{{ categoryCount('レガシー') }}</b></span>
+        <span>オラクル<b>{{ categoryCount('オラクル') }}</b></span>
+        <span>レリック<b>{{ categoryCount('レリック') }}</b></span>
+      </div>
+      <div class="deck-stats deck-stats-colors">
+        <svg class="color-pie" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" title="属性割合">
+          <circle cx="50" cy="50" r="50" fill="#2a2f3d" v-if="colorPieSlices.length === 0" />
+          <path v-for="slice in colorPieSlices" :key="slice.key" :d="slice.d" :fill="slice.color" />
+        </svg>
+        <div class="color-pie-labels">
+          <span class="cc cc-red">赤<b>{{ colorCount('赤') }}</b></span>
+          <span class="cc cc-blue">青<b>{{ colorCount('青') }}</b></span>
+          <span class="cc cc-green">緑<b>{{ colorCount('緑') }}</b></span>
+          <span class="cc cc-yellow">黄<b>{{ colorCount('黄') }}</b></span>
+          <span class="cc cc-purple">紫<b>{{ colorCount('紫') }}</b></span>
+          <span class="cc cc-genesis">創<b>{{ colorCount('創') }}</b></span>
+        </div>
+      </div>
+      <div class="deck-stats deck-stats-types">
+        <span class="tc">忍者<b>{{ typeCount('忍者') }}</b></span>
+        <span class="tc">侍<b>{{ typeCount('侍') }}</b></span>
+        <span class="tc">人獣<b>{{ typeCount('人獣') }}</b></span>
+        <span class="tc">神使<b>{{ typeCount('神使') }}</b></span>
+        <span class="tc">妖怪<b>{{ typeCount('妖怪') }}</b></span>
+        <span class="tc">龍<b>{{ typeCount('龍') }}</b></span>
+      </div>
+      <div class="deck-stats deck-stats-return">
+        <button class="mode-toggle mt-return"
+                :class="{ active: returnModeActive }"
+                @click="returnModeActive = !returnModeActive"
+                title="返還モード：ON中は−→返還 / +→取消 に変化">返還モード</button>
+        <span class="return-total">返還値合計<b>{{ totalReturn }}</b></span>
+      </div>
+      <div v-if="returnModeActive" class="deck-return-hint">
+        デッキを40枚まで削除（返還）することができます
+      </div>
+
+      <!-- カミ表示（deck-info内最下部） -->
+      <div class="kami-slot">
+        <div class="kami-slot-label">カミ</div>
+        <!-- 未選択：クリックでカードリストに戻り、カミでフィルタ -->
+        <div v-if="!selectedKami" class="kami-empty"
+             @click="openKamiFilter" title="カミを選択">
+          <span>＋ カミを選択</span>
+        </div>
+        <!-- 選択済み -->
+        <div v-else-if="selectedKami" class="kami-selected">
+          <div class="kami-bg"
+               :style="kamiBgStyle(selectedKami)"
+               @click="openPreview(selectedKami)">
+            <div class="kami-bg-overlay"></div>
+            <div class="kami-name">
+            <span v-if="selectedKami.nickname" class="kami-nickname">{{ selectedKami.nickname }}</span>
+            <span class="kami-cardname">{{ selectedKami.name }}</span>
+          </div>
+          </div>
+          <button class="kami-clear" @click="clearLeader" title="カミを解除">×</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- カード一覧セクション（normal: リスト / expanded: グリッド） -->
+    <div class="deck-cards">
+
+    <!-- 通常時：縦リスト（同名カードはグループ化して合算表示） -->
+    <div class="deck-list" v-if="!deckExpanded">
+      <div class="deck-section-label">
+        <span class="deck-section-title">カード</span>
+        <input class="deck-search" type="text" v-model="deckSearchText" placeholder="カード名 / No / 効果テキストで検索">
+        <div class="deck-sort-wrap">
+          <button class="deck-sort-btn" @click.stop="deckSortOpen = !deckSortOpen"
+                  :class="{ active: deckSortOpen }">
+            ↕ {{ deckSortOptions.find(o => o.key === deckSortKey).label }}
+          </button>
+          <div v-if="deckSortOpen" class="deck-sort-dropdown" @click.stop>
+            <div v-for="opt in deckSortOptions" :key="opt.key"
+                 class="deck-sort-item"
+                 :class="{ selected: deckSortKey === opt.key }"
+                 @click="deckSortKey = opt.key; deckSortOpen = false">
+              <span class="check">{{ deckSortKey === opt.key ? '✓' : '　' }}</span>
+              {{ opt.label }}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="empty" v-if="deckEntriesDisplay.length === 0 && deckEntriesGrouped.length > 0">検索結果なし</div>
+      <div class="empty" v-else-if="deckEntriesGrouped.length === 0">カード画像クリック または カード下の＋ボタンで追加<br>（右上の🔍アイコンで詳細プレビュー）</div>
+      <div v-else>
+        <div v-for="entry in deckEntriesDisplay" :key="(entry.returned?'r:':'a:') + fullName(entry.card)"
+             class="deck-item"
+             :class="{ 'is-returned': entry.returned }"
+             :style="deckItemBgStyle(entry.card)"
+             @click="handleDeckCardClick(entry)"
+             @contextmenu.prevent="!returnModeActive && !entry.returned && removeCard(entry.card.no)">
+          <div class="cost" :style="costBadgeStyle(entry.card)">{{ entry.card.cost }}</div>
+          <div class="name">
+            {{ fullName(entry.card) }}
+            <small>{{ entry.card.category }}{{ entry.card.color ? ' / ' + entry.card.color : '' }}{{ entry.card.type ? ' / ' + entry.card.type : '' }}<template v-if="entry.returned"> / <em class="returned-tag">返還済</em></template></small>
+            <span v-if="sbCardPackMap[entry.card.no]" class="pack-no-badge">
+              Pack {{ sbCardPackMap[entry.card.no].join('・') }}
+            </span>
+          </div>
+          <!-- active -->
+          <template v-if="!entry.returned">
+            <div v-if="!returnModeActive" class="qty" @click.stop>
+              <button @click="removeCard(entry.card.no)">−</button>
+              <span class="n">{{ entry.count }}</span>
+              <button @click="addCard(entry.card)" :disabled="!canAdd(entry.card)">＋</button>
+            </div>
+            <button v-else class="mode-action-btn mode-action-return" @click.stop="returnCard(entry.card.no)">返還</button>
+          </template>
+          <!-- returned -->
+          <template v-else>
+            <div v-if="!returnModeActive" class="qty qty-returned" @click.stop>×{{ entry.count }}</div>
+            <button v-else class="mode-action-btn mode-action-unreturn" @click.stop="unreturnCard(entry.card.no)">取消</button>
+          </template>
+        </div>
+      </div>
+    </div>
+    <!-- 展開時：カード画像をプールと同じグリッドで大きく表示（同名カードはグループ化） -->
+    <div class="deck-grid-area" v-else>
+      <!-- 検索・フィルター・ソートバー（カードリスト画面と統一UI） -->
+      <div class="deck-grid-toolbar">
+        <input class="deck-search" type="text" v-model="deckSearchText" placeholder="No / カード名 / 効果テキストで検索">
+        <select v-model="deckCategoryFilter">
+          <option value="">種別すべて</option>
+          <option value="レガシー">レガシー</option>
+          <option value="オラクル">オラクル</option>
+          <option value="レリック">レリック</option>
+          <option value="ジェネシス">ジェネシス</option>
+          <option value="サポート">サポート</option>
+        </select>
+        <select v-model="deckColorFilter">
+          <option value="">属性すべて</option>
+          <option value="赤">赤</option>
+          <option value="青">青</option>
+          <option value="緑">緑</option>
+          <option value="黄">黄</option>
+          <option value="紫">紫</option>
+          <option value="創">創</option>
+          <option value="無">無</option>
+        </select>
+        <select v-model="deckTypeFilter">
+          <option value="">種族すべて</option>
+          <option v-for="t in types" :key="t" :value="t">{{ t }}</option>
+        </select>
+        <select v-model="deckCostFilter">
+          <option value="">コストすべて</option>
+          <option v-for="n in costRange" :key="'dc'+n" :value="String(n)">{{ n === 10 ? '10+' : n }}</option>
+        </select>
+        <select v-model="deckReturnFilter">
+          <option value="">返還値すべて</option>
+          <option value="2">返還値2</option>
+          <option value="1">返還値1</option>
+          <option value="0">返還値0</option>
+          <option value="none">返還値なし</option>
+        </select>
+        <select v-model="deckKeywordFilter">
+          <option value="">キーワードすべて</option>
+          <option v-for="kw in Object.keys(keywordGlossary)" :key="kw" :value="kw">{{ kw }}</option>
+        </select>
+        <div class="round-chips">
+          <button v-for="n in [1,2,3]" :key="'dr'+n"
+                  :class="{active: deckRoundFilter === String(n)}"
+                  @click="deckRoundFilter = deckRoundFilter === String(n) ? '' : String(n)">{{ n }}ラウンド</button>
+        </div>
+        <select v-if="deckAvailablePacks.length > 0" v-model="deckPackFilter">
+          <option value="">パックすべて</option>
+          <option v-for="p in deckAvailablePacks" :key="p" :value="String(p)">P{{ p }}</option>
+        </select>
+        <button class="clear-btn" @click="clearDeckFilters">フィルタをクリア</button>
+        <div class="deck-sort-wrap">
+          <button class="deck-sort-btn" @click.stop="deckSortOpen = !deckSortOpen"
+                  :class="{ active: deckSortOpen }">
+            ↕ {{ deckSortOptions.find(o => o.key === deckSortKey).label }}
+          </button>
+          <div v-if="deckSortOpen" class="deck-sort-dropdown" @click.stop>
+            <div v-for="opt in deckSortOptions" :key="opt.key"
+                 class="deck-sort-item"
+                 :class="{ selected: deckSortKey === opt.key }"
+                 @click="deckSortKey = opt.key; deckSortOpen = false">
+              <span class="check">{{ deckSortKey === opt.key ? '✓' : '　' }}</span>
+              {{ opt.label }}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="empty" v-if="deckEntriesFlat.length === 0">カード画像クリック または カード下の＋ボタンでデッキに追加してください</div>
+      <div class="empty" v-else-if="deckEntriesFlatDisplay.length === 0">検索結果なし</div>
+      <div class="grid" v-else>
+        <div v-for="entry in deckEntriesFlatDisplay"
+             :key="(entry.returned?'r:':'a:') + entry.card.no + '_' + entry.copyIndex"
+             class="card deck-grid-card in-deck"
+             :class="{ 'is-returned': entry.returned }">
+          <div class="img-wrap" :style="cardImageStyle(entry.card)"
+               @click="openPreview(entry.card)"
+               @contextmenu.prevent="!returnModeActive && !entry.returned && removeCard(entry.card.no)"
+               @mouseenter="showCardHover(entry.card, $event)"
+               @mouseleave="hideCardHover">
+            <span v-if="!cardImageUrl(entry.card)">{{ entry.card.no }}<br>{{ entry.card.name }}</span>
+            <span v-if="sbCardPackMap[entry.card.no]" class="pack-no-badge-grid">
+              P{{ sbCardPackMap[entry.card.no][entry.copyIndex] || sbCardPackMap[entry.card.no][0] }}
+            </span>
+            <!-- active -->
+            <template v-if="!entry.returned">
+              <template v-if="!returnModeActive">
+                <button class="deck-grid-btn deck-grid-btn-m"
+                        @click.stop="removeCard(entry.card.no)" title="デッキから1枚削除">−</button>
+                <button class="deck-grid-btn deck-grid-btn-p"
+                        @click.stop="addCard(entry.card)" :disabled="!canAdd(entry.card)" title="1枚増やす">＋</button>
+              </template>
+              <button v-else class="deck-grid-mode-btn deck-grid-return-btn"
+                      @click.stop="returnCard(entry.card.no)">返還</button>
+            </template>
+            <!-- returned -->
+            <template v-else>
+              <div v-if="!returnModeActive" class="deck-grid-returned-badge">返還済</div>
+              <button v-else class="deck-grid-mode-btn deck-grid-unreturn-btn"
+                      @click.stop="unreturnCard(entry.card.no)">取消</button>
+            </template>
+          </div>
+          <button class="preview-btn" @click.stop="openPreview(entry.card)" title="カード詳細を表示">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- /deck-cards -->
+  </div>
+
+  <!-- ===== シールド戦モーダル ===== -->
+  <div v-if="shieldOpen" class="shield-overlay" @click.self="tryCloseShield"
+       :style="shieldPeek ? { display: 'none' } : {}">
+    <div class="shield-panel" @click.stop>
+
+      <!-- ヘッダー -->
+      <div class="sp-header">
+        <h2>⚔ シールド戦</h2>
+        <span class="sp-phase-badge">{{ shieldPhaseLabel }}</span>
+        <span style="margin-left:auto;font-size:11px;color:#6c9;font-weight:700;letter-spacing:0.04em;">build {{ BUILD_VERSION }}</span>
+        <button class="sp-close" @click="tryCloseShield" title="閉じる">✕</button>
+      </div>
+
+      <div class="sp-body">
+
+        <!-- ======= ロビー ======= -->
+        <div v-if="sb.phase === 'lobby'" class="sp-lobby">
+          <div>
+            <h3>プレイヤー名</h3>
+            <input class="sp-input" v-model="sb.myName" placeholder="名前を入力（任意）" maxlength="20">
+          </div>
+
+          <!-- 部屋を立てる -->
+          <div>
+            <h3>部屋を立てる</h3>
+            <button class="sp-btn sp-btn-create" @click="onCreateRoom"
+                    :disabled="sb.connecting">
+              {{ sb.connecting ? '接続中…' : '新しい部屋を作成' }}
+            </button>
+          </div>
+
+          <hr class="sp-divider">
+
+          <!-- 既存の部屋に入る -->
+          <div>
+            <h3>部屋に入る</h3>
+            <input class="sp-input" v-model="sb.joinCode"
+                   placeholder="部屋コード（6文字）" maxlength="6"
+                   style="text-transform:uppercase; letter-spacing:0.15em; margin-bottom:8px;">
+            <button class="sp-btn sp-btn-join" @click="onJoinRoom"
+                    :disabled="sb.connecting || sb.joinCode.length < 4">
+              {{ sb.connecting ? '接続中…' : '入室する' }}
+            </button>
+          </div>
+
+          <div v-if="sb.error" style="color:#f88; font-size:13px; text-align:center;">{{ sb.error }}</div>
+        </div>
+
+        <!-- ======= 待機中（ゲスト到着待ち / 準備確認） ======= -->
+        <div v-else-if="sb.phase === 'waiting'" class="sp-waiting">
+          <!-- 部屋コード表示 -->
+          <div v-if="sb.role === 'host'" class="sp-room-code-display" style="margin-bottom:24px;">
+            <div class="rc-label">部屋コードを相手に伝えてください</div>
+            <div class="rc-code">{{ sb.roomCode }}</div>
+            <div class="rc-note">相手が入室するまでこのページを開いたままにしてください</div>
+          </div>
+
+          <div class="sp-players-row">
+            <div class="sp-player-chip"
+                 :class="{ ready: sb.roomData.host?.ready, you: sb.role === 'host' }">
+              <div class="pc-dot"></div>
+              {{ sb.roomData.host?.name || '…' }}
+              <span v-if="sb.role === 'host'" style="color:#9aa;font-size:11px;">（あなた）</span>
+              <span v-if="sb.roomData.host?.ready" style="color:#6c9;font-size:11px;">準備完了</span>
+            </div>
+            <div v-if="sb.roomData.guest" class="sp-player-chip"
+                 :class="{ ready: sb.roomData.guest?.ready, you: sb.role === 'guest' }">
+              <div class="pc-dot"></div>
+              {{ sb.roomData.guest?.name || '…' }}
+              <span v-if="sb.role === 'guest'" style="color:#9aa;font-size:11px;">（あなた）</span>
+              <span v-if="sb.roomData.guest?.ready" style="color:#6c9;font-size:11px;">準備完了</span>
+            </div>
+            <div v-else class="sp-player-chip">
+              <div class="sp-spinner" style="width:16px;height:16px;border-width:2px;margin:0;"></div>
+              相手の入室を待っています…
+            </div>
+          </div>
+
+          <button v-if="sb.roomData.guest" class="sp-btn sp-btn-create"
+                  style="max-width:240px;margin:0 auto;"
+                  @click="onSetReady"
+                  :disabled="sbMyReady">
+            {{ sbMyReady ? '準備完了 ✓' : '準備完了' }}
+          </button>
+        </div>
+
+        <!-- ======= コイントス結果 ======= -->
+        <div v-else-if="sb.phase === 'coin_toss'" class="sp-coin-toss">
+          <div style="font-size:48px; margin-bottom:8px;">🪙</div>
+          <div class="ct-result">
+            {{ sbIsFirstPicker ? 'あなたが先攻です！' : 'あなたは後攻です' }}
+          </div>
+          <div class="ct-note" style="margin-bottom:24px;">
+            先攻から交互にパックを選びます（各4パック）
+          </div>
+          <button class="sp-btn sp-btn-create" style="max-width:200px;margin:0 auto;"
+                  @click="onStartPicking">開始する</button>
+        </div>
+
+        <!-- ======= パックピック ======= -->
+        <div v-else-if="sb.phase === 'picking'" class="sp-picking-layout">
+         <div class="sp-picking-main">
+          <div class="sp-pick-header">
+            <div class="sp-pick-counter">
+              自分: {{ sbMyPickedPacks.length }} / {{ PACKS_PER_SIDE }}パック取得
+            </div>
+            <div class="ph-turn" :class="sbIsMyPickTurn ? 'my-turn' : 'wait-turn'">
+              {{ sbIsMyPickTurn ? 'あなたの番 — パックを選んでください' : '相手が選んでいます…' }}
+            </div>
+          </div>
+
+          <div class="sp-packs-grid">
+            <div v-for="(pack, i) in sb.packs" :key="i"
+                 class="sp-pack-card"
+                 :class="{
+                   'taken-by-me': sbMyPickedPacks.includes(i),
+                   'taken': sbAllPickedPacks.includes(i) && !sbMyPickedPacks.includes(i),
+                   'disabled': !sbIsMyPickTurn || sbAllPickedPacks.includes(i),
+                 }">
+              <div class="sp-pack-header">
+                <span class="ph-no">Pack {{ i + 1 }}</span>
+                <span class="ph-status"
+                      :class="sbMyPickedPacks.includes(i) ? 'mine'
+                             : sbEnemyPickedPacks.includes(i) ? 'enemy' : 'available'">
+                  {{ sbMyPickedPacks.includes(i) ? '取得済み'
+                   : sbEnemyPickedPacks.includes(i) ? '相手取得'
+                   : '選択可' }}
+                </span>
+              </div>
+              <!-- 可視カード3枚サムネイル（カーソルを当てると拡大プレビュー） -->
+              <div class="sp-pack-visible">
+                <div v-for="card in pack.visible" :key="card.no"
+                     class="sp-pack-vis-thumb"
+                     :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
+                     :title="fullName(card)"
+                     @mouseenter="showSbHover(card, $event)"
+                     @mouseleave="hideSbHover">
+                </div>
+              </div>
+              <div class="sp-pack-sum">返還値合計 {{ pack.actualSum }}</div>
+              <!-- 明示的な選択ボタン -->
+              <button v-if="sbIsMyPickTurn && !sbAllPickedPacks.includes(i)"
+                      class="sp-pick-btn"
+                      @click.stop="onPickPack(i)">
+                このパックを選ぶ
+              </button>
+            </div>
+          </div>
+         </div><!-- /sp-picking-main -->
+
+          <!-- 右サイド：取得済みデッキプレビュー（デッキビルダー風） -->
+          <aside class="sp-deck-side">
+            <div class="sp-deck-side-head">
+              取得済みデッキ <span class="sp-deck-side-count">{{ sbMy48Cards.length }} 枚</span>
+            </div>
+            <button class="sp-deck-detail-btn"
+                    :disabled="sbMyDeckEntries.length === 0"
+                    @click="peekDeckDetail">
+              ⛶ デッキ詳細を見る
+            </button>
+            <div class="sp-deck-side-list">
+              <div v-if="sbMyDeckEntries.length === 0" class="sp-deck-side-empty">
+                まだカードを取得していません
+              </div>
+              <div v-for="entry in sbMyDeckEntries" :key="fullName(entry.card)"
+                   class="deck-item"
+                   :style="deckItemBgStyle(entry.card)"
+                   @mouseenter="showSbHover(entry.card, $event)"
+                   @mouseleave="hideSbHover">
+                <div class="cost" :style="costBadgeStyle(entry.card)">{{ entry.card.cost }}</div>
+                <div class="name">
+                  {{ fullName(entry.card) }}
+                  <small>{{ entry.card.category }}{{ entry.card.color ? ' / ' + entry.card.color : '' }}{{ entry.card.type ? ' / ' + entry.card.type : '' }}</small>
+                </div>
+                <div class="qty qty-returned">×{{ entry.count }}</div>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <!-- ======= カミ選択 ======= -->
+        <div v-else-if="sb.phase === 'kami_select'">
+          <div style="margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;">
+            <div style="flex:1;">
+              <div style="font-size:15px;font-weight:700;margin-bottom:4px;">
+                カミを選択してください
+              </div>
+              <div style="font-size:13px;color:#9aa;">
+                {{ sbIsMyKamiTurn
+                   ? 'あなたの番です — カミを1体クリックして選び、「このカミを選択」ボタンで確定してください'
+                   : '相手がカミを選んでいます…' }}
+              </div>
+            </div>
+            <button class="sp-deck-detail-btn"
+                    style="flex-shrink:0;margin:0;padding:8px 14px;"
+                    :disabled="sbMyDeckEntries.length === 0"
+                    @click="peekDeckDetail">
+              ⛶ デッキ詳細を見る
+            </button>
+          </div>
+          <div class="sp-kami-grid">
+            <div v-for="kami in sb.kamiCandidates" :key="kami.no"
+                 class="sp-kami-card"
+                 :class="{
+                   selected: sb.tempKami && String(sb.tempKami.no) === String(kami.no),
+                   confirmed: sbMyKami && String(sbMyKami) === String(kami.no),
+                   'wait-mode': !sbIsMyKamiTurn,
+                   'orochi-kami': kami.type === 'ヤマタノオロチ',
+                   'opponent-taken': sbOpponentKamiNo && String(sbOpponentKamiNo) === String(kami.no),
+                 }"
+                 @click="onSelectKami(kami)">
+              <div class="img-wrap"
+                   :style="cardImageUrl(kami) ? { backgroundImage: 'url(' + cardImageUrl(kami) + ')' } : {}"
+                   @mouseenter="showSbHover(kami, $event)"
+                   @mouseleave="hideSbHover">
+              </div>
+              <div class="name-bar">{{ fullName(kami) }}</div>
+              <!-- 相手が選択済み -->
+              <div v-if="sbOpponentKamiNo && String(sbOpponentKamiNo) === String(kami.no)"
+                   class="sp-opponent-badge">
+                相手が選択済み
+              </div>
+              <!-- ヤマタノオロチ：ディエスイレ自動追加バッジ -->
+              <div v-else-if="kami.type === 'ヤマタノオロチ'" class="sp-orochi-badge">
+                ＋ No.198 ディエスイレ
+              </div>
+            </div>
+          </div>
+          <!-- ヤマタノオロチ選択中：ディエスイレ自動追加プレビュー -->
+          <div v-if="sb.tempKami && sb.tempKami.type === 'ヤマタノオロチ' && sbOrochiBonus"
+               class="sp-orochi-bonus-bar">
+            <div class="sp-orochi-bonus-label">
+              シールド戦限定：このカミを選択するとデッキに自動追加されます
+            </div>
+            <div class="sp-orochi-bonus-card">
+              <div class="sp-orochi-bonus-thumb"
+                   :style="cardImageUrl(sbOrochiBonus)
+                     ? { backgroundImage: 'url(' + cardImageUrl(sbOrochiBonus) + ')' }
+                     : {}">
+              </div>
+              <div class="sp-orochi-bonus-info">
+                <div class="sp-orochi-bonus-name">{{ fullName(sbOrochiBonus) }}</div>
+                <div class="sp-orochi-bonus-sub">
+                  No.{{ sbOrochiBonus.no }} /
+                  {{ sbOrochiBonus.category }} / {{ sbOrochiBonus.color }}
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 確定ボタン -->
+          <div v-if="sbIsMyKamiTurn && !sbMyKami" class="sp-kami-confirm-bar">
+            <div v-if="sb.tempKami" style="font-size:14px;color:#cde;margin-bottom:12px;">
+              選択中：<strong>{{ fullName(sb.tempKami) }}</strong>
+              <span v-if="sb.tempKami.type === 'ヤマタノオロチ'"
+                    style="margin-left:10px;color:#fc8;font-size:13px;">
+                （＋ No.198 ディエスイレ 自動追加）
+              </span>
+            </div>
+            <button class="sp-kami-confirm-btn"
+                    :disabled="!sb.tempKami"
+                    @click="onConfirmKami">
+              {{ sb.tempKami ? 'このカミを選択する' : 'カミをクリックして選んでください' }}
+            </button>
+          </div>
+          <div v-else-if="sbMyKami" style="text-align:center;margin-top:16px;color:#6c9;font-size:14px;font-weight:700;">
+            ✓ カミ選択完了 — 相手を待っています…
+          </div>
+        </div>
+
+        <!-- ======= 完了（自動移行中） ======= -->
+        <div v-else-if="sb.phase === 'complete'" class="sp-complete">
+          <div style="text-align:center;padding:40px;">
+            <div style="font-size:48px;margin-bottom:12px;">🎉</div>
+            <div style="font-size:18px;font-weight:700;margin-bottom:8px;">デッキ構築完了！</div>
+            <div style="font-size:14px;color:#9aa;">デッキビルダーに移行しています…</div>
+          </div>
+        </div>
+
+      </div><!-- /sp-body -->
+    </div><!-- /shield-panel -->
+
+    <!-- シールド戦ホバープレビュー（オーバーレイ内部：z-index競合なし） -->
+    <div v-if="sbHoverCard && cardImageUrl(sbHoverCard)"
+         class="sb-hover-popup"
+         :style="{ left: sbHoverLeft + 'px', top: sbHoverTop + 'px' }">
+      <div class="sb-hp-img"
+           :style="{ backgroundImage: 'url(' + cardImageUrl(sbHoverCard) + ')' }">
+      </div>
+    </div>
+  </div><!-- /shield-overlay -->
+
+  <!-- シールド戦：デッキ詳細プレビュー中の「パックピックに戻る」フローティングボタン -->
+  <button v-if="shieldPeek" class="sb-peek-back-btn" @click="closePeekDeckDetail">
+    ◀ パックピックに戻る
+  </button>
+
+  <!-- ===== カード画像ホバープレビュー（画像のみ拡大表示） ===== -->
+  <div v-if="hoverCard && cardImageUrl(hoverCard) && !previewCard"
+       class="card-hover-preview"
+       :style="{ left: hoverLeft + 'px', top: hoverTop + 'px' }">
+    <div class="chp-img" :style="{ backgroundImage: 'url(' + cardImageUrl(hoverCard) + ')' }"></div>
+  </div>
+
+  <!-- ===== カードプレビュー モーダル ===== -->
+  <div v-if="previewCard" class="modal-bg" @click.self="closePreview">
+    <div class="modal-card">
+      <div class="modal-img" :style="cardImageStyle(previewCard)"></div>
+      <div class="modal-info">
+        <div class="mi-no">No.{{ String(parseInt(previewCard.no, 10) || 0).padStart(3, '0') }}</div>
+        <div class="mi-name">{{ fullName(previewCard) }}</div>
+        <div class="mi-tags">
+          <span>{{ previewCard.category }}</span>
+          <span v-if="previewCard.color">{{ previewCard.color }}属性</span>
+          <span v-if="previewCard.type">{{ previewCard.type }}</span>
+          <span v-if="!previewCard.isKami">コスト {{ previewCard.cost }}</span>
+        </div>
+        <div class="mi-stats" v-if="previewCard.category === 'レガシー'">
+          <div v-if="previewCard.power !== ''">戦闘力<b>{{ previewCard.power }}</b></div>
+          <div v-if="previewCard.attack !== ''">神攻力<b>{{ previewCard.attack }}</b></div>
+        </div>
+        <!-- 通常カード：効果テキスト（キーワード/トークンをクリック可能に） -->
+        <div v-if="!previewCard.isKami" class="mi-text">
+          <rich-text v-if="previewCard.text"
+                     :text="previewCard.text"
+                     :glossary="keywordGlossary"
+                     :tokens="tokenNameMap"
+                     @kw="openKeywordPopup"
+                     @token="openTokenPopup"></rich-text>
+          <span v-else>（効果テキストなし）</span>
+        </div>
+        <!-- カミカード：天力トリガー＋神技 -->
+        <div v-else class="mi-text kami-text">
+          <!-- 天力トリガー（ヤマタノオロチはラベル非表示） -->
+          <div v-if="previewCard.trigger" class="kami-section">
+            <div class="kami-section-label" v-if="previewCard.type !== 'ヤマタノオロチ'">天力トリガー</div>
+            <div class="kami-section-body">
+              <rich-text :text="previewCard.trigger" :glossary="keywordGlossary" :tokens="tokenNameMap"
+                         @kw="openKeywordPopup" @token="openTokenPopup"></rich-text>
+            </div>
+          </div>
+          <!-- 神技1 -->
+          <div v-if="previewCard.skill1name" class="kami-section">
+            <div class="kami-skill-header">
+              <div class="kami-skill-names">
+                <div class="kami-skill-furigana" v-if="kamiSkillFurigana(previewCard.skill1name)">{{ kamiSkillFurigana(previewCard.skill1name) }}</div>
+                <div class="kami-skill-name">{{ kamiSkillMainName(previewCard.skill1name) }}</div>
+              </div>
+              <div class="kami-skill-cost" v-if="previewCard.type !== 'ヤマタノオロチ'">消費天力{{ previewCard.skill1cost }}</div>
+            </div>
+            <div v-if="previewCard.skill1effect" class="kami-section-body">
+              <rich-text :text="previewCard.skill1effect" :glossary="keywordGlossary" :tokens="tokenNameMap"
+                         @kw="openKeywordPopup" @token="openTokenPopup"></rich-text>
+            </div>
+          </div>
+          <!-- 神技2 -->
+          <div v-if="previewCard.skill2name" class="kami-section">
+            <div class="kami-skill-header">
+              <div class="kami-skill-names">
+                <div class="kami-skill-furigana" v-if="kamiSkillFurigana(previewCard.skill2name)">{{ kamiSkillFurigana(previewCard.skill2name) }}</div>
+                <div class="kami-skill-name">{{ kamiSkillMainName(previewCard.skill2name) }}</div>
+              </div>
+              <div class="kami-skill-cost" v-if="previewCard.type !== 'ヤマタノオロチ'">消費天力{{ previewCard.skill2cost }}</div>
+            </div>
+            <div v-if="previewCard.skill2effect" class="kami-section-body">
+              <rich-text :text="previewCard.skill2effect" :glossary="keywordGlossary" :tokens="tokenNameMap"
+                         @kw="openKeywordPopup" @token="openTokenPopup"></rich-text>
+            </div>
+          </div>
+        </div>
+        <div class="mi-flavor" v-if="previewCard.flavor">{{ previewCard.flavor }}</div>
+        <div class="mi-actions">
+          <button v-if="previewCard.isKami" class="add"
+                  @click="setLeader(previewCard); closePreview()"
+                  :style="selectedKami && selectedKami.no === previewCard.no ? 'background:#3a6a3a' : ''">
+            {{ selectedKami && selectedKami.no === previewCard.no ? '✓ カミ選択中' : 'カミに設定' }}
+          </button>
+          <button v-else class="add" @click="addCard(previewCard)" :disabled="!canAdd(previewCard)">
+            ＋ デッキに追加（{{ groupCount(previewCard) }}/{{ maxCopiesFor(previewCard) }}）
+          </button>
+          <button class="close" @click="closePreview">閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== トークンカード ポップアップ ===== -->
+  <div v-if="tokenPopupCard" class="modal-bg token-popup-bg" @click.self="closeTokenPopup">
+    <div class="modal-card">
+      <div class="modal-img" :style="cardImageStyle(tokenPopupCard)"></div>
+      <div class="modal-info">
+        <div class="mi-no">No.{{ String(parseInt(tokenPopupCard.no, 10) || 0).padStart(3, '0') }}<span class="token-tag">トークン</span></div>
+        <div class="mi-name">{{ fullName(tokenPopupCard) }}</div>
+        <div class="mi-tags">
+          <span v-if="tokenPopupCard.color">{{ tokenPopupCard.color }}属性</span>
+          <span v-if="tokenPopupCard.type">{{ tokenPopupCard.type }}</span>
+          <span>コスト {{ tokenPopupCard.cost }}</span>
+        </div>
+        <div class="mi-stats" v-if="tokenPopupCard.power !== '' || tokenPopupCard.attack !== ''">
+          <div v-if="tokenPopupCard.power !== ''">戦闘力<b>{{ tokenPopupCard.power }}</b></div>
+          <div v-if="tokenPopupCard.attack !== ''">神攻力<b>{{ tokenPopupCard.attack }}</b></div>
+        </div>
+        <div class="mi-text">
+          <rich-text v-if="tokenPopupCard.text"
+                     :text="tokenPopupCard.text"
+                     :glossary="keywordGlossary"
+                     :tokens="tokenNameMap"
+                     @kw="openKeywordPopup"
+                     @token="openTokenPopup"></rich-text>
+          <span v-else>（効果テキストなし）</span>
+        </div>
+        <div class="mi-flavor" v-if="tokenPopupCard.flavor">{{ tokenPopupCard.flavor }}</div>
+        <div class="mi-actions">
+          <button class="close" @click="closeTokenPopup">閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== キーワード能力 説明ポップアップ ===== -->
+  <div v-if="keywordPopup" class="kw-popup-bg" @click.self="closeKeywordPopup">
+    <div class="kw-popup">
+      <div class="kw-popup-head">
+        <span class="kw-popup-headlabel">能力詳細</span>
+        <button class="kw-popup-close" @click="closeKeywordPopup">✕</button>
+      </div>
+      <div class="kw-popup-name">{{ keywordPopup.name }}</div>
+      <div class="kw-popup-body">{{ keywordPopup.desc }}</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- Firebase SDK（シールド戦用） -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<!-- 追加モジュール -->
+<script src="pack_generator.js"></script>
+<script src="udonarium_export.js"></script>
+<script src="shield_battle.js"></script>
+<script>
+/* ===== 埋め込み設定（カードリスト & 画像フォルダ） =====
+ * スプレッドシート: https://docs.google.com/spreadsheets/d/1935vem2b.../edit
+ * 画像Driveフォルダ: https://drive.google.com/drive/folders/1hIbAEGkA86we9tZPODOj10Dz1JsS2Bhs
+ *   → フォルダの共有設定は「リンクを知っている全員（閲覧者）」にしておくこと
+ *   → ファイル名は「001_xxx.png」「No.001_xxx.png」「001.png」のいずれかでNo.と紐づけ
+ *
+ * スプレッドシート列：
+ * [0]No, [1]二つ名, [2]カード名, [3]ふりがな, [4]コスト, [5]ラウンド数,
+ * [6]種別(レガシー/オラクル/レリック/カミ), [7]属性, [8]種族,
+ * [9]返還値, [10]神攻力, [11]戦闘力,
+ * [12]効果テキスト, [13]フレーバー, [14]テキストサイズ, [15]テキスト行間,
+ * [16]サブ種別, [17]ふりがなY, [18]S列
+ */
+const API_KEY = "AIzaSyDoQxHEQ_DHxYSOTd6lgiy6eBbscZR3ynw";
+const SHEET_ID = "1935vem2bREK2d4RNzgO6r4OvNsTsFYo2vgB8aB7AxTo";
+const SHEET_RANGE = "カード設定!A2:U1000"; // T列:背景Y位置 / U列:ぼかしフラグ
+// 親フォルダ「カード画像」（公開設定済み）。中の各サブフォルダを
+// 起動時に名前で動的検索するので、サブフォルダごと作り直しても自動追従する。
+const DRIVE_PARENT_FOLDER_ID = "1hIbAEGkA86we9tZPODOj10Dz1JsS2Bhs";
+const DRIVE_CHILD_FOLDER_NAME = "CNo順";   // 通常カード画像フォルダ
+const DRIVE_KAMI_FOLDER_NAME  = "カミ";    // カミカード画像フォルダ
+
+// ユドナリウム出力用：カード裏面画像のURL
+// DriveフォルダにカードBACK画像がある場合はそのURL、なければ空欄でOK（裏面なしで出力される）
+// 例: "https://lh3.googleusercontent.com/d/XXXXXX=w600"
+const UDON_CARD_BACK_URL      = "card_back.png";       // 通常カード裏面
+const UDON_KAMI_BACK_URL      = "card_back_kami.png";  // カミカード裏面
+
+// カミ設定シート
+const KAMI_SHEET_RANGE = "カミ設定!A2:O50"; // O列:ぼかしフラグ
+// カミ設定シート列インデックス:
+// [0]No., [1]二つ名, [2]名称, [3]種別, [4]天力トリガー,
+// [5]神技1名称, [6]神技1消費天力, [7]神技1効果,
+// [8]神技2名称, [9]神技2消費天力, [10]神技2効果
+
+const SHEET_URL =
+  `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/` +
+  encodeURIComponent(SHEET_RANGE) + `?key=${API_KEY}`;
+
+// 属性ソート順（小さいほど先）
+const COLOR_ORDER = { '赤': 0, '青': 1, '緑': 2, '黄': 3, '紫': 4, '創': 5, '無': 6 };
+function colorRank(c) {
+  return COLOR_ORDER[c] !== undefined ? COLOR_ORDER[c] : 99;
+}
+// 種族ソート順（小さいほど先）
+const TYPE_ORDER = { '忍者': 0, '侍': 1, '人獣': 2, '神使': 3, '妖怪': 4, '龍': 5 };
+function typeRank(t) {
+  return TYPE_ORDER[t] !== undefined ? TYPE_ORDER[t] : 99;
+}
+// 属性→コスト→No の比較関数
+function cardSortCompare(a, b) {
+  const cr = colorRank(a.color) - colorRank(b.color);
+  if (cr !== 0) return cr;
+  const ca = Number(a.cost) || 0, cb = Number(b.cost) || 0;
+  if (ca !== cb) return ca - cb;
+  const na = parseInt(a.no, 10), nb = parseInt(b.no, 10);
+  if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+  return 0;
+}
+
+// Drive画像URL（lh3.googleusercontent.com 経由：CORS対応のため html2canvas 用にも有効）
+// 既定幅を 1000px に引き上げ（カード効果テキストが読める品質を確保）
+function driveThumbUrl(fileId, width) {
+  return `https://lh3.googleusercontent.com/d/${fileId}=w${width || 1000}`;
+}
+
+/* ================================================================== */
+/* キーワード能力辞書（クリックでポップアップ表示）                     */
+/* ================================================================== */
+const KEYWORD_GLOSSARY = {
+  // ── タイミングで起動する能力 ──
+  "出現時": "カードがフィールドに出た瞬間に発動する効果です。明記されていない限り、デッキや墓地からフィールドに出た場合でも発動します。",
+  "死亡時": "レガシーがフィールドから墓地に送られた時に発動する効果です。「崩壊」した場合は発動しません。",
+  "神攻時": "レガシーが【神攻】を宣言した時に、神攻を処理する前に発動する効果です。",
+  "戦闘時": "レガシーが【戦闘】を宣言した時に、戦闘を処理する前に発動する効果です。",
+  // ── キーワード能力 ──
+  "疾駆": "フィールドに出たターンから【戦闘】【神攻】を行うことができます。",
+  "奇襲": "フィールドに出たターンから【戦闘】を行うことができます。",
+  "死角": "【死角】を持たないレガシーは、このレガシーを【戦闘】の攻撃対象に選ぶことができず、【守護】により攻撃先を変更することもできません。",
+  "守護": "相手の【戦闘】または【神攻】の宣言時、このレガシーをタップすることで、攻撃先をこのレガシーへと強制的に変更させます。",
+  "不可侵": "相手のカードの効果の対象に選ばれません。（※自分のカードの効果の対象にすることは可能です）",
+  "呪殺": "このレガシーと【戦闘】したレガシーは、戦闘力に関わらず破壊されます。",
+  "選定": "複数ある効果の選択肢の中から、異なる X 個の効果をプレイヤー自身が選んで発動します。",
+  "進化": "この能力を持つレガシーが場に出る時、自分の場に［条件］に記載された属性や種族のレガシー（無属性カードを除く）がいれば、その上に重ねて出すことができます。進化せずに出すことも可能です。重ねて出した場合、以下のルールが適用されます。\n・【進化中】の効果を使用することができます。\n・そのレガシーは【疾駆】を持ちます。\n・下のレガシーが持つあらゆる効果は失われます（一部例外となる効果があります。詳細は「細則」をご確認ください）。\n・タップ／アンタップ状態は、下のレガシーの状態を引き継ぎます。\n・そのレガシーが破壊／崩壊される、もしくは手札に戻された場合、下のレガシーは墓地へ送られます。",
+  "誘": "デッキから非公開でX枚カードを引き、その中に条件を満たすカードがあれば、1枚までそれを公開して手札に加えます。残ったカードは、好きな順番で山札の一番下に戻します。",
+  "霊視": "デッキから非公開でX枚カードを確認し、確認したカードをX枚まで選択して墓地に置き、残ったカードは、好きな順番で山札の一番上に戻します。",
+  "昇華": "追加でXコストを支払うことにより、得られる効果です。",
+  "招来": "対象に記載された無属性カード（トークン）を場に出します。無属性カード（トークン）は、手札か墓地に置かれると「崩壊」します。",
+  "補正": "Xの数だけ、戦闘力を上下させます。",
+  "神威": "Xの数だけ、神攻力を上下させます。",
+  "傀儡化": "相手の場のレガシーを自分の場に移動させ、あなたが操作権を得ます。その際、そのレガシーはアンタップされて【疾駆】を得ます。",
+  "拘束": "相手の場のレガシーを1枚選択してタップします。選択したレガシーは、次の相手ターン終了時までアンタップできません。",
+};
+
+/* ------------------------------------------------------------------ */
+/* テキストをクリック可能セグメントに分解                                */
+/*   - 【】内のキーワード → クリックで能力説明ポップアップ              */
+/*   - トークン名（isToken カード名）→ クリックでトークンカード表示     */
+/* ------------------------------------------------------------------ */
+function _richLinkifyTokens(s, tkKeys, out) {
+  let i = 0, buf = "";
+  while (i < s.length) {
+    let matched = null;
+    for (const name of tkKeys) {
+      if (name && s.startsWith(name, i)) { matched = name; break; }
+    }
+    if (matched) {
+      if (buf) { out.push({ t: "plain", s: buf }); buf = ""; }
+      out.push({ t: "token", s: matched, name: matched });
+      i += matched.length;
+    } else { buf += s[i]; i++; }
+  }
+  if (buf) out.push({ t: "plain", s: buf });
+}
+function _richLinkifyKwAndTokens(s, kwKeys, tkKeys, out) {
+  let i = 0, buf = "";
+  const flush = () => { if (buf) { out.push({ t: "plain", s: buf }); buf = ""; } };
+  while (i < s.length) {
+    let kw = null;
+    for (const k of kwKeys) { if (s.startsWith(k, i)) { kw = k; break; } }
+    if (kw) { flush(); out.push({ t: "kw", s: kw, kw }); i += kw.length; continue; }
+    let tk = null;
+    for (const name of tkKeys) { if (name && s.startsWith(name, i)) { tk = name; break; } }
+    if (tk) { flush(); out.push({ t: "token", s: tk, name: tk }); i += tk.length; continue; }
+    buf += s[i]; i++;
+  }
+  flush();
+}
+function buildRichSegments(text, glossary, tokens) {
+  if (!text) return [{ t: "plain", s: "" }];
+  const kwKeys = Object.keys(glossary || {}).sort((a, b) => b.length - a.length);
+  const tkKeys = Object.keys(tokens || {}).sort((a, b) => b.length - a.length);
+  const out = [];
+  const bracketRe = /【[^】]*】/g;
+  let last = 0, m;
+  while ((m = bracketRe.exec(text)) !== null) {
+    if (m.index > last) _richLinkifyKwAndTokens(text.slice(last, m.index), kwKeys, tkKeys, out);
+    const inner = m[0].slice(1, -1);
+    out.push({ t: "plain", s: "【" });
+    _richLinkifyKwAndTokens(inner, kwKeys, tkKeys, out);
+    out.push({ t: "plain", s: "】" });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) _richLinkifyKwAndTokens(text.slice(last), kwKeys, tkKeys, out);
+  return out;
+}
+
+/* リッチテキスト表示コンポーネント（キーワード/トークンをクリック可能に） */
+Vue.component("rich-text", {
+  props: {
+    text:     { type: String, default: "" },
+    glossary: { type: Object, default: () => ({}) },
+    tokens:   { type: Object, default: () => ({}) },
+  },
+  computed: {
+    segs() { return buildRichSegments(this.text, this.glossary, this.tokens); },
+  },
+  methods: {
+    onClick(seg) {
+      if (seg.t === "kw")    this.$emit("kw", { name: seg.kw, desc: this.glossary[seg.kw] });
+      else if (seg.t === "token") this.$emit("token", this.tokens[seg.name]);
+    },
+  },
+  template:
+    '<span class="rich-text">' +
+      '<template v-for="(seg, i) in segs">' +
+        '<span v-if="seg.t === \'kw\'" :key="i" class="rt-kw" @click.stop="onClick(seg)">{{ seg.s }}</span>' +
+        '<span v-else-if="seg.t === \'token\'" :key="i" class="rt-token" @click.stop="onClick(seg)">{{ seg.s }}</span>' +
+        '<span v-else :key="i">{{ seg.s }}</span>' +
+      '</template>' +
+    '</span>',
+});
+
+new Vue({
+  el: "#app",
+  data: {
+    loading: true,
+    allCards: [],
+    allKamiCards: [],    // カミ設定シートから読み込んだカミカード
+    kamiFileMap: {},     // kamiNo → Drive fileId（カミ専用フォルダから取得）
+    selectedKami: null,  // 選択中のリーダーカード（カミ）
+    // カミカードの背景表示位置を個別調整（No → 'top XX%'）
+    // デフォルトは 'top 15%'。カードごとに顔の位置が変わる場合に調整。
+    kamiPositionMap: {
+      "1":  "top 20%",   // スサノオ（No.1）
+      "3":  "top 20%",   // オオクニヌシ（No.3）
+      "4":  "top 20%",   // タケミカヅチ（No.4）
+      "5":  "top 20%",   // オモイカネ（No.5）
+      "6":  "top 20%",   // アメノウズメ（No.6）
+      "7":  "top 18%",   // ヒノカグツチ（No.7）
+      "8":  "top 20%",   // アマテラス（No.8）
+      "9":  "top 17%",   // ツクヨミ（No.9）
+      "10": "top 25%",   // ヤマタノオロチ（No.10）
+    },
+    deck: {},      // active deck { no: count }
+    returned: {},  // 返還済み { no: count } — グレーアウト表示＋返還値計上
+    driveFileMap: {}, // cardNo -> Drive fileId（公開フォルダから取得）
+    driveError: false,
+    imageMap: {}, // ローカルフォルダ用 cardNo -> object URL（任意フォールバック）
+    searchText: "",
+    filterCategory: "",
+    filterKeyword: "",
+    filterColor: "",
+    filterType: "",
+    filterReturn: "",
+    filterCost: "",
+    filterRound: "",
+    categories: ["レガシー", "オラクル", "レリック", "ジェネシス", "カミ", "トークン"],
+    colors: ["赤", "青", "緑", "黄", "紫", "創", "無"],
+    types: ["忍者", "侍", "神使", "人獣", "妖怪", "龍"],
+    costRange: [0,1,2,3,4,5,6,7,8,9,10],
+    roundRange: [1,2,3],
+    deckSize: 50,
+    previewCard: null,
+    keywordGlossary: KEYWORD_GLOSSARY, // キーワード能力辞書
+    keywordPopup: null,      // { name, desc } キーワード説明ポップアップ
+    tokenPopupCard: null,    // クリックされたトークンカード
+    deckExpanded: false,
+    capturing: false,
+    returnModeActive: false, // 返還モード：-→返還 / +→取消 に変化
+    deckSearchText: "",      // デッキリスト内検索
+    deckSortKey: "color",    // デッキリストのソート：color/cost/no/round/category
+    deckSortOpen: false,     // ソートドロップダウンの開閉
+    deckKeywordFilter: "",
+    deckCategoryFilter: "",
+    deckColorFilter: "",
+    deckTypeFilter: "",
+    deckCostFilter: "",
+    deckReturnFilter: "",
+    deckRoundFilter: "",
+    deckPackFilter: "",
+    poolSortKey: "color",    // カードプールのソート：color/cost/no/round
+    poolSortOpen: false,     // カードプールソートドロップダウンの開閉
+    hoverCard: null,         // ホバー中のカード
+    hoverLeft: 0,            // ホバープレビューのX座標(px)
+    hoverTop: 0,             // ホバープレビューのY座標(px)
+    baseDevicePixelRatio: window.devicePixelRatio || 1, // 起動時のDPR（ズーム検知の基準）
+    revealedSpoilers: {},    // ぼかし解除済みカード { no: true }
+    importing: false,        // ユドナリウムデッキ読込中フラグ
+    udonExporting: false,    // ユドナリウム出力中フラグ
+    udonProgress: { current: 0, total: 0 }, // 出力進捗
+
+    /* ===== シールド戦 ===== */
+    BUILD_VERSION: '1.6.21',
+    PACKS_PER_SIDE: 4,
+    shieldOpen: false,
+    shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
+    _peekSaved: null,    // プレビュー前のデッキビルダー状態退避
+    _sbPreReturn: null,  // ピーク中に行った事前返還（onLoadShieldDeckToBuilder で適用）
+    sbHoverCard: null,   // ホバー拡大プレビュー対象カード
+    sbHoverLeft: 0,
+    sbHoverTop:  0,
+    sbPreviewCard: null, // クリックで大型プレビューするカード
+    sb: {
+      phase:       "lobby",   // lobby / waiting / coin_toss / picking / excluding / kami_select / complete
+      myName:      "",
+      joinCode:    "",
+      connecting:  false,
+      error:       "",
+      role:        null,      // "host" or "guest"
+      playerId:    null,
+      roomCode:    null,
+      roomData:    {},        // Firebase から同期されるルームデータ
+      packs:       [],        // generatePacks() の戻り値
+      kamiCandidates: [],     // selectKamiCandidates() の戻り値
+      tempKami:    null,      // カミ選択中の一時選択（確定前）
+      showUnused:  false,
+      _unsubscribe: null,     // Firebase リスナー解除関数
+    },
+  },
+  computed: {
+    filteredCards() {
+      const q = this.searchText.trim().toLowerCase();
+      // カミ+通常カードの全プール
+      const pool = [...this.allCards, ...this.allKamiCards];
+      const filtered = pool.filter(c => {
+        if (this.filterCategory === "カミ") {
+          if (!c.isKami) return false;
+        } else if (this.filterCategory === "ジェネシス") {
+          if (c.isKami || c.color !== "創") return false;
+        } else if (this.filterCategory === "トークン") {
+          if (!c.isToken) return false;
+        } else if (this.filterCategory) {
+          if (c.isKami || c.category !== this.filterCategory) return false;
+        } else {
+          // フィルタなし時はカミも含めて全表示
+        }
+        // カミカードは属性・種族・コスト・ラウンド・No検索の対象外
+        if (c.isKami) {
+          // 属性・種族・返還値・コスト・ラウンドのいずれかで絞り込み中はカミを除外
+          if (this.filterColor || this.filterType || this.filterReturn ||
+              this.filterCost !== "" || this.filterRound !== "") {
+            return false;
+          }
+          // カミはカード名・二つ名のみ検索対象
+          if (q) {
+            const hay = (c.name + " " + (c.nickname || "")).toLowerCase();
+            if (!hay.includes(q)) return false;
+          }
+          return true;
+        }
+        if (this.filterColor && c.color !== this.filterColor) return false;
+        if (this.filterType && c.type !== this.filterType) return false;
+        if (this.filterReturn) {
+          const ret = String(c.return || '').trim();
+          if (this.filterReturn === 'none') {
+            // 数値ではない・空欄のカード
+            if (ret !== '' && !isNaN(parseInt(ret, 10))) return false;
+          } else {
+            if (ret !== this.filterReturn) return false;
+          }
+        }
+        if (this.filterKeyword) {
+          const kw = this.filterKeyword;
+          const kwText = [c.text||'', c.trigger||'', c.skill1effect||'', c.skill2effect||''].join(' ');
+          if (!kwText.includes(kw)) return false;
+        }
+        if (this.filterCost !== "") {
+          const cost = Number(c.cost) || 0;
+          const bucket = cost >= 10 ? 10 : cost;
+          if (bucket !== Number(this.filterCost)) return false;
+        }
+        if (this.filterRound !== "") {
+          const round = Number(c.round) || 0;
+          if (round !== Number(this.filterRound)) return false;
+        }
+        if (q) {
+          // No / カード名（+二つ名） / 効果テキスト で検索
+          // No は "1" / "001" / "C001" / "No.001" など複数表記に対応
+          const noNum = String(parseInt(c.no, 10) || 0);
+          const noPad = noNum.padStart(3, "0");
+          const hay = (
+            noNum + " " + noPad + " " +
+            "c" + noPad + " " + "no." + noNum + " " + "no." + noPad + " " +
+            c.name + " " + (c.nickname || "") + " " +
+            (c.text || "") + " " +
+            (c.trigger || "") + " " + (c.skill1effect || "") + " " + (c.skill2effect || "")
+          ).toLowerCase();
+          // 検索クエリも数字だけなら padStart 比較も補助
+          const qNorm = q.replace(/^0+/, "") || "0";
+          if (!hay.includes(q) && !(/^\d+$/.test(q) && hay.includes(" " + qNorm + " "))) return false;
+        }
+        return true;
+      });
+      // プールのソート
+      const pk = this.poolSortKey;
+      filtered.sort((a, b) => {
+        // カミカードは常に末尾
+        if (a.isKami !== b.isKami) return a.isKami ? 1 : -1;
+        if (a.isKami) return parseInt(a.no,10) - parseInt(b.no,10);
+        if (pk === 'color')  return cardSortCompare(a, b);
+        if (pk === 'cost')   {
+          const d = (Number(a.cost)||0) - (Number(b.cost)||0);
+          return d !== 0 ? d : parseInt(a.no,10) - parseInt(b.no,10);
+        }
+        if (pk === 'no')    return parseInt(a.no,10) - parseInt(b.no,10);
+        if (pk === 'round')  {
+          const ra = Number(a.round)||0, rb = Number(b.round)||0;
+          return ra !== rb ? ra - rb : parseInt(a.no,10) - parseInt(b.no,10);
+        }
+        if (pk === 'type')   {
+          const tr = typeRank(a.type) - typeRank(b.type);
+          return tr !== 0 ? tr : parseInt(a.no,10) - parseInt(b.no,10);
+        }
+        return 0;
+      });
+      return filtered;
+    },
+    totalDeckCount() {
+      return Object.values(this.deck).reduce((a,b) => a + b, 0);
+    },
+    deckCountClass() {
+      if (this.totalDeckCount === this.deckSize) return 'ok';
+      if (this.totalDeckCount > this.deckSize) return 'warn';
+      return '';
+    },
+    deckEntries() {
+      // active のみ
+      const list = [];
+      for (const no in this.deck) {
+        const card = this.allCards.find(c => String(c.no) === String(no));
+        if (card) list.push({ card, count: this.deck[no], returned: false });
+      }
+      list.sort((a, b) => cardSortCompare(a.card, b.card));
+      return list;
+    },
+    returnedEntries() {
+      // returned のみ
+      const list = [];
+      for (const no in this.returned) {
+        const card = this.allCards.find(c => String(c.no) === String(no));
+        if (card) list.push({ card, count: this.returned[no], returned: true });
+      }
+      list.sort((a, b) => cardSortCompare(a.card, b.card));
+      return list;
+    },
+    totalReturnedCount() {
+      return Object.values(this.returned).reduce((a, b) => a + b, 0);
+    },
+    // 表示用：同名カード（No違い含む）を1グループにまとめる
+    // active 行と returned 行は別エントリ。No順 → 同Noなら active 先。
+    deckEntriesGrouped() {
+      const activeGroups = new Map();
+      const returnedGroups = new Map();
+      for (const e of this.deckEntries) {
+        const key = this.fullName(e.card);
+        if (!activeGroups.has(key)) activeGroups.set(key, { card: e.card, count: 0, nos: [], returned: false });
+        const g = activeGroups.get(key);
+        g.count += e.count;
+        g.nos.push(e.card.no);
+      }
+      for (const e of this.returnedEntries) {
+        const key = this.fullName(e.card);
+        if (!returnedGroups.has(key)) returnedGroups.set(key, { card: e.card, count: 0, nos: [], returned: true });
+        const g = returnedGroups.get(key);
+        g.count += e.count;
+        g.nos.push(e.card.no);
+      }
+      const all = [...activeGroups.values(), ...returnedGroups.values()];
+      all.sort((a, b) => {
+        // 返還済みは一律下に
+        if (a.returned !== b.returned) return a.returned ? 1 : -1;
+        // 同分類内では属性→コスト→No順
+        return cardSortCompare(a.card, b.card);
+      });
+      return all;
+    },
+    // 展開ビュー専用：deckEntriesFlat に検索＋ソートを適用した表示リスト
+    deckEntriesFlatDisplay() {
+      let entries = [...this.deckEntriesFlat];
+      // テキスト検索（カード名・No・効果テキスト・天力トリガー・神技）
+      const q = this.deckSearchText.trim().toLowerCase();
+      // 全角数字→半角に正規化し「パック3 / パック 3 / pack3 / p3 / 束3」を許容
+      const qNorm = q.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+      const packMatch = qNorm.match(/^(?:pack|パック|ぱっく|束|p)\s*(\d+)$/i);
+      if (packMatch && Object.keys(this.sbCardPackMap).length > 0) {
+        const packNo = parseInt(packMatch[1], 10);
+        entries = entries.filter(e => (this.sbCardPackMap[String(e.card.no)] || []).includes(packNo));
+      } else if (q) {
+        entries = entries.filter(e => {
+          const c = e.card;
+          const hay = [this.fullName(c), c.text||'', c.trigger||'', c.skill1effect||'', c.skill2effect||''].join(' ').toLowerCase();
+          return hay.includes(q);
+        });
+      }
+      // キーワードチップフィルター
+      if (this.deckKeywordFilter) {
+        const kw = this.deckKeywordFilter;
+        entries = entries.filter(e => {
+          const c = e.card;
+          return [c.text||'', c.trigger||'', c.skill1effect||'', c.skill2effect||''].join(' ').includes(kw);
+        });
+      }
+      // カテゴリーフィルター
+      if (this.deckCategoryFilter) {
+        const cat = this.deckCategoryFilter;
+        entries = entries.filter(e => e.card.category === cat);
+      }
+      // 属性フィルター
+      if (this.deckColorFilter) {
+        const col = this.deckColorFilter;
+        entries = entries.filter(e => e.card.color === col);
+      }
+      // 種族フィルター
+      if (this.deckTypeFilter) {
+        const typ = this.deckTypeFilter;
+        entries = entries.filter(e => e.card.type === typ);
+      }
+      // 返還値フィルター
+      if (this.deckReturnFilter) {
+        const rv = this.deckReturnFilter;
+        entries = entries.filter(e => {
+          const ret = String(e.card.return || '').trim();
+          if (rv === 'none') return ret === '' || isNaN(parseInt(ret, 10));
+          return ret === rv;
+        });
+      }
+      // コストフィルター
+      if (this.deckCostFilter !== "") {
+        const fc = Number(this.deckCostFilter);
+        entries = entries.filter(e => {
+          const cost = Number(e.card.cost) || 0;
+          const bucket = cost >= 10 ? 10 : cost;
+          return bucket === fc;
+        });
+      }
+      // ラウンドフィルター
+      if (this.deckRoundFilter !== "") {
+        const fr = Number(this.deckRoundFilter);
+        entries = entries.filter(e => (Number(e.card.round) || 0) === fr);
+      }
+      // パックフィルター（シールド戦限定）
+      if (this.deckPackFilter !== "") {
+        const fp = Number(this.deckPackFilter);
+        entries = entries.filter(e => (this.sbCardPackMap[String(e.card.no)] || []).includes(fp));
+      }
+      const key = this.deckSortKey;
+      const CATEGORY_ORDER = { 'レガシー': 0, 'オラクル': 1, 'レリック': 2, 'ジェネシス': 3, 'サポート': 4 };
+      entries.sort((a, b) => {
+        if (a.returned !== b.returned) return a.returned ? 1 : -1;
+        const ac = a.card, bc = b.card;
+        if (key === 'color')    return cardSortCompare(ac, bc);
+        if (key === 'cost')     { const d = (Number(ac.cost)||0) - (Number(bc.cost)||0); return d !== 0 ? d : parseInt(ac.no,10) - parseInt(bc.no,10); }
+        if (key === 'no')       return parseInt(ac.no,10) - parseInt(bc.no,10);
+        if (key === 'round')    { const ra = Number(ac.round)||0, rb = Number(bc.round)||0; return ra !== rb ? ra - rb : parseInt(ac.no,10) - parseInt(bc.no,10); }
+        if (key === 'type')     { const tr = typeRank(ac.type) - typeRank(bc.type); return tr !== 0 ? tr : parseInt(ac.no,10) - parseInt(bc.no,10); }
+        if (key === 'category') { const ca = CATEGORY_ORDER[ac.category]??99, cb = CATEGORY_ORDER[bc.category]??99; return ca !== cb ? ca - cb : parseInt(ac.no,10) - parseInt(bc.no,10); }
+        return 0;
+      });
+      return entries;
+    },
+    // 展開ビュー専用：同名カードを1枚ずつ個別に展開したリスト
+    // count=2 のカードは2スロットに分けて表示
+    deckEntriesFlat() {
+      const flat = [];
+      for (const e of this.deckEntries) {
+        for (let i = 0; i < e.count; i++) {
+          flat.push({ card: e.card, copyIndex: i, returned: false });
+        }
+      }
+      for (const e of this.returnedEntries) {
+        for (let i = 0; i < e.count; i++) {
+          flat.push({ card: e.card, copyIndex: i, returned: true });
+        }
+      }
+      // 返還済みを下に、その中でも属性→コスト→No順
+      flat.sort((a, b) => {
+        if (a.returned !== b.returned) return a.returned ? 1 : -1;
+        return cardSortCompare(a.card, b.card);
+      });
+      return flat;
+    },
+    deckSortOptions() {
+      return [
+        { key: 'color',    label: '属性順' },
+        { key: 'cost',     label: 'コスト順' },
+        { key: 'no',       label: 'No順' },
+        { key: 'round',    label: 'ラウンド順' },
+        { key: 'type',     label: '種族順' },
+        { key: 'category', label: 'カード種別順' },
+      ];
+    },
+    // 通常デッキリスト用：フィルタ＋ソートを適用した表示エントリ
+    deckEntriesDisplay() {
+      let entries = [...this.deckEntriesGrouped];
+      // テキスト検索（カード名・No・効果テキスト・天力トリガー・神技）
+      const q = this.deckSearchText.trim().toLowerCase();
+      // 全角数字→半角に正規化し「パック3 / パック 3 / pack3 / p3 / 束3」を許容
+      const qNorm = q.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+      const packMatch = qNorm.match(/^(?:pack|パック|ぱっく|束|p)\s*(\d+)$/i);
+      if (packMatch && Object.keys(this.sbCardPackMap).length > 0) {
+        const packNo = parseInt(packMatch[1], 10);
+        entries = entries.filter(e => (this.sbCardPackMap[String(e.card.no)] || []).includes(packNo));
+      } else if (q) {
+        entries = entries.filter(e => {
+          const c = e.card;
+          const hay = [this.fullName(c), c.text||'', c.trigger||'', c.skill1effect||'', c.skill2effect||''].join(' ').toLowerCase();
+          return hay.includes(q);
+        });
+      }
+      // キーワードチップフィルター
+      if (this.deckKeywordFilter) {
+        const kw = this.deckKeywordFilter;
+        entries = entries.filter(e => {
+          const c = e.card;
+          return [c.text||'', c.trigger||'', c.skill1effect||'', c.skill2effect||''].join(' ').includes(kw);
+        });
+      }
+      // カテゴリーフィルター
+      if (this.deckCategoryFilter) {
+        const cat = this.deckCategoryFilter;
+        entries = entries.filter(e => e.card.category === cat);
+      }
+      // 属性フィルター
+      if (this.deckColorFilter) {
+        const col = this.deckColorFilter;
+        entries = entries.filter(e => e.card.color === col);
+      }
+      // 種族フィルター
+      if (this.deckTypeFilter) {
+        const typ = this.deckTypeFilter;
+        entries = entries.filter(e => e.card.type === typ);
+      }
+      // 返還値フィルター
+      if (this.deckReturnFilter) {
+        const rv = this.deckReturnFilter;
+        entries = entries.filter(e => {
+          const ret = String(e.card.return || '').trim();
+          if (rv === 'none') return ret === '' || isNaN(parseInt(ret, 10));
+          return ret === rv;
+        });
+      }
+      // コストフィルター
+      if (this.deckCostFilter !== "") {
+        const fc = Number(this.deckCostFilter);
+        entries = entries.filter(e => {
+          const cost = Number(e.card.cost) || 0;
+          const bucket = cost >= 10 ? 10 : cost;
+          return bucket === fc;
+        });
+      }
+      // ラウンドフィルター
+      if (this.deckRoundFilter !== "") {
+        const fr = Number(this.deckRoundFilter);
+        entries = entries.filter(e => (Number(e.card.round) || 0) === fr);
+      }
+      // パックフィルター（シールド戦限定）
+      if (this.deckPackFilter !== "") {
+        const fp = Number(this.deckPackFilter);
+        entries = entries.filter(e => (this.sbCardPackMap[String(e.card.no)] || []).includes(fp));
+      }
+      // ソート（返還済みは常に下）
+      const key = this.deckSortKey;
+      const CATEGORY_ORDER = { 'レガシー': 0, 'オラクル': 1, 'レリック': 2, 'ジェネシス': 3, 'サポート': 4 };
+      entries.sort((a, b) => {
+        if (a.returned !== b.returned) return a.returned ? 1 : -1;
+        const ac = a.card, bc = b.card;
+        if (key === 'color')    return cardSortCompare(ac, bc);
+        if (key === 'cost')     { const d = (Number(ac.cost)||0) - (Number(bc.cost)||0); return d !== 0 ? d : parseInt(ac.no,10) - parseInt(bc.no,10); }
+        if (key === 'no')       return parseInt(ac.no,10) - parseInt(bc.no,10);
+        if (key === 'round')    { const ra = Number(ac.round)||0, rb = Number(bc.round)||0; return ra !== rb ? ra - rb : parseInt(ac.no,10) - parseInt(bc.no,10); }
+        if (key === 'type')     { const tr = typeRank(ac.type) - typeRank(bc.type); return tr !== 0 ? tr : parseInt(ac.no,10) - parseInt(bc.no,10); }
+        if (key === 'category') { const ca = CATEGORY_ORDER[ac.category]??99, cb = CATEGORY_ORDER[bc.category]??99; return ca !== cb ? ca - cb : parseInt(ac.no,10) - parseInt(bc.no,10); }
+        return 0;
+      });
+      return entries;
+    },
+    curveBuckets() {
+      const buckets = new Array(9).fill(0);
+      for (const entry of this.deckEntries) {
+        const cost = Math.max(0, Number(entry.card.cost) || 0);
+        const idx = Math.min(cost, 8);
+        buckets[idx] += entry.count;
+      }
+      return buckets;
+    },
+    maxCurve() {
+      return Math.max(1, ...this.curveBuckets);
+    },
+    driveImageCount() {
+      return Object.keys(this.driveFileMap).length;
+    },
+    cardByNo() {
+      const map = {};
+      for (const c of this.allCards) map[c.no] = c;
+      return map;
+    },
+    // ヤマタノオロチ選択中フラグ
+    isOrochiLeader() {
+      return !!(this.selectedKami && this.selectedKami.type === 'ヤマタノオロチ');
+    },
+    // デッキの返還値合計（active + returned の合算 = 「全部返したら得られる総額」の指標）
+    // ヤマタノオロチ選択時は龍レガシーの返還値+1
+    totalReturn() {
+      let sum = 0;
+      const orochi = this.isOrochiLeader;
+      const accumulate = (entries) => {
+        for (const entry of entries) {
+          const c = entry.card;
+          let r = parseInt(c.return, 10);
+          if (isNaN(r)) continue;
+          if (orochi && c.category === 'レガシー' && c.type === '龍') r += 1;
+          sum += r * entry.count;
+        }
+      };
+      accumulate(this.deckEntries);
+      accumulate(this.returnedEntries);
+      return sum;
+    },
+    // 属性割合の円グラフ用 SVG パスのリスト
+    // 創属性は「その他」として灰色、html2canvas 互換のため SVG で描画
+    colorPieSlices() {
+      const palette = [
+        { key: '赤', hex: '#b22' },
+        { key: '青', hex: '#25a' },
+        { key: '緑', hex: '#292' },
+        { key: '黄', hex: '#b92' },
+        { key: '紫', hex: '#82b' },
+        { key: '創', hex: '#888' },
+      ];
+      const counts = palette.map(p => ({ ...p, n: this.colorCount(p.key) }));
+      const total = counts.reduce((s, p) => s + p.n, 0);
+      if (total === 0) return [];
+
+      const cx = 50, cy = 50, r = 50;
+      const slices = [];
+      let startAngle = -90; // 12時方向スタート
+      let nonZero = counts.filter(p => p.n > 0);
+
+      // 単一属性100%の場合は完全な円として描く
+      if (nonZero.length === 1) {
+        const p = nonZero[0];
+        slices.push({
+          key: p.key, color: p.hex,
+          d: `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.001} ${cy - r} Z`,
+        });
+        return slices;
+      }
+
+      for (const p of nonZero) {
+        const arcAngle = (p.n / total) * 360;
+        const endAngle = startAngle + arcAngle;
+        const sRad = startAngle * Math.PI / 180;
+        const eRad = endAngle * Math.PI / 180;
+        const x1 = cx + r * Math.cos(sRad);
+        const y1 = cy + r * Math.sin(sRad);
+        const x2 = cx + r * Math.cos(eRad);
+        const y2 = cy + r * Math.sin(eRad);
+        const largeArc = arcAngle > 180 ? 1 : 0;
+        slices.push({
+          key: p.key, color: p.hex,
+          d: `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`,
+        });
+        startAngle = endAngle;
+      }
+      return slices;
+    },
+    /* ===== シールド戦 computed ===== */
+    shieldPhaseLabel() {
+      const labels = {
+        lobby:       'ロビー',
+        waiting:     '待機中',
+        coin_toss:   'コイントス',
+        picking:     'パックピック',
+        excluding:   'カード除外',
+        kami_select: 'カミ選択',
+        complete:    '完了',
+      };
+      return labels[this.sb.phase] || '';
+    },
+    sbMyReady() {
+      const r = this.sb.roomData;
+      return this.sb.role === 'host' ? r.host?.ready : r.guest?.ready;
+    },
+    sbIsFirstPicker() {
+      return this.sb.roomData.firstPicker === this.sb.role;
+    },
+    sbMyPickedPacks() {
+      const r = this.sb.roomData;
+      // Firebase は空配列をnull、配列を{0:v,...}として返すためfbArrで正規化
+      return this.sb.role === 'host' ? fbArr(r.hostPickedPacks) : fbArr(r.guestPickedPacks);
+    },
+    sbEnemyPickedPacks() {
+      const r = this.sb.roomData;
+      return this.sb.role === 'host' ? fbArr(r.guestPickedPacks) : fbArr(r.hostPickedPacks);
+    },
+    sbAllPickedPacks() {
+      return [...this.sbMyPickedPacks, ...this.sbEnemyPickedPacks];
+    },
+    sbIsMyPickTurn() {
+      const r = this.sb.roomData;
+      const total = fbArr(r.hostPickedPacks).length + fbArr(r.guestPickedPacks).length;
+      const turnRole = total % 2 === 0 ? r.firstPicker
+                                       : (r.firstPicker === 'host' ? 'guest' : 'host');
+      return turnRole === this.sb.role;
+    },
+    sbMy48Cards() {
+      if (!this.sb.packs.length) return [];
+      return this.sbMyPickedPacks.flatMap(id => this.sb.packs[id].all);
+    },
+    // パックピック中の右サイド用：取得済みカードを同名でまとめ属性→コスト→No順に整列
+    sbMyDeckEntries() {
+      const groups = new Map();
+      for (const card of this.sbMy48Cards) {
+        const key = this.fullName(card);
+        if (!groups.has(key)) groups.set(key, { card, count: 0 });
+        groups.get(key).count++;
+      }
+      const all = [...groups.values()];
+      all.sort((a, b) => cardSortCompare(a.card, b.card));
+      return all;
+    },
+    sbIsMyKamiTurn() {
+      return this.sb.roomData.kamiSelectTurn === this.sb.role;
+    },
+    sbMyKami() {
+      const r = this.sb.roomData;
+      return this.sb.role === 'host' ? r.hostKami : r.guestKami;
+    },
+    // カードNo → 取得パック番号の配列（取得順）
+    // 例: { "123": [3, 7] } = No.123 は Pack3 と Pack7 から取得
+    sbCardPackMap() {
+      if (!this.sb.packs.length || !this.sbMyPickedPacks.length) return {};
+      const map = {};
+      for (const packId of this.sbMyPickedPacks) {
+        const pack = this.sb.packs[packId];
+        if (!pack) continue;
+        const packNo = packId + 1;
+        for (const card of pack.all) {
+          const no = String(card.no);
+          if (!map[no]) map[no] = [];
+          map[no].push(packNo);
+        }
+      }
+      return map;
+    },
+    // シールド戦で自分が取得したパック番号の一覧（ドロップダウン用）
+    deckAvailablePacks() {
+      const packs = new Set();
+      for (const packNos of Object.values(this.sbCardPackMap)) {
+        for (const n of packNos) packs.add(n);
+      }
+      return [...packs].sort((a, b) => a - b);
+    },
+    // 相手が選択済みのカミ no（まだ選んでいなければ null）
+    sbOpponentKamiNo() {
+      const r = this.sb.roomData;
+      const no = this.sb.role === 'host' ? r.guestKami : r.hostKami;
+      return no || null;
+    },
+    // 現在のデッキに含まれるキーワード一覧（チップフィルター用）
+    deckKeywordsPresent() {
+      const present = new Set();
+      const kwKeys = Object.keys(this.keywordGlossary);
+      for (const e of this.deckEntries) {
+        const text = [
+          e.card.text || '',
+          e.card.trigger || '',
+          e.card.skill1effect || '',
+          e.card.skill2effect || '',
+        ].join(' ');
+        for (const kw of kwKeys) {
+          if (text.includes(kw)) present.add(kw);
+        }
+      }
+      // KEYWORD_GLOSSARY のキー順序を保持してソート
+      return kwKeys.filter(k => present.has(k));
+    },
+    // 現在のデッキに含まれるカード種別一覧（チップフィルター用）
+    deckCategoriesPresent() {
+      const ORDER = ['レガシー', 'オラクル', 'レリック', 'ジェネシス', 'サポート'];
+      const present = new Set();
+      for (const e of this.deckEntries) {
+        if (e.card.category) present.add(e.card.category);
+      }
+      return ORDER.filter(c => present.has(c));
+    },
+    // トークン名 → カード のマップ（テキスト内トークンのクリック解決用）
+    tokenNameMap() {
+      const map = {};
+      for (const c of this.allCards) {
+        if (c.isToken && c.name) map[c.name] = c;
+      }
+      return map;
+    },
+    sbMyFinalDeck() {
+      // 除外フェーズなし：48枚をそのままデッキビルダーに渡す
+      // ヤマタノオロチ選択時はNo.198ディエスイレを自動追加
+      const base = [...this.sbMy48Cards];
+      if (this.sbMySelectedKami && this.sbMySelectedKami.type === 'ヤマタノオロチ') {
+        const diesIrae = this.allCards.find(c => String(c.no) === '198');
+        if (diesIrae) base.push(diesIrae);
+      }
+      return base;
+    },
+    // ヤマタノオロチ選択時にデッキに自動追加されるカード
+    sbOrochiBonus() {
+      if (!this.sb.tempKami || this.sb.tempKami.type !== 'ヤマタノオロチ') return null;
+      return this.allCards.find(c => String(c.no) === '198') || null;
+    },
+    sbMySelectedKami() {
+      const kamiNo = this.sbMyKami;
+      if (!kamiNo) return null;
+      return this.allKamiCards.find(k => String(k.no) === String(kamiNo)) || null;
+    },
+
+    // 名前グループ（二つ名・カード名で結合した文字列）ごとの合計枚数
+    // active + returned を合算（同名カード上限の判定で再購入ループを防ぐため）
+    nameSums() {
+      const sums = {};
+      const accumulate = (bucket) => {
+        for (const no in bucket) {
+          const card = this.cardByNo[no];
+          if (!card) continue;
+          const key = this.groupKey(card);
+          sums[key] = (sums[key] || 0) + bucket[no];
+        }
+      };
+      accumulate(this.deck);
+      accumulate(this.returned);
+      return sums;
+    },
+  },
+  methods: {
+    async reloadAll() {
+      await Promise.all([this.loadCards(), this.loadDriveImages(), this.loadKamiCards(), this.loadKamiImages()]);
+    },
+    async loadKamiCards() {
+      const url =
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/` +
+        encodeURIComponent(KAMI_SHEET_RANGE) + `?key=${API_KEY}`;
+      try {
+        const res = await axios.get(url);
+        const rows = res.data.values || [];
+        const list = [];
+        for (const r of rows) {
+          if (!r || !r[0] || !r[2]) continue;
+          list.push({
+            no: String(r[0]),
+            nickname: (r[1] || "").replace(/[​-‍﻿­‎‏]/g, ""),
+            name: (r[2] || "").replace(/[​-‍﻿­‎‏]/g, ""),
+            type: r[3] || "",          // 種別（アマテラス等）
+            trigger: r[4] || "",        // 天力トリガー
+            skill1name: r[5] || "",
+            skill1cost: r[6] || "",
+            skill1effect: r[7] || "",
+            skill2name: r[8] || "",
+            skill2cost: r[9] || "",
+            skill2effect: r[10] || "",
+            category: "カミ",
+            color: "",
+            cost: "",
+            isKami: true,
+            spoiler: String(r[14] || "").trim() === "1", // O列：ぼかしフラグ
+          });
+        }
+        this.allKamiCards = list;
+        console.log(`カミ設定: ${list.length}件読み込み`);
+      } catch (e) {
+        console.error("カミカード読み込みエラー", e);
+      }
+    },
+    async loadKamiImages() {
+      try {
+        // 親フォルダから「カミ」サブフォルダを検索
+        const childParams = new URLSearchParams({
+          q: `'${DRIVE_PARENT_FOLDER_ID}' in parents` +
+             ` and name = '${DRIVE_KAMI_FOLDER_NAME}'` +
+             ` and mimeType = 'application/vnd.google-apps.folder'` +
+             ` and trashed = false`,
+          fields: "files(id,name)",
+          pageSize: "10",
+          key: API_KEY,
+        });
+        const childRes = await axios.get(`https://www.googleapis.com/drive/v3/files?${childParams}`);
+        const childFolders = (childRes.data && childRes.data.files) || [];
+        if (childFolders.length === 0) {
+          console.warn(`「${DRIVE_KAMI_FOLDER_NAME}」フォルダが見つかりません`);
+          return;
+        }
+        const childFolderId = childFolders[0].id;
+        console.log(`カミフォルダ検出 ID=${childFolderId}`);
+
+        // フォルダ内画像一覧を取得
+        const map = {};
+        let pageToken = null;
+        do {
+          const params = new URLSearchParams({
+            q: `'${childFolderId}' in parents and trashed = false`,
+            fields: "nextPageToken, files(id, name, mimeType)",
+            pageSize: "1000",
+            key: API_KEY,
+          });
+          if (pageToken) params.set("pageToken", pageToken);
+          const res = await axios.get(`https://www.googleapis.com/drive/v3/files?${params}`);
+          const files = res.data.files || [];
+          for (const f of files) {
+            if (!/^image\//.test(f.mimeType || "") &&
+                !/\.(png|jpe?g|webp|gif)$/i.test(f.name)) continue;
+            const base = f.name.replace(/\.[^.]+$/, "");
+            const m = base.match(/^(?:[A-Za-z]+\.?)?\s*0*(\d+)/);
+            if (!m) continue;
+            const no = String(parseInt(m[1], 10));
+            if (!map[no]) map[no] = f.id;
+          }
+          pageToken = res.data.nextPageToken || null;
+        } while (pageToken);
+        this.kamiFileMap = map;
+        console.log(`カミ画像: ${Object.keys(map).length}件マッチ`);
+      } catch (e) {
+        console.error("カミ画像読み込みエラー", e);
+      }
+    },
+    async loadCards() {
+      this.loading = true;
+      try {
+        const res = await axios.get(SHEET_URL);
+        const rows = res.data.values || [];
+        const list = [];
+        for (const r of rows) {
+          if (!r || r.length < 3 || !r[0] || !r[2]) continue;
+          const category = r[6] || "";
+          const subType = r[16] || "";
+          const color = r[7] || "";
+          // トークン判定：旧カテゴリ "トークン" / サブ種別 "銀..." / 属性 "無"
+          const isToken = category === "トークン" || /^銀/.test(subType) || color === "無";
+          list.push({
+            no: String(r[0]),
+            nickname: (r[1] || "").replace(/[​-‍﻿­‎‏]/g, ""),
+            name: (r[2] || "").replace(/[​-‍﻿­‎‏]/g, ""),
+            furigana: r[3] || "",
+            cost: Number(r[4]) || 0,
+            round: r[5] || "",
+            category: category,
+            color: color,
+            type: r[8] || "",
+            return: r[9] || "",
+            attack: r[10] || "",
+            power: r[11] || "",
+            text: r[12] || "",
+            flavor: r[13] || "",
+            subType: subType,
+            isToken: isToken,
+            bgY: r[19] !== undefined && r[19] !== "" ? Number(r[19]) : null, // T列：デッキ背景Y位置（%）
+            spoiler: String(r[20] || "").trim() === "1", // U列：ぼかし（ネタバレ防止）フラグ
+          });
+        }
+        // 属性順→コスト順→No順 にソート
+        list.sort(cardSortCompare);
+        this.allCards = list;
+      } catch (e) {
+        console.error("カード読み込みエラー", e);
+        alert("カード情報の取得に失敗しました。\n" + e.message);
+      }
+      this.loading = false;
+    },
+    async loadDriveImages() {
+      // 親フォルダから「CNo順」を名前検索→そのフォルダ内の画像を一覧取得
+      // → ファイル名先頭の番号からNo.にマッチング
+      this.driveError = false;
+      try {
+        // ── ① 親フォルダから子フォルダを名前検索 ──
+        const childParams = new URLSearchParams({
+          q: `'${DRIVE_PARENT_FOLDER_ID}' in parents` +
+             ` and name = '${DRIVE_CHILD_FOLDER_NAME}'` +
+             ` and mimeType = 'application/vnd.google-apps.folder'` +
+             ` and trashed = false`,
+          fields: "files(id, name)",
+          pageSize: "10",
+          key: API_KEY,
+        });
+        const childRes = await axios.get(`https://www.googleapis.com/drive/v3/files?${childParams}`);
+        const childFolders = (childRes.data && childRes.data.files) || [];
+        if (childFolders.length === 0) {
+          throw new Error(`親フォルダ内に「${DRIVE_CHILD_FOLDER_NAME}」フォルダが見つかりません。`);
+        }
+        // 同名が複数あれば最初の1件を使う
+        const childFolderId = childFolders[0].id;
+        console.log(`Drive子フォルダ「${DRIVE_CHILD_FOLDER_NAME}」検出 ID=${childFolderId}`);
+
+        // ── ② 子フォルダの中の画像一覧を取得 ──
+        const map = {};
+        let pageToken = null;
+        let total = 0;
+        do {
+          const params = new URLSearchParams({
+            q: `'${childFolderId}' in parents and trashed = false`,
+            fields: "nextPageToken, files(id, name, mimeType)",
+            pageSize: "1000",
+            orderBy: "name",
+            key: API_KEY,
+          });
+          if (pageToken) params.set("pageToken", pageToken);
+          const res = await axios.get(`https://www.googleapis.com/drive/v3/files?${params}`);
+          const files = res.data.files || [];
+          for (const f of files) {
+            // 画像ファイルのみ
+            if (!/^image\//.test(f.mimeType || "") &&
+                !/\.(png|jpe?g|webp|gif)$/i.test(f.name)) continue;
+            const base = f.name.replace(/\.[^.]+$/, "");
+            // 例: "C001_カード名.png", "001_xxx", "No.001_xxx", "K001_xxx"
+            const m = base.match(/^(?:[A-Za-z]+\.?)?\s*0*(\d+)/);
+            if (!m) continue;
+            const no = String(parseInt(m[1], 10));
+            if (!map[no]) map[no] = f.id;
+          }
+          total += files.length;
+          pageToken = res.data.nextPageToken || null;
+        } while (pageToken);
+        this.driveFileMap = map;
+        console.log(`Drive: ${total}件取得、${Object.keys(map).length}件をNo.にマッチ`);
+      } catch (e) {
+        console.error("Drive読み込みエラー", e);
+        this.driveError = true;
+        // 失敗時はサイレント（フォールバックのローカルフォルダが使える）
+      }
+    },
+    onFolderSelect(ev) {
+      for (const k in this.imageMap) URL.revokeObjectURL(this.imageMap[k]);
+      const newMap = {};
+      const files = Array.from(ev.target.files || []);
+      for (const f of files) {
+        if (!/\.(png|jpe?g|webp|gif)$/i.test(f.name)) continue;
+        const base = f.name.replace(/\.[^.]+$/, "");
+        // "C001_xxx" / "001_xxx" / "No.001_xxx" 等から番号を抽出
+        const m = base.match(/^(?:[A-Za-z]+\.?)?\s*0*(\d+)/);
+        if (!m) continue;
+        const no = String(parseInt(m[1], 10));
+        if (!newMap[no]) newMap[no] = URL.createObjectURL(f);
+      }
+      this.imageMap = newMap;
+    },
+    cardImageUrl(card) {
+      if (!card) return null;
+      const no = String(parseInt(card.no, 10));
+      if (card.isKami) {
+        // カミ専用フォルダから取得
+        const fileId = this.kamiFileMap[no];
+        return fileId ? driveThumbUrl(fileId, 600) : null;
+      }
+      // 1) DriveフォルダのファイルIDを優先
+      const fileId = this.driveFileMap[no];
+      if (fileId) return driveThumbUrl(fileId, 600);
+      // 2) ローカルフォルダのフォールバック（任意）
+      return this.imageMap[no] || null;
+    },
+    cardImageStyle(card) {
+      const url = this.cardImageUrl(card);
+      return url ? { backgroundImage: `url("${url}")` } : {};
+    },
+    deckItemBgStyle(card) {
+      const url = this.cardImageUrl(card);
+      if (!url) return {};
+      // T列で個別指定があれば使用、なければデフォルト12%
+      const yPct = (card && card.bgY !== null && card.bgY !== undefined) ? card.bgY : 12;
+      return {
+        backgroundImage: `url("${url}")`,
+        backgroundPosition: `right top ${yPct}%`,
+      };
+    },
+    costBadgeStyle(card) {
+      // 創属性 → 5色の虹（円グラフ風）
+      if (card.color === '創') {
+        return {
+          background: 'conic-gradient(from -90deg, ' +
+            '#b22 0deg 72deg, ' +    // 赤
+            '#b92 72deg 144deg, ' +  // 黄
+            '#292 144deg 216deg, ' + // 緑
+            '#25a 216deg 288deg, ' + // 青
+            '#82b 288deg 360deg)',   // 紫
+        };
+      }
+      const colorMap = {
+        '赤': '#b22', '青': '#25a', '緑': '#292', '黄': '#b92',
+        '紫': '#82b', '無': '#888',
+      };
+      return { background: colorMap[card.color] || '#1a5b1a' };
+    },
+    clearFilters() {
+      this.searchText = "";
+      this.filterCategory = "";
+      this.filterKeyword = "";
+      this.filterColor = "";
+      this.filterType = "";
+      this.filterReturn = "";
+      this.filterCost = "";
+      this.filterRound = "";
+    },
+    clearDeckFilters() {
+      this.deckSearchText = "";
+      this.deckKeywordFilter = "";
+      this.deckCategoryFilter = "";
+      this.deckColorFilter = "";
+      this.deckTypeFilter = "";
+      this.deckReturnFilter = "";
+      this.deckCostFilter = "";
+      this.deckRoundFilter = "";
+      this.deckPackFilter = "";
+    },
+    deckCount(no) {
+      return this.deck[String(no)] || 0;
+    },
+    fullName(card) {
+      // 二つ名があれば「二つ名・カード名」、なければカード名のみ
+      if (!card) return "";
+      return card.nickname ? `${card.nickname}・${card.name}` : card.name;
+    },
+    // 同名カード（二つ名込み）はひとつのグループとして扱う
+    groupKey(card) {
+      return this.fullName(card);
+    },
+    // 返還値に応じた、その名前グループの最大投入枚数
+    // 返還値=2 → 2枚、0/1/空白 → 1枚
+    maxCopiesFor(card) {
+      const ret = parseInt(card.return, 10);
+      return ret === 2 ? 2 : 1;
+    },
+    // その名前グループのデッキ内合計枚数
+    groupCount(card) {
+      return this.nameSums[this.groupKey(card)] || 0;
+    },
+    // このカードを追加可能か
+    canAdd(card) {
+      if (card.isToken) return false;  // トークンはデッキに入れられない
+      if (card.isKami) return false;   // カミはリーダー枠で管理（通常デッキに入らない）
+      // No単位で1枚まで（active + returned の合計）
+      const no = String(card.no);
+      const noCount = (this.deck[no] || 0) + (this.returned[no] || 0);
+      if (noCount >= 1) return false;
+      // 同名グループの合計が上限を超えていないか
+      return this.groupCount(card) < this.maxCopiesFor(card);
+    },
+    // カミ背景スタイル（個別位置調整マップを反映）
+    // 技名の改行以降を取り出して括弧・不可視文字を除去してふりがなを返す
+    kamiSkillFurigana(skillName) {
+      if (!skillName) return '';
+      const parts = skillName.split('\n');
+      if (parts.length < 2) return '';
+      return parts[1].replace(/[（）()﻿​‍]/g, '').trim();
+    },
+    // 技名の1行目だけを返す
+    kamiSkillMainName(skillName) {
+      if (!skillName) return '';
+      return (skillName.split('\n')[0] || '').trim();
+    },
+    kamiBgStyle(card) {
+      const url = card ? this.cardImageUrl(card) : null;
+      const pos = (card && this.kamiPositionMap[String(card.no)]) || 'top 15%';
+      return url
+        ? { backgroundImage: `url(${url})`, backgroundPosition: `left ${pos}` }
+        : {};
+    },
+    setLeader(card) {
+      this.selectedKami = card;
+    },
+    clearLeader() {
+      this.selectedKami = null;
+    },
+    // 拡大モードを解除してカードリストをカミでフィルタ
+    openKamiFilter() {
+      this.deckExpanded = false;
+      this.filterCategory = "カミ";
+    },
+    // 解除管理用キー（カミと通常カードのNo重複を避ける）
+    spoilerKey(card) {
+      return (card.isKami ? "k" : "c") + String(card.no);
+    },
+    // ぼかし（ネタバレ防止）が有効でまだ解除されていないか
+    isSpoilerHidden(card) {
+      return !!(card && card.spoiler && !this.revealedSpoilers[this.spoilerKey(card)]);
+    },
+    // ぼかしカードの確認ダイアログ。解除したら true、しなければ false
+    tryRevealSpoiler(card) {
+      if (!this.isSpoilerHidden(card)) return true;
+      const ok = confirm(
+        "このカードはゲームをプレイしてからの確認を推奨しています。\n表示しますか？"
+      );
+      if (ok) {
+        this.$set(this.revealedSpoilers, this.spoilerKey(card), true);
+        return true;
+      }
+      return false;
+    },
+    // プールのカード画像クリック（ぼかし考慮）
+    onPoolCardClick(card) {
+      if (!this.tryRevealSpoiler(card)) return;
+      if (this.shieldOpen) { this.openPreview(card); return; } // シールド戦中は追加禁止
+      if (card.isKami) this.setLeader(card);
+      else this.addCard(card);
+    },
+    // プールのカード右クリック：デッキから1枚削除（カミ・トークンは対象外）
+    onPoolCardRightClick(card) {
+      if (this.shieldOpen) return; // シールド戦中は削除禁止
+      if (card.isKami || card.isToken) return;
+      this.removeCard(card.no);
+    },
+    // プールのプレビューボタンクリック（ぼかし考慮）
+    onPoolPreviewClick(card) {
+      if (!this.tryRevealSpoiler(card)) return;
+      this.openPreview(card);
+    },
+    showCardHover(card, event) {
+      // ぼかし未解除のカードはホバープレビューを出さない
+      if (this.isSpoilerHidden(card)) return;
+      if (!this.cardImageUrl(card)) return;
+      this.hoverCard = card;
+      const el = event.currentTarget.closest('.card') || event.currentTarget;
+      const rect = el.getBoundingClientRect();
+      const pw = 360; // プレビュー幅
+      const ph = Math.round(pw * 1039 / 744); // カード縦横比
+      const margin = 10;
+      // 右に出す → 右端が画面外なら左に
+      let left = rect.right + margin;
+      if (left + pw > window.innerWidth - margin) left = rect.left - pw - margin;
+      // 縦はカードの中央に合わせる → はみ出したらクランプ
+      let top = rect.top + (rect.height - ph) / 2;
+      top = Math.max(margin, Math.min(window.innerHeight - ph - margin, top));
+      this.hoverLeft = left;
+      this.hoverTop = top;
+    },
+    hideCardHover() {
+      this.hoverCard = null;
+    },
+    openPreview(card) {
+      this.previewCard = card;
+    },
+    closePreview() {
+      this.previewCard = null;
+    },
+    /* キーワード能力説明ポップアップ */
+    openKeywordPopup(payload) {
+      if (!payload || !payload.desc) return;
+      this.keywordPopup = payload;
+    },
+    closeKeywordPopup() {
+      this.keywordPopup = null;
+    },
+    /* トークンカードのポップアップ表示 */
+    openTokenPopup(card) {
+      if (!card) return;
+      this.tokenPopupCard = card;
+    },
+    closeTokenPopup() {
+      this.tokenPopupCard = null;
+    },
+    onKeyDown(e) {
+      if (e.key === "Escape") {
+        // 上に重なっているものから順に閉じる
+        if (this.keywordPopup)       this.closeKeywordPopup();
+        else if (this.tokenPopupCard) this.closeTokenPopup();
+        else if (this.previewCard)   this.closePreview();
+        this.deckSortOpen = false;
+      }
+    },
+    onWindowClick() {
+      this.deckSortOpen = false;
+      this.poolSortOpen = false;
+    },
+    addCard(card) {
+      if (!this.canAdd(card)) return;
+      const no = String(card.no);
+      const cur = this.deck[no] || 0;
+      this.$set(this.deck, no, cur + 1);
+    },
+    // デッキ一覧でカードをクリックしたときの統一ハンドラ
+    handleDeckCardClick(entry) {
+      this.openPreview(entry.card);
+    },
+    // デッキ展開グリッドのカード画像クリックハンドラ
+    handleDeckGridImageClick(entry) {
+      // 通常時：active なら追加、returned ならプレビュー
+      if (entry.returned) this.openPreview(entry.card);
+      else this.addCard(entry.card);
+    },
+    // active から returned に1枚移す（カウントは変わらない）
+    returnCard(no) {
+      no = String(no);
+      const cur = this.deck[no] || 0;
+      if (cur <= 0) return;
+      if (cur <= 1) this.$delete(this.deck, no);
+      else this.$set(this.deck, no, cur - 1);
+      this.$set(this.returned, no, (this.returned[no] || 0) + 1);
+    },
+    // returned から active に1枚戻す
+    unreturnCard(no) {
+      no = String(no);
+      const cur = this.returned[no] || 0;
+      if (cur <= 0) return;
+      if (cur <= 1) this.$delete(this.returned, no);
+      else this.$set(this.returned, no, cur - 1);
+      this.$set(this.deck, no, (this.deck[no] || 0) + 1);
+    },
+    removeCard(no) {
+      no = String(no);
+      const cur = this.deck[no] || 0;
+      if (cur <= 1) {
+        this.$delete(this.deck, no);
+      } else {
+        this.$set(this.deck, no, cur - 1);
+      }
+    },
+    clearDeck() {
+      const grand = this.totalDeckCount + this.totalReturnedCount;
+      const hasKami = !!this.selectedKami;
+      if ((grand > 0 || hasKami) && !confirm("デッキをクリアしますか？（返還済み・カミも全て解除）")) return;
+      this.deck = {};
+      this.returned = {};
+      this.selectedKami = null;
+    },
+    // ユドナリウムのエクスポート（zip/xml）からデッキを読み込む
+    async onUdonImport(ev) {
+      const file = ev.target.files && ev.target.files[0];
+      ev.target.value = ""; // 同じファイル再選択を許可
+      if (!file) return;
+      if (this.allCards.length === 0) {
+        alert("カード情報の読み込みが完了していません。少し待ってから再度お試しください。");
+        return;
+      }
+      this.importing = true;
+      try {
+        // 1) data.xml のテキストを取得（zip なら JSZip で展開）
+        let xmlText = "";
+        if (/\.zip$/i.test(file.name)) {
+          if (typeof JSZip !== "function") throw new Error("zip展開ライブラリの読み込みに失敗しました");
+          const zip = await JSZip.loadAsync(file);
+          const entry = zip.file("data.xml") || zip.file(/data\.xml$/i)[0];
+          if (!entry) throw new Error("zip内に data.xml が見つかりません");
+          xmlText = await entry.async("string");
+        } else {
+          xmlText = await file.text();
+        }
+
+        // 2) XML を解析してカード名を集計
+        const doc = new DOMParser().parseFromString(xmlText, "text/xml");
+        const cardEls = doc.querySelectorAll("card");
+        if (!cardEls.length) throw new Error("デッキ内にカードが見つかりません");
+
+        const nameCounts = {}; // 表示名 -> 枚数
+        cardEls.forEach(cardEl => {
+          // card > data[name=common] > data[name=name]
+          let nm = "";
+          cardEl.querySelectorAll('data[name="name"]').forEach(d => {
+            if (!nm) nm = (d.textContent || "").trim();
+          });
+          if (nm) nameCounts[nm] = (nameCounts[nm] || 0) + 1;
+        });
+
+        // 3) 名前→カード照合用マップ（カード名 と フルネーム の両方をキーに）
+        const clean = s => (s || "").replace(/[​-‍﻿­‎‏]/g, "").trim();
+        const byKey = {};
+        const groupByFull = {}; // フルネーム -> 同名カードNo配列（No昇順）
+        for (const c of this.allCards) {
+          const nameKey = clean(c.name);
+          const fullKey = clean(this.fullName(c));
+          if (!byKey[nameKey]) byKey[nameKey] = c;
+          if (!byKey[fullKey]) byKey[fullKey] = c;
+          (groupByFull[fullKey] = groupByFull[fullKey] || []).push(c);
+        }
+        for (const k in groupByFull) {
+          groupByFull[k].sort((a, b) => parseInt(a.no, 10) - parseInt(b.no, 10));
+        }
+
+        // 4) 照合してデッキを構築（デッキビルダーの上限ルールを適用）
+        //    ・No単位は1枚まで（同名異Noに1枚ずつ分配）
+        //    ・名前グループ合計は返還値ベースの上限（返還値2→2枚、それ以外1枚）
+        //    ・トークン / 上限超過分は除外
+        const newDeck = {};
+        const unmatched = [];
+        let excludedTokens = 0;
+        let excludedOverLimit = 0;
+        for (const dispName in nameCounts) {
+          const rep = byKey[clean(dispName)];
+          if (!rep) { unmatched.push(dispName); continue; }
+          if (rep.isToken) { excludedTokens += nameCounts[dispName]; continue; }
+          const want = nameCounts[dispName];
+          const groupCards = groupByFull[clean(this.fullName(rep))] || [rep];
+          const groupMax = this.maxCopiesFor(rep);          // 返還値ベース上限
+          const allowed = Math.min(want, groupMax, groupCards.length); // 1 No=1枚
+          for (let i = 0; i < allowed; i++) {
+            newDeck[String(groupCards[i].no)] = 1;
+          }
+          if (want > allowed) excludedOverLimit += (want - allowed);
+        }
+
+        const matchedTotal = Object.values(newDeck).reduce((a, b) => a + b, 0);
+        if (matchedTotal === 0) {
+          alert("照合できるカードがありませんでした。\nカード名がスプレッドシートと一致しているか確認してください。");
+          return;
+        }
+
+        // 5) 確認のうえデッキを置き換え
+        let msg = `${matchedTotal}枚のカードを読み込みます。現在のデッキを置き換えますか？`;
+        if (excludedTokens > 0) msg += `\n（トークン ${excludedTokens}枚を除外）`;
+        if (excludedOverLimit > 0) msg += `\n（投入上限超過 ${excludedOverLimit}枚を除外）`;
+        if (unmatched.length) msg += `\n\n照合できなかったカード:\n・${unmatched.join("\n・")}`;
+        if (!confirm(msg)) return;
+
+        this.deck = newDeck;
+        this.returned = {};
+      } catch (e) {
+        console.error("ユドナリウム読込エラー", e);
+        alert("デッキの読み込みに失敗しました。\n" + e.message);
+      } finally {
+        this.importing = false;
+      }
+    },
+    categoryCount(cat) {
+      return this.deckEntries.filter(e => e.card.category === cat).reduce((s, e) => s + e.count, 0);
+    },
+    colorCount(color) {
+      return this.deckEntries.filter(e => e.card.color === color).reduce((s, e) => s + e.count, 0);
+    },
+    typeCount(type) {
+      return this.deckEntries.filter(e => e.card.type === type).reduce((s, e) => s + e.count, 0);
+    },
+    curveBarHeight(n) {
+      return Math.round((n / this.maxCurve) * 100);
+    },
+    exportDeck() {
+      const lines = this.deckEntries.map(e => `${e.count}× No.${e.card.no} ${this.fullName(e.card)} (${e.card.cost})`);
+      const text = `# ツクリヨデッキ (${this.totalDeckCount}枚)\n` + lines.join("\n");
+      navigator.clipboard.writeText(text).then(
+        () => alert("デッキ内容をクリップボードにコピーしました"),
+        () => prompt("コピーに失敗しました。手動でコピーしてください：", text)
+      );
+    },
+    async saveDeckImage() {
+      if (this.deckEntriesGrouped.length === 0) {
+        alert("デッキが空です");
+        return;
+      }
+      if (typeof html2canvas !== "function") {
+        alert("画像保存ライブラリの読み込みに失敗しました。\nページを再読み込みして再度お試しください。");
+        return;
+      }
+
+      // ズーム検知：起動時DPRから変化していたら警告
+      const curDpr = window.devicePixelRatio || 1;
+      const ratio = curDpr / this.baseDevicePixelRatio;
+      if (ratio > 1.05 || ratio < 0.95) {
+        const pct = Math.round(ratio * 100);
+        const ok = confirm(
+          `ブラウザが拡大/縮小されています（約${pct}%）。\n` +
+          `このまま保存するとレイアウトが崩れる場合があります。\n\n` +
+          `「キャンセル」して Ctrl+0 で100%に戻してから保存することをおすすめします。\n\n` +
+          `このまま保存しますか？`
+        );
+        if (!ok) return;
+      }
+
+      // 通常モードなら一時的に展開モードに
+      const wasExpanded = this.deckExpanded;
+      if (!wasExpanded) {
+        this.deckExpanded = true;
+        await this.$nextTick();
+      }
+      // 返還モードを一時的にOFFにして写らないようにする
+      const wasReturnMode = this.returnModeActive;
+      this.returnModeActive = false;
+
+      this.capturing = true;
+      await this.$nextTick();
+      // フォント・画像描画の安定化待ち
+      await new Promise(r => setTimeout(r, 250));
+
+      try {
+        const deckEl = document.querySelector(".deck");
+        if (!deckEl) throw new Error("デッキ要素が見つかりません");
+
+        // レイアウトは .app.capturing の固定幅CSSで一定化済み。
+        // html2canvas には余計な寸法を渡さず自動検出に任せる（縦横比の歪み防止）。
+        const canvas = await html2canvas(deckEl, {
+          useCORS: true,
+          backgroundColor: "#15171f",
+          scale: 1.5,
+          logging: false,
+        });
+
+        const dt = new Date();
+        const datestamp =
+          dt.getFullYear() + ("0" + (dt.getMonth() + 1)).slice(-2) +
+          ("0" + dt.getDate()).slice(-2);
+        // カミ名（二つ名なし）をファイル名に含める
+        const kamiPart = this.selectedKami ? `_${this.selectedKami.name}` : "";
+        const filename = `ツクリヨデッキ${kamiPart}_${datestamp}.jpg`;
+
+        // JPEG 形式（品質0.88）で出力 → PNG比で5〜10倍小さくなり10MB以下に収まる
+        const downloadAsBlob = () => new Promise(resolve => {
+          if (typeof canvas.toBlob === "function") {
+            canvas.toBlob(blob => {
+              if (!blob) return resolve(false);
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.download = filename;
+              link.href = url;
+              link.click();
+              setTimeout(() => URL.revokeObjectURL(url), 2000);
+              resolve(true);
+            }, "image/jpeg", 0.88);
+          } else { resolve(false); }
+        });
+        const ok = await downloadAsBlob();
+        if (!ok) {
+          // フォールバック
+          const link = document.createElement("a");
+          link.download = filename;
+          link.href = canvas.toDataURL("image/jpeg", 0.88);
+          link.click();
+        }
+      } catch (e) {
+        console.error("画像保存エラー", e);
+        alert("画像の保存に失敗しました。\n" + e.message);
+      } finally {
+        this.capturing = false;
+        // モード状態を復元
+        this.returnModeActive = wasReturnMode;
+        if (!wasExpanded) {
+          await this.$nextTick();
+          this.deckExpanded = false;
+        }
+      }
+    },
+    /* ===== ユドナリウム出力（通常デッキビルダーから） ===== */
+    async onUdonExport() {
+      if (this.udonExporting) return;
+      this.udonExporting = true;
+      this.udonProgress = { current: 0, total: 0 };
+      try {
+        const mainDeck = this.deckEntries.flatMap(e =>
+          Array.from({ length: e.count }, () => e.card)
+        );
+        await exportToUdonarium(
+          mainDeck,
+          this.selectedKami,
+          (card) => this.cardImageUrl(card),
+          null,
+          (cur, tot) => { this.udonProgress = { current: cur, total: tot }; },
+          UDON_CARD_BACK_URL,
+          UDON_KAMI_BACK_URL,
+        );
+      } catch (e) {
+        alert('ユドナリウム出力に失敗しました。\n' + e.message);
+      } finally {
+        this.udonExporting = false;
+      }
+    },
+
+    /* ===== シールド戦 ===== */
+    openShield() {
+      this.shieldOpen = true;
+    },
+    /* ----- シールド戦カードホバープレビュー ----- */
+    /* 専用 sbHoverCard を使い、オーバーレイ内の sb-hover-popup で表示 */
+    showSbHover(card, event) {
+      if (!this.cardImageUrl(card)) return;
+      this.sbHoverCard = card;
+      const rect   = event.currentTarget.getBoundingClientRect();
+      const pw     = 440;
+      const ph     = Math.round(pw * 1039 / 744);
+      const margin = 10;
+      let left = rect.right + margin;
+      if (left + pw > window.innerWidth - margin) left = rect.left - pw - margin;
+      let top = rect.top + (rect.height - ph) / 2;
+      top = Math.max(margin, Math.min(window.innerHeight - ph - margin, top));
+      this.sbHoverLeft = left;
+      this.sbHoverTop  = top;
+    },
+    hideSbHover() {
+      this.sbHoverCard = null;
+    },
+    /* パックピック中：取得済みカードをデッキ詳細ビューで確認（可逆）
+       returnModeActive = true にして事前返還を可能にする */
+    peekDeckDetail() {
+      if (this.sbMyDeckEntries.length === 0) return;
+      this._peekSaved = {
+        deck:             this.deck,
+        returned:         this.returned,
+        deckExpanded:     this.deckExpanded,
+        returnModeActive: this.returnModeActive,
+        selectedKami:     this.selectedKami,
+      };
+      const newDeck = {};
+      for (const e of this.sbMyDeckEntries) {
+        newDeck[String(e.card.no)] = e.count;
+      }
+      // 事前返還済みをdeckから引いてdeck/returnedを一致させる（マナカーブ二重計上防止）
+      const preReturn = this._sbPreReturn || {};
+      for (const no in preReturn) {
+        if (newDeck[no] !== undefined) {
+          newDeck[no] -= preReturn[no];
+          if (newDeck[no] <= 0) delete newDeck[no];
+        }
+      }
+      this.deck             = newDeck;
+      // 事前返還済みがあれば引き継ぐ、なければクリア
+      this.returned         = Object.keys(preReturn).length > 0 ? { ...preReturn } : {};
+      this.returnModeActive = true;   // 事前返還モードをON
+      this.selectedKami     = this.sbMySelectedKami || null;
+      this.deckExpanded     = true;
+      this.shieldPeek       = true;
+      this.hideSbHover();
+    },
+    closePeekDeckDetail() {
+      const s = this._peekSaved;
+      this._peekSaved = null;
+      this.shieldPeek = false;
+      if (s && this.sb.phase !== 'complete') {
+        // ピーク中に行った事前返還を保存
+        this._sbPreReturn = Object.keys(this.returned).length > 0
+          ? { ...this.returned } : null;
+        this.deck             = s.deck;
+        this.returned         = s.returned;
+        this.deckExpanded     = s.deckExpanded;
+        this.returnModeActive = s.returnModeActive;
+        this.selectedKami     = s.selectedKami;
+      }
+    },
+
+    tryCloseShield() {
+      if (['picking', 'excluding', 'kami_select'].includes(this.sb.phase)) {
+        if (!confirm('シールド戦を中断しますか？')) return;
+      }
+      this._sbCleanup();
+      this.shieldOpen = false;
+      this._sbReset();
+    },
+    _sbReset() {
+      if (this.sb._unsubscribe) this.sb._unsubscribe();
+      this.sb = {
+        phase: 'lobby', myName: this.sb.myName, joinCode: '',
+        connecting: false, error: '', role: null, playerId: null,
+        roomCode: null, roomData: {}, packs: [],
+        kamiCandidates: [], tempKami: null, showUnused: false,
+        _unsubscribe: null,
+      };
+    },
+    _sbCleanup() {
+      if (this.sb._unsubscribe) {
+        this.sb._unsubscribe();
+        this.sb._unsubscribe = null;
+      }
+    },
+
+    /* Firebase ルーム購読 → roomData に同期し phase を追従 */
+    _sbSubscribe(roomCode) {
+      const unsub = subscribeRoom(roomCode, (data) => {
+        if (!data) return;
+        this.sb.roomData = data;
+
+        // Firebase の phase を sb.phase に反映
+        const fp = data.phase;
+        if (fp === 'lobby' && data.guest) {
+          this.sb.phase = 'waiting';
+        } else if (fp === 'coin_toss') {
+          this.sb.phase = 'coin_toss';
+        } else if (fp === 'picking') {
+          // パック生成（初回のみ）
+          if (!this.sb.packs.length && this.allCards.length > 0) {
+            this._sbGeneratePacks(data.seed);
+          }
+          this.sb.phase = 'picking';
+        } else if (fp === 'kami_select') {
+          if (!this.sb.kamiCandidates.length) {
+            this.sb.kamiCandidates = selectKamiCandidates(this.allKamiCards, data.seed);
+          }
+          this.sb.phase = 'kami_select';
+        } else if (fp === 'complete' && this.sb.phase !== 'complete') {
+          this.sb.phase = 'complete';
+          // カミ選択完了 → 1秒後にデッキビルダーに自動移行
+          setTimeout(() => this.onLoadShieldDeckToBuilder(), 1200);
+        }
+      });
+      this.sb._unsubscribe = unsub;
+    },
+
+    _sbGeneratePacks(seed) {
+      const eligible = this.allCards.filter(c => isEligible(c));
+      const { packs, warnings, diagnostics } = generatePacks(eligible, seed);
+      this.sb.packs = packs;
+      if (warnings.length) console.warn('[シールド戦 パック生成]', warnings);
+      console.log('[シールド戦 診断]', diagnostics);
+    },
+
+    async onCreateRoom() {
+      this.sb.connecting = true;
+      this.sb.error = '';
+      try {
+        const { roomCode, playerId } = await createRoom(this.sb.myName);
+        this.sb.roomCode  = roomCode;
+        this.sb.playerId  = playerId;
+        this.sb.role      = 'host';
+        this.sb.phase     = 'waiting';
+        this._sbSubscribe(roomCode);
+      } catch (e) {
+        this.sb.error = e.message;
+      } finally {
+        this.sb.connecting = false;
+      }
+    },
+
+    async onJoinRoom() {
+      this.sb.connecting = true;
+      this.sb.error = '';
+      const code = this.sb.joinCode.trim().toUpperCase();
+      try {
+        const { playerId } = await joinRoom(code, this.sb.myName);
+        this.sb.roomCode  = code;
+        this.sb.playerId  = playerId;
+        this.sb.role      = 'guest';
+        this.sb.phase     = 'waiting';
+        this._sbSubscribe(code);
+      } catch (e) {
+        this.sb.error = e.message;
+      } finally {
+        this.sb.connecting = false;
+      }
+    },
+
+    async onSetReady() {
+      await setReady(this.sb.roomCode, this.sb.role, this.sb.playerId);
+    },
+
+    async onStartPicking() {
+      await startPicking(this.sb.roomCode);
+    },
+
+    async onPickPack(packId) {
+      if (!this.sbIsMyPickTurn) return;
+      if (this.sbAllPickedPacks.includes(packId)) return;
+      await pickPack(this.sb.roomCode, this.sb.role, packId);
+    },
+
+    onSelectKami(kami) {
+      if (!this.sbIsMyKamiTurn || this.sbMyKami) return;
+      // 相手が既に選択済みのカミは選べない
+      if (this.sbOpponentKamiNo && String(this.sbOpponentKamiNo) === String(kami.no)) return;
+      this.sb.tempKami = kami;
+    },
+
+    async onConfirmKami() {
+      if (!this.sb.tempKami || !this.sbIsMyKamiTurn) return;
+      await selectKami(this.sb.roomCode, this.sb.role, String(this.sb.tempKami.no));
+    },
+
+    /* シールド戦完了後：ユドナリウム出力 */
+    async onShieldExportUdon() {
+      if (this.udonExporting) return;
+      this.udonExporting = true;
+      this.udonProgress = { current: 0, total: 0 };
+      try {
+        await exportToUdonarium(
+          this.sbMyFinalDeck,
+          this.sbMySelectedKami,
+          (card) => this.cardImageUrl(card),
+          `シールド戦_${this.sb.myName || this.sb.role}`,
+          (cur, tot) => { this.udonProgress = { current: cur, total: tot }; },
+          UDON_CARD_BACK_URL,
+          UDON_KAMI_BACK_URL,
+        );
+      } catch (e) {
+        alert('ユドナリウム出力に失敗しました。\n' + e.message);
+      } finally {
+        this.udonExporting = false;
+      }
+    },
+
+    /* シールド戦完了後：通常デッキビルダーに48枚を反映して閉じる */
+    onLoadShieldDeckToBuilder() {
+      // ピーク中の退避状態を破棄
+      this._peekSaved = null;
+      this.shieldPeek = false;
+
+      const newDeck = {};
+      for (const card of this.sbMyFinalDeck) {
+        const no = String(card.no);
+        newDeck[no] = (newDeck[no] || 0) + 1;
+      }
+      // 事前返還済みがあれば引き継ぐ（ただしデッキに存在する枚数を超えないよう制限）
+      const pre = this._sbPreReturn || {};
+      const validReturned = {};
+      for (const no in pre) {
+        if (newDeck[no]) {
+          validReturned[no] = Math.min(pre[no], newDeck[no]);
+          // deck から返還分を差し引く（deckEntries でのマナカーブ二重計上防止）
+          newDeck[no] -= validReturned[no];
+          if (newDeck[no] === 0) delete newDeck[no];
+        }
+      }
+      this.deck = newDeck;
+      this.returned = validReturned;
+      this._sbPreReturn = null;
+      this.selectedKami = this.sbMySelectedKami;
+      this.returnModeActive = true;
+      this.deckExpanded = true;
+      this.hoverCard = null;
+      this.shieldOpen = false;
+      this._sbCleanup();
+    },
+  },  // /methods
+
+  mounted() {
+    this.loadCards();
+    this.loadDriveImages();
+    this.loadKamiCards();
+    this.loadKamiImages();
+    window.addEventListener("keydown", this.onKeyDown);
+    window.addEventListener("click", this.onWindowClick);
+  },
+  beforeDestroy() {
+    window.removeEventListener("keydown", this.onKeyDown);
+    window.removeEventListener("click", this.onWindowClick);
+  },
+});
+</script>
+</body>
+</html>
