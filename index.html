@@ -995,6 +995,281 @@
   }
   .shield-open-btn:hover { background: linear-gradient(135deg, #5a4a7a, #7a4a9a); }
 
+  /* ===== 4人対戦ボタン（ヘッダー右上） ===== */
+  .game-open-btn {
+    background: linear-gradient(135deg, #2a5a4a, #2a7a5a);
+    border: 1px solid #5abb8a; color: #fff;
+    padding: 6px 14px; border-radius: 4px;
+    cursor: pointer; font-size: 13px; font-weight: 700;
+    letter-spacing: 0.04em; flex-shrink: 0; margin-left: 6px;
+    transition: background 0.15s ease;
+  }
+  .game-open-btn:hover { background: linear-gradient(135deg, #3a6a5a, #3a8a6a); }
+
+  /* ===== 4人対戦オーバーレイ ===== */
+  .game-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(8, 10, 16, 0.86);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .gm-modal {
+    width: min(880px, 96vw); max-height: 92vh; overflow-y: auto;
+    background: #161922; border: 1px solid #2e3548; border-radius: 10px;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.6);
+    display: flex; flex-direction: column;
+  }
+  .gm-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px; border-bottom: 1px solid #2a2f3d;
+    position: sticky; top: 0; background: #161922; z-index: 1;
+  }
+  .gm-header h2 { margin: 0; font-size: 18px; color: #eee; }
+  .gm-beta {
+    font-size: 11px; background: #2a7a5a; color: #fff;
+    padding: 1px 6px; border-radius: 8px; vertical-align: middle;
+  }
+  .gm-phase { color: #8df; font-size: 13px; font-weight: 700; }
+  .gm-close {
+    margin-left: auto; background: none; border: none; color: #aaa;
+    font-size: 24px; cursor: pointer; line-height: 1; padding: 0 4px;
+  }
+  .gm-close:hover { color: #fff; }
+  .gm-body { padding: 18px; }
+  .gm-lead { color: #bcd; font-size: 13px; line-height: 1.7; margin: 0 0 16px; }
+
+  /* メニュー */
+  .gm-field { display: block; margin-bottom: 18px; }
+  .gm-field span { display: block; font-size: 12px; color: #9aa; margin-bottom: 6px; }
+  .gm-field input {
+    width: 100%; height: 38px; box-sizing: border-box;
+    background: #11141c; border: 1px solid #444; color: #eee;
+    padding: 0 12px; border-radius: 5px; font-size: 14px;
+  }
+  .gm-menu-actions { display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
+  .gm-or { text-align: center; color: #667; font-size: 12px; }
+  .gm-join-row { display: flex; gap: 8px; }
+  .gm-code-input {
+    flex: 1; height: 40px; box-sizing: border-box;
+    background: #11141c; border: 1px solid #444; color: #eee;
+    padding: 0 12px; border-radius: 5px; font-size: 16px; letter-spacing: 0.18em;
+  }
+  .gm-btn {
+    height: 40px; padding: 0 18px; border-radius: 5px; cursor: pointer;
+    background: #2a2f3d; border: 1px solid #444; color: #ddd;
+    font-size: 14px; font-weight: 700; white-space: nowrap;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .gm-btn:hover:not(:disabled) { background: #3a4055; color: #fff; }
+  .gm-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .gm-btn-primary { background: #2a7a5a; border-color: #5abb8a; color: #fff; }
+  .gm-btn-primary:hover:not(:disabled) { background: #3a9a6a; }
+  .gm-btn-ghost { background: transparent; }
+  .gm-error { margin-top: 14px; color: #f88; font-size: 13px; }
+  .gm-solo-row {
+    margin-top: 20px; padding-top: 16px; border-top: 1px dashed #2a2f3d;
+    display: flex; flex-direction: column; gap: 8px; align-items: center;
+  }
+  .gm-btn-solo { background: #3a3052; border-color: #6a5a8a; color: #d8c8f8; }
+  .gm-btn-solo:hover:not(:disabled) { background: #4a4068; color: #fff; }
+
+  /* ロビー */
+  .gm-code-box {
+    display: flex; align-items: center; gap: 12px;
+    background: #11141c; border: 1px solid #3a4a5a; border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 14px;
+  }
+  .gm-code-label { font-size: 12px; color: #9aa; }
+  .gm-code-value { font-size: 26px; font-weight: 800; letter-spacing: 0.25em; color: #8df; }
+  .gm-copy {
+    margin-left: auto; background: #2a2f3d; border: 1px solid #444; color: #ccc;
+    width: 34px; height: 34px; border-radius: 5px; cursor: pointer; font-size: 16px;
+  }
+  .gm-copy:hover { background: #3a4055; color: #fff; }
+  .gm-seats {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px;
+  }
+  .gm-seat {
+    display: flex; align-items: center; gap: 10px;
+    background: #1a1d28; border: 1px solid #2a2f3d; border-radius: 8px; padding: 12px 14px;
+  }
+  .gm-seat.me { border-color: #5abb8a; box-shadow: 0 0 0 1px #5abb8a55 inset; }
+  .gm-seat.empty { opacity: 0.5; }
+  .gm-seat-no {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: #2a3a5a; color: #fff; font-weight: 800; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .gm-seat-name { flex: 1; color: #eee; font-size: 14px; min-width: 0; }
+  .gm-you { color: #6c9; font-size: 11px; }
+  .gm-seat-status { font-size: 12px; color: #9aa; }
+  .gm-seat-status.ready { color: #6c9; font-weight: 700; }
+  .gm-lobby-actions { display: flex; gap: 10px; justify-content: center; }
+
+  /* 神託の儀 */
+  .gm-kami-status {
+    text-align: center; font-size: 15px; color: #bcd; font-weight: 700;
+    padding: 12px; margin-bottom: 16px; border-radius: 8px; background: #1a1d28;
+  }
+  .gm-kami-status.mine { color: #fff; background: #2a5a4a; }
+  .gm-offer { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+  .gm-kami-card {
+    width: 180px; cursor: pointer; border-radius: 8px; overflow: hidden;
+    border: 2px solid #3a3f55; background: #11141c;
+    transition: transform 0.12s, border-color 0.12s;
+  }
+  .gm-kami-card:hover { transform: translateY(-3px); border-color: #cc9; }
+  .gm-kami-img {
+    width: 100%; aspect-ratio: 744 / 1039;
+    background: #0a0c12 center / contain no-repeat;
+  }
+  .gm-kami-name {
+    padding: 6px 8px; font-size: 12px; color: #eee; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .gm-kami-pick {
+    text-align: center; font-size: 12px; font-weight: 700; color: #fff;
+    background: #2a7a5a; padding: 6px;
+  }
+  .gm-waiting { text-align: center; color: #889; font-size: 14px; padding: 30px 0; }
+  .gm-pick-status {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+    border-top: 1px solid #2a2f3d; padding-top: 16px;
+  }
+  .gm-pick-seat {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: #1a1d28; border: 1px solid #2a2f3d; border-radius: 6px; padding: 10px 12px;
+  }
+  .gm-pick-seat.me { border-color: #5abb8a; }
+  .gm-pick-seat.current { border-color: #fc8; box-shadow: 0 0 0 1px #fc855 inset; }
+  .gm-pick-seat.done { opacity: 0.85; }
+  .gm-pick-no { font-size: 13px; color: #ccd; font-weight: 700; flex-shrink: 0; }
+  .gm-pick-kami { font-size: 12px; color: #9aa; text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gm-pick-seat.done .gm-pick-kami { color: #6c9; }
+
+  /* 完了 */
+  .gm-done-title { text-align: center; font-size: 16px; color: #eee; font-weight: 700; margin-bottom: 18px; }
+  .gm-done-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+  .gm-done-card {
+    background: #11141c; border: 2px solid #2a2f3d; border-radius: 8px; overflow: hidden; padding-bottom: 6px;
+  }
+  .gm-done-card.me { border-color: #5abb8a; }
+  .gm-done-card .gm-pick-no { padding: 6px 8px 2px; text-align: center; }
+  .gm-done-card .gm-kami-name { color: #cde; }
+  .gm-done-note { text-align: center; color: #9ab; font-size: 12px; line-height: 1.7; margin-bottom: 18px; }
+  @media (max-width: 640px) {
+    .gm-seats, .gm-pick-status { grid-template-columns: 1fr; }
+    .gm-done-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* 選別の儀（ドラフト） */
+  .gm-wait-host { color: #9ab; font-size: 13px; align-self: center; }
+  .gm-draft-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .gm-draft-title { font-size: 16px; font-weight: 700; color: #eee; }
+  .gm-draft-set { font-size: 12px; color: #8df; margin-left: 8px; font-weight: 600; }
+  .gm-draft-headright { display: flex; align-items: center; gap: 12px; }
+  .gm-draft-progress { font-size: 13px; color: #bcd; }
+  .gm-draft-progress b { color: #6c9; font-size: 17px; }
+  .gm-btn-peek {
+    height: 32px; padding: 0 12px; font-size: 12px;
+    background: #2a4a6a; border-color: #3a6a9a; color: #cfe6ff;
+  }
+  .gm-btn-peek:hover:not(:disabled) { background: #356092; color: #fff; }
+  .gm-done-card.hoverable .gm-kami-img { cursor: pointer; }
+  .gm-draft-status {
+    text-align: center; font-size: 14px; color: #bcd; font-weight: 700;
+    padding: 10px; margin-bottom: 14px; border-radius: 8px; background: #1a1d28;
+  }
+  .gm-draft-status.mine { color: #fff; background: #2a5a4a; }
+  .gm-pack-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px;
+  }
+  .gm-pack-grid.locked { opacity: 0.55; pointer-events: none; }
+  .gm-pack-card {
+    cursor: pointer; border-radius: 6px; overflow: hidden;
+    border: 2px solid #3a3f55; background: #11141c;
+    transition: transform 0.1s, border-color 0.1s;
+  }
+  .gm-pack-card:hover { transform: translateY(-3px); border-color: #6c9; }
+  .gm-pack-img { width: 100%; aspect-ratio: 744 / 1039; background: #0a0c12 center / cover no-repeat; }
+  .gm-pack-name {
+    padding: 4px 6px; font-size: 10px; color: #ddd; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .gm-deck-grid {
+    display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; margin-bottom: 18px;
+  }
+  .gm-deck-card { border-radius: 4px; overflow: hidden; border: 1px solid #2a2f3d; background: #11141c; }
+  .gm-deck-img { width: 100%; aspect-ratio: 744 / 1039; background: #0a0c12 center / cover no-repeat; }
+  @media (max-width: 760px) {
+    .gm-pack-grid { grid-template-columns: repeat(4, 1fr); }
+    .gm-deck-grid { grid-template-columns: repeat(6, 1fr); }
+  }
+
+  /* 深化の刻 */
+  .gm-deepen-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .gm-insight {
+    font-size: 14px; color: #cde; background: #1a2a44; border: 1px solid #3a5a8a;
+    padding: 6px 14px; border-radius: 16px; font-weight: 700;
+  }
+  .gm-insight b { color: #8df; font-size: 18px; margin: 0 2px; }
+  .gm-deepen-sec {
+    background: #161a24; border: 1px solid #2a2f3d; border-radius: 8px;
+    padding: 14px; margin-bottom: 14px;
+  }
+  .gm-deepen-sec-title {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
+    font-size: 14px; font-weight: 700; color: #eee;
+  }
+  .gm-deepen-hint { font-size: 11px; color: #9ab; font-weight: 400; }
+  .gm-deck-cards-grid { grid-template-columns: repeat(10, 1fr); gap: 6px; }
+  .gm-deck-cards-grid .gm-pack-img { aspect-ratio: 744 / 1039; }
+  .gm-converted { margin-top: 10px; font-size: 12px; color: #bcd; }
+  .gm-converted b { color: #fc8; }
+  .gm-converted-names { color: #889; }
+  .gm-bloom-offer { display: grid; grid-template-columns: repeat(3, 140px); gap: 12px; justify-content: center; }
+  @media (max-width: 760px) { .gm-deck-cards-grid { grid-template-columns: repeat(6, 1fr); } }
+
+  /* 終戦・集計 */
+  .gm-score-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 13px; }
+  .gm-score-table th, .gm-score-table td {
+    padding: 8px 10px; text-align: center; border-bottom: 1px solid #2a2f3d;
+  }
+  .gm-score-table th { color: #9ab; font-size: 11px; font-weight: 600; background: #161a24; }
+  .gm-score-table tr.me td { background: rgba(90,187,138,0.08); }
+  .gm-score-table tr.top td { background: rgba(255,200,120,0.10); }
+  .gm-score-table .gm-rank { font-weight: 800; color: #eee; }
+  .gm-score-table .gm-score-kami { color: #bcd; font-size: 12px; }
+  .gm-score-table .gm-total b { color: #8df; font-size: 16px; }
+  .gm-win-input {
+    width: 50px; height: 28px; text-align: center;
+    background: #11141c; border: 1px solid #444; color: #eee; border-radius: 4px; font-size: 13px;
+  }
+
+  /* 星戦（結果記録） */
+  .gm-battle-tables { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 18px; }
+  .gm-battle-table {
+    background: #161a24; border: 1px solid #2a2f3d; border-radius: 8px; padding: 16px; text-align: center;
+  }
+  .gm-battle-table.mine { border-color: #5abb8a; box-shadow: 0 0 0 1px #5abb8a55 inset; }
+  .gm-battle-table-title { font-size: 14px; font-weight: 700; color: #cde; margin-bottom: 12px; }
+  .gm-battle-vs { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .gm-battle-player {
+    flex: 1; padding: 12px 8px; border-radius: 6px; cursor: pointer;
+    background: #1a1d28; border: 2px solid #3a3f55; color: #ddd;
+    font-size: 13px; font-weight: 700; transition: border-color 0.12s, background 0.12s;
+  }
+  .gm-battle-player:hover:not(:disabled) { border-color: #6c9; background: #222838; }
+  .gm-battle-player.me { color: #cfe6ff; }
+  .gm-battle-player.winner { background: #2a5a4a; border-color: #6c9; color: #fff; }
+  .gm-battle-player:disabled { cursor: default; }
+  .gm-battle-vs-label { color: #667; font-size: 12px; font-weight: 700; flex: 0 0 auto; }
+  .gm-battle-hint { margin-top: 10px; font-size: 11px; color: #889; }
+  @media (max-width: 640px) { .gm-battle-tables { grid-template-columns: 1fr; } }
+
   /* ===== ユドナリウム出力ボタン ===== */
   .udon-export-btn {
     flex: 1; padding: 5px; font-size: 12px; cursor: pointer;
@@ -1449,6 +1724,7 @@
         <h1>ツクリヨ デッキビルダー</h1>
         <span class="total">全 {{ filteredCards.length }} 枚<span v-if="driveError" style="color:#fb7"> / Drive読込失敗</span></span>
         <button class="shield-open-btn" @click="openShield">⚔ シールド戦</button>
+        <button class="game-open-btn" @click="openGame">🎴 4人対戦(β)</button>
         <div class="spacer"></div>
         <!-- カードプール ソート（右端） -->
         <div class="pool-sort-wrap">
@@ -2131,9 +2407,328 @@
     </div>
   </div><!-- /shield-overlay -->
 
+  <!-- ===================== 4人対戦：ゲームセッション ===================== -->
+  <div v-if="gameOpen" class="game-overlay" @click.self="closeGame">
+    <div class="gm-modal">
+      <div class="gm-header">
+        <h2>🎴 4人対戦 <span class="gm-beta">β</span></h2>
+        <div class="gm-phase" v-if="gs.sessionCode">{{ gsPhaseLabel }}</div>
+        <button class="gm-close" @click="closeGame">×</button>
+      </div>
+
+      <!-- ===== メニュー ===== -->
+      <div v-if="gs.view === 'menu'" class="gm-body gm-menu">
+        <p class="gm-lead">4人で「壱 神託の儀（カミ選択）」を行います。代表者が「セッションを作成」し、表示された6文字コードを他の3人が入力して参加します。</p>
+        <label class="gm-field">
+          <span>あなたの名前（任意）</span>
+          <input type="text" v-model="gs.myName" maxlength="12" placeholder="プレイヤー名">
+        </label>
+        <div class="gm-menu-actions">
+          <button class="gm-btn gm-btn-primary" :disabled="gs.connecting" @click="gsCreate">
+            {{ gs.connecting ? '通信中…' : 'セッションを作成' }}
+          </button>
+          <div class="gm-or">または</div>
+          <div class="gm-join-row">
+            <input type="text" v-model="gs.joinCode" maxlength="6"
+                   placeholder="コード(6文字)" class="gm-code-input"
+                   style="text-transform:uppercase;">
+            <button class="gm-btn" :disabled="gs.connecting" @click="gsJoin">コードで参加</button>
+          </div>
+        </div>
+        <div v-if="gs.error" class="gm-error">{{ gs.error }}</div>
+        <div class="gm-solo-row">
+          <button class="gm-btn gm-btn-solo" :disabled="gs.connecting" @click="gsSoloTest">
+            🤖 ソロテスト（CPU3体と開始）
+          </button>
+          <div class="gm-deepen-hint">動作確認用：あなたは席1。神託・ドラフト・深化はCPUが自動進行します。</div>
+        </div>
+      </div>
+
+      <!-- ===== ロビー ===== -->
+      <div v-else-if="gs.view === 'lobby'" class="gm-body gm-lobby">
+        <div class="gm-code-box">
+          <span class="gm-code-label">セッションコード</span>
+          <span class="gm-code-value">{{ gs.sessionCode }}</span>
+          <button class="gm-copy" @click="gsCopyCode" title="コピー">⧉</button>
+        </div>
+        <p class="gm-lead">このコードを他のプレイヤーに伝えてください。4人全員が「準備完了」になると神託の儀が始まります。（{{ gsFilledCount }}/4人）</p>
+        <div class="gm-seats">
+          <div v-for="s in gsSeats" :key="s.seat" class="gm-seat" :class="{ me: s.isMe, empty: !s.info }">
+            <div class="gm-seat-no">P{{ s.seat }}</div>
+            <div class="gm-seat-name">
+              {{ s.info ? s.info.name : '空席…' }}
+              <span v-if="s.isMe" class="gm-you">(あなた)</span>
+            </div>
+            <div class="gm-seat-status" :class="{ ready: s.info && s.info.ready }">
+              {{ s.info ? (s.info.ready ? '✓ 準備完了' : '準備中…') : '—' }}
+            </div>
+          </div>
+        </div>
+        <div class="gm-lobby-actions">
+          <button v-if="gsSeats[gs.seat-1] && gsSeats[gs.seat-1].info"
+                  class="gm-btn gm-btn-primary" @click="gsToggleReady">
+            {{ gsSeats[gs.seat-1].info.ready ? '準備完了を取り消す' : '準備完了にする' }}
+          </button>
+          <button class="gm-btn gm-btn-ghost" @click="gsLeave">退出</button>
+        </div>
+      </div>
+
+      <!-- ===== 神託の儀（カミ選択） ===== -->
+      <div v-else-if="gs.view === 'kami'" class="gm-body gm-kami">
+        <div class="gm-kami-status" :class="{ mine: gsIsMyKamiTurn }">
+          <template v-if="gsIsMyKamiTurn">★ あなたの番です — 3枚の中から1枚、カミを選んでください</template>
+          <template v-else>{{ gsKamiTurnName }} がカミを選んでいます…</template>
+        </div>
+
+        <div v-if="gsIsMyKamiTurn" class="gm-offer">
+          <div v-for="card in gsMyOfferCards" :key="card.no"
+               class="gm-kami-card"
+               @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
+               @click="gsConfirmKami(card)">
+            <div class="gm-kami-img"
+                 :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
+            <div class="gm-kami-name">{{ fullName(card) }}</div>
+            <div class="gm-kami-pick">このカミを選ぶ</div>
+          </div>
+        </div>
+        <div v-else class="gm-waiting">他のプレイヤーの選択をお待ちください…</div>
+
+        <div class="gm-pick-status">
+          <div v-for="s in gsSeats" :key="s.seat" class="gm-pick-seat"
+               :class="{ me: s.isMe, current: gsKamiTurnSeat === s.seat, done: !!s.kamiCard }">
+            <div class="gm-pick-no">P{{ s.seat }}<span v-if="s.isMe"> (あなた)</span></div>
+            <div class="gm-pick-kami">
+              <template v-if="s.kamiCard">{{ fullName(s.kamiCard) }} ✓</template>
+              <template v-else-if="gsKamiTurnSeat === s.seat">選択中…</template>
+              <template v-else>待機</template>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 完了 ===== -->
+      <div v-else-if="gs.view === 'done'" class="gm-body gm-done">
+        <div class="gm-done-title">壱 神託の儀 完了 — 各プレイヤーのカミ</div>
+        <div class="gm-done-grid">
+          <div v-for="s in gsSeats" :key="s.seat" class="gm-done-card" :class="{ me: s.isMe, hoverable: !!s.kamiCard }">
+            <div class="gm-kami-img"
+                 @mouseenter="s.kamiCard && showCardHover(s.kamiCard, $event)" @mouseleave="hideCardHover"
+                 :style="(s.kamiCard && cardImageUrl(s.kamiCard)) ? { backgroundImage: 'url(' + cardImageUrl(s.kamiCard) + ')' } : {}"></div>
+            <div class="gm-pick-no">P{{ s.seat }} {{ s.info ? s.info.name : '' }}<span v-if="s.isMe"> (あなた)</span></div>
+            <div class="gm-kami-name">{{ s.kamiCard ? fullName(s.kamiCard) : '—' }}</div>
+          </div>
+        </div>
+        <div class="gm-done-note">全員のカミが決定しました。続いて「弐 選別の儀（ドラフト）」に進みます。</div>
+        <div class="gm-lobby-actions">
+          <button v-if="gs.seat === 1" class="gm-btn gm-btn-primary" @click="gsStartDraft">
+            ▶ 選別の儀（ドラフト）を始める
+          </button>
+          <div v-else class="gm-wait-host">ホストが選別の儀を開始するのを待っています…</div>
+          <button class="gm-btn gm-btn-ghost" @click="gsLeave">退出</button>
+        </div>
+      </div>
+
+      <!-- ===== 弐 選別の儀（ドラフト） ===== -->
+      <div v-else-if="gs.view === 'draft'" class="gm-body gm-draft">
+        <div class="gm-draft-head">
+          <div class="gm-draft-title">弐 選別の儀（ラウンド{{ gsDraftRound }}）<span class="gm-draft-set">{{ gsDraftSetLabel }}</span></div>
+          <div class="gm-draft-headright">
+            <span class="gm-draft-progress">あなたの取得 <b>{{ gsDraftRoundPicked }}</b> / {{ gsDraftTarget }}</span>
+            <button class="gm-btn gm-btn-peek" @click="gsPeekDeck"
+                    :disabled="gsMyDraftDeckCards.length === 0">デッキ詳細を見る</button>
+          </div>
+        </div>
+        <div class="gm-draft-status" :class="{ mine: !gsIPickedThisStep }">
+          <template v-if="!gsIPickedThisStep">★ パックから1枚選んでデッキに加えてください（残りは隣へ回ります）</template>
+          <template v-else>選択しました。他のプレイヤーを待っています…（{{ gsDraftPickedCount }}/4）</template>
+        </div>
+        <div class="gm-pack-grid" :class="{ locked: gsIPickedThisStep }">
+          <div v-for="(card, i) in gsMyPackCards" :key="i" class="gm-pack-card"
+               @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
+               @click="gsDraftPick(card)">
+            <div class="gm-pack-img"
+                 :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
+            <div class="gm-pack-name">{{ fullName(card) }}</div>
+          </div>
+        </div>
+        <div class="gm-pick-status">
+          <div v-for="st in gsDraftSeatStatus" :key="st.seat" class="gm-pick-seat"
+               :class="{ me: st.isMe, done: st.picked }">
+            <div class="gm-pick-no">P{{ st.seat }} {{ st.name }}<span v-if="st.isMe"> (あなた)</span></div>
+            <div class="gm-pick-kami">{{ st.picked ? '選択済み ✓' : '選択中…' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 選別の儀 完了 ===== -->
+      <div v-else-if="gs.view === 'draft_done'" class="gm-body gm-draft-done">
+        <div class="gm-done-title">弐 選別の儀（ラウンド{{ gsDraft ? gsDraft.completedRound : 1 }}） 完了</div>
+        <p class="gm-lead">
+          あなたのデッキ（{{ gsMyDraftDeckCards.length }}枚）が完成しました。「デッキビルダーに反映」で内容を確認できます。<br>
+          ※ 深化の刻・星戦は未実装のため、現状はラウンド1のドラフトまでです。
+        </p>
+        <div class="gm-deck-grid">
+          <div v-for="(card, i) in gsMyDraftDeckCards" :key="i" class="gm-deck-card"
+               @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
+            <div class="gm-deck-img"
+                 :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
+          </div>
+        </div>
+        <div class="gm-lobby-actions">
+          <button v-if="gs.seat === 1" class="gm-btn gm-btn-primary" @click="gsStartDeepen">▶ 深化の刻へ進む</button>
+          <div v-else class="gm-wait-host">ホストが深化の刻を開始するのを待っています…</div>
+          <button class="gm-btn" @click="gsPeekDeck">デッキビルダーで確認</button>
+          <button class="gm-btn gm-btn-ghost" @click="gsLeave">退出</button>
+        </div>
+      </div>
+
+      <!-- ===== 深化の刻 ===== -->
+      <div v-else-if="gs.view === 'deepen'" class="gm-body gm-deepen">
+        <div class="gm-deepen-head">
+          <div class="gm-done-title" style="margin:0;">深化の刻（ラウンド{{ gsRound }}）</div>
+          <div class="gm-insight">見識 <b>{{ gsMyInsight }}</b></div>
+        </div>
+        <p class="gm-lead">見識を使ってデッキを調整できます。完了したら「深化を完了」を押してください（全員完了で星戦へ）。</p>
+
+        <!-- 省察 -->
+        <div class="gm-deepen-sec">
+          <div class="gm-deepen-sec-title">
+            <span>省察（見識1）</span>
+            <span class="gm-deepen-hint">デッキから1枚を選ぶと星魂に変換され、デッキから除外されます</span>
+          </div>
+          <div class="gm-pack-grid gm-deck-cards-grid"
+               :class="{ locked: gsMyInsight < 1 || gsMyDeepenDone }">
+            <div v-for="(card, i) in gsMyDraftDeckCards" :key="'d'+i" class="gm-pack-card"
+                 @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
+                 @click="gsReflect(card)">
+              <div class="gm-pack-img"
+                   :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
+            </div>
+          </div>
+          <div v-if="gsMyConvertedCards.length" class="gm-converted">
+            星魂に変換済み: <b>{{ gsMyConvertedCards.length }}</b>枚
+            <span class="gm-converted-names">（{{ gsMyConvertedCards.map(c => fullName(c)).join('、') }}）</span>
+          </div>
+        </div>
+
+        <!-- 理の開花 -->
+        <div class="gm-deepen-sec">
+          <div class="gm-deepen-sec-title">
+            <span>理の開花（見識3）</span>
+            <span class="gm-deepen-hint">ジェネシスを3枚引いて1枚をデッキに加えます</span>
+          </div>
+          <button v-if="!gsBloomOfferCards.length" class="gm-btn gm-btn-primary"
+                  :disabled="gsMyInsight < 3 || gsMyDeepenDone" @click="gsBloomDraw">
+            ジェネシスを3枚引く（見識3）
+          </button>
+          <div v-else class="gm-bloom-offer">
+            <div class="gm-deepen-hint" style="grid-column:1/-1;">引いた3枚から1枚を選んでください</div>
+            <div v-for="(card, i) in gsBloomOfferCards" :key="'b'+i" class="gm-pack-card"
+                 @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
+                 @click="gsBloomPick(card)">
+              <div class="gm-pack-img"
+                   :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
+              <div class="gm-pack-name">{{ fullName(card) }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 全員の状況 -->
+        <div class="gm-pick-status">
+          <div v-for="st in gsDeepenSeatStatus" :key="st.seat" class="gm-pick-seat"
+               :class="{ me: st.isMe, done: st.done }">
+            <div class="gm-pick-no">P{{ st.seat }} {{ st.name }}<span v-if="st.isMe"> (あなた)</span></div>
+            <div class="gm-pick-kami">見識{{ st.insight }} / {{ st.done ? '完了 ✓' : '調整中…' }}</div>
+          </div>
+        </div>
+
+        <div class="gm-lobby-actions">
+          <button class="gm-btn gm-btn-primary" @click="gsToggleDeepenDone">
+            {{ gsMyDeepenDone ? '深化を続ける（完了を取消）' : '深化を完了' }}
+          </button>
+          <button class="gm-btn" @click="gsPeekDeck">デッキビルダーで確認</button>
+          <button class="gm-btn gm-btn-ghost" @click="gsLeave">退出</button>
+        </div>
+      </div>
+
+      <!-- ===== 星戦（ユドナリウムで対戦→結果記録） ===== -->
+      <div v-else-if="gs.view === 'battle'" class="gm-body gm-battle">
+        <div class="gm-done-title">星戦（ラウンド{{ gsRound }}）</div>
+        <p class="gm-lead">
+          各卓に分かれて<strong>ユドナリウムで対戦</strong>し、勝敗が決まったら各卓の勝者を記録してください。<br>
+          勝者は星魂10点、次の深化の見識は 勝者+1 / 敗者+3。デッキは「デッキビルダーで確認 / 出力」からユドナリウム出力できます。
+        </p>
+        <div class="gm-battle-tables">
+          <div v-for="t in gsBattleTables" :key="t.table" class="gm-battle-table" :class="{ mine: t.hasMe }">
+            <div class="gm-battle-table-title">卓{{ t.table }}<span v-if="t.hasMe"> (あなたの卓)</span></div>
+            <div class="gm-battle-vs">
+              <template v-for="(p, pi) in t.players">
+                <span v-if="pi === 1" :key="'vs'+t.table" class="gm-battle-vs-label">VS</span>
+                <button :key="p.seat"
+                        class="gm-battle-player"
+                        :class="{ winner: String(t.winner) === String(p.seat), me: p.isMe }"
+                        :disabled="gs.seat !== 1"
+                        @click="gsRecordBattle(t.table, p.seat)">
+                  <span v-if="String(t.winner) === String(p.seat)">👑 </span>P{{ p.seat }} {{ p.name }}
+                </button>
+              </template>
+            </div>
+            <div class="gm-battle-hint">
+              {{ gs.seat === 1 ? '勝った方をクリックして記録' : (t.winner ? '記録済み' : 'ホストが記録します') }}
+            </div>
+          </div>
+        </div>
+        <div class="gm-lobby-actions">
+          <button v-if="gs.seat === 1" class="gm-btn gm-btn-primary"
+                  :disabled="!gsBattleBothRecorded" @click="gsAdvanceAfterBattle">
+            {{ gsRound < 3 ? '▶ 選別の儀' + (gsRound + 1) + 'へ' : '▶ 終戦（集計）へ' }}
+          </button>
+          <div v-else class="gm-wait-host">両卓の結果が記録され、ホストが進めるのを待っています…</div>
+          <button class="gm-btn" @click="gsPeekDeck">デッキビルダーで確認 / 出力</button>
+          <button class="gm-btn gm-btn-ghost" @click="gsLeave">退出</button>
+        </div>
+      </div>
+
+      <!-- ===== 終戦・集計 ===== -->
+      <div v-else-if="gs.view === 'scoring'" class="gm-body gm-scoring">
+        <div class="gm-done-title">終戦 — 星魂の集計</div>
+        <p class="gm-lead">
+          各プレイヤーの星魂 ＝ 星戦の勝利点（1勝＝10）＋ デッキの返還値 ＋ 省察で変換した星魂。<br>
+          勝利数は各ラウンドで記録した星戦結果から自動集計しています。
+        </p>
+        <table class="gm-score-table">
+          <thead>
+            <tr><th>順位</th><th>プレイヤー</th><th>カミ</th><th>勝利数</th><th>勝利点</th><th>デッキ返還値</th><th>変換星魂</th><th>合計</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in gsScoreRows" :key="row.seat" :class="{ me: row.isMe, top: row.rank === 1 }">
+              <td class="gm-rank">{{ row.rank }}<span v-if="row.rank===1"> 👑</span></td>
+              <td>P{{ row.seat }} {{ row.name }}<span v-if="row.isMe"> (あなた)</span></td>
+              <td class="gm-score-kami">{{ row.kamiName }}</td>
+              <td>{{ row.wins }}</td>
+              <td>{{ row.winPoints }}</td>
+              <td>{{ row.deckReturn }}</td>
+              <td>{{ row.converted }}</td>
+              <td class="gm-total"><b>{{ row.total }}</b></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="gm-lobby-actions">
+          <button class="gm-btn gm-btn-primary" @click="gsPeekDeck">自分のデッキをビルダーで確認</button>
+          <button class="gm-btn gm-btn-ghost" @click="gsLeave">終了</button>
+        </div>
+      </div>
+    </div>
+  </div><!-- /game-overlay -->
+
   <!-- シールド戦：デッキ詳細プレビュー中の「パックピックに戻る」フローティングボタン -->
   <button v-if="shieldPeek" class="sb-peek-back-btn" @click="closePeekDeckDetail">
     ◀ パックピックに戻る
+  </button>
+
+  <!-- 4人対戦：デッキ詳細プレビュー中の「対戦に戻る」フローティングボタン -->
+  <button v-if="gsPeeking" class="sb-peek-back-btn" @click="gsPeekReturn">
+    ◀ 対戦に戻る
   </button>
 
   <!-- ===== カード画像ホバープレビュー（画像のみ拡大表示） ===== -->
@@ -2294,13 +2889,15 @@
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<!-- Firebase SDK（シールド戦用） -->
+<!-- Firebase SDK（シールド戦 / ゲームセッション用） -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<!-- 追加モジュール -->
+<!-- 追加モジュール（firebase.js は他のFirebase利用JSより先に読むこと） -->
+<script src="firebase.js"></script>
 <script src="pack_generator.js"></script>
 <script src="udonarium_export.js"></script>
 <script src="shield_battle.js"></script>
+<script src="session.js"></script>
 <script>
 /* ===== 埋め込み設定（カードリスト & 画像フォルダ） =====
  * スプレッドシート: https://docs.google.com/spreadsheets/d/1935vem2b.../edit
@@ -2572,6 +3169,24 @@ new Vue({
       showUnused:  false,
       _unsubscribe: null,     // Firebase リスナー解除関数
     },
+
+    /* ===== ゲームセッション（4人 / 壱 神託の儀〜） ===== */
+    gameOpen: false,
+    gs: {
+      view:        "menu",    // menu / lobby / kami / done
+      myName:      "",
+      joinCode:    "",
+      connecting:  false,
+      error:       "",
+      sessionCode: null,
+      playerId:    null,
+      seat:        null,      // 1〜4
+      data:        {},        // Firebase から同期されるセッションデータ
+      _unsubscribe: null,
+    },
+    gsPeeking:   false,       // ドラフト中にデッキ詳細をプレビュー表示中か
+    _gsPeekSaved: null,       // プレビュー前のデッキビルダー状態退避
+    gsSolo:      false,       // ソロテスト（CPU3体を自動操作）モード
   },
   computed: {
     filteredCards() {
@@ -3207,8 +3822,534 @@ new Vue({
       accumulate(this.returned);
       return sums;
     },
+
+    /* ===== ゲームセッション（4人 / 神託の儀） ===== */
+    gsPhaseLabel() {
+      const p = this.gs.data && this.gs.data.phase;
+      return ({ lobby: 'ロビー', kami_select: '壱 神託の儀', kami_done: '神託の儀 完了' })[p] || '—';
+    },
+    gsSeats() {
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      const out = [];
+      for (let n = 1; n <= 4; n++) {
+        const info = seats[n] || null;
+        const kamiCard = (info && info.kamiNo != null && info.kamiNo !== '')
+          ? (this.allKamiCards.find(k => String(k.no) === String(info.kamiNo)) || null)
+          : null;
+        out.push({ seat: n, info, isMe: this.gs.seat === n, kamiCard });
+      }
+      return out;
+    },
+    gsFilledCount() {
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      return [1, 2, 3, 4].filter(n => seats[n] && seats[n].id).length;
+    },
+    gsAllReady() {
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      return [1, 2, 3, 4].every(n => seats[n] && seats[n].id && seats[n].ready);
+    },
+    gsIsMyKamiTurn() {
+      const d = this.gs.data || {};
+      return d.phase === 'kami_select' && d.kami && d.kami.turn === this.gs.seat;
+    },
+    gsKamiTurnSeat() {
+      const d = this.gs.data || {};
+      return (d.kami && d.kami.turn) || null;
+    },
+    gsKamiTurnName() {
+      const d = this.gs.data || {};
+      const t = d.kami && d.kami.turn;
+      const info = t && d.seats && d.seats[t];
+      return info ? info.name : ('プレイヤー' + (t || ''));
+    },
+    gsMyOfferCards() {
+      const d = this.gs.data || {};
+      const seat = this.gs.seat;
+      if (!d.kami || !d.kami.offer || !d.kami.offer[seat]) return [];
+      const raw = d.kami.offer[seat];
+      const nos = Array.isArray(raw)
+        ? raw
+        : Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k]);
+      return nos.map(no => this.allKamiCards.find(k => String(k.no) === String(no))).filter(Boolean);
+    },
+    gsMyKamiCard() {
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      const info = seats[this.gs.seat];
+      if (!info || info.kamiNo == null || info.kamiNo === '') return null;
+      return this.allKamiCards.find(k => String(k.no) === String(info.kamiNo)) || null;
+    },
+
+    /* ===== 選別の儀（ドラフト） ===== */
+    gsDraft() { return (this.gs.data && this.gs.data.draft) || null; },
+    gsDraftRound() { return this.gsDraft ? this.gsDraft.round : null; },
+    gsDraftTarget() {
+      const d = this.gsDraft;
+      return d ? d.numSets * d.bundleSize : 0;
+    },
+    gsDraftRoundPicked() {
+      const d = this.gsDraft;
+      return d ? (d.setIndex || 0) * d.bundleSize + (d.step || 0) : 0;
+    },
+    gsDraftSetLabel() {
+      const d = this.gsDraft;
+      return d ? `セット ${(d.setIndex || 0) + 1}/${d.numSets}` : '';
+    },
+    gsMyPackCards() {
+      const d = this.gsDraft;
+      if (!d || !d.packs) return [];
+      const raw = d.packs[this.gs.seat];
+      const nos = Array.isArray(raw) ? raw
+        : (raw ? Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k]) : []);
+      return nos.map(no => this.cardByNo[String(no)]).filter(Boolean);
+    },
+    gsIPickedThisStep() {
+      const d = this.gsDraft;
+      return !!(d && d.picks && d.picks[this.gs.seat] != null);
+    },
+    gsDraftPickedCount() {
+      const d = this.gsDraft;
+      if (!d || !d.picks) return 0;
+      return [1, 2, 3, 4].filter(n => d.picks[n] != null).length;
+    },
+    gsDraftSeatStatus() {
+      const d = this.gsDraft;
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      return [1, 2, 3, 4].map(n => ({
+        seat: n,
+        name: seats[n] ? seats[n].name : ('P' + n),
+        picked: !!(d && d.picks && d.picks[n] != null),
+        isMe: this.gs.seat === n,
+      }));
+    },
+    gsMyDraftDeckCards() {
+      const decks = (this.gs.data && this.gs.data.decks) || {};
+      const raw = decks[this.gs.seat];
+      const nos = Array.isArray(raw) ? raw
+        : (raw ? Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k]) : []);
+      return nos.map(no => this.cardByNo[String(no)]).filter(Boolean);
+    },
+
+    /* ===== 深化の刻 / 終戦集計 ===== */
+    gsMyInsight() {
+      const ins = (this.gs.data && this.gs.data.insight) || {};
+      return ins[this.gs.seat] || 0;
+    },
+    gsMyConvertedCards() {
+      const conv = (this.gs.data && this.gs.data.converted) || {};
+      return this.gsNorm(conv[this.gs.seat]).map(no => this.cardByNo[String(no)]).filter(Boolean);
+    },
+    gsBloomOfferCards() {
+      const bo = (this.gs.data && this.gs.data.bloomOffer) || {};
+      return this.gsNorm(bo[this.gs.seat]).map(no => this.cardByNo[String(no)]).filter(Boolean);
+    },
+    gsMyDeepenDone() {
+      const dd = (this.gs.data && this.gs.data.deepenDone) || {};
+      return !!dd[this.gs.seat];
+    },
+    gsDeepenSeatStatus() {
+      const dd = (this.gs.data && this.gs.data.deepenDone) || {};
+      const ins = (this.gs.data && this.gs.data.insight) || {};
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      return [1, 2, 3, 4].map(n => ({
+        seat: n, name: seats[n] ? seats[n].name : ('P' + n),
+        done: !!dd[n], insight: ins[n] || 0, isMe: this.gs.seat === n,
+      }));
+    },
+    gsScoreRows() {
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      const rows = [1, 2, 3, 4].map(n => {
+        const ret = this.seatReturn(n);
+        const wins = this.seatWinCount(n);   // 記録した星戦結果から自動集計
+        const kamiCard = this.seatKamiCard(n);
+        const winPoints = wins * 10;
+        return {
+          seat: n, name: seats[n] ? seats[n].name : ('P' + n), isMe: this.gs.seat === n,
+          kamiName: kamiCard ? this.fullName(kamiCard) : '—',
+          wins, winPoints, deckReturn: ret.deck, converted: ret.converted,
+          total: winPoints + ret.deck + ret.converted,
+        };
+      });
+      rows.sort((a, b) => b.total - a.total || b.wins - a.wins);
+      let rank = 0, prevKey = null;
+      rows.forEach((r, i) => {
+        const key = r.total + '|' + r.wins;
+        if (key !== prevKey) { rank = i + 1; prevKey = key; }
+        r.rank = rank;
+      });
+      return rows;
+    },
+
+    /* ===== 星戦（結果記録） ===== */
+    gsRound() { return (this.gs.data && this.gs.data.round) || 1; },
+    gsBattle() {
+      const r = this.gsRound;
+      return (this.gs.data && this.gs.data.battles && this.gs.data.battles[r]) || { t1Winner: null, t2Winner: null };
+    },
+    gsBattleTables() {
+      const r = this.gsRound;
+      const pairs = (typeof PAIRINGS !== 'undefined' && PAIRINGS[r]) ? PAIRINGS[r] : [[1, 2], [3, 4]];
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      const b = this.gsBattle;
+      const nm = (seat) => seats[seat] ? seats[seat].name : ('P' + seat);
+      return [0, 1].map(i => ({
+        table: i + 1,
+        players: pairs[i].map(seat => ({ seat, name: nm(seat), isMe: this.gs.seat === seat })),
+        winner: i === 0 ? b.t1Winner : b.t2Winner,
+        hasMe: pairs[i].map(String).includes(String(this.gs.seat)),
+      }));
+    },
+    gsBattleBothRecorded() {
+      const b = this.gsBattle;
+      return b.t1Winner != null && b.t2Winner != null;
+    },
   },
   methods: {
+    /* ある席の星戦勝利数（記録済みの全ラウンドから集計） */
+    seatWinCount(seat) {
+      const battles = (this.gs.data && this.gs.data.battles) || {};
+      if (typeof PAIRINGS === 'undefined') return 0;
+      let w = 0;
+      for (let r = 1; r <= 3; r++) {
+        if (battles[r] && battleWonBySeat(battles[r], PAIRINGS[r], seat)) w++;
+      }
+      return w;
+    },
+    /* ===== ゲームセッション（4人 / ロビー〜神託の儀） ===== */
+    openGame() {
+      this.gameOpen = true;
+      if (!this.gs.sessionCode) this.gs.view = 'menu';
+    },
+    closeGame() {
+      this.gameOpen = false;
+      this.hideCardHover();   // 残ったホバープレビューを消す
+    },
+    gsResetState() {
+      this.hideCardHover();   // 残ったホバープレビューを消す
+      this.gsPeeking = false;
+      this._gsPeekSaved = null;
+      this.gsSolo = false;
+      if (this.gs._unsubscribe) { try { this.gs._unsubscribe(); } catch (e) {} }
+      this.gs._unsubscribe = null;
+      this.gs.view        = 'menu';
+      this.gs.sessionCode = null;
+      this.gs.playerId    = null;
+      this.gs.seat        = null;
+      this.gs.data        = {};
+      this.gs.error       = '';
+      this.gs.connecting  = false;
+    },
+    gsSubscribe(code) {
+      if (this.gs._unsubscribe) { try { this.gs._unsubscribe(); } catch (e) {} }
+      this.gs._unsubscribe = subscribeSession(code, (data) => {
+        this.gs.data = data || {};
+        if (!data) return;  // セッションが削除された
+        if (data.phase === 'lobby')            this.gs.view = 'lobby';
+        else if (data.phase === 'kami_select') this.gs.view = 'kami';
+        else if (data.phase === 'kami_done')   this.gs.view = 'done';
+        else if (data.phase === 'draft')       this.gs.view = 'draft';
+        else if (data.phase === 'draft_done')  this.gs.view = 'draft_done';
+        else if (data.phase === 'deepen')      this.gs.view = 'deepen';
+        else if (data.phase === 'battle')      this.gs.view = 'battle';
+        else if (data.phase === 'scoring')     this.gs.view = 'scoring';
+        // 自分の番が来てカミ候補が未配布なら配布する
+        if (data.phase === 'kami_select' && data.kami && data.kami.turn === this.gs.seat) {
+          const offer = data.kami.offer && data.kami.offer[this.gs.seat];
+          if (!offer) {
+            const list = this.allKamiCards.map(k => String(k.no));
+            if (list.length) dealKamiOffer(this.gs.sessionCode, this.gs.seat, list);
+          }
+        }
+        // ソロテスト：CPU席（2〜4）を自動操作
+        if (this.gsSolo && this.gs.seat === 1) this.gsDriveBots(data);
+      });
+    },
+    async gsCreate() {
+      if (this.gs.connecting) return;
+      this.gs.error = '';
+      if (!this.allKamiCards.length) { this.gs.error = 'カミデータの読み込みが完了していません'; return; }
+      this.gs.connecting = true;
+      try {
+        const { sessionCode, playerId, seat } = await createSession(this.gs.myName);
+        this.gs.sessionCode = sessionCode;
+        this.gs.playerId    = playerId;
+        this.gs.seat        = seat;
+        this.gs.view        = 'lobby';
+        this.gsSubscribe(sessionCode);
+      } catch (e) {
+        this.gs.error = e.message || 'セッション作成に失敗しました';
+      } finally {
+        this.gs.connecting = false;
+      }
+    },
+    async gsJoin() {
+      if (this.gs.connecting) return;
+      this.gs.error = '';
+      const code = (this.gs.joinCode || '').trim().toUpperCase();
+      if (!code) { this.gs.error = 'コードを入力してください'; return; }
+      if (!this.allKamiCards.length) { this.gs.error = 'カミデータの読み込みが完了していません'; return; }
+      this.gs.connecting = true;
+      try {
+        const { playerId, seat } = await joinSession(code, this.gs.myName);
+        this.gs.sessionCode = code;
+        this.gs.playerId    = playerId;
+        this.gs.seat        = seat;
+        this.gs.view        = 'lobby';
+        this.gsSubscribe(code);
+      } catch (e) {
+        this.gs.error = e.message || '参加に失敗しました';
+      } finally {
+        this.gs.connecting = false;
+      }
+    },
+    async gsToggleReady() {
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      const me = seats[this.gs.seat];
+      if (!me) return;
+      if (me.ready) await unsetSeatReady(this.gs.sessionCode, this.gs.seat);
+      else          await setSeatReady(this.gs.sessionCode, this.gs.seat);
+    },
+    // ソロテスト：CPU3体と即開始（自分は席1。CPUは自動で進行）
+    async gsSoloTest() {
+      if (this.gs.connecting) return;
+      this.gs.error = '';
+      if (!this.allKamiCards.length) { this.gs.error = 'カミデータの読み込みが完了していません'; return; }
+      this.gs.connecting = true;
+      try {
+        const { sessionCode, playerId, seat } = await createSession(this.gs.myName || 'あなた');
+        this.gs.sessionCode = sessionCode;
+        this.gs.playerId    = playerId;
+        this.gs.seat        = seat;
+        this.gsSolo         = true;
+        this.gs.view        = 'lobby';
+        this.gsSubscribe(sessionCode);                 // 先に購読（bot自動操作を有効化）
+        await joinSession(sessionCode, 'CPU-2');
+        await joinSession(sessionCode, 'CPU-3');
+        await joinSession(sessionCode, 'CPU-4');
+        await setSeatReady(sessionCode, 2);
+        await setSeatReady(sessionCode, 3);
+        await setSeatReady(sessionCode, 4);
+        await setSeatReady(sessionCode, 1);            // 自分がreadyで神託の儀へ
+      } catch (e) {
+        this.gs.error = e.message || 'ソロテスト開始に失敗しました';
+        this.gsSolo = false;
+      } finally {
+        this.gs.connecting = false;
+      }
+    },
+    // CPU席（2〜4）の自動操作（購読のたびに呼ばれる。各処理はトランザクションで冪等）
+    gsDriveBots(data) {
+      if (!data) return;
+      const code = this.gs.sessionCode;
+      const norm = (raw) => this.gsNorm(raw);
+      const bots = [2, 3, 4];
+      if (data.phase === 'kami_select' && data.kami) {
+        const t = data.kami.turn;
+        if (bots.includes(t)) {
+          const offer = data.kami.offer && data.kami.offer[t];
+          if (!offer) {
+            const list = this.allKamiCards.map(k => String(k.no));
+            dealKamiOffer(code, t, list);
+          } else {
+            pickKami(code, t, String(norm(offer)[0]));
+          }
+        }
+      } else if (data.phase === 'draft' && data.draft) {
+        const d = data.draft;
+        for (const seat of bots) {
+          if (!(d.picks && d.picks[seat] != null)) {
+            const pack = norm(d.packs && d.packs[seat]);
+            if (pack.length) draftPick(code, seat, String(pack[0]));
+          }
+        }
+      } else if (data.phase === 'deepen') {
+        const dd = data.deepenDone || {};
+        for (const seat of bots) {
+          if (!dd[seat]) deepenSetDone(code, seat, true);   // CPUは即完了
+        }
+      }
+    },
+    async gsConfirmKami(card) {
+      if (!this.gsIsMyKamiTurn) return;
+      if (!confirm(`「${this.fullName(card)}」をあなたのカミにします。よろしいですか？`)) return;
+      this.hideCardHover();   // 候補が消えるとき mouseleave が発火しない対策
+      try {
+        await pickKami(this.gs.sessionCode, this.gs.seat, String(card.no));
+      } catch (e) {
+        alert('カミの確定に失敗しました: ' + (e.message || e));
+      }
+    },
+    gsCopyCode() {
+      if (!this.gs.sessionCode) return;
+      try { navigator.clipboard.writeText(this.gs.sessionCode); } catch (e) {}
+    },
+    gsLeave() {
+      if (!confirm('セッションから退出しますか？')) return;
+      this.gsResetState();
+    },
+    // 自分の選んだカミをデッキビルダーに反映して閉じる
+    gsApplyMyKami() {
+      const card = this.gsMyKamiCard;
+      if (card) { this.selectedKami = card; this.gameOpen = false; this.hideCardHover(); }
+    },
+
+    /* ===== 選別の儀（ドラフト） ===== */
+    // 指定ラウンドのドラフト対象カードno（トークン・カミ・ジェネシス・創 を除外）
+    draftPoolNos(round) {
+      return this.allCards
+        .filter(c => isEligible(c) && Number(c.round) === round)
+        .map(c => String(c.no));
+    },
+    // ホストが選別の儀（ラウンド1）を開始
+    async gsStartDraft() {
+      const pool = this.draftPoolNos(1);
+      const need = 120;
+      if (pool.length !== need) {
+        if (!confirm(`ラウンド1の対象カードが${pool.length}枚です（想定${need}枚）。\nこのまま開始しますか？（束に過不足が出る可能性があります）`)) return;
+      }
+      try {
+        await startDraft(this.gs.sessionCode, 1, pool);
+      } catch (e) {
+        alert('ドラフト開始に失敗しました: ' + (e.message || e));
+      }
+    },
+    async gsDraftPick(card) {
+      if (this.gsIPickedThisStep) return;
+      this.hideCardHover();
+      try {
+        await draftPick(this.gs.sessionCode, this.gs.seat, String(card.no));
+      } catch (e) {
+        alert('カードの選択に失敗しました: ' + (e.message || e));
+      }
+    },
+    // ドラフトしたデッキ＋カミをデッキビルダーへ反映して閉じる
+    gsApplyMyDeck() {
+      const newDeck = {};
+      for (const c of this.gsMyDraftDeckCards) {
+        const no = String(c.no);
+        newDeck[no] = (newDeck[no] || 0) + 1;
+      }
+      this.deck = newDeck;
+      this.returned = {};
+      this.selectedKami = this.gsMyKamiCard || this.selectedKami;
+      this.deckExpanded = true;
+      this.hideCardHover();
+      this.gameOpen = false;
+    },
+    // ドラフト中：現在のデッキ詳細をデッキビルダーで一時プレビュー
+    gsPeekDeck() {
+      // 現在のビルダー状態を退避
+      this._gsPeekSaved = {
+        deck: this.deck, returned: this.returned, selectedKami: this.selectedKami,
+        deckExpanded: this.deckExpanded, returnModeActive: this.returnModeActive,
+      };
+      // これまでにドラフトしたカードを一時的に読み込む
+      const newDeck = {};
+      for (const c of this.gsMyDraftDeckCards) {
+        const no = String(c.no);
+        newDeck[no] = (newDeck[no] || 0) + 1;
+      }
+      this.deck = newDeck;
+      this.returned = {};
+      this.selectedKami = this.gsMyKamiCard || this.selectedKami;
+      this.returnModeActive = false;
+      this.deckExpanded = true;
+      this.hideCardHover();
+      this.gameOpen = false;
+      this.gsPeeking = true;
+    },
+    // プレビューを終えてドラフト画面へ戻る（退避状態を復元）
+    gsPeekReturn() {
+      const sv = this._gsPeekSaved;
+      if (sv) {
+        this.deck = sv.deck;
+        this.returned = sv.returned;
+        this.selectedKami = sv.selectedKami;
+        this.deckExpanded = sv.deckExpanded;
+        this.returnModeActive = sv.returnModeActive;
+      }
+      this._gsPeekSaved = null;
+      this.gsPeeking = false;
+      this.hideCardHover();
+      this.gameOpen = true;
+    },
+
+    /* ===== 深化の刻 / 終戦集計 ===== */
+    // Firebase配列の正規化（[] か {0:..} を配列に）
+    gsNorm(raw) {
+      if (Array.isArray(raw)) return raw;
+      if (raw && typeof raw === 'object') {
+        return Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k]);
+      }
+      return [];
+    },
+    seatKamiCard(seat) {
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      const info = seats[seat];
+      if (!info || info.kamiNo == null || info.kamiNo === '') return null;
+      return this.allKamiCards.find(k => String(k.no) === String(info.kamiNo)) || null;
+    },
+    // 席の返還値（デッキ分・変換分）。カミがヤマタノオロチなら龍レガシー+1。
+    seatReturn(seat) {
+      const decks = (this.gs.data && this.gs.data.decks) || {};
+      const conv  = (this.gs.data && this.gs.data.converted) || {};
+      const kamiCard = this.seatKamiCard(seat);
+      const orochi = !!(kamiCard && kamiCard.type === 'ヤマタノオロチ');
+      const sumNos = (raw) => {
+        let r = 0;
+        for (const no of this.gsNorm(raw)) {
+          const c = this.cardByNo[String(no)];
+          if (!c) continue;
+          let v = parseInt(c.return, 10);
+          if (isNaN(v)) continue;
+          if (orochi && c.category === 'レガシー' && c.type === '龍') v += 1;
+          r += v;
+        }
+        return r;
+      };
+      return { deck: sumNos(decks[seat]), converted: sumNos(conv[seat]) };
+    },
+    genesisPoolNos() {
+      // ジェネシス = 色「創」のカード（全10枚）
+      return this.allCards.filter(c => c.color === '創').map(c => String(c.no));
+    },
+    async gsStartDeepen() {
+      try { await startDeepen(this.gs.sessionCode); }
+      catch (e) { alert('深化の刻の開始に失敗しました: ' + (e.message || e)); }
+    },
+    async gsReflect(card) {
+      if (this.gsMyInsight < 1 || this.gsMyDeepenDone) return;
+      if (!confirm(`「${this.fullName(card)}」を星魂に変換します（デッキから除外・見識1消費）。よろしいですか？`)) return;
+      this.hideCardHover();
+      try { await deepenReflect(this.gs.sessionCode, this.gs.seat, String(card.no)); }
+      catch (e) { alert('省察に失敗しました: ' + (e.message || e)); }
+    },
+    async gsBloomDraw() {
+      if (this.gsMyInsight < 3 || this.gsMyDeepenDone) return;
+      try { await deepenBloomDraw(this.gs.sessionCode, this.gs.seat, this.genesisPoolNos()); }
+      catch (e) { alert('理の開花に失敗しました: ' + (e.message || e)); }
+    },
+    async gsBloomPick(card) {
+      this.hideCardHover();
+      try { await deepenBloomPick(this.gs.sessionCode, this.gs.seat, String(card.no)); }
+      catch (e) { alert('カード追加に失敗しました: ' + (e.message || e)); }
+    },
+    async gsToggleDeepenDone() {
+      try { await deepenSetDone(this.gs.sessionCode, this.gs.seat, !this.gsMyDeepenDone); }
+      catch (e) { alert(e.message || e); }
+    },
+    /* 星戦：卓の勝者を記録（ホスト操作） */
+    async gsRecordBattle(table, winnerSeat) {
+      try { await recordBattleResult(this.gs.sessionCode, table, winnerSeat); }
+      catch (e) { alert(e.message || e); }
+    },
+    /* 星戦：結果記録後に次へ進む（ホスト操作） */
+    async gsAdvanceAfterBattle() {
+      const r = this.gsRound;
+      const nextPool = r < 3 ? this.draftPoolNos(r + 1) : [];
+      try { await advanceAfterBattle(this.gs.sessionCode, nextPool); }
+      catch (e) { alert(e.message || e); }
+    },
+
     async reloadAll() {
       await Promise.all([this.loadCards(), this.loadDriveImages(), this.loadKamiCards(), this.loadKamiImages()]);
     },

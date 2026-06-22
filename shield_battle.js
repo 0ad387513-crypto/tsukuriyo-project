@@ -29,18 +29,10 @@
 "use strict";
 
 /* ================================================================== */
-/* Firebase 設定（★ここを自分のプロジェクトの値に変更★）               */
+/* Firebase 設定 / getDb / fbArr / generateRoomCode は firebase.js に  */
+/* 移動しました（シールド戦とゲームセッションで共用）。                  */
+/* このファイルは firebase.js の後に読み込むこと。                      */
 /* ================================================================== */
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyBW_NaZch7gcBH_0ALZ74GbyRQ1-8gOZaY",
-  authDomain:        "tsukuriyo-4625d.firebaseapp.com",
-  databaseURL:       "https://tsukuriyo-4625d-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:         "tsukuriyo-4625d",
-  storageBucket:     "tsukuriyo-4625d.firebasestorage.app",
-  messagingSenderId: "53128324180",
-  appId:             "1:53128324180:web:49a22c72b26fe4d60939c1",
-  measurementId:     "G-H5D1GNH6DP",
-};
 
 /* ================================================================== */
 /* 定数                                                                */
@@ -51,31 +43,7 @@ const DECK_SIZE       = 40;  // 最終デッキ枚数（48枚取得後8枚除外
 const CARDS_PER_PACK  = 12;
 const KAMI_CANDIDATES = 10;  // カミ候補数
 
-/* ================================================================== */
-/* Firebase 配列ユーティリティ                                          */
-/* Firebase は空配列を null、通常配列を {0:v,1:v,...} に変換するため    */
-/* .length や spread が正しく動かない。この関数で正規化する。           */
-/* ================================================================== */
-function fbArr(v) {
-  if (!v) return [];
-  if (Array.isArray(v)) return v;
-  // Firebase が {"0":x,"1":y,...} 形式で返す場合
-  return Object.keys(v)
-    .sort((a, b) => Number(a) - Number(b))
-    .map(k => v[k]);
-}
-
-/* ================================================================== */
-/* 部屋コード生成                                                       */
-/* ================================================================== */
-function generateRoomCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 紛らわしい文字を除外
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
+/* fbArr / generateRoomCode は firebase.js へ移動（共用ユーティリティ） */
 
 /* ================================================================== */
 /* ルーム状態マシン                                                     */
@@ -89,18 +57,7 @@ function generateRoomCode() {
 /*   complete     → 完了（ユドナリウム出力可能）                        */
 /* ================================================================== */
 
-/* ------------------------------------------------------------------ */
-/* Firebase 初期化（グローバルに一度だけ）                              */
-/* ------------------------------------------------------------------ */
-let _db = null;
-function getDb() {
-  if (_db) return _db;
-  if (!firebase.apps.length) {
-    firebase.initializeApp(FIREBASE_CONFIG);
-  }
-  _db = firebase.database();
-  return _db;
-}
+/* getDb() は firebase.js へ移動 */
 
 /* ------------------------------------------------------------------ */
 /* 部屋の作成                                                           */
@@ -370,6 +327,5 @@ if (typeof module !== "undefined") {
     createRoom, joinRoom, setReady, startPicking,
     pickPack, finalizeExclusion, selectKami,
     subscribeRoom, computeDeck, selectKamiCandidates,
-    generateRoomCode,
   };
 }
