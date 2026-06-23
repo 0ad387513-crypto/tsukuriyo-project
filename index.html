@@ -1806,32 +1806,20 @@
   .game-active   .deck-grid-btn-m,
   .game-active   .deck-grid-btn-p { display: none !important; }
 
-  /* ===== 対戦画面（Phase 1 静的レイアウト v3：PPTX案準拠） =====
-     レイアウト構造:
-       [Main 1fr | Side 150px]
-       Main:
-         Row1 top: [手札相手 1fr | Stats相手 auto | カミ相手 auto | レリック相手 2fr]
-         Row2 opp legacy (1fr 全幅)
-         Row3 self legacy (1fr 全幅)
-         Row4 bot: [レリック自分 2fr | カミ自分 auto | Stats自分 auto | 手札自分 1fr]
-       Side:
-         Top: opp デッキ・墓地・崩壊（3列）
-         Mid: ターン終了 + ターン数
-         Bot: self デッキ・墓地・崩壊（3列）
+  /* ===== 対戦画面（Phase 1 静的レイアウト v4） =====
+     - 横スクロールなし（grid + minmax(0, 1fr) で確実に収める）
+     - カミは中央配置・1:1イラスト・ステータスはその真下
+     - 手札は7枚同時表示（card width = (zone - gaps) / 7）
+     - DGC（デッキ/墓地/崩壊）はアイコンと枚数のみ・コンパクト
   */
   .battle-overlay {
     position: fixed; inset: 0; z-index: 250;
     background: #0a0c14;
     display: flex; flex-direction: column;
     overflow: hidden;
-    --cw: 90px;
-    --ch: 126px;
-    --ow: 40px;
-    --oh: 56px;
-    --kw: 120px;
-    --kh: 168px;
-    --status-w: 220px;
-    --side-w: 168px;
+    --kw: 132px;       /* カミイラスト幅 = 高さ (1:1) */
+    --side-w: 108px;   /* 右サイド列幅（DGC+ターン） */
+    --status-w: 200px; /* カミ下のステータスパネル幅 */
   }
   .battle-header {
     display: flex; align-items: center; gap: 10px;
@@ -1845,38 +1833,47 @@
   }
   .battle-header .spacer { flex: 1; }
 
-  /* 2カラム：main + side */
+  /* 2カラム：main + side（横スクロールなし） */
   .battle-board {
     flex: 1; display: grid;
-    grid-template-columns: 1fr var(--side-w);
-    gap: 6px;
-    padding: 6px 10px;
+    grid-template-columns: minmax(0, 1fr) var(--side-w);
+    gap: 4px;
+    padding: 4px 6px;
     background: #11141c;
-    overflow: auto;
+    overflow: hidden;
     min-height: 0;
   }
   .battle-main {
-    display: grid; gap: 6px; min-width: 0;
+    display: grid; gap: 4px; min-width: 0;
     grid-template-rows: auto 1fr 1fr auto;
   }
   .battle-side {
-    display: grid; gap: 6px;
-    grid-template-rows: 1fr auto 1fr;
+    display: grid; gap: 4px;
+    grid-template-rows: auto 1fr auto;
+    min-width: 0;
   }
 
-  /* Top行（相手側）と Bot行（自分側） */
-  .battle-row-opp-top {
-    display: grid; gap: 6px;
-    grid-template-columns: minmax(0, 1fr) auto auto minmax(0, 2fr);
-    align-items: center;
-  }
-  .battle-row-self-bot {
-    display: grid; gap: 6px;
-    grid-template-columns: minmax(0, 2fr) auto auto minmax(0, 1fr);
-    align-items: center;
+  /* Top行（相手）と Bot行（自分） — 中央カラム中心の3分割 */
+  .battle-row-opp-top, .battle-row-self-bot {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--status-w) minmax(0, 1fr);
+    gap: 6px;
+    align-items: stretch;
+    min-height: 0;
   }
   /* レガシー全幅行 */
-  .battle-row-legacy { display: grid; grid-template-columns: 1fr; }
+  .battle-row-legacy {
+    display: grid; grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  /* 中央カラム：カミ＋その下にステータス縦積み */
+  .battle-center-col {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 4px;
+    min-width: 0;
+  }
+  /* 自分側は下から積む（カミ→ステータスは縦並びだが画面下に近いほど Stats は下） */
 
   /* ===== ゾーン共通 ===== */
   .battle-zone {
@@ -1884,19 +1881,10 @@
     color: #aab; font-size: 11px; padding: 4px;
     position: relative;
     display: flex; align-items: center; justify-content: center;
+    min-width: 0;
   }
-  .battle-zone.field {
-    height: 100%;
-    min-height: calc(var(--ch) + 12px);
-    align-items: stretch; padding: 4px 6px;
-  }
-  .battle-zone.hand-self {
-    min-height: calc(var(--ch) + 12px);
-    padding: 4px 6px;
-  }
-  .battle-zone.hand-opp {
-    min-height: calc(var(--oh) + 8px);
-    padding: 4px 6px;
+  .battle-zone.field, .battle-zone.hand-self, .battle-zone.hand-opp {
+    height: 100%; align-items: stretch; padding: 4px 6px;
   }
   .battle-zone-label {
     color: #788; font-size: 10px;
@@ -1908,12 +1896,32 @@
     position: absolute; top: 4px; left: 8px; font-size: 9px;
   }
 
-  /* ===== カード ===== */
+  /* ===== カードを「枠内でN枚並ぶようリサイズ」する汎用クラス ===== */
+  .battle-card-row {
+    display: flex; gap: 4px; width: 100%; height: 100%;
+    align-items: flex-end; min-width: 0;
+    padding: 16px 4px 4px;   /* 上はラベル分余白 */
+  }
+  /* デフォルト：最大7枚並べる前提（手札/レリック共通） */
+  .battle-card-row .battle-card {
+    flex: 1 1 0; min-width: 0; max-width: calc((100% - 24px) / 7);
+    width: auto; aspect-ratio: 744 / 1039; height: auto;
+    align-self: center;
+  }
+  /* 相手手札（伏せ・小さく、最大7枚程度） */
+  .battle-card-row.opp-back .battle-card-mini {
+    flex: 1 1 0; min-width: 0; max-width: calc((100% - 24px) / 7);
+    width: auto; aspect-ratio: 744 / 1039; height: auto;
+    align-self: center;
+    background: #1a1d2a;
+    background-image: repeating-linear-gradient(45deg, #2a2f3d 0 4px, #1a1d2a 4px 8px);
+    border: 1px solid #4a4f5d; border-radius: 2px;
+  }
+
   .battle-card {
-    width: var(--cw); height: var(--ch);
     background: #2a2f3d center/cover no-repeat;
     border: 1px solid #4a4f5d; border-radius: 4px;
-    flex-shrink: 0; cursor: pointer;
+    cursor: pointer;
     transition: transform 0.12s, border-color 0.12s;
   }
   .battle-card:hover { transform: translateY(-3px); border-color: #dc9f50; }
@@ -1922,98 +1930,87 @@
     background-image: repeating-linear-gradient(45deg, #2a2f3d 0 6px, #1a1d2a 6px 12px);
   }
   .battle-card-mini {
-    width: var(--ow); height: var(--oh);
     background: #1a1d2a;
     background-image: repeating-linear-gradient(45deg, #2a2f3d 0 5px, #1a1d2a 5px 10px);
     border: 1px solid #4a4f5d; border-radius: 2px;
-    flex-shrink: 0;
   }
-  .battle-card-row {
-    display: flex; gap: 5px; flex-wrap: nowrap; width: 100%; padding: 2px;
-    align-items: flex-end; overflow-x: auto; overflow-y: hidden;
-  }
-  /* スクロール非表示 */
-  .battle-card-row::-webkit-scrollbar { height: 4px; }
-  .battle-card-row::-webkit-scrollbar-thumb { background: #3a3f4d; }
 
-  /* ===== カミ（大型ポートレート） ===== */
+  /* ===== カミ（1:1 イラスト、円形/角丸） ===== */
   .kami-portrait {
-    width: var(--kw); height: var(--kh);
+    width: var(--kw); height: var(--kw);   /* 1:1 */
     background: #1a1d28 center/cover no-repeat;
     border: 3px solid #dc9f50;
-    border-radius: 8px;
+    border-radius: 50%;
     box-shadow: 0 0 16px rgba(220, 159, 80, 0.45);
     cursor: pointer;
     position: relative;
     transition: box-shadow 0.15s, transform 0.12s;
     flex-shrink: 0;
   }
-  .kami-portrait.opp { cursor: default; }
-  .kami-portrait:hover { box-shadow: 0 0 28px rgba(220, 159, 80, 0.85); }
-  .kami-portrait.self:hover { transform: translateY(-2px); }
+  .kami-portrait:hover {
+    box-shadow: 0 0 28px rgba(220, 159, 80, 0.9);
+    transform: translateY(-2px);
+  }
   .kami-portrait .kami-placeholder {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     font-size: 13px; color: #d8c89a; font-weight: 700;
   }
-  .kami-portrait .kami-action-hint {
-    position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%);
-    font-size: 10px; color: #dc9f50; white-space: nowrap;
-    background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 8px;
-    border: 1px solid rgba(220, 159, 80, 0.5);
-    opacity: 0; pointer-events: none; transition: opacity 0.12s;
-  }
-  .kami-portrait.self:hover .kami-action-hint { opacity: 1; }
 
-  /* ===== ステータスパネル ===== */
+  /* ===== ステータスパネル（カミの下、コンパクト） ===== */
   .battle-status {
-    display: flex; flex-direction: column; gap: 3px;
-    font-size: 12px; color: #cde; padding: 6px 8px;
+    display: flex; flex-direction: column; gap: 2px;
+    font-size: 11px; color: #cde; padding: 4px 8px;
     white-space: nowrap;
-    background: rgba(20, 24, 36, 0.6);
+    background: rgba(20, 24, 36, 0.7);
     border: 1px solid #2a3548; border-radius: 5px;
-    min-width: 140px;
+    width: 100%;
   }
-  .battle-status.self { min-width: var(--status-w); }
   .battle-status .stat-row {
-    display: flex; align-items: center; gap: 4px;
+    display: flex; align-items: center; gap: 3px;
+    justify-content: center;
   }
   .battle-status .stat-label {
-    color: #cde; min-width: 70px; font-size: 11px;
+    color: #cde; font-size: 11px; min-width: 78px;
   }
-  .battle-status .stat-life    { color: #f88; font-weight: 700; min-width: 22px; text-align: center; font-size: 14px; }
-  .battle-status .stat-mana    { color: #6c9; font-weight: 700; min-width: 22px; text-align: center; font-size: 14px; }
-  .battle-status .stat-tenryoku{ color: #8df; font-weight: 700; min-width: 22px; text-align: center; font-size: 14px; }
+  .battle-status .stat-life    { color: #f88; font-weight: 700; min-width: 18px; text-align: center; font-size: 13px; }
+  .battle-status .stat-mana    { color: #6c9; font-weight: 700; min-width: 18px; text-align: center; font-size: 13px; }
+  .battle-status .stat-tenryoku{ color: #8df; font-weight: 700; min-width: 18px; text-align: center; font-size: 13px; }
   .battle-status .stat-divider { color: #889; }
   .stat-btn {
-    width: 18px; height: 18px; font-size: 12px; line-height: 1; padding: 0;
+    width: 16px; height: 16px; font-size: 11px; line-height: 1; padding: 0;
     background: #2a2f3d; color: #ccc; border: 1px solid #4a4f5d; border-radius: 3px;
     cursor: pointer;
   }
   .stat-btn:hover { background: #3a3f4d; color: #fff; }
 
-  /* ===== サイドカラム（デッキ・墓地・崩壊 + ターン終了） ===== */
+  /* ===== サイドカラム（コンパクト DGC + ターン終了） ===== */
   .dgc-stack {
     background: #1a2030; border: 1px solid #2a3548; border-radius: 6px;
-    padding: 8px 4px; display: flex; flex-direction: row;
-    gap: 4px; justify-content: space-around; align-items: center;
+    padding: 4px 2px; display: flex; flex-direction: column;
+    gap: 4px; align-items: center;
   }
   .dgc-cell {
-    display: flex; flex-direction: column; align-items: center; gap: 2px;
-    cursor: pointer; padding: 4px 2px; border-radius: 4px;
+    display: flex; flex-direction: row; align-items: center; gap: 5px;
+    cursor: pointer; padding: 3px 6px; border-radius: 4px;
     transition: background 0.12s;
+    width: 100%;
   }
-  .dgc-cell.deck { cursor: default; }  /* デッキはクリック不可 */
-  .dgc-cell:not(.deck):hover { background: #2a3548; }
+  .dgc-cell.deck { cursor: pointer; }
+  .dgc-cell:hover { background: #2a3548; }
   .dgc-icon {
-    width: 38px; height: 50px;
-    color: #e8d4a0;
+    width: 22px; height: 28px;
+    color: #e8d4a0; flex-shrink: 0;
   }
-  .dgc-count {
-    font-size: 12px; font-weight: 700; color: #e8d4a0; line-height: 1;
+  .dgc-info {
+    display: flex; flex-direction: column; gap: 0;
+    line-height: 1.1;
   }
   .dgc-name {
     font-size: 9px; color: #788; line-height: 1;
+  }
+  .dgc-count {
+    font-size: 13px; font-weight: 700; color: #e8d4a0; line-height: 1;
   }
   .turn-area {
     display: flex; flex-direction: column;
@@ -2023,19 +2020,34 @@
     border: 1px solid #2a3548; border-radius: 6px;
   }
   .turn-number {
-    font-size: 11px; color: #cde; font-weight: 600; letter-spacing: 0.04em;
+    font-size: 10px; color: #cde; font-weight: 600; letter-spacing: 0.04em;
+    text-align: center;
   }
   .turn-number b { color: #dc9f50; font-size: 16px; margin: 0 2px; }
   .battle-end-turn-btn {
     background: linear-gradient(135deg, #c8742a, #e89a3a);
     border: 1px solid #f8b850; color: #fff;
-    padding: 8px 12px; border-radius: 5px; font-size: 13px;
+    padding: 6px 8px; border-radius: 5px; font-size: 12px;
     font-weight: 700; letter-spacing: 0.04em; cursor: pointer;
     width: 100%;
     transition: background 0.12s, transform 0.08s;
   }
   .battle-end-turn-btn:hover { background: linear-gradient(135deg, #d8843a, #f8aa4a); }
   .battle-end-turn-btn:active { transform: translateY(1px); }
+
+  /* ===== デッキ右クリックメニュー ===== */
+  .deck-context-menu {
+    position: fixed; z-index: 500;
+    background: #1a2030; border: 1px solid #4a4f5d; border-radius: 5px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    padding: 4px; min-width: 110px;
+  }
+  .deck-context-menu button {
+    display: block; width: 100%; padding: 6px 12px;
+    background: transparent; border: none; color: #ddd;
+    text-align: left; font-size: 12px; cursor: pointer; border-radius: 3px;
+  }
+  .deck-context-menu button:hover { background: #2a3548; color: #fff; }
 
   /* 戻るボタン */
   .battle-back-btn {
@@ -2808,37 +2820,40 @@
       <!-- ========== Main エリア（4行） ========== -->
       <div class="battle-main">
 
-        <!-- 相手 上段：手札 | Stats | カミ | レリック -->
+        <!-- 相手 上段：手札 | カミ(中央)+ステータス | レリック -->
         <div class="battle-row-opp-top">
           <div class="battle-zone hand-opp">
             <span class="battle-zone-label">手札(相手)</span>
-            <div class="battle-card-row" style="padding-top:14px;">
+            <div class="battle-card-row opp-back">
               <div v-for="n in battleSample.opp.handCount" :key="'oh'+n" class="battle-card-mini"></div>
             </div>
           </div>
-          <div class="battle-status opp">
-            <div class="stat-row">
-              <span class="stat-label">ライフ/最大値</span>
-              <span class="stat-life">{{ battleSample.opp.life }}</span>
-              <span class="stat-divider">/</span>
-              <span class="stat-life">{{ battleSample.opp.lifeMax }}</span>
+          <div class="battle-center-col">
+            <div class="kami-portrait"
+                 :style="battleSample.opp.kami && kamiIllustrationUrl(battleSample.opp.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.opp.kami) + ')' } : {}"
+                 @click="battleSample.opp.kami && openPreview(battleSample.opp.kami)"
+                 @mouseenter="battleSample.opp.kami && showCardHover(battleSample.opp.kami, $event)"
+                 @mouseleave="hideCardHover">
+              <div v-if="!battleSample.opp.kami" class="kami-placeholder">カミ(相手)</div>
             </div>
-            <div class="stat-row">
-              <span class="stat-label">マナ/最大値</span>
-              <span class="stat-mana">{{ battleSample.opp.mana }}</span>
-              <span class="stat-divider">/</span>
-              <span class="stat-mana">{{ battleSample.opp.manaMax }}</span>
+            <div class="battle-status opp">
+              <div class="stat-row">
+                <span class="stat-label">ライフ/最大値</span>
+                <span class="stat-life">{{ battleSample.opp.life }}</span>
+                <span class="stat-divider">/</span>
+                <span class="stat-life">{{ battleSample.opp.lifeMax }}</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">マナ/最大値</span>
+                <span class="stat-mana">{{ battleSample.opp.mana }}</span>
+                <span class="stat-divider">/</span>
+                <span class="stat-mana">{{ battleSample.opp.manaMax }}</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">天力</span>
+                <span class="stat-tenryoku">{{ battleSample.opp.tenryoku }}</span>
+              </div>
             </div>
-            <div class="stat-row">
-              <span class="stat-label">天力</span>
-              <span class="stat-tenryoku">{{ battleSample.opp.tenryoku }}</span>
-            </div>
-          </div>
-          <div class="kami-portrait opp"
-               :style="battleSample.opp.kami && cardImageUrl(battleSample.opp.kami) ? { backgroundImage: 'url(' + cardImageUrl(battleSample.opp.kami) + ')' } : {}"
-               @mouseenter="battleSample.opp.kami && showCardHover(battleSample.opp.kami, $event)"
-               @mouseleave="hideCardHover">
-            <div v-if="!battleSample.opp.kami" class="kami-placeholder">カミ(相手)</div>
           </div>
           <div class="battle-zone field">
             <span class="battle-zone-label">レリック(相手)</span>
@@ -2855,45 +2870,46 @@
           <div class="battle-zone field"><span class="battle-zone-label">レガシー</span></div>
         </div>
 
-        <!-- 自分 下段：レリック | カミ | Stats | 手札 -->
+        <!-- 自分 下段：レリック | カミ(中央)+ステータス | 手札 -->
         <div class="battle-row-self-bot">
           <div class="battle-zone field">
             <span class="battle-zone-label">レリック</span>
           </div>
-          <div class="kami-portrait self"
-               :style="battleSample.self.kami && cardImageUrl(battleSample.self.kami) ? { backgroundImage: 'url(' + cardImageUrl(battleSample.self.kami) + ')' } : {}"
-               @click="kamiActivate('self')"
-               @mouseenter="battleSample.self.kami && showCardHover(battleSample.self.kami, $event)"
-               @mouseleave="hideCardHover">
-            <div v-if="!battleSample.self.kami" class="kami-placeholder">カミ</div>
-            <div class="kami-action-hint">クリックで神技発動</div>
-          </div>
-          <div class="battle-status self">
-            <div class="stat-row">
-              <span class="stat-label">ライフ/最大値</span>
-              <button class="stat-btn" @click="battleStat('self','life',-1)">−</button>
-              <span class="stat-life">{{ battleSample.self.life }}</span>
-              <button class="stat-btn" @click="battleStat('self','life',+1)">+</button>
-              <span class="stat-divider">/</span>
-              <button class="stat-btn" @click="battleStat('self','lifeMax',-1)">−</button>
-              <span class="stat-life">{{ battleSample.self.lifeMax }}</span>
-              <button class="stat-btn" @click="battleStat('self','lifeMax',+1)">+</button>
+          <div class="battle-center-col">
+            <div class="kami-portrait"
+                 :style="battleSample.self.kami && kamiIllustrationUrl(battleSample.self.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.self.kami) + ')' } : {}"
+                 @click="battleSample.self.kami && openPreview(battleSample.self.kami)"
+                 @mouseenter="battleSample.self.kami && showCardHover(battleSample.self.kami, $event)"
+                 @mouseleave="hideCardHover">
+              <div v-if="!battleSample.self.kami" class="kami-placeholder">カミ</div>
             </div>
-            <div class="stat-row">
-              <span class="stat-label">マナ/最大値</span>
-              <button class="stat-btn" @click="battleStat('self','mana',-1)">−</button>
-              <span class="stat-mana">{{ battleSample.self.mana }}</span>
-              <button class="stat-btn" @click="battleStat('self','mana',+1)">+</button>
-              <span class="stat-divider">/</span>
-              <button class="stat-btn" @click="battleStat('self','manaMax',-1)">−</button>
-              <span class="stat-mana">{{ battleSample.self.manaMax }}</span>
-              <button class="stat-btn" @click="battleStat('self','manaMax',+1)">+</button>
-            </div>
-            <div class="stat-row">
-              <span class="stat-label">天力</span>
-              <button class="stat-btn" @click="battleStat('self','tenryoku',-1)">−</button>
-              <span class="stat-tenryoku">{{ battleSample.self.tenryoku }}</span>
-              <button class="stat-btn" @click="battleStat('self','tenryoku',+1)">+</button>
+            <div class="battle-status self">
+              <div class="stat-row">
+                <span class="stat-label">ライフ/最大値</span>
+                <button class="stat-btn" @click="battleStat('self','life',-1)">−</button>
+                <span class="stat-life">{{ battleSample.self.life }}</span>
+                <button class="stat-btn" @click="battleStat('self','life',+1)">+</button>
+                <span class="stat-divider">/</span>
+                <button class="stat-btn" @click="battleStat('self','lifeMax',-1)">−</button>
+                <span class="stat-life">{{ battleSample.self.lifeMax }}</span>
+                <button class="stat-btn" @click="battleStat('self','lifeMax',+1)">+</button>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">マナ/最大値</span>
+                <button class="stat-btn" @click="battleStat('self','mana',-1)">−</button>
+                <span class="stat-mana">{{ battleSample.self.mana }}</span>
+                <button class="stat-btn" @click="battleStat('self','mana',+1)">+</button>
+                <span class="stat-divider">/</span>
+                <button class="stat-btn" @click="battleStat('self','manaMax',-1)">−</button>
+                <span class="stat-mana">{{ battleSample.self.manaMax }}</span>
+                <button class="stat-btn" @click="battleStat('self','manaMax',+1)">+</button>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">天力</span>
+                <button class="stat-btn" @click="battleStat('self','tenryoku',-1)">−</button>
+                <span class="stat-tenryoku">{{ battleSample.self.tenryoku }}</span>
+                <button class="stat-btn" @click="battleStat('self','tenryoku',+1)">+</button>
+              </div>
             </div>
           </div>
           <div class="battle-zone hand-self">
@@ -2914,22 +2930,26 @@
 
         <!-- 相手 デッキ・墓地・崩壊 -->
         <div class="dgc-stack">
-          <div class="dgc-cell deck">
+          <div class="dgc-cell deck" @contextmenu.prevent="deckRightClick('opp', $event)">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="none" stroke="#e8d4a0" stroke-width="2.2" stroke-linejoin="round">
               <rect x="4" y="11" width="22" height="34" rx="3"/>
               <rect x="9" y="8"  width="22" height="34" rx="3" fill="#1a2030"/>
               <rect x="14" y="5" width="22" height="34" rx="3" fill="#1a2030"/>
             </svg>
-            <span class="dgc-count">{{ battleSample.opp.deckCount }}</span>
-            <span class="dgc-name">デッキ</span>
+            <div class="dgc-info">
+              <span class="dgc-name">デッキ</span>
+              <span class="dgc-count">{{ battleSample.opp.deckCount }}</span>
+            </div>
           </div>
           <div class="dgc-cell" @click="battleOpenZone('opp','graveyard')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <path d="M 8 41 H 32 V 46 H 8 Z"/>
               <path d="M 12 41 V 19 a 8 8 0 0 1 16 0 V 41 Z"/>
             </svg>
-            <span class="dgc-count">{{ battleSample.opp.graveyard.length }}</span>
-            <span class="dgc-name">墓地</span>
+            <div class="dgc-info">
+              <span class="dgc-name">墓地</span>
+              <span class="dgc-count">{{ battleSample.opp.graveyard.length }}</span>
+            </div>
           </div>
           <div class="dgc-cell" @click="battleOpenZone('opp','crumbled')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
@@ -2944,35 +2964,41 @@
               <rect x="36" y="18" width="3" height="3"/>
               <rect x="33" y="26" width="2.5" height="2.5"/>
             </svg>
-            <span class="dgc-count">{{ battleSample.opp.crumbled.length }}</span>
-            <span class="dgc-name">崩壊</span>
+            <div class="dgc-info">
+              <span class="dgc-name">崩壊</span>
+              <span class="dgc-count">{{ battleSample.opp.crumbled.length }}</span>
+            </div>
           </div>
         </div>
 
         <!-- ターン終了 + ターン数 -->
         <div class="turn-area">
-          <div class="turn-number">自分のターン <b>{{ battleSample.turn }}</b></div>
+          <div class="turn-number">自分のターン<br><b>{{ battleSample.turn }}</b></div>
           <button class="battle-end-turn-btn" @click="battleEndTurn">ターン終了 ▶</button>
         </div>
 
         <!-- 自分 デッキ・墓地・崩壊 -->
         <div class="dgc-stack">
-          <div class="dgc-cell deck">
+          <div class="dgc-cell deck" @contextmenu.prevent="deckRightClick('self', $event)">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="none" stroke="#e8d4a0" stroke-width="2.2" stroke-linejoin="round">
               <rect x="4" y="11" width="22" height="34" rx="3"/>
               <rect x="9" y="8"  width="22" height="34" rx="3" fill="#1a2030"/>
               <rect x="14" y="5" width="22" height="34" rx="3" fill="#1a2030"/>
             </svg>
-            <span class="dgc-count">{{ battleSample.self.deckCount }}</span>
-            <span class="dgc-name">デッキ</span>
+            <div class="dgc-info">
+              <span class="dgc-name">デッキ</span>
+              <span class="dgc-count">{{ battleSample.self.deckCount }}</span>
+            </div>
           </div>
           <div class="dgc-cell" @click="battleOpenZone('self','graveyard')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <path d="M 8 41 H 32 V 46 H 8 Z"/>
               <path d="M 12 41 V 19 a 8 8 0 0 1 16 0 V 41 Z"/>
             </svg>
-            <span class="dgc-count">{{ battleSample.self.graveyard.length }}</span>
-            <span class="dgc-name">墓地</span>
+            <div class="dgc-info">
+              <span class="dgc-name">墓地</span>
+              <span class="dgc-count">{{ battleSample.self.graveyard.length }}</span>
+            </div>
           </div>
           <div class="dgc-cell" @click="battleOpenZone('self','crumbled')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
@@ -2987,11 +3013,21 @@
               <rect x="36" y="18" width="3" height="3"/>
               <rect x="33" y="26" width="2.5" height="2.5"/>
             </svg>
-            <span class="dgc-count">{{ battleSample.self.crumbled.length }}</span>
-            <span class="dgc-name">崩壊</span>
+            <div class="dgc-info">
+              <span class="dgc-name">崩壊</span>
+              <span class="dgc-count">{{ battleSample.self.crumbled.length }}</span>
+            </div>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- ===== デッキ右クリックメニュー ===== -->
+    <div v-if="deckMenuOpen" class="deck-context-menu"
+         :style="{ left: deckMenuOpen.x + 'px', top: deckMenuOpen.y + 'px' }"
+         @click.stop>
+      <button @click="deckMenuAction('draw')">ドロー（1枚引く）</button>
+      <button @click="deckMenuAction('induce')">誘（カードを選んで手札へ）</button>
     </div>
 
     <!-- ===== 墓地・崩壊 一覧モーダル ===== -->
@@ -3591,6 +3627,8 @@ const SHEET_RANGE = "カード設定!A2:U1000"; // T列:背景Y位置 / U列:ぼ
 const DRIVE_PARENT_FOLDER_ID = "1hIbAEGkA86we9tZPODOj10Dz1JsS2Bhs";
 const DRIVE_CHILD_FOLDER_NAME = "CNo順";   // 通常カード画像フォルダ
 const DRIVE_KAMI_FOLDER_NAME  = "カミ";    // カミカード画像フォルダ
+// 対戦画面で使うカミの正方形イラスト（カードアートではなく1:1のヒーローポートレート）
+const DRIVE_KAMI_ILLUST_FOLDER_ID = "1r57CUvMiAY9lc2zKL9_-V6c1AfceJt-T";
 
 // ユドナリウム出力用：カード裏面画像のURL
 // DriveフォルダにカードBACK画像がある場合はそのURL、なければ空欄でOK（裏面なしで出力される）
@@ -3750,6 +3788,7 @@ new Vue({
     allCards: [],
     allKamiCards: [],    // カミ設定シートから読み込んだカミカード
     kamiFileMap: {},     // kamiNo → Drive fileId（カミ専用フォルダから取得）
+    kamiIllustMap: {},   // kamiNo → Drive fileId（対戦画面用 1:1 イラスト）
     selectedKami: null,  // 選択中のリーダーカード（カミ）
     // カミカードの背景表示位置を個別調整（No → 'top XX%'）
     // デフォルトは 'top 15%'。カードごとに顔の位置が変わる場合に調整。
@@ -3823,9 +3862,10 @@ new Vue({
       opp:  { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, handCount: 5,  kami: null, deckCount: 30, graveyard: [], crumbled: [] },
     },
     battleZoneModal: null,   // { side, zone, cards }
+    deckMenuOpen: null,      // { side, x, y } — デッキ右クリックメニュー
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.9.3',
+    BUILD_VERSION: '1.9.4',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -4797,6 +4837,22 @@ new Vue({
       const cards = (this.battleSample[side] && this.battleSample[side][zone]) || [];
       this.battleZoneModal = { side, zone, cards };
     },
+    /* デッキ右クリック → ドロー / 誘 メニューを表示 */
+    deckRightClick(side, e) {
+      const pad = 8;
+      // メニュー位置を画面端に収める
+      const x = Math.min(e.clientX, window.innerWidth  - 130 - pad);
+      const y = Math.min(e.clientY, window.innerHeight - 90  - pad);
+      this.deckMenuOpen = { side, x, y };
+    },
+    deckMenuAction(action) {
+      const side = this.deckMenuOpen && this.deckMenuOpen.side;
+      this.deckMenuOpen = null;
+      if (!side) return;
+      const label = action === 'draw' ? 'ドロー' : '誘';
+      // Phase 1：モック動作（メッセージのみ）
+      alert(`「${side === 'self' ? '自分' : '相手'}」のデッキ → ${label}\n（Phase 1 では UI モック。Phase 3 でデッキ処理を実装予定）`);
+    },
     goToShield() {
       this.appView = 'shield';
       this.openShield();
@@ -5185,7 +5241,7 @@ new Vue({
     },
 
     async reloadAll() {
-      await Promise.all([this.loadCards(), this.loadDriveImages(), this.loadKamiCards(), this.loadKamiImages()]);
+      await Promise.all([this.loadCards(), this.loadDriveImages(), this.loadKamiCards(), this.loadKamiImages(), this.loadKamiIllustrations()]);
     },
     async loadKamiCards() {
       const url =
@@ -5221,6 +5277,48 @@ new Vue({
       } catch (e) {
         console.error("カミカード読み込みエラー", e);
       }
+    },
+    /* 対戦画面用：カミの 1:1 イラスト（指定 Drive フォルダ ID 直指定） */
+    async loadKamiIllustrations() {
+      try {
+        const folderId = DRIVE_KAMI_ILLUST_FOLDER_ID;
+        const map = {};
+        let pageToken = null;
+        do {
+          const params = new URLSearchParams({
+            q: `'${folderId}' in parents and trashed = false`,
+            fields: "nextPageToken, files(id, name, mimeType)",
+            pageSize: "1000",
+            key: API_KEY,
+          });
+          if (pageToken) params.set("pageToken", pageToken);
+          const res = await axios.get(`https://www.googleapis.com/drive/v3/files?${params}`);
+          const files = res.data.files || [];
+          for (const f of files) {
+            if (!/^image\//.test(f.mimeType || "") &&
+                !/\.(png|jpe?g|webp|gif)$/i.test(f.name)) continue;
+            const base = f.name.replace(/\.[^.]+$/, "");
+            const m = base.match(/^(?:[A-Za-z]+\.?)?\s*0*(\d+)/);
+            if (!m) continue;
+            const no = String(parseInt(m[1], 10));
+            if (!map[no]) map[no] = f.id;
+          }
+          pageToken = res.data.nextPageToken || null;
+        } while (pageToken);
+        this.kamiIllustMap = map;
+        console.log(`カミイラスト: ${Object.keys(map).length}件マッチ`);
+      } catch (e) {
+        console.error("カミイラスト読み込みエラー", e);
+      }
+    },
+    /* 対戦画面用：カミのイラスト URL を取得（無い場合は通常のカミカード画像にフォールバック） */
+    kamiIllustrationUrl(card) {
+      if (!card) return null;
+      const no = String(parseInt(card.no, 10));
+      const fileId = this.kamiIllustMap[no];
+      if (fileId) return driveThumbUrl(fileId, 400);
+      // フォールバック：通常のカミカード画像
+      return this.cardImageUrl(card);
     },
     async loadKamiImages() {
       try {
@@ -5615,7 +5713,8 @@ new Vue({
     onKeyDown(e) {
       if (e.key === "Escape") {
         // 上に重なっているものから順に閉じる
-        if (this.battleZoneModal)     this.battleZoneModal = null;
+        if (this.deckMenuOpen)        this.deckMenuOpen = null;
+        else if (this.battleZoneModal)     this.battleZoneModal = null;
         else if (this.keywordPopup)        this.closeKeywordPopup();
         else if (this.tokenMultiPopup) this.closeTokenMultiPopup();
         else if (this.tokenPopupCard)  this.closeTokenPopup();
@@ -5626,6 +5725,7 @@ new Vue({
     onWindowClick() {
       this.deckSortOpen = false;
       this.poolSortOpen = false;
+      this.deckMenuOpen = null;   // 対戦画面：デッキ右クリックメニューを閉じる
     },
     addCard(card) {
       if (this.appView === 'shield' || this.appView === 'game') return; // モード中はガード
@@ -6244,6 +6344,7 @@ new Vue({
     this.loadDriveImages();
     this.loadKamiCards();
     this.loadKamiImages();
+    this.loadKamiIllustrations();
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("click", this.onWindowClick);
   },
