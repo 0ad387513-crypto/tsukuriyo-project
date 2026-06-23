@@ -1818,7 +1818,7 @@
     display: flex; flex-direction: column;
     overflow: hidden;
     --kw: 132px;       /* カミイラスト幅 = 高さ (1:1) */
-    --side-w: 150px;   /* 右サイド列幅（DGC+ターン）— ターン終了ボタンが読める幅 */
+    --side-w: 132px;   /* 右サイド列幅（DGC+ターン）— ビューポートに必ず収まる幅 */
     --status-w: 200px; /* カミ下のステータスパネル幅 */
   }
   .battle-header {
@@ -1848,9 +1848,10 @@
     grid-template-rows: auto 1fr 1fr auto;
   }
   .battle-side {
-    display: grid; gap: 4px;
-    grid-template-rows: auto 1fr auto;
+    display: flex; flex-direction: column;
+    gap: 4px;
     min-width: 0;
+    overflow: hidden;
   }
 
   /* Top行（相手）と Bot行（自分） — 中央カラム中心の3分割 */
@@ -1935,7 +1936,7 @@
     border: 1px solid #4a4f5d; border-radius: 2px;
   }
 
-  /* ===== カミ（1:1 イラスト、円形/角丸） ===== */
+  /* ===== カミ（1:1 イラスト、円形） ===== */
   .kami-portrait {
     width: var(--kw); height: var(--kw);   /* 1:1 */
     background: #1a1d28 center/cover no-repeat;
@@ -1955,6 +1956,14 @@
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     font-size: 13px; color: #d8c89a; font-weight: 700;
+  }
+  /* イラスト未登録時のバッジ（カミポートレートの上に小さく表示） */
+  .kami-illust-missing {
+    position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+    background: rgba(180, 70, 70, 0.9); color: #fff;
+    padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: 700;
+    white-space: nowrap; pointer-events: none;
+    border: 1px solid rgba(255, 200, 200, 0.5);
   }
 
   /* ===== ステータスパネル（カミの下、コンパクト） ===== */
@@ -2012,38 +2021,41 @@
   .dgc-count {
     font-size: 13px; font-weight: 700; color: #e8d4a0; line-height: 1;
   }
-  .turn-area {
+  /* ターン中央：終了ボタン＋ターン番号（DGCの間を埋めて縦中央配置） */
+  .turn-middle {
+    flex: 1;
     display: flex; flex-direction: column;
-    align-items: stretch; gap: 6px;
+    align-items: stretch; justify-content: center;
+    gap: 6px;
     padding: 8px 6px;
     background: rgba(20, 24, 36, 0.7);
     border: 1px solid #3a4256; border-radius: 6px;
+    min-height: 0;
   }
   .turn-number {
     font-size: 11px; color: #aab; font-weight: 600; letter-spacing: 0.04em;
     text-align: center; line-height: 1.2;
   }
-  .turn-number .tn-big { color: #dc9f50; font-size: 20px; font-weight: 800; }
-  .turn-indicators {
-    display: flex; flex-direction: column; gap: 3px;
-    font-size: 11px; line-height: 1.2;
-  }
+  .turn-number .tn-big { color: #dc9f50; font-size: 22px; font-weight: 800; display: block; }
+  /* 相手/自分のターン表示（DGCの直近に配置） */
   .turn-ind {
-    padding: 3px 6px; border-radius: 3px;
+    padding: 4px 6px; border-radius: 4px;
     background: #161a24; color: #889;
     text-align: center; border: 1px solid #232838;
+    font-size: 11px; line-height: 1.2;
     transition: background 0.15s, color 0.15s, font-weight 0.15s;
+    flex-shrink: 0;
   }
   .turn-ind.active {
     background: linear-gradient(135deg, #2a3550, #2a4a70);
     color: #fff; font-weight: 800;
     border-color: #5a8acb;
-    box-shadow: 0 0 8px rgba(90, 138, 203, 0.5);
+    box-shadow: 0 0 8px rgba(90, 138, 203, 0.6);
   }
   .battle-end-turn-btn {
     background: linear-gradient(135deg, #c8742a, #e89a3a);
     border: 1px solid #f8b850; color: #fff;
-    padding: 8px 6px; border-radius: 5px; font-size: 13px;
+    padding: 8px 4px; border-radius: 5px; font-size: 12px;
     font-weight: 700; letter-spacing: 0.04em; cursor: pointer;
     width: 100%; white-space: nowrap;
     transition: background 0.12s, transform 0.08s;
@@ -2867,6 +2879,7 @@
                  @mouseenter="battleSample.opp.kami && showCardHover(battleSample.opp.kami, $event)"
                  @mouseleave="hideCardHover">
               <div v-if="!battleSample.opp.kami" class="kami-placeholder">カミ(相手)</div>
+              <div v-else-if="!hasKamiIllustration(battleSample.opp.kami)" class="kami-illust-missing">イラスト未登録</div>
             </div>
             <div class="battle-status opp">
               <div class="stat-row">
@@ -2914,6 +2927,7 @@
                  @mouseenter="battleSample.self.kami && showCardHover(battleSample.self.kami, $event)"
                  @mouseleave="hideCardHover">
               <div v-if="!battleSample.self.kami" class="kami-placeholder">カミ</div>
+              <div v-else-if="!hasKamiIllustration(battleSample.self.kami)" class="kami-illust-missing">イラスト未登録</div>
             </div>
             <div class="battle-status self">
               <div class="stat-row">
@@ -2957,7 +2971,7 @@
         </div>
       </div>
 
-      <!-- ========== Side エリア：DGC（相手）／ターン終了／DGC（自分） ========== -->
+      <!-- ========== Side エリア：DGC(相手)→相手ターン→[中央:ターン番号+終了ボタン]→自分ターン→DGC(自分) ========== -->
       <div class="battle-side">
 
         <!-- 相手 デッキ・墓地・崩壊 -->
@@ -3003,15 +3017,17 @@
           </div>
         </div>
 
-        <!-- ターン情報 + ターン終了 -->
-        <div class="turn-area">
-          <div class="turn-number">ターン <span class="tn-big">{{ battleSample.turn }}</span></div>
-          <div class="turn-indicators">
-            <div class="turn-ind" :class="{ active: battleSample.activeSide === 'opp' }">相手のターン</div>
-            <div class="turn-ind" :class="{ active: battleSample.activeSide === 'self' }">自分のターン</div>
-          </div>
+        <!-- 相手のターン表示（相手DGCの直下） -->
+        <div class="turn-ind" :class="{ active: battleSample.activeSide === 'opp' }">相手のターン</div>
+
+        <!-- 中央：ターン番号 + ターン終了ボタン（残り空間を埋めて縦中央配置） -->
+        <div class="turn-middle">
+          <div class="turn-number">ターン<span class="tn-big">{{ battleSample.turn }}</span></div>
           <button class="battle-end-turn-btn" @click="battleEndTurn">ターン終了</button>
         </div>
+
+        <!-- 自分のターン表示（自分DGCの直上） -->
+        <div class="turn-ind" :class="{ active: battleSample.activeSide === 'self' }">自分のターン</div>
 
         <!-- 自分 デッキ・墓地・崩壊 -->
         <div class="dgc-stack">
@@ -3905,7 +3921,7 @@ new Vue({
     battleUndoStack: [],     // 一手戻る用：battleSampleのスナップショット履歴（最新50件）
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.9.6',
+    BUILD_VERSION: '1.9.7',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -4835,8 +4851,16 @@ new Vue({
         this.battleSample.self.hand = pool.slice(0, 5);
       }
       if (!this.battleSample.self.kami && this.allKamiCards.length) {
-        this.battleSample.self.kami = this.allKamiCards[0];
-        this.battleSample.opp.kami  = this.allKamiCards[1] || this.allKamiCards[0];
+        // 優先：イラストが登録されているカミを使用（無ければ先頭2件）
+        const withIllust = this.allKamiCards.filter(k => this.hasKamiIllustration(k));
+        const pool = withIllust.length ? withIllust : this.allKamiCards;
+        this.battleSample.self.kami = pool[0];
+        this.battleSample.opp.kami  = pool[1] || pool[0];
+        // コンソール診断
+        const illustNames = this.kamiIllustFiles.map(f => f.name).join(', ');
+        console.log(`[対戦画面] カミイラスト ${this.kamiIllustFiles.length}件: ${illustNames}`);
+        console.log(`[対戦画面] サンプル自分カミ: ${this.fullName(this.battleSample.self.kami)} (イラスト: ${this.hasKamiIllustration(this.battleSample.self.kami) ? '✓' : '✗ 未登録'})`);
+        console.log(`[対戦画面] サンプル相手カミ: ${this.fullName(this.battleSample.opp.kami)} (イラスト: ${this.hasKamiIllustration(this.battleSample.opp.kami) ? '✓' : '✗ 未登録'})`);
       }
     },
     /* Undo: battleSample の現状をスナップショット（最新50件まで保持） */
@@ -5384,32 +5408,42 @@ new Vue({
           'フォルダの共有設定が「リンクを知っている全員」になっているか確認してください。';
       }
     },
-    /* 対戦画面用：カミのイラスト URL を取得
+    /* 対戦画面用：カミのイラスト ファイル ID を探索
        マッチング順:
          1) ファイル名の先頭に番号（例 "1_xxx.png" "001_xxx" "K001_xxx" "No.1_xxx"）
-         2) ファイル名にカミ名 / 異名が含まれる（例 "ヤマタノオロチ.png"）
-         3) フォールバック：通常のカミカード画像
+         2) ファイル名にカミ名 / 異名が含まれる（例 "アマテラス.png"）
+       → 見つかれば fileId、無ければ null を返す。
     */
-    kamiIllustrationUrl(card) {
+    findKamiIllustFileId(card) {
       if (!card) return null;
       const files = this.kamiIllustFiles || [];
-      const no = String(parseInt(card.no, 10));
-      const name     = card.name     || '';
-      const nickname = card.nickname || '';
+      if (!files.length) return null;
+      const no       = String(parseInt(card.no, 10));
+      const name     = (card.name     || '').trim();
+      const nickname = (card.nickname || '').trim();
       // 1) 番号マッチ
       for (const f of files) {
         const base = f.name.replace(/\.[^.]+$/, '');
         const m = base.match(/^(?:[A-Za-z]+\.?)?\s*0*(\d+)/);
-        if (m && String(parseInt(m[1], 10)) === no) return driveThumbUrl(f.id, 400);
+        if (m && String(parseInt(m[1], 10)) === no) return f.id;
       }
-      // 2) 名前マッチ（ファイル名にカミ名 or 異名が含まれる）
+      // 2) 名前マッチ（双方向で includes チェック）
       for (const f of files) {
-        const base = f.name.replace(/\.[^.]+$/, '');
-        if (name     && base.includes(name))     return driveThumbUrl(f.id, 400);
-        if (nickname && base.includes(nickname)) return driveThumbUrl(f.id, 400);
+        const base = f.name.replace(/\.[^.]+$/, '').trim();
+        if (name && (base === name || base.includes(name) || name.includes(base))) return f.id;
+        if (nickname && (base === nickname || base.includes(nickname) || nickname.includes(base))) return f.id;
       }
-      // 3) フォールバック：通常のカミカード画像
+      return null;
+    },
+    /* イラスト URL（無ければ通常カード画像にフォールバック） */
+    kamiIllustrationUrl(card) {
+      const fid = this.findKamiIllustFileId(card);
+      if (fid) return driveThumbUrl(fid, 400);
       return this.cardImageUrl(card);
+    },
+    /* イラスト登録済みか判定（UI で「未登録」バッジ表示や、優先選択に使用） */
+    hasKamiIllustration(card) {
+      return !!this.findKamiIllustFileId(card);
     },
     async loadKamiImages() {
       try {
