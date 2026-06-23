@@ -1818,7 +1818,7 @@
     display: flex; flex-direction: column;
     overflow: hidden;
     --kw: 132px;       /* カミイラスト幅 = 高さ (1:1) */
-    --side-w: 108px;   /* 右サイド列幅（DGC+ターン） */
+    --side-w: 150px;   /* 右サイド列幅（DGC+ターン）— ターン終了ボタンが読める幅 */
     --status-w: 200px; /* カミ下のステータスパネル幅 */
   }
   .battle-header {
@@ -2014,22 +2014,38 @@
   }
   .turn-area {
     display: flex; flex-direction: column;
-    align-items: center; gap: 4px;
-    padding: 6px 4px;
-    background: rgba(20, 24, 36, 0.6);
-    border: 1px solid #2a3548; border-radius: 6px;
+    align-items: stretch; gap: 6px;
+    padding: 8px 6px;
+    background: rgba(20, 24, 36, 0.7);
+    border: 1px solid #3a4256; border-radius: 6px;
   }
   .turn-number {
-    font-size: 10px; color: #cde; font-weight: 600; letter-spacing: 0.04em;
-    text-align: center;
+    font-size: 11px; color: #aab; font-weight: 600; letter-spacing: 0.04em;
+    text-align: center; line-height: 1.2;
   }
-  .turn-number b { color: #dc9f50; font-size: 16px; margin: 0 2px; }
+  .turn-number .tn-big { color: #dc9f50; font-size: 20px; font-weight: 800; }
+  .turn-indicators {
+    display: flex; flex-direction: column; gap: 3px;
+    font-size: 11px; line-height: 1.2;
+  }
+  .turn-ind {
+    padding: 3px 6px; border-radius: 3px;
+    background: #161a24; color: #889;
+    text-align: center; border: 1px solid #232838;
+    transition: background 0.15s, color 0.15s, font-weight 0.15s;
+  }
+  .turn-ind.active {
+    background: linear-gradient(135deg, #2a3550, #2a4a70);
+    color: #fff; font-weight: 800;
+    border-color: #5a8acb;
+    box-shadow: 0 0 8px rgba(90, 138, 203, 0.5);
+  }
   .battle-end-turn-btn {
     background: linear-gradient(135deg, #c8742a, #e89a3a);
     border: 1px solid #f8b850; color: #fff;
-    padding: 6px 8px; border-radius: 5px; font-size: 12px;
+    padding: 8px 6px; border-radius: 5px; font-size: 13px;
     font-weight: 700; letter-spacing: 0.04em; cursor: pointer;
-    width: 100%;
+    width: 100%; white-space: nowrap;
     transition: background 0.12s, transform 0.08s;
   }
   .battle-end-turn-btn:hover { background: linear-gradient(135deg, #d8843a, #f8aa4a); }
@@ -2971,10 +2987,14 @@
           </div>
         </div>
 
-        <!-- ターン終了 + ターン数 -->
+        <!-- ターン情報 + ターン終了 -->
         <div class="turn-area">
-          <div class="turn-number">自分のターン<br><b>{{ battleSample.turn }}</b></div>
-          <button class="battle-end-turn-btn" @click="battleEndTurn">ターン終了 ▶</button>
+          <div class="turn-number">ターン <span class="tn-big">{{ battleSample.turn }}</span></div>
+          <div class="turn-indicators">
+            <div class="turn-ind" :class="{ active: battleSample.activeSide === 'opp' }">相手のターン</div>
+            <div class="turn-ind" :class="{ active: battleSample.activeSide === 'self' }">自分のターン</div>
+          </div>
+          <button class="battle-end-turn-btn" @click="battleEndTurn">ターン終了</button>
         </div>
 
         <!-- 自分 デッキ・墓地・崩壊 -->
@@ -3788,7 +3808,8 @@ new Vue({
     allCards: [],
     allKamiCards: [],    // カミ設定シートから読み込んだカミカード
     kamiFileMap: {},     // kamiNo → Drive fileId（カミ専用フォルダから取得）
-    kamiIllustMap: {},   // kamiNo → Drive fileId（対戦画面用 1:1 イラスト）
+    kamiIllustFiles: [], // [{ id, name }] 対戦画面用 1:1 イラスト（番号/名前マッチ両対応）
+    kamiIllustError: '', // 読み込みエラーメッセージ（デバッグ用）
     selectedKami: null,  // 選択中のリーダーカード（カミ）
     // カミカードの背景表示位置を個別調整（No → 'top XX%'）
     // デフォルトは 'top 15%'。カードごとに顔の位置が変わる場合に調整。
@@ -3858,6 +3879,7 @@ new Vue({
     /* ===== 対戦画面（Phase 1：静的レイアウト＋ステータス+/-のみ） ===== */
     battleSample: {
       turn: 1,
+      activeSide: 'self',   // 'self' | 'opp' — 現在進行中のプレイヤー
       self: { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, hand: [], kami: null, deckCount: 30, graveyard: [], crumbled: [] },
       opp:  { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, handCount: 5,  kami: null, deckCount: 30, graveyard: [], crumbled: [] },
     },
@@ -3865,7 +3887,7 @@ new Vue({
     deckMenuOpen: null,      // { side, x, y } — デッキ右クリックメニュー
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.9.4',
+    BUILD_VERSION: '1.9.5',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -4817,12 +4839,24 @@ new Vue({
       }
       else if (key === 'tenryoku') target.tenryoku = Math.max(0, next);
     },
-    /* ターン終了：相手のマナ最大値+1、マナを最大値まで回復、ターン数+1 */
+    /* ターン終了：手番を相手に渡す（次プレイヤーのマナ最大値+1、マナを満タン回復）
+       自分→相手→自分→相手 と交互。自分のターン番号は「相手→自分」遷移時に+1。 */
     battleEndTurn() {
-      const opp = this.battleSample.opp;
-      opp.manaMax = Math.min(99, opp.manaMax + 1);   // 一応の上限
-      opp.mana    = opp.manaMax;
-      this.battleSample.turn += 1;
+      const bs = this.battleSample;
+      if (bs.activeSide === 'self') {
+        // 自分のターン終了 → 相手ターン開始
+        bs.activeSide = 'opp';
+        const opp = bs.opp;
+        opp.manaMax = Math.min(99, opp.manaMax + 1);
+        opp.mana    = opp.manaMax;
+      } else {
+        // 相手のターン終了 → 自分の次ターン開始
+        bs.activeSide = 'self';
+        bs.turn += 1;
+        const self = bs.self;
+        self.manaMax = Math.min(99, self.manaMax + 1);
+        self.mana    = self.manaMax;
+      }
     },
     /* カミクリック → 神技発動（Phase 1ではプレースホルダ） */
     kamiActivate(side) {
@@ -5278,11 +5312,16 @@ new Vue({
         console.error("カミカード読み込みエラー", e);
       }
     },
-    /* 対戦画面用：カミの 1:1 イラスト（指定 Drive フォルダ ID 直指定） */
+    /* 対戦画面用：カミの 1:1 イラスト（指定 Drive フォルダ ID 直指定）
+       生のファイル一覧を取得し、kamiIllustrationUrl() で番号/名前マッチを行う。
+       これによりファイル名に番号がなくても「ヤマタノオロチ.png」のような名前で
+       マッチできる。
+    */
     async loadKamiIllustrations() {
+      this.kamiIllustError = '';
       try {
         const folderId = DRIVE_KAMI_ILLUST_FOLDER_ID;
-        const map = {};
+        const files = [];
         let pageToken = null;
         do {
           const params = new URLSearchParams({
@@ -5293,31 +5332,52 @@ new Vue({
           });
           if (pageToken) params.set("pageToken", pageToken);
           const res = await axios.get(`https://www.googleapis.com/drive/v3/files?${params}`);
-          const files = res.data.files || [];
-          for (const f of files) {
+          const list = res.data.files || [];
+          for (const f of list) {
             if (!/^image\//.test(f.mimeType || "") &&
                 !/\.(png|jpe?g|webp|gif)$/i.test(f.name)) continue;
-            const base = f.name.replace(/\.[^.]+$/, "");
-            const m = base.match(/^(?:[A-Za-z]+\.?)?\s*0*(\d+)/);
-            if (!m) continue;
-            const no = String(parseInt(m[1], 10));
-            if (!map[no]) map[no] = f.id;
+            files.push({ id: f.id, name: f.name });
           }
           pageToken = res.data.nextPageToken || null;
         } while (pageToken);
-        this.kamiIllustMap = map;
-        console.log(`カミイラスト: ${Object.keys(map).length}件マッチ`);
+        this.kamiIllustFiles = files;
+        console.log(`カミイラスト: ${files.length}件取得`,
+          files.slice(0, 5).map(f => f.name));
+        if (files.length === 0) {
+          this.kamiIllustError = 'フォルダは見つかりましたが画像が0件でした。';
+        }
       } catch (e) {
         console.error("カミイラスト読み込みエラー", e);
+        this.kamiIllustError =
+          'カミイラストフォルダにアクセスできませんでした。' +
+          'フォルダの共有設定が「リンクを知っている全員」になっているか確認してください。';
       }
     },
-    /* 対戦画面用：カミのイラスト URL を取得（無い場合は通常のカミカード画像にフォールバック） */
+    /* 対戦画面用：カミのイラスト URL を取得
+       マッチング順:
+         1) ファイル名の先頭に番号（例 "1_xxx.png" "001_xxx" "K001_xxx" "No.1_xxx"）
+         2) ファイル名にカミ名 / 異名が含まれる（例 "ヤマタノオロチ.png"）
+         3) フォールバック：通常のカミカード画像
+    */
     kamiIllustrationUrl(card) {
       if (!card) return null;
+      const files = this.kamiIllustFiles || [];
       const no = String(parseInt(card.no, 10));
-      const fileId = this.kamiIllustMap[no];
-      if (fileId) return driveThumbUrl(fileId, 400);
-      // フォールバック：通常のカミカード画像
+      const name     = card.name     || '';
+      const nickname = card.nickname || '';
+      // 1) 番号マッチ
+      for (const f of files) {
+        const base = f.name.replace(/\.[^.]+$/, '');
+        const m = base.match(/^(?:[A-Za-z]+\.?)?\s*0*(\d+)/);
+        if (m && String(parseInt(m[1], 10)) === no) return driveThumbUrl(f.id, 400);
+      }
+      // 2) 名前マッチ（ファイル名にカミ名 or 異名が含まれる）
+      for (const f of files) {
+        const base = f.name.replace(/\.[^.]+$/, '');
+        if (name     && base.includes(name))     return driveThumbUrl(f.id, 400);
+        if (nickname && base.includes(nickname)) return driveThumbUrl(f.id, 400);
+      }
+      // 3) フォールバック：通常のカミカード画像
       return this.cardImageUrl(card);
     },
     async loadKamiImages() {
