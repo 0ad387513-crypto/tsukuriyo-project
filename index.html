@@ -1796,11 +1796,13 @@
   .deck-cat-chip:hover { background: #352a50; border-color: #8a6aaa; color: #ddd; }
   .deck-cat-chip.active { background: #4a2880; border-color: #9a60dd; color: #e8d8ff; }
 
-  /* シールド戦中：カードプールの+/-ボタン非表示用 */
-  .shield-active .card-qty:not(.kami-qty) { display: none; }
-  /* 4人対戦中：カードプール/デッキの+/-ボタン非表示用（ピーク中も含む） */
-  .game-active .card-qty:not(.kami-qty) { display: none; }
-  .game-active .deck-card-qty { display: none; }
+  /* シールド戦・4人対戦中：カード追加/削除UIを全て非表示（ピーク中・終戦後の確認時を含む） */
+  .shield-active .card-qty:not(.kami-qty),
+  .game-active   .card-qty:not(.kami-qty),
+  .shield-active .deck-grid-btn-m,
+  .shield-active .deck-grid-btn-p,
+  .game-active   .deck-grid-btn-m,
+  .game-active   .deck-grid-btn-p { display: none !important; }
 </style>
 </head>
 <body>
@@ -2703,7 +2705,7 @@
                   @click="gsSelectDeepenAction('reflect')">
             <div class="gm-dm-title">省察</div>
             <div class="gm-dm-cost">見識 1</div>
-            <div class="gm-dm-desc">デッキから1枚を選び星魂に変換します</div>
+            <div class="gm-dm-desc">デッキから1枚を選び星魂に返還します</div>
           </button>
           <button class="gm-deepen-menu-btn"
                   :class="{ active: gsDeepenAction === 'fusion', disabled: gsMyInsight < 2 || gsMyDeepenDone || gsMyFusionUsed }"
@@ -2726,7 +2728,7 @@
         <!-- 省察 -->
         <div v-if="gsDeepenAction === 'reflect'" class="gm-deepen-sec">
           <div class="gm-deepen-sec-title">
-            <span>省察 — 変換するカードを選択</span>
+            <span>省察 — 返還するカードを選択</span>
             <button class="gm-btn gm-btn-ghost gm-back-mini" @click="gsSelectDeepenAction(null)">◀ メニューに戻る</button>
           </div>
           <div class="gm-pack-grid gm-deck-cards-grid"
@@ -2739,7 +2741,7 @@
             </div>
           </div>
           <div v-if="gsMyConvertedCards.length" class="gm-converted">
-            星魂に変換済み: <b>{{ gsMyConvertedCards.length }}</b>枚
+            星魂に返還済み: <b>{{ gsMyConvertedCards.length }}</b>枚
             <span class="gm-converted-names">（{{ gsMyConvertedCards.map(c => fullName(c)).join('、') }}）</span>
           </div>
         </div>
@@ -2855,12 +2857,12 @@
       <div v-else-if="gs.view === 'scoring'" class="gm-body gm-scoring">
         <div class="gm-done-title">終戦 — 星魂の集計</div>
         <p class="gm-lead">
-          各プレイヤーの星魂 ＝ 星戦の勝利点（1勝＝10）＋ デッキの返還値 ＋ 省察で変換した星魂。<br>
+          各プレイヤーの星魂 ＝ 星戦の勝利点（1勝＝10）＋ デッキの返還値 ＋ 省察で返還した星魂。<br>
           勝利数は各ラウンドで記録した星戦結果から自動集計しています。
         </p>
         <table class="gm-score-table">
           <thead>
-            <tr><th>順位</th><th>プレイヤー</th><th>カミ</th><th>勝利数</th><th>勝利点</th><th>デッキ返還値</th><th>変換星魂</th><th>合計</th></tr>
+            <tr><th>順位</th><th>プレイヤー</th><th>カミ</th><th>勝利数</th><th>勝利点</th><th>デッキ返還値</th><th>返還星魂</th><th>合計</th></tr>
           </thead>
           <tbody>
             <tr v-for="row in gsScoreRows" :key="row.seat" :class="{ me: row.isMe, top: row.rank === 1 }">
@@ -4549,7 +4551,7 @@ new Vue({
     },
     async gsReflect(card) {
       if (this.gsMyInsight < 1 || this.gsMyDeepenDone) return;
-      if (!confirm(`「${this.fullName(card)}」を星魂に変換します（デッキから除外・見識1消費）。よろしいですか？`)) return;
+      if (!confirm(`「${this.fullName(card)}」を星魂に返還します（デッキから除外・見識1消費）。よろしいですか？`)) return;
       this.hideCardHover();
       try { await deepenReflect(this.gs.sessionCode, this.gs.seat, String(card.no)); }
       catch (e) { alert('省察に失敗しました: ' + (e.message || e)); }
@@ -4915,6 +4917,8 @@ new Vue({
     },
     // このカードを追加可能か
     canAdd(card) {
+      // シールド戦・4人対戦中はデッキビルダーでのカード追加は一切不可（ピーク中・終戦後の確認時も含む）
+      if (this.appView === 'shield' || this.appView === 'game') return false;
       if (card.isToken) return false;  // トークンはデッキに入れられない
       if (card.isKami) return false;   // カミはリーダー枠で管理（通常デッキに入らない）
       // No単位で1枚まで（active + returned の合計）
@@ -5057,6 +5061,7 @@ new Vue({
       this.poolSortOpen = false;
     },
     addCard(card) {
+      if (this.appView === 'shield' || this.appView === 'game') return; // モード中はガード
       if (!this.canAdd(card)) return;
       const no = String(card.no);
       const cur = this.deck[no] || 0;
@@ -5091,6 +5096,7 @@ new Vue({
       this.$set(this.deck, no, (this.deck[no] || 0) + 1);
     },
     removeCard(no) {
+      if (this.appView === 'shield' || this.appView === 'game') return; // モード中はガード
       no = String(no);
       const cur = this.deck[no] || 0;
       if (cur <= 1) {
