@@ -239,18 +239,32 @@ function draftRoundTarget(round) {
   return cfg ? cfg.numSets * cfg.bundleSize : 0;
 }
 
-/** パックを隣へ回す（'L'=左隣 seat-1 / 'R'=右隣 seat+1） */
+/** パックの中身（カードno配列）を取り出す。
+ *  新フォーマット: { round, origSeat, setIdx, cards:[...] }
+ *  旧フォーマット: [...]
+ *  どちらにも対応。空配列はnullになることがあるためfbArrで正規化。
+ */
+function packCards(pack) {
+  if (!pack) return [];
+  if (Array.isArray(pack)) return pack;
+  if ('cards' in pack) return fbArr(pack.cards);
+  // 旧フォーマット fallback：オブジェクト全体が numeric-keyed array
+  return fbArr(pack);
+}
+
+/** パックを隣へ回す（'L'=左隣 seat-1 / 'R'=右隣 seat+1）。束のメタ情報（origSeat/setIdx/round）は維持。 */
 function rotatePacks(packs, dir) {
   const out = {};
   for (let s = 1; s <= 4; s++) {
     const target = dir === 'L' ? (s === 1 ? 4 : s - 1)
                                : (s === 4 ? 1 : s + 1);
-    out[target] = fbArr(packs[s]);
+    out[target] = packs[s];          // 束オブジェクトごと移動（origSeat等を維持）
   }
   return out;
 }
 
-/** ラウンドのカードプール（no配列）を numSets×4 のパックに分割（決定論） */
+/** ラウンドのカードプール（no配列）を numSets×4 の束に分割（決定論）。
+ *  各束は { round, origSeat, setIdx, cards:[...] } 形式。 */
 function dealDraftSets(cardNos, seed, round) {
   const cfg = DRAFT_ROUND_CONFIG[round];
   const rng = mulberry32(((seed | 0) + round * 777 + 31) | 0);
@@ -258,9 +272,14 @@ function dealDraftSets(cardNos, seed, round) {
   const sets = [];
   let idx = 0;
   for (let st = 0; st < cfg.numSets; st++) {
-    const packs = { 1: [], 2: [], 3: [], 4: [] };
+    const packs = { 1: null, 2: null, 3: null, 4: null };
     for (let seat = 1; seat <= 4; seat++) {
-      packs[seat] = shuffled.slice(idx, idx + cfg.bundleSize);
+      packs[seat] = {
+        round,
+        origSeat: seat,
+        setIdx: st,
+        cards: shuffled.slice(idx, idx + cfg.bundleSize),
+      };
       idx += cfg.bundleSize;
     }
     sets.push(packs);
@@ -313,8 +332,9 @@ async function draftPick(code, seat, cardNo) {
     const d = s.draft;
     d.picks = d.picks || {};
     if (d.picks[seat] != null) return s;                  // 既にこのステップで選択済み
-    const pack = fbArr(d.packs && d.packs[seat]);
-    if (pack.findIndex(c => String(c) === String(cardNo)) < 0) return s; // 自分のパックに無い
+    const myPackObj = d.packs && d.packs[seat];
+    const myCards   = packCards(myPackObj);
+    if (myCards.findIndex(c => String(c) === String(cardNo)) < 0) return s; // 自分のパックに無い
     d.picks[seat] = cardNo;
 
     // 全員が選んだら一斉にパス
@@ -323,18 +343,24 @@ async function draftPick(code, seat, cardNo) {
       s.decks = s.decks || { 1: [], 2: [], 3: [], 4: [] };
       const remaining = {};
       for (let n = 1; n <= 4; n++) {
-        const myPack = fbArr(d.packs[n]);
-        const chosen = d.picks[n];
-        const i = myPack.findIndex(c => String(c) === String(chosen));
-        if (i >= 0) myPack.splice(i, 1);                  // 同名カードでも1枚だけ取り除く
+        const packObj  = d.packs[n];
+        const cardsArr = packCards(packObj).slice();
+        const chosen   = d.picks[n];
+        const i = cardsArr.findIndex(c => String(c) === String(chosen));
+        if (i >= 0) cardsArr.splice(i, 1);                // 同名カードでも1枚だけ取り除く
         s.decks[n] = [...fbArr(s.decks[n]), chosen];
-        remaining[n] = myPack;
+        // 束メタ情報を保持しつつカードを更新
+        if (packObj && typeof packObj === 'object' && !Array.isArray(packObj)) {
+          remaining[n] = { ...packObj, cards: cardsArr };
+        } else {
+          remaining[n] = cardsArr;                        // 旧フォーマット fallback
+        }
       }
       d.packs = rotatePacks(remaining, d.direction);
       d.picks = {};
       d.step  = (d.step || 0) + 1;
 
-      const emptyAll = [1, 2, 3, 4].every(n => fbArr(d.packs[n]).length === 0);
+      const emptyAll = [1, 2, 3, 4].every(n => packCards(d.packs[n]).length === 0);
       if (emptyAll) {
         if (d.setIndex < d.numSets - 1) {
           d.setIndex += 1;
@@ -433,6 +459,24 @@ async function deepenReflect(code, seat, cardNo) {
   });
 }
 
+/** 習合：見識2で 次の星戦のマリガン権を1回取得（1ラウンドの深化で1度だけ） */
+async function deepenFusion(code, seat) {
+  const ref = getDb().ref(`sessions/${code}`);
+  await ref.transaction(s => {
+    if (!s || s.phase !== 'deepen') return s;
+    if (((s.insight && s.insight[seat]) || 0) < 2) return s;
+    const r = s.round || 1;
+    s.fusionUsed = s.fusionUsed || {};
+    s.fusionUsed[r] = s.fusionUsed[r] || {};
+    if (s.fusionUsed[r][seat]) return s;          // この深化で既に習合済み
+    s.fusionUsed[r][seat] = true;
+    s.mulliganRights = s.mulliganRights || {};
+    s.mulliganRights[seat] = true;                 // 次の星戦のマリガン権を1回付与
+    s.insight[seat] = (s.insight[seat] || 0) - 2;
+    return s;
+  });
+}
+
 /** 理の開花：見識3で ジェネシスを3枚引く（束をシャッフルして3枚／見識-3） */
 async function deepenBloomDraw(code, seat, genesisNos) {
   const ref = getDb().ref(`sessions/${code}`);
@@ -519,6 +563,8 @@ async function advanceAfterBattle(code, nextRoundCardNos) {
   if (!b || b.t1Winner == null || b.t2Winner == null) {
     throw new Error('両卓の勝者を記録してください');
   }
+  // この星戦で使ったマリガン権を全消去（次の星戦は再度習合が必要）
+  await ref.child('mulliganRights').set(null);
   if (r < 3) {
     await startDraft(code, r + 1, nextRoundCardNos);   // 次の選別の儀（phase=draft, round=r+1）
   } else {
@@ -543,8 +589,8 @@ if (typeof module !== "undefined") {
     dealKamiCandidatesFor, pickedKamiNos, allSeatsFilled, allSeatsReady,
     startDraft, draftPick, dealDraftSets, rotatePacks, draftRoundTarget,
     DRAFT_ROUND_CONFIG,
-    startDeepen, deepenReflect, deepenBloomDraw, deepenBloomPick,
-    deepenSetDone,
+    startDeepen, deepenReflect, deepenFusion, deepenBloomDraw, deepenBloomPick,
+    deepenSetDone, packCards,
     PAIRINGS, battleWonBySeat, recordBattleResult, advanceAfterBattle,
   };
 }

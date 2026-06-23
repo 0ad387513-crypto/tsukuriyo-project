@@ -984,6 +984,51 @@
   ::-webkit-scrollbar-thumb { background: #3a3f4d; border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: #4a4f5d; }
 
+  /* ===== ツクリヨオンライン トップメニュー ===== */
+  .top-menu {
+    position: fixed; inset: 0;
+    background: radial-gradient(circle at 50% 30%, #1a1f2e 0%, #0a0c14 70%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px 20px; z-index: 50; overflow-y: auto;
+  }
+  .top-menu-title {
+    font-size: 42px; font-weight: 800; letter-spacing: 0.08em;
+    color: #e0d4a0; margin-bottom: 12px; text-align: center;
+    text-shadow: 0 4px 24px rgba(220, 159, 80, 0.3);
+  }
+  .top-menu-subtitle {
+    font-size: 14px; color: #9aa; margin-bottom: 48px; letter-spacing: 0.06em;
+  }
+  .top-menu-buttons {
+    display: flex; flex-direction: column; gap: 16px; width: min(360px, 90vw);
+  }
+  .top-menu-btn {
+    padding: 18px 24px; font-size: 18px; font-weight: 700; letter-spacing: 0.04em;
+    border-radius: 8px; cursor: pointer; transition: transform 0.12s, box-shadow 0.12s, background 0.15s;
+    color: #fff; border: 1px solid #2e3548;
+    background: linear-gradient(135deg, #2a3550, #1a2540);
+    text-align: center;
+  }
+  .top-menu-btn:hover {
+    transform: translateY(-2px); box-shadow: 0 6px 24px rgba(220, 159, 80, 0.2);
+    border-color: #6a7595;
+  }
+  .top-menu-btn.deck { background: linear-gradient(135deg, #2a3a5a, #1a2a4a); }
+  .top-menu-btn.deck:hover { background: linear-gradient(135deg, #3a4a6a, #2a3a5a); }
+  .top-menu-btn.shield { background: linear-gradient(135deg, #4a3a6a, #6a3a8a); border-color: #9a6abb; }
+  .top-menu-btn.shield:hover { background: linear-gradient(135deg, #5a4a7a, #7a4a9a); }
+  .top-menu-btn.game { background: linear-gradient(135deg, #2a5a4a, #2a7a5a); border-color: #5abb8a; }
+  .top-menu-btn.game:hover { background: linear-gradient(135deg, #3a6a5a, #3a8a6a); }
+  .top-menu-footer {
+    margin-top: 32px; font-size: 11px; color: #677; letter-spacing: 0.04em;
+  }
+  .back-to-top-btn {
+    background: #2a2f3d; border: 1px solid #4a4f5d; color: #cbd; cursor: pointer;
+    padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600;
+    transition: background 0.12s;
+  }
+  .back-to-top-btn:hover { background: #3a3f4d; color: #ffd; }
+
   /* ===== シールド戦ボタン（ヘッダー右上） ===== */
   .shield-open-btn {
     background: linear-gradient(135deg, #4a3a6a, #6a3a8a);
@@ -1220,6 +1265,46 @@
     background: #161a24; border: 1px solid #2a2f3d; border-radius: 8px;
     padding: 14px; margin-bottom: 14px;
   }
+  /* 深化メニュー（3ボタン） */
+  .gm-deepen-menu {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;
+  }
+  .gm-deepen-menu-btn {
+    background: #1a2030; border: 1px solid #3a4256; border-radius: 8px; color: #e0e8f0;
+    padding: 12px 14px; text-align: left; cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, transform 0.12s;
+  }
+  .gm-deepen-menu-btn:hover:not(:disabled) {
+    background: #232a3d; border-color: #5a6a8a; transform: translateY(-1px);
+  }
+  .gm-deepen-menu-btn.active {
+    background: #2a3a55; border-color: #dc9f50; color: #fff;
+  }
+  .gm-deepen-menu-btn:disabled,
+  .gm-deepen-menu-btn.disabled {
+    opacity: 0.45; cursor: not-allowed;
+  }
+  .gm-dm-title { font-size: 15px; font-weight: 700; color: #d8c89a; margin-bottom: 2px; }
+  .gm-dm-cost { font-size: 11px; color: #8df; margin-bottom: 6px; }
+  .gm-dm-desc { font-size: 11px; color: #aab; line-height: 1.4; }
+  .gm-back-mini { font-size: 11px; padding: 3px 8px; margin-left: auto; }
+  @media (max-width: 760px) { .gm-deepen-menu { grid-template-columns: 1fr; } }
+  /* ドラフト束ラベル */
+  .gm-draft-bundle {
+    font-size: 12px; color: #d8c89a; background: rgba(220, 159, 80, 0.12);
+    border: 1px solid rgba(220, 159, 80, 0.3); border-radius: 4px;
+    padding: 3px 8px; margin-left: 8px; display: inline-block;
+  }
+  /* マリガン権リスト（星戦ビュー） */
+  .gm-mulligan-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; }
+  .gm-mulligan-chip {
+    font-size: 11px; padding: 4px 8px; border-radius: 12px;
+    background: #1a1d28; border: 1px solid #2a2f3d; color: #889;
+  }
+  .gm-mulligan-chip.has-right {
+    background: rgba(220, 159, 80, 0.18); border-color: #dc9f50; color: #ffd;
+  }
+  .gm-mulligan-chip.me { font-weight: 700; }
   .gm-deepen-sec-title {
     display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
     font-size: 14px; font-weight: 700; color: #eee;
@@ -1713,18 +1798,33 @@
 
   /* シールド戦中：カードプールの+/-ボタン非表示用 */
   .shield-active .card-qty:not(.kami-qty) { display: none; }
+  /* 4人対戦中：カードプール/デッキの+/-ボタン非表示用（ピーク中も含む） */
+  .game-active .card-qty:not(.kami-qty) { display: none; }
+  .game-active .deck-card-qty { display: none; }
 </style>
 </head>
 <body>
-<div id="app" class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': shieldOpen }">
+<div id="app" class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game' }">
+
+  <!-- ===== ツクリヨオンライン トップメニュー ===== -->
+  <div v-if="appView === 'top'" class="top-menu">
+    <div class="top-menu-title">ツクリヨオンライン</div>
+    <div class="top-menu-subtitle">— TSUKURIYO ONLINE —</div>
+    <div class="top-menu-buttons">
+      <button class="top-menu-btn deck" @click="goToCardlist">📖 カードリスト</button>
+      <button class="top-menu-btn game" @click="goToGame">🎴 4人対戦(β)</button>
+      <button class="top-menu-btn shield" @click="goToShield">⚔ シールド戦</button>
+    </div>
+    <div class="top-menu-footer">v{{ BUILD_VERSION }}</div>
+  </div>
+
   <!-- ===== 左：カードプール ===== -->
-  <div class="pool">
+  <div class="pool" v-show="deckBuilderVisible">
     <div class="header">
       <div class="title-row">
+        <button v-if="appView === 'cardlist'" class="back-to-top-btn" @click="goToTop">◀ トップ</button>
         <h1>ツクリヨ デッキビルダー</h1>
         <span class="total">全 {{ filteredCards.length }} 枚<span v-if="driveError" style="color:#fb7"> / Drive読込失敗</span></span>
-        <button class="shield-open-btn" @click="openShield">⚔ シールド戦</button>
-        <button class="game-open-btn" @click="openGame">🎴 4人対戦(β)</button>
         <div class="spacer"></div>
         <!-- カードプール ソート（右端） -->
         <div class="pool-sort-wrap">
@@ -1826,7 +1926,7 @@
   </div>
 
   <!-- ===== 右：デッキパネル ===== -->
-  <div class="deck">
+  <div class="deck" v-show="deckBuilderVisible">
     <!-- 情報セクション（normal: 上部 / expanded: 右サイドバー） -->
     <div class="deck-info">
       <div class="deck-header">
@@ -2123,6 +2223,7 @@
 
       <!-- ヘッダー -->
       <div class="sp-header">
+        <button class="back-to-top-btn" @click="goToTop">◀ トップ</button>
         <h2>⚔ シールド戦</h2>
         <span class="sp-phase-badge">{{ shieldPhaseLabel }}</span>
         <span style="margin-left:auto;font-size:11px;color:#6c9;font-weight:700;letter-spacing:0.04em;">build {{ BUILD_VERSION }}</span>
@@ -2411,6 +2512,7 @@
   <div v-if="gameOpen" class="game-overlay" @click.self="closeGame">
     <div class="gm-modal">
       <div class="gm-header">
+        <button class="back-to-top-btn" @click="goToTop">◀ トップ</button>
         <h2>🎴 4人対戦 <span class="gm-beta">β</span></h2>
         <div class="gm-phase" v-if="gs.sessionCode">{{ gsPhaseLabel }}</div>
         <button class="gm-close" @click="closeGame">×</button>
@@ -2531,7 +2633,10 @@
       <!-- ===== 弐 選別の儀（ドラフト） ===== -->
       <div v-else-if="gs.view === 'draft'" class="gm-body gm-draft">
         <div class="gm-draft-head">
-          <div class="gm-draft-title">弐 選別の儀（ラウンド{{ gsDraftRound }}）<span class="gm-draft-set">{{ gsDraftSetLabel }}</span></div>
+          <div class="gm-draft-title">
+            弐 選別の儀（ラウンド{{ gsDraftRound }}）<span class="gm-draft-set">{{ gsDraftSetLabel }}</span>
+            <span v-if="gsMyBundleLabel" class="gm-draft-bundle">{{ gsMyBundleLabel }}</span>
+          </div>
           <div class="gm-draft-headright">
             <span class="gm-draft-progress">あなたの取得 <b>{{ gsDraftRoundPicked }}</b> / {{ gsDraftTarget }}</span>
             <button class="gm-btn gm-btn-peek" @click="gsPeekDeck"
@@ -2590,11 +2695,39 @@
         </div>
         <p class="gm-lead">見識を使ってデッキを調整できます。完了したら「深化を完了」を押してください（全員完了で星戦へ）。</p>
 
+        <!-- 見識消費メニュー（3ボタン常時表示） -->
+        <div class="gm-deepen-menu">
+          <button class="gm-deepen-menu-btn"
+                  :class="{ active: gsDeepenAction === 'reflect', disabled: gsMyInsight < 1 || gsMyDeepenDone }"
+                  :disabled="gsMyInsight < 1 || gsMyDeepenDone"
+                  @click="gsSelectDeepenAction('reflect')">
+            <div class="gm-dm-title">省察</div>
+            <div class="gm-dm-cost">見識 1</div>
+            <div class="gm-dm-desc">デッキから1枚を選び星魂に変換します</div>
+          </button>
+          <button class="gm-deepen-menu-btn"
+                  :class="{ active: gsDeepenAction === 'fusion', disabled: gsMyInsight < 2 || gsMyDeepenDone || gsMyFusionUsed }"
+                  :disabled="gsMyInsight < 2 || gsMyDeepenDone || gsMyFusionUsed"
+                  @click="gsSelectDeepenAction('fusion')">
+            <div class="gm-dm-title">習合<span v-if="gsMyFusionUsed" style="font-size:11px;color:#9aa;margin-left:6px;">(使用済)</span></div>
+            <div class="gm-dm-cost">見識 2</div>
+            <div class="gm-dm-desc">次の星戦のみ、マリガンの回数を2回に増やします</div>
+          </button>
+          <button class="gm-deepen-menu-btn"
+                  :class="{ active: gsDeepenAction === 'bloom', disabled: gsMyInsight < 3 || gsMyDeepenDone }"
+                  :disabled="gsMyInsight < 3 || gsMyDeepenDone"
+                  @click="gsSelectDeepenAction('bloom')">
+            <div class="gm-dm-title">理の開花</div>
+            <div class="gm-dm-cost">見識 3</div>
+            <div class="gm-dm-desc">3枚提示されるジェネシスカードの中から1枚をデッキに加えます</div>
+          </button>
+        </div>
+
         <!-- 省察 -->
-        <div class="gm-deepen-sec">
+        <div v-if="gsDeepenAction === 'reflect'" class="gm-deepen-sec">
           <div class="gm-deepen-sec-title">
-            <span>省察（見識1）</span>
-            <span class="gm-deepen-hint">デッキから1枚を選ぶと星魂に変換され、デッキから除外されます</span>
+            <span>省察 — 変換するカードを選択</span>
+            <button class="gm-btn gm-btn-ghost gm-back-mini" @click="gsSelectDeepenAction(null)">◀ メニューに戻る</button>
           </div>
           <div class="gm-pack-grid gm-deck-cards-grid"
                :class="{ locked: gsMyInsight < 1 || gsMyDeepenDone }">
@@ -2611,15 +2744,35 @@
           </div>
         </div>
 
-        <!-- 理の開花 -->
-        <div class="gm-deepen-sec">
+        <!-- 習合 -->
+        <div v-else-if="gsDeepenAction === 'fusion'" class="gm-deepen-sec">
           <div class="gm-deepen-sec-title">
-            <span>理の開花（見識3）</span>
-            <span class="gm-deepen-hint">ジェネシスを3枚引いて1枚をデッキに加えます</span>
+            <span>習合 — 次の星戦のマリガン権を獲得</span>
+            <button class="gm-btn gm-btn-ghost gm-back-mini" @click="gsSelectDeepenAction(null)">◀ メニューに戻る</button>
+          </div>
+          <p class="gm-deepen-hint" style="margin-top:0;">
+            見識を2消費して、次の星戦のみマリガン回数を2回に増やします。
+            効果は次の星戦終了後にリセットされます。
+          </p>
+          <button class="gm-btn gm-btn-primary"
+                  :disabled="gsMyInsight < 2 || gsMyDeepenDone || gsMyFusionUsed"
+                  @click="gsFusion">
+            {{ gsMyFusionUsed ? '習合は使用済みです' : '習合を行う（見識2消費）' }}
+          </button>
+          <div v-if="gsMyMulliganRight" class="gm-converted" style="margin-top:10px;">
+            ✦ 次の星戦のマリガン権を保有しています
+          </div>
+        </div>
+
+        <!-- 理の開花 -->
+        <div v-else-if="gsDeepenAction === 'bloom'" class="gm-deepen-sec">
+          <div class="gm-deepen-sec-title">
+            <span>理の開花 — ジェネシスカードを獲得</span>
+            <button class="gm-btn gm-btn-ghost gm-back-mini" @click="gsSelectDeepenAction(null)">◀ メニューに戻る</button>
           </div>
           <button v-if="!gsBloomOfferCards.length" class="gm-btn gm-btn-primary"
                   :disabled="gsMyInsight < 3 || gsMyDeepenDone" @click="gsBloomDraw">
-            ジェネシスを3枚引く（見識3）
+            ジェネシスカードを3枚引く（見識3）
           </button>
           <div v-else class="gm-bloom-offer">
             <div class="gm-deepen-hint" style="grid-column:1/-1;">引いた3枚から1枚を選んでください</div>
@@ -2658,6 +2811,15 @@
           各卓に分かれて<strong>ユドナリウムで対戦</strong>し、勝敗が決まったら各卓の勝者を記録してください。<br>
           勝者は星魂10点、次の深化の見識は 勝者+1 / 敗者+3。デッキは「デッキビルダーで確認 / 出力」からユドナリウム出力できます。
         </p>
+        <!-- マリガン権の表示（習合で取得済みのプレイヤーを示す） -->
+        <div class="gm-mulligan-list">
+          <span style="font-size:12px;color:#9ab;align-self:center;margin-right:4px;">マリガン回数：</span>
+          <span v-for="m in gsMulliganRightsAll" :key="m.seat"
+                class="gm-mulligan-chip"
+                :class="{ 'has-right': m.hasRight, me: m.isMe }">
+            P{{ m.seat }} {{ m.name }}：{{ m.hasRight ? '2回' : '1回' }}<span v-if="m.hasRight"> ✦</span>
+          </span>
+        </div>
         <div class="gm-battle-tables">
           <div v-for="t in gsBattleTables" :key="t.table" class="gm-battle-table" :class="{ mine: t.hasMe }">
             <div class="gm-battle-table-title">卓{{ t.table }}<span v-if="t.hasMe"> (あなたの卓)</span></div>
@@ -3142,8 +3304,11 @@ new Vue({
     udonExporting: false,    // ユドナリウム出力中フラグ
     udonProgress: { current: 0, total: 0 }, // 出力進捗
 
+    /* ===== トップメニュー（ツクリヨオンライン） ===== */
+    appView: 'top',    // 'top' | 'cardlist' | 'shield' | 'game'
+
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.6.21',
+    BUILD_VERSION: '1.7.0',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -3187,8 +3352,20 @@ new Vue({
     gsPeeking:   false,       // ドラフト中にデッキ詳細をプレビュー表示中か
     _gsPeekSaved: null,       // プレビュー前のデッキビルダー状態退避
     gsSolo:      false,       // ソロテスト（CPU3体を自動操作）モード
+    gsDeepenAction: null,     // 深化の刻で選択中のアクション: null(=メニュー) | 'reflect' | 'fusion' | 'bloom'
   },
   computed: {
+    /* デッキビルダー本体（pool/deck）の表示可否
+       - カードリスト画面
+       - シールド戦のピーク中
+       - 4人対戦のピーク中
+    */
+    deckBuilderVisible() {
+      if (this.appView === 'cardlist') return true;
+      if (this.appView === 'shield' && this.shieldPeek) return true;
+      if (this.appView === 'game' && this.gsPeeking) return true;
+      return false;
+    },
     filteredCards() {
       const q = this.searchText.trim().toLowerCase();
       // カミ+通常カードの全プール
@@ -3897,10 +4074,14 @@ new Vue({
     gsMyPackCards() {
       const d = this.gsDraft;
       if (!d || !d.packs) return [];
-      const raw = d.packs[this.gs.seat];
-      const nos = Array.isArray(raw) ? raw
-        : (raw ? Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k]) : []);
+      const nos = this.gsPackCardNos(d.packs[this.gs.seat]);
       return nos.map(no => this.cardByNo[String(no)]).filter(Boolean);
+    },
+    /* 現在自分の手元にある束のラベル（例：「ラウンド1・P2の1束目」） */
+    gsMyBundleLabel() {
+      const d = this.gsDraft;
+      if (!d || !d.packs) return '';
+      return this.gsBundleLabel(d.packs[this.gs.seat]);
     },
     gsIPickedThisStep() {
       const d = this.gsDraft;
@@ -3933,6 +4114,26 @@ new Vue({
     gsMyInsight() {
       const ins = (this.gs.data && this.gs.data.insight) || {};
       return ins[this.gs.seat] || 0;
+    },
+    /* この深化で習合を既に使ったか（同一ラウンドにつき1回まで） */
+    gsMyFusionUsed() {
+      const fu = (this.gs.data && this.gs.data.fusionUsed) || {};
+      const r  = this.gsRound;
+      return !!(fu[r] && fu[r][this.gs.seat]);
+    },
+    /* 次の星戦で使えるマリガン権を保有しているか */
+    gsMyMulliganRight() {
+      const mr = (this.gs.data && this.gs.data.mulliganRights) || {};
+      return !!mr[this.gs.seat];
+    },
+    /* 全員のマリガン権保有状況（星戦ビューで表示） */
+    gsMulliganRightsAll() {
+      const mr = (this.gs.data && this.gs.data.mulliganRights) || {};
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      return [1, 2, 3, 4].map(n => ({
+        seat: n, name: seats[n] ? seats[n].name : ('P' + n),
+        hasRight: !!mr[n], isMe: this.gs.seat === n,
+      }));
     },
     gsMyConvertedCards() {
       const conv = (this.gs.data && this.gs.data.converted) || {};
@@ -4014,14 +4215,38 @@ new Vue({
       }
       return w;
     },
+    /* ===== トップメニュー遷移 ===== */
+    goToTop() {
+      // シールド戦のピーク中なら閉じる
+      if (this.shieldPeek) this.closePeekDeckDetail();
+      // 4人対戦のピーク中なら閉じる
+      if (this.gsPeeking) this.gsPeekReturn();
+      this.shieldOpen = false;
+      this.gameOpen   = false;
+      this.appView    = 'top';
+      this.hideCardHover();
+    },
+    goToCardlist() {
+      this.appView = 'cardlist';
+    },
+    goToShield() {
+      this.appView = 'shield';
+      this.openShield();
+    },
+    goToGame() {
+      this.appView = 'game';
+      this.openGame();
+    },
     /* ===== ゲームセッション（4人 / ロビー〜神託の儀） ===== */
     openGame() {
       this.gameOpen = true;
+      this.appView = 'game';
       if (!this.gs.sessionCode) this.gs.view = 'menu';
     },
     closeGame() {
       this.gameOpen = false;
       this.hideCardHover();   // 残ったホバープレビューを消す
+      this.appView = 'top';
     },
     gsResetState() {
       this.hideCardHover();   // 残ったホバープレビューを消す
@@ -4048,7 +4273,10 @@ new Vue({
         else if (data.phase === 'kami_done')   this.gs.view = 'done';
         else if (data.phase === 'draft')       this.gs.view = 'draft';
         else if (data.phase === 'draft_done')  this.gs.view = 'draft_done';
-        else if (data.phase === 'deepen')      this.gs.view = 'deepen';
+        else if (data.phase === 'deepen') {
+          if (this.gs.view !== 'deepen') this.gsDeepenAction = null;  // 入った瞬間はメニュー表示
+          this.gs.view = 'deepen';
+        }
         else if (data.phase === 'battle')      this.gs.view = 'battle';
         else if (data.phase === 'scoring')     this.gs.view = 'scoring';
         // 自分の番が来てカミ候補が未配布なら配布する
@@ -4157,7 +4385,7 @@ new Vue({
         const d = data.draft;
         for (const seat of bots) {
           if (!(d.picks && d.picks[seat] != null)) {
-            const pack = norm(d.packs && d.packs[seat]);
+            const pack = this.gsPackCardNos(d.packs && d.packs[seat]);
             if (pack.length) draftPick(code, seat, String(pack[0]));
           }
         }
@@ -4310,7 +4538,10 @@ new Vue({
     },
     genesisPoolNos() {
       // ジェネシス = 色「創」のカード（全10枚）
-      return this.allCards.filter(c => c.color === '創').map(c => String(c.no));
+      // ※ No.198「終焉龍・ディエスイレ」はヤマタノオロチ専用なので理の開花の抽選プールから除外
+      return this.allCards
+        .filter(c => c.color === '創' && String(c.no) !== '198')
+        .map(c => String(c.no));
     },
     async gsStartDeepen() {
       try { await startDeepen(this.gs.sessionCode); }
@@ -4327,6 +4558,41 @@ new Vue({
       if (this.gsMyInsight < 3 || this.gsMyDeepenDone) return;
       try { await deepenBloomDraw(this.gs.sessionCode, this.gs.seat, this.genesisPoolNos()); }
       catch (e) { alert('理の開花に失敗しました: ' + (e.message || e)); }
+    },
+    async gsFusion() {
+      if (this.gsMyInsight < 2 || this.gsMyDeepenDone || this.gsMyFusionUsed) return;
+      if (!confirm('習合を行います（見識2消費）。次の星戦のみマリガン回数が2回に増えます。よろしいですか？')) return;
+      try { await deepenFusion(this.gs.sessionCode, this.gs.seat); }
+      catch (e) { alert('習合に失敗しました: ' + (e.message || e)); }
+    },
+    /* ===== 深化メニュー切替 ===== */
+    gsSelectDeepenAction(act) {
+      this.gsDeepenAction = act;   // 'reflect' | 'fusion' | 'bloom' | null(=メニュー)
+    },
+    /* ===== ドラフト束ヘルパー ===== */
+    gsPackCardNos(packObj) {
+      if (!packObj) return [];
+      if (Array.isArray(packObj)) return packObj.map(String);
+      const cards = packObj.cards;
+      if (Array.isArray(cards)) return cards.map(String);
+      if (cards && typeof cards === 'object') {
+        return Object.keys(cards).sort((a, b) => Number(a) - Number(b))
+                                 .map(k => String(cards[k]));
+      }
+      // 旧フォーマット（オブジェクト全体が配列代用）
+      if (typeof packObj === 'object') {
+        return Object.keys(packObj).sort((a, b) => Number(a) - Number(b))
+                                   .map(k => String(packObj[k]));
+      }
+      return [];
+    },
+    gsBundleLabel(packObj) {
+      if (!packObj || Array.isArray(packObj) || typeof packObj !== 'object') return '';
+      const round    = packObj.round;
+      const origSeat = packObj.origSeat;
+      const setIdx   = packObj.setIdx;
+      if (round == null || origSeat == null || setIdx == null) return '';
+      return `ラウンド${round}・P${origSeat}の${setIdx + 1}束目`;
     },
     async gsBloomPick(card) {
       this.hideCardHover();
@@ -5082,6 +5348,7 @@ new Vue({
     /* ===== シールド戦 ===== */
     openShield() {
       this.shieldOpen = true;
+      this.appView = 'shield';
     },
     /* ----- シールド戦カードホバープレビュー ----- */
     /* 専用 sbHoverCard を使い、オーバーレイ内の sb-hover-popup で表示 */
@@ -5156,6 +5423,7 @@ new Vue({
       }
       this._sbCleanup();
       this.shieldOpen = false;
+      this.appView = 'top';
       this._sbReset();
     },
     _sbReset() {
@@ -5328,6 +5596,7 @@ new Vue({
       this.deckExpanded = true;
       this.hoverCard = null;
       this.shieldOpen = false;
+      this.appView = 'cardlist';
       this._sbCleanup();
     },
   },  // /methods
