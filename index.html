@@ -1806,7 +1806,18 @@
   .game-active   .deck-grid-btn-m,
   .game-active   .deck-grid-btn-p { display: none !important; }
 
-  /* ===== 対戦画面（Phase 1 静的レイアウト） ===== */
+  /* ===== 対戦画面（Phase 1 静的レイアウト） =====
+     カードサイズ:
+       通常カード:   width 60px, aspect 744/1039 → height ≈ 84px
+       相手手札裏:   width 32px, aspect 744/1039 → height ≈ 45px（小さく）
+     ゾーン:
+       墓地/崩壊/デッキ/カミ: カードと同サイズ(60x84) を内包
+       レリックフィールド:    7枚分 ≈ 7*60 + 6*4 = 444px 固定
+       レガシーフィールド:    横いっぱい（実プレイで7枚並ぶサイズ）
+       ステータスパネル:      240px固定（1行に "ライフ/最大値 - 10 + / - 10 +" が収まる）
+       手札（自分）:          1fr（最大10枚程度入る）
+       手札（相手）:          1fr だが小さい裏向きカードのみ
+  */
   .battle-overlay {
     position: fixed; inset: 0; z-index: 250;
     background: #0a0c14;
@@ -1824,83 +1835,141 @@
     padding: 2px 8px; border-radius: 10px; border: 1px solid #3a5a8a;
   }
   .battle-header .spacer { flex: 1; }
+  .battle-end-turn-btn {
+    background: linear-gradient(135deg, #c8742a, #e89a3a);
+    border: 1px solid #f8b850; color: #fff;
+    padding: 5px 14px; border-radius: 4px; font-size: 13px;
+    font-weight: 700; letter-spacing: 0.04em; cursor: pointer;
+    transition: background 0.12s, transform 0.08s;
+  }
+  .battle-end-turn-btn:hover { background: linear-gradient(135deg, #d8843a, #f8aa4a); }
+  .battle-end-turn-btn:active { transform: translateY(1px); }
   .battle-board {
     flex: 1; display: flex; flex-direction: column;
-    padding: 10px 14px; gap: 6px;
+    padding: 8px 12px; gap: 5px;
     background: #11141c;
     overflow: auto;
   }
-  /* 行（半面）の共通 */
   .battle-row {
-    display: grid; gap: 6px;
+    display: grid; gap: 5px;
+  }
+  /* カード基準幅・高さの CSS 変数 */
+  .battle-overlay {
+    --cw: 60px;
+    --ch: 84px;    /* 60 * 1039/744 ≈ 83.8 */
+    --ow: 32px;    /* 相手手札（縮小裏向き） */
+    --oh: 45px;
+    --status-w: 240px;
+    --relic-w: 444px;   /* 7 * cw + 6 * 4px gap */
   }
   /* 相手側上段：崩壊・デッキ・手札 */
   .battle-row-opp-top {
-    grid-template-columns: 56px 56px 1fr;
+    grid-template-columns: var(--cw) var(--cw) 1fr;
+    align-items: flex-start;
   }
   /* 相手側中段：墓地・レリックフィールド・カミ・ステータス */
   .battle-row-opp-mid {
-    grid-template-columns: 56px 1fr 76px 200px;
+    grid-template-columns: var(--cw) var(--relic-w) var(--cw) 1fr var(--status-w);
+    align-items: flex-start;
   }
-  /* 相手レガシーフィールド */
+  /* 相手・自分のレガシーフィールド（横いっぱい） */
   .battle-row-opp-legacy,
   .battle-row-self-legacy {
     grid-template-columns: 1fr;
   }
-  /* 自分側中段：ステータス・カミ・レリックフィールド・墓地 */
+  /* 自分側中段：ステータス・空き・カミ・レリックフィールド・墓地 */
   .battle-row-self-mid {
-    grid-template-columns: 200px 76px 1fr 56px;
+    grid-template-columns: var(--status-w) 1fr var(--cw) var(--relic-w) var(--cw);
+    align-items: flex-start;
   }
   /* 自分側下段：手札・デッキ・崩壊 */
   .battle-row-self-bot {
-    grid-template-columns: 1fr 56px 56px;
+    grid-template-columns: 1fr var(--cw) var(--cw);
+    align-items: flex-start;
   }
-  /* ゾーン共通スタイル */
+  /* ゾーン共通 */
   .battle-zone {
-    background: #1a2030; border: 1px solid #2a3548; border-radius: 6px;
-    min-height: 76px; display: flex; align-items: center; justify-content: center;
-    color: #aab; font-size: 12px; padding: 6px;
+    background: #1a2030; border: 1px solid #2a3548; border-radius: 5px;
+    color: #aab; font-size: 11px; padding: 3px;
     position: relative;
+    display: flex; align-items: center; justify-content: center;
   }
-  .battle-zone.field { min-height: 110px; }
-  .battle-zone.hand  { min-height: 90px; }
+  /* カードサイズと同じ単一スロット */
+  .battle-zone.slot {
+    width: var(--cw); height: var(--ch);
+  }
+  /* フィールド（横長、内部にカード並ぶ） */
+  .battle-zone.field {
+    min-height: calc(var(--ch) + 6px);
+    align-items: stretch;
+    padding: 3px 5px;
+  }
+  /* 手札（自分） */
+  .battle-zone.hand-self {
+    min-height: calc(var(--ch) + 6px);
+    padding: 3px 5px;
+  }
+  /* 手札（相手）— 小さい裏向きカード */
+  .battle-zone.hand-opp {
+    min-height: calc(var(--oh) + 6px);
+    padding: 3px 5px;
+  }
   .battle-zone-label {
-    color: #889; font-size: 11px;
+    color: #889; font-size: 10px; line-height: 1.2;
+    text-align: center; pointer-events: none;
   }
-  /* カード（プレースホルダ） */
+  .battle-zone.field .battle-zone-label,
+  .battle-zone.hand-self .battle-zone-label,
+  .battle-zone.hand-opp .battle-zone-label {
+    position: absolute; top: 2px; left: 6px; font-size: 9px;
+  }
+  /* カード */
   .battle-card {
-    width: 70px; aspect-ratio: 744/1039;
+    width: var(--cw); height: var(--ch);
     background: #2a2f3d center/cover no-repeat;
-    border: 1px solid #4a4f5d; border-radius: 4px;
+    border: 1px solid #4a4f5d; border-radius: 3px;
     flex-shrink: 0; cursor: pointer;
     transition: transform 0.12s;
   }
-  .battle-card:hover { transform: translateY(-3px); }
+  .battle-card:hover { transform: translateY(-2px); border-color: #dc9f50; }
   .battle-card.back {
     background: #1a1d2a;
-    background-image: repeating-linear-gradient(45deg, #2a2f3d 0 6px, #1a1d2a 6px 12px);
+    background-image: repeating-linear-gradient(45deg, #2a2f3d 0 5px, #1a1d2a 5px 10px);
+  }
+  /* 相手手札の縮小カード裏 */
+  .battle-card-mini {
+    width: var(--ow); height: var(--oh);
+    background: #1a1d2a;
+    background-image: repeating-linear-gradient(45deg, #2a2f3d 0 4px, #1a1d2a 4px 8px);
+    border: 1px solid #4a4f5d; border-radius: 2px;
+    flex-shrink: 0;
   }
   .battle-card-row {
-    display: flex; gap: 6px; flex-wrap: wrap; width: 100%; padding: 4px;
+    display: flex; gap: 4px; flex-wrap: nowrap; width: 100%; padding: 2px;
+    align-items: flex-end; overflow: hidden;
+  }
+  .battle-card-row.center-label {
+    align-items: center; justify-content: center;
   }
   /* ステータスパネル */
   .battle-status {
-    display: flex; flex-direction: column; gap: 4px;
-    font-size: 13px; color: #cde; padding: 6px 10px;
+    display: flex; flex-direction: column; gap: 3px;
+    font-size: 12px; color: #cde; padding: 4px 8px;
+    white-space: nowrap;
   }
   .battle-status .stat-row {
-    display: flex; align-items: center; gap: 6px;
+    display: flex; align-items: center; gap: 4px;
     justify-content: flex-end;
   }
   .battle-status.self .stat-row { justify-content: flex-start; }
-  .battle-status .stat-label { color: #cde; width: 80px; }
+  .battle-status .stat-label { color: #cde; min-width: 78px; font-size: 11px; }
   .battle-status.self .stat-label { text-align: right; }
-  .battle-status .stat-life    { color: #f88; font-weight: 700; }
-  .battle-status .stat-mana    { color: #6c9; font-weight: 700; }
-  .battle-status .stat-tenryoku{ color: #8df; font-weight: 700; }
-  .battle-status .stat-divider { color: #889; margin: 0 2px; }
+  .battle-status .stat-life    { color: #f88; font-weight: 700; min-width: 18px; text-align: center; }
+  .battle-status .stat-mana    { color: #6c9; font-weight: 700; min-width: 18px; text-align: center; }
+  .battle-status .stat-tenryoku{ color: #8df; font-weight: 700; min-width: 18px; text-align: center; }
+  .battle-status .stat-divider { color: #889; }
   .stat-btn {
-    width: 18px; height: 18px; font-size: 12px; line-height: 1; padding: 0;
+    width: 16px; height: 16px; font-size: 11px; line-height: 1; padding: 0;
     background: #2a2f3d; color: #ccc; border: 1px solid #4a4f5d; border-radius: 3px;
     cursor: pointer;
   }
@@ -1911,6 +1980,8 @@
     padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;
   }
   .battle-back-btn:hover { background: #3a3f4d; color: #ffd; }
+  /* 小型ビューポート対応：横スクロール可（最低800pxは確保） */
+  .battle-board > * { min-width: 820px; }
 </style>
 </head>
 <body>
@@ -2641,41 +2712,41 @@
       <h2>⚔ 対戦画面</h2>
       <span class="battle-phase">Phase 1（プレビュー）</span>
       <span class="spacer"></span>
+      <button class="battle-end-turn-btn" @click="battleEndTurn">ターン終了 ▶</button>
       <span style="font-size:11px;color:#6c9;font-weight:700;letter-spacing:0.04em;">build {{ BUILD_VERSION }}</span>
     </div>
 
     <div class="battle-board">
       <!-- ========== 相手側 ========== -->
 
-      <!-- 相手 上段：崩壊・デッキ・手札（伏せ） -->
+      <!-- 相手 上段：崩壊・デッキ・手札（伏せ・小型） -->
       <div class="battle-row battle-row-opp-top">
-        <div class="battle-zone">
+        <div class="battle-zone slot">
           <span class="battle-zone-label">崩壊<br>(相手)</span>
         </div>
-        <div class="battle-zone">
+        <div class="battle-zone slot">
           <span class="battle-zone-label">デッキ<br>(相手)</span>
         </div>
-        <div class="battle-zone hand">
-          <div class="battle-card-row">
-            <div v-for="n in battleSample.opp.handCount" :key="'oh'+n" class="battle-card back"></div>
-            <span v-if="battleSample.opp.handCount === 0" class="battle-zone-label">手札(相手)</span>
+        <div class="battle-zone hand-opp">
+          <span class="battle-zone-label">手札(相手)</span>
+          <div class="battle-card-row" style="padding-top:14px;">
+            <div v-for="n in battleSample.opp.handCount" :key="'oh'+n" class="battle-card-mini"></div>
           </div>
         </div>
       </div>
 
-      <!-- 相手 中段：墓地・レリックフィールド・カミ・ステータス -->
+      <!-- 相手 中段：墓地・レリックフィールド・カミ・(空きスペース)・ステータス -->
       <div class="battle-row battle-row-opp-mid">
-        <div class="battle-zone">
+        <div class="battle-zone slot">
           <span class="battle-zone-label">墓地<br>(相手)</span>
         </div>
         <div class="battle-zone field">
-          <div class="battle-card-row">
-            <span class="battle-zone-label" style="position:absolute;top:6px;left:8px;">レリック用フィールド(相手)</span>
-          </div>
+          <span class="battle-zone-label">レリック(相手)</span>
         </div>
-        <div class="battle-zone field">
+        <div class="battle-zone slot">
           <span class="battle-zone-label">カミ<br>(相手)</span>
         </div>
+        <div></div>
         <div class="battle-status opp">
           <div class="stat-row"><span class="stat-label">ライフ/最大値</span> <span class="stat-life">{{ battleSample.opp.life }}</span><span class="stat-divider">/</span><span class="stat-life">{{ battleSample.opp.lifeMax }}</span></div>
           <div class="stat-row"><span class="stat-label">マナ/最大値</span> <span class="stat-mana">{{ battleSample.opp.mana }}</span><span class="stat-divider">/</span><span class="stat-mana">{{ battleSample.opp.manaMax }}</span></div>
@@ -2686,7 +2757,7 @@
       <!-- 相手 レガシーフィールド -->
       <div class="battle-row battle-row-opp-legacy">
         <div class="battle-zone field">
-          <span class="battle-zone-label" style="position:absolute;top:6px;left:8px;">レガシー用フィールド(相手)</span>
+          <span class="battle-zone-label">レガシー(相手)</span>
         </div>
       </div>
 
@@ -2695,11 +2766,11 @@
       <!-- 自分 レガシーフィールド -->
       <div class="battle-row battle-row-self-legacy">
         <div class="battle-zone field">
-          <span class="battle-zone-label" style="position:absolute;top:6px;left:8px;">レガシー用フィールド</span>
+          <span class="battle-zone-label">レガシー</span>
         </div>
       </div>
 
-      <!-- 自分 中段：ステータス・カミ・レリックフィールド・墓地 -->
+      <!-- 自分 中段：ステータス・(空き)・カミ・レリックフィールド・墓地 -->
       <div class="battle-row battle-row-self-mid">
         <div class="battle-status self">
           <div class="stat-row">
@@ -2729,29 +2800,34 @@
             <button class="stat-btn" @click="battleStat('self','tenryoku',+1)">+</button>
           </div>
         </div>
-        <div class="battle-zone field">
+        <div></div>
+        <div class="battle-zone slot">
           <span class="battle-zone-label">カミ</span>
         </div>
         <div class="battle-zone field">
-          <span class="battle-zone-label" style="position:absolute;top:6px;left:8px;">レリック用フィールド</span>
+          <span class="battle-zone-label">レリック</span>
         </div>
-        <div class="battle-zone">
+        <div class="battle-zone slot">
           <span class="battle-zone-label">墓地</span>
         </div>
       </div>
 
       <!-- 自分 下段：手札・デッキ・崩壊 -->
       <div class="battle-row battle-row-self-bot">
-        <div class="battle-zone hand">
+        <div class="battle-zone hand-self">
+          <span v-if="battleSample.self.hand.length === 0" class="battle-zone-label">手札</span>
           <div class="battle-card-row">
-            <div v-for="n in battleSample.self.handCount" :key="'sh'+n" class="battle-card"></div>
-            <span v-if="battleSample.self.handCount === 0" class="battle-zone-label">手札</span>
+            <div v-for="(card, i) in battleSample.self.hand" :key="'sh'+i"
+                 class="battle-card"
+                 :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
+                 @mouseenter="showCardHover(card, $event)"
+                 @mouseleave="hideCardHover"></div>
           </div>
         </div>
-        <div class="battle-zone">
+        <div class="battle-zone slot">
           <span class="battle-zone-label">デッキ</span>
         </div>
-        <div class="battle-zone">
+        <div class="battle-zone slot">
           <span class="battle-zone-label">崩壊</span>
         </div>
       </div>
@@ -3558,12 +3634,12 @@ new Vue({
 
     /* ===== 対戦画面（Phase 1：静的レイアウト＋ステータス+/-のみ） ===== */
     battleSample: {
-      self: { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, handCount: 5 },
+      self: { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, hand: [] },
       opp:  { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, handCount: 5 },
     },
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.9.0',
+    BUILD_VERSION: '1.9.1',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -4487,6 +4563,12 @@ new Vue({
     },
     goToBattle() {
       this.appView = 'battle';
+      // Phase 1：プレビュー用のサンプル手札を5枚（カミ・トークン以外）から取得
+      if (this.battleSample.self.hand.length === 0 && this.allCards.length) {
+        const pool = this.allCards.filter(c => !c.isToken && !c.isKami && c.color !== '創');
+        // 先頭5枚をサンプルとして使用（決定論的）
+        this.battleSample.self.hand = pool.slice(0, 5);
+      }
     },
     /* 対戦画面：ステータス±処理（Phase 1：単純な加減のみ。Undoは Phase 4で導入予定） */
     battleStat(side, key, delta) {
@@ -4499,6 +4581,11 @@ new Vue({
       else if (key === 'mana')    target.mana    = Math.max(0, Math.min(target.manaMax, next));
       else if (key === 'manaMax') target.manaMax = Math.max(0, next);
       else if (key === 'tenryoku') target.tenryoku = Math.max(0, next);
+    },
+    /* ターン終了（Phase 1ではプレースホルダ。Phase 3でターン自動処理を実装予定） */
+    battleEndTurn() {
+      // 将来：ターン終了処理（手札8枚超過チェック・相手ターン開始時の処理など）
+      alert('ターン終了処理は Phase 3 で実装予定です（現在は UI モック）。');
     },
     goToShield() {
       this.appView = 'shield';
