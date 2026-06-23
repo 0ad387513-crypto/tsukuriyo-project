@@ -1417,6 +1417,8 @@
   .sp-btn-create:hover { background: #388e3c; }
   .sp-btn-join { background: #1565c0; color: #fff; }
   .sp-btn-join:hover { background: #1976d2; }
+  .sp-btn-solo { background: #3a3052; color: #d8c8f8; border: 1px solid #6a5a8a; }
+  .sp-btn-solo:hover { background: #4a4068; color: #fff; }
   .sp-btn-disabled { background: #333; color: #888; cursor: not-allowed; }
 
   .sp-divider { border: none; border-top: 1px solid #2a2f3d; margin: 8px 0; }
@@ -2262,6 +2264,20 @@
                     :disabled="sb.connecting || sb.joinCode.length < 4">
               {{ sb.connecting ? '接続中…' : '入室する' }}
             </button>
+          </div>
+
+          <hr class="sp-divider">
+
+          <!-- ソロテスト -->
+          <div>
+            <h3>ソロテスト</h3>
+            <button class="sp-btn sp-btn-solo" @click="sbSoloStart"
+                    :disabled="sb.connecting">
+              🤖 CPUと開始（ソロテスト）
+            </button>
+            <div style="font-size:11px; color:#9aa; margin-top:6px; text-align:center;">
+              相手をCPUにして1人で動作確認できます
+            </div>
           </div>
 
           <div v-if="sb.error" style="color:#f88; font-size:13px; text-align:center;">{{ sb.error }}</div>
@@ -3310,7 +3326,7 @@ new Vue({
     appView: 'top',    // 'top' | 'cardlist' | 'shield' | 'game'
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.7.1',
+    BUILD_VERSION: '1.8.0',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -3320,6 +3336,7 @@ new Vue({
     sbHoverLeft: 0,
     sbHoverTop:  0,
     sbPreviewCard: null, // クリックで大型プレビューするカード
+    sbSolo: false,       // ソロテスト（CPUを自動操作）モード
     sb: {
       phase:       "lobby",   // lobby / waiting / coin_toss / picking / excluding / kami_select / complete
       myName:      "",
@@ -5441,6 +5458,7 @@ new Vue({
         kamiCandidates: [], tempKami: null, showUnused: false,
         _unsubscribe: null,
       };
+      this.sbSolo = false;
     },
     _sbCleanup() {
       if (this.sb._unsubscribe) {
@@ -5477,8 +5495,46 @@ new Vue({
           // カミ選択完了 → 1秒後にデッキビルダーに自動移行
           setTimeout(() => this.onLoadShieldDeckToBuilder(), 1200);
         }
+
+        // ソロテスト：CPU（guest）を自動操作（自分は host のみ）
+        if (this.sbSolo && this.sb.role === 'host') this._sbDriveBot(data);
       });
       this.sb._unsubscribe = unsub;
+    },
+
+    /* ソロテスト：guest=CPUを自動操作（購読のたびに呼ばれる。各処理は冪等） */
+    _sbDriveBot(data) {
+      if (!data) return;
+      const code = this.sb.roomCode;
+      const fp   = data.phase;
+      // 待機中：CPUがまだ ready していなければ ready にする
+      if (fp === 'lobby' && data.guest && !data.guest.ready) {
+        setReady(code, 'guest', data.guest.id);
+        return;
+      }
+      // パックピック：guest のターンなら未取得パックから先頭を選ぶ
+      if (fp === 'picking') {
+        const hostPacks  = (data.hostPickedPacks  || []).slice ? data.hostPickedPacks  : Object.values(data.hostPickedPacks  || {});
+        const guestPacks = (data.guestPickedPacks || []).slice ? data.guestPickedPacks : Object.values(data.guestPickedPacks || {});
+        const hp = Array.isArray(hostPacks)  ? hostPacks  : [];
+        const gp = Array.isArray(guestPacks) ? guestPacks : [];
+        const total = hp.length + gp.length;
+        const turnRole = total % 2 === 0 ? data.firstPicker
+                                         : (data.firstPicker === 'host' ? 'guest' : 'host');
+        if (turnRole === 'guest') {
+          const taken = [...hp, ...gp];
+          for (let id = 0; id < 15; id++) {
+            if (!taken.includes(id)) { pickPack(code, 'guest', id); return; }
+          }
+        }
+        return;
+      }
+      // カミ選択：guest のターンなら候補の先頭を選ぶ
+      if (fp === 'kami_select' && data.kamiSelectTurn === 'guest' && !data.guestKami) {
+        if (this.sb.kamiCandidates.length) {
+          selectKami(code, 'guest', String(this.sb.kamiCandidates[0].no));
+        }
+      }
     },
 
     _sbGeneratePacks(seed) {
@@ -5501,6 +5557,32 @@ new Vue({
         this._sbSubscribe(roomCode);
       } catch (e) {
         this.sb.error = e.message;
+      } finally {
+        this.sb.connecting = false;
+      }
+    },
+
+    /* ソロテスト：host=自分、guest=CPUとして即開始 */
+    async sbSoloStart() {
+      if (this.sb.connecting) return;
+      this.sb.error = '';
+      if (!this.allCards.length) { this.sb.error = 'カードデータの読み込みが完了していません'; return; }
+      if (!this.allKamiCards.length) { this.sb.error = 'カミデータの読み込みが完了していません'; return; }
+      this.sb.connecting = true;
+      try {
+        const { roomCode, playerId } = await createRoom(this.sb.myName || 'あなた');
+        this.sb.roomCode = roomCode;
+        this.sb.playerId = playerId;
+        this.sb.role     = 'host';
+        this.sb.phase    = 'waiting';
+        this.sbSolo      = true;
+        this._sbSubscribe(roomCode);                  // 先に購読（bot自動操作を有効化）
+        await joinRoom(roomCode, 'CPU');               // CPU が guest として参加
+        // CPU の ready は購読の _sbDriveBot で自動セット。自分も ready。
+        await setReady(roomCode, 'host', playerId);
+      } catch (e) {
+        this.sb.error = e.message || 'ソロテスト開始に失敗しました';
+        this.sbSolo = false;
       } finally {
         this.sb.connecting = false;
       }
