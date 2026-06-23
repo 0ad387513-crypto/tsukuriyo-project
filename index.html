@@ -2056,7 +2056,7 @@
     position: fixed; z-index: 500;
     background: #1a2030; border: 1px solid #4a4f5d; border-radius: 5px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-    padding: 4px; min-width: 110px;
+    padding: 4px; min-width: 200px;
   }
   .deck-context-menu button {
     display: block; width: 100%; padding: 6px 12px;
@@ -2071,6 +2071,18 @@
     padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;
   }
   .battle-back-btn:hover { background: #3a3f4d; color: #ffd; }
+  /* 一手戻るボタン（ヘッダー） */
+  .battle-undo-btn {
+    background: #3a2f4a; border: 1px solid #6a5a8a; color: #e8d4ff;
+    padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 700;
+    cursor: pointer; letter-spacing: 0.04em;
+    transition: background 0.12s, opacity 0.12s;
+  }
+  .battle-undo-btn:hover:not(:disabled) { background: #4a3f5a; color: #fff; }
+  .battle-undo-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .battle-undo-btn .undo-count {
+    font-size: 10px; color: #d8c8ff; margin-left: 4px; font-weight: 600;
+  }
 
   /* ===== 墓地・崩壊 一覧モーダル ===== */
   .battle-zone-modal {
@@ -2827,6 +2839,10 @@
     <div class="battle-header">
       <button class="battle-back-btn" @click="goToTop">◀ トップ</button>
       <h2>⚔ 対戦画面</h2>
+      <button class="battle-undo-btn" @click="battleUndo" :disabled="!battleUndoStack.length"
+              :title="battleUndoStack.length ? '直前の操作を取り消します' : '取り消す操作がありません'">
+        ↶ 一手戻る<span v-if="battleUndoStack.length" class="undo-count">({{ battleUndoStack.length }})</span>
+      </button>
       <span class="battle-phase">Phase 1（プレビュー）</span>
       <span class="spacer"></span>
       <span style="font-size:11px;color:#6c9;font-weight:700;letter-spacing:0.04em;">build {{ BUILD_VERSION }}</span>
@@ -2946,7 +2962,7 @@
 
         <!-- 相手 デッキ・墓地・崩壊 -->
         <div class="dgc-stack">
-          <div class="dgc-cell deck" @contextmenu.prevent="deckRightClick('opp', $event)">
+          <div class="dgc-cell deck" @click="deckClick('opp', $event)">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="none" stroke="#e8d4a0" stroke-width="2.2" stroke-linejoin="round">
               <rect x="4" y="11" width="22" height="34" rx="3"/>
               <rect x="9" y="8"  width="22" height="34" rx="3" fill="#1a2030"/>
@@ -2999,7 +3015,7 @@
 
         <!-- 自分 デッキ・墓地・崩壊 -->
         <div class="dgc-stack">
-          <div class="dgc-cell deck" @contextmenu.prevent="deckRightClick('self', $event)">
+          <div class="dgc-cell deck" @click="deckClick('self', $event)">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="none" stroke="#e8d4a0" stroke-width="2.2" stroke-linejoin="round">
               <rect x="4" y="11" width="22" height="34" rx="3"/>
               <rect x="9" y="8"  width="22" height="34" rx="3" fill="#1a2030"/>
@@ -3042,12 +3058,13 @@
       </div>
     </div>
 
-    <!-- ===== デッキ右クリックメニュー ===== -->
+    <!-- ===== デッキクリックメニュー（ドロー / 誘 / 霊視） ===== -->
     <div v-if="deckMenuOpen" class="deck-context-menu"
          :style="{ left: deckMenuOpen.x + 'px', top: deckMenuOpen.y + 'px' }"
          @click.stop>
       <button @click="deckMenuAction('draw')">ドロー（1枚引く）</button>
       <button @click="deckMenuAction('induce')">誘（カードを選んで手札へ）</button>
+      <button @click="deckMenuAction('reishi')">霊視（デッキ上から確認）</button>
     </div>
 
     <!-- ===== 墓地・崩壊 一覧モーダル ===== -->
@@ -3884,10 +3901,11 @@ new Vue({
       opp:  { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, handCount: 5,  kami: null, deckCount: 30, graveyard: [], crumbled: [] },
     },
     battleZoneModal: null,   // { side, zone, cards }
-    deckMenuOpen: null,      // { side, x, y } — デッキ右クリックメニュー
+    deckMenuOpen: null,      // { side, x, y } — デッキクリックメニュー
+    battleUndoStack: [],     // 一手戻る用：battleSampleのスナップショット履歴（最新50件）
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.9.5',
+    BUILD_VERSION: '1.9.6',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -4821,10 +4839,21 @@ new Vue({
         this.battleSample.opp.kami  = this.allKamiCards[1] || this.allKamiCards[0];
       }
     },
-    /* 対戦画面：ステータス±処理（Phase 1：単純な加減のみ。Undoは Phase 4で導入予定） */
+    /* Undo: battleSample の現状をスナップショット（最新50件まで保持） */
+    battleSaveUndo() {
+      this.battleUndoStack.push(JSON.parse(JSON.stringify(this.battleSample)));
+      if (this.battleUndoStack.length > 50) this.battleUndoStack.shift();
+    },
+    /* Undo: 直前のスナップショットを復元 */
+    battleUndo() {
+      if (!this.battleUndoStack.length) return;
+      this.battleSample = this.battleUndoStack.pop();
+    },
+    /* 対戦画面：ステータス±処理（Phase 1：単純な加減＋Undo対応） */
     battleStat(side, key, delta) {
       const target = this.battleSample[side];
       if (!target || !(key in target)) return;
+      this.battleSaveUndo();
       const next = target[key] + delta;
       if (key === 'life')     target.life     = Math.max(0, Math.min(target.lifeMax, next));
       else if (key === 'lifeMax') {
@@ -4842,15 +4871,14 @@ new Vue({
     /* ターン終了：手番を相手に渡す（次プレイヤーのマナ最大値+1、マナを満タン回復）
        自分→相手→自分→相手 と交互。自分のターン番号は「相手→自分」遷移時に+1。 */
     battleEndTurn() {
+      this.battleSaveUndo();
       const bs = this.battleSample;
       if (bs.activeSide === 'self') {
-        // 自分のターン終了 → 相手ターン開始
         bs.activeSide = 'opp';
         const opp = bs.opp;
         opp.manaMax = Math.min(99, opp.manaMax + 1);
         opp.mana    = opp.manaMax;
       } else {
-        // 相手のターン終了 → 自分の次ターン開始
         bs.activeSide = 'self';
         bs.turn += 1;
         const self = bs.self;
@@ -4871,19 +4899,22 @@ new Vue({
       const cards = (this.battleSample[side] && this.battleSample[side][zone]) || [];
       this.battleZoneModal = { side, zone, cards };
     },
-    /* デッキ右クリック → ドロー / 誘 メニューを表示 */
-    deckRightClick(side, e) {
+    /* デッキを左クリック → ドロー / 誘 / 霊視 メニューを表示 */
+    deckClick(side, e) {
       const pad = 8;
       // メニュー位置を画面端に収める
-      const x = Math.min(e.clientX, window.innerWidth  - 130 - pad);
-      const y = Math.min(e.clientY, window.innerHeight - 90  - pad);
+      const x = Math.min(e.clientX, window.innerWidth  - 200 - pad);
+      const y = Math.min(e.clientY, window.innerHeight - 130 - pad);
       this.deckMenuOpen = { side, x, y };
+      e.stopPropagation();   // window-click による即時クローズを防ぐ
     },
     deckMenuAction(action) {
       const side = this.deckMenuOpen && this.deckMenuOpen.side;
       this.deckMenuOpen = null;
       if (!side) return;
-      const label = action === 'draw' ? 'ドロー' : '誘';
+      this.battleSaveUndo();
+      const labelMap = { draw: 'ドロー', induce: '誘', reishi: '霊視' };
+      const label = labelMap[action] || action;
       // Phase 1：モック動作（メッセージのみ）
       alert(`「${side === 'self' ? '自分' : '相手'}」のデッキ → ${label}\n（Phase 1 では UI モック。Phase 3 でデッキ処理を実装予定）`);
     },
