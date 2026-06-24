@@ -2157,29 +2157,6 @@
     color: #889; font-size: 13px; text-align: center; padding: 32px;
   }
 
-  /* ===== 対戦開始前：先攻・後攻選択 ===== */
-  .battle-launch-overlay {
-    position: fixed; inset: 0; z-index: 600;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(5, 7, 12, 0.82); padding: 20px;
-  }
-  .battle-launch-dialog {
-    width: min(440px, 94vw); background: #171c28;
-    border: 1px solid #46536a; border-radius: 8px; padding: 22px;
-    box-shadow: 0 18px 48px rgba(0,0,0,0.45); text-align: center;
-  }
-  .battle-launch-dialog h3 { margin: 0 0 8px; color: #f0e2be; font-size: 18px; }
-  .battle-launch-dialog p { margin: 0 0 18px; color: #aeb8c9; font-size: 13px; line-height: 1.7; }
-  .battle-launch-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .battle-launch-actions button {
-    padding: 13px 10px; border-radius: 5px; border: 1px solid #65748d;
-    background: #263247; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer;
-  }
-  .battle-launch-actions button:hover { background: #32415b; border-color: #8aa2c8; }
-  .battle-launch-cancel {
-    margin-top: 12px; background: transparent; border: 0; color: #9aa;
-    font-size: 12px; cursor: pointer; padding: 5px 12px;
-  }
 </style>
 </head>
 <body>
@@ -2597,7 +2574,7 @@
   </div>
 
   <!-- ===== シールド戦モーダル ===== -->
-  <div v-if="shieldOpen" class="shield-overlay" @click.self="tryCloseShield"
+  <div v-if="shieldOpen" class="shield-overlay"
        :style="shieldPeek ? { display: 'none' } : {}">
     <div class="shield-panel" @click.stop>
 
@@ -2970,6 +2947,14 @@
           </div>
           <div class="battle-zone field">
             <span class="battle-zone-label">レリック(相手)</span>
+            <div class="battle-card-row">
+              <div v-for="(card, i) in battleSample.opp.relics" :key="'or'+i"
+                   class="battle-card"
+                   :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
+                   @click="openPreview(card)"
+                   @mouseenter="showCardHover(card, $event)"
+                   @mouseleave="hideCardHover"></div>
+            </div>
           </div>
         </div>
 
@@ -2987,6 +2972,14 @@
         <div class="battle-row-self-bot">
           <div class="battle-zone field">
             <span class="battle-zone-label">レリック</span>
+            <div class="battle-card-row">
+              <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i"
+                   class="battle-card"
+                   :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
+                   @click="openPreview(card)"
+                   @mouseenter="showCardHover(card, $event)"
+                   @mouseleave="hideCardHover"></div>
+            </div>
           </div>
           <div class="battle-center-col">
             <div class="kami-portrait"
@@ -3178,20 +3171,7 @@
     </div>
   </div>
 
-  <!-- ===== 対戦開始前：先攻・後攻選択 ===== -->
-  <div v-if="battleLaunchSource" class="battle-launch-overlay" @click.self="battleLaunchSource = null">
-    <div class="battle-launch-dialog">
-      <h3>先攻・後攻を選択</h3>
-      <p>コイン・ダイス・じゃんけんなどで決めた結果を選んでください。<br>後攻には「社の施し」が初期手札に加わります。</p>
-      <div class="battle-launch-actions">
-        <button @click="confirmBattleLaunch('self')">先攻で開始</button>
-        <button @click="confirmBattleLaunch('opp')">後攻で開始</button>
-      </div>
-      <button class="battle-launch-cancel" @click="battleLaunchSource = null">キャンセル</button>
-    </div>
-  </div>
-
-  <div v-if="gameOpen" class="game-overlay" @click.self="closeGame">
+  <div v-if="gameOpen" class="game-overlay">
     <div class="gm-modal">
       <div class="gm-header">
         <button class="back-to-top-btn" @click="goToTop">◀ トップ</button>
@@ -4002,21 +3982,20 @@ new Vue({
     battleSample: {
       turn: 1,
       activeSide: 'self',   // 'self' | 'opp' — 現在進行中のプレイヤー
-      self: { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, hand: [], deck: [], kami: null, deckCount: 30, graveyard: [], crumbled: [] },
-      opp:  { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, hand: [], handCount: 4, kami: null, deck: [], deckCount: 30, graveyard: [], crumbled: [] },
+      self: { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, hand: [], deck: [], kami: null, relics: [], deckCount: 30, graveyard: [], crumbled: [] },
+      opp:  { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, hand: [], handCount: 4, kami: null, deck: [], relics: [], deckCount: 30, graveyard: [], crumbled: [] },
     },
     battleContext: {
       source: 'preview', modeLabel: 'プレビュー', returnView: 'top', round: null,
       selfName: '自分', oppName: '相手', firstSide: 'self',
       selfMulligans: 1, oppMulligans: 1,
     },
-    battleLaunchSource: null, // 'shield' | 'game' — 先攻・後攻選択ダイアログ
     battleZoneModal: null,   // { side, zone, cards }
     deckMenuOpen: null,      // { side, x, y } — デッキクリックメニュー
     battleUndoStack: [],     // 一手戻る用：battleSampleのスナップショット履歴（最新50件）
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.10.0',
+    BUILD_VERSION: '1.10.1',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -4975,11 +4954,7 @@ new Vue({
     openBattleLaunch(source) {
       if (source === 'shield' && this.sb.phase !== 'complete') return;
       if (source === 'game' && (this.gs.view !== 'battle' || !this.gsMyBattleOpponent)) return;
-      this.battleLaunchSource = source;
-    },
-    confirmBattleLaunch(firstSide) {
-      const source = this.battleLaunchSource;
-      this.battleLaunchSource = null;
+      const firstSide = Math.random() < 0.5 ? 'self' : 'opp';
       if (source === 'shield') this._startShieldBattle(firstSide);
       else if (source === 'game') this._startGameBattle(firstSide);
     },
@@ -5010,7 +4985,7 @@ new Vue({
         source: 'game', modeLabel: '4人対戦', returnView: 'game', round,
         selfName: myInfo.name || `P${this.gs.seat}`,
         oppName: oppInfo.name || opponent.name || `P${opponent.seat}`,
-        firstSide, life: round === 1 ? 8 : 10,
+        firstSide, life: 10,
         selfDeck: this.gsNorm(decks[this.gs.seat]).map(no => this.cardByNo[String(no)]).filter(Boolean),
         oppDeck: this.gsNorm(decks[opponent.seat]).map(no => this.cardByNo[String(no)]).filter(Boolean),
         selfKami: this.seatKamiCard(this.gs.seat), oppKami: this.seatKamiCard(opponent.seat),
@@ -5031,7 +5006,7 @@ new Vue({
       const hand = deck.splice(0, Math.min(4, deck.length));
       return {
         name, life, lifeMax: life, mana: 0, manaMax: 0, tenryoku: 0,
-        hand, handCount: hand.length, kami: kami || null, deck,
+        hand, handCount: hand.length, kami: kami || null, deck, relics: [],
         deckCount: deck.length, graveyard: [], crumbled: [],
       };
     },
@@ -5042,7 +5017,7 @@ new Vue({
       const opp = this._battleBuildSide(config.oppName || '相手', config.oppKami, config.oppDeck, life);
       const gift = this.allCards.find(c => c.isToken && this.fullName(c).includes('社の施し'));
       const second = firstSide === 'self' ? opp : self;
-      if (gift) second.hand.push(gift);
+      if (gift) second.relics.push(gift);
       self.handCount = self.hand.length;
       opp.handCount = opp.hand.length;
       this.battleSample = { turn: 1, activeSide: firstSide, self, opp };
@@ -5690,27 +5665,35 @@ new Vue({
     /* 対戦画面用：カミのイラスト ファイル ID を探索
        マッチング順:
          1) ファイル名の先頭に番号（例 "1_xxx.png" "001_xxx" "K001_xxx" "No.1_xxx"）
-         2) ファイル名にカミ名 / 異名が含まれる（例 "アマテラス.png"）
+       2) ファイル名にカミ識別名 / カード名 / 異名が含まれる（例 "アマテラス.png"）
        → 見つかれば fileId、無ければ null を返す。
     */
+    _normalizeKamiIllustKey(value) {
+      return String(value || '')
+        .normalize('NFKC')
+        .replace(/ヅ/g, 'ズ')
+        .replace(/ヂ/g, 'ジ')
+        .replace(/[・･\s_\-—―]+/g, '')
+        .toLowerCase();
+    },
     findKamiIllustFileId(card) {
       if (!card) return null;
       const files = this.kamiIllustFiles || [];
       if (!files.length) return null;
       const no       = String(parseInt(card.no, 10));
-      const name     = (card.name     || '').trim();
-      const nickname = (card.nickname || '').trim();
+      const names = [card.type, card.name, card.nickname]
+        .map(value => this._normalizeKamiIllustKey(value))
+        .filter(Boolean);
       // 1) 番号マッチ
       for (const f of files) {
         const base = f.name.replace(/\.[^.]+$/, '');
         const m = base.match(/^(?:[A-Za-z]+\.?)?\s*0*(\d+)/);
         if (m && String(parseInt(m[1], 10)) === no) return f.id;
       }
-      // 2) 名前マッチ（双方向で includes チェック）
+      // 2) 名前マッチ（カミ識別名を優先し、表記揺れを正規化して双方向比較）
       for (const f of files) {
-        const base = f.name.replace(/\.[^.]+$/, '').trim();
-        if (name && (base === name || base.includes(name) || name.includes(base))) return f.id;
-        if (nickname && (base === nickname || base.includes(nickname) || nickname.includes(base))) return f.id;
+        const base = this._normalizeKamiIllustKey(f.name.replace(/\.[^.]+$/, ''));
+        if (names.some(name => base === name || base.includes(name) || name.includes(base))) return f.id;
       }
       return null;
     },
