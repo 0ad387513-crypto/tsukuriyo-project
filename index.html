@@ -2037,6 +2037,18 @@
     text-align: center; line-height: 1.2;
   }
   .turn-number .tn-big { color: #dc9f50; font-size: 22px; font-weight: 800; display: block; }
+  .turn-number .tn-big.fatigue {
+    color: #f44; text-shadow: 0 0 8px rgba(255,80,80,0.6);
+    animation: fatigue-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes fatigue-pulse {
+    0%, 100% { text-shadow: 0 0 8px rgba(255,80,80,0.6); }
+    50%      { text-shadow: 0 0 16px rgba(255,80,80,0.9); }
+  }
+  .turn-fatigue-hint {
+    font-size: 10px; color: #f88; font-weight: 700; margin-top: 2px;
+    letter-spacing: 0.04em;
+  }
   /* 相手/自分のターン表示（DGCの直近に配置） */
   .turn-ind {
     padding: 4px 6px; border-radius: 4px;
@@ -2977,10 +2989,10 @@
         <!-- 相手 デッキ・墓地・崩壊 -->
         <div class="dgc-stack">
           <div class="dgc-cell deck" @click="deckClick('opp', $event)">
-            <svg class="dgc-icon" viewBox="0 0 40 50" fill="none" stroke="#e8d4a0" stroke-width="2.2" stroke-linejoin="round">
-              <rect x="4" y="11" width="22" height="34" rx="3"/>
-              <rect x="9" y="8"  width="22" height="34" rx="3" fill="#1a2030"/>
-              <rect x="14" y="5" width="22" height="34" rx="3" fill="#1a2030"/>
+            <svg class="dgc-icon" viewBox="0 0 40 50" xmlns="http://www.w3.org/2000/svg">
+              <rect x="6" y="13" width="22" height="32" rx="3" fill="#e8d4a0"/>
+              <rect x="11" y="9"  width="22" height="32" rx="3" fill="#1a2030" stroke="#e8d4a0" stroke-width="1.8"/>
+              <rect x="16" y="5" width="22" height="32" rx="3" fill="#e8d4a0"/>
             </svg>
             <div class="dgc-info">
               <span class="dgc-name">デッキ</span>
@@ -3022,7 +3034,10 @@
 
         <!-- 中央：ターン番号 + ターン終了ボタン（残り空間を埋めて縦中央配置） -->
         <div class="turn-middle">
-          <div class="turn-number">ターン<span class="tn-big">{{ battleSample.turn }}</span></div>
+          <div class="turn-number">
+            ターン<span class="tn-big" :class="{ fatigue: battleSample.turn >= 11 }">{{ battleSample.turn }}</span>
+            <div v-if="battleSample.turn >= 11" class="turn-fatigue-hint">疲労 -{{ battleSample.turn - 10 }}</div>
+          </div>
           <button class="battle-end-turn-btn" @click="battleEndTurn">ターン終了</button>
         </div>
 
@@ -3032,10 +3047,10 @@
         <!-- 自分 デッキ・墓地・崩壊 -->
         <div class="dgc-stack">
           <div class="dgc-cell deck" @click="deckClick('self', $event)">
-            <svg class="dgc-icon" viewBox="0 0 40 50" fill="none" stroke="#e8d4a0" stroke-width="2.2" stroke-linejoin="round">
-              <rect x="4" y="11" width="22" height="34" rx="3"/>
-              <rect x="9" y="8"  width="22" height="34" rx="3" fill="#1a2030"/>
-              <rect x="14" y="5" width="22" height="34" rx="3" fill="#1a2030"/>
+            <svg class="dgc-icon" viewBox="0 0 40 50" xmlns="http://www.w3.org/2000/svg">
+              <rect x="6" y="13" width="22" height="32" rx="3" fill="#e8d4a0"/>
+              <rect x="11" y="9"  width="22" height="32" rx="3" fill="#1a2030" stroke="#e8d4a0" stroke-width="1.8"/>
+              <rect x="16" y="5" width="22" height="32" rx="3" fill="#e8d4a0"/>
             </svg>
             <div class="dgc-info">
               <span class="dgc-name">デッキ</span>
@@ -3921,7 +3936,7 @@ new Vue({
     battleUndoStack: [],     // 一手戻る用：battleSampleのスナップショット履歴（最新50件）
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.9.7',
+    BUILD_VERSION: '1.9.8',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -4887,27 +4902,40 @@ new Vue({
       }
       else if (key === 'mana')    target.mana    = Math.max(0, Math.min(target.manaMax, next));
       else if (key === 'manaMax') {
-        target.manaMax = Math.max(0, next);
+        target.manaMax = Math.max(0, Math.min(10, next));   // マナ最大値は 10 まで
         if (target.mana > target.manaMax) target.mana = target.manaMax;
       }
       else if (key === 'tenryoku') target.tenryoku = Math.max(0, next);
     },
-    /* ターン終了：手番を相手に渡す（次プレイヤーのマナ最大値+1、マナを満タン回復）
-       自分→相手→自分→相手 と交互。自分のターン番号は「相手→自分」遷移時に+1。 */
+    /* ターン終了：手番を相手に渡す
+       - 次プレイヤーのマナ最大値+1（最大10まで）
+       - マナを最大値まで回復
+       - ターン11以降は疲労ダメージ（11→1, 12→2, ...）
+       自分のターン番号は「相手→自分」遷移時に+1。 */
     battleEndTurn() {
       this.battleSaveUndo();
       const bs = this.battleSample;
       if (bs.activeSide === 'self') {
         bs.activeSide = 'opp';
-        const opp = bs.opp;
-        opp.manaMax = Math.min(99, opp.manaMax + 1);
-        opp.mana    = opp.manaMax;
+        this._battleStartTurnFor('opp');
       } else {
         bs.activeSide = 'self';
         bs.turn += 1;
-        const self = bs.self;
-        self.manaMax = Math.min(99, self.manaMax + 1);
-        self.mana    = self.manaMax;
+        this._battleStartTurnFor('self');
+      }
+    },
+    /* ターン開始処理（マナ回復＋疲労ダメージ） */
+    _battleStartTurnFor(side) {
+      const target = this.battleSample[side];
+      // マナ最大値+1（上限10）→ 満タン回復
+      target.manaMax = Math.min(10, target.manaMax + 1);
+      target.mana    = target.manaMax;
+      // 疲労ダメージ：ターン11以降に発生（11→1, 12→2, ...）
+      // ※自分のターン番号に基づく。相手も同じ番号でダメージを受ける想定。
+      const turn = this.battleSample.turn;
+      if (turn >= 11) {
+        const dmg = turn - 10;
+        target.life = Math.max(0, target.life - dmg);
       }
     },
     /* カミクリック → 神技発動（Phase 1ではプレースホルダ） */
