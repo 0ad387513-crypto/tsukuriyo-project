@@ -3696,7 +3696,7 @@ const DRIVE_PARENT_FOLDER_ID = "1hIbAEGkA86we9tZPODOj10Dz1JsS2Bhs";
 const DRIVE_CHILD_FOLDER_NAME = "CNo順";   // 通常カード画像フォルダ
 const DRIVE_KAMI_FOLDER_NAME  = "カミ";    // カミカード画像フォルダ
 // 対戦画面で使うカミの正方形イラスト（カードアートではなく1:1のヒーローポートレート）
-const DRIVE_KAMI_ILLUST_FOLDER_ID = "1r57CUvMiAY9lc2zKL9_-V6c1AfceJt-T";
+const DRIVE_KAMI_ILLUST_FOLDER_ID = "1FMXzO1b4D4XEUvPVKZtCv2Euw3aCPnz6";
 
 // ユドナリウム出力用：カード裏面画像のURL
 // DriveフォルダにカードBACK画像がある場合はそのURL、なければ空欄でOK（裏面なしで出力される）
@@ -3936,7 +3936,7 @@ new Vue({
     battleUndoStack: [],     // 一手戻る用：battleSampleのスナップショット履歴（最新50件）
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.9.8',
+    BUILD_VERSION: '1.9.9',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5395,39 +5395,45 @@ new Vue({
         console.error("カミカード読み込みエラー", e);
       }
     },
-    /* 対戦画面用：カミの 1:1 イラスト（指定 Drive フォルダ ID 直指定）
-       生のファイル一覧を取得し、kamiIllustrationUrl() で番号/名前マッチを行う。
-       これによりファイル名に番号がなくても「ヤマタノオロチ.png」のような名前で
-       マッチできる。
+    /* 対戦画面用：カミの 1:1 イラスト読み込み
+       指定 ID のフォルダ内をスキャンし、画像 + サブフォルダ(1階層) を再帰的に探す。
+       → 親フォルダ ID を指定しても、その中のサブフォルダにある画像まで自動取得できる。
+       「フォルダごと入れ替える」運用に対応：親フォルダ ID を固定しておけば、
+       サブフォルダを置き換えても自動で新しい画像を参照できる。
     */
     async loadKamiIllustrations() {
       this.kamiIllustError = '';
       try {
-        const folderId = DRIVE_KAMI_ILLUST_FOLDER_ID;
-        const files = [];
-        let pageToken = null;
-        do {
-          const params = new URLSearchParams({
-            q: `'${folderId}' in parents and trashed = false`,
-            fields: "nextPageToken, files(id, name, mimeType)",
-            pageSize: "1000",
-            key: API_KEY,
-          });
-          if (pageToken) params.set("pageToken", pageToken);
-          const res = await axios.get(`https://www.googleapis.com/drive/v3/files?${params}`);
-          const list = res.data.files || [];
-          for (const f of list) {
-            if (!/^image\//.test(f.mimeType || "") &&
-                !/\.(png|jpe?g|webp|gif)$/i.test(f.name)) continue;
-            files.push({ id: f.id, name: f.name });
+        const rootId = DRIVE_KAMI_ILLUST_FOLDER_ID;
+        // 1階層目をスキャン
+        const rootItems = await this._driveListFolder(rootId);
+        const files     = [];
+        const subDirs   = [];
+        for (const f of rootItems) {
+          if (f.mimeType === 'application/vnd.google-apps.folder') subDirs.push(f);
+          else if (this._isImageFile(f)) files.push({ id: f.id, name: f.name });
+        }
+        // サブフォルダがあれば、その中も走査（1階層）
+        for (const sub of subDirs) {
+          try {
+            const subItems = await this._driveListFolder(sub.id);
+            for (const f of subItems) {
+              if (this._isImageFile(f)) files.push({ id: f.id, name: f.name });
+            }
+          } catch (e) {
+            console.warn(`サブフォルダ取得失敗: ${sub.name}`, e);
           }
-          pageToken = res.data.nextPageToken || null;
-        } while (pageToken);
+        }
         this.kamiIllustFiles = files;
-        console.log(`カミイラスト: ${files.length}件取得`,
-          files.slice(0, 5).map(f => f.name));
+        console.log(
+          `カミイラスト: ${files.length}件取得 ` +
+          `(直下: ${files.length - subDirs.length}件, サブフォルダ: ${subDirs.length}個)`,
+          files.slice(0, 8).map(f => f.name)
+        );
         if (files.length === 0) {
-          this.kamiIllustError = 'フォルダは見つかりましたが画像が0件でした。';
+          this.kamiIllustError =
+            'フォルダにアクセスできましたが画像が0件です。' +
+            'サブフォルダの共有設定も「リンクを知っている全員」になっているか確認してください。';
         }
       } catch (e) {
         console.error("カミイラスト読み込みエラー", e);
@@ -5435,6 +5441,27 @@ new Vue({
           'カミイラストフォルダにアクセスできませんでした。' +
           'フォルダの共有設定が「リンクを知っている全員」になっているか確認してください。';
       }
+    },
+    /* Drive フォルダ内の全ファイル/サブフォルダを取得（pagination 対応） */
+    async _driveListFolder(folderId) {
+      const out = [];
+      let pageToken = null;
+      do {
+        const params = new URLSearchParams({
+          q: `'${folderId}' in parents and trashed = false`,
+          fields: "nextPageToken, files(id, name, mimeType)",
+          pageSize: "1000",
+          key: API_KEY,
+        });
+        if (pageToken) params.set("pageToken", pageToken);
+        const res = await axios.get(`https://www.googleapis.com/drive/v3/files?${params}`);
+        for (const f of (res.data.files || [])) out.push(f);
+        pageToken = res.data.nextPageToken || null;
+      } while (pageToken);
+      return out;
+    },
+    _isImageFile(f) {
+      return /^image\//.test(f.mimeType || "") || /\.(png|jpe?g|webp|gif)$/i.test(f.name);
     },
     /* 対戦画面用：カミのイラスト ファイル ID を探索
        マッチング順:
