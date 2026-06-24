@@ -2157,6 +2157,229 @@
     color: #889; font-size: 13px; text-align: center; padding: 32px;
   }
 
+  /* ===== 対戦画面 v4：ボード再設計 ===== */
+  .battle-overlay {
+    --kw: clamp(96px, 9vw, 138px);
+    --side-w: clamp(152px, 12vw, 184px);
+    --status-w: clamp(214px, 19vw, 286px);
+  }
+  .battle-header { min-height: 44px; gap: 8px; }
+  .battle-surrender-btn {
+    background: #8e2430; border: 1px solid #df6672; color: #fff;
+    padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 800;
+    cursor: pointer;
+  }
+  .battle-surrender-btn:hover { background: #b32b39; }
+  .battle-board { gap: 6px; padding: 6px 8px; }
+  .battle-main {
+    grid-template-rows: minmax(122px, .82fr) minmax(150px, 1.18fr) minmax(150px, 1.18fr) minmax(130px, .9fr);
+    gap: 6px;
+  }
+  .battle-row-opp-top, .battle-row-self-bot {
+    grid-template-columns: minmax(0, 1fr) var(--status-w) minmax(0, 1fr);
+    gap: 8px;
+  }
+  .battle-zone {
+    background: #171e2d; border-color: #344157; border-radius: 6px;
+  }
+  .battle-zone.field, .battle-zone.hand-self, .battle-zone.hand-opp {
+    padding: 5px 8px;
+  }
+  .battle-zone.field .battle-zone-label,
+  .battle-zone.hand-self .battle-zone-label,
+  .battle-zone.hand-opp .battle-zone-label {
+    top: 6px; left: 9px; z-index: 3; font-size: 12px; color: #aebbd0; font-weight: 800;
+  }
+  .battle-card-row { gap: 6px; padding: 23px 5px 5px; align-items: center; box-sizing: border-box; }
+  .battle-card-row .battle-card,
+  .battle-card-row.opp-back .battle-card-mini {
+    max-width: calc((100% - 36px) / 7);
+  }
+  .legacy-field { overflow: hidden; }
+  .legacy-row { align-items: stretch; padding-top: 25px; }
+  .legacy-row .battle-card {
+    height: 100%; width: auto; max-height: 100%; align-self: stretch; min-height: 0;
+    position: relative; overflow: hidden; flex: 0 1 auto; box-sizing: border-box;
+  }
+  .battle-card-overlay {
+    position: absolute; z-index: 2; display: flex; align-items: center; justify-content: center;
+    min-width: 30px; min-height: 27px; padding: 2px 7px;
+    border: 1px solid rgba(255,255,255,.7); background: rgba(17,39,78,.94);
+    color: #fff; font-size: 14px; font-weight: 900; line-height: 1;
+    box-shadow: 0 2px 7px rgba(0,0,0,.55);
+  }
+  .battle-card-cost { top: 4px; left: 4px; }
+  .battle-card-attack { top: 4px; right: 4px; background: rgba(105,38,42,.95); }
+  .battle-card-power {
+    left: 8px; right: 8px; bottom: 5px; min-height: 24px;
+    background: rgba(21,25,34,.94); border-color: #c9d0da; font-size: 15px;
+  }
+  .hand-cost-badge {
+    top: 3px; left: 3px; min-width: 34px; min-height: 30px;
+    background: #2356a0; border-color: #a9cfff; font-size: clamp(13px, 1.15vw, 18px);
+  }
+  .hand-playable { position: relative; overflow: visible; }
+  .hand-playable:hover { transform: translateY(-6px); border-color: #e8bb63; }
+  .hand-disabled { cursor: default; opacity: .82; }
+  .hand-disabled:hover { transform: none; border-color: #4a4f5d; }
+
+  .battle-center-col { justify-content: center; gap: 3px; }
+  .kami-hud {
+    display: grid; grid-template-columns: 58px var(--kw) 58px;
+    align-items: end; justify-content: center; gap: 4px; width: 100%;
+  }
+  .kami-hud .kami-portrait { grid-column: 2; grid-row: 1; }
+  .kami-hud .hud-orb:first-child { grid-column: 1; grid-row: 1; }
+  .kami-hud .hud-orb:last-child { grid-column: 3; grid-row: 1; }
+  .hud-orb { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+  .orb-label { color: #c9d2df; font-size: 9px; font-weight: 800; }
+  .orb-disc {
+    width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; flex-direction: column; border: 2px solid rgba(255,255,255,.7);
+    color: #fff; font-size: 19px; font-weight: 900; line-height: 1;
+    box-shadow: 0 3px 10px rgba(0,0,0,.45);
+  }
+  .orb-disc small { font-size: 9px; margin-top: 2px; color: rgba(255,255,255,.82); }
+  .orb-disc.life { background: #a82131; }
+  .orb-disc.tenryoku { background: #205aa0; }
+  .orb-disc.seal { background: #15171c; border-color: #8d929d; }
+  .orb-max-controls, .orb-value-controls { display: flex; align-items: center; justify-content: center; gap: 3px; }
+  .orb-max-controls { flex-direction: column; gap: 0; margin-bottom: 1px; }
+  .orb-max-controls button, .orb-value-controls button {
+    width: 22px; height: 18px; padding: 0; line-height: 1; border-radius: 9px;
+    border: 1px solid #7e94ba; background: #294c84; color: #fff; cursor: pointer;
+    font-size: 12px; font-weight: 900;
+  }
+  .orb-max-controls button { height: 12px; background: transparent; border: 0; color: #ff9a9f; }
+  .orb-value-controls button:hover { background: #3b68aa; }
+  .kami-name {
+    max-width: 100%; color: #d8deea; font-size: 10px; font-weight: 800;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center;
+  }
+  .kami-skill-btn {
+    width: min(190px, 92%); padding: 6px 12px; border-radius: 5px; font-size: 14px;
+    font-weight: 900; cursor: pointer; color: #17191e; border: 1px solid #89909b;
+    background: #7d8188;
+  }
+  .kami-skill-btn.silver { background: #c8cdd3; border-color: #f1f4f7; box-shadow: 0 0 9px rgba(210,220,230,.48); }
+  .kami-skill-btn.gold { background: #d6a919; border-color: #ffe16a; box-shadow: 0 0 12px rgba(255,204,45,.6); }
+  .kami-skill-btn:disabled { cursor: not-allowed; opacity: .48; box-shadow: none; }
+  .kami-portrait.orochi-awakened {
+    border-color: #d41424;
+    animation: orochi-awaken 1.6s ease-in-out infinite;
+  }
+  @keyframes orochi-awaken {
+    0%,100% { box-shadow: 0 0 13px #000, 0 0 20px rgba(190,0,20,.6); filter: contrast(1.05); }
+    50% { box-shadow: 0 0 24px #000, 0 0 38px rgba(255,0,30,.95); filter: contrast(1.25) saturate(1.35); }
+  }
+
+  .battle-side { gap: 5px; }
+  .mana-panel {
+    padding: 7px 6px; background: #182131; border: 1px solid #344157; border-radius: 6px;
+    display: flex; flex-direction: column; gap: 5px; flex-shrink: 0;
+  }
+  .mana-head { display: flex; align-items: center; justify-content: space-between; color: #d6e5d9; font-size: 11px; font-weight: 900; }
+  .mana-value { color: #82dfa3; font-size: 15px; }
+  .mana-orbs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; min-height: 17px; }
+  .mana-orb {
+    width: 16px; height: 16px; border-radius: 50%; background: #747b85;
+    border: 1px solid #a9afb8; justify-self: center; box-shadow: inset 0 0 4px rgba(0,0,0,.45);
+  }
+  .mana-orb.available { background: #20a95a; border-color: #8ce8ae; box-shadow: 0 0 6px rgba(45,210,105,.52); }
+  .mana-empty { grid-column: 1 / -1; color: #687383; font-size: 10px; text-align: center; }
+  .mana-controls { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
+  .mana-controls span { color: #9ca9bb; font-size: 9px; }
+  .mana-control-group { display: flex; gap: 3px; }
+  .mana-controls button {
+    width: 24px; height: 20px; padding: 0; border-radius: 4px; cursor: pointer;
+    background: #264b38; border: 1px solid #5fa278; color: #d9ffe5; font-weight: 900;
+  }
+  .dgc-stack { gap: 5px; padding: 5px; }
+  .dgc-cell { min-height: 42px; gap: 8px; padding: 5px 7px; border: 1px solid transparent; }
+  .dgc-cell.zone-deck { background: #18385d; border-color: #376ca3; }
+  .dgc-cell.zone-graveyard { background: #3a294b; border-color: #73568d; }
+  .dgc-cell.zone-crumbled { background: #542b31; border-color: #94505a; }
+  .dgc-cell.disabled { cursor: not-allowed; filter: grayscale(.45); opacity: .75; }
+  .dgc-cell.disabled:hover { background: #18385d; }
+  .dgc-icon { width: 30px; height: 34px; }
+  .dgc-info { flex-direction: row; align-items: baseline; gap: 7px; }
+  .dgc-name { color: #e7ebf3; font-size: 12px; font-weight: 800; }
+  .dgc-count { color: #fff; font-size: 17px; }
+  .turn-middle { padding: 7px; gap: 5px; }
+
+  .battle-action-modal, .battle-result-overlay {
+    position: fixed; inset: 0; z-index: 620; display: flex; align-items: center; justify-content: center;
+    padding: 20px; background: rgba(3,5,10,.82);
+  }
+  .battle-action-panel {
+    width: min(540px, 94vw); max-height: 82vh; overflow-y: auto;
+    background: #171e2d; border: 1px solid #55637a; border-radius: 8px; padding: 18px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.65); color: #eef2f7;
+  }
+  .battle-action-panel h3 { margin: 0 0 13px; font-size: 19px; color: #f2d58d; }
+  .battle-action-panel p { margin: 8px 0; color: #cbd3de; line-height: 1.6; }
+  .skill-choice {
+    width: 100%; text-align: left; margin: 7px 0; padding: 11px 13px; border-radius: 6px;
+    background: #222c3e; border: 1px solid #53637e; color: #fff; cursor: pointer;
+  }
+  .skill-choice:disabled { opacity: .42; cursor: not-allowed; }
+  .skill-choice strong { display: block; font-size: 15px; color: #f0d691; }
+  .skill-choice span { display: block; margin-top: 4px; color: #bac4d2; font-size: 12px; line-height: 1.5; }
+  .battle-action-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  .battle-action-buttons button { padding: 7px 13px; border-radius: 5px; border: 1px solid #68758a; background: #293347; color: #fff; cursor: pointer; }
+  .public-process-badge { color: #8dd8ff; font-size: 11px; font-weight: 900; }
+  .battle-result-overlay { z-index: 700; overflow: hidden; }
+  .battle-result-panel {
+    position: relative; width: min(720px, 94vw); padding: 56px 28px; text-align: center;
+    border: 3px solid; background: #11151d; box-shadow: 0 22px 70px rgba(0,0,0,.85);
+  }
+  .battle-result-title { font-size: clamp(42px, 8vw, 92px); font-weight: 1000; line-height: 1.05; }
+  .battle-result-panel.win { border-color: #ffe06a; }
+  .battle-result-panel.win .battle-result-title {
+    color: #ffd43b; text-shadow: 0 0 8px #fff1a6, 0 0 24px #d99400, 0 5px 0 #7d4c00;
+    animation: victory-flash 1.15s ease-in-out infinite;
+  }
+  .battle-result-panel.loss { border-color: #737983; filter: grayscale(.35); }
+  .battle-result-panel.loss .battle-result-title { color: #989da5; text-shadow: 0 4px 0 #3e4249; }
+  .victory-spark { position: absolute; color: #ffe883; font-size: 32px; animation: spark-spin 2.4s linear infinite; }
+  .victory-spark.s1 { top: 16px; left: 8%; }
+  .victory-spark.s2 { top: 24%; right: 8%; animation-delay: -.8s; }
+  .victory-spark.s3 { bottom: 17%; left: 16%; animation-delay: -1.5s; }
+  @keyframes victory-flash { 0%,100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+  @keyframes spark-spin { to { transform: rotate(360deg) scale(1.15); } }
+  .result-actions { display: flex; justify-content: center; gap: 10px; margin-top: 30px; }
+  .result-actions button { padding: 9px 16px; border-radius: 5px; border: 1px solid #737c89; background: #252d39; color: #fff; font-weight: 800; cursor: pointer; }
+
+  @media (max-height: 800px) and (min-width: 761px) {
+    .battle-overlay { --kw: 94px; --status-w: 218px; }
+    .battle-main { grid-template-rows: 116px minmax(126px, 1fr) minmax(126px, 1fr) 148px; }
+    .kami-hud { grid-template-columns: 50px var(--kw) 50px; gap: 2px; }
+    .orb-disc { width: 43px; height: 43px; font-size: 16px; }
+    .orb-max-controls button { height: 10px; }
+    .orb-value-controls button { width: 20px; height: 16px; }
+    .kami-skill-btn { padding: 3px 10px; font-size: 12px; }
+    .kami-name { font-size: 9px; }
+    .mana-panel { padding: 4px 5px; gap: 3px; }
+    .mana-orb { width: 13px; height: 13px; }
+    .dgc-stack { gap: 3px; padding: 3px; }
+    .dgc-cell { min-height: 34px; padding: 3px 6px; }
+    .dgc-icon { width: 25px; height: 28px; }
+    .turn-middle { padding: 5px; }
+    .battle-end-turn-btn { padding: 6px 4px; }
+  }
+
+  @media (max-width: 760px) {
+    .battle-overlay { overflow: auto; --kw: 94px; --side-w: 124px; --status-w: 204px; }
+    .battle-header { width: 920px; flex-wrap: wrap; }
+    .battle-header .battle-setup-note, .battle-header .battle-phase { display: none; }
+    .battle-board { width: 920px; min-height: 690px; flex: none; }
+    .battle-main { grid-template-rows: 122px 190px 190px 134px; }
+    .battle-row-opp-top, .battle-row-self-bot { gap: 5px; }
+    .kami-hud { grid-template-columns: 50px var(--kw) 50px; }
+    .orb-disc { width: 45px; height: 45px; font-size: 16px; }
+    .battle-card-overlay { font-size: 11px; min-width: 25px; min-height: 22px; padding: 2px 5px; }
+  }
+
 </style>
 </head>
 <body>
@@ -2280,6 +2503,7 @@
         </div>
       </div>
     </div>
+
   </div>
 
   <!-- ===== 右：デッキパネル ===== -->
@@ -2892,6 +3116,7 @@
   <div v-if="appView === 'battle'" class="battle-overlay">
     <div class="battle-header">
       <button class="battle-back-btn" @click="battleReturn">◀ {{ battleReturnLabel }}</button>
+      <button class="battle-surrender-btn" @click="battleSurrender">降参</button>
       <h2>⚔ 対戦画面</h2>
       <span class="battle-matchup">{{ battleContext.selfName }} vs {{ battleContext.oppName }}</span>
       <button class="battle-undo-btn" @click="battleUndo" :disabled="!battleUndoStack.length"
@@ -2918,32 +3143,28 @@
             </div>
           </div>
           <div class="battle-center-col">
-            <div class="kami-portrait"
-                 :style="battleSample.opp.kami && kamiIllustrationUrl(battleSample.opp.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.opp.kami) + ')' } : {}"
-                 @click="battleSample.opp.kami && openPreview(battleSample.opp.kami)"
-                 @mouseenter="battleSample.opp.kami && showCardHover(battleSample.opp.kami, $event)"
-                 @mouseleave="hideCardHover">
-              <div v-if="!battleSample.opp.kami" class="kami-placeholder">カミ(相手)</div>
-              <div v-else-if="!hasKamiIllustration(battleSample.opp.kami)" class="kami-illust-missing">イラスト未登録</div>
-            </div>
-            <div class="battle-status opp">
-              <div class="stat-row">
-                <span class="stat-label">ライフ/最大値</span>
-                <span class="stat-life">{{ battleSample.opp.life }}</span>
-                <span class="stat-divider">/</span>
-                <span class="stat-life">{{ battleSample.opp.lifeMax }}</span>
+            <div class="kami-hud">
+              <div class="hud-orb">
+                <span class="orb-label">{{ battleIsOrochi('opp') ? '封印' : '天力' }}</span>
+                <div class="orb-disc" :class="battleIsOrochi('opp') ? 'seal' : 'tenryoku'">
+                  {{ battleIsOrochi('opp') ? battleSample.opp.seal : battleSample.opp.tenryoku }}
+                </div>
               </div>
-              <div class="stat-row">
-                <span class="stat-label">マナ/最大値</span>
-                <span class="stat-mana">{{ battleSample.opp.mana }}</span>
-                <span class="stat-divider">/</span>
-                <span class="stat-mana">{{ battleSample.opp.manaMax }}</span>
+              <div class="kami-portrait"
+                   :class="{ 'orochi-awakened': battleIsOrochi('opp') && battleSample.opp.seal === 0 }"
+                   :style="battleSample.opp.kami && kamiIllustrationUrl(battleSample.opp.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.opp.kami) + ')' } : {}"
+                   @click="battleSample.opp.kami && openPreview(battleSample.opp.kami)"
+                   @mouseenter="battleSample.opp.kami && showCardHover(battleSample.opp.kami, $event)"
+                   @mouseleave="hideCardHover">
+                <div v-if="!battleSample.opp.kami" class="kami-placeholder">カミ(相手)</div>
+                <div v-else-if="!hasKamiIllustration(battleSample.opp.kami)" class="kami-illust-missing">イラスト未登録</div>
               </div>
-              <div class="stat-row">
-                <span class="stat-label">天力</span>
-                <span class="stat-tenryoku">{{ battleSample.opp.tenryoku }}</span>
+              <div class="hud-orb">
+                <span class="orb-label">ライフ</span>
+                <div class="orb-disc life">{{ battleSample.opp.life }}<small>/ {{ battleSample.opp.lifeMax }}</small></div>
               </div>
             </div>
+            <div class="kami-name">{{ battleSample.opp.kami ? fullName(battleSample.opp.kami) : 'カミ未設定' }}</div>
           </div>
           <div class="battle-zone field">
             <span class="battle-zone-label">レリック(相手)</span>
@@ -2960,12 +3181,38 @@
 
         <!-- 相手 レガシーフィールド -->
         <div class="battle-row-legacy">
-          <div class="battle-zone field"><span class="battle-zone-label">レガシー(相手)</span></div>
+          <div class="battle-zone field legacy-field">
+            <span class="battle-zone-label">レガシー(相手)</span>
+            <div class="battle-card-row legacy-row">
+              <div v-for="(card, i) in battleSample.opp.legacies" :key="'ol'+i"
+                   class="battle-card"
+                   :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
+                   @click="openPreview(card)"
+                   @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
+                <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
+                <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
+                <span class="battle-card-overlay battle-card-power">戦闘力 {{ card.power || 0 }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 自分 レガシーフィールド -->
         <div class="battle-row-legacy">
-          <div class="battle-zone field"><span class="battle-zone-label">レガシー</span></div>
+          <div class="battle-zone field legacy-field">
+            <span class="battle-zone-label">レガシー</span>
+            <div class="battle-card-row legacy-row">
+              <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
+                   class="battle-card"
+                   :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
+                   @click="openPreview(card)"
+                   @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
+                <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
+                <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
+                <span class="battle-card-overlay battle-card-power">戦闘力 {{ card.power || 0 }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 自分 下段：レリック | カミ(中央)+ステータス | 手札 -->
@@ -2982,51 +3229,54 @@
             </div>
           </div>
           <div class="battle-center-col">
-            <div class="kami-portrait"
-                 :style="battleSample.self.kami && kamiIllustrationUrl(battleSample.self.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.self.kami) + ')' } : {}"
-                 @click="battleSample.self.kami && openPreview(battleSample.self.kami)"
-                 @mouseenter="battleSample.self.kami && showCardHover(battleSample.self.kami, $event)"
-                 @mouseleave="hideCardHover">
-              <div v-if="!battleSample.self.kami" class="kami-placeholder">カミ</div>
-              <div v-else-if="!hasKamiIllustration(battleSample.self.kami)" class="kami-illust-missing">イラスト未登録</div>
-            </div>
-            <div class="battle-status self">
-              <div class="stat-row">
-                <span class="stat-label">ライフ/最大値</span>
-                <button class="stat-btn" @click="battleStat('self','life',-1)">−</button>
-                <span class="stat-life">{{ battleSample.self.life }}</span>
-                <button class="stat-btn" @click="battleStat('self','life',+1)">+</button>
-                <span class="stat-divider">/</span>
-                <button class="stat-btn" @click="battleStat('self','lifeMax',-1)">−</button>
-                <span class="stat-life">{{ battleSample.self.lifeMax }}</span>
-                <button class="stat-btn" @click="battleStat('self','lifeMax',+1)">+</button>
+            <div class="kami-hud">
+              <div class="hud-orb">
+                <span class="orb-label">{{ battleIsOrochi('self') ? '封印' : '天力' }}</span>
+                <div class="orb-disc" :class="battleIsOrochi('self') ? 'seal' : 'tenryoku'">
+                  {{ battleIsOrochi('self') ? battleSample.self.seal : battleSample.self.tenryoku }}
+                </div>
+                <div class="orb-value-controls">
+                  <button @click="battleStat('self', battleIsOrochi('self') ? 'seal' : 'tenryoku', -1)">−</button>
+                  <button @click="battleStat('self', battleIsOrochi('self') ? 'seal' : 'tenryoku', 1)">+</button>
+                </div>
               </div>
-              <div class="stat-row">
-                <span class="stat-label">マナ/最大値</span>
-                <button class="stat-btn" @click="battleStat('self','mana',-1)">−</button>
-                <span class="stat-mana">{{ battleSample.self.mana }}</span>
-                <button class="stat-btn" @click="battleStat('self','mana',+1)">+</button>
-                <span class="stat-divider">/</span>
-                <button class="stat-btn" @click="battleStat('self','manaMax',-1)">−</button>
-                <span class="stat-mana">{{ battleSample.self.manaMax }}</span>
-                <button class="stat-btn" @click="battleStat('self','manaMax',+1)">+</button>
+              <div class="kami-portrait"
+                   :class="{ 'orochi-awakened': battleIsOrochi('self') && battleSample.self.seal === 0 }"
+                   :style="battleSample.self.kami && kamiIllustrationUrl(battleSample.self.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.self.kami) + ')' } : {}"
+                   @click="battleSample.self.kami && openPreview(battleSample.self.kami)"
+                   @mouseenter="battleSample.self.kami && showCardHover(battleSample.self.kami, $event)"
+                   @mouseleave="hideCardHover">
+                <div v-if="!battleSample.self.kami" class="kami-placeholder">カミ</div>
+                <div v-else-if="!hasKamiIllustration(battleSample.self.kami)" class="kami-illust-missing">イラスト未登録</div>
               </div>
-              <div class="stat-row">
-                <span class="stat-label">天力</span>
-                <button class="stat-btn" @click="battleStat('self','tenryoku',-1)">−</button>
-                <span class="stat-tenryoku">{{ battleSample.self.tenryoku }}</span>
-                <button class="stat-btn" @click="battleStat('self','tenryoku',+1)">+</button>
+              <div class="hud-orb">
+                <div class="orb-max-controls">
+                  <button title="最大ライフを増やす" @click="battleStat('self','lifeMax',1)">△</button>
+                  <button title="最大ライフを減らす" @click="battleStat('self','lifeMax',-1)">▽</button>
+                </div>
+                <span class="orb-label">ライフ</span>
+                <div class="orb-disc life">{{ battleSample.self.life }}<small>/ {{ battleSample.self.lifeMax }}</small></div>
+                <div class="orb-value-controls">
+                  <button @click="battleStat('self','life',-1)">−</button>
+                  <button @click="battleStat('self','life',1)">+</button>
+                </div>
               </div>
             </div>
+            <button class="kami-skill-btn" :class="battleSkillTone" :disabled="battleSkillTone === 'disabled'" @click="openKamiSkills">神技</button>
+            <div class="kami-name">{{ battleSample.self.kami ? fullName(battleSample.self.kami) : 'カミ未設定' }}</div>
           </div>
           <div class="battle-zone hand-self">
-            <span v-if="battleSample.self.hand.length === 0" class="battle-zone-label">手札</span>
+            <span class="battle-zone-label">手札</span>
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.self.hand" :key="'sh'+i"
-                   class="battle-card"
+                   class="battle-card hand-playable"
+                   :class="{ 'hand-disabled': card.category !== 'レガシー' && card.category !== 'レリック' }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
+                   @click="battlePlayFromHand(i)"
                    @mouseenter="showCardHover(card, $event)"
-                   @mouseleave="hideCardHover"></div>
+                   @mouseleave="hideCardHover">
+                <span class="battle-card-overlay hand-cost-badge">{{ battleHandCost(card) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -3035,9 +3285,17 @@
       <!-- ========== Side エリア：DGC(相手)→相手ターン→[中央:ターン番号+終了ボタン]→自分ターン→DGC(自分) ========== -->
       <div class="battle-side">
 
+        <div class="mana-panel">
+          <div class="mana-head"><span>相手マナ</span><span class="mana-value">{{ battleSample.opp.mana }}/{{ battleSample.opp.manaMax }}</span></div>
+          <div class="mana-orbs">
+            <span v-for="n in battleSample.opp.manaMax" :key="'om'+n" class="mana-orb" :class="{ available: n <= battleSample.opp.mana }"></span>
+            <span v-if="battleSample.opp.manaMax === 0" class="mana-empty">0</span>
+          </div>
+        </div>
+
         <!-- 相手 デッキ・墓地・崩壊 -->
         <div class="dgc-stack">
-          <div class="dgc-cell dgc-deck" @click="deckClick('opp', $event)">
+          <div class="dgc-cell dgc-deck zone-deck disabled" title="相手のデッキは操作できません">
             <div class="dgc-icon dgc-deck-icon">
               <div class="ddi-card ddi-card-1"></div>
               <div class="ddi-card ddi-card-2"></div>
@@ -3048,7 +3306,7 @@
               <span class="dgc-count">{{ battleSample.opp.deckCount }}</span>
             </div>
           </div>
-          <div class="dgc-cell" @click="battleOpenZone('opp','graveyard')">
+          <div class="dgc-cell zone-graveyard" @click="battleOpenZone('opp','graveyard')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <path d="M 8 41 H 32 V 46 H 8 Z"/>
               <path d="M 12 41 V 19 a 8 8 0 0 1 16 0 V 41 Z"/>
@@ -3058,7 +3316,7 @@
               <span class="dgc-count">{{ battleSample.opp.graveyard.length }}</span>
             </div>
           </div>
-          <div class="dgc-cell" @click="battleOpenZone('opp','crumbled')">
+          <div class="dgc-cell zone-crumbled" @click="battleOpenZone('opp','crumbled')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <ellipse cx="17" cy="24" rx="13" ry="14"/>
               <ellipse cx="13" cy="24" rx="2.5" ry="3.5" fill="#1a2030"/>
@@ -3093,9 +3351,21 @@
         <!-- 自分のターン表示（自分DGCの直上） -->
         <div class="turn-ind" :class="{ active: battleSample.activeSide === 'self' }">{{ battleContext.selfName }}のターン</div>
 
+        <div class="mana-panel">
+          <div class="mana-head"><span>自分マナ</span><span class="mana-value">{{ battleSample.self.mana }}/{{ battleSample.self.manaMax }}</span></div>
+          <div class="mana-orbs">
+            <span v-for="n in battleSample.self.manaMax" :key="'sm'+n" class="mana-orb" :class="{ available: n <= battleSample.self.mana }"></span>
+            <span v-if="battleSample.self.manaMax === 0" class="mana-empty">0</span>
+          </div>
+          <div class="mana-controls">
+            <div><span>最大</span><div class="mana-control-group"><button @click="battleStat('self','manaMax',-1)">▽</button><button @click="battleStat('self','manaMax',1)">△</button></div></div>
+            <div><span>使用可能</span><div class="mana-control-group"><button @click="battleStat('self','mana',-1)">−</button><button @click="battleStat('self','mana',1)">＋</button></div></div>
+          </div>
+        </div>
+
         <!-- 自分 デッキ・墓地・崩壊 -->
         <div class="dgc-stack">
-          <div class="dgc-cell dgc-deck" @click="deckClick('self', $event)">
+          <div class="dgc-cell dgc-deck zone-deck" @click="deckClick('self', $event)">
             <div class="dgc-icon dgc-deck-icon">
               <div class="ddi-card ddi-card-1"></div>
               <div class="ddi-card ddi-card-2"></div>
@@ -3106,7 +3376,7 @@
               <span class="dgc-count">{{ battleSample.self.deckCount }}</span>
             </div>
           </div>
-          <div class="dgc-cell" @click="battleOpenZone('self','graveyard')">
+          <div class="dgc-cell zone-graveyard" @click="battleOpenZone('self','graveyard')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <path d="M 8 41 H 32 V 46 H 8 Z"/>
               <path d="M 12 41 V 19 a 8 8 0 0 1 16 0 V 41 Z"/>
@@ -3116,7 +3386,7 @@
               <span class="dgc-count">{{ battleSample.self.graveyard.length }}</span>
             </div>
           </div>
-          <div class="dgc-cell" @click="battleOpenZone('self','crumbled')">
+          <div class="dgc-cell zone-crumbled" @click="battleOpenZone('self','crumbled')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <ellipse cx="17" cy="24" rx="13" ry="14"/>
               <ellipse cx="13" cy="24" rx="2.5" ry="3.5" fill="#1a2030"/>
@@ -3166,6 +3436,40 @@
         </div>
         <div class="battle-zone-modal-actions">
           <button class="battle-back-btn" @click="battleZoneModal = null">閉じる</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="battleSkillModal" class="battle-action-modal" @click.self="battleSkillModal = null">
+      <div class="battle-action-panel">
+        <h3>神技を選択</h3>
+        <button v-for="skill in battleSkillOptions" :key="skill.index" class="skill-choice"
+                :disabled="!skill.enabled" @click="battleUseKamiSkill(skill.index)">
+          <strong>{{ skill.name }}　消費天力 {{ skill.cost }}</strong>
+          <span>{{ skill.effect || '効果テキストはカミカードを確認してください。' }}</span>
+        </button>
+        <div class="battle-action-buttons"><button @click="battleSkillModal = null">閉じる</button></div>
+      </div>
+    </div>
+
+    <div v-if="battleNotice" class="battle-action-modal">
+      <div class="battle-action-panel">
+        <div class="public-process-badge">両プレイヤーへの公開処理</div>
+        <h3>{{ battleNotice.title }}</h3>
+        <p>{{ battleNotice.message }}</p>
+        <div class="battle-action-buttons"><button @click="battleNotice = null">確認</button></div>
+      </div>
+    </div>
+
+    <div v-if="battleSample.result" class="battle-result-overlay">
+      <div class="battle-result-panel" :class="battleSample.result.outcome">
+        <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s1">✦</span>
+        <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s2">✦</span>
+        <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s3">✦</span>
+        <div class="battle-result-title">{{ battleSample.result.title }}</div>
+        <div class="result-actions">
+          <button v-if="battleUndoStack.length" @click="battleUndo">一手戻る</button>
+          <button @click="battleReturn">{{ battleReturnLabel }}へ戻る</button>
         </div>
       </div>
     </div>
@@ -3982,8 +4286,9 @@ new Vue({
     battleSample: {
       turn: 1,
       activeSide: 'self',   // 'self' | 'opp' — 現在進行中のプレイヤー
-      self: { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, hand: [], deck: [], kami: null, relics: [], deckCount: 30, graveyard: [], crumbled: [] },
-      opp:  { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, hand: [], handCount: 4, kami: null, deck: [], relics: [], deckCount: 30, graveyard: [], crumbled: [] },
+      result: null,
+      self: { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, seal: null, sealRewards: {}, hand: [], deck: [], kami: null, relics: [], legacies: [], deckCount: 30, graveyard: [], crumbled: [] },
+      opp:  { life: 10, lifeMax: 10, mana: 0, manaMax: 0, tenryoku: 0, seal: null, sealRewards: {}, hand: [], handCount: 4, kami: null, deck: [], relics: [], legacies: [], deckCount: 30, graveyard: [], crumbled: [] },
     },
     battleContext: {
       source: 'preview', modeLabel: 'プレビュー', returnView: 'top', round: null,
@@ -3993,9 +4298,11 @@ new Vue({
     battleZoneModal: null,   // { side, zone, cards }
     deckMenuOpen: null,      // { side, x, y } — デッキクリックメニュー
     battleUndoStack: [],     // 一手戻る用：battleSampleのスナップショット履歴（最新50件）
+    battleSkillModal: null,
+    battleNotice: null,
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.10.1',
+    BUILD_VERSION: '1.11.0',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -4058,6 +4365,27 @@ new Vue({
       if (this.battleContext.returnView === 'shield') return 'シールド戦';
       if (this.battleContext.returnView === 'game') return '星戦';
       return 'トップ';
+    },
+    battleSkillOptions() {
+      const kami = this.battleSample.self && this.battleSample.self.kami;
+      if (!kami) return [];
+      return [1, 2].map(index => {
+        const rawCost = kami[`skill${index}cost`];
+        const matched = String(rawCost == null ? '' : rawCost).match(/\d+/);
+        const cost = matched ? Number(matched[0]) : 0;
+        const name = kami[`skill${index}name`] || `神技${index}`;
+        const effect = kami[`skill${index}effect`] || '';
+        const exists = !!(kami[`skill${index}name`] || effect || rawCost !== '');
+        return { index, name, effect, cost, exists, enabled: exists && this.battleSample.self.tenryoku >= cost };
+      }).filter(skill => skill.exists);
+    },
+    battleSkillTone() {
+      const skills = this.battleSkillOptions;
+      if (!skills.length) return 'disabled';
+      const skill2 = skills.find(skill => skill.index === 2);
+      if (skill2 && skill2.enabled) return 'gold';
+      const skill1 = skills.find(skill => skill.index === 1);
+      return skill1 && skill1.enabled ? 'silver' : 'disabled';
     },
     filteredCards() {
       const q = this.searchText.trim().toLowerCase();
@@ -5004,9 +5332,11 @@ new Vue({
     _battleBuildSide(name, kami, cards, life) {
       const deck = this._battleShuffle(cards);
       const hand = deck.splice(0, Math.min(4, deck.length));
+      const isOrochi = this._battleIsOrochiCard(kami);
       return {
         name, life, lifeMax: life, mana: 0, manaMax: 0, tenryoku: 0,
-        hand, handCount: hand.length, kami: kami || null, deck, relics: [],
+        seal: isOrochi ? 8 : null, sealRewards: { four: false, zero: false },
+        hand, handCount: hand.length, kami: kami || null, deck, relics: [], legacies: [],
         deckCount: deck.length, graveyard: [], crumbled: [],
       };
     },
@@ -5020,7 +5350,7 @@ new Vue({
       if (gift) second.relics.push(gift);
       self.handCount = self.hand.length;
       opp.handCount = opp.hand.length;
-      this.battleSample = { turn: 1, activeSide: firstSide, self, opp };
+      this.battleSample = { turn: 1, activeSide: firstSide, result: null, self, opp };
       this.battleContext = {
         source: config.source || 'preview', modeLabel: config.modeLabel || '対戦',
         returnView: config.returnView || 'top', round: config.round || null,
@@ -5030,6 +5360,8 @@ new Vue({
       this.battleUndoStack = [];
       this.battleZoneModal = null;
       this.deckMenuOpen = null;
+      this.battleSkillModal = null;
+      this.battleNotice = null;
       this.hideCardHover();
       this.shieldOpen = false;
       this.gameOpen = false;
@@ -5037,9 +5369,16 @@ new Vue({
       this._battleStartTurnFor(firstSide);
     },
     battleReturn() {
+      const decided = !!this.battleSample.result;
+      const message = decided
+        ? `${this.battleReturnLabel}へ戻りますか？`
+        : `対戦はまだ決着していません。対戦を中断して${this.battleReturnLabel}へ戻りますか？`;
+      if (!window.confirm(message)) return;
       this.hideCardHover();
       this.battleZoneModal = null;
       this.deckMenuOpen = null;
+      this.battleSkillModal = null;
+      this.battleNotice = null;
       if (this.battleContext.returnView === 'shield') {
         this.appView = 'shield';
         this.shieldOpen = true;
@@ -5059,12 +5398,17 @@ new Vue({
     battleUndo() {
       if (!this.battleUndoStack.length) return;
       this.battleSample = this.battleUndoStack.pop();
+      this.battleSkillModal = null;
+      this.battleNotice = null;
+      this.deckMenuOpen = null;
     },
     /* 対戦画面：ステータス±処理（Phase 1：単純な加減＋Undo対応） */
     battleStat(side, key, delta) {
+      if (this.battleSample.result) return;
       const target = this.battleSample[side];
       if (!target || !(key in target)) return;
       this.battleSaveUndo();
+      const previous = target[key];
       const next = target[key] + delta;
       if (key === 'life')     target.life     = Math.max(0, Math.min(target.lifeMax, next));
       else if (key === 'lifeMax') {
@@ -5078,6 +5422,11 @@ new Vue({
         if (target.mana > target.manaMax) target.mana = target.manaMax;
       }
       else if (key === 'tenryoku') target.tenryoku = Math.max(0, next);
+      else if (key === 'seal' && target.seal !== null) {
+        target.seal = Math.max(0, Math.min(8, next));
+        this._battleHandleSealThreshold(side, previous, target.seal);
+      }
+      this._battleCheckResult();
     },
     /* ターン終了：手番を相手に渡す
        - 次プレイヤーのマナ最大値+1（最大10まで）
@@ -5085,8 +5434,16 @@ new Vue({
        - ターン11以降は疲労ダメージ（11→1, 12→2, ...）
        先攻プレイヤーへ手番が戻る際にターン番号を+1。 */
     battleEndTurn() {
+      if (this.battleSample.result) return;
       this.battleSaveUndo();
       const bs = this.battleSample;
+      const endingSide = bs.activeSide;
+      const endingPlayer = bs[endingSide];
+      if (this.battleIsOrochi(endingSide) && endingPlayer.seal > 0) {
+        const previousSeal = endingPlayer.seal;
+        endingPlayer.seal -= 1;
+        this._battleHandleSealThreshold(endingSide, previousSeal, endingPlayer.seal);
+      }
       const nextSide = bs.activeSide === 'self' ? 'opp' : 'self';
       if (nextSide === this.battleContext.firstSide) bs.turn += 1;
       bs.activeSide = nextSide;
@@ -5105,13 +5462,106 @@ new Vue({
         const dmg = turn - 10;
         target.life = Math.max(0, target.life - dmg);
       }
+      this._battleCheckResult();
     },
-    /* カミクリック → 神技発動（Phase 1ではプレースホルダ） */
-    kamiActivate(side) {
-      const kami = this.battleSample[side] && this.battleSample[side].kami;
-      if (!kami) return;
-      const name = this.fullName ? this.fullName(kami) : (kami.name || 'カミ');
-      alert(`「${name}」の神技を発動します。\n（Phase 1 ではモック。Phase 4 で神技処理を実装予定）`);
+    _battleIsOrochiCard(kami) {
+      return !!(kami && (kami.type === 'ヤマタノオロチ' || this.fullName(kami).includes('ヤマタノオロチ')));
+    },
+    battleIsOrochi(side) {
+      const player = this.battleSample[side];
+      return !!(player && this._battleIsOrochiCard(player.kami));
+    },
+    battleHandCost(card) {
+      const base = Math.max(0, Number(card && card.cost) || 0);
+      const text = [card && card.text, card && card.subType].filter(Boolean).join(' ');
+      const extras = [];
+      const pattern = /昇華\s*([0-9]+)/g;
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        const extra = Number(match[1]);
+        if (extra > 0 && !extras.includes(extra)) extras.push(extra);
+      }
+      extras.sort((a, b) => a - b);
+      return [base, ...extras.map(extra => base + extra)].join('/');
+    },
+    battlePlayFromHand(index) {
+      if (this.battleSample.result) return;
+      const player = this.battleSample.self;
+      const card = player.hand[index];
+      if (!card) return;
+      const zone = card.category === 'レガシー' ? 'legacies' : card.category === 'レリック' ? 'relics' : null;
+      if (!zone) {
+        window.alert('現在はレガシーとレリックのみ、手札から場へ出せます。');
+        return;
+      }
+      if (player[zone].length >= 7) {
+        window.alert(`${card.category}フィールドには7枚まで配置できます。`);
+        return;
+      }
+      const name = this.fullName(card);
+      if (!window.confirm(`「${name}」を${card.category}フィールドに出しますか？`)) return;
+      this.battleSaveUndo();
+      player.hand.splice(index, 1);
+      player[zone].push(card);
+      player.handCount = player.hand.length;
+      this.hideCardHover();
+    },
+    openKamiSkills() {
+      if (this.battleSample.result || this.battleSkillTone === 'disabled') return;
+      this.battleSkillModal = { side: 'self' };
+    },
+    battleUseKamiSkill(index) {
+      const skill = this.battleSkillOptions.find(item => item.index === index);
+      if (!skill || !skill.enabled || this.battleSample.result) return;
+      this.battleSaveUndo();
+      this.battleSample.self.tenryoku = Math.max(0, this.battleSample.self.tenryoku - skill.cost);
+      this.battleSkillModal = null;
+      this.battleNotice = {
+        title: `${skill.name}を発動`,
+        message: `${this.battleContext.selfName}が神技「${skill.name}」を発動し、天力を${skill.cost}消費しました。`,
+      };
+    },
+    _battleHandleSealThreshold(side, previous, current) {
+      const player = this.battleSample[side];
+      if (!player || !player.sealRewards) return;
+      let cardNo = null;
+      let threshold = null;
+      if (current === 4 && previous !== 4 && !player.sealRewards.four) {
+        player.sealRewards.four = true;
+        cardNo = '187';
+        threshold = 4;
+      } else if (current === 0 && previous !== 0 && !player.sealRewards.zero) {
+        player.sealRewards.zero = true;
+        cardNo = '188';
+        threshold = 0;
+      }
+      if (!cardNo) return;
+      const card = this.allCards.find(item => String(item.no) === cardNo);
+      if (card) player.hand.push(card);
+      player.handCount = player.hand.length;
+      const owner = side === 'self' ? this.battleContext.selfName : this.battleContext.oppName;
+      const cardName = card ? this.fullName(card) : `No.${cardNo}`;
+      this.battleNotice = {
+        title: `ヤマタノオロチの封印が${threshold}になりました`,
+        message: card
+          ? `${owner}はヤマタノオロチの能力により「${cardName}」を手札に加えました。`
+          : `${owner}はヤマタノオロチの能力を処理しましたが、No.${cardNo}のカードデータを確認できませんでした。`,
+      };
+    },
+    _battleCheckResult() {
+      if (this.battleSample.result) return;
+      if (this.battleSample.opp.life <= 0) {
+        this.battleSample.result = { outcome: 'win', title: '星戦勝利！' };
+      } else if (this.battleSample.self.life <= 0) {
+        this.battleSample.result = { outcome: 'loss', title: '星戦敗北…' };
+      }
+    },
+    battleSurrender() {
+      if (this.battleSample.result) return;
+      if (!window.confirm('降参しますか？ この操作は「一手戻る」で取り消せます。')) return;
+      this.battleSaveUndo();
+      this.battleSample.self.life = 0;
+      this.battleSample.result = { outcome: 'loss', title: '星戦敗北…' };
     },
     /* 墓地・崩壊ゾーンの内容を一覧表示（デッキはクリック不可） */
     battleOpenZone(side, zone) {
@@ -5121,6 +5571,7 @@ new Vue({
     },
     /* デッキを左クリック → ドロー / 誘 / 霊視 メニューを表示 */
     deckClick(side, e) {
+      if (side !== 'self' || this.battleSample.result) return;
       const pad = 8;
       // メニュー位置を画面端に収める
       const x = Math.min(e.clientX, window.innerWidth  - 200 - pad);
