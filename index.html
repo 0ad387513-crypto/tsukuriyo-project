@@ -3953,7 +3953,7 @@ new Vue({
     battleUndoStack: [],     // 一手戻る用：battleSampleのスナップショット履歴（最新50件）
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.9.13',
+    BUILD_VERSION: '1.9.14',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5484,19 +5484,25 @@ new Vue({
     async loadCardBack() {
       try {
         const items = await this._driveListFolder(DRIVE_CARD_BACK_FOLDER_ID);
+        const pickUrl = (id) => {
+          // lh3.googleusercontent.com は新規ファイルで404になりやすいため、
+          // より安定している drive.google.com/thumbnail エンドポイントを使用
+          return `https://drive.google.com/thumbnail?id=${id}&sz=w200`;
+        };
         // 1) 「カード裏」を含むファイルを優先
         for (const f of items) {
           if (this._isImageFile(f) && f.name.includes('カード裏')) {
-            this.cardBackUrl = driveThumbUrl(f.id, 200);
-            console.log(`[対戦画面] カード裏画像: ${f.name}`);
+            this.cardBackUrl = pickUrl(f.id);
+            console.log(`[対戦画面] カード裏画像: ${f.name} (id=${f.id})`);
+            console.log(`[対戦画面] URL: ${this.cardBackUrl}`);
             return;
           }
         }
         // 2) フォールバック：フォルダ内の最初の画像
         for (const f of items) {
           if (this._isImageFile(f)) {
-            this.cardBackUrl = driveThumbUrl(f.id, 200);
-            console.log(`[対戦画面] カード裏フォールバック: ${f.name}`);
+            this.cardBackUrl = pickUrl(f.id);
+            console.log(`[対戦画面] カード裏フォールバック: ${f.name} (id=${f.id})`);
             return;
           }
         }
