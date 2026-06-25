@@ -4744,7 +4744,7 @@ new Vue({
     battlePendingEffects: [], // 効果キュー：[{ type, card, data, triggerLabel, paidCost }, ...]
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.13.2',
+    BUILD_VERSION: '1.13.3',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6112,7 +6112,7 @@ new Vue({
     /* カード上のキーワード効果を全列挙してキューへ。1つずつ順に処理する */
     _battleQueueAndRunEffects(card, paidCost, triggerLabel) {
       const queued = [];
-      const sentei = this.battleParseSentei(card, paidCost);
+      const sentei = this.battleParseSentei(card, paidCost, triggerLabel);
       if (sentei) queued.push({ type: 'sentei', card, data: sentei, triggerLabel });
       const parseInduce = triggerLabel === '死亡時' ? this.battleParseDeathInduce : this.battleParseEnterInduce;
       const parseReishi = triggerLabel === '死亡時' ? this.battleParseDeathReishi : this.battleParseEnterReishi;
@@ -6178,8 +6178,32 @@ new Vue({
         message: `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\nデッキ上から${cards.length}枚を確認し、墓地へ送るカードを選んでください。\n選ばなかったカードはデッキの一番上に残ります。`,
       };
     },
-    battleParseSentei(card, paidCost = null) {
+    battleParseSentei(card, paidCost = null, triggerLabel = '出現時') {
       const rawText = this.battleCardRulesText(card).replace(/​/g, '');
+      // トリガー判定：死亡時はカード本文中の【死亡時】区画にある選定のみ発動
+      // 出現時は【出現時】区画にあるか、トリガー指定なし（オラクル等）の場合のみ発動
+      const compact = rawText.replace(/\s+/g, '');
+      const hasEnter = /【出現時】/.test(compact);
+      const hasDeath = /【死亡時】/.test(compact);
+      if (triggerLabel === '死亡時') {
+        // 【死亡時】直後〜次の【出現時】/末尾 までの区間に【選定】があるか
+        if (!/【死亡時】[^】]*(?:】[^【]*)*?[\s\S]*?【選定[：:]/.test(compact)) return null;
+        const deathBlock = compact.split(/【死亡時】/)[1] || '';
+        const beforeNextEnter = deathBlock.split(/【出現時】/)[0] || '';
+        if (!/【選定[：:]/.test(beforeNextEnter)) return null;
+      } else {
+        // 出現時：【出現時】区画にある場合のみ。【死亡時】しか無いカードでは発動しない
+        if (hasDeath && !hasEnter) {
+          // 死亡時しか無いカードで、選定が死亡時区画にあるなら出現時としては発動させない
+          const deathBlock = compact.split(/【死亡時】/)[1] || '';
+          if (/【選定[：:]/.test(deathBlock)) return null;
+        }
+        if (hasEnter && hasDeath) {
+          // 両方ある場合は出現時区画にあるかチェック
+          const enterBlock = (compact.split(/【出現時】/)[1] || '').split(/【死亡時】/)[0];
+          if (!/【選定[：:]/.test(enterBlock)) return null;
+        }
+      }
       const m = rawText.match(/【選定[：:]([0-9]+)】([\s\S]*)/);
       if (!m) return null;
       let count = Math.max(1, Number(m[1]) || 1);
