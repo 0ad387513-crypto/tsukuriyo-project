@@ -2389,7 +2389,7 @@
     box-shadow: 0 18px 50px rgba(0,0,0,.65); color: #eef2f7;
   }
   .battle-action-panel h3 { margin: 0 0 13px; font-size: 19px; color: #f2d58d; }
-  .battle-action-panel p { margin: 8px 0; color: #cbd3de; line-height: 1.6; }
+  .battle-action-panel p { margin: 8px 0; color: #cbd3de; line-height: 1.6; white-space: pre-line; }
   .skill-choice {
     width: 100%; text-align: left; margin: 7px 0; padding: 11px 13px; border-radius: 6px;
     background: #222c3e; border: 1px solid #53637e; color: #fff; cursor: pointer;
@@ -5864,6 +5864,43 @@ new Vue({
     battleShowNotice(title, message, cards = []) {
       this.battleNotice = { title, message, cards };
     },
+    battleCardRulesText(card) {
+      if (!card) return '';
+      return [
+        card.text, card.effect, card.trigger,
+        card.skill1name, card.skill1effect,
+        card.skill2name, card.skill2effect,
+        card.subType,
+      ].filter(Boolean).join('\n');
+    },
+    battleKeywordsForCard(card) {
+      const text = this.battleCardRulesText(card);
+      if (!text) return [];
+      return Object.keys(this.keywordGlossary).filter(kw => {
+        const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`【${escaped}】|${escaped}`).test(text);
+      });
+    },
+    battleKeywordGuide(card, paidCost = null) {
+      const keywords = this.battleKeywordsForCard(card);
+      if (!keywords.length) return;
+      const auto = [];
+      const manual = [];
+      if (keywords.includes('昇華')) {
+        auto.push(paidCost === null ? '昇華：支払いマナを選択できます。' : `昇華：マナ ${paidCost} で配置しました。`);
+      }
+      if (keywords.includes('疾駆')) auto.push('疾駆：このターンから戦闘/神攻できます。');
+      if (keywords.includes('奇襲')) auto.push('奇襲：このターンから戦闘できます。');
+      ['出現時', '死亡時', '神攻時', '戦闘時', '守護', '死角', '不可侵', '呪殺', '選定', '進化', '誘', '霊視', '招来', '補正', '神威', '傀儡化', '拘束']
+        .forEach(kw => { if (keywords.includes(kw)) manual.push(kw); });
+      const lines = [];
+      if (auto.length) lines.push(...auto);
+      if (manual.length) {
+        lines.push(`要確認：${manual.join(' / ')}`);
+        lines.push('必要な処理は会話で確認しながら、自分側の操作盤で処理してください。誘/霊視は自分デッキメニューから処理できます。');
+      }
+      this.battleShowNotice('キーワード確認', lines.join('\n'), [card]);
+    },
     battleAskConfirm({ action, title, message, confirmLabel = '実行', cards = [], payload = {} }) {
       this.battleConfirmModal = { action, title, message, confirmLabel, cards, payload };
     },
@@ -5951,6 +5988,7 @@ new Vue({
       player[zone].push(card);
       player.handCount = player.hand.length;
       this.hideCardHover();
+      this.battleKeywordGuide(card, cost);
     },
     battleMoveHandCard(index, destinationZone) {
       if (this.battleSample.result) return;
