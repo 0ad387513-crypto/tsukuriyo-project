@@ -3327,11 +3327,18 @@
             <span class="battle-zone-label">レリック(相手)</span>
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.opp.relics" :key="'or'+i"
-                   class="battle-card"
+                   class="battle-card field-card"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)"
-                   @mouseleave="hideCardHover"></div>
+                   @mouseleave="hideCardHover">
+                <span class="field-card-actions">
+                  <button title="相手の手札へ戻す" @click.stop="battleReturnFieldCardToHand('opp','relics',i)">手</button>
+                  <button title="相手のデッキ上へ戻す" @click.stop="battleMoveFieldCardToDeckTop('opp','relics',i)">山</button>
+                  <button title="相手の墓地へ送る" @click.stop="battleMoveFieldCard('opp','relics',i,'graveyard')">墓</button>
+                  <button title="相手の崩壊へ送る" @click.stop="battleMoveFieldCard('opp','relics',i,'crumbled')">崩</button>
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -3342,13 +3349,19 @@
             <span class="battle-zone-label">レガシー(相手)</span>
             <div class="battle-card-row legacy-row">
               <div v-for="(card, i) in battleSample.opp.legacies" :key="'ol'+i"
-                   class="battle-card"
+                   class="battle-card field-card"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
                 <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
                 <span class="battle-card-overlay battle-card-power">戦闘力 {{ card.power || 0 }}</span>
+                <span class="field-card-actions">
+                  <button title="相手の手札へ戻す" @click.stop="battleReturnFieldCardToHand('opp','legacies',i)">手</button>
+                  <button title="相手のデッキ上へ戻す" @click.stop="battleMoveFieldCardToDeckTop('opp','legacies',i)">山</button>
+                  <button title="相手の墓地へ送る" @click.stop="battleMoveFieldCard('opp','legacies',i,'graveyard')">墓</button>
+                  <button title="相手の崩壊へ送る" @click.stop="battleMoveFieldCard('opp','legacies',i,'crumbled')">崩</button>
+                </span>
               </div>
             </div>
           </div>
@@ -3368,6 +3381,8 @@
                 <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
                 <span class="battle-card-overlay battle-card-power">戦闘力 {{ card.power || 0 }}</span>
                 <span class="field-card-actions">
+                  <button title="手札へ戻す" @click.stop="battleReturnFieldCardToHand('self','legacies',i)">手</button>
+                  <button title="デッキ上へ戻す" @click.stop="battleMoveFieldCardToDeckTop('self','legacies',i)">山</button>
                   <button title="墓地へ送る" @click.stop="battleMoveFieldCard('self','legacies',i,'graveyard')">墓</button>
                   <button title="崩壊へ送る" @click.stop="battleMoveFieldCard('self','legacies',i,'crumbled')">崩</button>
                 </span>
@@ -3388,6 +3403,8 @@
                    @mouseenter="showCardHover(card, $event)"
                    @mouseleave="hideCardHover">
                 <span class="field-card-actions">
+                  <button title="手札へ戻す" @click.stop="battleReturnFieldCardToHand('self','relics',i)">手</button>
+                  <button title="デッキ上へ戻す" @click.stop="battleMoveFieldCardToDeckTop('self','relics',i)">山</button>
                   <button title="墓地へ送る" @click.stop="battleMoveFieldCard('self','relics',i,'graveyard')">墓</button>
                   <button title="崩壊へ送る" @click.stop="battleMoveFieldCard('self','relics',i,'crumbled')">崩</button>
                 </span>
@@ -3452,6 +3469,7 @@
                    @mouseleave="hideCardHover">
                 <span class="battle-card-overlay hand-cost-badge">{{ battleHandCost(card) }}</span>
                 <span class="field-card-actions">
+                  <button title="手札からデッキ上へ戻す" @click.stop="battleMoveHandCardToDeckTop(i)">山</button>
                   <button title="手札から墓地へ送る" @click.stop="battleMoveHandCard(i,'graveyard')">墓</button>
                   <button title="手札から崩壊へ送る" @click.stop="battleMoveHandCard(i,'crumbled')">崩</button>
                 </span>
@@ -3474,7 +3492,7 @@
 
         <!-- 相手 デッキ・墓地・崩壊 -->
         <div class="dgc-stack">
-          <div class="dgc-cell dgc-deck zone-deck disabled" title="相手のデッキは操作できません">
+          <div class="dgc-cell dgc-deck zone-deck" @click="deckClick('opp', $event)" title="相手デッキの公開処理">
             <div class="dgc-icon dgc-deck-icon">
               <div class="ddi-card ddi-card-1"></div>
               <div class="ddi-card ddi-card-2"></div>
@@ -3591,9 +3609,12 @@
     <div v-if="deckMenuOpen" class="deck-context-menu"
          :style="{ left: deckMenuOpen.x + 'px', top: deckMenuOpen.y + 'px' }"
          @click.stop>
-      <button @click="deckMenuAction('draw')">ドロー（1枚引く）</button>
-      <button @click="deckMenuAction('induce')">誘（カードを選んで手札へ）</button>
-      <button @click="deckMenuAction('reishi')">霊視（デッキ上から確認）</button>
+      <button v-if="deckMenuOpen.side === 'self'" @click="deckMenuAction('draw')">ドロー（1枚引く）</button>
+      <button v-if="deckMenuOpen.side === 'self'" @click="deckMenuAction('induce')">誘（カードを選んで手札へ）</button>
+      <button v-if="deckMenuOpen.side === 'self'" @click="deckMenuAction('reishi')">霊視（デッキ上から確認）</button>
+      <button @click="deckMenuAction('mill')">デッキ上を墓地へ</button>
+      <button @click="deckMenuAction('crumbleTop')">デッキ上を崩壊へ</button>
+      <button @click="deckMenuAction('shuffle')">デッキをシャッフル</button>
     </div>
 
     <!-- ===== 墓地・崩壊 一覧モーダル ===== -->
@@ -3613,10 +3634,13 @@
                  @click="openPreview(c)"
                  @mouseenter="showCardHover(c, $event)"
                  @mouseleave="hideCardHover"></div>
-            <button v-if="battleZoneModal.side === 'self'"
-                    class="battle-deck-modal-pick"
+            <button class="battle-deck-modal-pick"
                     @click="battleReturnZoneCardToHand(i)">
               手札へ戻す
+            </button>
+            <button class="battle-deck-modal-pick"
+                    @click="battleReturnZoneCardToDeckTop(i)">
+              デッキ上へ戻す
             </button>
           </div>
         </div>
@@ -3646,6 +3670,21 @@
                     class="battle-deck-modal-pick"
                     @click="battleDeckPick(i)">
               手札に加える
+            </button>
+            <button v-if="battleDeckModal.action === 'reishi'"
+                    class="battle-deck-modal-pick"
+                    @click="battleDeckMoveVisible(i, 'hand')">
+              手札へ
+            </button>
+            <button v-if="battleDeckModal.action === 'reishi'"
+                    class="battle-deck-modal-pick"
+                    @click="battleDeckMoveVisible(i, 'graveyard')">
+              墓地へ
+            </button>
+            <button v-if="battleDeckModal.action === 'reishi'"
+                    class="battle-deck-modal-pick"
+                    @click="battleDeckMoveVisible(i, 'crumbled')">
+              崩壊へ
             </button>
           </div>
         </div>
@@ -5857,6 +5896,23 @@ new Vue({
         cards: [card],
       };
     },
+    battleMoveHandCardToDeckTop(index) {
+      if (this.battleSample.result) return;
+      const player = this.battleSample.self;
+      if (!player || !Array.isArray(player.deck)) return;
+      const card = player.hand[index];
+      if (!card) return;
+      this.battleSaveUndo();
+      player.hand.splice(index, 1);
+      player.deck.unshift(card);
+      this._battleSyncSideCounts('self');
+      this.hideCardHover();
+      this.battleNotice = {
+        title: '手札からデッキ上へ',
+        message: `自分の手札から「${this.fullName(card)}」をデッキ上へ戻しました。`,
+        cards: [card],
+      };
+    },
     battleMoveFieldCard(side, sourceZone, index, destinationZone) {
       if (this.battleSample.result) return;
       const player = this.battleSample[side];
@@ -5874,13 +5930,47 @@ new Vue({
         cards: [card],
       };
     },
+    battleReturnFieldCardToHand(side, sourceZone, index) {
+      if (this.battleSample.result) return;
+      const player = this.battleSample[side];
+      if (!player || !Array.isArray(player[sourceZone]) || !Array.isArray(player.hand)) return;
+      const card = player[sourceZone][index];
+      if (!card) return;
+      this.battleSaveUndo();
+      player[sourceZone].splice(index, 1);
+      player.hand.push(card);
+      player.handCount = player.hand.length;
+      this.hideCardHover();
+      this.battleNotice = {
+        title: '場から手札へ',
+        message: `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を場から手札へ戻しました。`,
+        cards: side === 'self' ? [card] : [],
+      };
+    },
+    battleMoveFieldCardToDeckTop(side, sourceZone, index) {
+      if (this.battleSample.result) return;
+      const player = this.battleSample[side];
+      if (!player || !Array.isArray(player[sourceZone]) || !Array.isArray(player.deck)) return;
+      const card = player[sourceZone][index];
+      if (!card) return;
+      this.battleSaveUndo();
+      player[sourceZone].splice(index, 1);
+      player.deck.unshift(card);
+      this._battleSyncSideCounts(side);
+      this.hideCardHover();
+      this.battleNotice = {
+        title: '場からデッキ上へ',
+        message: `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を場からデッキ上へ戻しました。`,
+        cards: side === 'self' ? [card] : [],
+      };
+    },
     battleReturnZoneCardToHand(modalIndex) {
       if (this.battleSample.result) return;
       const modal = this.battleZoneModal;
-      if (!modal || modal.side !== 'self') return;
-      const player = this.battleSample.self;
+      if (!modal) return;
+      const player = this.battleSample[modal.side];
       const zone = modal.zone;
-      if (!player || !Array.isArray(player[zone])) return;
+      if (!player || !Array.isArray(player[zone]) || !Array.isArray(player.hand)) return;
       const card = player[zone][modalIndex];
       if (!card) return;
       this.battleSaveUndo();
@@ -5892,8 +5982,30 @@ new Vue({
       const zoneLabel = zone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
         title: `${zoneLabel}から手札へ`,
-        message: `自分の「${this.fullName(card)}」を${zoneLabel}から手札へ戻しました。`,
-        cards: [card],
+        message: `${modal.side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${zoneLabel}から手札へ戻しました。`,
+        cards: modal.side === 'self' ? [card] : [],
+      };
+    },
+    battleReturnZoneCardToDeckTop(modalIndex) {
+      if (this.battleSample.result) return;
+      const modal = this.battleZoneModal;
+      if (!modal) return;
+      const player = this.battleSample[modal.side];
+      const zone = modal.zone;
+      if (!player || !Array.isArray(player[zone]) || !Array.isArray(player.deck)) return;
+      const card = player[zone][modalIndex];
+      if (!card) return;
+      this.battleSaveUndo();
+      player[zone].splice(modalIndex, 1);
+      player.deck.unshift(card);
+      this._battleSyncSideCounts(modal.side);
+      this.battleZoneModal = null;
+      this.hideCardHover();
+      const zoneLabel = zone === 'graveyard' ? '墓地' : '崩壊';
+      this.battleNotice = {
+        title: `${zoneLabel}からデッキ上へ`,
+        message: `${modal.side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${zoneLabel}からデッキ上へ戻しました。`,
+        cards: modal.side === 'self' ? [card] : [],
       };
     },
     /* ===== 手札ドラッグ&ドロップ ===== */
@@ -5989,7 +6101,7 @@ new Vue({
     },
     /* デッキを左クリック → ドロー / 誘 / 霊視 メニューを表示 */
     deckClick(side, e) {
-      if (side !== 'self' || this.battleSample.result) return;
+      if (!['self', 'opp'].includes(side) || this.battleSample.result) return;
       const pad = 8;
       // メニュー位置を画面端に収める
       const x = Math.min(e.clientX, window.innerWidth  - 200 - pad);
@@ -6007,6 +6119,12 @@ new Vue({
         this.battleOpenDeckModal(side, 'induce');
       } else if (action === 'reishi') {
         this.battleOpenDeckModal(side, 'reishi');
+      } else if (action === 'mill') {
+        this.battleMoveDeckTop(side, 'graveyard');
+      } else if (action === 'crumbleTop') {
+        this.battleMoveDeckTop(side, 'crumbled');
+      } else if (action === 'shuffle') {
+        this.battleShuffleDeck(side);
       }
     },
     _battleSyncSideCounts(side) {
@@ -6034,6 +6152,69 @@ new Vue({
         title: 'ドロー',
         message: `${side === 'self' ? '自分' : '相手'}がデッキから1枚ドローしました。`,
         cards: side === 'self' ? [card] : [],
+      };
+    },
+    battleShuffleDeck(side) {
+      if (this.battleSample.result) return;
+      const player = this.battleSample[side];
+      if (!player || !player.deck.length) {
+        this.battleNotice = {
+          title: 'デッキがありません',
+          message: 'シャッフルできるカードがありません。',
+        };
+        return;
+      }
+      this.battleSaveUndo();
+      player.deck = this._battleShuffle(player.deck);
+      this._battleSyncSideCounts(side);
+      this.battleNotice = {
+        title: 'デッキをシャッフル',
+        message: `${side === 'self' ? '自分' : '相手'}のデッキをシャッフルしました。`,
+      };
+    },
+    battleMoveDeckTop(side, destinationZone) {
+      if (this.battleSample.result) return;
+      const player = this.battleSample[side];
+      if (!player || !player.deck.length || !Array.isArray(player[destinationZone])) {
+        this.battleNotice = {
+          title: 'デッキがありません',
+          message: '移動できるカードがありません。',
+        };
+        return;
+      }
+      this.battleSaveUndo();
+      const card = player.deck.shift();
+      player[destinationZone].push(card);
+      this._battleSyncSideCounts(side);
+      const destLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
+      this.battleNotice = {
+        title: `デッキ上から${destLabel}へ`,
+        message: `${side === 'self' ? '自分' : '相手'}のデッキ上から1枚を${destLabel}へ送りました。`,
+        cards: side === 'self' ? [card] : [],
+      };
+    },
+    battleDeckMoveVisible(modalIndex, destination) {
+      const modal = this.battleDeckModal;
+      if (!modal || modal.action !== 'reishi' || this.battleSample.result) return;
+      const player = this.battleSample[modal.side];
+      if (!player) return;
+      const deckIndex = modal.deckIndexes[modalIndex];
+      const card = player.deck[deckIndex];
+      if (!card) return;
+      const destZone = destination === 'hand' ? 'hand' : destination;
+      if (!Array.isArray(player[destZone])) return;
+      this.battleSaveUndo();
+      player.deck.splice(deckIndex, 1);
+      player[destZone].push(card);
+      this._battleSyncSideCounts(modal.side);
+      this.battleDeckModal = null;
+      const destLabel =
+        destination === 'hand' ? '手札' :
+        destination === 'graveyard' ? '墓地' : '崩壊';
+      this.battleNotice = {
+        title: `霊視から${destLabel}へ`,
+        message: `${modal.side === 'self' ? '自分' : '相手'}のデッキ上確認から「${this.fullName(card)}」を${destLabel}へ移動しました。`,
+        cards: modal.side === 'self' ? [card] : [],
       };
     },
     battleOpenDeckModal(side, action) {
