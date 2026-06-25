@@ -2323,6 +2323,15 @@
     left: 8px; right: 8px; bottom: -10px; min-height: 22px;
     font-size: 13px;
   }
+  .battle-card.field-card[draggable="true"] { cursor: grab; }
+  .battle-card.field-card[draggable="true"]:active { cursor: grabbing; }
+  .battle-card.field-card.battle-attack-dragging { opacity: .48; }
+  .battle-card.opponent-target-ready,
+  .kami-portrait.opponent-target-ready {
+    outline: 3px solid rgba(245, 202, 88, .9);
+    outline-offset: 3px;
+    box-shadow: 0 0 18px rgba(245, 202, 88, .62);
+  }
   .hand-cost-badge {
     top: -6px; left: -6px; min-width: 30px; min-height: 26px;
     background: #2356a0; border-color: #a9cfff; font-size: clamp(11px, 0.95vw, 15px);
@@ -3405,9 +3414,11 @@
               </div>
               <!-- 中央：カミ（X軸基準） -->
               <div class="kami-portrait"
-                   :class="{ 'orochi-awakened': battleIsOrochi('opp') && battleSample.opp.seal === 0 }"
+                   :class="{ 'orochi-awakened': battleIsOrochi('opp') && battleSample.opp.seal === 0, 'opponent-target-ready': battleFieldDragTarget === 'kami' }"
                    :style="battleSample.opp.kami && kamiIllustrationUrl(battleSample.opp.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.opp.kami) + ')' } : {}"
                    @click="battleSample.opp.kami && openPreview(battleSample.opp.kami)"
+                   @dragover.prevent="battleUpdateFieldAttackTarget($event)"
+                   @drop.prevent="battleFieldDragEnd($event)"
                    @mouseenter="battleSample.opp.kami && showCardHover(battleSample.opp.kami, $event)"
                    @mouseleave="hideCardHover">
                 <div v-if="!battleSample.opp.kami" class="kami-placeholder">カミ(相手)</div>
@@ -3440,9 +3451,12 @@
             <span class="battle-zone-label">レガシー(相手)</span>
             <div class="battle-card-row legacy-row">
               <div v-for="(card, i) in battleSample.opp.legacies" :key="'ol'+i"
-                   class="battle-card"
+                   class="battle-card field-card opp-legacy-target"
+                   :class="{ 'opponent-target-ready': battleFieldDragTarget === 'legacy:' + i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
+                   @dragover.prevent="battleUpdateFieldAttackTarget($event)"
+                   @drop.prevent="battleFieldDragEnd($event)"
                    @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
                 <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
@@ -3461,8 +3475,12 @@
             <div class="battle-card-row legacy-row">
               <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped }"
+                   :class="{ tapped: card._tapped, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.index === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
+                   draggable="true"
+                   @dragstart="battleFieldDragStart('self','legacies',i,$event)"
+                   @drag="battleUpdateFieldAttackTarget($event)"
+                   @dragend="battleFieldDragEnd($event)"
                    @click="openPreview(card)"
                    @contextmenu.prevent="battleOpenFieldMenu('self','legacies',i,$event)"
                    @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
@@ -4809,13 +4827,15 @@ new Vue({
     /* 手札ドラッグ・場出し */
     battleDragIndex: null,    // ドラッグ中の手札index（null=非ドラッグ中）
     battleDragOverZone: null, // ドラッグ中に重なっているゾーン: graveyard / legacies / relics
+    battleFieldDrag: null,    // { side, zone, index } — 自分レガシーの戦闘/神攻ドラッグ
+    battleFieldDragTarget: null, // 'kami' | 'legacy:N' — 攻撃ドラッグ中の相手側ドロップ先
     battleSublimModal: null,  // { card, index, options:[basecost, basecost+x, ...] } 昇華コスト選択
     battleOracleEffect: null, // { card } オラクル発動演出（中央表示中）
     battleSenteiModal: null,  // { count, options, selected, sourceCard, triggerLabel }
     battlePendingEffects: [], // 効果キュー：[{ type, card, data, triggerLabel, paidCost }, ...]
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.13.6',
+    BUILD_VERSION: '1.13.7',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5923,6 +5943,8 @@ new Vue({
       this.battleDeckModal = null;
       this.deckMenuOpen = null;
       this.battleFieldMenu = null;
+      this.battleFieldDrag = null;
+      this.battleFieldDragTarget = null;
       this.battleSkillModal = null;
       this.battleNotice = null;
       this.battleConfirmModal = null;
@@ -5956,6 +5978,8 @@ new Vue({
       this.battleSublimModal = null;
       this.battleOracleEffect = null;
       this.battleDragIndex = null;
+      this.battleFieldDrag = null;
+      this.battleFieldDragTarget = null;
       if (this.battleContext.returnView === 'shield') {
         this.appView = 'shield';
         this.shieldOpen = true;
@@ -5986,6 +6010,8 @@ new Vue({
       this.battleOracleEffect = null;
       this.battleDragIndex = null;
       this.battleDragOverZone = null;
+      this.battleFieldDrag = null;
+      this.battleFieldDragTarget = null;
     },
     /* 対戦画面：ステータス±処理（手動調整＋Undo対応） */
     battleStat(side, key, delta) {
@@ -6463,7 +6489,7 @@ new Vue({
         return;
       }
       this.battleSaveUndo();
-      player[zone].push(card);
+      player[zone].push(this._battlePrepareFieldCard(card));
       this.battleDeckModal = null;
       this.hideCardHover();
       this.battleNotice = {
@@ -6490,7 +6516,7 @@ new Vue({
         return;
       }
       this.battleSaveUndo();
-      player[zone].push(card);
+      player[zone].push(this._battlePrepareFieldCard(card));
       modal.summoned = [...(modal.summoned || []), card];
       modal.remaining = (modal.remaining || 1) - 1;
       this.hideCardHover();
@@ -6581,7 +6607,7 @@ new Vue({
         this.battleShowNotice('手札から出せません', `「${card.category || '?'}」カードは手札から出せません。現状はレガシー/レリック/オラクルに対応しています。`, [card]);
         return;
       }
-      if (expectedZone && expectedZone !== zone) {
+      if (expectedZone && expectedZone !== zone && !(card.category === 'レリック' && expectedZone === 'legacies')) {
         const zoneLabel = expectedZone === 'legacies' ? 'レガシー' : 'レリック';
         this.battleShowNotice('置き場所が違います', `「${this.fullName(card)}」は${zoneLabel}フィールドには置けません。`, [card]);
         return;
@@ -6642,7 +6668,7 @@ new Vue({
       this.battleSaveUndo();
       player.mana = Math.max(0, player.mana - cost);
       player.hand.splice(index, 1);
-      player[zone].push(card);
+      player[zone].push(this._battlePrepareFieldCard(card));
       player.handCount = player.hand.length;
       this.hideCardHover();
       if (!this.battleRunEnterKeywordEffects(card, cost)) this.battleKeywordGuide(card, cost);
@@ -6673,13 +6699,157 @@ new Vue({
       if (!card) return false;
       if (card.category === 'オラクル') return zone === 'legacies' || zone === 'relics';
       if (card.category === 'レガシー') return zone === 'legacies';
-      if (card.category === 'レリック') return zone === 'relics';
+      if (card.category === 'レリック') return zone === 'relics' || zone === 'legacies';
       return false;
     },
     battlePointInElement(e, el) {
       if (!el || !e || typeof e.clientX !== 'number') return false;
       const r = el.getBoundingClientRect();
       return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    },
+    _battlePrepareFieldCard(card) {
+      if (!card) return card;
+      const fieldCard = Object.assign({}, card);
+      this.$set(fieldCard, '_summonedTurn', this.battleSample.turn);
+      this.$set(fieldCard, '_tapped', false);
+      return fieldCard;
+    },
+    battleCardHasKeyword(card, keyword) {
+      const text = this.battleCardRulesText(card).replace(/\s+/g, '');
+      return text.includes(`【${keyword}】`) || text.includes(keyword);
+    },
+    battleCanTargetLegacy(attacker, defender) {
+      return !(this.battleCardHasKeyword(defender, '死角') && !this.battleCardHasKeyword(attacker, '死角'));
+    },
+    battleLegacyIsSummonedThisTurn(card) {
+      return Number(card && card._summonedTurn) === Number(this.battleSample.turn);
+    },
+    battleLegacyCanAct(card, action) {
+      if (!card) return { ok: false, reason: 'カードがありません。' };
+      if (card._tapped) return { ok: false, reason: `「${this.fullName(card)}」はタップされています。` };
+      const fresh = this.battleLegacyIsSummonedThisTurn(card);
+      if (action === 'battle' && fresh && !this.battleCardHasKeyword(card, '奇襲') && !this.battleCardHasKeyword(card, '疾駆')) {
+        return { ok: false, reason: `「${this.fullName(card)}」は場に出たターンのため、【奇襲】または【疾駆】がなければ戦闘できません。` };
+      }
+      if (action === 'divine' && fresh && !this.battleCardHasKeyword(card, '疾駆')) {
+        return { ok: false, reason: `「${this.fullName(card)}」は場に出たターンのため、【疾駆】がなければ神攻できません。` };
+      }
+      return { ok: true };
+    },
+    battleFieldDragStart(side, zone, index, e) {
+      if (this.battleSample.result || side !== 'self' || zone !== 'legacies') { e.preventDefault(); return; }
+      const card = this.battleSample.self.legacies[index];
+      if (!card) { e.preventDefault(); return; }
+      this.battleFieldDrag = { side, zone, index };
+      this.battleFieldDragTarget = null;
+      this.hideCardHover();
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', `field:${index}`); } catch (_) {}
+      }
+    },
+    battleAttackDropTargetFromPoint(e) {
+      if (!e || typeof e.clientX !== 'number' || !this.$el) return null;
+      const kamiEl = this.$el.querySelector('.battle-row-opp-top .kami-portrait');
+      if (this.battlePointInElement(e, kamiEl)) return { type: 'kami' };
+      const legacyEls = Array.from(this.$el.querySelectorAll('.opp-legacy-target'));
+      const idx = legacyEls.findIndex(el => this.battlePointInElement(e, el));
+      if (idx >= 0) return { type: 'legacy', index: idx };
+      const legacyZone = this.$el.querySelector('.battle-row-legacy .legacy-field');
+      if (this.battlePointInElement(e, legacyZone) && this.battleSample.opp.legacies.length === 1) return { type: 'legacy', index: 0 };
+      return null;
+    },
+    battleUpdateFieldAttackTarget(e) {
+      if (!this.battleFieldDrag) return;
+      const target = this.battleAttackDropTargetFromPoint(e);
+      this.battleFieldDragTarget = target ? (target.type === 'kami' ? 'kami' : `legacy:${target.index}`) : null;
+    },
+    battleFieldDragEnd(e) {
+      if (!this.battleFieldDrag) return;
+      const drag = this.battleFieldDrag;
+      const target = this.battleAttackDropTargetFromPoint(e);
+      this.battleFieldDrag = null;
+      this.battleFieldDragTarget = null;
+      if (!target) return;
+      if (target.type === 'kami') this.battleResolveDivineAttack(drag.side, drag.index);
+      else if (target.type === 'legacy') this.battleResolveLegacyBattle(drag.side, drag.index, 'opp', target.index);
+    },
+    battleResolveGuardTarget(attacker, defenderSide, originalIndex = null) {
+      const defender = this.battleSample[defenderSide];
+      if (!defender || !Array.isArray(defender.legacies)) return null;
+      for (let i = 0; i < defender.legacies.length; i++) {
+        if (i === originalIndex) continue;
+        const guard = defender.legacies[i];
+        if (this.battleCardHasKeyword(guard, '守護') && this.battleCanTargetLegacy(attacker, guard)) {
+          return { index: i, card: guard };
+        }
+      }
+      return null;
+    },
+    battleDestroyLegacy(side, index, destroyed) {
+      const player = this.battleSample[side];
+      if (!player || !player.legacies[index]) return;
+      const card = player.legacies.splice(index, 1)[0];
+      this.$set(card, '_tapped', false);
+      player.graveyard.push(card);
+      destroyed.push({ side, card });
+    },
+    battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex) {
+      if (this.battleSample.result || attackerSide !== 'self') return;
+      const attackerPlayer = this.battleSample[attackerSide];
+      const defenderPlayer = this.battleSample[defenderSide];
+      const attacker = attackerPlayer && attackerPlayer.legacies[attackerIndex];
+      let defender = defenderPlayer && defenderPlayer.legacies[defenderIndex];
+      if (!attacker || !defender) return;
+      const can = this.battleLegacyCanAct(attacker, 'battle');
+      if (!can.ok) { this.battleShowNotice('戦闘できません', can.reason, [attacker]); return; }
+      if (!this.battleCanTargetLegacy(attacker, defender)) {
+        this.battleShowNotice('死角により対象にできません', `「${this.fullName(attacker)}」は【死角】を持たないため、「${this.fullName(defender)}」を戦闘対象に選べません。`, [attacker, defender]);
+        return;
+      }
+      const guard = this.battleCardHasKeyword(defender, '守護') ? null : this.battleResolveGuardTarget(attacker, defenderSide, defenderIndex);
+      const guarded = !!guard;
+      if (guarded) {
+        defenderIndex = guard.index;
+        defender = guard.card;
+      }
+      this.battleSaveUndo();
+      if (guarded) this.$set(defender, '_tapped', true);
+      this.$set(attacker, '_tapped', true);
+      const ap = Number(attacker.power || 0);
+      const dp = Number(defender.power || 0);
+      const destroyed = [];
+      if (ap > dp) this.battleDestroyLegacy(defenderSide, defenderIndex, destroyed);
+      else if (ap < dp) this.battleDestroyLegacy(attackerSide, attackerIndex, destroyed);
+      else {
+        this.battleDestroyLegacy(defenderSide, defenderIndex, destroyed);
+        this.battleDestroyLegacy(attackerSide, attackerIndex, destroyed);
+      }
+      const lines = [
+        guarded ? `【守護】により攻撃対象が「${this.fullName(defender)}」へ変更されました。` : null,
+        `「${this.fullName(attacker)}」（戦闘力 ${ap}）と「${this.fullName(defender)}」（戦闘力 ${dp}）が戦闘しました。`,
+        destroyed.length ? `破壊: ${destroyed.map(d => `「${this.fullName(d.card)}」`).join('、')}` : '破壊されるレガシーはありません。'
+      ].filter(Boolean);
+      this.battleShowNotice('戦闘解決', lines.join('\n'), [attacker, defender, ...destroyed.map(d => d.card)]);
+      destroyed.forEach(d => { if (d.side === 'self') this.battleRunDeathKeywordEffects(d.card); });
+    },
+    battleResolveDivineAttack(attackerSide, attackerIndex) {
+      if (this.battleSample.result || attackerSide !== 'self') return;
+      const attacker = this.battleSample.self.legacies[attackerIndex];
+      if (!attacker) return;
+      const can = this.battleLegacyCanAct(attacker, 'divine');
+      if (!can.ok) { this.battleShowNotice('神攻できません', can.reason, [attacker]); return; }
+      const guard = this.battleResolveGuardTarget(attacker, 'opp', null);
+      if (guard) {
+        this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index);
+        return;
+      }
+      const damage = Math.max(0, Number(attacker.attack || 0));
+      this.battleSaveUndo();
+      this.$set(attacker, '_tapped', true);
+      this.battleSample.opp.life = Math.max(0, this.battleSample.opp.life - damage);
+      this._battleCheckResult();
+      this.battleShowNotice('神攻成功', `「${this.fullName(attacker)}」が神攻し、相手カミに ${damage} ダメージを与えました。`, [attacker]);
     },
     battleUpdateDragOverZone(e) {
       if (this.battleDragIndex === null) return;
@@ -6790,7 +6960,7 @@ new Vue({
       }
       this.battleSaveUndo();
       player[zone].splice(modalIndex, 1);
-      player[fieldZone].push(card);
+      player[fieldZone].push(this._battlePrepareFieldCard(card));
       this.battleZoneModal = null;
       this.hideCardHover();
       const zoneLabel = zone === 'graveyard' ? '墓地' : '崩壊';
