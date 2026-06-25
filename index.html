@@ -4737,7 +4737,7 @@ new Vue({
     battleSenteiModal: null,  // { count, options, selected, sourceCard, triggerLabel }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.12.6',
+    BUILD_VERSION: '1.12.7',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6358,22 +6358,14 @@ new Vue({
       const player = this.battleSample.self;
       const card = player.hand[index];
       if (!card) return;
-      // オラクル：中央発動演出 → 墓地。閉じるまで表示（相手も独立に閉じる想定）
+      // オラクル：中央発動演出 → 墓地。昇華持ちはコスト選択モーダルへ
       if (card.category === 'オラクル') {
-        const cost = Math.max(0, Number(card.cost) || 0);
-        if (cost > player.mana) {
-          this.battleShowNotice('マナが足りません', `必要マナは ${cost}、現在のマナは ${player.mana} です。`, [card]);
+        const oracleOptions = this.battleSublimCostOptions(card);
+        if (oracleOptions.length > 1) {
+          this.battleSublimModal = { card, index, zone: null, options: oracleOptions };
           return;
         }
-        this.battleSaveUndo();
-        player.mana = Math.max(0, player.mana - cost);
-        player.hand.splice(index, 1);
-        player.graveyard.push(card);
-        player.handCount = player.hand.length;
-        this.battleOracleEffect = { card };
-        this.hideCardHover();
-        // オラクル本文のキーワード効果（【選定】等）も自動処理
-        this.battleRunEnterKeywordEffects(card);
+        this._battlePlayOracle(index, oracleOptions[0]);
         return;
       }
       // レガシー/レリック以外は未対応
@@ -6406,7 +6398,30 @@ new Vue({
       const m = this.battleSublimModal;
       if (!m) return;
       this.battleSublimModal = null;
-      this._battlePlayLegacyOrRelic(m.index, m.zone, payCost);
+      if (m.zone === null) {
+        this._battlePlayOracle(m.index, payCost);
+      } else {
+        this._battlePlayLegacyOrRelic(m.index, m.zone, payCost);
+      }
+    },
+    /* 内部：オラクルを実際に発動（マナ消費＋墓地＋演出＋キーワード処理） */
+    _battlePlayOracle(index, cost) {
+      const player = this.battleSample.self;
+      const card = player.hand[index];
+      if (!card) return;
+      if (cost > player.mana) {
+        this.battleShowNotice('マナが足りません', `必要マナは ${cost}、現在のマナは ${player.mana} です。`, [card]);
+        return;
+      }
+      this.battleSaveUndo();
+      player.mana = Math.max(0, player.mana - cost);
+      player.hand.splice(index, 1);
+      player.graveyard.push(card);
+      player.handCount = player.hand.length;
+      this.battleOracleEffect = { card };
+      this.hideCardHover();
+      // オラクル本文のキーワード効果（【選定】等）も自動処理
+      if (!this.battleRunEnterKeywordEffects(card)) this.battleKeywordGuide(card, cost);
     },
     /* 内部：レガシー/レリックを実際に配置（マナ消費＋場へ移動） */
     _battlePlayLegacyOrRelic(index, zone, cost) {
