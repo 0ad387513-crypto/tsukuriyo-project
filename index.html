@@ -1806,11 +1806,11 @@
   .game-active   .deck-grid-btn-m,
   .game-active   .deck-grid-btn-p { display: none !important; }
 
-  /* ===== 対戦画面（Phase 1 静的レイアウト v4） =====
+  /* ===== 対戦画面（Phase 3：手動対戦操作つきレイアウト） =====
      - 横スクロールなし（grid + minmax(0, 1fr) で確実に収める）
      - カミは中央配置・1:1イラスト・ステータスはその真下
      - 手札は7枚同時表示（card width = (zone - gaps) / 7）
-     - DGC（デッキ/墓地/崩壊）はアイコンと枚数のみ・コンパクト
+     - DGC（デッキ/墓地/崩壊）と手札/場の移動操作を手動処理
   */
   .battle-overlay {
     position: fixed; inset: 0; z-index: 250;
@@ -2553,7 +2553,7 @@
       <button class="top-menu-btn deck" @click="goToCardlist">📖 カードリスト</button>
       <button class="top-menu-btn game" @click="goToGame">🎴 4人対戦(β)</button>
       <button class="top-menu-btn shield" @click="goToShield">⚔ シールド戦</button>
-      <button class="top-menu-btn" style="background:linear-gradient(135deg,#5a3030,#7a3050);border-color:#bb6a8a;" @click="goToBattle">⚔ 対戦画面プレビュー(α)</button>
+      <button class="top-menu-btn" style="background:linear-gradient(135deg,#5a3030,#7a3050);border-color:#bb6a8a;" @click="goToBattle">⚔ 対戦画面(α)</button>
     </div>
     <div class="top-menu-footer">v{{ BUILD_VERSION }}</div>
   </div>
@@ -3272,7 +3272,7 @@
   </div><!-- /shield-overlay -->
 
   <!-- ===================== 4人対戦：ゲームセッション ===================== -->
-  <!-- ===================== 対戦画面（Phase 1 静的レイアウト v3） ===================== -->
+  <!-- ===================== 対戦画面（Phase 3 手動対戦操作） ===================== -->
   <div v-if="appView === 'battle'" class="battle-overlay">
     <div class="battle-header">
       <button class="battle-back-btn" @click="battleReturn">◀ {{ battleReturnLabel }}</button>
@@ -4584,7 +4584,7 @@ new Vue({
     /* ===== トップメニュー（ツクリヨオンライン） ===== */
     appView: 'top',    // 'top' | 'cardlist' | 'shield' | 'game' | 'battle'
 
-    /* ===== 対戦画面（Phase 1：静的レイアウト＋ステータス+/-のみ） ===== */
+    /* ===== 対戦画面（Phase 3：手動対戦操作＋Undo） ===== */
     battleSample: {
       turn: 1,
       activeSide: 'self',   // 'self' | 'opp' — 現在進行中のプレイヤー
@@ -5727,7 +5727,7 @@ new Vue({
       this.battleDragIndex = null;
       this.battleDragOverZone = null;
     },
-    /* 対戦画面：ステータス±処理（Phase 1：単純な加減＋Undo対応） */
+    /* 対戦画面：ステータス±処理（手動調整＋Undo対応） */
     battleStat(side, key, delta) {
       if (this.battleSample.result) return;
       const target = this.battleSample[side];
@@ -5823,6 +5823,9 @@ new Vue({
       extras.sort((a, b) => a - b);
       return [base, ...extras.map(e => base + e)];
     },
+    battleShowNotice(title, message, cards = []) {
+      this.battleNotice = { title, message, cards };
+    },
     /* 手札カード → 場/発動。マナ消費・昇華選択・オラクル演出を含む統合エントリ */
     battlePlayFromHand(index, expectedZone) {
       if (this.battleSample.result) return;
@@ -5833,7 +5836,7 @@ new Vue({
       if (card.category === 'オラクル') {
         const cost = Math.max(0, Number(card.cost) || 0);
         if (cost > player.mana) {
-          window.alert(`マナが足りません（必要 ${cost} / 現在 ${player.mana}）`);
+          this.battleShowNotice('マナが足りません', `必要マナは ${cost}、現在のマナは ${player.mana} です。`, [card]);
           return;
         }
         this.battleSaveUndo();
@@ -5848,12 +5851,12 @@ new Vue({
       // レガシー/レリック以外は未対応
       const zone = card.category === 'レガシー' ? 'legacies' : card.category === 'レリック' ? 'relics' : null;
       if (!zone) {
-        window.alert(`「${card.category || '?'}」カードは手札から出せません（現状はレガシー/レリック/オラクルのみ対応）。`);
+        this.battleShowNotice('手札から出せません', `「${card.category || '?'}」カードは手札から出せません。現状はレガシー/レリック/オラクルに対応しています。`, [card]);
         return;
       }
       if (expectedZone && expectedZone !== zone) return;
       if (player[zone].length >= 7) {
-        window.alert(`${card.category}フィールドには7枚まで配置できます。`);
+        this.battleShowNotice('フィールド上限です', `${card.category}フィールドには7枚まで配置できます。`, [card]);
         return;
       }
       // 昇華持ち → 支払いコスト選択モーダルへ
@@ -5879,7 +5882,7 @@ new Vue({
       const card = player.hand[index];
       if (!card) return;
       if (cost > player.mana) {
-        window.alert(`マナが足りません（必要 ${cost} / 現在 ${player.mana}）`);
+        this.battleShowNotice('マナが足りません', `必要マナは ${cost}、現在のマナは ${player.mana} です。`, [card]);
         return;
       }
       this.battleSaveUndo();
@@ -6023,7 +6026,7 @@ new Vue({
       const fieldZone = this.battleFieldZoneForCard(card);
       if (!card || !fieldZone || !Array.isArray(player[fieldZone])) return;
       if (player[fieldZone].length >= 7) {
-        window.alert(`${card.category}フィールドには7枚まで配置できます。`);
+        this.battleShowNotice('フィールド上限です', `${card.category}フィールドには7枚まで配置できます。`, [card]);
         return;
       }
       this.battleSaveUndo();
