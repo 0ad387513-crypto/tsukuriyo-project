@@ -2368,6 +2368,10 @@
     border-color: #d9b6ff;
     box-shadow: 0 0 0 2px rgba(184,126,255,.35), 0 0 14px rgba(184,126,255,.45);
   }
+  .battle-zone.field-card-drop-ready {
+    border-color: #e8bb63;
+    box-shadow: inset 0 0 0 1px rgba(232,187,99,.55), 0 0 12px rgba(232,187,99,.28);
+  }
   .dgc-cell.disabled { cursor: not-allowed; filter: grayscale(.45); opacity: .75; }
   .dgc-cell.disabled:hover { background: #18385d; }
   .dgc-icon { width: 30px; height: 34px; }
@@ -3359,7 +3363,9 @@
 
         <!-- 自分 レガシーフィールド -->
         <div class="battle-row-legacy">
-          <div class="battle-zone field legacy-field">
+          <div class="battle-zone field legacy-field self-legacy-drop"
+               :class="{ 'field-card-drop-ready': battleDragOverZone === 'legacies' && battleCanDropHandTo('legacies') }"
+               @dragover.prevent="battleUpdateDragOverZone($event)">
             <span class="battle-zone-label">レガシー</span>
             <div class="battle-card-row legacy-row">
               <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
@@ -3383,7 +3389,9 @@
 
         <!-- 自分 下段：レリック | カミ(中央)+ステータス | 手札 -->
         <div class="battle-row-self-bot">
-          <div class="battle-zone field">
+          <div class="battle-zone field self-relic-drop"
+               :class="{ 'field-card-drop-ready': battleDragOverZone === 'relics' && battleCanDropHandTo('relics') }"
+               @dragover.prevent="battleUpdateDragOverZone($event)">
             <span class="battle-zone-label">レリック</span>
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i"
@@ -3445,14 +3453,16 @@
             <div class="kami-name kami-below">{{ battleSample.self.kami ? fullName(battleSample.self.kami) : 'カミ未設定' }}</div>
           </div>
           <div class="battle-zone hand-self">
-            <span class="battle-zone-label">手札（外へドラッグで使用）</span>
+            <span class="battle-zone-label">手札（場へドラッグで使用 / 墓地へドラッグで捨てる）</span>
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.self.hand" :key="'sh'+i"
                    class="battle-card hand-playable"
                    :class="{ 'hand-disabled': card.category !== 'レガシー' && card.category !== 'レリック' && card.category !== 'オラクル', 'hand-dragging': battleDragIndex === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
-                   :draggable="card.category === 'レガシー' || card.category === 'レリック' || card.category === 'オラクル'"
+                   draggable="true"
                    @dragstart="battleHandDragStart(i, $event)"
+                   @drag="battleUpdateDragOverZone($event)"
+                   @dragover="battleUpdateDragOverZone($event)"
                    @dragend="battleHandDragEnd($event)"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)"
@@ -3559,7 +3569,8 @@
             </div>
           </div>
           <div class="dgc-cell zone-graveyard self-graveyard-drop"
-               :class="{ 'graveyard-drop-ready': battleDragIndex !== null }"
+               :class="{ 'graveyard-drop-ready': battleDragOverZone === 'graveyard' }"
+               @dragover.prevent="battleUpdateDragOverZone($event)"
                @click="battleOpenZone('self','graveyard')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <path d="M 8 41 H 32 V 46 H 8 Z"/>
@@ -4595,6 +4606,7 @@ new Vue({
     battleNotice: null,
     /* 手札ドラッグ・場出し */
     battleDragIndex: null,    // ドラッグ中の手札index（null=非ドラッグ中）
+    battleDragOverZone: null, // ドラッグ中に重なっているゾーン: graveyard / legacies / relics
     battleSublimModal: null,  // { card, index, options:[basecost, basecost+x, ...] } 昇華コスト選択
     battleOracleEffect: null, // { card } オラクル発動演出（中央表示中）
 
@@ -5808,7 +5820,7 @@ new Vue({
       return [base, ...extras.map(e => base + e)];
     },
     /* 手札カード → 場/発動。マナ消費・昇華選択・オラクル演出を含む統合エントリ */
-    battlePlayFromHand(index) {
+    battlePlayFromHand(index, expectedZone) {
       if (this.battleSample.result) return;
       const player = this.battleSample.self;
       const card = player.hand[index];
@@ -5835,6 +5847,7 @@ new Vue({
         window.alert(`「${card.category || '?'}」カードは手札から出せません（現状はレガシー/レリック/オラクルのみ対応）。`);
         return;
       }
+      if (expectedZone && expectedZone !== zone) return;
       if (player[zone].length >= 7) {
         window.alert(`${card.category}フィールドには7枚まで配置できます。`);
         return;
@@ -5885,10 +5898,36 @@ new Vue({
       this.hideCardHover();
       const destLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
-        title: `手札から${destLabel}へ`,
-        message: `自分の手札から「${this.fullName(card)}」を${destLabel}へ送りました。`,
+        title: destinationZone === 'graveyard' ? '手札を捨てる' : `手札から${destLabel}へ`,
+        message: destinationZone === 'graveyard'
+          ? `自分の手札から「${this.fullName(card)}」を墓地へ送りました。`
+          : `自分の手札から「${this.fullName(card)}」を${destLabel}へ送りました。`,
         cards: [card],
       };
+    },
+    battleCanDropHandTo(zone) {
+      if (this.battleDragIndex === null) return false;
+      const card = this.battleSample.self.hand[this.battleDragIndex];
+      if (!card) return false;
+      if (card.category === 'オラクル') return zone === 'legacies' || zone === 'relics';
+      if (card.category === 'レガシー') return zone === 'legacies';
+      if (card.category === 'レリック') return zone === 'relics';
+      return false;
+    },
+    battlePointInElement(e, el) {
+      if (!el || !e || typeof e.clientX !== 'number') return false;
+      const r = el.getBoundingClientRect();
+      return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    },
+    battleUpdateDragOverZone(e) {
+      if (this.battleDragIndex === null) return;
+      const graveEl = (this.$el && this.$el.querySelector('.self-graveyard-drop')) || null;
+      const legacyEl = (this.$el && this.$el.querySelector('.self-legacy-drop')) || null;
+      const relicEl = (this.$el && this.$el.querySelector('.self-relic-drop')) || null;
+      if (this.battlePointInElement(e, graveEl)) this.battleDragOverZone = 'graveyard';
+      else if (this.battlePointInElement(e, legacyEl)) this.battleDragOverZone = 'legacies';
+      else if (this.battlePointInElement(e, relicEl)) this.battleDragOverZone = 'relics';
+      else this.battleDragOverZone = null;
     },
     battleMoveFieldCard(side, sourceZone, index, destinationZone) {
       if (this.battleSample.result) return;
@@ -6021,6 +6060,8 @@ new Vue({
     battleHandDragStart(index, e) {
       if (this.battleSample.result) { e.preventDefault(); return; }
       this.battleDragIndex = index;
+      this.battleDragOverZone = null;
+      this.hideCardHover();
       if (e.dataTransfer) {
         e.dataTransfer.effectAllowed = 'move';
         // 何もデータを乗せないとブラウザによっては動かないので保険
@@ -6032,22 +6073,18 @@ new Vue({
       // 手札ゾーン内に戻された場合はキャンセル
       const handEl = (this.$el && this.$el.querySelector('.battle-zone.hand-self')) || null;
       const graveEl = (this.$el && this.$el.querySelector('.self-graveyard-drop')) || null;
+      const legacyEl = (this.$el && this.$el.querySelector('.self-legacy-drop')) || null;
+      const relicEl = (this.$el && this.$el.querySelector('.self-relic-drop')) || null;
       let dropInHand = false;
       let dropOnGraveyard = false;
-      if (handEl && e && typeof e.clientX === 'number') {
-        const r = handEl.getBoundingClientRect();
-        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
-          dropInHand = true;
-        }
-      }
-      if (graveEl && e && typeof e.clientX === 'number') {
-        const r = graveEl.getBoundingClientRect();
-        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
-          dropOnGraveyard = true;
-        }
-      }
+      let fieldDropZone = null;
+      if (this.battlePointInElement(e, handEl)) dropInHand = true;
+      if (this.battlePointInElement(e, graveEl)) dropOnGraveyard = true;
+      if (this.battlePointInElement(e, legacyEl)) fieldDropZone = 'legacies';
+      if (this.battlePointInElement(e, relicEl)) fieldDropZone = 'relics';
       const idx = this.battleDragIndex;
       this.battleDragIndex = null;
+      this.battleDragOverZone = null;
       if (dropInHand) return;
       if (dropOnGraveyard) {
         const card = this.battleSample.self.hand[idx];
@@ -6056,8 +6093,10 @@ new Vue({
         this.battleMoveHandCard(idx, 'graveyard');
         return;
       }
-      // 手札外にドロップ → 配置/発動
-      this.battlePlayFromHand(idx);
+      // 自分の該当フィールドにドロップ → 配置/発動。それ以外はキャンセル
+      if (fieldDropZone && this.battleCanDropHandTo(fieldDropZone)) {
+        this.battlePlayFromHand(idx, fieldDropZone);
+      }
     },
     openKamiSkills() {
       if (this.battleSample.result || this.battleSkillTone === 'disabled') return;
