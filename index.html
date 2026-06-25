@@ -1923,6 +1923,7 @@
     background: #2a2f3d center/cover no-repeat;
     border: 1px solid #4a4f5d; border-radius: 4px;
     cursor: pointer;
+    position: relative;
     transition: transform 0.12s, border-color 0.12s;
   }
   .battle-card:hover { transform: translateY(-3px); border-color: #dc9f50; }
@@ -1930,6 +1931,19 @@
     background: #1a1d2a;
     background-image: repeating-linear-gradient(45deg, #2a2f3d 0 6px, #1a1d2a 6px 12px);
   }
+  .field-card-actions {
+    position: absolute; right: 3px; top: 50%; transform: translateY(-50%);
+    z-index: 4; display: flex; flex-direction: column; gap: 2px;
+    opacity: 0; pointer-events: none; transition: opacity .12s;
+  }
+  .battle-card.field-card:hover .field-card-actions { opacity: 1; pointer-events: auto; }
+  .field-card-actions button {
+    width: 24px; height: 18px; padding: 0; border-radius: 3px;
+    border: 1px solid rgba(255,255,255,.65); background: rgba(20,24,34,.92);
+    color: #fff; font-size: 10px; font-weight: 900; cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,.45);
+  }
+  .field-card-actions button:hover { background: rgba(70,86,115,.96); }
   .battle-card-mini {
     background: #1a1d2a;
     background-image: repeating-linear-gradient(45deg, #2a2f3d 0 5px, #1a1d2a 5px 10px);
@@ -2156,6 +2170,15 @@
   .battle-zone-modal-empty {
     color: #889; font-size: 13px; text-align: center; padding: 32px;
   }
+  .battle-deck-modal-card {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .battle-deck-modal-pick {
+    width: 100%; max-width: 108px; padding: 5px 7px; border-radius: 4px;
+    border: 1px solid #7e94ba; background: #294c84; color: #fff;
+    font-size: 11px; font-weight: 800; cursor: pointer;
+  }
+  .battle-deck-modal-pick:hover { background: #3b68aa; }
 
   /* ===== 対戦画面 v4：ボード再設計 ===== */
   .battle-overlay {
@@ -3337,13 +3360,17 @@
             <span class="battle-zone-label">レガシー</span>
             <div class="battle-card-row legacy-row">
               <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
-                   class="battle-card"
+                   class="battle-card field-card"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
                 <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
                 <span class="battle-card-overlay battle-card-power">戦闘力 {{ card.power || 0 }}</span>
+                <span class="field-card-actions">
+                  <button title="墓地へ送る" @click.stop="battleMoveFieldCard('self','legacies',i,'graveyard')">墓</button>
+                  <button title="崩壊へ送る" @click.stop="battleMoveFieldCard('self','legacies',i,'crumbled')">崩</button>
+                </span>
               </div>
             </div>
           </div>
@@ -3355,11 +3382,16 @@
             <span class="battle-zone-label">レリック</span>
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i"
-                   class="battle-card"
+                   class="battle-card field-card"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)"
-                   @mouseleave="hideCardHover"></div>
+                   @mouseleave="hideCardHover">
+                <span class="field-card-actions">
+                  <button title="墓地へ送る" @click.stop="battleMoveFieldCard('self','relics',i,'graveyard')">墓</button>
+                  <button title="崩壊へ送る" @click.stop="battleMoveFieldCard('self','relics',i,'crumbled')">崩</button>
+                </span>
+              </div>
             </div>
           </div>
           <div class="battle-center-col">
@@ -3409,7 +3441,7 @@
             <span class="battle-zone-label">手札（外へドラッグで使用）</span>
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.self.hand" :key="'sh'+i"
-                   class="battle-card hand-playable"
+                   class="battle-card hand-playable field-card"
                    :class="{ 'hand-disabled': card.category !== 'レガシー' && card.category !== 'レリック' && card.category !== 'オラクル', 'hand-dragging': battleDragIndex === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    :draggable="card.category === 'レガシー' || card.category === 'レリック' || card.category === 'オラクル'"
@@ -3419,6 +3451,10 @@
                    @mouseenter="showCardHover(card, $event)"
                    @mouseleave="hideCardHover">
                 <span class="battle-card-overlay hand-cost-badge">{{ battleHandCost(card) }}</span>
+                <span class="field-card-actions">
+                  <button title="手札から墓地へ送る" @click.stop="battleMoveHandCard(i,'graveyard')">墓</button>
+                  <button title="手札から崩壊へ送る" @click.stop="battleMoveHandCard(i,'crumbled')">崩</button>
+                </span>
               </div>
             </div>
           </div>
@@ -3570,15 +3606,51 @@
         </h3>
         <div v-if="!battleZoneModal.cards.length" class="battle-zone-modal-empty">カードがありません</div>
         <div v-else class="battle-zone-modal-grid">
-          <div v-for="(c, i) in battleZoneModal.cards" :key="i"
-               class="battle-card"
-               style="margin:0 auto;"
-               :style="cardImageUrl(c) ? { backgroundImage: 'url(' + cardImageUrl(c) + ')' } : {}"
-               @mouseenter="showCardHover(c, $event)"
-               @mouseleave="hideCardHover"></div>
+          <div v-for="(c, i) in battleZoneModal.cards" :key="i" class="battle-deck-modal-card">
+            <div class="battle-card"
+                 style="margin:0 auto;"
+                 :style="cardImageUrl(c) ? { backgroundImage: 'url(' + cardImageUrl(c) + ')' } : {}"
+                 @click="openPreview(c)"
+                 @mouseenter="showCardHover(c, $event)"
+                 @mouseleave="hideCardHover"></div>
+            <button v-if="battleZoneModal.side === 'self'"
+                    class="battle-deck-modal-pick"
+                    @click="battleReturnZoneCardToHand(i)">
+              手札へ戻す
+            </button>
+          </div>
         </div>
         <div class="battle-zone-modal-actions">
           <button class="battle-back-btn" @click="battleZoneModal = null">閉じる</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== フェイズ3：デッキ処理モーダル（誘 / 霊視） ===== -->
+    <div v-if="battleDeckModal" class="battle-zone-modal" @click.self="battleDeckModal = null">
+      <div class="battle-zone-modal-panel">
+        <h3 class="battle-zone-modal-title">
+          {{ battleDeckModalTitle }}
+          <span style="font-size:12px;color:#9aa;font-weight:400;">— {{ battleDeckModal.cards.length }}枚</span>
+        </h3>
+        <div v-if="!battleDeckModal.cards.length" class="battle-zone-modal-empty">確認できるカードがありません</div>
+        <div v-else class="battle-zone-modal-grid">
+          <div v-for="(c, i) in battleDeckModal.cards" :key="'bd'+i" class="battle-deck-modal-card">
+            <div class="battle-card"
+                 style="margin:0 auto;"
+                 :style="cardImageUrl(c) ? { backgroundImage: 'url(' + cardImageUrl(c) + ')' } : {}"
+                 @click="openPreview(c)"
+                 @mouseenter="showCardHover(c, $event)"
+                 @mouseleave="hideCardHover"></div>
+            <button v-if="battleDeckModal.action === 'induce'"
+                    class="battle-deck-modal-pick"
+                    @click="battleDeckPick(i)">
+              手札に加える
+            </button>
+          </div>
+        </div>
+        <div class="battle-zone-modal-actions">
+          <button class="battle-back-btn" @click="battleDeckModal = null">閉じる</button>
         </div>
       </div>
     </div>
@@ -4483,6 +4555,7 @@ new Vue({
       selfMulligans: 1, oppMulligans: 1,
     },
     battleZoneModal: null,   // { side, zone, cards }
+    battleDeckModal: null,   // { side, action, cards, deckIndexes }
     deckMenuOpen: null,      // { side, x, y } — デッキクリックメニュー
     battleUndoStack: [],     // 一手戻る用：battleSampleのスナップショット履歴（最新50件）
     battleSkillModal: null,
@@ -4556,6 +4629,12 @@ new Vue({
       if (this.battleContext.returnView === 'shield') return 'シールド戦';
       if (this.battleContext.returnView === 'game') return '星戦';
       return 'トップ';
+    },
+    battleDeckModalTitle() {
+      if (!this.battleDeckModal) return '';
+      if (this.battleDeckModal.action === 'induce') return '誘 — デッキから手札に加えるカードを選択';
+      if (this.battleDeckModal.action === 'reishi') return '霊視 — デッキ上から5枚を確認';
+      return 'デッキ';
     },
     battleSkillOptions() {
       const kami = this.battleSample.self && this.battleSample.self.kami;
@@ -5550,6 +5629,7 @@ new Vue({
       };
       this.battleUndoStack = [];
       this.battleZoneModal = null;
+      this.battleDeckModal = null;
       this.deckMenuOpen = null;
       this.battleSkillModal = null;
       this.battleNotice = null;
@@ -5567,6 +5647,7 @@ new Vue({
       if (!window.confirm(message)) return;
       this.hideCardHover();
       this.battleZoneModal = null;
+      this.battleDeckModal = null;
       this.deckMenuOpen = null;
       this.battleSkillModal = null;
       this.battleNotice = null;
@@ -5595,6 +5676,7 @@ new Vue({
       this.battleSkillModal = null;
       this.battleNotice = null;
       this.deckMenuOpen = null;
+      this.battleDeckModal = null;
     },
     /* 対戦画面：ステータス±処理（Phase 1：単純な加減＋Undo対応） */
     battleStat(side, key, delta) {
@@ -5757,6 +5839,63 @@ new Vue({
       player.handCount = player.hand.length;
       this.hideCardHover();
     },
+    battleMoveHandCard(index, destinationZone) {
+      if (this.battleSample.result) return;
+      const player = this.battleSample.self;
+      if (!player || !Array.isArray(player[destinationZone])) return;
+      const card = player.hand[index];
+      if (!card) return;
+      this.battleSaveUndo();
+      player.hand.splice(index, 1);
+      player[destinationZone].push(card);
+      player.handCount = player.hand.length;
+      this.hideCardHover();
+      const destLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
+      this.battleNotice = {
+        title: `手札から${destLabel}へ`,
+        message: `自分の手札から「${this.fullName(card)}」を${destLabel}へ送りました。`,
+        cards: [card],
+      };
+    },
+    battleMoveFieldCard(side, sourceZone, index, destinationZone) {
+      if (this.battleSample.result) return;
+      const player = this.battleSample[side];
+      if (!player || !Array.isArray(player[sourceZone]) || !Array.isArray(player[destinationZone])) return;
+      const card = player[sourceZone][index];
+      if (!card) return;
+      this.battleSaveUndo();
+      player[sourceZone].splice(index, 1);
+      player[destinationZone].push(card);
+      this.hideCardHover();
+      const destLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
+      this.battleNotice = {
+        title: `${destLabel}へ移動`,
+        message: `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${destLabel}へ送りました。`,
+        cards: [card],
+      };
+    },
+    battleReturnZoneCardToHand(modalIndex) {
+      if (this.battleSample.result) return;
+      const modal = this.battleZoneModal;
+      if (!modal || modal.side !== 'self') return;
+      const player = this.battleSample.self;
+      const zone = modal.zone;
+      if (!player || !Array.isArray(player[zone])) return;
+      const card = player[zone][modalIndex];
+      if (!card) return;
+      this.battleSaveUndo();
+      player[zone].splice(modalIndex, 1);
+      player.hand.push(card);
+      player.handCount = player.hand.length;
+      this.battleZoneModal = null;
+      this.hideCardHover();
+      const zoneLabel = zone === 'graveyard' ? '墓地' : '崩壊';
+      this.battleNotice = {
+        title: `${zoneLabel}から手札へ`,
+        message: `自分の「${this.fullName(card)}」を${zoneLabel}から手札へ戻しました。`,
+        cards: [card],
+      };
+    },
     /* ===== 手札ドラッグ&ドロップ ===== */
     battleHandDragStart(index, e) {
       if (this.battleSample.result) { e.preventDefault(); return; }
@@ -5862,11 +6001,67 @@ new Vue({
       const side = this.deckMenuOpen && this.deckMenuOpen.side;
       this.deckMenuOpen = null;
       if (!side) return;
+      if (action === 'draw') {
+        this.battleDraw(side);
+      } else if (action === 'induce') {
+        this.battleOpenDeckModal(side, 'induce');
+      } else if (action === 'reishi') {
+        this.battleOpenDeckModal(side, 'reishi');
+      }
+    },
+    _battleSyncSideCounts(side) {
+      const player = this.battleSample[side];
+      if (!player) return;
+      player.deckCount = player.deck.length;
+      if (side === 'self') player.handCount = player.hand.length;
+      else player.handCount = player.handCount == null ? player.hand.length : player.handCount;
+    },
+    battleDraw(side) {
+      if (this.battleSample.result) return;
+      const player = this.battleSample[side];
+      if (!player || !player.deck.length) {
+        this.battleNotice = {
+          title: 'デッキがありません',
+          message: 'ドローできるカードがありません。',
+        };
+        return;
+      }
       this.battleSaveUndo();
-      const labelMap = { draw: 'ドロー', induce: '誘', reishi: '霊視' };
-      const label = labelMap[action] || action;
-      // Phase 1：モック動作（メッセージのみ）
-      alert(`「${side === 'self' ? '自分' : '相手'}」のデッキ → ${label}\n（Phase 1 では UI モック。Phase 3 でデッキ処理を実装予定）`);
+      const card = player.deck.shift();
+      player.hand.push(card);
+      this._battleSyncSideCounts(side);
+      this.battleNotice = {
+        title: 'ドロー',
+        message: `${side === 'self' ? '自分' : '相手'}がデッキから1枚ドローしました。`,
+        cards: side === 'self' ? [card] : [],
+      };
+    },
+    battleOpenDeckModal(side, action) {
+      if (this.battleSample.result) return;
+      const player = this.battleSample[side];
+      if (!player) return;
+      const cards = action === 'reishi' ? player.deck.slice(0, 5) : player.deck.slice();
+      const deckIndexes = cards.map((_, i) => i);
+      this.battleDeckModal = { side, action, cards, deckIndexes };
+    },
+    battleDeckPick(modalIndex) {
+      const modal = this.battleDeckModal;
+      if (!modal || modal.action !== 'induce' || this.battleSample.result) return;
+      const player = this.battleSample[modal.side];
+      if (!player) return;
+      const deckIndex = modal.deckIndexes[modalIndex];
+      const card = player.deck[deckIndex];
+      if (!card) return;
+      this.battleSaveUndo();
+      player.deck.splice(deckIndex, 1);
+      player.hand.push(card);
+      this._battleSyncSideCounts(modal.side);
+      this.battleDeckModal = null;
+      this.battleNotice = {
+        title: '誘',
+        message: `${modal.side === 'self' ? '自分' : '相手'}がデッキからカードを1枚手札に加えました。`,
+        cards: modal.side === 'self' ? [card] : [],
+      };
     },
     goToShield() {
       this.appView = 'shield';
@@ -6831,6 +7026,7 @@ new Vue({
       if (e.key === "Escape") {
         // 上に重なっているものから順に閉じる
         if (this.deckMenuOpen)        this.deckMenuOpen = null;
+        else if (this.battleDeckModal)     this.battleDeckModal = null;
         else if (this.battleZoneModal)     this.battleZoneModal = null;
         else if (this.keywordPopup)        this.closeKeywordPopup();
         else if (this.tokenMultiPopup) this.closeTokenMultiPopup();
