@@ -3783,8 +3783,13 @@
         <h3 class="battle-zone-modal-title">
           「{{ fullName(battleSenteiModal.sourceCard) }}」の【選定：{{ battleSenteiModal.count }}】
           <span v-if="battleSenteiModal.sublimApplied" style="font-size:12px;color:#ffd86a;font-weight:700;">（昇華+{{ battleSenteiModal.sublimApplied }} 適用）</span>
+          <span v-if="battleSenteiModal.boostApplied" style="font-size:12px;color:#7cf0a8;font-weight:700;">（レガシー効果 +1 適用）</span>
         </h3>
         <p class="battle-deck-modal-message">以下の効果から、異なる {{ battleSenteiModal.count }} 個を選んでください（{{ battleSenteiModal.selected.length }} / {{ battleSenteiModal.count }} 選択中）。同じ効果は選べません。</p>
+        <div v-if="battleSenteiModal.canBoost" style="margin:0 0 10px;padding:8px 12px;background:#1d3a2a;border:1px solid #4f9a6a;border-radius:6px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+          <span style="color:#a8e6c3;font-size:12px;">自分のレガシー効果：このターン1回、選定の値を +1 できます。</span>
+          <button class="battle-deck-modal-pick" style="max-width:140px;background:#2e7d4f;border-color:#7cf0a8;" @click="battleApplySenteiBoost">選定+1 を使用</button>
+        </div>
         <div class="sentei-options">
           <div v-for="(opt, i) in battleSenteiModal.options" :key="'so'+i"
                class="sentei-option"
@@ -4738,7 +4743,7 @@ new Vue({
     battleSenteiModal: null,  // { count, options, selected, sourceCard, triggerLabel }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.12.9',
+    BUILD_VERSION: '1.13.0',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5789,6 +5794,7 @@ new Vue({
         seal: isOrochi ? 8 : null, sealRewards: { four: false, zero: false },
         hand, handCount: hand.length, kami: kami || null, deck, relics: [], legacies: [],
         deckCount: deck.length, graveyard: [], crumbled: [],
+        senteiBoostUsed: false,
       };
     },
     _battleInitialize(config) {
@@ -5932,6 +5938,8 @@ new Vue({
       // マナ最大値+1（上限10）→ 満タン回復
       target.manaMax = Math.min(10, target.manaMax + 1);
       target.mana    = target.manaMax;
+      // 「自分ターンに1回、【選定】の値を＋1」系のブースト使用権を回復
+      target.senteiBoostUsed = false;
       // 疲労ダメージ：ターン11以降に発生（11→1, 12→2, ...）
       // ※自分のターン番号に基づく。相手も同じ番号でダメージを受ける想定。
       const turn = this.battleSample.turn;
@@ -6192,17 +6200,51 @@ new Vue({
       if (!options.length) return null;
       return { count, options, sublimRules, paidCost: paid, baseCost };
     },
+    battleHasSenteiBoostLegacy(side) {
+      const player = this.battleSample[side];
+      if (!player || !Array.isArray(player.legacies)) return false;
+      return player.legacies.some(c => {
+        const t = this.battleCardRulesText(c).replace(/\s+/g, '');
+        return /【選定】の値を[＋\+]1/.test(t);
+      });
+    },
     battleOpenSentei(sourceCard, sentei, triggerLabel = '効果') {
       const sublimApplied = sentei.sublimRules && sentei.sublimRules.length && sentei.paidCost > sentei.baseCost
         ? (sentei.paidCost - sentei.baseCost) : 0;
+      const canBoost = this.battleHasSenteiBoostLegacy('self') && !this.battleSample.self.senteiBoostUsed;
       this.battleSenteiModal = {
         count: sentei.count,
+        baseCount: sentei.count,
         options: sentei.options,
         selected: [],
         sourceCard,
         triggerLabel,
         sublimApplied,
+        canBoost,
+        boostApplied: false,
       };
+    },
+    battleApplySenteiBoost() {
+      const modal = this.battleSenteiModal;
+      if (!modal || !modal.canBoost || modal.boostApplied) return;
+      const self = this.battleSample.self;
+      if (self.senteiBoostUsed) return;
+      const maxCount = modal.options.length;
+      const newCount = Math.min(maxCount, modal.count + 1);
+      if (newCount === modal.count) {
+        this.battleShowNotice('選定+1 適用不可', `選択肢が${maxCount}個しかないため、これ以上選定の値を増やせません。`);
+        return;
+      }
+      modal.count = newCount;
+      modal.boostApplied = true;
+      modal.canBoost = false;
+      self.senteiBoostUsed = true;
+      const cardName = modal.sourceCard ? this.fullName(modal.sourceCard) : '';
+      this.battleShowNotice(
+        '選定 +1 を使用',
+        `自分のレガシー効果により、「${cardName}」の【選定】の値を +1 しました（選定：${modal.count}）。\nこのターン中はもう使用できません。`,
+        modal.sourceCard ? [modal.sourceCard] : []
+      );
     },
     battleToggleSenteiOption(index) {
       const modal = this.battleSenteiModal;
