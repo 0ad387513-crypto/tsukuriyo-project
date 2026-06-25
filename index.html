@@ -4737,7 +4737,7 @@ new Vue({
     battleSenteiModal: null,  // { count, options, selected, sourceCard, triggerLabel }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.12.5',
+    BUILD_VERSION: '1.12.6',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5800,6 +5800,10 @@ new Vue({
       if (gift) second.relics.push(gift);
       self.handCount = self.hand.length;
       opp.handCount = opp.hand.length;
+      // αモード（プレビュー）：自分のマナを10/10で開始（検証しやすくするため）
+      if (config.source === 'preview') {
+        self.mana = 10; self.manaMax = 10;
+      }
       this.battleSample = { turn: 1, activeSide: firstSide, result: null, self, opp };
       this.battleContext = {
         source: config.source || 'preview', modeLabel: config.modeLabel || '対戦',
@@ -6368,6 +6372,8 @@ new Vue({
         player.handCount = player.hand.length;
         this.battleOracleEffect = { card };
         this.hideCardHover();
+        // オラクル本文のキーワード効果（【選定】等）も自動処理
+        this.battleRunEnterKeywordEffects(card);
         return;
       }
       // レガシー/レリック以外は未対応
