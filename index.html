@@ -4744,7 +4744,7 @@ new Vue({
     battlePendingEffects: [], // 効果キュー：[{ type, card, data, triggerLabel, paidCost }, ...]
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.13.1',
+    BUILD_VERSION: '1.13.2',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6067,7 +6067,20 @@ new Vue({
       return { trigger, targetText, count };
     },
     battleParseEnterSummon(card) {
-      return this.battleParseTriggeredSummon(card, '出現時');
+      const triggered = this.battleParseTriggeredSummon(card, '出現時');
+      if (triggered) return triggered;
+      // 【出現時】が明示されないが【招来：◯◯】だけが書かれているケース（オラクル等）
+      const text = this.battleCardRulesText(card).replace(/\s+/g, '');
+      // 死亡時に招来する効果がある場合は出現時として誤検出しない
+      if (/【死亡時】[\s\S]*?招来/.test(text)) return null;
+      const m = text.match(/【?招来[：:]([^】\n]*)(?:】|$)/);
+      if (!m) return null;
+      const raw = (m[1] || '').replace(/[。．].*$/, '');
+      const qtyMatch = raw.match(/(.+?)[×xX＊*]([0-9]+)/);
+      const targetText = (qtyMatch ? qtyMatch[1] : raw).trim();
+      const count = Math.max(1, Number(qtyMatch ? qtyMatch[2] : 1) || 1);
+      if (!targetText) return null;
+      return { trigger: '効果', targetText, count };
     },
     battleParseDeathSummon(card) {
       return this.battleParseTriggeredSummon(card, '死亡時');
