@@ -2399,6 +2399,12 @@
   .skill-choice span { display: block; margin-top: 4px; color: #bac4d2; font-size: 12px; line-height: 1.5; }
   .battle-action-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
   .battle-action-buttons button { padding: 7px 13px; border-radius: 5px; border: 1px solid #68758a; background: #293347; color: #fff; cursor: pointer; }
+  .battle-confirm-modal { z-index: 730; }
+  .battle-action-buttons .battle-confirm-primary {
+    background: linear-gradient(135deg, #5a3030, #7a3050);
+    border-color: #bb6a8a;
+    font-weight: 800;
+  }
   .public-process-badge { color: #8dd8ff; font-size: 11px; font-weight: 900; }
   /* 公開処理メッセージ内のカードプレビューリンク */
   .notice-card-links { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
@@ -3728,7 +3734,7 @@
       </div>
     </div>
 
-    <div v-if="battleConfirmModal" class="battle-action-modal" @click.self="battleCancelConfirm">
+    <div v-if="battleConfirmModal" class="battle-action-modal battle-confirm-modal" @click.self="battleCancelConfirm">
       <div class="battle-action-panel">
         <h3>{{ battleConfirmModal.title }}</h3>
         <p>{{ battleConfirmModal.message }}</p>
@@ -3742,7 +3748,7 @@
         </div>
         <div class="battle-action-buttons">
           <button @click="battleCancelConfirm">キャンセル</button>
-          <button @click="battleConfirmApply">{{ battleConfirmModal.confirmLabel || '実行' }}</button>
+          <button class="battle-confirm-primary" @click="battleConfirmApply">{{ battleConfirmModal.confirmLabel || '実行' }}</button>
         </div>
       </div>
     </div>
@@ -5904,7 +5910,11 @@ new Vue({
         this.battleShowNotice('手札から出せません', `「${card.category || '?'}」カードは手札から出せません。現状はレガシー/レリック/オラクルに対応しています。`, [card]);
         return;
       }
-      if (expectedZone && expectedZone !== zone) return;
+      if (expectedZone && expectedZone !== zone) {
+        const zoneLabel = expectedZone === 'legacies' ? 'レガシー' : 'レリック';
+        this.battleShowNotice('置き場所が違います', `「${this.fullName(card)}」は${zoneLabel}フィールドには置けません。`, [card]);
+        return;
+      }
       if (player[zone].length >= 7) {
         this.battleShowNotice('フィールド上限です', `${card.category}フィールドには7枚まで配置できます。`, [card]);
         return;
@@ -6160,7 +6170,7 @@ new Vue({
         return;
       }
       // 自分の該当フィールドにドロップ → 配置/発動。それ以外はキャンセル
-      if (fieldDropZone && this.battleCanDropHandTo(fieldDropZone)) {
+      if (fieldDropZone) {
         this.battlePlayFromHand(idx, fieldDropZone);
       }
     },
