@@ -2161,8 +2161,8 @@
   }
   .battle-zone-modal-grid {
     flex: 1; overflow-y: auto;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 6px; padding: 6px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+    gap: 12px; padding: 8px;
   }
   .battle-zone-modal-actions {
     margin-top: 10px; display: flex; justify-content: flex-end; gap: 8px;
@@ -2176,6 +2176,19 @@
   }
   .battle-deck-modal-card {
     display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .battle-deck-modal-card .battle-card {
+    width: min(118px, 100%);
+    aspect-ratio: 744 / 1039;
+    min-height: 0;
+    margin: 0 auto;
+    background-size: cover;
+    background-position: center;
+    flex: none;
+  }
+  .battle-deck-modal-card.ineligible .battle-card {
+    opacity: .58;
+    filter: grayscale(.45);
   }
   .battle-deck-modal-pick {
     width: 100%; max-width: 108px; padding: 5px 7px; border-radius: 4px;
@@ -3680,9 +3693,10 @@
         <div v-if="battleDeckModal.action === 'autoInduce' && !battleDeckModal.eligibleCount" class="battle-zone-modal-empty">対象のカードはありません</div>
         <div v-if="!battleDeckModal.cards.length" class="battle-zone-modal-empty">確認できるカードがありません</div>
         <div v-else class="battle-zone-modal-grid">
-          <div v-for="(c, i) in battleDeckModal.cards" :key="'bd'+i" class="battle-deck-modal-card">
+          <div v-for="(c, i) in battleDeckModal.cards" :key="'bd'+i"
+               class="battle-deck-modal-card"
+               :class="{ ineligible: battleDeckModal.action === 'autoInduce' && !battleDeckModal.eligibleIndexes.includes(i) }">
             <div class="battle-card"
-                 style="margin:0 auto;"
                  :style="cardImageUrl(c) ? { backgroundImage: 'url(' + cardImageUrl(c) + ')' } : {}"
                  @click="openPreview(c)"
                  @mouseenter="showCardHover(c, $event)"
