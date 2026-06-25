@@ -1817,7 +1817,7 @@
     background: #0a0c14;
     display: flex; flex-direction: column;
     overflow: hidden;
-    --kw: 132px;       /* カミイラスト幅 = 高さ (1:1) */
+    --kw: 110px;       /* カミイラスト幅 = 高さ (1:1) */
     --side-w: 132px;   /* 右サイド列幅（DGC+ターン）— ビューポートに必ず収まる幅 */
     --status-w: 200px; /* カミ下のステータスパネル幅 */
   }
@@ -2159,7 +2159,7 @@
 
   /* ===== 対戦画面 v4：ボード再設計 ===== */
   .battle-overlay {
-    --kw: clamp(96px, 9vw, 138px);
+    --kw: clamp(86px, 7.5vw, 116px);
     --side-w: clamp(152px, 12vw, 184px);
     --status-w: clamp(214px, 19vw, 286px);
   }
@@ -2172,7 +2172,7 @@
   .battle-surrender-btn:hover { background: #b32b39; }
   .battle-board { gap: 6px; padding: 6px 8px; }
   .battle-main {
-    grid-template-rows: minmax(122px, .82fr) minmax(150px, 1.18fr) minmax(150px, 1.18fr) minmax(130px, .9fr);
+    grid-template-rows: minmax(96px, .78fr) minmax(118px, 1.12fr) minmax(118px, 1.12fr) minmax(118px, .98fr);
     gap: 6px;
   }
   .battle-row-opp-top, .battle-row-self-bot {
@@ -2226,31 +2226,43 @@
 
   .battle-center-col { justify-content: center; gap: 3px; }
   .kami-hud {
-    display: grid; grid-template-columns: 58px var(--kw) 86px;
+    display: grid; grid-template-columns: 52px var(--kw) 80px;
     align-items: end; justify-content: center; gap: 4px; width: 100%;
   }
   .kami-hud .kami-portrait { grid-column: 2; grid-row: 1; }
-  .kami-hud .hud-orb:first-child { grid-column: 1; grid-row: 1; }
-  .kami-hud .hud-orb:last-child { grid-column: 3; grid-row: 1; }
+  .kami-hud .hud-orb:nth-of-type(1) { grid-column: 1; grid-row: 1; }
+  .kami-hud .hud-orb:nth-of-type(2) { grid-column: 3; grid-row: 1; }
+  /* 神技ボタン・カミ名はカミの真下（grid column 2 のみ）に配置して X 軸を揃える */
+  .kami-hud .kami-below {
+    grid-column: 2;
+    width: var(--kw); max-width: var(--kw);
+    justify-self: center;
+    margin: 0 auto;
+  }
   .hud-orb { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
   /* ライフ赤丸の右に △▽（最大値ボタン）を配置するための横並びレイアウト */
   .life-row { display: flex; align-items: center; gap: 4px; justify-content: center; }
   .life-row .orb-max-controls { flex-direction: column; gap: 0; margin: 0; }
-  /* カミ右側のプレースホルダ（X軸の対称性のため） */
-  .hud-spacer { visibility: hidden; min-width: 86px; }
-  /* ライフスタック：カミの真下に縦配置（ライフ → 赤丸+△▽ → - +） */
-  .life-stack {
-    display: flex; flex-direction: column; align-items: center;
-    gap: 4px; margin-top: 4px;
-    width: 100%;
+  /* ===== カミ枠の段階表示（自分のみ）：通常=neutral, 神技1可=silver, 神技2可=gold点滅 ===== */
+  .kami-portrait { border-color: #3a4258; box-shadow: 0 0 8px rgba(60,80,110,0.35); }
+  .kami-portrait.kami-tier-disabled { border-color: #3a4258; box-shadow: 0 0 6px rgba(50,60,80,0.3); }
+  .kami-portrait.kami-tier-silver {
+    border-color: #c0c8d2;
+    box-shadow: 0 0 12px rgba(190,200,215,0.55), inset 0 0 6px rgba(255,255,255,0.1);
   }
-  .life-stack .orb-label { color: #c9d2df; font-size: 11px; font-weight: 800; }
-  .life-stack.opp { gap: 2px; }
+  .kami-portrait.kami-tier-gold {
+    border-color: #e6b62a;
+    animation: kami-gold-pulse 2.6s ease-in-out infinite;
+  }
+  @keyframes kami-gold-pulse {
+    0%, 100% { box-shadow: 0 0 9px rgba(230,182,42,0.4); }
+    50%      { box-shadow: 0 0 18px rgba(255,210,90,0.85); }
+  }
   .orb-label { color: #c9d2df; font-size: 9px; font-weight: 800; }
   .orb-disc {
-    width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center;
+    width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center;
     justify-content: center; flex-direction: column; border: 2px solid rgba(255,255,255,.7);
-    color: #fff; font-size: 19px; font-weight: 900; line-height: 1;
+    color: #fff; font-size: 17px; font-weight: 900; line-height: 1;
     box-shadow: 0 3px 10px rgba(0,0,0,.45);
   }
   .orb-disc small { font-size: 9px; margin-top: 2px; color: rgba(255,255,255,.82); }
@@ -3251,12 +3263,14 @@
           </div>
           <div class="battle-center-col">
             <div class="kami-hud">
+              <!-- 左：天力／封印 -->
               <div class="hud-orb">
                 <span class="orb-label">{{ battleIsOrochi('opp') ? '封印' : '天力' }}</span>
                 <div class="orb-disc" :class="battleIsOrochi('opp') ? 'seal' : 'tenryoku'">
                   {{ battleIsOrochi('opp') ? battleSample.opp.seal : battleSample.opp.tenryoku }}
                 </div>
               </div>
+              <!-- 中央：カミ（X軸基準） -->
               <div class="kami-portrait"
                    :class="{ 'orochi-awakened': battleIsOrochi('opp') && battleSample.opp.seal === 0 }"
                    :style="battleSample.opp.kami && kamiIllustrationUrl(battleSample.opp.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.opp.kami) + ')' } : {}"
@@ -3266,15 +3280,13 @@
                 <div v-if="!battleSample.opp.kami" class="kami-placeholder">カミ(相手)</div>
                 <div v-else-if="!hasKamiIllustration(battleSample.opp.kami)" class="kami-illust-missing">イラスト未登録</div>
               </div>
-              <!-- 右側プレースホルダ（自分側との対称性確保） -->
-              <div class="hud-orb hud-spacer"></div>
+              <!-- 右：ライフ（赤丸 / 上：ライフラベル） -->
+              <div class="hud-orb">
+                <span class="orb-label">ライフ</span>
+                <div class="orb-disc life">{{ battleSample.opp.life }}<small>/ {{ battleSample.opp.lifeMax }}</small></div>
+              </div>
             </div>
             <div class="kami-name">{{ battleSample.opp.kami ? fullName(battleSample.opp.kami) : 'カミ未設定' }}</div>
-            <!-- ライフスタック：カミの真下に配置 -->
-            <div class="life-stack opp">
-              <span class="orb-label">ライフ</span>
-              <div class="orb-disc life">{{ battleSample.opp.life }}<small>/ {{ battleSample.opp.lifeMax }}</small></div>
-            </div>
           </div>
           <div class="battle-zone field">
             <span class="battle-zone-label">レリック(相手)</span>
@@ -3340,6 +3352,7 @@
           </div>
           <div class="battle-center-col">
             <div class="kami-hud">
+              <!-- 左：天力／封印 -->
               <div class="hud-orb">
                 <span class="orb-label">{{ battleIsOrochi('self') ? '封印' : '天力' }}</span>
                 <div class="orb-disc" :class="battleIsOrochi('self') ? 'seal' : 'tenryoku'">
@@ -3350,8 +3363,9 @@
                   <button @click="battleStat('self', battleIsOrochi('self') ? 'seal' : 'tenryoku', 1)">+</button>
                 </div>
               </div>
+              <!-- 中央：カミ（X軸基準、神技段階で枠色変化） -->
               <div class="kami-portrait"
-                   :class="{ 'orochi-awakened': battleIsOrochi('self') && battleSample.self.seal === 0 }"
+                   :class="['kami-tier-' + battleSkillTone, { 'orochi-awakened': battleIsOrochi('self') && battleSample.self.seal === 0 }]"
                    :style="battleSample.self.kami && kamiIllustrationUrl(battleSample.self.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.self.kami) + ')' } : {}"
                    @click="battleSample.self.kami && openPreview(battleSample.self.kami)"
                    @mouseenter="battleSample.self.kami && showCardHover(battleSample.self.kami, $event)"
@@ -3359,26 +3373,25 @@
                 <div v-if="!battleSample.self.kami" class="kami-placeholder">カミ</div>
                 <div v-else-if="!hasKamiIllustration(battleSample.self.kami)" class="kami-illust-missing">イラスト未登録</div>
               </div>
-              <!-- 右側プレースホルダ（相手側との対称性確保。カミのX軸位置を維持） -->
-              <div class="hud-orb hud-spacer"></div>
-            </div>
-            <button class="kami-skill-btn" :class="battleSkillTone" :disabled="battleSkillTone === 'disabled'" @click="openKamiSkills">神技</button>
-            <div class="kami-name">{{ battleSample.self.kami ? fullName(battleSample.self.kami) : 'カミ未設定' }}</div>
-            <!-- ライフスタック：カミの真下に配置（赤丸の上：ライフ、下：- +、右に △▽） -->
-            <div class="life-stack self">
-              <span class="orb-label">ライフ</span>
-              <div class="life-row">
-                <div class="orb-disc life">{{ battleSample.self.life }}<small>/ {{ battleSample.self.lifeMax }}</small></div>
-                <div class="orb-max-controls">
-                  <button title="最大ライフを増やす（上限10）" @click="battleStat('self','lifeMax',1)">△</button>
-                  <button title="最大ライフを減らす" @click="battleStat('self','lifeMax',-1)">▽</button>
+              <!-- 右：ライフ（赤丸の右に △▽、下に - +） -->
+              <div class="hud-orb">
+                <span class="orb-label">ライフ</span>
+                <div class="life-row">
+                  <div class="orb-disc life">{{ battleSample.self.life }}<small>/ {{ battleSample.self.lifeMax }}</small></div>
+                  <div class="orb-max-controls">
+                    <button title="最大ライフを増やす（上限10）" @click="battleStat('self','lifeMax',1)">△</button>
+                    <button title="最大ライフを減らす" @click="battleStat('self','lifeMax',-1)">▽</button>
+                  </div>
+                </div>
+                <div class="orb-value-controls">
+                  <button @click="battleStat('self','life',-1)">−</button>
+                  <button @click="battleStat('self','life',1)">+</button>
                 </div>
               </div>
-              <div class="orb-value-controls">
-                <button @click="battleStat('self','life',-1)">−</button>
-                <button @click="battleStat('self','life',1)">+</button>
-              </div>
             </div>
+            <!-- カミの真下：神技ボタン と カミ名 のみ -->
+            <button class="kami-skill-btn kami-below" :class="battleSkillTone" :disabled="battleSkillTone === 'disabled'" @click="openKamiSkills">神技</button>
+            <div class="kami-name kami-below">{{ battleSample.self.kami ? fullName(battleSample.self.kami) : 'カミ未設定' }}</div>
           </div>
           <div class="battle-zone hand-self">
             <span class="battle-zone-label">手札（外へドラッグで使用）</span>
@@ -4468,7 +4481,7 @@ new Vue({
     battleOracleEffect: null, // { card } オラクル発動演出（中央表示中）
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.12.1',
+    BUILD_VERSION: '1.12.2',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
