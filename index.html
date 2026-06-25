@@ -2244,8 +2244,7 @@
   }
   .hand-playable { position: relative; overflow: visible; }
   .hand-playable:hover { transform: translateY(-6px); border-color: #e8bb63; }
-  .hand-disabled { cursor: default; opacity: .82; }
-  .hand-disabled:hover { transform: none; border-color: #4a4f5d; }
+  .hand-disabled { opacity: .82; }
   .battle-center-col { justify-content: center; gap: 3px; }
   .kami-hud {
     display: grid; grid-template-columns: 52px var(--kw) 80px;
@@ -5722,6 +5721,11 @@ new Vue({
       this.battleNotice = null;
       this.deckMenuOpen = null;
       this.battleDeckModal = null;
+      this.battleZoneModal = null;
+      this.battleSublimModal = null;
+      this.battleOracleEffect = null;
+      this.battleDragIndex = null;
+      this.battleDragOverZone = null;
     },
     /* 対戦画面：ステータス±処理（Phase 1：単純な加減＋Undo対応） */
     battleStat(side, key, delta) {
@@ -7269,6 +7273,10 @@ new Vue({
       if (e.key === "Escape") {
         // 上に重なっているものから順に閉じる
         if (this.deckMenuOpen)        this.deckMenuOpen = null;
+        else if (this.battleNotice)        this.battleNotice = null;
+        else if (this.battleOracleEffect)  this.battleOracleEffect = null;
+        else if (this.battleSublimModal)   this.battleSublimModal = null;
+        else if (this.battleSkillModal)    this.battleSkillModal = null;
         else if (this.battleDeckModal)     this.battleDeckModal = null;
         else if (this.battleZoneModal)     this.battleZoneModal = null;
         else if (this.keywordPopup)        this.closeKeywordPopup();
