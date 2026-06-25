@@ -2215,8 +2215,9 @@
     background: rgba(21,25,34,.94); border-color: #c9d0da; font-size: 15px;
   }
   .hand-cost-badge {
-    top: 3px; left: 3px; min-width: 34px; min-height: 30px;
-    background: #2356a0; border-color: #a9cfff; font-size: clamp(13px, 1.15vw, 18px);
+    top: -6px; left: -6px; min-width: 30px; min-height: 26px;
+    background: #2356a0; border-color: #a9cfff; font-size: clamp(11px, 0.95vw, 15px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
   }
   .hand-playable { position: relative; overflow: visible; }
   .hand-playable:hover { transform: translateY(-6px); border-color: #e8bb63; }
@@ -2225,13 +2226,16 @@
 
   .battle-center-col { justify-content: center; gap: 3px; }
   .kami-hud {
-    display: grid; grid-template-columns: 58px var(--kw) 58px;
+    display: grid; grid-template-columns: 58px var(--kw) 86px;
     align-items: end; justify-content: center; gap: 4px; width: 100%;
   }
   .kami-hud .kami-portrait { grid-column: 2; grid-row: 1; }
   .kami-hud .hud-orb:first-child { grid-column: 1; grid-row: 1; }
   .kami-hud .hud-orb:last-child { grid-column: 3; grid-row: 1; }
   .hud-orb { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+  /* ライフ赤丸の右に △▽（最大値ボタン）を配置するための横並びレイアウト */
+  .hud-orb .life-row { display: flex; align-items: center; gap: 4px; }
+  .hud-orb .life-row .orb-max-controls { flex-direction: column; gap: 0; margin: 0; }
   .orb-label { color: #c9d2df; font-size: 9px; font-weight: 800; }
   .orb-disc {
     width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center;
@@ -2242,7 +2246,12 @@
   .orb-disc small { font-size: 9px; margin-top: 2px; color: rgba(255,255,255,.82); }
   .orb-disc.life { background: #a82131; }
   .orb-disc.tenryoku { background: #205aa0; }
-  .orb-disc.seal { background: #15171c; border-color: #8d929d; }
+  .orb-disc.seal {
+    background: radial-gradient(circle at 35% 30%, #b81824 0%, #5a0010 45%, #16040a 100%);
+    border-color: #d63b48; color: #fff7f3;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.7), 0 0 12px rgba(180,30,40,0.55);
+    text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  }
   .orb-max-controls, .orb-value-controls { display: flex; align-items: center; justify-content: center; gap: 3px; }
   .orb-max-controls { flex-direction: column; gap: 0; margin-bottom: 1px; }
   .orb-max-controls button, .orb-value-controls button {
@@ -2253,8 +2262,11 @@
   .orb-max-controls button { height: 12px; background: transparent; border: 0; color: #ff9a9f; }
   .orb-value-controls button:hover { background: #3b68aa; }
   .kami-name {
-    max-width: 100%; color: #d8deea; font-size: 10px; font-weight: 800;
-    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center;
+    max-width: 100%; color: #d8deea; font-size: 11px; font-weight: 800;
+    text-align: center; line-height: 1.25;
+    /* 画面端で見切れないよう折り返しを許可（日本語） */
+    white-space: normal; word-break: break-all; overflow-wrap: anywhere;
+    padding: 0 4px;
   }
   .kami-skill-btn {
     width: min(190px, 92%); padding: 6px 12px; border-radius: 5px; font-size: 14px;
@@ -2328,6 +2340,60 @@
   .battle-action-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
   .battle-action-buttons button { padding: 7px 13px; border-radius: 5px; border: 1px solid #68758a; background: #293347; color: #fff; cursor: pointer; }
   .public-process-badge { color: #8dd8ff; font-size: 11px; font-weight: 900; }
+
+  /* 昇華コスト選択ボタン */
+  .sublim-cost-buttons { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 12px 0; }
+  .sublim-cost-btn {
+    padding: 12px 14px; border-radius: 6px; border: 1px solid #6a82b0;
+    background: linear-gradient(135deg, #2a3a5e, #1c2540); color: #fff;
+    font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 0.04em;
+  }
+  .sublim-cost-btn:hover:not(:disabled) { background: linear-gradient(135deg, #344a78, #243155); border-color: #9ab4d8; }
+  .sublim-cost-btn:disabled, .sublim-cost-btn.disabled { opacity: .35; cursor: not-allowed; }
+
+  /* オラクル発動 中央演出 */
+  .oracle-effect-overlay {
+    position: fixed; inset: 0; z-index: 690;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(circle at center, rgba(80,40,150,0.55) 0%, rgba(0,0,0,0.85) 70%);
+    backdrop-filter: blur(6px);
+    animation: oracle-fade-in 0.3s ease-out;
+    cursor: pointer;
+  }
+  @keyframes oracle-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .oracle-effect-card {
+    width: clamp(220px, 28vw, 340px); aspect-ratio: 744 / 1039;
+    background: #1a1d28 center/cover no-repeat;
+    border: 4px solid #c8a8ff;
+    border-radius: 12px;
+    box-shadow:
+      0 0 30px rgba(200, 168, 255, 0.9),
+      0 0 60px rgba(160, 100, 240, 0.7),
+      0 12px 40px rgba(0, 0, 0, 0.8);
+    animation: oracle-card-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes oracle-card-pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 30px rgba(200,168,255,0.9), 0 0 60px rgba(160,100,240,0.7), 0 12px 40px rgba(0,0,0,0.8); }
+    50%      { transform: scale(1.04); box-shadow: 0 0 50px rgba(220,188,255,1), 0 0 90px rgba(180,120,255,0.85), 0 12px 40px rgba(0,0,0,0.8); }
+  }
+  .oracle-effect-label {
+    margin-top: 18px; font-size: clamp(24px, 3.2vw, 38px); font-weight: 900;
+    color: #f8e0ff; letter-spacing: 0.18em;
+    text-shadow: 0 0 12px rgba(200,168,255,0.9), 0 0 24px rgba(140,80,220,0.7);
+  }
+  .oracle-effect-name {
+    margin-top: 4px; font-size: clamp(16px, 1.6vw, 20px);
+    color: #fff; font-weight: 700; letter-spacing: 0.08em;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  }
+
+  /* 手札ドラッグ中スタイル */
+  .hand-playable[draggable="true"] { cursor: grab; }
+  .hand-playable[draggable="true"]:active { cursor: grabbing; }
+  .hand-playable.hand-dragging { opacity: 0.4; }
   .battle-result-overlay { z-index: 700; overflow: hidden; }
   .battle-result-panel {
     position: relative; width: min(720px, 94vw); padding: 56px 28px; text-align: center;
@@ -3250,12 +3316,14 @@
                 <div v-else-if="!hasKamiIllustration(battleSample.self.kami)" class="kami-illust-missing">イラスト未登録</div>
               </div>
               <div class="hud-orb">
-                <div class="orb-max-controls">
-                  <button title="最大ライフを増やす" @click="battleStat('self','lifeMax',1)">△</button>
-                  <button title="最大ライフを減らす" @click="battleStat('self','lifeMax',-1)">▽</button>
-                </div>
                 <span class="orb-label">ライフ</span>
-                <div class="orb-disc life">{{ battleSample.self.life }}<small>/ {{ battleSample.self.lifeMax }}</small></div>
+                <div class="life-row">
+                  <div class="orb-disc life">{{ battleSample.self.life }}<small>/ {{ battleSample.self.lifeMax }}</small></div>
+                  <div class="orb-max-controls">
+                    <button title="最大ライフを増やす（上限10）" @click="battleStat('self','lifeMax',1)">△</button>
+                    <button title="最大ライフを減らす" @click="battleStat('self','lifeMax',-1)">▽</button>
+                  </div>
+                </div>
                 <div class="orb-value-controls">
                   <button @click="battleStat('self','life',-1)">−</button>
                   <button @click="battleStat('self','life',1)">+</button>
@@ -3266,13 +3334,16 @@
             <div class="kami-name">{{ battleSample.self.kami ? fullName(battleSample.self.kami) : 'カミ未設定' }}</div>
           </div>
           <div class="battle-zone hand-self">
-            <span class="battle-zone-label">手札</span>
+            <span class="battle-zone-label">手札（外へドラッグで使用）</span>
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.self.hand" :key="'sh'+i"
                    class="battle-card hand-playable"
-                   :class="{ 'hand-disabled': card.category !== 'レガシー' && card.category !== 'レリック' }"
+                   :class="{ 'hand-disabled': card.category !== 'レガシー' && card.category !== 'レリック' && card.category !== 'オラクル', 'hand-dragging': battleDragIndex === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
-                   @click="battlePlayFromHand(i)"
+                   :draggable="card.category === 'レガシー' || card.category === 'レリック' || card.category === 'オラクル'"
+                   @dragstart="battleHandDragStart(i, $event)"
+                   @dragend="battleHandDragEnd($event)"
+                   @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)"
                    @mouseleave="hideCardHover">
                 <span class="battle-card-overlay hand-cost-badge">{{ battleHandCost(card) }}</span>
@@ -3459,6 +3530,33 @@
         <p>{{ battleNotice.message }}</p>
         <div class="battle-action-buttons"><button @click="battleNotice = null">確認</button></div>
       </div>
+    </div>
+
+    <!-- 昇華コスト選択モーダル -->
+    <div v-if="battleSublimModal" class="battle-action-modal" @click.self="battleSublimModal = null">
+      <div class="battle-action-panel">
+        <h3>支払うマナを選択</h3>
+        <p>「{{ fullName(battleSublimModal.card) }}」を出すマナコストを選んでください。<br>
+           <small style="color:#9aa;">昇華の追加コストを払うとそれに応じた効果が発動します（詳細はカード本文参照）。</small></p>
+        <div class="sublim-cost-buttons">
+          <button v-for="(c, idx) in battleSublimModal.options" :key="'sc'+idx"
+                  class="sublim-cost-btn"
+                  :class="{ disabled: c > battleSample.self.mana }"
+                  :disabled="c > battleSample.self.mana"
+                  @click="battleSublimChoose(c)">
+            マナ {{ c }}{{ idx === 0 ? '（通常）' : '（昇華 +' + (c - battleSublimModal.options[0]) + '）' }}
+          </button>
+        </div>
+        <div class="battle-action-buttons"><button @click="battleSublimModal = null">キャンセル</button></div>
+      </div>
+    </div>
+
+    <!-- オラクル発動 中央演出 -->
+    <div v-if="battleOracleEffect" class="oracle-effect-overlay" @click="battleOracleEffect = null">
+      <div class="oracle-effect-card"
+           :style="cardImageUrl(battleOracleEffect.card) ? { backgroundImage: 'url(' + cardImageUrl(battleOracleEffect.card) + ')' } : {}"></div>
+      <div class="oracle-effect-label">オラクル発動</div>
+      <div class="oracle-effect-name">{{ fullName(battleOracleEffect.card) }}</div>
     </div>
 
     <div v-if="battleSample.result" class="battle-result-overlay">
@@ -4300,9 +4398,13 @@ new Vue({
     battleUndoStack: [],     // 一手戻る用：battleSampleのスナップショット履歴（最新50件）
     battleSkillModal: null,
     battleNotice: null,
+    /* 手札ドラッグ・場出し */
+    battleDragIndex: null,    // ドラッグ中の手札index（null=非ドラッグ中）
+    battleSublimModal: null,  // { card, index, options:[basecost, basecost+x, ...] } 昇華コスト選択
+    battleOracleEffect: null, // { card } オラクル発動演出（中央表示中）
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.11.0',
+    BUILD_VERSION: '1.12.0',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5379,6 +5481,9 @@ new Vue({
       this.deckMenuOpen = null;
       this.battleSkillModal = null;
       this.battleNotice = null;
+      this.battleSublimModal = null;
+      this.battleOracleEffect = null;
+      this.battleDragIndex = null;
       if (this.battleContext.returnView === 'shield') {
         this.appView = 'shield';
         this.shieldOpen = true;
@@ -5412,7 +5517,7 @@ new Vue({
       const next = target[key] + delta;
       if (key === 'life')     target.life     = Math.max(0, Math.min(target.lifeMax, next));
       else if (key === 'lifeMax') {
-        target.lifeMax = Math.max(1, next);
+        target.lifeMax = Math.max(1, Math.min(10, next));   // ライフ最大値は 10 まで
         // 最大値低下時：ライフがそれを超えていれば自動で新しい最大値に揃える
         if (target.life > target.lifeMax) target.life = target.lifeMax;
       }
@@ -5484,27 +5589,112 @@ new Vue({
       extras.sort((a, b) => a - b);
       return [base, ...extras.map(extra => base + extra)].join('/');
     },
+    /* 昇華コストの選択肢を返す（基本コスト＋[基本+X]パターンを全部抽出） */
+    battleSublimCostOptions(card) {
+      const base = Math.max(0, Number(card && card.cost) || 0);
+      const text = [card && card.text, card && card.subType].filter(Boolean).join(' ');
+      const extras = [];
+      const pattern = /昇華\s*([0-9]+)/g;
+      let m;
+      while ((m = pattern.exec(text)) !== null) {
+        const x = Number(m[1]);
+        if (x > 0 && !extras.includes(x)) extras.push(x);
+      }
+      extras.sort((a, b) => a - b);
+      return [base, ...extras.map(e => base + e)];
+    },
+    /* 手札カード → 場/発動。マナ消費・昇華選択・オラクル演出を含む統合エントリ */
     battlePlayFromHand(index) {
       if (this.battleSample.result) return;
       const player = this.battleSample.self;
       const card = player.hand[index];
       if (!card) return;
+      // オラクル：中央発動演出 → 墓地
+      if (card.category === 'オラクル') {
+        const cost = Math.max(0, Number(card.cost) || 0);
+        if (cost > player.mana) {
+          window.alert(`マナが足りません（必要 ${cost} / 現在 ${player.mana}）`);
+          return;
+        }
+        this.battleSaveUndo();
+        player.mana = Math.max(0, player.mana - cost);
+        player.hand.splice(index, 1);
+        player.graveyard.push(card);
+        player.handCount = player.hand.length;
+        this.battleOracleEffect = { card };
+        setTimeout(() => { this.battleOracleEffect = null; }, 2500);
+        this.hideCardHover();
+        return;
+      }
+      // レガシー/レリック以外は未対応
       const zone = card.category === 'レガシー' ? 'legacies' : card.category === 'レリック' ? 'relics' : null;
       if (!zone) {
-        window.alert('現在はレガシーとレリックのみ、手札から場へ出せます。');
+        window.alert(`「${card.category || '?'}」カードは手札から出せません（現状はレガシー/レリック/オラクルのみ対応）。`);
         return;
       }
       if (player[zone].length >= 7) {
         window.alert(`${card.category}フィールドには7枚まで配置できます。`);
         return;
       }
-      const name = this.fullName(card);
-      if (!window.confirm(`「${name}」を${card.category}フィールドに出しますか？`)) return;
+      // 昇華持ち → 支払いコスト選択モーダルへ
+      const options = this.battleSublimCostOptions(card);
+      if (options.length > 1) {
+        this.battleSublimModal = { card, index, zone, options };
+        return;
+      }
+      // 通常配置（コスト1択）
+      const cost = options[0];
+      this._battlePlayLegacyOrRelic(index, zone, cost);
+    },
+    /* 昇華選択モーダルからの決定 */
+    battleSublimChoose(payCost) {
+      const m = this.battleSublimModal;
+      if (!m) return;
+      this.battleSublimModal = null;
+      this._battlePlayLegacyOrRelic(m.index, m.zone, payCost);
+    },
+    /* 内部：レガシー/レリックを実際に配置（マナ消費＋場へ移動） */
+    _battlePlayLegacyOrRelic(index, zone, cost) {
+      const player = this.battleSample.self;
+      const card = player.hand[index];
+      if (!card) return;
+      if (cost > player.mana) {
+        window.alert(`マナが足りません（必要 ${cost} / 現在 ${player.mana}）`);
+        return;
+      }
       this.battleSaveUndo();
+      player.mana = Math.max(0, player.mana - cost);
       player.hand.splice(index, 1);
       player[zone].push(card);
       player.handCount = player.hand.length;
       this.hideCardHover();
+    },
+    /* ===== 手札ドラッグ&ドロップ ===== */
+    battleHandDragStart(index, e) {
+      if (this.battleSample.result) { e.preventDefault(); return; }
+      this.battleDragIndex = index;
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        // 何もデータを乗せないとブラウザによっては動かないので保険
+        try { e.dataTransfer.setData('text/plain', String(index)); } catch (_) {}
+      }
+    },
+    battleHandDragEnd(e) {
+      if (this.battleDragIndex === null) return;
+      // 手札ゾーン内に戻された場合はキャンセル
+      const handEl = (this.$el && this.$el.querySelector('.battle-zone.hand-self')) || null;
+      let dropInHand = false;
+      if (handEl && e && typeof e.clientX === 'number') {
+        const r = handEl.getBoundingClientRect();
+        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+          dropInHand = true;
+        }
+      }
+      const idx = this.battleDragIndex;
+      this.battleDragIndex = null;
+      if (dropInHand) return;
+      // 手札外にドロップ → 配置/発動
+      this.battlePlayFromHand(idx);
     },
     openKamiSkills() {
       if (this.battleSample.result || this.battleSkillTone === 'disabled') return;
