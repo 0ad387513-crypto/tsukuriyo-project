@@ -3805,7 +3805,7 @@
                   @click="battleResolveSentei">
             選定を確定（{{ battleSenteiModal.selected.length }}/{{ battleSenteiModal.count }} 選択）
           </button>
-          <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="battleSenteiModal = null">キャンセル</button>
+          <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="battleCancelSentei">キャンセル</button>
         </div>
       </div>
     </div>
@@ -4741,9 +4741,10 @@ new Vue({
     battleSublimModal: null,  // { card, index, options:[basecost, basecost+x, ...] } 昇華コスト選択
     battleOracleEffect: null, // { card } オラクル発動演出（中央表示中）
     battleSenteiModal: null,  // { count, options, selected, sourceCard, triggerLabel }
+    battlePendingEffects: [], // 効果キュー：[{ type, card, data, triggerLabel, paidCost }, ...]
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.13.0',
+    BUILD_VERSION: '1.13.1',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5819,6 +5820,8 @@ new Vue({
         selfMulligans: config.selfMulligans || 1, oppMulligans: config.oppMulligans || 1,
       };
       this.battleUndoStack = [];
+      this.battlePendingEffects = [];
+      this.battleSenteiModal = null;
       this.battleZoneModal = null;
       this.battleDeckModal = null;
       this.deckMenuOpen = null;
@@ -6088,45 +6091,39 @@ new Vue({
       });
     },
     battleRunEnterKeywordEffects(card, paidCost = null) {
-      const sentei = this.battleParseSentei(card, paidCost);
-      if (sentei) {
-        this.battleOpenSentei(card, sentei, '出現時');
-        return true;
-      }
-      const induce = this.battleParseEnterInduce(card);
-      if (induce) {
-        this.battleOpenAutoInduce(card, induce, '出現時');
-        return true;
-      }
-      const reishi = this.battleParseEnterReishi(card);
-      if (reishi) {
-        this.battleOpenAutoReishi(card, reishi, '出現時');
-        return true;
-      }
-      const summon = this.battleParseEnterSummon(card);
-      if (!summon) return false;
-      this.battleOpenAutoSummon(card, summon, '出現時');
-      return true;
+      return this._battleQueueAndRunEffects(card, paidCost, '出現時');
     },
     battleRunDeathKeywordEffects(card) {
-      const sentei = this.battleParseSentei(card);
-      if (sentei) {
-        this.battleOpenSentei(card, sentei, '死亡時');
-        return true;
-      }
-      const induce = this.battleParseDeathInduce(card);
-      if (induce) {
-        this.battleOpenAutoInduce(card, induce, '死亡時');
-        return true;
-      }
-      const reishi = this.battleParseDeathReishi(card);
-      if (reishi) {
-        this.battleOpenAutoReishi(card, reishi, '死亡時');
-        return true;
-      }
-      const summon = this.battleParseDeathSummon(card);
-      if (!summon) return false;
-      this.battleOpenAutoSummon(card, summon, '死亡時');
+      return this._battleQueueAndRunEffects(card, null, '死亡時');
+    },
+    /* カード上のキーワード効果を全列挙してキューへ。1つずつ順に処理する */
+    _battleQueueAndRunEffects(card, paidCost, triggerLabel) {
+      const queued = [];
+      const sentei = this.battleParseSentei(card, paidCost);
+      if (sentei) queued.push({ type: 'sentei', card, data: sentei, triggerLabel });
+      const parseInduce = triggerLabel === '死亡時' ? this.battleParseDeathInduce : this.battleParseEnterInduce;
+      const parseReishi = triggerLabel === '死亡時' ? this.battleParseDeathReishi : this.battleParseEnterReishi;
+      const parseSummon = triggerLabel === '死亡時' ? this.battleParseDeathSummon : this.battleParseEnterSummon;
+      const induce = parseInduce.call(this, card);
+      if (induce) queued.push({ type: 'induce', card, data: induce, triggerLabel });
+      const reishi = parseReishi.call(this, card);
+      if (reishi) queued.push({ type: 'reishi', card, data: reishi, triggerLabel });
+      const summon = parseSummon.call(this, card);
+      if (summon) queued.push({ type: 'summon', card, data: summon, triggerLabel });
+      if (!queued.length) return false;
+      this.battlePendingEffects.push(...queued);
+      this._battleProcessNextEffect();
+      return true;
+    },
+    /* キューから次の効果を取り出して該当モーダルを開く */
+    _battleProcessNextEffect() {
+      const queue = this.battlePendingEffects;
+      if (!queue || !queue.length) return false;
+      const eff = queue.shift();
+      if (eff.type === 'sentei')      this.battleOpenSentei(eff.card, eff.data, eff.triggerLabel);
+      else if (eff.type === 'induce') this.battleOpenAutoInduce(eff.card, eff.data, eff.triggerLabel);
+      else if (eff.type === 'reishi') this.battleOpenAutoReishi(eff.card, eff.data, eff.triggerLabel);
+      else if (eff.type === 'summon') this.battleOpenAutoSummon(eff.card, eff.data, eff.triggerLabel);
       return true;
     },
     battleOpenAutoInduce(sourceCard, induce, triggerLabel = '出現時') {
@@ -6224,6 +6221,10 @@ new Vue({
         boostApplied: false,
       };
     },
+    battleCancelSentei() {
+      this.battleSenteiModal = null;
+      this._battleProcessNextEffect();
+    },
     battleApplySenteiBoost() {
       const modal = this.battleSenteiModal;
       if (!modal || !modal.canBoost || modal.boostApplied) return;
@@ -6267,6 +6268,7 @@ new Vue({
         `選ばれた効果：\n${chosen.map(t => '・' + t).join('\n')}\n\n上記の効果を手動で処理してください。`,
         modal.sourceCard ? [modal.sourceCard] : []
       );
+      this._battleProcessNextEffect();
     },
     battleSummonCandidates(targetText) {
       const target = String(targetText || '').trim();
@@ -6334,6 +6336,7 @@ new Vue({
           : `「${this.fullName(card)}」を場に出しました。`,
         cards: [card],
       };
+      this._battleProcessNextEffect();
     },
     /* 自動招来モーダルから1体配置（残りがあればモーダル維持） */
     battleResolveAutoSummon(modalIndex) {
@@ -6368,6 +6371,7 @@ new Vue({
             : `${names}を場に出しました。`,
           cards: list,
         };
+        this._battleProcessNextEffect();
       }
       // 残りがある場合はモーダルそのまま維持して継続選択
     },
@@ -6387,6 +6391,7 @@ new Vue({
             : '招来は行いませんでした。',
           cards: modal.sourceCard ? [modal.sourceCard] : [],
         };
+        this._battleProcessNextEffect();
         return;
       }
       const names = list.map(c => `「${this.fullName(c)}」`).join('、');
@@ -6397,6 +6402,7 @@ new Vue({
           : `${names}を場に出しました。`,
         cards: list,
       };
+      this._battleProcessNextEffect();
     },
     battleAskConfirm({ action, title, message, confirmLabel = '実行', cards = [], payload = {} }) {
       this.battleConfirmModal = { action, title, message, confirmLabel, cards, payload };
@@ -6977,6 +6983,7 @@ new Vue({
           : '対象のカードはありませんでした。公開カードをデッキの一番下へ送りました。',
         cards: selectedCard ? [selectedCard] : [],
       };
+      this._battleProcessNextEffect();
     },
     battleToggleAutoReishi(modalIndex) {
       const modal = this.battleDeckModal;
@@ -7014,6 +7021,7 @@ new Vue({
           : '墓地へ送るカードを選ばず、確認したカードをデッキの一番上に戻しました。',
         cards: selectedCards,
       };
+      this._battleProcessNextEffect();
     },
     battleDeckPick(modalIndex) {
       const modal = this.battleDeckModal;
