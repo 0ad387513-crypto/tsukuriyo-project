@@ -2291,7 +2291,7 @@
   .legacy-field { overflow: hidden; }
   .legacy-row {
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 8px;
     padding: 28px 16px 16px;
   }
@@ -2346,11 +2346,55 @@
     z-index: 3;
     box-shadow: 0 0 12px rgba(245, 202, 88, .55);
   }
-  .dgc-cell.field-card-drop-ready,
-  .battle-zone.field-card-move-ready {
-    outline: 3px solid rgba(245, 202, 88, .9);
+  .battle-drag-guide {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 4px;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 9998;
+    transform-origin: 0 50%;
+    background: var(--guide-color, rgba(245, 202, 88, .9));
+    box-shadow: 0 0 12px var(--guide-color, rgba(245, 202, 88, .9));
+  }
+  .battle-drag-guide::after {
+    content: "";
+    position: absolute;
+    right: -9px;
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 12px solid var(--guide-color, rgba(245, 202, 88, .9));
+    transform: translateY(-50%);
+    filter: drop-shadow(0 0 6px var(--guide-color, rgba(245, 202, 88, .9)));
+  }
+  .battle-target-kami {
+    outline: 3px solid rgba(255, 210, 76, .92);
     outline-offset: 2px;
-    box-shadow: 0 0 18px rgba(245, 202, 88, .5);
+    box-shadow: 0 0 18px rgba(255, 210, 76, .55);
+  }
+  .battle-target-legacy {
+    outline: 3px solid rgba(255, 134, 64, .92);
+    outline-offset: 2px;
+    box-shadow: 0 0 18px rgba(255, 134, 64, .55);
+  }
+  .battle-target-hand {
+    outline: 3px solid rgba(82, 166, 255, .92);
+    outline-offset: 2px;
+    box-shadow: 0 0 18px rgba(82, 166, 255, .48);
+  }
+  .battle-target-graveyard {
+    outline: 3px solid rgba(177, 109, 255, .92);
+    outline-offset: 2px;
+    box-shadow: 0 0 18px rgba(177, 109, 255, .5);
+  }
+  .battle-target-crumbled {
+    outline: 3px solid rgba(255, 93, 112, .92);
+    outline-offset: 2px;
+    box-shadow: 0 0 18px rgba(255, 93, 112, .5);
   }
   .battle-card.opponent-target-ready,
   .kami-portrait.opponent-target-ready {
@@ -3400,8 +3444,17 @@
 
   <!-- ===================== 4人対戦：ゲームセッション ===================== -->
   <!-- ===================== 対戦画面（Phase 3 手動対戦操作） ===================== -->
-  <div v-if="appView === 'battle'" class="battle-overlay">
-    <div class="battle-header">
+    <div v-if="appView === 'battle'" class="battle-overlay">
+      <div v-if="battleDragGuide"
+           class="battle-drag-guide"
+           :style="{
+             left: battleDragGuide.x + 'px',
+             top: battleDragGuide.y + 'px',
+             width: battleDragGuide.length + 'px',
+             transform: 'rotate(' + battleDragGuide.angle + 'deg)',
+             '--guide-color': battleDragGuide.color
+           }"></div>
+      <div class="battle-header">
       <button class="battle-back-btn" @click="battleReturn">◀ {{ battleReturnLabel }}</button>
       <button class="battle-surrender-btn" @click="battleSurrender">降参</button>
       <h2>⚔ 対戦画面</h2>
@@ -3440,7 +3493,7 @@
               </div>
               <!-- 中央：カミ（X軸基準） -->
               <div class="kami-portrait"
-                   :class="{ 'orochi-awakened': battleIsOrochi('opp') && battleSample.opp.seal === 0, 'opponent-target-ready': battleFieldDragTarget === 'kami' }"
+                   :class="{ 'orochi-awakened': battleIsOrochi('opp') && battleSample.opp.seal === 0, 'battle-target-kami': battleCanFieldDragToAttackTargets }"
                    :style="battleSample.opp.kami && kamiIllustrationUrl(battleSample.opp.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.opp.kami) + ')' } : {}"
                    @click="battleSample.opp.kami && openPreview(battleSample.opp.kami)"
                    @dragover.prevent="battleUpdateFieldAttackTarget($event)"
@@ -3478,7 +3531,7 @@
             <div class="battle-card-row legacy-row">
               <div v-for="(card, i) in battleSample.opp.legacies" :key="'ol'+i"
                    class="battle-card field-card opp-legacy-target"
-                   :class="{ 'opponent-target-ready': battleFieldDragTarget === 'legacy:' + i }"
+                   :class="{ 'battle-target-legacy': battleCanFieldDragToAttackTargets }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @dragover.prevent="battleUpdateFieldAttackTarget($event)"
@@ -3501,7 +3554,7 @@
             <div class="battle-card-row legacy-row">
               <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.index === i }"
+                   :class="{ tapped: card._tapped, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    draggable="true"
                    @dragstart="battleFieldDragStart('self','legacies',i,$event)"
@@ -3528,8 +3581,12 @@
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped }"
+                   :class="{ tapped: card._tapped, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
+                   draggable="true"
+                   @dragstart="battleFieldDragStart('self','relics',i,$event)"
+                   @drag="battleUpdateFieldAttackTarget($event)"
+                   @dragend="battleFieldDragEnd($event)"
                    @click="openPreview(card)"
                    @contextmenu.prevent="battleOpenFieldMenu('self','relics',i,$event)"
                    @mouseenter="battleSetFieldHover('self','relics',i,card,$event)"
@@ -3581,7 +3638,7 @@
             <div class="kami-name kami-below">{{ battleSample.self.kami ? fullName(battleSample.self.kami) : 'カミ未設定' }}</div>
           </div>
           <div class="battle-zone hand-self self-hand-drop"
-               :class="{ 'field-card-move-ready': battleFieldDragTarget === 'hand' }"
+               :class="{ 'battle-target-hand': battleFieldDrag }"
                @dragover.prevent="battleUpdateFieldAttackTarget($event)"
                @drop.prevent="battleFieldDragEnd($event)">
             <span class="battle-zone-label">手札（場へドラッグで使用 / 墓地へドラッグで捨てる）</span>
@@ -3700,7 +3757,7 @@
             </div>
           </div>
           <div class="dgc-cell zone-graveyard self-graveyard-drop"
-               :class="{ 'graveyard-drop-ready': battleDragOverZone === 'graveyard', 'field-card-drop-ready': battleFieldDragTarget === 'graveyard' }"
+               :class="{ 'graveyard-drop-ready': battleDragOverZone === 'graveyard', 'battle-target-graveyard': battleFieldDrag }"
                @dragover.prevent="battleUpdateDragOverZone($event); battleUpdateFieldAttackTarget($event)"
                @drop.prevent="battleFieldDragEnd($event)"
                @click="battleOpenZone('self','graveyard')">
@@ -3714,7 +3771,7 @@
             </div>
           </div>
           <div class="dgc-cell zone-crumbled self-crumbled-drop"
-               :class="{ 'field-card-drop-ready': battleFieldDragTarget === 'crumbled' }"
+               :class="{ 'battle-target-crumbled': battleFieldDrag }"
                @dragover.prevent="battleUpdateFieldAttackTarget($event)"
                @drop.prevent="battleFieldDragEnd($event)"
                @click="battleOpenZone('self','crumbled')">
@@ -4856,6 +4913,7 @@ new Vue({
     deckMenuOpen: null,      // { side, x, y } — デッキクリックメニュー
     battleFieldMenu: null,   // { side, zone, index, x, y } — フィールドカード右クリックメニュー
     battleUndoStack: [],     // 一手戻る用：battleSampleのスナップショット履歴（最新50件）
+    battleDragGuide: null,
     battleSkillModal: null,
     battleNotice: null,
     battleConfirmModal: null, // { action, title, message, confirmLabel, cards, payload }
@@ -4870,7 +4928,7 @@ new Vue({
     battlePendingEffects: [], // 効果キュー：[{ type, card, data, triggerLabel, paidCost }, ...]
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.13.8',
+    BUILD_VERSION: '1.13.9',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -4959,6 +5017,9 @@ new Vue({
     battleFieldMenuCurrentAttack() {
       const c = this.battleFieldMenuCurrentCard;
       return c ? Number(c.attack || 0) : 0;
+    },
+    battleCanFieldDragToAttackTargets() {
+      return !!(this.battleFieldDrag && this.battleFieldDrag.zone === 'legacies');
     },
     battleDeckModalTitle() {
       if (!this.battleDeckModal) return '';
@@ -5980,6 +6041,7 @@ new Vue({
       this.battleFieldMenu = null;
       this.battleFieldDrag = null;
       this.battleFieldDragTarget = null;
+      this.battleDragGuide = null;
       this.battleSkillModal = null;
       this.battleNotice = null;
       this.battleConfirmModal = null;
@@ -6015,6 +6077,7 @@ new Vue({
       this.battleDragIndex = null;
       this.battleFieldDrag = null;
       this.battleFieldDragTarget = null;
+      this.battleDragGuide = null;
       if (this.battleContext.returnView === 'shield') {
         this.appView = 'shield';
         this.shieldOpen = true;
@@ -6776,15 +6839,22 @@ new Vue({
       return { ok: true };
     },
     battleFieldDragStart(side, zone, index, e) {
-      if (this.battleSample.result || side !== 'self' || zone !== 'legacies') { e.preventDefault(); return; }
-      const card = this.battleSample.self.legacies[index];
+      if (this.battleSample.result || side !== 'self' || !['legacies', 'relics'].includes(zone)) { e.preventDefault(); return; }
+      const card = this.battleSample.self[zone][index];
       if (!card) { e.preventDefault(); return; }
-      this.battleFieldDrag = { side, zone, index };
+      const rect = e.currentTarget && e.currentTarget.getBoundingClientRect ? e.currentTarget.getBoundingClientRect() : null;
+      this.battleFieldDrag = {
+        side, zone, index,
+        sourceX: rect ? rect.left + rect.width / 2 : (e.clientX || 0),
+        sourceY: rect ? rect.top + rect.height / 2 : (e.clientY || 0),
+      };
       this.battleFieldDragTarget = null;
+      this.battleDragGuide = null;
+      this.battleUpdateDragGuide(e, null);
       this.hideCardHover();
       if (e.dataTransfer) {
         e.dataTransfer.effectAllowed = 'move';
-        try { e.dataTransfer.setData('text/plain', `field:${index}`); } catch (_) {}
+        try { e.dataTransfer.setData('text/plain', `field:${zone}:${index}`); } catch (_) {}
       }
     },
     battleAttackDropTargetFromPoint(e) {
@@ -6795,6 +6865,7 @@ new Vue({
       if (this.battlePointInElement(e, graveEl)) return { type: 'move', destination: 'graveyard' };
       const crumbledEl = this.$el.querySelector('.self-crumbled-drop');
       if (this.battlePointInElement(e, crumbledEl)) return { type: 'move', destination: 'crumbled' };
+      if (!this.battleCanFieldDragToAttackTargets) return null;
       const kamiEl = this.$el.querySelector('.battle-row-opp-top .kami-portrait');
       if (this.battlePointInElement(e, kamiEl)) return { type: 'kami' };
       const legacyEls = Array.from(this.$el.querySelectorAll('.opp-legacy-target'));
@@ -6810,6 +6881,50 @@ new Vue({
       this.battleFieldDragTarget = target
         ? (target.type === 'kami' ? 'kami' : target.type === 'legacy' ? `legacy:${target.index}` : target.destination)
         : null;
+      this.battleUpdateDragGuide(e, target);
+    },
+    battleDragTargetElement(target) {
+      if (!target || !this.$el) return null;
+      if (target.type === 'kami') return this.$el.querySelector('.battle-row-opp-top .kami-portrait');
+      if (target.type === 'legacy') return Array.from(this.$el.querySelectorAll('.opp-legacy-target'))[target.index] || null;
+      if (target.destination === 'hand') return this.$el.querySelector('.self-hand-drop');
+      if (target.destination === 'graveyard') return this.$el.querySelector('.self-graveyard-drop');
+      if (target.destination === 'crumbled') return this.$el.querySelector('.self-crumbled-drop');
+      return null;
+    },
+    battleDragTargetColor(target) {
+      if (!target) return 'rgba(230, 238, 255, .82)';
+      if (target.type === 'kami') return 'rgba(255, 210, 76, .95)';
+      if (target.type === 'legacy') return 'rgba(255, 134, 64, .95)';
+      if (target.destination === 'hand') return 'rgba(82, 166, 255, .95)';
+      if (target.destination === 'graveyard') return 'rgba(177, 109, 255, .95)';
+      if (target.destination === 'crumbled') return 'rgba(255, 93, 112, .95)';
+      return 'rgba(230, 238, 255, .82)';
+    },
+    battleUpdateDragGuide(e, target) {
+      const drag = this.battleFieldDrag;
+      if (!drag || !e || typeof e.clientX !== 'number') {
+        this.battleDragGuide = null;
+        return;
+      }
+      let tx = e.clientX;
+      let ty = e.clientY;
+      const el = this.battleDragTargetElement(target);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        tx = r.left + r.width / 2;
+        ty = r.top + r.height / 2;
+      }
+      const dx = tx - drag.sourceX;
+      const dy = ty - drag.sourceY;
+      const length = Math.max(16, Math.sqrt(dx * dx + dy * dy));
+      this.battleDragGuide = {
+        x: drag.sourceX,
+        y: drag.sourceY - 2,
+        length,
+        angle: Math.atan2(dy, dx) * 180 / Math.PI,
+        color: this.battleDragTargetColor(target),
+      };
     },
     battleFieldDragEnd(e) {
       if (!this.battleFieldDrag) return;
@@ -6817,6 +6932,7 @@ new Vue({
       const target = this.battleAttackDropTargetFromPoint(e);
       this.battleFieldDrag = null;
       this.battleFieldDragTarget = null;
+      this.battleDragGuide = null;
       if (!target) return;
       if (target.type === 'kami') this.battleResolveDivineAttack(drag.side, drag.index);
       else if (target.type === 'legacy') this.battleResolveLegacyBattle(drag.side, drag.index, 'opp', target.index);
@@ -8497,6 +8613,7 @@ new Vue({
     },
     // active から returned に1枚移す（カウントは変わらない）
     returnCard(no) {
+      if (this.appView === 'shield' && this.sb.phase === 'complete') return;
       no = String(no);
       const cur = this.deck[no] || 0;
       if (cur <= 0) return;
@@ -8506,6 +8623,7 @@ new Vue({
     },
     // returned から active に1枚戻す
     unreturnCard(no) {
+      if (this.appView === 'shield' && this.sb.phase === 'complete') return;
       no = String(no);
       const cur = this.returned[no] || 0;
       if (cur <= 0) return;
@@ -8829,10 +8947,12 @@ new Vue({
       const s = this._peekSaved;
       this._peekSaved = null;
       this.shieldPeek = false;
-      if (s && this.sb.phase !== 'complete') {
+      if (s) {
         // ピーク中に行った事前返還を保存
-        this._sbPreReturn = Object.keys(this.returned).length > 0
-          ? { ...this.returned } : null;
+        if (this.sb.phase !== 'complete') {
+          this._sbPreReturn = Object.keys(this.returned).length > 0
+            ? { ...this.returned } : null;
+        }
         this.deck             = s.deck;
         this.returned         = s.returned;
         this.deckExpanded     = s.deckExpanded;
