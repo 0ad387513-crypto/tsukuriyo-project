@@ -2170,6 +2170,10 @@
   .battle-zone-modal-empty {
     color: #889; font-size: 13px; text-align: center; padding: 32px;
   }
+  .battle-deck-modal-message {
+    margin: 8px 0 12px; color: #cbd3de; line-height: 1.55; white-space: pre-line;
+    font-size: 13px;
+  }
   .battle-deck-modal-card {
     display: flex; flex-direction: column; align-items: center; gap: 6px;
   }
@@ -2179,6 +2183,9 @@
     font-size: 11px; font-weight: 800; cursor: pointer;
   }
   .battle-deck-modal-pick:hover { background: #3b68aa; }
+  .battle-deck-modal-pick:disabled {
+    opacity: .42; cursor: not-allowed; background: #293044; color: #aab;
+  }
 
   /* ===== 対戦画面 v4：ボード再設計 ===== */
   .battle-overlay {
@@ -3662,12 +3669,15 @@
     </div>
 
     <!-- ===== フェイズ3：デッキ処理モーダル（誘 / 霊視） ===== -->
-    <div v-if="battleDeckModal" class="battle-zone-modal" @click.self="battleDeckModal = null">
+    <div v-if="battleDeckModal" class="battle-zone-modal" @click.self="battleCloseDeckModal">
       <div class="battle-zone-modal-panel">
         <h3 class="battle-zone-modal-title">
           {{ battleDeckModalTitle }}
           <span style="font-size:12px;color:#9aa;font-weight:400;">— {{ battleDeckModal.cards.length }}枚</span>
         </h3>
+        <div v-if="battleDeckModal.public" class="public-process-badge">両プレイヤーへの公開処理</div>
+        <p v-if="battleDeckModal.message" class="battle-deck-modal-message">{{ battleDeckModal.message }}</p>
+        <div v-if="battleDeckModal.action === 'autoInduce' && !battleDeckModal.eligibleCount" class="battle-zone-modal-empty">対象のカードはありません</div>
         <div v-if="!battleDeckModal.cards.length" class="battle-zone-modal-empty">確認できるカードがありません</div>
         <div v-else class="battle-zone-modal-grid">
           <div v-for="(c, i) in battleDeckModal.cards" :key="'bd'+i" class="battle-deck-modal-card">
@@ -3681,6 +3691,12 @@
                     class="battle-deck-modal-pick"
                     @click="battleDeckPick(i)">
               手札に加える
+            </button>
+            <button v-if="battleDeckModal.action === 'autoInduce'"
+                    class="battle-deck-modal-pick"
+                    :disabled="!battleDeckModal.eligibleIndexes.includes(i)"
+                    @click="battleDeckPick(i)">
+              {{ battleDeckModal.eligibleIndexes.includes(i) ? '手札に加える' : '対象外' }}
             </button>
             <button v-if="battleDeckModal.action === 'reishi'"
                     class="battle-deck-modal-pick"
@@ -3700,7 +3716,7 @@
           </div>
         </div>
         <div class="battle-zone-modal-actions">
-          <button class="battle-back-btn" @click="battleDeckModal = null">閉じる</button>
+          <button class="battle-back-btn" @click="battleCloseDeckModal">{{ battleDeckModal.action === 'autoInduce' && battleDeckModal.eligibleCount ? '解決して閉じる' : '閉じる' }}</button>
         </div>
       </div>
     </div>
@@ -4704,6 +4720,7 @@ new Vue({
     battleDeckModalTitle() {
       if (!this.battleDeckModal) return '';
       if (this.battleDeckModal.action === 'induce') return '誘 — デッキから手札に加えるカードを選択';
+      if (this.battleDeckModal.action === 'autoInduce') return `誘${this.battleDeckModal.count || ''} — ${this.battleDeckModal.criteriaText || '対象カード'}を選択`;
       if (this.battleDeckModal.action === 'reishi') return '霊視 — デッキ上から5枚を確認';
       return 'デッキ';
     },
@@ -5897,9 +5914,65 @@ new Vue({
       if (auto.length) lines.push(...auto);
       if (manual.length) {
         lines.push(`要確認：${manual.join(' / ')}`);
-        lines.push('必要な処理は会話で確認しながら、自分側の操作盤で処理してください。誘/霊視は自分デッキメニューから処理できます。');
+        lines.push('このキーワードの自動処理は未対応です。必要な処理は会話で確認しながら、自分側の操作盤で補助してください。');
       }
       this.battleShowNotice('キーワード確認', lines.join('\n'), [card]);
+    },
+    battleParseEnterInduce(card) {
+      const text = this.battleCardRulesText(card).replace(/\u200b/g, '').replace(/\s+/g, '');
+      if (!/出現時/.test(text)) return null;
+      const m = text.match(/誘([0-9]+)[：:](.*?)(?:】|$)/);
+      if (!m) return null;
+      const count = Math.max(1, Number(m[1]) || 1);
+      const criteriaText = (m[2] || '').replace(/[。．].*$/, '');
+      const criteria = criteriaText.split(/[\/／・,、]/).map(s => s.trim()).filter(Boolean);
+      return { count, criteriaText, criteria };
+    },
+    battleCardMatchesInduceCriteria(card, criteria) {
+      if (!card || !criteria || !criteria.length) return true;
+      return criteria.some(raw => {
+        const c = String(raw || '').replace(/\s+/g, '');
+        if (!c) return false;
+        if (c === 'カード') return true;
+        if (c.endsWith('カード')) {
+          const color = c.replace(/カード$/, '');
+          return !color || card.color === color;
+        }
+        if (c.endsWith('レガシー')) {
+          const prefix = c.replace(/レガシー$/, '');
+          if (card.category !== 'レガシー') return false;
+          return !prefix || card.color === prefix || card.type === prefix || card.subType === prefix;
+        }
+        return card.color === c || card.type === c || card.category === c || card.subType === c || this.fullName(card).includes(c);
+      });
+    },
+    battleRunEnterKeywordEffects(card) {
+      const induce = this.battleParseEnterInduce(card);
+      if (!induce) return false;
+      this.battleOpenAutoInduce(card, induce);
+      return true;
+    },
+    battleOpenAutoInduce(sourceCard, induce) {
+      const player = this.battleSample.self;
+      if (!player || !Array.isArray(player.deck)) return;
+      const cards = player.deck.slice(0, induce.count);
+      const eligibleIndexes = cards
+        .map((card, index) => this.battleCardMatchesInduceCriteria(card, induce.criteria) ? index : -1)
+        .filter(index => index >= 0);
+      this.battleDeckModal = {
+        side: 'self',
+        action: 'autoInduce',
+        public: true,
+        sourceCard,
+        count: induce.count,
+        criteriaText: induce.criteriaText,
+        criteria: induce.criteria,
+        cards,
+        deckIndexes: cards.map((_, i) => i),
+        eligibleIndexes,
+        eligibleCount: eligibleIndexes.length,
+        message: `「${this.fullName(sourceCard)}」の【出現時】効果です。\nデッキ上から${cards.length}枚を公開し、${induce.criteriaText || '対象カード'}を1枚まで手札に加えます。\n選ばなかったカードはデッキの一番下へ送ります。`,
+      };
     },
     battleAskConfirm({ action, title, message, confirmLabel = '実行', cards = [], payload = {} }) {
       this.battleConfirmModal = { action, title, message, confirmLabel, cards, payload };
@@ -5988,7 +6061,7 @@ new Vue({
       player[zone].push(card);
       player.handCount = player.hand.length;
       this.hideCardHover();
-      this.battleKeywordGuide(card, cost);
+      if (!this.battleRunEnterKeywordEffects(card)) this.battleKeywordGuide(card, cost);
     },
     battleMoveHandCard(index, destinationZone) {
       if (this.battleSample.result) return;
@@ -6416,9 +6489,55 @@ new Vue({
       const deckIndexes = cards.map((_, i) => i);
       this.battleDeckModal = { side, action, cards, deckIndexes };
     },
+    battleCloseDeckModal() {
+      const modal = this.battleDeckModal;
+      if (modal && modal.action === 'autoInduce') {
+        this.battleResolveAutoInduce(null);
+      } else {
+        this.battleDeckModal = null;
+      }
+    },
+    battleResolveAutoInduce(modalIndex) {
+      const modal = this.battleDeckModal;
+      if (!modal || modal.action !== 'autoInduce' || this.battleSample.result) return;
+      if (modal.side !== 'self') return;
+      const player = this.battleSample.self;
+      if (!player || !Array.isArray(player.deck)) return;
+      const revealedCount = modal.cards.length;
+      const selectedCard = modalIndex !== null && modal.eligibleIndexes.includes(modalIndex)
+        ? modal.cards[modalIndex]
+        : null;
+      this.battleSaveUndo();
+      const revealed = player.deck.splice(0, revealedCount);
+      const selectedKey = selectedCard ? String(selectedCard.no) : null;
+      const remaining = [];
+      let selectedMoved = false;
+      revealed.forEach(card => {
+        if (selectedKey !== null && !selectedMoved && String(card.no) === selectedKey) {
+          player.hand.push(card);
+          selectedMoved = true;
+        } else {
+          remaining.push(card);
+        }
+      });
+      player.deck.push(...remaining);
+      this._battleSyncSideCounts('self');
+      this.battleDeckModal = null;
+      this.battleNotice = {
+        title: selectedCard ? '誘：手札に加えました' : '誘：対象なし',
+        message: selectedCard
+          ? `「${this.fullName(selectedCard)}」を手札に加え、残りの公開カードをデッキの一番下へ送りました。`
+          : '対象のカードはありませんでした。公開カードをデッキの一番下へ送りました。',
+        cards: selectedCard ? [selectedCard] : [],
+      };
+    },
     battleDeckPick(modalIndex) {
       const modal = this.battleDeckModal;
-      if (!modal || modal.action !== 'induce' || this.battleSample.result) return;
+      if (!modal || !['induce', 'autoInduce'].includes(modal.action) || this.battleSample.result) return;
+      if (modal.action === 'autoInduce') {
+        this.battleResolveAutoInduce(modalIndex);
+        return;
+      }
       if (modal.side !== 'self') return;
       const player = this.battleSample[modal.side];
       if (!player) return;
