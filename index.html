@@ -3497,7 +3497,7 @@
               <span class="dgc-count">{{ battleSample.opp.deckCount }}</span>
             </div>
           </div>
-          <div class="dgc-cell zone-graveyard" @click="battleOpenZone('opp','graveyard')">
+          <div class="dgc-cell zone-graveyard" title="相手の墓地は閲覧のみ" @click="battleOpenZone('opp','graveyard')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <path d="M 8 41 H 32 V 46 H 8 Z"/>
               <path d="M 12 41 V 19 a 8 8 0 0 1 16 0 V 41 Z"/>
@@ -3507,7 +3507,7 @@
               <span class="dgc-count">{{ battleSample.opp.graveyard.length }}</span>
             </div>
           </div>
-          <div class="dgc-cell zone-crumbled" @click="battleOpenZone('opp','crumbled')">
+          <div class="dgc-cell zone-crumbled" title="相手の崩壊は閲覧のみ" @click="battleOpenZone('opp','crumbled')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <ellipse cx="17" cy="24" rx="13" ry="14"/>
               <ellipse cx="13" cy="24" rx="2.5" ry="3.5" fill="#1a2030"/>
@@ -3620,6 +3620,7 @@
         <h3 class="battle-zone-modal-title">
           {{ battleZoneModal.zone === 'graveyard' ? '墓地' : '崩壊' }}
           ({{ battleZoneModal.side === 'self' ? '自分' : '相手' }})
+          <span v-if="battleZoneModal.side !== 'self'" style="font-size:12px;color:#9aa;font-weight:400;">— 閲覧のみ</span>
           <span style="font-size:12px;color:#9aa;font-weight:400;">— {{ battleZoneModal.cards.length }}枚</span>
         </h3>
         <div v-if="!battleZoneModal.cards.length" class="battle-zone-modal-empty">カードがありません</div>
@@ -5730,6 +5731,7 @@ new Vue({
     /* 対戦画面：ステータス±処理（手動調整＋Undo対応） */
     battleStat(side, key, delta) {
       if (this.battleSample.result) return;
+      if (side !== 'self') return;
       const target = this.battleSample[side];
       if (!target || !(key in target)) return;
       this.battleSaveUndo();
@@ -5938,6 +5940,7 @@ new Vue({
     },
     battleMoveFieldCard(side, sourceZone, index, destinationZone) {
       if (this.battleSample.result) return;
+      if (side !== 'self') return;
       const player = this.battleSample[side];
       if (!player || !Array.isArray(player[sourceZone]) || !Array.isArray(player[destinationZone])) return;
       const card = player[sourceZone][index];
@@ -5955,6 +5958,7 @@ new Vue({
     },
     battleReturnFieldCardToHand(side, sourceZone, index) {
       if (this.battleSample.result) return;
+      if (side !== 'self') return;
       const player = this.battleSample[side];
       if (!player || !Array.isArray(player[sourceZone]) || !Array.isArray(player.hand)) return;
       const card = player[sourceZone][index];
@@ -5972,6 +5976,7 @@ new Vue({
     },
     battleMoveFieldCardToDeckTop(side, sourceZone, index) {
       if (this.battleSample.result) return;
+      if (side !== 'self') return;
       const player = this.battleSample[side];
       if (!player || !Array.isArray(player[sourceZone]) || !Array.isArray(player.deck)) return;
       const card = player[sourceZone][index];
@@ -6172,6 +6177,7 @@ new Vue({
     /* デッキを左クリック → ドロー / 誘 / 霊視 メニューを表示 */
     deckClick(side, e) {
       if (!['self', 'opp'].includes(side) || this.battleSample.result) return;
+      if (side !== 'self') return;
       const pad = 8;
       // メニュー位置を画面端に収める
       const x = Math.min(e.clientX, window.innerWidth  - 200 - pad);
@@ -6183,6 +6189,7 @@ new Vue({
       const side = this.deckMenuOpen && this.deckMenuOpen.side;
       this.deckMenuOpen = null;
       if (!side) return;
+      if (side !== 'self') return;
       if (action === 'draw') {
         this.battleDraw(side);
       } else if (action === 'induce') {
@@ -6205,6 +6212,7 @@ new Vue({
     },
     battleDraw(side) {
       if (this.battleSample.result) return;
+      if (side !== 'self') return;
       const player = this.battleSample[side];
       if (!player || !player.deck.length) {
         this.battleNotice = {
@@ -6225,6 +6233,7 @@ new Vue({
     },
     battleShuffleDeck(side) {
       if (this.battleSample.result) return;
+      if (side !== 'self') return;
       const player = this.battleSample[side];
       if (!player || !player.deck.length) {
         this.battleNotice = {
@@ -6243,6 +6252,7 @@ new Vue({
     },
     battleMoveDeckTop(side, destinationZone) {
       if (this.battleSample.result) return;
+      if (side !== 'self') return;
       const player = this.battleSample[side];
       if (!player || !player.deck.length || !Array.isArray(player[destinationZone])) {
         this.battleNotice = {
@@ -6265,6 +6275,7 @@ new Vue({
     battleDeckMoveVisible(modalIndex, destination) {
       const modal = this.battleDeckModal;
       if (!modal || modal.action !== 'reishi' || this.battleSample.result) return;
+      if (modal.side !== 'self') return;
       const player = this.battleSample[modal.side];
       if (!player) return;
       const deckIndex = modal.deckIndexes[modalIndex];
@@ -6288,6 +6299,7 @@ new Vue({
     },
     battleOpenDeckModal(side, action) {
       if (this.battleSample.result) return;
+      if (side !== 'self') return;
       const player = this.battleSample[side];
       if (!player) return;
       const cards = action === 'reishi' ? player.deck.slice(0, 5) : player.deck.slice();
@@ -6297,6 +6309,7 @@ new Vue({
     battleDeckPick(modalIndex) {
       const modal = this.battleDeckModal;
       if (!modal || modal.action !== 'induce' || this.battleSample.result) return;
+      if (modal.side !== 'self') return;
       const player = this.battleSample[modal.side];
       if (!player) return;
       const deckIndex = modal.deckIndexes[modalIndex];
