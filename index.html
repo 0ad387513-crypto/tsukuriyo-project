@@ -2120,6 +2120,28 @@
     text-align: left; font-size: 12px; cursor: pointer; border-radius: 3px;
   }
   .deck-context-menu button:hover { background: #2a3548; color: #fff; }
+  .deck-context-menu.field-menu-wide { min-width: 340px; }
+  .field-menu-sub-title {
+    padding: 6px 10px; color: #e8d4a0; font-size: 12px; font-weight: 700;
+    border-bottom: 1px solid #2a3040; margin-bottom: 4px;
+  }
+  .field-menu-grid {
+    display: grid; gap: 4px; padding: 4px;
+  }
+  .field-menu-grid.power-grid { grid-template-columns: repeat(7, 1fr); }
+  .field-menu-grid.attack-grid { grid-template-columns: repeat(8, 1fr); }
+  .field-menu-grid button {
+    display: block; padding: 6px 4px; text-align: center;
+    background: #232a3a; border: 1px solid #3a4256; border-radius: 3px;
+    color: #ddd; font-size: 11px; font-weight: 700; cursor: pointer;
+  }
+  .field-menu-grid button:hover { background: #3a4768; color: #fff; }
+  .field-menu-grid button.menu-current {
+    background: #2a5cb8; border-color: #6090e0; color: #fff;
+  }
+  .field-menu-back {
+    margin-top: 4px; font-size: 11px !important; color: #9ab !important;
+  }
 
   /* 戻るボタン */
   .battle-back-btn {
@@ -3650,13 +3672,36 @@
 
     <!-- ===== フィールドカード右クリックメニュー ===== -->
     <div v-if="battleFieldMenu" class="deck-context-menu"
+         :class="{ 'field-menu-wide': battleFieldMenu.subMode === 'power' }"
          :style="{ left: battleFieldMenu.x + 'px', top: battleFieldMenu.y + 'px' }"
          @click.stop>
-      <button @click="battleFieldMenuAction('toggleTap')">{{ battleFieldMenuTapLabel }}</button>
-      <button @click="battleFieldMenuAction('hand')">手札へ戻す</button>
-      <button @click="battleFieldMenuAction('deckTop')">デッキ上へ戻す</button>
-      <button @click="battleFieldMenuAction('graveyard')">墓地へ送る</button>
-      <button @click="battleFieldMenuAction('crumbled')">崩壊へ送る</button>
+      <template v-if="!battleFieldMenu.subMode">
+        <button @click="battleFieldMenuAction('toggleTap')">{{ battleFieldMenuTapLabel }}</button>
+        <button v-if="battleFieldMenu.zone === 'legacies'" @click="battleFieldMenuOpenSub('power')">戦闘力を変更…</button>
+        <button v-if="battleFieldMenu.zone === 'legacies'" @click="battleFieldMenuOpenSub('attack')">神攻力を変更…</button>
+        <button @click="battleFieldMenuAction('hand')">手札へ戻す</button>
+        <button @click="battleFieldMenuAction('deckTop')">デッキ上へ戻す</button>
+        <button @click="battleFieldMenuAction('graveyard')">墓地へ送る</button>
+        <button @click="battleFieldMenuAction('crumbled')">崩壊へ送る</button>
+      </template>
+      <template v-else-if="battleFieldMenu.subMode === 'power'">
+        <div class="field-menu-sub-title">戦闘力を選択（500刻み）</div>
+        <div class="field-menu-grid power-grid">
+          <button v-for="v in battleFieldMenuPowerOptions" :key="'p'+v"
+                  :class="{ 'menu-current': v === battleFieldMenuCurrentPower }"
+                  @click="battleFieldMenuSetPower(v)">{{ v }}</button>
+        </div>
+        <button class="field-menu-back" @click="battleFieldMenu.subMode = null">← 戻る</button>
+      </template>
+      <template v-else-if="battleFieldMenu.subMode === 'attack'">
+        <div class="field-menu-sub-title">神攻力を選択</div>
+        <div class="field-menu-grid attack-grid">
+          <button v-for="v in 8" :key="'a'+(v-1)"
+                  :class="{ 'menu-current': (v-1) === battleFieldMenuCurrentAttack }"
+                  @click="battleFieldMenuSetAttack(v-1)">{{ v-1 }}</button>
+        </div>
+        <button class="field-menu-back" @click="battleFieldMenu.subMode = null">← 戻る</button>
+      </template>
     </div>
 
     <!-- ===== デッキクリックメニュー（ドロー / 誘 / 霊視） ===== -->
@@ -4754,7 +4799,7 @@ new Vue({
     battlePendingEffects: [], // 効果キュー：[{ type, card, data, triggerLabel, paidCost }, ...]
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.13.4',
+    BUILD_VERSION: '1.13.5',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -4824,6 +4869,25 @@ new Vue({
       const card = this.battleSample && this.battleSample[m.side] && this.battleSample[m.side][m.zone]
         && this.battleSample[m.side][m.zone][m.index];
       return card && card._tapped ? 'このカードをアンタップする' : 'このカードをタップする';
+    },
+    battleFieldMenuPowerOptions() {
+      const arr = [];
+      for (let v = 0; v <= 13000; v += 500) arr.push(v);
+      return arr;
+    },
+    battleFieldMenuCurrentCard() {
+      const m = this.battleFieldMenu;
+      if (!m) return null;
+      const player = this.battleSample && this.battleSample[m.side];
+      return player && player[m.zone] && player[m.zone][m.index];
+    },
+    battleFieldMenuCurrentPower() {
+      const c = this.battleFieldMenuCurrentCard;
+      return c ? Number(c.power || 0) : 0;
+    },
+    battleFieldMenuCurrentAttack() {
+      const c = this.battleFieldMenuCurrentCard;
+      return c ? Number(c.attack || 0) : 0;
     },
     battleDeckModalTitle() {
       if (!this.battleDeckModal) return '';
@@ -6877,10 +6941,27 @@ new Vue({
       if (this.battleSample.result) return;
       if (side !== 'self') return;
       const pad = 6;
-      const x = Math.min(e.clientX, window.innerWidth  - 220 - pad);
-      const y = Math.min(e.clientY, window.innerHeight - 200 - pad);
-      this.battleFieldMenu = { side, zone, index, x, y };
+      const x = Math.min(e.clientX, window.innerWidth  - 360 - pad);
+      const y = Math.min(e.clientY, window.innerHeight - 260 - pad);
+      this.battleFieldMenu = { side, zone, index, x, y, subMode: null };
       e.stopPropagation();
+    },
+    battleFieldMenuOpenSub(mode) {
+      if (this.battleFieldMenu) this.$set(this.battleFieldMenu, 'subMode', mode);
+    },
+    battleFieldMenuSetPower(value) {
+      const card = this.battleFieldMenuCurrentCard;
+      this.battleFieldMenu = null;
+      if (!card) return;
+      this.battleSaveUndo();
+      this.$set(card, 'power', value);
+    },
+    battleFieldMenuSetAttack(value) {
+      const card = this.battleFieldMenuCurrentCard;
+      this.battleFieldMenu = null;
+      if (!card) return;
+      this.battleSaveUndo();
+      this.$set(card, 'attack', value);
     },
     battleFieldMenuAction(action) {
       const m = this.battleFieldMenu;
