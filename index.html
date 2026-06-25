@@ -3728,6 +3728,25 @@
       </div>
     </div>
 
+    <div v-if="battleConfirmModal" class="battle-action-modal" @click.self="battleCancelConfirm">
+      <div class="battle-action-panel">
+        <h3>{{ battleConfirmModal.title }}</h3>
+        <p>{{ battleConfirmModal.message }}</p>
+        <div v-if="battleConfirmModal.cards && battleConfirmModal.cards.length" class="notice-card-links">
+          <button v-for="c in battleConfirmModal.cards" :key="'bc'+c.no"
+                  class="notice-card-link"
+                  @click="openPreview(c)"
+                  title="クリックでカード詳細を表示">
+            🔎 {{ fullName(c) }}
+          </button>
+        </div>
+        <div class="battle-action-buttons">
+          <button @click="battleCancelConfirm">キャンセル</button>
+          <button @click="battleConfirmApply">{{ battleConfirmModal.confirmLabel || '実行' }}</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 昇華コスト選択モーダル -->
     <div v-if="battleSublimModal" class="battle-action-modal" @click.self="battleSublimModal = null">
       <div class="battle-action-panel">
@@ -4604,6 +4623,7 @@ new Vue({
     battleUndoStack: [],     // 一手戻る用：battleSampleのスナップショット履歴（最新50件）
     battleSkillModal: null,
     battleNotice: null,
+    battleConfirmModal: null, // { action, title, message, confirmLabel, cards, payload }
     /* 手札ドラッグ・場出し */
     battleDragIndex: null,    // ドラッグ中の手札index（null=非ドラッグ中）
     battleDragOverZone: null, // ドラッグ中に重なっているゾーン: graveyard / legacies / relics
@@ -5678,6 +5698,7 @@ new Vue({
       this.deckMenuOpen = null;
       this.battleSkillModal = null;
       this.battleNotice = null;
+      this.battleConfirmModal = null;
       this.hideCardHover();
       this.shieldOpen = false;
       this.gameOpen = false;
@@ -5689,13 +5710,21 @@ new Vue({
       const message = decided
         ? `${this.battleReturnLabel}へ戻りますか？`
         : `対戦はまだ決着していません。対戦を中断して${this.battleReturnLabel}へ戻りますか？`;
-      if (!window.confirm(message)) return;
+      this.battleAskConfirm({
+        action: 'return',
+        title: `${this.battleReturnLabel}へ戻る`,
+        message,
+        confirmLabel: '戻る',
+      });
+    },
+    battleReturnNow() {
       this.hideCardHover();
       this.battleZoneModal = null;
       this.battleDeckModal = null;
       this.deckMenuOpen = null;
       this.battleSkillModal = null;
       this.battleNotice = null;
+      this.battleConfirmModal = null;
       this.battleSublimModal = null;
       this.battleOracleEffect = null;
       this.battleDragIndex = null;
@@ -5720,6 +5749,7 @@ new Vue({
       this.battleSample = this.battleUndoStack.pop();
       this.battleSkillModal = null;
       this.battleNotice = null;
+      this.battleConfirmModal = null;
       this.deckMenuOpen = null;
       this.battleDeckModal = null;
       this.battleZoneModal = null;
@@ -5827,6 +5857,24 @@ new Vue({
     },
     battleShowNotice(title, message, cards = []) {
       this.battleNotice = { title, message, cards };
+    },
+    battleAskConfirm({ action, title, message, confirmLabel = '実行', cards = [], payload = {} }) {
+      this.battleConfirmModal = { action, title, message, confirmLabel, cards, payload };
+    },
+    battleCancelConfirm() {
+      this.battleConfirmModal = null;
+    },
+    battleConfirmApply() {
+      const modal = this.battleConfirmModal;
+      if (!modal) return;
+      this.battleConfirmModal = null;
+      if (modal.action === 'discardHand') {
+        this.battleMoveHandCard(modal.payload.index, 'graveyard');
+      } else if (modal.action === 'surrender') {
+        this.battleSurrenderNow();
+      } else if (modal.action === 'return') {
+        this.battleReturnNow();
+      }
     },
     /* 手札カード → 場/発動。マナ消費・昇華選択・オラクル演出を含む統合エントリ */
     battlePlayFromHand(index, expectedZone) {
@@ -6101,8 +6149,14 @@ new Vue({
       if (dropOnGraveyard) {
         const card = this.battleSample.self.hand[idx];
         if (!card) return;
-        if (!window.confirm(`「${this.fullName(card)}」を手札から墓地へ送ります。よろしいですか？`)) return;
-        this.battleMoveHandCard(idx, 'graveyard');
+        this.battleAskConfirm({
+          action: 'discardHand',
+          title: '手札を墓地へ送る',
+          message: `「${this.fullName(card)}」を手札から墓地へ送ります。`,
+          confirmLabel: '墓地へ送る',
+          cards: [card],
+          payload: { index: idx },
+        });
         return;
       }
       // 自分の該当フィールドにドロップ → 配置/発動。それ以外はキャンセル
@@ -6163,7 +6217,15 @@ new Vue({
     },
     battleSurrender() {
       if (this.battleSample.result) return;
-      if (!window.confirm('降参しますか？ この操作は「一手戻る」で取り消せます。')) return;
+      this.battleAskConfirm({
+        action: 'surrender',
+        title: '降参しますか？',
+        message: 'この操作は「一手戻る」で取り消せます。',
+        confirmLabel: '降参する',
+      });
+    },
+    battleSurrenderNow() {
+      if (this.battleSample.result) return;
       this.battleSaveUndo();
       this.battleSample.self.life = 0;
       this.battleSample.result = { outcome: 'loss', title: '星戦敗北…' };
@@ -7289,6 +7351,7 @@ new Vue({
       if (e.key === "Escape") {
         // 上に重なっているものから順に閉じる
         if (this.deckMenuOpen)        this.deckMenuOpen = null;
+        else if (this.battleConfirmModal) this.battleConfirmModal = null;
         else if (this.battleNotice)        this.battleNotice = null;
         else if (this.battleOracleEffect)  this.battleOracleEffect = null;
         else if (this.battleSublimModal)   this.battleSublimModal = null;
