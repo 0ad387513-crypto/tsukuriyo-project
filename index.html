@@ -3782,6 +3782,7 @@
       <div class="battle-zone-modal-panel">
         <h3 class="battle-zone-modal-title">
           「{{ fullName(battleSenteiModal.sourceCard) }}」の【選定：{{ battleSenteiModal.count }}】
+          <span v-if="battleSenteiModal.sublimApplied" style="font-size:12px;color:#ffd86a;font-weight:700;">（昇華+{{ battleSenteiModal.sublimApplied }} 適用）</span>
         </h3>
         <p class="battle-deck-modal-message">以下の効果から、異なる {{ battleSenteiModal.count }} 個を選んでください（{{ battleSenteiModal.selected.length }} / {{ battleSenteiModal.count }} 選択中）。同じ効果は選べません。</p>
         <div class="sentei-options">
@@ -4737,7 +4738,7 @@ new Vue({
     battleSenteiModal: null,  // { count, options, selected, sourceCard, triggerLabel }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.12.7',
+    BUILD_VERSION: '1.12.8',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6078,8 +6079,8 @@ new Vue({
         return card.color === c || card.type === c || card.category === c || card.subType === c || this.fullName(card).includes(c);
       });
     },
-    battleRunEnterKeywordEffects(card) {
-      const sentei = this.battleParseSentei(card);
+    battleRunEnterKeywordEffects(card, paidCost = null) {
+      const sentei = this.battleParseSentei(card, paidCost);
       if (sentei) {
         this.battleOpenSentei(card, sentei, '出現時');
         return true;
@@ -6159,27 +6160,47 @@ new Vue({
         message: `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\nデッキ上から${cards.length}枚を確認し、墓地へ送るカードを選んでください。\n選ばなかったカードはデッキの一番上に残ります。`,
       };
     },
-    battleParseSentei(card) {
+    battleParseSentei(card, paidCost = null) {
       const rawText = this.battleCardRulesText(card).replace(/​/g, '');
       const m = rawText.match(/【選定[：:]([0-9]+)】([\s\S]*)/);
       if (!m) return null;
-      const count = Math.max(1, Number(m[1]) || 1);
-      const rest = m[2] || '';
+      let count = Math.max(1, Number(m[1]) || 1);
+      // 【昇華X】≫(代わりに)【選定：N】 を抽出し、支払額に応じてcountを上書き
+      const baseCost = Math.max(0, Number(card && card.cost) || 0);
+      const paid = paidCost === null ? baseCost : Math.max(0, Number(paidCost) || 0);
+      const extra = paid - baseCost;
+      const sublimRules = [];
+      const reSublim = /【昇華([0-9]+)】[≫>→]+(?:代わりに)?[\s　]*【選定[：:]([0-9]+)】/g;
+      let sm;
+      while ((sm = reSublim.exec(rawText)) !== null) {
+        sublimRules.push({ extra: Number(sm[1]) || 0, count: Math.max(1, Number(sm[2]) || 1) });
+      }
+      if (sublimRules.length && extra > 0) {
+        const applicable = sublimRules.filter(r => extra >= r.extra).sort((a, b) => b.extra - a.extra)[0];
+        if (applicable) count = applicable.count;
+      }
+      // 選択肢を抽出（最初の【選定】直後から、次の②/【昇華 までを範囲とする）
+      const restText = m[2] || '';
+      const cutMatch = restText.match(/^([\s\S]*?)(?:[②③④⑤]|【昇華)/);
+      const rest = cutMatch ? cutMatch[1] : restText;
       const options = [];
       rest.split(/[・\n]/).forEach(s => {
         const t = s.trim();
         if (t && t.length > 2 && !/^を行う/.test(t)) options.push(t);
       });
       if (!options.length) return null;
-      return { count, options };
+      return { count, options, sublimRules, paidCost: paid, baseCost };
     },
     battleOpenSentei(sourceCard, sentei, triggerLabel = '効果') {
+      const sublimApplied = sentei.sublimRules && sentei.sublimRules.length && sentei.paidCost > sentei.baseCost
+        ? (sentei.paidCost - sentei.baseCost) : 0;
       this.battleSenteiModal = {
         count: sentei.count,
         options: sentei.options,
         selected: [],
         sourceCard,
         triggerLabel,
+        sublimApplied,
       };
     },
     battleToggleSenteiOption(index) {
@@ -6421,7 +6442,7 @@ new Vue({
       this.battleOracleEffect = { card };
       this.hideCardHover();
       // オラクル本文のキーワード効果（【選定】等）も自動処理
-      if (!this.battleRunEnterKeywordEffects(card)) this.battleKeywordGuide(card, cost);
+      if (!this.battleRunEnterKeywordEffects(card, cost)) this.battleKeywordGuide(card, cost);
     },
     /* 内部：レガシー/レリックを実際に配置（マナ消費＋場へ移動） */
     _battlePlayLegacyOrRelic(index, zone, cost) {
@@ -6438,7 +6459,7 @@ new Vue({
       player[zone].push(card);
       player.handCount = player.hand.length;
       this.hideCardHover();
-      if (!this.battleRunEnterKeywordEffects(card)) this.battleKeywordGuide(card, cost);
+      if (!this.battleRunEnterKeywordEffects(card, cost)) this.battleKeywordGuide(card, cost);
     },
     battleMoveHandCard(index, destinationZone) {
       if (this.battleSample.result) return;
