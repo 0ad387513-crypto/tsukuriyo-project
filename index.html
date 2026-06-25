@@ -2159,7 +2159,7 @@
 
   /* ===== 対戦画面 v4：ボード再設計 ===== */
   .battle-overlay {
-    --kw: clamp(86px, 7.5vw, 116px);
+    --kw: clamp(96px, 9vw, 138px);
     --side-w: clamp(152px, 12vw, 184px);
     --status-w: clamp(214px, 19vw, 286px);
   }
@@ -2233,16 +2233,21 @@
   .kami-hud .hud-orb:nth-of-type(1) { grid-column: 1; grid-row: 1; }
   .kami-hud .hud-orb:nth-of-type(2) { grid-column: 3; grid-row: 1; }
   /* 神技ボタン・カミ名はカミの真下（grid column 2 のみ）に配置して X 軸を揃える */
-  .kami-hud .kami-below {
-    grid-column: 2;
+  .battle-center-col > .kami-below {
     width: var(--kw); max-width: var(--kw);
-    justify-self: center;
+    align-self: center;
     margin: 0 auto;
   }
   .hud-orb { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
   /* ライフ赤丸の右に △▽（最大値ボタン）を配置するための横並びレイアウト */
-  .life-row { display: flex; align-items: center; gap: 4px; justify-content: center; }
-  .life-row .orb-max-controls { flex-direction: column; gap: 0; margin: 0; }
+  .life-row {
+    position: relative; display: flex; align-items: center; justify-content: center;
+    width: 44px; margin: 0 auto;
+  }
+  .life-row .orb-max-controls {
+    position: absolute; left: calc(100% + 1px); top: 50%; transform: translateY(-50%);
+    flex-direction: column; gap: 0; margin: 0;
+  }
   /* ===== カミ枠の段階表示（自分のみ）：通常=neutral, 神技1可=silver, 神技2可=gold点滅 ===== */
   .kami-portrait { border-color: #3a4258; box-shadow: 0 0 8px rgba(60,80,110,0.35); }
   .kami-portrait.kami-tier-disabled { border-color: #3a4258; box-shadow: 0 0 6px rgba(50,60,80,0.3); }
@@ -2470,10 +2475,12 @@
   .result-actions button { padding: 9px 16px; border-radius: 5px; border: 1px solid #737c89; background: #252d39; color: #fff; font-weight: 800; cursor: pointer; }
 
   @media (max-height: 800px) and (min-width: 761px) {
-    .battle-overlay { --kw: 94px; --status-w: 218px; }
+    .battle-overlay { --kw: 118px; --status-w: 242px; }
     .battle-main { grid-template-rows: 116px minmax(126px, 1fr) minmax(126px, 1fr) 148px; }
-    .kami-hud { grid-template-columns: 50px var(--kw) 50px; gap: 2px; }
+    .kami-hud { grid-template-columns: 46px var(--kw) 50px; gap: 2px; }
+    .battle-row-self-bot .battle-center-col { transform: translateY(-10px); }
     .orb-disc { width: 43px; height: 43px; font-size: 16px; }
+    .life-row { width: 43px; }
     .orb-max-controls button { height: 10px; }
     .orb-value-controls button { width: 20px; height: 16px; }
     .kami-skill-btn { padding: 3px 10px; font-size: 12px; }
@@ -2488,14 +2495,15 @@
   }
 
   @media (max-width: 760px) {
-    .battle-overlay { overflow: auto; --kw: 94px; --side-w: 124px; --status-w: 204px; }
+    .battle-overlay { overflow: auto; --kw: 112px; --side-w: 124px; --status-w: 224px; }
     .battle-header { width: 920px; flex-wrap: wrap; }
     .battle-header .battle-setup-note, .battle-header .battle-phase { display: none; }
     .battle-board { width: 920px; min-height: 690px; flex: none; }
     .battle-main { grid-template-rows: 122px 190px 190px 134px; }
     .battle-row-opp-top, .battle-row-self-bot { gap: 5px; }
-    .kami-hud { grid-template-columns: 50px var(--kw) 50px; }
+    .kami-hud { grid-template-columns: 46px var(--kw) 50px; }
     .orb-disc { width: 45px; height: 45px; font-size: 16px; }
+    .life-row { width: 45px; }
     .battle-card-overlay { font-size: 11px; min-width: 25px; min-height: 22px; padding: 2px 5px; }
   }
 
@@ -4481,7 +4489,7 @@ new Vue({
     battleOracleEffect: null, // { card } オラクル発動演出（中央表示中）
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.12.2',
+    BUILD_VERSION: '1.12.3',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
