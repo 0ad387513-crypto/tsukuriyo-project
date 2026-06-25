@@ -5932,15 +5932,21 @@ new Vue({
       }
       this.battleShowNotice('キーワード確認', lines.join('\n'), [card]);
     },
-    battleParseEnterInduce(card) {
+    battleParseTriggeredInduce(card, trigger) {
       const text = this.battleCardRulesText(card).replace(/\u200b/g, '').replace(/\s+/g, '');
-      if (!/出現時/.test(text)) return null;
-      const m = text.match(/誘([0-9]+)[：:](.*?)(?:】|$)/);
+      const triggerEscaped = String(trigger || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const m = text.match(new RegExp(`(?:【${triggerEscaped}】|${triggerEscaped})(?:[≫>→]|:|：)*【?誘([0-9]+)[：:](.*?)(?:】|$)`));
       if (!m) return null;
       const count = Math.max(1, Number(m[1]) || 1);
       const criteriaText = (m[2] || '').replace(/[。．].*$/, '');
       const criteria = criteriaText.split(/[\/／・,、]/).map(s => s.trim()).filter(Boolean);
-      return { count, criteriaText, criteria };
+      return { trigger, count, criteriaText, criteria };
+    },
+    battleParseEnterInduce(card) {
+      return this.battleParseTriggeredInduce(card, '出現時');
+    },
+    battleParseDeathInduce(card) {
+      return this.battleParseTriggeredInduce(card, '死亡時');
     },
     battleCardMatchesInduceCriteria(card, criteria) {
       if (!card || !criteria || !criteria.length) return true;
@@ -5963,10 +5969,16 @@ new Vue({
     battleRunEnterKeywordEffects(card) {
       const induce = this.battleParseEnterInduce(card);
       if (!induce) return false;
-      this.battleOpenAutoInduce(card, induce);
+      this.battleOpenAutoInduce(card, induce, '出現時');
       return true;
     },
-    battleOpenAutoInduce(sourceCard, induce) {
+    battleRunDeathKeywordEffects(card) {
+      const induce = this.battleParseDeathInduce(card);
+      if (!induce) return false;
+      this.battleOpenAutoInduce(card, induce, '死亡時');
+      return true;
+    },
+    battleOpenAutoInduce(sourceCard, induce, triggerLabel = '出現時') {
       const player = this.battleSample.self;
       if (!player || !Array.isArray(player.deck)) return;
       const cards = player.deck.slice(0, induce.count);
@@ -5978,6 +5990,7 @@ new Vue({
         action: 'autoInduce',
         public: true,
         sourceCard,
+        triggerLabel,
         count: induce.count,
         criteriaText: induce.criteriaText,
         criteria: induce.criteria,
@@ -5985,7 +5998,7 @@ new Vue({
         deckIndexes: cards.map((_, i) => i),
         eligibleIndexes,
         eligibleCount: eligibleIndexes.length,
-        message: `「${this.fullName(sourceCard)}」の【出現時】効果です。\nデッキ上から${cards.length}枚を公開し、${induce.criteriaText || '対象カード'}を1枚まで手札に加えます。\n選ばなかったカードはデッキの一番下へ送ります。`,
+        message: `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\nデッキ上から${cards.length}枚を公開し、${induce.criteriaText || '対象カード'}を1枚まで手札に加えます。\n選ばなかったカードはデッキの一番下へ送ります。`,
       };
     },
     battleAskConfirm({ action, title, message, confirmLabel = '実行', cards = [], payload = {} }) {
@@ -6132,6 +6145,7 @@ new Vue({
       player[sourceZone].splice(index, 1);
       player[destinationZone].push(card);
       this.hideCardHover();
+      if (destinationZone === 'graveyard' && this.battleRunDeathKeywordEffects(card)) return;
       const destLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
         title: `${destLabel}へ移動`,
