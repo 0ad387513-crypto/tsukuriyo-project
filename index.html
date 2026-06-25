@@ -3726,8 +3726,9 @@
             </button>
             <button v-if="battleDeckModal.action === 'autoSummon'"
                     class="battle-deck-modal-pick"
+                    :disabled="(battleDeckModal.remaining || 0) <= 0"
                     @click="battleResolveAutoSummon(i)">
-              場に出す
+              場に出す<span v-if="battleDeckModal.count > 1">（残り{{ battleDeckModal.remaining }}枚）</span>
             </button>
             <button v-if="battleDeckModal.action === 'reishi'"
                     class="battle-deck-modal-pick"
@@ -3747,7 +3748,13 @@
           </div>
         </div>
         <div class="battle-zone-modal-actions">
-          <button class="battle-back-btn" @click="battleCloseDeckModal">{{ ['autoInduce','autoReishi'].includes(battleDeckModal.action) ? '解決して閉じる' : '閉じる' }}</button>
+          <button v-if="battleDeckModal.action === 'autoSummon'" class="battle-back-btn"
+                  @click="battleFinishAutoSummon">
+            {{ (battleDeckModal.summoned && battleDeckModal.summoned.length) ? 'ここで終了（残りを見送り）' : '招来しない' }}
+          </button>
+          <button v-else class="battle-back-btn" @click="battleCloseDeckModal">
+            {{ ['autoInduce','autoReishi'].includes(battleDeckModal.action) ? '解決して閉じる' : '閉じる' }}
+          </button>
         </div>
       </div>
     </div>
@@ -4684,7 +4691,7 @@ new Vue({
     battleOracleEffect: null, // { card } オラクル発動演出（中央表示中）
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.12.3',
+    BUILD_VERSION: '1.12.4',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -4753,7 +4760,13 @@ new Vue({
       if (this.battleDeckModal.action === 'induce') return '誘 — デッキから手札に加えるカードを選択';
       if (this.battleDeckModal.action === 'autoInduce') return `誘${this.battleDeckModal.count || ''} — ${this.battleDeckModal.criteriaText || '対象カード'}を選択`;
       if (this.battleDeckModal.action === 'autoReishi') return `霊視${this.battleDeckModal.count || ''} — 墓地へ送るカードを選択`;
-      if (this.battleDeckModal.action === 'autoSummon') return `招来 — ${this.battleDeckModal.targetText || 'トークン'}を選択`;
+      if (this.battleDeckModal.action === 'autoSummon') {
+        const total = this.battleDeckModal.count || 1;
+        const remaining = this.battleDeckModal.remaining ?? total;
+        return total > 1
+          ? `招来×${total} — ${this.battleDeckModal.targetText || 'トークン'}（残り${remaining}枚）`
+          : `招来 — ${this.battleDeckModal.targetText || 'トークン'}を選択`;
+      }
       if (this.battleDeckModal.action === 'reishi') return '霊視 — デッキ上から5枚を確認';
       return 'デッキ';
     },
@@ -6110,21 +6123,29 @@ new Vue({
         this.battleShowNotice('招来：対象なし', `「${summon.targetText}」に該当するトークンが見つかりませんでした。`, [sourceCard]);
         return;
       }
-      if (cards.length === 1 && summon.count === 1) {
+      const total = Math.max(1, Number(summon.count) || 1);
+      // 招来 N=1 かつ候補1種: 即時解決
+      if (cards.length === 1 && total === 1) {
         this.battleResolveSummonCard(cards[0], sourceCard, triggerLabel);
         return;
       }
+      // N>=2 または候補複数: モーダルで N 枚まで繰り返し選択させる
       this.battleDeckModal = {
         side: 'self',
         action: 'autoSummon',
         sourceCard,
         triggerLabel,
         targetText: summon.targetText,
-        count: summon.count,
+        count: total,
+        remaining: total,        // 残り選択枚数
+        summoned: [],            // 選んだカード履歴
         cards,
-        message: `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\n招来するトークンを${summon.count}枚選んでください。`,
+        message: total > 1
+          ? `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\n「${summon.targetText}」を最大${total}枚まで場に出せます。出さずに終了することもできます。`
+          : `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\n招来するトークンを選んでください。`,
       };
     },
+    /* 通常の招来（モーダル無し、即時1体配置） */
     battleResolveSummonCard(card, sourceCard = null, triggerLabel = '招来') {
       const player = this.battleSample.self;
       const zone = this.battleFieldZoneForSummon(card);
@@ -6145,12 +6166,68 @@ new Vue({
         cards: [card],
       };
     },
+    /* 自動招来モーダルから1体配置（残りがあればモーダル維持） */
     battleResolveAutoSummon(modalIndex) {
       const modal = this.battleDeckModal;
       if (!modal || modal.action !== 'autoSummon' || this.battleSample.result) return;
+      if ((modal.remaining || 0) <= 0) { this.battleDeckModal = null; return; }
       const card = modal.cards && modal.cards[modalIndex];
       if (!card) return;
-      this.battleResolveSummonCard(card, modal.sourceCard, modal.triggerLabel || '招来');
+      const player = this.battleSample.self;
+      const zone = this.battleFieldZoneForSummon(card);
+      if (!player || !zone || !Array.isArray(player[zone])) return;
+      if (player[zone].length >= 7) {
+        this.battleShowNotice('フィールド上限です', `${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドには7枚まで配置できます。`, [card]);
+        return;
+      }
+      this.battleSaveUndo();
+      player[zone].push(card);
+      modal.summoned = [...(modal.summoned || []), card];
+      modal.remaining = (modal.remaining || 1) - 1;
+      this.hideCardHover();
+      // 残り0 または フィールド上限到達なら自動クローズ＋通知
+      const fieldFull = player[zone].length >= 7;
+      if (modal.remaining <= 0 || fieldFull) {
+        const list = modal.summoned;
+        const names = list.map(c => `「${this.fullName(c)}」`).join('、');
+        const triggerLabel = modal.triggerLabel || '招来';
+        this.battleDeckModal = null;
+        this.battleNotice = {
+          title: list.length > 1 ? `招来（${list.length}体）` : '招来',
+          message: modal.sourceCard
+            ? `「${this.fullName(modal.sourceCard)}」の【${triggerLabel}】効果で${names}を場に出しました。`
+            : `${names}を場に出しました。`,
+          cards: list,
+        };
+      }
+      // 残りがある場合はモーダルそのまま維持して継続選択
+    },
+    /* 自動招来モーダルを途中で終了（残りを放棄） */
+    battleFinishAutoSummon() {
+      const modal = this.battleDeckModal;
+      if (!modal || modal.action !== 'autoSummon') return;
+      const list = modal.summoned || [];
+      const triggerLabel = modal.triggerLabel || '招来';
+      this.battleDeckModal = null;
+      if (list.length === 0) {
+        // 何も出さなかった場合の通知
+        this.battleNotice = {
+          title: '招来：見送り',
+          message: modal.sourceCard
+            ? `「${this.fullName(modal.sourceCard)}」の【${triggerLabel}】効果ですが、招来は行いませんでした。`
+            : '招来は行いませんでした。',
+          cards: modal.sourceCard ? [modal.sourceCard] : [],
+        };
+        return;
+      }
+      const names = list.map(c => `「${this.fullName(c)}」`).join('、');
+      this.battleNotice = {
+        title: list.length > 1 ? `招来（${list.length}体）` : '招来',
+        message: modal.sourceCard
+          ? `「${this.fullName(modal.sourceCard)}」の【${triggerLabel}】効果で${names}を場に出しました（${modal.count - list.length}枚を見送り）。`
+          : `${names}を場に出しました。`,
+        cards: list,
+      };
     },
     battleAskConfirm({ action, title, message, confirmLabel = '実行', cards = [], payload = {} }) {
       this.battleConfirmModal = { action, title, message, confirmLabel, cards, payload };
@@ -6674,6 +6751,9 @@ new Vue({
         this.battleResolveAutoInduce(null);
       } else if (modal && modal.action === 'autoReishi') {
         this.battleResolveAutoReishi();
+      } else if (modal && modal.action === 'autoSummon') {
+        // 招来途中で背景クリック等でも、要約通知＋見送りを正しく行う
+        this.battleFinishAutoSummon();
       } else {
         this.battleDeckModal = null;
       }
