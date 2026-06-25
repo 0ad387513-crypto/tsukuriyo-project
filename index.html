@@ -791,7 +791,7 @@
 
   /* ===== プレビュー モーダル ===== */
   .modal-bg {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.78); z-index: 600;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.78); z-index: 720;
     display: flex; align-items: center; justify-content: center; padding: 24px;
     cursor: pointer;
   }
@@ -2234,8 +2234,18 @@
   .kami-hud .hud-orb:last-child { grid-column: 3; grid-row: 1; }
   .hud-orb { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
   /* ライフ赤丸の右に △▽（最大値ボタン）を配置するための横並びレイアウト */
-  .hud-orb .life-row { display: flex; align-items: center; gap: 4px; }
-  .hud-orb .life-row .orb-max-controls { flex-direction: column; gap: 0; margin: 0; }
+  .life-row { display: flex; align-items: center; gap: 4px; justify-content: center; }
+  .life-row .orb-max-controls { flex-direction: column; gap: 0; margin: 0; }
+  /* カミ右側のプレースホルダ（X軸の対称性のため） */
+  .hud-spacer { visibility: hidden; min-width: 86px; }
+  /* ライフスタック：カミの真下に縦配置（ライフ → 赤丸+△▽ → - +） */
+  .life-stack {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; margin-top: 4px;
+    width: 100%;
+  }
+  .life-stack .orb-label { color: #c9d2df; font-size: 11px; font-weight: 800; }
+  .life-stack.opp { gap: 2px; }
   .orb-label { color: #c9d2df; font-size: 9px; font-weight: 800; }
   .orb-disc {
     width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center;
@@ -2340,6 +2350,15 @@
   .battle-action-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
   .battle-action-buttons button { padding: 7px 13px; border-radius: 5px; border: 1px solid #68758a; background: #293347; color: #fff; cursor: pointer; }
   .public-process-badge { color: #8dd8ff; font-size: 11px; font-weight: 900; }
+  /* 公開処理メッセージ内のカードプレビューリンク */
+  .notice-card-links { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
+  .notice-card-link {
+    background: #1f2a40; border: 1px solid #4a6090; color: #cfe3ff;
+    padding: 8px 14px; border-radius: 5px; font-size: 13px; font-weight: 700;
+    cursor: pointer; text-align: left;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .notice-card-link:hover { background: #2a3855; border-color: #7090c8; color: #fff; }
 
   /* 昇華コスト選択ボタン */
   .sublim-cost-buttons { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 12px 0; }
@@ -2389,6 +2408,28 @@
     color: #fff; font-weight: 700; letter-spacing: 0.08em;
     text-shadow: 0 2px 8px rgba(0,0,0,0.8);
   }
+  .oracle-effect-actions {
+    margin-top: 24px; display: flex; gap: 12px; justify-content: center;
+  }
+  .oracle-effect-detail, .oracle-effect-close {
+    padding: 10px 22px; font-size: 14px; font-weight: 700;
+    border-radius: 6px; cursor: pointer; letter-spacing: 0.06em;
+    transition: transform 0.08s, box-shadow 0.12s;
+  }
+  .oracle-effect-detail {
+    background: linear-gradient(135deg, #4a3a6a, #6a3a8a);
+    border: 1px solid #c8a8ff; color: #fff;
+    box-shadow: 0 0 12px rgba(200,168,255,0.4);
+  }
+  .oracle-effect-detail:hover {
+    background: linear-gradient(135deg, #5a4a7a, #7a4a9a);
+    box-shadow: 0 0 18px rgba(220,188,255,0.7);
+  }
+  .oracle-effect-close {
+    background: #2a2f3d; border: 1px solid #6a7080; color: #ddd;
+  }
+  .oracle-effect-close:hover { background: #3a3f4d; }
+  .oracle-effect-detail:active, .oracle-effect-close:active { transform: translateY(1px); }
 
   /* 手札ドラッグ中スタイル */
   .hand-playable[draggable="true"] { cursor: grab; }
@@ -3225,12 +3266,15 @@
                 <div v-if="!battleSample.opp.kami" class="kami-placeholder">カミ(相手)</div>
                 <div v-else-if="!hasKamiIllustration(battleSample.opp.kami)" class="kami-illust-missing">イラスト未登録</div>
               </div>
-              <div class="hud-orb">
-                <span class="orb-label">ライフ</span>
-                <div class="orb-disc life">{{ battleSample.opp.life }}<small>/ {{ battleSample.opp.lifeMax }}</small></div>
-              </div>
+              <!-- 右側プレースホルダ（自分側との対称性確保） -->
+              <div class="hud-orb hud-spacer"></div>
             </div>
             <div class="kami-name">{{ battleSample.opp.kami ? fullName(battleSample.opp.kami) : 'カミ未設定' }}</div>
+            <!-- ライフスタック：カミの真下に配置 -->
+            <div class="life-stack opp">
+              <span class="orb-label">ライフ</span>
+              <div class="orb-disc life">{{ battleSample.opp.life }}<small>/ {{ battleSample.opp.lifeMax }}</small></div>
+            </div>
           </div>
           <div class="battle-zone field">
             <span class="battle-zone-label">レリック(相手)</span>
@@ -3315,23 +3359,26 @@
                 <div v-if="!battleSample.self.kami" class="kami-placeholder">カミ</div>
                 <div v-else-if="!hasKamiIllustration(battleSample.self.kami)" class="kami-illust-missing">イラスト未登録</div>
               </div>
-              <div class="hud-orb">
-                <span class="orb-label">ライフ</span>
-                <div class="life-row">
-                  <div class="orb-disc life">{{ battleSample.self.life }}<small>/ {{ battleSample.self.lifeMax }}</small></div>
-                  <div class="orb-max-controls">
-                    <button title="最大ライフを増やす（上限10）" @click="battleStat('self','lifeMax',1)">△</button>
-                    <button title="最大ライフを減らす" @click="battleStat('self','lifeMax',-1)">▽</button>
-                  </div>
-                </div>
-                <div class="orb-value-controls">
-                  <button @click="battleStat('self','life',-1)">−</button>
-                  <button @click="battleStat('self','life',1)">+</button>
-                </div>
-              </div>
+              <!-- 右側プレースホルダ（相手側との対称性確保。カミのX軸位置を維持） -->
+              <div class="hud-orb hud-spacer"></div>
             </div>
             <button class="kami-skill-btn" :class="battleSkillTone" :disabled="battleSkillTone === 'disabled'" @click="openKamiSkills">神技</button>
             <div class="kami-name">{{ battleSample.self.kami ? fullName(battleSample.self.kami) : 'カミ未設定' }}</div>
+            <!-- ライフスタック：カミの真下に配置（赤丸の上：ライフ、下：- +、右に △▽） -->
+            <div class="life-stack self">
+              <span class="orb-label">ライフ</span>
+              <div class="life-row">
+                <div class="orb-disc life">{{ battleSample.self.life }}<small>/ {{ battleSample.self.lifeMax }}</small></div>
+                <div class="orb-max-controls">
+                  <button title="最大ライフを増やす（上限10）" @click="battleStat('self','lifeMax',1)">△</button>
+                  <button title="最大ライフを減らす" @click="battleStat('self','lifeMax',-1)">▽</button>
+                </div>
+              </div>
+              <div class="orb-value-controls">
+                <button @click="battleStat('self','life',-1)">−</button>
+                <button @click="battleStat('self','life',1)">+</button>
+              </div>
+            </div>
           </div>
           <div class="battle-zone hand-self">
             <span class="battle-zone-label">手札（外へドラッグで使用）</span>
@@ -3528,6 +3575,14 @@
         <div class="public-process-badge">両プレイヤーへの公開処理</div>
         <h3>{{ battleNotice.title }}</h3>
         <p>{{ battleNotice.message }}</p>
+        <div v-if="battleNotice.cards && battleNotice.cards.length" class="notice-card-links">
+          <button v-for="c in battleNotice.cards" :key="'nc'+c.no"
+                  class="notice-card-link"
+                  @click="openPreview(c)"
+                  title="クリックでカード詳細を表示">
+            🔎 {{ fullName(c) }}
+          </button>
+        </div>
         <div class="battle-action-buttons"><button @click="battleNotice = null">確認</button></div>
       </div>
     </div>
@@ -3551,12 +3606,18 @@
       </div>
     </div>
 
-    <!-- オラクル発動 中央演出 -->
-    <div v-if="battleOracleEffect" class="oracle-effect-overlay" @click="battleOracleEffect = null">
-      <div class="oracle-effect-card"
-           :style="cardImageUrl(battleOracleEffect.card) ? { backgroundImage: 'url(' + cardImageUrl(battleOracleEffect.card) + ')' } : {}"></div>
+    <!-- オラクル発動 中央演出（閉じるボタンを押すまで残る／詳細プレビュー可） -->
+    <div v-if="battleOracleEffect" class="oracle-effect-overlay">
       <div class="oracle-effect-label">オラクル発動</div>
+      <div class="oracle-effect-card"
+           :style="cardImageUrl(battleOracleEffect.card) ? { backgroundImage: 'url(' + cardImageUrl(battleOracleEffect.card) + ')' } : {}"
+           @click="openPreview(battleOracleEffect.card)"
+           title="クリックで詳細を表示"></div>
       <div class="oracle-effect-name">{{ fullName(battleOracleEffect.card) }}</div>
+      <div class="oracle-effect-actions">
+        <button class="oracle-effect-detail" @click="openPreview(battleOracleEffect.card)">カード詳細を見る</button>
+        <button class="oracle-effect-close" @click="battleOracleEffect = null">閉じる</button>
+      </div>
     </div>
 
     <div v-if="battleSample.result" class="battle-result-overlay">
@@ -4033,14 +4094,17 @@
         </div>
         <div class="mi-flavor" v-if="previewCard.flavor">{{ previewCard.flavor }}</div>
         <div class="mi-actions">
-          <button v-if="previewCard.isKami" class="add"
-                  @click="setLeader(previewCard); closePreview()"
-                  :style="selectedKami && selectedKami.no === previewCard.no ? 'background:#3a6a3a' : ''">
-            {{ selectedKami && selectedKami.no === previewCard.no ? '✓ カミ選択中' : 'カミに設定' }}
-          </button>
-          <button v-else class="add" @click="addCard(previewCard)" :disabled="!canAdd(previewCard)">
-            ＋ デッキに追加（{{ groupCount(previewCard) }}/{{ maxCopiesFor(previewCard) }}）
-          </button>
+          <!-- 対戦画面中は編集系ボタンを非表示（閉じるのみ） -->
+          <template v-if="appView !== 'battle'">
+            <button v-if="previewCard.isKami" class="add"
+                    @click="setLeader(previewCard); closePreview()"
+                    :style="selectedKami && selectedKami.no === previewCard.no ? 'background:#3a6a3a' : ''">
+              {{ selectedKami && selectedKami.no === previewCard.no ? '✓ カミ選択中' : 'カミに設定' }}
+            </button>
+            <button v-else class="add" @click="addCard(previewCard)" :disabled="!canAdd(previewCard)">
+              ＋ デッキに追加（{{ groupCount(previewCard) }}/{{ maxCopiesFor(previewCard) }}）
+            </button>
+          </template>
           <button class="close" @click="closePreview">閉じる</button>
         </div>
       </div>
@@ -4404,7 +4468,7 @@ new Vue({
     battleOracleEffect: null, // { card } オラクル発動演出（中央表示中）
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.12.0',
+    BUILD_VERSION: '1.12.1',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5609,7 +5673,7 @@ new Vue({
       const player = this.battleSample.self;
       const card = player.hand[index];
       if (!card) return;
-      // オラクル：中央発動演出 → 墓地
+      // オラクル：中央発動演出 → 墓地。閉じるまで表示（相手も独立に閉じる想定）
       if (card.category === 'オラクル') {
         const cost = Math.max(0, Number(card.cost) || 0);
         if (cost > player.mana) {
@@ -5622,7 +5686,6 @@ new Vue({
         player.graveyard.push(card);
         player.handCount = player.hand.length;
         this.battleOracleEffect = { card };
-        setTimeout(() => { this.battleOracleEffect = null; }, 2500);
         this.hideCardHover();
         return;
       }
@@ -5736,6 +5799,7 @@ new Vue({
         message: card
           ? `${owner}はヤマタノオロチの能力により「${cardName}」を手札に加えました。`
           : `${owner}はヤマタノオロチの能力を処理しましたが、No.${cardNo}のカードデータを確認できませんでした。`,
+        cards: card ? [card] : [],
       };
     },
     _battleCheckResult() {
