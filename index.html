@@ -2289,10 +2289,23 @@
     max-width: calc((100% - 36px) / 7);
   }
   .legacy-field { overflow: hidden; }
-  .legacy-row { align-items: stretch; padding-top: 25px; }
+  .legacy-row {
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 28px 16px 16px;
+  }
   .legacy-row .battle-card {
-    height: 100%; width: auto; max-height: 100%; align-self: stretch; min-height: 0;
-    position: relative; overflow: hidden; flex: 0 1 auto; box-sizing: border-box;
+    aspect-ratio: 744 / 1039;
+    height: 100%;
+    width: auto;
+    max-width: calc((100% - 48px) / 7);
+    align-self: stretch;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+    flex: 0 1 auto;
+    box-sizing: border-box;
   }
   .battle-card-overlay {
     position: absolute; z-index: 2; display: flex; align-items: center; justify-content: center;
@@ -2326,6 +2339,19 @@
   .battle-card.field-card[draggable="true"] { cursor: grab; }
   .battle-card.field-card[draggable="true"]:active { cursor: grabbing; }
   .battle-card.field-card.battle-attack-dragging { opacity: .48; }
+  .battle-card.field-card.tapped {
+    transform: rotate(90deg) scale(.88);
+    transform-origin: center;
+    transition: transform .2s ease;
+    z-index: 3;
+    box-shadow: 0 0 12px rgba(245, 202, 88, .55);
+  }
+  .dgc-cell.field-card-drop-ready,
+  .battle-zone.field-card-move-ready {
+    outline: 3px solid rgba(245, 202, 88, .9);
+    outline-offset: 2px;
+    box-shadow: 0 0 18px rgba(245, 202, 88, .5);
+  }
   .battle-card.opponent-target-ready,
   .kami-portrait.opponent-target-ready {
     outline: 3px solid rgba(245, 202, 88, .9);
@@ -3483,7 +3509,8 @@
                    @dragend="battleFieldDragEnd($event)"
                    @click="openPreview(card)"
                    @contextmenu.prevent="battleOpenFieldMenu('self','legacies',i,$event)"
-                   @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
+                   @mouseenter="battleSetFieldHover('self','legacies',i,card,$event)"
+                   @mouseleave="battleClearFieldHover('self','legacies',i)">
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
                 <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
                 <span class="battle-card-overlay battle-card-power">戦闘力 {{ card.power || 0 }}</span>
@@ -3505,8 +3532,8 @@
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @contextmenu.prevent="battleOpenFieldMenu('self','relics',i,$event)"
-                   @mouseenter="showCardHover(card, $event)"
-                   @mouseleave="hideCardHover">
+                   @mouseenter="battleSetFieldHover('self','relics',i,card,$event)"
+                   @mouseleave="battleClearFieldHover('self','relics',i)">
               </div>
             </div>
           </div>
@@ -3553,7 +3580,10 @@
             <button class="kami-skill-btn kami-below" :class="battleSkillTone" :disabled="battleSkillTone === 'disabled'" @click="openKamiSkills">神技</button>
             <div class="kami-name kami-below">{{ battleSample.self.kami ? fullName(battleSample.self.kami) : 'カミ未設定' }}</div>
           </div>
-          <div class="battle-zone hand-self">
+          <div class="battle-zone hand-self self-hand-drop"
+               :class="{ 'field-card-move-ready': battleFieldDragTarget === 'hand' }"
+               @dragover.prevent="battleUpdateFieldAttackTarget($event)"
+               @drop.prevent="battleFieldDragEnd($event)">
             <span class="battle-zone-label">手札（場へドラッグで使用 / 墓地へドラッグで捨てる）</span>
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.self.hand" :key="'sh'+i"
@@ -3670,8 +3700,9 @@
             </div>
           </div>
           <div class="dgc-cell zone-graveyard self-graveyard-drop"
-               :class="{ 'graveyard-drop-ready': battleDragOverZone === 'graveyard' }"
-               @dragover.prevent="battleUpdateDragOverZone($event)"
+               :class="{ 'graveyard-drop-ready': battleDragOverZone === 'graveyard', 'field-card-drop-ready': battleFieldDragTarget === 'graveyard' }"
+               @dragover.prevent="battleUpdateDragOverZone($event); battleUpdateFieldAttackTarget($event)"
+               @drop.prevent="battleFieldDragEnd($event)"
                @click="battleOpenZone('self','graveyard')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <path d="M 8 41 H 32 V 46 H 8 Z"/>
@@ -3682,7 +3713,11 @@
               <span class="dgc-count">{{ battleSample.self.graveyard.length }}</span>
             </div>
           </div>
-          <div class="dgc-cell zone-crumbled" @click="battleOpenZone('self','crumbled')">
+          <div class="dgc-cell zone-crumbled self-crumbled-drop"
+               :class="{ 'field-card-drop-ready': battleFieldDragTarget === 'crumbled' }"
+               @dragover.prevent="battleUpdateFieldAttackTarget($event)"
+               @drop.prevent="battleFieldDragEnd($event)"
+               @click="battleOpenZone('self','crumbled')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <ellipse cx="17" cy="24" rx="13" ry="14"/>
               <ellipse cx="13" cy="24" rx="2.5" ry="3.5" fill="#1a2030"/>
@@ -4835,7 +4870,7 @@ new Vue({
     battlePendingEffects: [], // 効果キュー：[{ type, card, data, triggerLabel, paidCost }, ...]
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.13.7',
+    BUILD_VERSION: '1.13.8',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6579,6 +6614,10 @@ new Vue({
       this.battleConfirmModal = null;
       if (modal.action === 'discardHand') {
         this.battleMoveHandCard(modal.payload.index, 'graveyard');
+      } else if (modal.action === 'fieldToHand') {
+        this.battleReturnFieldCardToHand(modal.payload.side, modal.payload.zone, modal.payload.index);
+      } else if (modal.action === 'fieldToZone') {
+        this.battleMoveFieldCard(modal.payload.side, modal.payload.zone, modal.payload.index, modal.payload.destination);
       } else if (modal.action === 'surrender') {
         this.battleSurrenderNow();
       } else if (modal.action === 'return') {
@@ -6750,6 +6789,12 @@ new Vue({
     },
     battleAttackDropTargetFromPoint(e) {
       if (!e || typeof e.clientX !== 'number' || !this.$el) return null;
+      const handEl = this.$el.querySelector('.self-hand-drop');
+      if (this.battlePointInElement(e, handEl)) return { type: 'move', destination: 'hand' };
+      const graveEl = this.$el.querySelector('.self-graveyard-drop');
+      if (this.battlePointInElement(e, graveEl)) return { type: 'move', destination: 'graveyard' };
+      const crumbledEl = this.$el.querySelector('.self-crumbled-drop');
+      if (this.battlePointInElement(e, crumbledEl)) return { type: 'move', destination: 'crumbled' };
       const kamiEl = this.$el.querySelector('.battle-row-opp-top .kami-portrait');
       if (this.battlePointInElement(e, kamiEl)) return { type: 'kami' };
       const legacyEls = Array.from(this.$el.querySelectorAll('.opp-legacy-target'));
@@ -6762,7 +6807,9 @@ new Vue({
     battleUpdateFieldAttackTarget(e) {
       if (!this.battleFieldDrag) return;
       const target = this.battleAttackDropTargetFromPoint(e);
-      this.battleFieldDragTarget = target ? (target.type === 'kami' ? 'kami' : `legacy:${target.index}`) : null;
+      this.battleFieldDragTarget = target
+        ? (target.type === 'kami' ? 'kami' : target.type === 'legacy' ? `legacy:${target.index}` : target.destination)
+        : null;
     },
     battleFieldDragEnd(e) {
       if (!this.battleFieldDrag) return;
@@ -6773,6 +6820,21 @@ new Vue({
       if (!target) return;
       if (target.type === 'kami') this.battleResolveDivineAttack(drag.side, drag.index);
       else if (target.type === 'legacy') this.battleResolveLegacyBattle(drag.side, drag.index, 'opp', target.index);
+      else if (target.type === 'move') this.battleAskFieldMoveConfirm(drag, target.destination);
+    },
+    battleAskFieldMoveConfirm(drag, destination) {
+      const player = this.battleSample[drag.side];
+      const card = player && player[drag.zone] && player[drag.zone][drag.index];
+      if (!card) return;
+      const destLabel = destination === 'hand' ? '手札' : destination === 'graveyard' ? '墓地' : '崩壊';
+      this.battleAskConfirm({
+        action: destination === 'hand' ? 'fieldToHand' : 'fieldToZone',
+        title: `${destLabel}へ移動`,
+        message: `「${this.fullName(card)}」を${destLabel}へ移動します。`,
+        confirmLabel: `${destLabel}へ移動`,
+        cards: [card],
+        payload: { side: drag.side, zone: drag.zone, index: drag.index, destination },
+      });
     },
     battleResolveGuardTarget(attacker, defenderSide, originalIndex = null) {
       const defender = this.battleSample[defenderSide];
@@ -6861,6 +6923,28 @@ new Vue({
       else if (this.battlePointInElement(e, relicEl)) this.battleDragOverZone = 'relics';
       else this.battleDragOverZone = null;
     },
+    battleSetFieldHover(side, zone, index, card, e) {
+      this.battleHoverField = { side, zone, index };
+      this.showCardHover(card, e);
+    },
+    battleClearFieldHover(side, zone, index) {
+      const hover = this.battleHoverField;
+      if (hover && hover.side === side && hover.zone === zone && hover.index === index) {
+        this.battleHoverField = null;
+      }
+      this.hideCardHover();
+    },
+    battleToggleHoveredFieldCard() {
+      if (this.battleSample.result || this.appView !== 'battle') return false;
+      const hover = this.battleHoverField;
+      if (!hover || hover.side !== 'self') return false;
+      const player = this.battleSample[hover.side];
+      const card = player && player[hover.zone] && player[hover.zone][hover.index];
+      if (!card) return false;
+      this.battleSaveUndo();
+      this.$set(card, '_tapped', !card._tapped);
+      return true;
+    },
     battleMoveFieldCard(side, sourceZone, index, destinationZone) {
       if (this.battleSample.result) return;
       if (side !== 'self') return;
@@ -6870,8 +6954,10 @@ new Vue({
       if (!card) return;
       this.battleSaveUndo();
       player[sourceZone].splice(index, 1);
+      this.$set(card, '_tapped', false);
       player[destinationZone].push(card);
       this.hideCardHover();
+      this.battleHoverField = null;
       if (destinationZone === 'graveyard' && this.battleRunDeathKeywordEffects(card)) return;
       const destLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
@@ -6889,9 +6975,11 @@ new Vue({
       if (!card) return;
       this.battleSaveUndo();
       player[sourceZone].splice(index, 1);
+      this.$set(card, '_tapped', false);
       player.hand.push(card);
       player.handCount = player.hand.length;
       this.hideCardHover();
+      this.battleHoverField = null;
       this.battleNotice = {
         title: '場から手札へ',
         message: `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を場から手札へ戻しました。`,
@@ -8359,6 +8447,13 @@ new Vue({
       this.tokenMultiPopup = null;
     },
     onKeyDown(e) {
+      const tag = e.target && e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      const key = String(e.key || '').toLowerCase();
+      if ((key === 'q' || key === 'e') && this.battleToggleHoveredFieldCard()) {
+        e.preventDefault();
+        return;
+      }
       if (e.key === "Escape") {
         // 上に重なっているものから順に閉じる
         if (this.battleFieldMenu)     this.battleFieldMenu = null;
