@@ -1933,7 +1933,7 @@
   }
   .field-card-actions {
     position: absolute; right: 3px; top: 50%; transform: translateY(-50%);
-    z-index: 4; display: flex; flex-direction: column; gap: 2px;
+    z-index: 4; display: grid; grid-template-columns: repeat(2, 24px); gap: 2px;
     opacity: 0; pointer-events: none; transition: opacity .12s;
   }
   .battle-card.field-card:hover .field-card-actions { opacity: 1; pointer-events: auto; }
@@ -2246,6 +2246,16 @@
   .hand-playable:hover { transform: translateY(-6px); border-color: #e8bb63; }
   .hand-disabled { cursor: default; opacity: .82; }
   .hand-disabled:hover { transform: none; border-color: #4a4f5d; }
+  .opp-hand-adjust {
+    position: absolute; right: 8px; bottom: 5px; z-index: 5;
+    display: flex; gap: 3px; align-items: center;
+  }
+  .opp-hand-adjust button {
+    width: 22px; height: 18px; padding: 0; border-radius: 4px;
+    border: 1px solid #7e94ba; background: rgba(28,49,82,.92);
+    color: #fff; font-size: 12px; font-weight: 900; cursor: pointer;
+  }
+  .opp-hand-adjust button:hover { background: rgba(54,88,140,.96); }
 
   .battle-center-col { justify-content: center; gap: 3px; }
   .kami-hud {
@@ -3295,6 +3305,10 @@
               <div v-for="n in battleSample.opp.handCount" :key="'oh'+n" class="battle-card-mini"
                  :style="cardBackUrl ? { backgroundImage: 'url(' + cardBackUrl + ')', backgroundSize: 'cover', backgroundPosition: 'center' } : {}"></div>
             </div>
+            <div class="opp-hand-adjust" title="相手の非公開手札枚数を補正">
+              <button @click="battleAdjustHiddenHand('opp', -1)">−</button>
+              <button @click="battleAdjustHiddenHand('opp', 1)">＋</button>
+            </div>
           </div>
           <div class="battle-center-col">
             <div class="kami-hud">
@@ -3303,6 +3317,10 @@
                 <span class="orb-label">{{ battleIsOrochi('opp') ? '封印' : '天力' }}</span>
                 <div class="orb-disc" :class="battleIsOrochi('opp') ? 'seal' : 'tenryoku'">
                   {{ battleIsOrochi('opp') ? battleSample.opp.seal : battleSample.opp.tenryoku }}
+                </div>
+                <div class="orb-value-controls">
+                  <button @click="battleStat('opp', battleIsOrochi('opp') ? 'seal' : 'tenryoku', -1)">−</button>
+                  <button @click="battleStat('opp', battleIsOrochi('opp') ? 'seal' : 'tenryoku', 1)">+</button>
                 </div>
               </div>
               <!-- 中央：カミ（X軸基準） -->
@@ -3318,7 +3336,17 @@
               <!-- 右：ライフ（赤丸 / 上：ライフラベル） -->
               <div class="hud-orb">
                 <span class="orb-label">ライフ</span>
-                <div class="orb-disc life">{{ battleSample.opp.life }}<small>/ {{ battleSample.opp.lifeMax }}</small></div>
+                <div class="life-row">
+                  <div class="orb-disc life">{{ battleSample.opp.life }}<small>/ {{ battleSample.opp.lifeMax }}</small></div>
+                  <div class="orb-max-controls">
+                    <button title="最大ライフを増やす（上限10）" @click="battleStat('opp','lifeMax',1)">△</button>
+                    <button title="最大ライフを減らす" @click="battleStat('opp','lifeMax',-1)">▽</button>
+                  </div>
+                </div>
+                <div class="orb-value-controls">
+                  <button @click="battleStat('opp','life',-1)">−</button>
+                  <button @click="battleStat('opp','life',1)">+</button>
+                </div>
               </div>
             </div>
             <div class="kami-name">{{ battleSample.opp.kami ? fullName(battleSample.opp.kami) : 'カミ未設定' }}</div>
@@ -3488,6 +3516,10 @@
             <span v-for="n in battleSample.opp.manaMax" :key="'om'+n" class="mana-orb" :class="{ available: n <= battleSample.opp.mana }"></span>
             <span v-if="battleSample.opp.manaMax === 0" class="mana-empty">0</span>
           </div>
+          <div class="mana-controls">
+            <div><span>最大</span><div class="mana-control-group"><button @click="battleStat('opp','manaMax',-1)">▽</button><button @click="battleStat('opp','manaMax',1)">△</button></div></div>
+            <div><span>使用可能</span><div class="mana-control-group"><button @click="battleStat('opp','mana',-1)">−</button><button @click="battleStat('opp','mana',1)">＋</button></div></div>
+          </div>
         </div>
 
         <!-- 相手 デッキ・墓地・崩壊 -->
@@ -3610,6 +3642,7 @@
          :style="{ left: deckMenuOpen.x + 'px', top: deckMenuOpen.y + 'px' }"
          @click.stop>
       <button v-if="deckMenuOpen.side === 'self'" @click="deckMenuAction('draw')">ドロー（1枚引く）</button>
+      <button v-if="deckMenuOpen.side === 'opp'" @click="deckMenuAction('drawHidden')">相手が1枚ドロー</button>
       <button v-if="deckMenuOpen.side === 'self'" @click="deckMenuAction('induce')">誘（カードを選んで手札へ）</button>
       <button v-if="deckMenuOpen.side === 'self'" @click="deckMenuAction('reishi')">霊視（デッキ上から確認）</button>
       <button @click="deckMenuAction('mill')">デッキ上を墓地へ</button>
@@ -3637,6 +3670,11 @@
             <button class="battle-deck-modal-pick"
                     @click="battleReturnZoneCardToHand(i)">
               手札へ戻す
+            </button>
+            <button v-if="battleFieldZoneForCard(c)"
+                    class="battle-deck-modal-pick"
+                    @click="battleReturnZoneCardToField(i)">
+              場へ戻す
             </button>
             <button class="battle-deck-modal-pick"
                     @click="battleReturnZoneCardToDeckTop(i)">
@@ -5964,6 +6002,12 @@ new Vue({
         cards: side === 'self' ? [card] : [],
       };
     },
+    battleFieldZoneForCard(card) {
+      if (!card) return null;
+      if (card.category === 'レガシー') return 'legacies';
+      if (card.category === 'レリック') return 'relics';
+      return null;
+    },
     battleReturnZoneCardToHand(modalIndex) {
       if (this.battleSample.result) return;
       const modal = this.battleZoneModal;
@@ -5983,6 +6027,32 @@ new Vue({
       this.battleNotice = {
         title: `${zoneLabel}から手札へ`,
         message: `${modal.side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${zoneLabel}から手札へ戻しました。`,
+        cards: modal.side === 'self' ? [card] : [],
+      };
+    },
+    battleReturnZoneCardToField(modalIndex) {
+      if (this.battleSample.result) return;
+      const modal = this.battleZoneModal;
+      if (!modal) return;
+      const player = this.battleSample[modal.side];
+      const zone = modal.zone;
+      if (!player || !Array.isArray(player[zone])) return;
+      const card = player[zone][modalIndex];
+      const fieldZone = this.battleFieldZoneForCard(card);
+      if (!card || !fieldZone || !Array.isArray(player[fieldZone])) return;
+      if (player[fieldZone].length >= 7) {
+        window.alert(`${card.category}フィールドには7枚まで配置できます。`);
+        return;
+      }
+      this.battleSaveUndo();
+      player[zone].splice(modalIndex, 1);
+      player[fieldZone].push(card);
+      this.battleZoneModal = null;
+      this.hideCardHover();
+      const zoneLabel = zone === 'graveyard' ? '墓地' : '崩壊';
+      this.battleNotice = {
+        title: `${zoneLabel}から場へ`,
+        message: `${modal.side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${zoneLabel}から場へ戻しました。`,
         cards: modal.side === 'self' ? [card] : [],
       };
     },
@@ -6115,6 +6185,8 @@ new Vue({
       if (!side) return;
       if (action === 'draw') {
         this.battleDraw(side);
+      } else if (action === 'drawHidden') {
+        this.battleDrawHidden(side);
       } else if (action === 'induce') {
         this.battleOpenDeckModal(side, 'induce');
       } else if (action === 'reishi') {
@@ -6131,8 +6203,7 @@ new Vue({
       const player = this.battleSample[side];
       if (!player) return;
       player.deckCount = player.deck.length;
-      if (side === 'self') player.handCount = player.hand.length;
-      else player.handCount = player.handCount == null ? player.hand.length : player.handCount;
+      if (Array.isArray(player.hand)) player.handCount = player.hand.length;
     },
     battleDraw(side) {
       if (this.battleSample.result) return;
@@ -6152,6 +6223,42 @@ new Vue({
         title: 'ドロー',
         message: `${side === 'self' ? '自分' : '相手'}がデッキから1枚ドローしました。`,
         cards: side === 'self' ? [card] : [],
+      };
+    },
+    battleDrawHidden(side) {
+      if (this.battleSample.result) return;
+      const player = this.battleSample[side];
+      if (!player || !player.deck.length) {
+        this.battleNotice = {
+          title: 'デッキがありません',
+          message: 'ドローできるカードがありません。',
+        };
+        return;
+      }
+      this.battleSaveUndo();
+      const card = player.deck.shift();
+      player.hand.push(card);
+      this._battleSyncSideCounts(side);
+      this.battleNotice = {
+        title: '相手ドロー',
+        message: '相手がデッキから1枚ドローしました。',
+      };
+    },
+    battleAdjustHiddenHand(side, delta) {
+      if (this.battleSample.result) return;
+      const player = this.battleSample[side];
+      if (!player || !Array.isArray(player.hand)) return;
+      if (delta < 0 && player.hand.length <= 0) return;
+      this.battleSaveUndo();
+      if (delta > 0) {
+        player.hand.push({ _hiddenBattleCard: true, name: '非公開カード', category: '非公開' });
+      } else {
+        player.hand.pop();
+      }
+      this._battleSyncSideCounts(side);
+      this.battleNotice = {
+        title: '相手手札枚数を補正',
+        message: `相手の手札枚数を${delta > 0 ? '1枚増やしました' : '1枚減らしました'}。`,
       };
     },
     battleShuffleDeck(side) {
