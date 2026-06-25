@@ -2246,17 +2246,6 @@
   .hand-playable:hover { transform: translateY(-6px); border-color: #e8bb63; }
   .hand-disabled { cursor: default; opacity: .82; }
   .hand-disabled:hover { transform: none; border-color: #4a4f5d; }
-  .opp-hand-adjust {
-    position: absolute; right: 8px; bottom: 5px; z-index: 5;
-    display: flex; gap: 3px; align-items: center;
-  }
-  .opp-hand-adjust button {
-    width: 22px; height: 18px; padding: 0; border-radius: 4px;
-    border: 1px solid #7e94ba; background: rgba(28,49,82,.92);
-    color: #fff; font-size: 12px; font-weight: 900; cursor: pointer;
-  }
-  .opp-hand-adjust button:hover { background: rgba(54,88,140,.96); }
-
   .battle-center-col { justify-content: center; gap: 3px; }
   .kami-hud {
     display: grid; grid-template-columns: 52px var(--kw) 80px;
@@ -2375,6 +2364,10 @@
   .dgc-cell.zone-deck { background: #18385d; border-color: #376ca3; }
   .dgc-cell.zone-graveyard { background: #3a294b; border-color: #73568d; }
   .dgc-cell.zone-crumbled { background: #542b31; border-color: #94505a; }
+  .dgc-cell.graveyard-drop-ready {
+    border-color: #d9b6ff;
+    box-shadow: 0 0 0 2px rgba(184,126,255,.35), 0 0 14px rgba(184,126,255,.45);
+  }
   .dgc-cell.disabled { cursor: not-allowed; filter: grayscale(.45); opacity: .75; }
   .dgc-cell.disabled:hover { background: #18385d; }
   .dgc-icon { width: 30px; height: 34px; }
@@ -3305,10 +3298,6 @@
               <div v-for="n in battleSample.opp.handCount" :key="'oh'+n" class="battle-card-mini"
                  :style="cardBackUrl ? { backgroundImage: 'url(' + cardBackUrl + ')', backgroundSize: 'cover', backgroundPosition: 'center' } : {}"></div>
             </div>
-            <div class="opp-hand-adjust" title="相手の非公開手札枚数を補正">
-              <button @click="battleAdjustHiddenHand('opp', -1)">−</button>
-              <button @click="battleAdjustHiddenHand('opp', 1)">＋</button>
-            </div>
           </div>
           <div class="battle-center-col">
             <div class="kami-hud">
@@ -3317,10 +3306,6 @@
                 <span class="orb-label">{{ battleIsOrochi('opp') ? '封印' : '天力' }}</span>
                 <div class="orb-disc" :class="battleIsOrochi('opp') ? 'seal' : 'tenryoku'">
                   {{ battleIsOrochi('opp') ? battleSample.opp.seal : battleSample.opp.tenryoku }}
-                </div>
-                <div class="orb-value-controls">
-                  <button @click="battleStat('opp', battleIsOrochi('opp') ? 'seal' : 'tenryoku', -1)">−</button>
-                  <button @click="battleStat('opp', battleIsOrochi('opp') ? 'seal' : 'tenryoku', 1)">+</button>
                 </div>
               </div>
               <!-- 中央：カミ（X軸基準） -->
@@ -3336,17 +3321,7 @@
               <!-- 右：ライフ（赤丸 / 上：ライフラベル） -->
               <div class="hud-orb">
                 <span class="orb-label">ライフ</span>
-                <div class="life-row">
-                  <div class="orb-disc life">{{ battleSample.opp.life }}<small>/ {{ battleSample.opp.lifeMax }}</small></div>
-                  <div class="orb-max-controls">
-                    <button title="最大ライフを増やす（上限10）" @click="battleStat('opp','lifeMax',1)">△</button>
-                    <button title="最大ライフを減らす" @click="battleStat('opp','lifeMax',-1)">▽</button>
-                  </div>
-                </div>
-                <div class="orb-value-controls">
-                  <button @click="battleStat('opp','life',-1)">−</button>
-                  <button @click="battleStat('opp','life',1)">+</button>
-                </div>
+                <div class="orb-disc life">{{ battleSample.opp.life }}<small>/ {{ battleSample.opp.lifeMax }}</small></div>
               </div>
             </div>
             <div class="kami-name">{{ battleSample.opp.kami ? fullName(battleSample.opp.kami) : 'カミ未設定' }}</div>
@@ -3355,18 +3330,11 @@
             <span class="battle-zone-label">レリック(相手)</span>
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.opp.relics" :key="'or'+i"
-                   class="battle-card field-card"
+                   class="battle-card"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)"
-                   @mouseleave="hideCardHover">
-                <span class="field-card-actions">
-                  <button title="相手の手札へ戻す" @click.stop="battleReturnFieldCardToHand('opp','relics',i)">手</button>
-                  <button title="相手のデッキ上へ戻す" @click.stop="battleMoveFieldCardToDeckTop('opp','relics',i)">山</button>
-                  <button title="相手の墓地へ送る" @click.stop="battleMoveFieldCard('opp','relics',i,'graveyard')">墓</button>
-                  <button title="相手の崩壊へ送る" @click.stop="battleMoveFieldCard('opp','relics',i,'crumbled')">崩</button>
-                </span>
-              </div>
+                   @mouseleave="hideCardHover"></div>
             </div>
           </div>
         </div>
@@ -3377,19 +3345,13 @@
             <span class="battle-zone-label">レガシー(相手)</span>
             <div class="battle-card-row legacy-row">
               <div v-for="(card, i) in battleSample.opp.legacies" :key="'ol'+i"
-                   class="battle-card field-card"
+                   class="battle-card"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
                 <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
                 <span class="battle-card-overlay battle-card-power">戦闘力 {{ card.power || 0 }}</span>
-                <span class="field-card-actions">
-                  <button title="相手の手札へ戻す" @click.stop="battleReturnFieldCardToHand('opp','legacies',i)">手</button>
-                  <button title="相手のデッキ上へ戻す" @click.stop="battleMoveFieldCardToDeckTop('opp','legacies',i)">山</button>
-                  <button title="相手の墓地へ送る" @click.stop="battleMoveFieldCard('opp','legacies',i,'graveyard')">墓</button>
-                  <button title="相手の崩壊へ送る" @click.stop="battleMoveFieldCard('opp','legacies',i,'crumbled')">崩</button>
-                </span>
               </div>
             </div>
           </div>
@@ -3486,7 +3448,7 @@
             <span class="battle-zone-label">手札（外へドラッグで使用）</span>
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.self.hand" :key="'sh'+i"
-                   class="battle-card hand-playable field-card"
+                   class="battle-card hand-playable"
                    :class="{ 'hand-disabled': card.category !== 'レガシー' && card.category !== 'レリック' && card.category !== 'オラクル', 'hand-dragging': battleDragIndex === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    :draggable="card.category === 'レガシー' || card.category === 'レリック' || card.category === 'オラクル'"
@@ -3496,11 +3458,6 @@
                    @mouseenter="showCardHover(card, $event)"
                    @mouseleave="hideCardHover">
                 <span class="battle-card-overlay hand-cost-badge">{{ battleHandCost(card) }}</span>
-                <span class="field-card-actions">
-                  <button title="手札からデッキ上へ戻す" @click.stop="battleMoveHandCardToDeckTop(i)">山</button>
-                  <button title="手札から墓地へ送る" @click.stop="battleMoveHandCard(i,'graveyard')">墓</button>
-                  <button title="手札から崩壊へ送る" @click.stop="battleMoveHandCard(i,'crumbled')">崩</button>
-                </span>
               </div>
             </div>
           </div>
@@ -3516,15 +3473,11 @@
             <span v-for="n in battleSample.opp.manaMax" :key="'om'+n" class="mana-orb" :class="{ available: n <= battleSample.opp.mana }"></span>
             <span v-if="battleSample.opp.manaMax === 0" class="mana-empty">0</span>
           </div>
-          <div class="mana-controls">
-            <div><span>最大</span><div class="mana-control-group"><button @click="battleStat('opp','manaMax',-1)">▽</button><button @click="battleStat('opp','manaMax',1)">△</button></div></div>
-            <div><span>使用可能</span><div class="mana-control-group"><button @click="battleStat('opp','mana',-1)">−</button><button @click="battleStat('opp','mana',1)">＋</button></div></div>
-          </div>
         </div>
 
         <!-- 相手 デッキ・墓地・崩壊 -->
         <div class="dgc-stack">
-          <div class="dgc-cell dgc-deck zone-deck" @click="deckClick('opp', $event)" title="相手デッキの公開処理">
+          <div class="dgc-cell dgc-deck zone-deck disabled" title="相手のデッキは操作できません">
             <div class="dgc-icon dgc-deck-icon">
               <div class="ddi-card ddi-card-1"></div>
               <div class="ddi-card ddi-card-2"></div>
@@ -3605,7 +3558,9 @@
               <span class="dgc-count">{{ battleSample.self.deckCount }}</span>
             </div>
           </div>
-          <div class="dgc-cell zone-graveyard" @click="battleOpenZone('self','graveyard')">
+          <div class="dgc-cell zone-graveyard self-graveyard-drop"
+               :class="{ 'graveyard-drop-ready': battleDragIndex !== null }"
+               @click="battleOpenZone('self','graveyard')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <path d="M 8 41 H 32 V 46 H 8 Z"/>
               <path d="M 12 41 V 19 a 8 8 0 0 1 16 0 V 41 Z"/>
@@ -3642,12 +3597,11 @@
          :style="{ left: deckMenuOpen.x + 'px', top: deckMenuOpen.y + 'px' }"
          @click.stop>
       <button v-if="deckMenuOpen.side === 'self'" @click="deckMenuAction('draw')">ドロー（1枚引く）</button>
-      <button v-if="deckMenuOpen.side === 'opp'" @click="deckMenuAction('drawHidden')">相手が1枚ドロー</button>
       <button v-if="deckMenuOpen.side === 'self'" @click="deckMenuAction('induce')">誘（カードを選んで手札へ）</button>
       <button v-if="deckMenuOpen.side === 'self'" @click="deckMenuAction('reishi')">霊視（デッキ上から確認）</button>
-      <button @click="deckMenuAction('mill')">デッキ上を墓地へ</button>
-      <button @click="deckMenuAction('crumbleTop')">デッキ上を崩壊へ</button>
-      <button @click="deckMenuAction('shuffle')">デッキをシャッフル</button>
+      <button v-if="deckMenuOpen.side === 'self'" @click="deckMenuAction('mill')">デッキ上を墓地へ</button>
+      <button v-if="deckMenuOpen.side === 'self'" @click="deckMenuAction('crumbleTop')">デッキ上を崩壊へ</button>
+      <button v-if="deckMenuOpen.side === 'self'" @click="deckMenuAction('shuffle')">デッキをシャッフル</button>
     </div>
 
     <!-- ===== 墓地・崩壊 一覧モーダル ===== -->
@@ -3667,16 +3621,18 @@
                  @click="openPreview(c)"
                  @mouseenter="showCardHover(c, $event)"
                  @mouseleave="hideCardHover"></div>
-            <button class="battle-deck-modal-pick"
+            <button v-if="battleZoneModal.side === 'self'"
+                    class="battle-deck-modal-pick"
                     @click="battleReturnZoneCardToHand(i)">
               手札へ戻す
             </button>
-            <button v-if="battleFieldZoneForCard(c)"
+            <button v-if="battleZoneModal.side === 'self' && battleFieldZoneForCard(c)"
                     class="battle-deck-modal-pick"
                     @click="battleReturnZoneCardToField(i)">
               場へ戻す
             </button>
-            <button class="battle-deck-modal-pick"
+            <button v-if="battleZoneModal.side === 'self'"
+                    class="battle-deck-modal-pick"
                     @click="battleReturnZoneCardToDeckTop(i)">
               デッキ上へ戻す
             </button>
@@ -5934,23 +5890,6 @@ new Vue({
         cards: [card],
       };
     },
-    battleMoveHandCardToDeckTop(index) {
-      if (this.battleSample.result) return;
-      const player = this.battleSample.self;
-      if (!player || !Array.isArray(player.deck)) return;
-      const card = player.hand[index];
-      if (!card) return;
-      this.battleSaveUndo();
-      player.hand.splice(index, 1);
-      player.deck.unshift(card);
-      this._battleSyncSideCounts('self');
-      this.hideCardHover();
-      this.battleNotice = {
-        title: '手札からデッキ上へ',
-        message: `自分の手札から「${this.fullName(card)}」をデッキ上へ戻しました。`,
-        cards: [card],
-      };
-    },
     battleMoveFieldCard(side, sourceZone, index, destinationZone) {
       if (this.battleSample.result) return;
       const player = this.battleSample[side];
@@ -6011,7 +5950,7 @@ new Vue({
     battleReturnZoneCardToHand(modalIndex) {
       if (this.battleSample.result) return;
       const modal = this.battleZoneModal;
-      if (!modal) return;
+      if (!modal || modal.side !== 'self') return;
       const player = this.battleSample[modal.side];
       const zone = modal.zone;
       if (!player || !Array.isArray(player[zone]) || !Array.isArray(player.hand)) return;
@@ -6033,7 +5972,7 @@ new Vue({
     battleReturnZoneCardToField(modalIndex) {
       if (this.battleSample.result) return;
       const modal = this.battleZoneModal;
-      if (!modal) return;
+      if (!modal || modal.side !== 'self') return;
       const player = this.battleSample[modal.side];
       const zone = modal.zone;
       if (!player || !Array.isArray(player[zone])) return;
@@ -6059,7 +5998,7 @@ new Vue({
     battleReturnZoneCardToDeckTop(modalIndex) {
       if (this.battleSample.result) return;
       const modal = this.battleZoneModal;
-      if (!modal) return;
+      if (!modal || modal.side !== 'self') return;
       const player = this.battleSample[modal.side];
       const zone = modal.zone;
       if (!player || !Array.isArray(player[zone]) || !Array.isArray(player.deck)) return;
@@ -6092,16 +6031,31 @@ new Vue({
       if (this.battleDragIndex === null) return;
       // 手札ゾーン内に戻された場合はキャンセル
       const handEl = (this.$el && this.$el.querySelector('.battle-zone.hand-self')) || null;
+      const graveEl = (this.$el && this.$el.querySelector('.self-graveyard-drop')) || null;
       let dropInHand = false;
+      let dropOnGraveyard = false;
       if (handEl && e && typeof e.clientX === 'number') {
         const r = handEl.getBoundingClientRect();
         if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
           dropInHand = true;
         }
       }
+      if (graveEl && e && typeof e.clientX === 'number') {
+        const r = graveEl.getBoundingClientRect();
+        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+          dropOnGraveyard = true;
+        }
+      }
       const idx = this.battleDragIndex;
       this.battleDragIndex = null;
       if (dropInHand) return;
+      if (dropOnGraveyard) {
+        const card = this.battleSample.self.hand[idx];
+        if (!card) return;
+        if (!window.confirm(`「${this.fullName(card)}」を手札から墓地へ送ります。よろしいですか？`)) return;
+        this.battleMoveHandCard(idx, 'graveyard');
+        return;
+      }
       // 手札外にドロップ → 配置/発動
       this.battlePlayFromHand(idx);
     },
@@ -6185,8 +6139,6 @@ new Vue({
       if (!side) return;
       if (action === 'draw') {
         this.battleDraw(side);
-      } else if (action === 'drawHidden') {
-        this.battleDrawHidden(side);
       } else if (action === 'induce') {
         this.battleOpenDeckModal(side, 'induce');
       } else if (action === 'reishi') {
@@ -6223,42 +6175,6 @@ new Vue({
         title: 'ドロー',
         message: `${side === 'self' ? '自分' : '相手'}がデッキから1枚ドローしました。`,
         cards: side === 'self' ? [card] : [],
-      };
-    },
-    battleDrawHidden(side) {
-      if (this.battleSample.result) return;
-      const player = this.battleSample[side];
-      if (!player || !player.deck.length) {
-        this.battleNotice = {
-          title: 'デッキがありません',
-          message: 'ドローできるカードがありません。',
-        };
-        return;
-      }
-      this.battleSaveUndo();
-      const card = player.deck.shift();
-      player.hand.push(card);
-      this._battleSyncSideCounts(side);
-      this.battleNotice = {
-        title: '相手ドロー',
-        message: '相手がデッキから1枚ドローしました。',
-      };
-    },
-    battleAdjustHiddenHand(side, delta) {
-      if (this.battleSample.result) return;
-      const player = this.battleSample[side];
-      if (!player || !Array.isArray(player.hand)) return;
-      if (delta < 0 && player.hand.length <= 0) return;
-      this.battleSaveUndo();
-      if (delta > 0) {
-        player.hand.push({ _hiddenBattleCard: true, name: '非公開カード', category: '非公開' });
-      } else {
-        player.hand.pop();
-      }
-      this._battleSyncSideCounts(side);
-      this.battleNotice = {
-        title: '相手手札枚数を補正',
-        message: `相手の手札枚数を${delta > 0 ? '1枚増やしました' : '1枚減らしました'}。`,
       };
     },
     battleShuffleDeck(side) {
