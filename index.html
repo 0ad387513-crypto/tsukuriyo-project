@@ -1937,6 +1937,12 @@
     opacity: 0; pointer-events: none; transition: opacity .12s;
   }
   .battle-card.field-card:hover .field-card-actions { opacity: 1; pointer-events: auto; }
+  /* タップ状態：90度回転で視覚化 */
+  .battle-card.field-card.tapped {
+    transform: rotate(90deg);
+    transition: transform .2s ease;
+    box-shadow: 0 0 0 2px rgba(255, 200, 80, 0.65), 0 4px 12px rgba(0,0,0,0.4);
+  }
   .field-card-actions button {
     width: 24px; height: 18px; padding: 0; border-radius: 3px;
     border: 1px solid rgba(255,255,255,.65); background: rgba(20,24,34,.92);
@@ -3417,18 +3423,14 @@
             <div class="battle-card-row legacy-row">
               <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
                    class="battle-card field-card"
+                   :class="{ tapped: card._tapped }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
+                   @contextmenu.prevent="battleOpenFieldMenu('self','legacies',i,$event)"
                    @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
                 <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
                 <span class="battle-card-overlay battle-card-power">戦闘力 {{ card.power || 0 }}</span>
-                <span class="field-card-actions">
-                  <button title="手札へ戻す" @click.stop="battleReturnFieldCardToHand('self','legacies',i)">手</button>
-                  <button title="デッキ上へ戻す" @click.stop="battleMoveFieldCardToDeckTop('self','legacies',i)">山</button>
-                  <button title="墓地へ送る" @click.stop="battleMoveFieldCard('self','legacies',i,'graveyard')">墓</button>
-                  <button title="崩壊へ送る" @click.stop="battleMoveFieldCard('self','legacies',i,'crumbled')">崩</button>
-                </span>
               </div>
             </div>
           </div>
@@ -3443,16 +3445,12 @@
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i"
                    class="battle-card field-card"
+                   :class="{ tapped: card._tapped }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
+                   @contextmenu.prevent="battleOpenFieldMenu('self','relics',i,$event)"
                    @mouseenter="showCardHover(card, $event)"
                    @mouseleave="hideCardHover">
-                <span class="field-card-actions">
-                  <button title="手札へ戻す" @click.stop="battleReturnFieldCardToHand('self','relics',i)">手</button>
-                  <button title="デッキ上へ戻す" @click.stop="battleMoveFieldCardToDeckTop('self','relics',i)">山</button>
-                  <button title="墓地へ送る" @click.stop="battleMoveFieldCard('self','relics',i,'graveyard')">墓</button>
-                  <button title="崩壊へ送る" @click.stop="battleMoveFieldCard('self','relics',i,'crumbled')">崩</button>
-                </span>
               </div>
             </div>
           </div>
@@ -3648,6 +3646,17 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- ===== フィールドカード右クリックメニュー ===== -->
+    <div v-if="battleFieldMenu" class="deck-context-menu"
+         :style="{ left: battleFieldMenu.x + 'px', top: battleFieldMenu.y + 'px' }"
+         @click.stop>
+      <button @click="battleFieldMenuAction('toggleTap')">{{ battleFieldMenuTapLabel }}</button>
+      <button @click="battleFieldMenuAction('hand')">手札へ戻す</button>
+      <button @click="battleFieldMenuAction('deckTop')">デッキ上へ戻す</button>
+      <button @click="battleFieldMenuAction('graveyard')">墓地へ送る</button>
+      <button @click="battleFieldMenuAction('crumbled')">崩壊へ送る</button>
     </div>
 
     <!-- ===== デッキクリックメニュー（ドロー / 誘 / 霊視） ===== -->
@@ -4731,6 +4740,7 @@ new Vue({
     battleZoneModal: null,   // { side, zone, cards }
     battleDeckModal: null,   // { side, action, cards, deckIndexes }
     deckMenuOpen: null,      // { side, x, y } — デッキクリックメニュー
+    battleFieldMenu: null,   // { side, zone, index, x, y } — フィールドカード右クリックメニュー
     battleUndoStack: [],     // 一手戻る用：battleSampleのスナップショット履歴（最新50件）
     battleSkillModal: null,
     battleNotice: null,
@@ -4744,7 +4754,7 @@ new Vue({
     battlePendingEffects: [], // 効果キュー：[{ type, card, data, triggerLabel, paidCost }, ...]
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.13.3',
+    BUILD_VERSION: '1.13.4',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -4807,6 +4817,13 @@ new Vue({
       if (this.battleContext.returnView === 'shield') return 'シールド戦';
       if (this.battleContext.returnView === 'game') return '星戦';
       return 'トップ';
+    },
+    battleFieldMenuTapLabel() {
+      const m = this.battleFieldMenu;
+      if (!m) return 'このカードをタップする';
+      const card = this.battleSample && this.battleSample[m.side] && this.battleSample[m.side][m.zone]
+        && this.battleSample[m.side][m.zone][m.index];
+      return card && card._tapped ? 'このカードをアンタップする' : 'このカードをタップする';
     },
     battleDeckModalTitle() {
       if (!this.battleDeckModal) return '';
@@ -5825,6 +5842,7 @@ new Vue({
       this.battleZoneModal = null;
       this.battleDeckModal = null;
       this.deckMenuOpen = null;
+      this.battleFieldMenu = null;
       this.battleSkillModal = null;
       this.battleNotice = null;
       this.battleConfirmModal = null;
@@ -5851,6 +5869,7 @@ new Vue({
       this.battleZoneModal = null;
       this.battleDeckModal = null;
       this.deckMenuOpen = null;
+      this.battleFieldMenu = null;
       this.battleSkillModal = null;
       this.battleNotice = null;
       this.battleConfirmModal = null;
@@ -5880,6 +5899,7 @@ new Vue({
       this.battleNotice = null;
       this.battleConfirmModal = null;
       this.deckMenuOpen = null;
+      this.battleFieldMenu = null;
       this.battleDeckModal = null;
       this.battleZoneModal = null;
       this.battleSublimModal = null;
@@ -6852,6 +6872,34 @@ new Vue({
       const y = Math.min(e.clientY, window.innerHeight - 130 - pad);
       this.deckMenuOpen = { side, x, y };
       e.stopPropagation();   // window-click による即時クローズを防ぐ
+    },
+    battleOpenFieldMenu(side, zone, index, e) {
+      if (this.battleSample.result) return;
+      if (side !== 'self') return;
+      const pad = 6;
+      const x = Math.min(e.clientX, window.innerWidth  - 220 - pad);
+      const y = Math.min(e.clientY, window.innerHeight - 200 - pad);
+      this.battleFieldMenu = { side, zone, index, x, y };
+      e.stopPropagation();
+    },
+    battleFieldMenuAction(action) {
+      const m = this.battleFieldMenu;
+      this.battleFieldMenu = null;
+      if (!m) return;
+      const player = this.battleSample[m.side];
+      const card = player && player[m.zone] && player[m.zone][m.index];
+      if (!card) return;
+      if (action === 'toggleTap') {
+        this.battleSaveUndo();
+        this.$set(card, '_tapped', !card._tapped);
+        return;
+      }
+      // 場から外れる時はタップ状態をクリア
+      this.$set(card, '_tapped', false);
+      if (action === 'hand')        this.battleReturnFieldCardToHand(m.side, m.zone, m.index);
+      else if (action === 'deckTop') this.battleMoveFieldCardToDeckTop(m.side, m.zone, m.index);
+      else if (action === 'graveyard') this.battleMoveFieldCard(m.side, m.zone, m.index, 'graveyard');
+      else if (action === 'crumbled')  this.battleMoveFieldCard(m.side, m.zone, m.index, 'crumbled');
     },
     deckMenuAction(action) {
       const side = this.deckMenuOpen && this.deckMenuOpen.side;
@@ -8046,7 +8094,8 @@ new Vue({
     onKeyDown(e) {
       if (e.key === "Escape") {
         // 上に重なっているものから順に閉じる
-        if (this.deckMenuOpen)        this.deckMenuOpen = null;
+        if (this.battleFieldMenu)     this.battleFieldMenu = null;
+        else if (this.deckMenuOpen)        this.deckMenuOpen = null;
         else if (this.battleConfirmModal) this.battleConfirmModal = null;
         else if (this.battleNotice)        this.battleNotice = null;
         else if (this.battleOracleEffect)  this.battleOracleEffect = null;
@@ -8065,6 +8114,7 @@ new Vue({
       this.deckSortOpen = false;
       this.poolSortOpen = false;
       this.deckMenuOpen = null;   // 対戦画面：デッキ右クリックメニューを閉じる
+      this.battleFieldMenu = null; // 対戦画面：フィールドカード右クリックメニューを閉じる
     },
     addCard(card) {
       if (this.appView === 'shield' || this.appView === 'game') return; // モード中はガード
