@@ -4738,7 +4738,7 @@ new Vue({
     battleSenteiModal: null,  // { count, options, selected, sourceCard, triggerLabel }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.12.8',
+    BUILD_VERSION: '1.12.9',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6183,9 +6183,10 @@ new Vue({
       const restText = m[2] || '';
       const cutMatch = restText.match(/^([\s\S]*?)(?:[②③④⑤]|【昇華)/);
       const rest = cutMatch ? cutMatch[1] : restText;
+      // 「・」のみで分割し、各選択肢内の改行・空白は1スペースに圧縮
       const options = [];
-      rest.split(/[・\n]/).forEach(s => {
-        const t = s.trim();
+      rest.split(/・/).forEach(s => {
+        const t = s.replace(/\s+/g, '').trim();
         if (t && t.length > 2 && !/^を行う/.test(t)) options.push(t);
       });
       if (!options.length) return null;
