@@ -3724,6 +3724,11 @@
                     @click="battleToggleAutoReishi(i)">
               {{ battleDeckModal.selectedIndexes.includes(i) ? '墓地行きを解除' : '墓地へ送る' }}
             </button>
+            <button v-if="battleDeckModal.action === 'autoSummon'"
+                    class="battle-deck-modal-pick"
+                    @click="battleResolveAutoSummon(i)">
+              場に出す
+            </button>
             <button v-if="battleDeckModal.action === 'reishi'"
                     class="battle-deck-modal-pick"
                     @click="battleDeckMoveVisible(i, 'hand')">
@@ -4748,6 +4753,7 @@ new Vue({
       if (this.battleDeckModal.action === 'induce') return '誘 — デッキから手札に加えるカードを選択';
       if (this.battleDeckModal.action === 'autoInduce') return `誘${this.battleDeckModal.count || ''} — ${this.battleDeckModal.criteriaText || '対象カード'}を選択`;
       if (this.battleDeckModal.action === 'autoReishi') return `霊視${this.battleDeckModal.count || ''} — 墓地へ送るカードを選択`;
+      if (this.battleDeckModal.action === 'autoSummon') return `招来 — ${this.battleDeckModal.targetText || 'トークン'}を選択`;
       if (this.battleDeckModal.action === 'reishi') return '霊視 — デッキ上から5枚を確認';
       return 'デッキ';
     },
@@ -5974,6 +5980,23 @@ new Vue({
     battleParseDeathReishi(card) {
       return this.battleParseTriggeredReishi(card, '死亡時');
     },
+    battleParseTriggeredSummon(card, trigger) {
+      const text = this.battleCardRulesText(card).replace(/\u200b/g, '').replace(/\s+/g, '');
+      const triggerEscaped = String(trigger || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const m = text.match(new RegExp(`(?:【${triggerEscaped}】|${triggerEscaped})(?:[≫>→]|:|：)*【?招来[：:](.*?)(?:】|$)`));
+      if (!m) return null;
+      const raw = (m[1] || '').replace(/[。．].*$/, '');
+      const qtyMatch = raw.match(/(.+?)[×xX＊*]([0-9]+)/);
+      const targetText = (qtyMatch ? qtyMatch[1] : raw).trim();
+      const count = Math.max(1, Number(qtyMatch ? qtyMatch[2] : 1) || 1);
+      return { trigger, targetText, count };
+    },
+    battleParseEnterSummon(card) {
+      return this.battleParseTriggeredSummon(card, '出現時');
+    },
+    battleParseDeathSummon(card) {
+      return this.battleParseTriggeredSummon(card, '死亡時');
+    },
     battleCardMatchesInduceCriteria(card, criteria) {
       if (!card || !criteria || !criteria.length) return true;
       return criteria.some(raw => {
@@ -5999,8 +6022,13 @@ new Vue({
         return true;
       }
       const reishi = this.battleParseEnterReishi(card);
-      if (!reishi) return false;
-      this.battleOpenAutoReishi(card, reishi, '出現時');
+      if (reishi) {
+        this.battleOpenAutoReishi(card, reishi, '出現時');
+        return true;
+      }
+      const summon = this.battleParseEnterSummon(card);
+      if (!summon) return false;
+      this.battleOpenAutoSummon(card, summon, '出現時');
       return true;
     },
     battleRunDeathKeywordEffects(card) {
@@ -6010,8 +6038,13 @@ new Vue({
         return true;
       }
       const reishi = this.battleParseDeathReishi(card);
-      if (!reishi) return false;
-      this.battleOpenAutoReishi(card, reishi, '死亡時');
+      if (reishi) {
+        this.battleOpenAutoReishi(card, reishi, '死亡時');
+        return true;
+      }
+      const summon = this.battleParseDeathSummon(card);
+      if (!summon) return false;
+      this.battleOpenAutoSummon(card, summon, '死亡時');
       return true;
     },
     battleOpenAutoInduce(sourceCard, induce, triggerLabel = '出現時') {
@@ -6052,6 +6085,72 @@ new Vue({
         selectedIndexes: [],
         message: `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\nデッキ上から${cards.length}枚を確認し、墓地へ送るカードを選んでください。\n選ばなかったカードはデッキの一番上に残ります。`,
       };
+    },
+    battleSummonCandidates(targetText) {
+      const target = String(targetText || '').trim();
+      const tokenEntry = this.tokenNameMap[target];
+      if (tokenEntry && tokenEntry._multiCards) return tokenEntry._multiCards.filter(Boolean);
+      if (tokenEntry) return [tokenEntry];
+      const compact = target.replace(/\s+/g, '');
+      return this.allCards.filter(c => {
+        if (!c || !c.isToken) return false;
+        const names = [c.name, this.fullName(c), c.subType].filter(Boolean).map(v => String(v).replace(/\s+/g, ''));
+        return names.some(name => name === compact || name.includes(compact) || compact.includes(name));
+      });
+    },
+    battleFieldZoneForSummon(card) {
+      const text = `${card && card.category || ''} ${card && card.subType || ''} ${card && card.type || ''}`;
+      if (/レリック/.test(text)) return 'relics';
+      if (/レガシー|トークン/.test(text) || (card && card.isToken)) return 'legacies';
+      return this.battleFieldZoneForCard(card);
+    },
+    battleOpenAutoSummon(sourceCard, summon, triggerLabel = '出現時') {
+      const cards = this.battleSummonCandidates(summon.targetText);
+      if (!cards.length) {
+        this.battleShowNotice('招来：対象なし', `「${summon.targetText}」に該当するトークンが見つかりませんでした。`, [sourceCard]);
+        return;
+      }
+      if (cards.length === 1 && summon.count === 1) {
+        this.battleResolveSummonCard(cards[0], sourceCard, triggerLabel);
+        return;
+      }
+      this.battleDeckModal = {
+        side: 'self',
+        action: 'autoSummon',
+        sourceCard,
+        triggerLabel,
+        targetText: summon.targetText,
+        count: summon.count,
+        cards,
+        message: `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\n招来するトークンを${summon.count}枚選んでください。`,
+      };
+    },
+    battleResolveSummonCard(card, sourceCard = null, triggerLabel = '招来') {
+      const player = this.battleSample.self;
+      const zone = this.battleFieldZoneForSummon(card);
+      if (!player || !zone || !Array.isArray(player[zone])) return;
+      if (player[zone].length >= 7) {
+        this.battleShowNotice('フィールド上限です', `${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドには7枚まで配置できます。`, [card]);
+        return;
+      }
+      this.battleSaveUndo();
+      player[zone].push(card);
+      this.battleDeckModal = null;
+      this.hideCardHover();
+      this.battleNotice = {
+        title: '招来',
+        message: sourceCard
+          ? `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果で「${this.fullName(card)}」を場に出しました。`
+          : `「${this.fullName(card)}」を場に出しました。`,
+        cards: [card],
+      };
+    },
+    battleResolveAutoSummon(modalIndex) {
+      const modal = this.battleDeckModal;
+      if (!modal || modal.action !== 'autoSummon' || this.battleSample.result) return;
+      const card = modal.cards && modal.cards[modalIndex];
+      if (!card) return;
+      this.battleResolveSummonCard(card, modal.sourceCard, modal.triggerLabel || '招来');
     },
     battleAskConfirm({ action, title, message, confirmLabel = '実行', cards = [], payload = {} }) {
       this.battleConfirmModal = { action, title, message, confirmLabel, cards, payload };
