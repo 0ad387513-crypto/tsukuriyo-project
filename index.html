@@ -2055,7 +2055,7 @@
   }
   /* ターン中央：終了ボタン＋ターン番号（DGCの間を埋めて縦中央配置） */
   .turn-middle {
-    flex: 1;
+    flex: 0 0 auto;
     display: flex; flex-direction: column;
     align-items: stretch; justify-content: center;
     gap: 6px;
@@ -2291,15 +2291,15 @@
   .legacy-field { overflow: hidden; }
   .legacy-row {
     align-items: center;
-    justify-content: flex-start;
-    gap: 8px;
-    padding: 28px 16px 16px;
+    justify-content: center;
+    gap: 50px;
+    padding: 28px 18px 16px;
   }
   .legacy-row .battle-card {
     aspect-ratio: 744 / 1039;
-    height: 100%;
+    height: 88%;
     width: auto;
-    max-width: calc((100% - 48px) / 7);
+    max-width: calc((100% - 300px) / 7);
     align-self: stretch;
     min-height: 0;
     position: relative;
@@ -2321,20 +2321,20 @@
     background: rgba(21,25,34,.94); border-color: #c9d0da; font-size: 15px;
   }
   /* フィールドカード：オーバーレイがイラストに被らないよう枠外へはみ出させる */
-  .battle-card.field-card { overflow: visible; }
+  .battle-card.field-card { overflow: visible; user-select: none; -webkit-user-select: none; }
   .battle-card.field-card .battle-card-cost {
-    top: -8px; left: -8px; min-width: 28px; min-height: 24px;
-    background: #2356a0; border-color: #a9cfff;
+    top: -8px; left: 2px; min-width: 28px; min-height: 24px;
+    background: #20a95a; border-color: #8ce8ae;
     box-shadow: 0 2px 6px rgba(0,0,0,0.5);
   }
   .battle-card.field-card .battle-card-attack {
-    top: -8px; right: -8px; min-width: 28px; min-height: 24px;
-    background: rgba(105,38,42,.96); border-color: #ffb8b0;
+    top: -8px; right: 2px; min-width: 28px; min-height: 24px;
+    background: #a82131; border-color: #ffb8b0;
     box-shadow: 0 2px 6px rgba(0,0,0,0.5);
   }
   .battle-card.field-card .battle-card-power {
-    left: 8px; right: 8px; bottom: -10px; min-height: 22px;
-    font-size: 13px;
+    left: 6px; right: 6px; bottom: 3px; min-height: 22px;
+    font-size: 13px; white-space: nowrap; padding: 2px 4px;
   }
   .battle-card.field-card[draggable="true"] { cursor: grab; }
   .battle-card.field-card[draggable="true"]:active { cursor: grabbing; }
@@ -2372,9 +2372,9 @@
     filter: drop-shadow(0 0 6px var(--guide-color, rgba(245, 202, 88, .9)));
   }
   .battle-target-kami {
-    outline: 3px solid rgba(255, 210, 76, .92);
+    outline: 3px solid rgba(214, 40, 56, .95);
     outline-offset: 2px;
-    box-shadow: 0 0 18px rgba(255, 210, 76, .55);
+    box-shadow: 0 0 18px rgba(214, 40, 56, .6);
   }
   .battle-target-legacy {
     outline: 3px solid rgba(255, 134, 64, .92);
@@ -2404,7 +2404,7 @@
   }
   .hand-cost-badge {
     top: -6px; left: -6px; min-width: 30px; min-height: 26px;
-    background: #2356a0; border-color: #a9cfff; font-size: clamp(11px, 0.95vw, 15px);
+    background: #20a95a; border-color: #8ce8ae; font-size: clamp(11px, 0.95vw, 15px);
     box-shadow: 0 2px 6px rgba(0,0,0,0.5);
   }
   .hand-playable { position: relative; overflow: visible; }
@@ -2412,7 +2412,7 @@
   .hand-disabled { opacity: .82; }
   .battle-center-col { justify-content: center; gap: 3px; }
   .kami-hud {
-    display: grid; grid-template-columns: 52px var(--kw) 80px;
+    display: grid; grid-template-columns: 80px var(--kw) 80px;
     align-items: end; justify-content: center; gap: 4px; width: 100%;
   }
   .kami-hud .kami-portrait { grid-column: 2; grid-row: 1; }
@@ -2431,7 +2431,7 @@
     width: 44px; margin: 0 auto;
   }
   .life-row .orb-max-controls {
-    position: absolute; left: calc(100% + 1px); top: 50%; transform: translateY(-50%);
+    position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
     flex-direction: column; gap: 0; margin: 0;
   }
   /* ===== カミ枠の段階表示（自分のみ）：通常=neutral, 神技1可=silver, 神技2可=gold点滅 ===== */
@@ -2472,7 +2472,7 @@
     border: 1px solid #7e94ba; background: #294c84; color: #fff; cursor: pointer;
     font-size: 12px; font-weight: 900;
   }
-  .orb-max-controls button { height: 12px; background: transparent; border: 0; color: #ff9a9f; }
+  .orb-max-controls button { width: 14px; height: 12px; background: transparent; border: 0; color: #ff9a9f; }
   .orb-value-controls button:hover { background: #3b68aa; }
   .kami-name {
     max-width: 100%; color: #d8deea; font-size: 11px; font-weight: 800;
@@ -2504,12 +2504,12 @@
 
   .battle-side { gap: 5px; }
   .mana-panel {
-    padding: 7px 6px; background: #182131; border: 1px solid #344157; border-radius: 6px;
-    display: flex; flex-direction: column; gap: 5px; flex-shrink: 0;
+    padding: 10px 6px; background: #182131; border: 1px solid #344157; border-radius: 6px;
+    display: flex; flex-direction: column; justify-content: space-evenly; gap: 6px; flex: 1 1 0;
   }
   .mana-head { display: flex; align-items: center; justify-content: space-between; color: #d6e5d9; font-size: 11px; font-weight: 900; }
   .mana-value { color: #82dfa3; font-size: 15px; }
-  .mana-orbs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; min-height: 17px; }
+  .mana-orbs { display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; row-gap: 14px; column-gap: 4px; min-height: 26px; }
   .mana-orb {
     width: 16px; height: 16px; border-radius: 50%; background: #747b85;
     border: 1px solid #a9afb8; justify-self: center; box-shadow: inset 0 0 4px rgba(0,0,0,.45);
@@ -2711,6 +2711,45 @@
     .battle-card-overlay { font-size: 11px; min-width: 25px; min-height: 22px; padding: 2px 5px; }
   }
 
+  /* ===== マリガン（引き直し）フェーズ ===== */
+  .battle-mulligan {
+    position: absolute; inset: 0; z-index: 60;
+    background: radial-gradient(circle at 50% 42%, rgba(40,30,55,0.92), rgba(8,8,14,0.96));
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .battle-mulligan .bm-inner { text-align: center; max-width: 96vw; }
+  .battle-mulligan .bm-firstside { font-size: 15px; letter-spacing: 0.12em; color: #8df; font-weight: 700; margin-bottom: 4px; }
+  .battle-mulligan .bm-title { font-size: 30px; font-weight: 800; color: #fff; letter-spacing: 0.08em; }
+  .battle-mulligan .bm-sub { font-size: 13px; color: #cbd; margin: 6px 0 18px; }
+  .battle-mulligan .bm-remain { color: #fc8; font-weight: 700; margin-left: 8px; }
+  .battle-mulligan .bm-hand { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 22px; }
+  .battle-mulligan .bm-card {
+    width: 150px; aspect-ratio: 744 / 1039; border-radius: 8px; position: relative; cursor: pointer;
+    background: #0a0c12 center / cover no-repeat; border: 2px solid #3a3f55;
+    transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+  }
+  .battle-mulligan .bm-card:hover { transform: translateY(-6px); border-color: #6c9; }
+  .battle-mulligan .bm-card.selected {
+    border-color: #f06a8a; box-shadow: 0 0 0 3px rgba(240,106,138,0.5);
+    filter: brightness(0.7) saturate(1.1); transform: translateY(4px);
+  }
+  .battle-mulligan .bm-card-badge {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    background: #c2445e; color: #fff; font-size: 13px; font-weight: 800;
+    padding: 4px 12px; border-radius: 14px; letter-spacing: 0.06em; white-space: nowrap;
+  }
+  .battle-mulligan .bm-card-name { position: absolute; left: 0; right: 0; bottom: 0; font-size: 11px; color: #ddd; background: rgba(0,0,0,0.7); padding: 2px; }
+  .battle-mulligan .bm-actions { display: flex; gap: 14px; justify-content: center; }
+  .battle-mulligan .bm-btn {
+    height: 48px; min-width: 180px; padding: 0 22px; border-radius: 26px;
+    font-size: 15px; font-weight: 700; cursor: pointer; border: 1px solid #555; color: #fff;
+    transition: background 0.12s, transform 0.1s;
+  }
+  .battle-mulligan .bm-keep { background: #2a3548; border-color: #4a5066; }
+  .battle-mulligan .bm-keep:hover { background: #3a4560; }
+  .battle-mulligan .bm-go { background: linear-gradient(135deg, #b23a5a, #d24a6a); border-color: #f06a8a; }
+  .battle-mulligan .bm-go:hover:not(:disabled) { background: linear-gradient(135deg, #c24a6a, #e25a7a); transform: translateY(-1px); }
+  .battle-mulligan .bm-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -2725,6 +2764,8 @@
       <button class="top-menu-btn game" @click="goToGame">🎴 4人対戦(β)</button>
       <button class="top-menu-btn shield" @click="goToShield">⚔ シールド戦</button>
       <button class="top-menu-btn" style="background:linear-gradient(135deg,#5a3030,#7a3050);border-color:#bb6a8a;" @click="goToBattle">⚔ 対戦画面(α)</button>
+      <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(true)">🌐 対戦テスト：作成（2人同期確認）</button>
+      <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(false)">🌐 対戦テスト：参加（コード入力）</button>
     </div>
     <div class="top-menu-footer">v{{ BUILD_VERSION }}</div>
   </div>
@@ -3138,7 +3179,6 @@
         <button class="back-to-top-btn" @click="goToTop">◀ トップ</button>
         <h2>⚔ シールド戦</h2>
         <span class="sp-phase-badge">{{ shieldPhaseLabel }}</span>
-        <span style="margin-left:auto;font-size:11px;color:#6c9;font-weight:700;letter-spacing:0.04em;">build {{ BUILD_VERSION }}</span>
         <button class="sp-close" @click="tryCloseShield" title="閉じる">✕</button>
       </div>
 
@@ -3456,17 +3496,46 @@
            }"></div>
       <div class="battle-header">
       <button class="battle-back-btn" @click="battleReturn">◀ {{ battleReturnLabel }}</button>
-      <button class="battle-surrender-btn" @click="battleSurrender">降参</button>
       <h2>⚔ 対戦画面</h2>
       <span class="battle-matchup">{{ battleContext.selfName }} vs {{ battleContext.oppName }}</span>
+      <span class="battle-phase">{{ battleContext.round ? 'ラウンド' + battleContext.round : battleContext.modeLabel }}</span>
+      <span class="battle-setup-note">マリガン 自分{{ battleContext.selfMulligans }}回/相手{{ battleContext.oppMulligans }}回</span>
+      <span class="spacer"></span>
       <button class="battle-undo-btn" @click="battleUndo" :disabled="!battleUndoStack.length"
               :title="battleUndoStack.length ? '直前の操作を取り消します' : '取り消す操作がありません'">
         ↶ 一手戻る<span v-if="battleUndoStack.length" class="undo-count">({{ battleUndoStack.length }})</span>
       </button>
-      <span class="battle-phase">{{ battleContext.round ? 'ラウンド' + battleContext.round : battleContext.modeLabel }}</span>
-      <span class="battle-setup-note">引き直し 自分{{ battleContext.selfMulligans }}回 / 相手{{ battleContext.oppMulligans }}回</span>
-      <span class="spacer"></span>
-      <span style="font-size:11px;color:#6c9;font-weight:700;letter-spacing:0.04em;">build {{ BUILD_VERSION }}</span>
+      <button class="battle-surrender-btn" @click="battleSurrender">降参</button>
+    </div>
+
+    <!-- ===== マリガン（引き直し）フェーズ ===== -->
+    <div v-if="battleMulligan" class="battle-mulligan">
+      <div class="bm-inner">
+        <div class="bm-firstside">{{ battleContext.firstSide === 'self' ? '▶ 先攻（ON THE PLAY）' : '▶ 後攻（ON THE DRAW）' }}</div>
+        <div class="bm-title">マリガン（引き直し）</div>
+        <div class="bm-sub">
+          引き直したいカードを選んで「引き直す」、または「この手札で開始」を押してください。
+          <span class="bm-remain">残り {{ battleMulligan.remaining }} 回</span>
+        </div>
+        <div class="bm-hand">
+          <div v-for="(card, i) in battleSample.self.hand" :key="'bm'+i"
+               class="bm-card" :class="{ selected: battleMulligan.selectedIdx.includes(i) }"
+               @click="battleToggleMulliganCard(i)"
+               @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
+               :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}">
+            <div v-if="battleMulligan.selectedIdx.includes(i)" class="bm-card-badge">引き直す</div>
+            <div v-if="!cardImageUrl(card)" class="bm-card-name">{{ fullName(card) }}</div>
+          </div>
+        </div>
+        <div class="bm-actions">
+          <button class="bm-btn bm-keep" @click="battleKeepHand">この手札で開始</button>
+          <button class="bm-btn bm-go"
+                  :disabled="!battleMulligan.selectedIdx.length || battleMulligan.remaining <= 0"
+                  @click="battleDoMulligan">
+            引き直す（{{ battleMulligan.selectedIdx.length }}枚）
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="battle-board">
@@ -3515,11 +3584,13 @@
             <span class="battle-zone-label">レリック(相手)</span>
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.opp.relics" :key="'or'+i"
-                   class="battle-card"
+                   class="battle-card field-card"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)"
-                   @mouseleave="hideCardHover"></div>
+                   @mouseleave="hideCardHover">
+                <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -3556,11 +3627,8 @@
                    class="battle-card field-card"
                    :class="{ tapped: card._tapped, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
-                   draggable="true"
-                   @dragstart="battleFieldDragStart('self','legacies',i,$event)"
-                   @drag="battleUpdateFieldAttackTarget($event)"
-                   @dragend="battleFieldDragEnd($event)"
-                   @click="openPreview(card)"
+                   @mousedown="battleFieldPointerDown('self','legacies',i,$event)"
+                   @click="battleFieldCardClick(card)"
                    @contextmenu.prevent="battleOpenFieldMenu('self','legacies',i,$event)"
                    @mouseenter="battleSetFieldHover('self','legacies',i,card,$event)"
                    @mouseleave="battleClearFieldHover('self','legacies',i)">
@@ -3583,14 +3651,12 @@
                    class="battle-card field-card"
                    :class="{ tapped: card._tapped, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
-                   draggable="true"
-                   @dragstart="battleFieldDragStart('self','relics',i,$event)"
-                   @drag="battleUpdateFieldAttackTarget($event)"
-                   @dragend="battleFieldDragEnd($event)"
-                   @click="openPreview(card)"
+                   @mousedown="battleFieldPointerDown('self','relics',i,$event)"
+                   @click="battleFieldCardClick(card)"
                    @contextmenu.prevent="battleOpenFieldMenu('self','relics',i,$event)"
                    @mouseenter="battleSetFieldHover('self','relics',i,card,$event)"
                    @mouseleave="battleClearFieldHover('self','relics',i)">
+                <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
               </div>
             </div>
           </div>
@@ -4908,6 +4974,13 @@ new Vue({
       selfName: '自分', oppName: '相手', firstSide: 'self',
       selfMulligans: 1, oppMulligans: 1,
     },
+    battleMulligan: null,    // マリガン（引き直し）フェーズ: { remaining, selectedIdx: [] } / null=フェーズ外
+    /* ===== 対戦オンライン同期 ===== */
+    battleNet: {
+      on: false, code: null, table: null, mySeat: null, oppSeat: null,
+      statePath: null, oppReady: false, _unsub: null, _wasActive: false,
+    },
+    _battleApplyingRemote: false,  // 鏡映適用中（watcherの再公開を抑止）
     battleZoneModal: null,   // { side, zone, cards }
     battleDeckModal: null,   // { side, action, cards, deckIndexes }
     deckMenuOpen: null,      // { side, x, y } — デッキクリックメニュー
@@ -4928,7 +5001,7 @@ new Vue({
     battlePendingEffects: [], // 効果キュー：[{ type, card, data, triggerLabel, paidCost }, ...]
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.13.10',
+    BUILD_VERSION: '1.13.11',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5969,7 +6042,7 @@ new Vue({
         selfKami: this.sbMySelectedKami, oppKami: this.sbOpponentSelectedKami,
       });
     },
-    _startGameBattle(firstSide) {
+    async _startGameBattle(firstSideIgnored) {
       const opponent = this.gsMyBattleOpponent;
       if (!opponent) return;
       const data = this.gs.data || {};
@@ -5977,19 +6050,68 @@ new Vue({
       const decks = data.decks || {};
       const rights = data.mulliganRights || {};
       const round = this.gsRound;
-      const myInfo = seats[this.gs.seat] || {};
-      const oppInfo = seats[opponent.seat] || {};
+      const mySeat = this.gs.seat, oppSeat = opponent.seat;
+      const code = this.gs.sessionCode;
+      // 卓を特定（ラウンドのペアリングから）
+      const pairs = (typeof PAIRINGS !== 'undefined' && PAIRINGS[round]) ? PAIRINGS[round] : [[1, 2], [3, 4]];
+      const table = pairs[0].map(String).includes(String(mySeat)) ? 1 : 2;
+      // 先攻をトランザクションで1回だけ決定して両者で共有
+      let firstSeat = mySeat;
+      try {
+        const ref = getDb().ref(`sessions/${code}/battle/${table}/firstSeat`);
+        const res = await ref.transaction(cur => (cur != null ? cur : (Math.random() < 0.5 ? mySeat : oppSeat)));
+        firstSeat = res.snapshot.val();
+      } catch (e) {}
+      const firstSide = String(firstSeat) === String(mySeat) ? 'self' : 'opp';
+      const myInfo = seats[mySeat] || {};
+      const oppInfo = seats[oppSeat] || {};
       this._battleInitialize({
         source: 'game', modeLabel: '4人対戦', returnView: 'game', round,
-        selfName: myInfo.name || `P${this.gs.seat}`,
-        oppName: oppInfo.name || opponent.name || `P${opponent.seat}`,
+        selfName: myInfo.name || `P${mySeat}`,
+        oppName: oppInfo.name || opponent.name || `P${oppSeat}`,
         firstSide, life: 10,
-        selfDeck: this.gsNorm(decks[this.gs.seat]).map(no => this.cardByNo[String(no)]).filter(Boolean),
-        oppDeck: this.gsNorm(decks[opponent.seat]).map(no => this.cardByNo[String(no)]).filter(Boolean),
-        selfKami: this.seatKamiCard(this.gs.seat), oppKami: this.seatKamiCard(opponent.seat),
-        selfMulligans: rights[this.gs.seat] ? 2 : 1,
-        oppMulligans: rights[opponent.seat] ? 2 : 1,
+        selfDeck: this.gsNorm(decks[mySeat]).map(no => this.cardByNo[String(no)]).filter(Boolean),
+        oppDeck: this.gsNorm(decks[oppSeat]).map(no => this.cardByNo[String(no)]).filter(Boolean),
+        selfKami: this.seatKamiCard(mySeat), oppKami: this.seatKamiCard(oppSeat),
+        selfMulligans: rights[mySeat] ? 2 : 1,
+        oppMulligans: rights[oppSeat] ? 2 : 1,
+        syncGame: true, code, table, mySeat, oppSeat,
       });
+    },
+    // 対戦テスト（2人同期確認用）: コード発行/参加で同期1v1へ直行（デモデッキ）
+    async startBattleTest(create) {
+      if (!this.allCards.length) { alert('カード読み込み中です。少し待って再度お試しください。'); return; }
+      let code;
+      if (create) {
+        code = generateRoomCode();
+      } else {
+        code = (window.prompt('対戦テストのコードを入力してください（作成側の対戦画面に表示されています）') || '').trim().toUpperCase();
+        if (!code) return;
+      }
+      const mySeat = create ? 1 : 2;
+      const oppSeat = create ? 2 : 1;
+      const table = 'test';
+      let firstSeat = mySeat;
+      try {
+        const ref = getDb().ref(`sessions/${code}/battle/${table}/firstSeat`);
+        const res = await ref.transaction(cur => (cur != null ? cur : (Math.random() < 0.5 ? mySeat : oppSeat)));
+        firstSeat = res.snapshot.val();
+      } catch (e) {}
+      const firstSide = String(firstSeat) === String(mySeat) ? 'self' : 'opp';
+      const demo = this.allCards.filter(c => !c.isToken && c.color !== '創').slice(0, 40);
+      const kamiA = this.allKamiCards[0] || null, kamiB = this.allKamiCards[1] || this.allKamiCards[0] || null;
+      this._battleInitialize({
+        source: 'game', modeLabel: create ? `対戦テスト ｜ コード ${code}` : '対戦テスト', returnView: 'top', round: null,
+        selfName: create ? 'プレイヤーA' : 'プレイヤーB', oppName: create ? 'プレイヤーB' : 'プレイヤーA',
+        firstSide, life: 8,
+        selfDeck: demo.slice(), oppDeck: demo.slice(),
+        selfKami: create ? kamiA : kamiB, oppKami: create ? kamiB : kamiA,
+        selfMulligans: 1, oppMulligans: 1,
+        syncGame: true, code, table, mySeat, oppSeat,
+      });
+      if (create) {
+        this.$nextTick(() => alert(`対戦テストのコード： ${code}\n\nもう一方のタブ（シークレットウィンドウ推奨）で「対戦テスト：参加」からこのコードを入力してください。\n（コードは対戦画面の上部にも表示されています）`));
+      }
     },
     _battleShuffle(cards) {
       const out = (cards || []).slice();
@@ -6049,7 +6171,125 @@ new Vue({
       this.shieldOpen = false;
       this.gameOpen = false;
       this.appView = 'battle';
-      this._battleStartTurnFor(firstSide);
+      // 4人対戦はオンライン同期、その他（シールド/プレビュー）はローカル
+      if (config.syncGame) this._battleSyncStart(config.code, config.table, config.mySeat, config.oppSeat);
+      else this._battleSyncStop();
+      // 対戦開始の最初の処理：マリガン（引き直し）フェーズへ。確定後にターン開始。
+      this.battleMulligan = { remaining: this.battleContext.selfMulligans || 1, selectedIdx: [] };
+    },
+    /* マリガン：引き直したいカードの選択トグル */
+    battleToggleMulliganCard(i) {
+      if (!this.battleMulligan) return;
+      const arr = this.battleMulligan.selectedIdx;
+      const pos = arr.indexOf(i);
+      if (pos >= 0) arr.splice(pos, 1);
+      else arr.push(i);
+    },
+    /* マリガン実行：選択カードをデッキへ戻し、同数を山上から引いてシャッフル */
+    battleDoMulligan() {
+      const m = this.battleMulligan;
+      if (!m || m.remaining <= 0) return;
+      const sel = m.selectedIdx.slice().sort((a, b) => a - b);
+      if (!sel.length) return;
+      const self = this.battleSample.self;
+      const selSet = new Set(sel);
+      const selectedCards = sel.map(i => self.hand[i]);
+      const kept = self.hand.filter((_, i) => !selSet.has(i));
+      const newCards = self.deck.splice(0, selectedCards.length);  // 山上から同数引く
+      self.deck.push(...selectedCards);                            // 選んだカードをデッキへ戻す
+      self.deck = this._battleShuffle(self.deck);                  // シャッフル
+      self.hand = kept.concat(newCards);
+      self.handCount = self.hand.length;
+      self.deckCount = self.deck.length;
+      m.remaining -= 1;
+      m.selectedIdx = [];
+      if (m.remaining <= 0) this.battleFinishMulligan();
+    },
+    /* マリガンせずこの手札で開始（任意でマリガン無し） */
+    battleKeepHand() { this.battleFinishMulligan(); },
+    /* マリガン確定 → ターン開始 */
+    battleFinishMulligan() {
+      this.battleMulligan = null;
+      this._battleStartTurnFor(this.battleContext.firstSide);
+    },
+
+    /* ===== 対戦オンライン同期（手番制権限・手札秘匿） ===== */
+    // サイドを同期用にシリアライズ（手札・山札はカードを送らず枚数のみ）
+    _battleSerializeSide(side) {
+      if (!side) return null;
+      const clone = JSON.parse(JSON.stringify(Object.assign({}, side, { hand: [], deck: [] })));
+      clone.handCount = (side.hand || []).length;
+      clone.deckCount = (side.deck || []).length;
+      return clone;
+    },
+    // 受信サイドを適用。preserveLocal=true なら自分の手札/山札はローカル保持。
+    _battleApplySide(targetKey, data, preserveLocal) {
+      if (!data) return;
+      const cur = this.battleSample[targetKey] || {};
+      const next = JSON.parse(JSON.stringify(data));
+      // 場のカードを cardByNo で補完（同期データが不完全でも描画が壊れない＆画像/ステータス確保）
+      const fix = (c) => (c && c.no != null) ? Object.assign({}, this.cardByNo[String(c.no)] || {}, c) : (c || null);
+      next.kami      = fix(next.kami);
+      next.legacies  = (next.legacies  || []).map(fix);
+      next.relics    = (next.relics    || []).map(fix);
+      next.graveyard = (next.graveyard || []).map(fix);
+      next.crumbled  = (next.crumbled  || []).map(fix);
+      if (preserveLocal) { next.hand = cur.hand || []; next.deck = cur.deck || []; }
+      else { next.hand = []; next.deck = []; }   // 相手の手札・山札は非公開（枚数のみ）
+      this.$set(this.battleSample, targetKey, next);
+    },
+    // 自分が手番中：盤面全体を共有状態へ公開（席キーで保存）
+    _battlePublishState() {
+      const n = this.battleNet;
+      if (!n.on || !n.statePath) return;
+      const bs = this.battleSample;
+      const sides = {};
+      sides[n.mySeat]  = this._battleSerializeSide(bs.self);
+      sides[n.oppSeat] = this._battleSerializeSide(bs.opp);
+      const activeSeat = bs.activeSide === 'self' ? n.mySeat : n.oppSeat;
+      try {
+        getDb().ref(n.statePath).set({
+          writer: n.mySeat, activeSeat, turn: bs.turn, result: bs.result || null, sides,
+        });
+      } catch (e) {}
+    },
+    // 共有状態を受信して鏡映（自分のwriteは無視＝writerガード）
+    _battleApplyRemoteState(state) {
+      const n = this.battleNet;
+      if (!state || !n.on) return;
+      if (String(state.writer) === String(n.mySeat)) return;  // 自分のエコーは無視
+      this._battleApplyingRemote = true;
+      const sides = state.sides || {};
+      this._battleApplySide('self', sides[n.mySeat], true);   // 自分席（手札/山札はローカル保持）
+      this._battleApplySide('opp',  sides[n.oppSeat], false); // 相手席
+      const activeSide = String(state.activeSeat) === String(n.mySeat) ? 'self' : 'opp';
+      this.$set(this.battleSample, 'activeSide', activeSide);
+      this.$set(this.battleSample, 'turn', state.turn || this.battleSample.turn);
+      this.$set(this.battleSample, 'result', state.result || null);
+      n._wasActive = (activeSide === 'self');
+      n.oppReady = true;
+      this.$nextTick(() => { this._battleApplyingRemote = false; });
+    },
+    _battleSyncStart(code, table, mySeat, oppSeat) {
+      this._battleSyncStop();
+      const path = `sessions/${code}/battle/${table}/state`;
+      this.battleNet = {
+        on: true, code, table, mySeat, oppSeat, statePath: path,
+        oppReady: false, _unsub: null, _wasActive: this.battleSample.activeSide === 'self',
+      };
+      if (this.battleSample.activeSide === 'self') this._battlePublishState();  // 先攻のみ初期公開
+      const ref = getDb().ref(path);
+      const handler = snap => this._battleApplyRemoteState(snap.val());
+      ref.on('value', handler);
+      this.battleNet._unsub = () => ref.off('value', handler);
+    },
+    _battleSyncStop() {
+      const n = this.battleNet;
+      if (n && n._unsub) { try { n._unsub(); } catch (e) {} }
+      this.battleNet = {
+        on: false, code: null, table: null, mySeat: null, oppSeat: null,
+        statePath: null, oppReady: false, _unsub: null, _wasActive: false,
+      };
     },
     battleReturn() {
       const decided = !!this.battleSample.result;
@@ -6159,7 +6399,7 @@ new Vue({
       bs.activeSide = nextSide;
       this._battleStartTurnFor(nextSide);
     },
-    /* ターン開始処理（マナ回復＋疲労ダメージ） */
+    /* ターン開始処理（アンタップ＋ドロー＋マナ回復＋疲労ダメージ） */
     _battleStartTurnFor(side) {
       const target = this.battleSample[side];
       // マナ最大値+1（上限10）→ 満タン回復
@@ -6167,6 +6407,11 @@ new Vue({
       target.mana    = target.manaMax;
       // 「自分ターンに1回、【選定】の値を＋1」系のブースト使用権を回復
       target.senteiBoostUsed = false;
+      // 自分フィールドのカードを全てアンタップ
+      this._battleUntapField(side);
+      // ターン開始ドロー（先攻プレイヤーの最初のターンだけ無し）
+      const isFirstPlayerFirstTurn = (this.battleSample.turn === 1 && side === this.battleContext.firstSide);
+      if (!isFirstPlayerFirstTurn) this._battleDrawForTurn(side);
       // 疲労ダメージ：ターン11以降に発生（11→1, 12→2, ...）
       // ※自分のターン番号に基づく。相手も同じ番号でダメージを受ける想定。
       const turn = this.battleSample.turn;
@@ -6175,6 +6420,26 @@ new Vue({
         target.life = Math.max(0, target.life - dmg);
       }
       this._battleCheckResult();
+    },
+    /* 指定サイドのフィールド（レガシー・レリック）を全てアンタップ */
+    _battleUntapField(side) {
+      const target = this.battleSample[side];
+      if (!target) return;
+      ['legacies', 'relics'].forEach(zone => {
+        (target[zone] || []).forEach(card => {
+          if (card && card._tapped) this.$set(card, '_tapped', false);
+        });
+      });
+    },
+    /* ターン開始ドロー（山札があれば1枚。同期で秘匿された相手山札はスキップ） */
+    _battleDrawForTurn(side) {
+      const target = this.battleSample[side];
+      if (!target || !Array.isArray(target.deck) || !target.deck.length) return;
+      const card = target.deck.shift();
+      if (!card) return;
+      if (!Array.isArray(target.hand)) target.hand = [];
+      target.hand.push(card);
+      this._battleSyncSideCounts(side);
     },
     _battleIsOrochiCard(kami) {
       return !!(kami && (kami.type === 'ヤマタノオロチ' || this.fullName(kami).includes('ヤマタノオロチ')));
@@ -6855,6 +7120,15 @@ new Vue({
       if (e.dataTransfer) {
         e.dataTransfer.effectAllowed = 'move';
         try { e.dataTransfer.setData('text/plain', `field:${zone}:${index}`); } catch (_) {}
+        // ドラッグ中のゴースト画像（カード）を透明にして引っ張り出さない＋描画負荷を下げる
+        try {
+          if (!this._emptyDragImg) {
+            const img = new Image();
+            img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+            this._emptyDragImg = img;
+          }
+          e.dataTransfer.setDragImage(this._emptyDragImg, 0, 0);
+        } catch (_) {}
       }
     },
     battleAttackDropTargetFromPoint(e) {
@@ -6894,7 +7168,7 @@ new Vue({
     },
     battleDragTargetColor(target) {
       if (!target) return 'rgba(230, 238, 255, .82)';
-      if (target.type === 'kami') return 'rgba(255, 210, 76, .95)';
+      if (target.type === 'kami') return 'rgba(214, 40, 56, .98)';
       if (target.type === 'legacy') return 'rgba(255, 134, 64, .95)';
       if (target.destination === 'hand') return 'rgba(82, 166, 255, .95)';
       if (target.destination === 'graveyard') return 'rgba(177, 109, 255, .95)';
@@ -6937,6 +7211,132 @@ new Vue({
       if (target.type === 'kami') this.battleResolveDivineAttack(drag.side, drag.index);
       else if (target.type === 'legacy') this.battleResolveLegacyBattle(drag.side, drag.index, 'opp', target.index);
       else if (target.type === 'move') this.battleAskFieldMoveConfirm(drag, target.destination);
+    },
+    /* ===== ポインタ方式のフィールドカード攻撃ドラッグ（ネイティブDnDより滑らか・軽量） ===== */
+    battleFieldPointerDown(side, zone, index, e) {
+      if (e.button !== 0) return; // 左クリックのみ
+      if (this.battleSample.result || side !== 'self' || !['legacies', 'relics'].includes(zone)) return;
+      const player = this.battleSample[side];
+      if (!player || !player[zone] || !player[zone][index]) return;
+      const rect = e.currentTarget && e.currentTarget.getBoundingClientRect ? e.currentTarget.getBoundingClientRect() : null;
+      const move = (ev) => this._battleFieldPointerMove(ev);
+      const up = (ev) => this._battleFieldPointerUp(ev);
+      this._fieldPointer = {
+        side, zone, index, active: false,
+        startX: e.clientX, startY: e.clientY,
+        sourceX: rect ? rect.left + rect.width / 2 : e.clientX,
+        sourceY: rect ? rect.top + rect.height / 2 : e.clientY,
+        move, up, rafId: 0, lastEvt: null,
+      };
+      window.addEventListener('mousemove', move, true);
+      window.addEventListener('mouseup', up, true);
+    },
+    _battleFieldActivateDrag() {
+      const p = this._fieldPointer;
+      if (!p) return;
+      p.active = true;
+      this.battleFieldDrag = { side: p.side, zone: p.zone, index: p.index, sourceX: p.sourceX, sourceY: p.sourceY };
+      this.battleFieldDragTarget = null;
+      this.hideCardHover();
+      this._battleBuildAttackTargetCache();
+    },
+    _battleFieldPointerMove(e) {
+      const p = this._fieldPointer;
+      if (!p) return;
+      if (!p.active) {
+        const dx = e.clientX - p.startX, dy = e.clientY - p.startY;
+        if (dx * dx + dy * dy < 25) return; // 5px しきい値を超えてからドラッグ開始
+        this._battleFieldActivateDrag();
+      }
+      p.lastEvt = { clientX: e.clientX, clientY: e.clientY };
+      if (!p.rafId) {
+        p.rafId = requestAnimationFrame(() => {
+          p.rafId = 0;
+          if (this._fieldPointer && p.lastEvt) this._battleFieldUpdateFromCache(p.lastEvt);
+        });
+      }
+    },
+    _battleFieldPointerUp(e) {
+      const p = this._fieldPointer;
+      if (!p) return;
+      window.removeEventListener('mousemove', p.move, true);
+      window.removeEventListener('mouseup', p.up, true);
+      if (p.rafId) { cancelAnimationFrame(p.rafId); p.rafId = 0; }
+      this._fieldPointer = null;
+      if (!p.active) return; // 動かなければクリック扱い → @click(プレビュー)に任せる
+      const target = this._battleAttackTargetFromCache(e.clientX, e.clientY);
+      const drag = this.battleFieldDrag;
+      this.battleFieldDrag = null;
+      this.battleFieldDragTarget = null;
+      this.battleDragGuide = null;
+      this._attackTargetCache = null;
+      // ドラッグ直後の click(プレビュー) を抑制
+      this._battleSuppressFieldClick = true;
+      setTimeout(() => { this._battleSuppressFieldClick = false; }, 0);
+      if (!drag || !target) return;
+      if (target.type === 'kami') this.battleResolveDivineAttack(drag.side, drag.index);
+      else if (target.type === 'legacy') this.battleResolveLegacyBattle(drag.side, drag.index, 'opp', target.index);
+      else if (target.type === 'move') this.battleAskFieldMoveConfirm(drag, target.destination);
+    },
+    battleFieldCardClick(card) {
+      if (this._battleSuppressFieldClick) return;
+      this.openPreview(card);
+    },
+    /* ドラッグ開始時に全ドロップ先の矩形を1度だけ取得（移動中はDOM計測せず軽量に判定） */
+    _battleBuildAttackTargetCache() {
+      const root = this.$el;
+      if (!root) { this._attackTargetCache = null; return; }
+      const rectOf = (sel) => { const el = root.querySelector(sel); return el ? el.getBoundingClientRect() : null; };
+      const canAttack = this.battleCanFieldDragToAttackTargets;
+      this._attackTargetCache = {
+        hand: rectOf('.self-hand-drop'),
+        graveyard: rectOf('.self-graveyard-drop'),
+        crumbled: rectOf('.self-crumbled-drop'),
+        kami: canAttack ? rectOf('.battle-row-opp-top .kami-portrait') : null,
+        oppLegacies: canAttack ? Array.from(root.querySelectorAll('.opp-legacy-target')).map(el => el.getBoundingClientRect()) : [],
+        oppLegacyZoneSingle: (canAttack && this.battleSample.opp.legacies.length === 1) ? rectOf('.battle-row-legacy .legacy-field') : null,
+      };
+    },
+    _battleAttackTargetFromCache(x, y) {
+      const c = this._attackTargetCache;
+      if (!c) return null;
+      const inR = (r) => r && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      if (inR(c.hand)) return { type: 'move', destination: 'hand' };
+      if (inR(c.graveyard)) return { type: 'move', destination: 'graveyard' };
+      if (inR(c.crumbled)) return { type: 'move', destination: 'crumbled' };
+      if (!this.battleCanFieldDragToAttackTargets) return null;
+      if (inR(c.kami)) return { type: 'kami' };
+      for (let i = 0; i < c.oppLegacies.length; i++) { if (inR(c.oppLegacies[i])) return { type: 'legacy', index: i }; }
+      if (inR(c.oppLegacyZoneSingle)) return { type: 'legacy', index: 0 };
+      return null;
+    },
+    _battleTargetRectFromCache(target) {
+      const c = this._attackTargetCache;
+      if (!c || !target) return null;
+      if (target.type === 'kami') return c.kami;
+      if (target.type === 'legacy') return c.oppLegacies[target.index] || c.oppLegacyZoneSingle;
+      if (target.destination === 'hand') return c.hand;
+      if (target.destination === 'graveyard') return c.graveyard;
+      if (target.destination === 'crumbled') return c.crumbled;
+      return null;
+    },
+    _battleFieldUpdateFromCache(e) {
+      const drag = this.battleFieldDrag;
+      if (!drag) return;
+      const target = this._battleAttackTargetFromCache(e.clientX, e.clientY);
+      this.battleFieldDragTarget = target
+        ? (target.type === 'kami' ? 'kami' : target.type === 'legacy' ? `legacy:${target.index}` : target.destination)
+        : null;
+      let tx = e.clientX, ty = e.clientY;
+      const r = this._battleTargetRectFromCache(target);
+      if (r) { tx = r.left + r.width / 2; ty = r.top + r.height / 2; }
+      const dx = tx - drag.sourceX, dy = ty - drag.sourceY;
+      const length = Math.max(16, Math.sqrt(dx * dx + dy * dy));
+      this.battleDragGuide = {
+        x: drag.sourceX, y: drag.sourceY - 2, length,
+        angle: Math.atan2(dy, dx) * 180 / Math.PI,
+        color: this.battleDragTargetColor(target),
+      };
     },
     battleAskFieldMoveConfirm(drag, destination) {
       const player = this.battleSample[drag.side];
@@ -9217,6 +9617,20 @@ new Vue({
     this.loadCardBack();
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("click", this.onWindowClick);
+    // 対戦オンライン同期：自分が手番中（＋手番を渡す瞬間）の盤面変化をFirebaseへ公開
+    this.$watch('battleSample', () => {
+      if (this._battleApplyingRemote) return;          // 鏡映適用中は再公開しない
+      const n = this.battleNet;
+      if (!n.on) return;
+      const active = this.battleSample.activeSide === 'self';
+      if (active || n._wasActive) {                    // 自分の手番の変化＋手番引き渡しを公開
+        clearTimeout(this._battlePubT);
+        this._battlePubT = setTimeout(() => this._battlePublishState(), 90);
+        n._wasActive = active;
+      }
+    }, { deep: true });
+    // 対戦画面を離れたら同期停止
+    this.$watch('appView', (v) => { if (v !== 'battle' && this.battleNet.on) this._battleSyncStop(); });
   },
   beforeDestroy() {
     window.removeEventListener("keydown", this.onKeyDown);
