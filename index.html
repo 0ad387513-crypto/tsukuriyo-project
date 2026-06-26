@@ -3829,7 +3829,7 @@
         <!-- 自分 デッキ・墓地・崩壊 -->
         <div class="dgc-stack">
           <div class="dgc-cell dgc-deck zone-deck"
-               @click="battleDraw('self')"
+               @click="battleAskDrawConfirm('self')"
                @contextmenu.prevent="deckClick('self', $event)">
             <div class="dgc-icon dgc-deck-icon">
               <div class="ddi-card ddi-card-1"></div>
@@ -5051,7 +5051,7 @@ new Vue({
     battlePendingEffects: [], // 効果キュー：[{ type, card, data, triggerLabel, paidCost }, ...]
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.13.13',
+    BUILD_VERSION: '1.13.14',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7006,6 +7006,8 @@ new Vue({
         this.battleSurrenderNow();
       } else if (modal.action === 'return') {
         this.battleReturnNow();
+      } else if (modal.action === 'drawDeck') {
+        this.battleDraw(modal.payload.side);
       }
     },
     /* 手札カード → 場/発動。マナ消費・昇華選択・オラクル演出を含む統合エントリ */
@@ -7946,9 +7948,9 @@ new Vue({
         if (!card) return;
         this.battleAskConfirm({
           action: 'discardHand',
-          title: '謇区惆繧貞｢灘慍縺ｸ騾√ｋ',
+          title: '手札を墓地へ送る',
           message: `「${this.fullName(card)}」を手札から墓地へ送ります。`,
-          confirmLabel: '蠅灘慍縺ｸ騾√ｋ',
+          confirmLabel: '墓地へ送る',
           cards: [card],
           payload: { index: idx },
         });
@@ -8183,6 +8185,26 @@ new Vue({
       if (!player) return;
       player.deckCount = player.deck.length;
       if (Array.isArray(player.hand)) player.handCount = player.hand.length;
+    },
+    battleAskDrawConfirm(side) {
+      if (this.battleSample.result) return;
+      if (side !== 'self') return;
+      const player = this.battleSample[side];
+      if (!player || !player.deck.length) {
+        this.battleNotice = {
+          title: 'デッキがありません',
+          message: 'ドローできるカードがありません。',
+        };
+        return;
+      }
+      this.battleAskConfirm({
+        action: 'drawDeck',
+        title: 'デッキからドロー',
+        message: 'デッキから1枚ドローします。',
+        confirmLabel: 'ドローする',
+        cards: [],
+        payload: { side },
+      });
     },
     battleDraw(side) {
       if (this.battleSample.result) return;
