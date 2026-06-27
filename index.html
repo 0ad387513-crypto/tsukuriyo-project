@@ -4071,6 +4071,45 @@
     </div>
 
     <!-- ===== フェイズ3：選定モーダル ===== -->
+    <!-- ===== DSL 対象選択モーダル ===== -->
+    <div v-if="dslTargetModal" class="battle-zone-modal" @click.self="dslCancelTargets">
+      <div class="battle-zone-modal-panel">
+        <h3 class="battle-zone-modal-title">
+          {{ dslTargetModal.sourceCard ? '「' + fullName(dslTargetModal.sourceCard) + '」' : '' }}
+          {{ dslTargetModal.prompt }}
+          <span style="font-size:12px;color:#9aa;font-weight:400;">
+            — {{ dslTargetModal.selected.length }} / {{ dslTargetModal.need }} 選択
+          </span>
+        </h3>
+        <div class="public-process-badge">両プレイヤーへの公開処理</div>
+        <div v-if="!dslTargetModal.candidates.length" class="battle-zone-modal-empty">対象のカードはありません</div>
+        <div v-else class="battle-zone-modal-grid">
+          <div v-for="(c, i) in dslTargetModal.candidates" :key="'dt'+i"
+               class="battle-deck-modal-card"
+               :class="{ selected: dslTargetModal.selected.includes(c) }">
+            <div class="battle-card"
+                 :style="cardImageUrl(c) ? { backgroundImage: 'url(' + cardImageUrl(c) + ')' } : {}"
+                 @click="openPreview(c)"
+                 @mouseenter="showCardHover(c, $event)"
+                 @mouseleave="hideCardHover"></div>
+            <button class="battle-deck-modal-pick" @click="dslToggleTarget(c)">
+              {{ dslTargetModal.selected.includes(c) ? '解除' : '選択' }}
+            </button>
+          </div>
+        </div>
+        <div class="battle-zone-modal-actions">
+          <button class="battle-back-btn"
+                  :disabled="dslTargetModal.candidates.length > 0 && dslTargetModal.selected.length === 0 && !dslTargetModal.canSkip"
+                  @click="dslResolveTargets">
+            決定（{{ dslTargetModal.selected.length }} / {{ dslTargetModal.need }}）
+          </button>
+          <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="dslCancelTargets">
+            キャンセル
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="battleSenteiModal" class="battle-zone-modal" @click.self="battleSenteiModal = null">
       <div class="battle-zone-modal-panel">
         <h3 class="battle-zone-modal-title">
@@ -5050,8 +5089,15 @@ new Vue({
     battleSenteiModal: null,  // { count, options, selected, sourceCard, triggerLabel }
     battlePendingEffects: [], // 効果キュー：[{ type, card, data, triggerLabel, paidCost }, ...]
 
+    /* ===== DSL効果エンジン（v1.14.0〜） ===== */
+    effectSpecs: {},          // No → spec オブジェクト（effect_spec.json から fetch）
+    effectSpecsReady: false,
+    dslTargetModal: null,     // { sourceCard, prompt, candidates, selected, need, onResolve }
+    _dslCurrentSource: null,  // 実行中のソースカード参照
+    _dslDeferred: null,       // 対象選択を待つPromiseのresolver
+
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.13.14',
+    BUILD_VERSION: '1.14.0',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6206,6 +6252,9 @@ new Vue({
       };
       this.battleUndoStack = [];
       this.battlePendingEffects = [];
+      this.dslTargetModal = null;
+      this._dslDeferred = null;
+      this._dslCurrentSource = null;
       this.battleSenteiModal = null;
       this.battleZoneModal = null;
       this.battleDeckModal = null;
@@ -6648,10 +6697,457 @@ new Vue({
         return card.color === c || card.type === c || card.category === c || card.subType === c || this.fullName(card).includes(c);
       });
     },
+    /* ===================================================================
+       DSL効果エンジン（Layer2 effectSpec実行器）— v1.14.0〜
+       handoff: dsl-prototype/index.html のロジックを本番盤面 battleSample に移植
+       =================================================================== */
+    async loadEffectSpecs() {
+      try {
+        const resp = await fetch('effect_spec.json', { cache: 'no-cache' });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        this.effectSpecs = await resp.json();
+        this.effectSpecsReady = true;
+        console.log('[DSL] effect_spec.json loaded:', Object.keys(this.effectSpecs).length, 'specs');
+      } catch (e) {
+        console.warn('[DSL] effect_spec.json 読み込み失敗:', e);
+        this.effectSpecs = {};
+        this.effectSpecsReady = false;
+      }
+    },
+    /* このカードに当該triggerのspec能力があるか */
+    dslHasSpecForTrigger(card, triggerLabel) {
+      if (!card || card.no == null) return false;
+      const spec = this.effectSpecs[String(card.no)];
+      if (!spec || !Array.isArray(spec.能力)) return false;
+      return spec.能力.some(ab => this._dslAbilityMatchesTrigger(ab, triggerLabel));
+    },
+    _dslAbilityMatchesTrigger(ab, triggerLabel) {
+      if (!ab) return false;
+      const tr = String(ab.契機 || '');
+      if (triggerLabel === '出現時') return /出現時/.test(tr) && !/進化中/.test(tr) || tr === '出現時';
+      if (triggerLabel === '死亡時') return /死亡時/.test(tr);
+      if (triggerLabel === '使用時') return /使用時/.test(tr);
+      if (triggerLabel === '神攻時') return /神攻時/.test(tr);
+      if (triggerLabel === '戦闘時') return /戦闘時/.test(tr);
+      if (triggerLabel === '常在')   return tr === '常在';
+      return tr === triggerLabel;
+    },
+    /* spec を実行（出現時/使用時 等のトリガーで呼ばれる） */
+    async dslRunSpec(card, triggerLabel = '出現時', paidCost = null) {
+      const spec = this.effectSpecs[String(card.no)];
+      if (!spec || !Array.isArray(spec.能力)) return false;
+      this._dslCurrentSource = card;
+      const baseCost = Math.max(0, Number(card.cost) || 0);
+      const sublimPaid = paidCost !== null ? Math.max(0, paidCost - baseCost) : 0;
+      let ran = false;
+      for (const ab of spec.能力) {
+        if (!this._dslAbilityMatchesTrigger(ab, triggerLabel)) continue;
+        // 昇華契機：sublim差額が cost.昇華 以上か
+        if (ab.契機 === '昇華') {
+          const need = (ab.コスト && ab.コスト.昇華) || 0;
+          if (sublimPaid < need) continue;
+        }
+        // 条件評価
+        if (ab.条件 && !this.dslEvalCond(ab.条件)) continue;
+        // 任意能力：今は確認なしで自動実行（後で確認モーダル化可）
+        // if (ab.任意) { /* 任意確認 */ }
+        ran = true;
+        try {
+          await this.dslRunActions(ab.処理 || [], card);
+        } catch (e) {
+          console.warn('[DSL] action実行エラー:', e, ab);
+          this.battleShowNotice('効果処理エラー', `「${this.fullName(card)}」の自動処理中にエラーが発生しました。手動で処理してください。`, [card]);
+          break;
+        }
+      }
+      return ran;
+    },
+    async dslRunActions(actions, sourceCard) {
+      for (const act of actions) {
+        await this.dslRunAction(act, sourceCard);
+      }
+    },
+    async dslRunAction(act, sourceCard) {
+      const op = act.操作 || act.op;
+      switch (op) {
+        case '付与':       return this._dslOpGrant(act, sourceCard, false);
+        case '静的バフ':   return this._dslOpGrant(act, sourceCard, true);
+        case '補正':       return this._dslOpGrant(act, sourceCard, false);
+        case '神威':       return this._dslOpGrant(act, sourceCard, false);
+        case '破壊':       return this._dslOpDestroy(act, sourceCard);
+        case 'ドロー':     return this._dslOpDraw(act);
+        case '天力':       return this._dslOpStat(act, 'tenryoku');
+        case 'ライフ':     return this._dslOpLife(act);
+        case 'マナ最大値': return this._dslOpManaMax(act);
+        case 'マナ回復':   return this._dslOpManaRefill(act);
+        case '手札に戻す': return this._dslOpReturnToHand(act, sourceCard);
+        case '崩壊':       return this._dslOpCrumble(act, sourceCard);
+        case '墓地送り':   return this._dslOpToGraveyard(act, sourceCard);
+        case 'タップ':     return this._dslOpTap(act, sourceCard, true);
+        case 'アンタップ': return this._dslOpTap(act, sourceCard, false);
+        case '招来':       return this._dslOpSummon(act, sourceCard);
+        case '誘':         return this._dslOpInduce(act, sourceCard);
+        case '霊視':       return this._dslOpReishi(act, sourceCard);
+        case '選定':       return this._dslOpSentei(act, sourceCard);
+        case '分岐':       return this._dslOpBranch(act, sourceCard);
+        case '選択':       return this._dslOpChoice(act, sourceCard);
+        default:
+          // 未対応op：手動フォールバック通知
+          this.battleShowNotice(
+            `自動処理未対応：${op}`,
+            `「${this.fullName(sourceCard)}」の効果「${op}」は自動処理未対応です。\n手動で処理してください。`,
+            [sourceCard]
+          );
+          return;
+      }
+    },
+
+    /* ---- 対象選択ヘルパ ---- */
+    _dslZoneOf(sel) {
+      const side = sel.対象側 === 'opp' ? 'opp' : 'self';
+      const z = sel.領域 || 'field';
+      const player = this.battleSample[side];
+      if (!player) return [];
+      if (z === 'field')     return [...(player.legacies || []), ...(player.relics || [])];
+      if (z === 'graveyard') return [...(player.graveyard || [])];
+      if (z === 'crumbled')  return [...(player.crumbled || [])];
+      if (z === 'hand')      return [...(player.hand || [])];
+      if (z === 'deck')      return [...(player.deck || [])];
+      return [];
+    },
+    _dslCardEffPower(card) {
+      const base = Number(card.power || 0);
+      const tmp  = Number(card._buf || 0);     // 一時補正（このターン）
+      const perm = Number(card._perm || 0);    // 恒常バフ
+      return base + tmp + perm;
+    },
+    _dslPassCompare(card, cmp) {
+      if (!cmp) return true;
+      let m;
+      if (m = String(cmp).match(/^powerLE:(\d+)$/)) return this._dslCardEffPower(card) <= +m[1];
+      if (m = String(cmp).match(/^powerGE:(\d+)$/)) return this._dslCardEffPower(card) >= +m[1];
+      if (m = String(cmp).match(/^costLE:(\d+)$/))  return (Number(card.cost) || 0) <= +m[1];
+      if (m = String(cmp).match(/^costGE:(\d+)$/))  return (Number(card.cost) || 0) >= +m[1];
+      if (cmp === 'tapped')   return !!card._tapped;
+      if (cmp === 'untapped') return !card._tapped;
+      // powerLT.self / powerGT.self / costLE:天力 等の動的比較は今回未対応 → true
+      return true;
+    },
+    _dslEligible(sel) {
+      const pool = this._dslZoneOf(sel);
+      const crit = sel.絞込 || [];
+      return pool.filter(c => this.battleCardMatchesInduceCriteria(c, crit) && this._dslPassCompare(c, sel.比較));
+    },
+    /* 汎用対象選択：プレイヤー手動 or 自動 */
+    dslChooseTargets(sel, promptLabel) {
+      if (!sel) return Promise.resolve([]);
+      // 自身指定
+      if (sel.自身) {
+        const src = this._dslCurrentSource;
+        return Promise.resolve(src ? [src] : []);
+      }
+      // 自陣全体
+      if (sel.自陣全体) {
+        return Promise.resolve(this._dslEligible(Object.assign({ 対象側: 'self', 領域: 'field' }, sel)));
+      }
+      const pool = this._dslEligible(sel);
+      const need = sel.枚数 === 'all' ? pool.length : (Number(sel.枚数) || 1);
+      if (pool.length === 0) return Promise.resolve([]);
+      // 自動／ランダム
+      if (sel.選択者 === 'auto' || sel.枚数 === 'all') return Promise.resolve(pool.slice(0, need));
+      if (sel.選択者 === 'random') {
+        const shuf = pool.slice().sort(() => Math.random() - 0.5);
+        return Promise.resolve(shuf.slice(0, need));
+      }
+      // プレイヤー手動：モーダル
+      return new Promise((resolve) => {
+        this.dslTargetModal = {
+          sourceCard: this._dslCurrentSource,
+          prompt: promptLabel || '対象を選択',
+          candidates: pool,
+          selected: [],
+          need: Math.min(need, pool.length),
+          canSkip: !!sel.任意,
+        };
+        this._dslDeferred = resolve;
+      });
+    },
+    /* 対象選択モーダルのトグル */
+    dslToggleTarget(card) {
+      const m = this.dslTargetModal;
+      if (!m) return;
+      const idx = m.selected.indexOf(card);
+      if (idx >= 0) { m.selected.splice(idx, 1); return; }
+      if (m.selected.length >= m.need) {
+        if (m.need === 1) { m.selected.splice(0, m.selected.length); m.selected.push(card); }
+        return;
+      }
+      m.selected.push(card);
+    },
+    dslResolveTargets() {
+      const m = this.dslTargetModal;
+      if (!m) return;
+      const sel = m.selected.slice();
+      const resolver = this._dslDeferred;
+      this.dslTargetModal = null;
+      this._dslDeferred = null;
+      if (resolver) resolver(sel);
+    },
+    dslCancelTargets() {
+      const resolver = this._dslDeferred;
+      this.dslTargetModal = null;
+      this._dslDeferred = null;
+      if (resolver) resolver([]);
+    },
+
+    /* ---- 条件評価器 ---- */
+    dslEvalCond(cond) {
+      if (!cond) return true;
+      if (cond === '既定') return true;
+      if (cond.and) return cond.and.every(c => this.dslEvalCond(c));
+      if (cond.or)  return cond.or.some(c => this.dslEvalCond(c));
+      if (cond.not) return !this.dslEvalCond(cond.not);
+      if (cond.計数) {
+        const n = this._dslEligible({
+          対象側: cond.計数.対象側, 領域: cond.計数.領域, 絞込: cond.計数.絞込, 比較: cond.計数.比較,
+        }).length;
+        return this._dslCompareNum(n, cond.比較, cond.値);
+      }
+      if (cond.状態 === '天力') return this._dslCompareNum(this.battleSample.self.tenryoku, cond.比較, cond.値);
+      if (cond.状態 === 'マナ最大値') return this._dslCompareNum(this.battleSample.self.manaMax, cond.比較, cond.値);
+      if (cond.状態 === 'ライフ') return this._dslCompareNum(this.battleSample.self.life, cond.比較, cond.値);
+      if (cond.状態) { console.warn('[DSL] 未対応状態条件:', cond.状態); return true; }
+      if (cond.存在) return this._dslEligible(cond.存在).length > 0;
+      if (cond.備考) { console.warn('[DSL] 備考条件は手動判定→真:', cond.備考); return true; }
+      return true;
+    },
+    _dslCompareNum(a, op, b) {
+      if (op === '>=') return a >= b;
+      if (op === '<=') return a <= b;
+      if (op === '==' || op === '=') return a === b;
+      if (op === '>')  return a > b;
+      if (op === '<')  return a < b;
+      return false;
+    },
+
+    /* ---- op実装 ---- */
+    _dslApplyGrant(card, grants, permanent) {
+      if (!card) return;
+      (grants || []).forEach(g => {
+        const s = String(g);
+        let m;
+        if (m = s.match(/^補正[:：]?([+\-]?\d+)$/)) {
+          this.$set(card, '_buf', (Number(card._buf) || 0) + Number(m[1]));
+        } else if (m = s.match(/^戦闘力([+\-]?\d+)\(恒常\)$/)) {
+          this.$set(card, '_perm', (Number(card._perm) || 0) + Number(m[1]));
+          this.$set(card, 'power', (Number(card.power) || 0) + Number(m[1]));
+        } else if (m = s.match(/^神攻力([+\-]?\d+)/)) {
+          this.$set(card, 'attack', (Number(card.attack) || 0) + Number(m[1]));
+        } else if (m = s.match(/^神威[:：]?([+\-]?\d+)/)) {
+          this.$set(card, 'attack', (Number(card.attack) || 0) + Number(m[1]));
+        } else {
+          // キーワード付与（奇襲・疾駆・守護・死角・不可侵・呪殺 等）
+          const list = Array.isArray(card._kwGrant) ? card._kwGrant.slice() : [];
+          if (!list.includes(s)) list.push(s);
+          this.$set(card, '_kwGrant', list);
+        }
+      });
+    },
+    async _dslOpGrant(act, sourceCard, permanent) {
+      const targets = await this.dslChooseTargets(act.対象, `【${(act.付与 || []).join('・')}】を付与`);
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(c => this._dslApplyGrant(c, act.付与, permanent));
+      this.battleShowNotice(
+        permanent ? '静的バフ（恒常）' : '付与（このターン）',
+        `${targets.map(c => `「${this.fullName(c)}」`).join('、')}に ${(act.付与 || []).join(' / ')} を付与しました。`,
+        targets
+      );
+    },
+    async _dslOpDestroy(act, sourceCard) {
+      const targets = await this.dslChooseTargets(act.対象, '破壊する対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(c => this._dslMoveFromField(c, 'graveyard'));
+      this.battleShowNotice('破壊', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を破壊しました。`, targets);
+    },
+    async _dslOpReturnToHand(act, sourceCard) {
+      const targets = await this.dslChooseTargets(act.対象, '手札に戻す対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      const side = (act.対象 && act.対象.対象側 === 'opp') ? 'opp' : 'self';
+      targets.forEach(c => this._dslMoveFromField(c, 'hand', side));
+      this.battleShowNotice('手札に戻す', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に戻しました。`, targets);
+    },
+    async _dslOpCrumble(act, sourceCard) {
+      const targets = await this.dslChooseTargets(act.対象, '崩壊させる対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(c => this._dslMoveFromField(c, 'crumbled'));
+      this.battleShowNotice('崩壊', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を崩壊させました。`, targets);
+    },
+    async _dslOpToGraveyard(act, sourceCard) {
+      const targets = await this.dslChooseTargets(act.対象, '墓地に送る対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(c => this._dslMoveFromField(c, 'graveyard'));
+      this.battleShowNotice('墓地送り', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を墓地に送りました。`, targets);
+    },
+    async _dslOpTap(act, sourceCard, doTap) {
+      const targets = await this.dslChooseTargets(act.対象, doTap ? 'タップする対象を選択' : 'アンタップする対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(c => this.$set(c, '_tapped', doTap));
+      this.battleShowNotice(doTap ? 'タップ' : 'アンタップ', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を${doTap ? 'タップ' : 'アンタップ'}しました。`, targets);
+    },
+    /* フィールドカードを別ゾーンへ移動（破壊・崩壊・手札戻し共通） */
+    _dslMoveFromField(card, destZone, forceSide) {
+      const sides = forceSide ? [forceSide] : ['self', 'opp'];
+      for (const side of sides) {
+        const p = this.battleSample[side];
+        if (!p) continue;
+        for (const zone of ['legacies', 'relics']) {
+          const arr = p[zone];
+          if (!Array.isArray(arr)) continue;
+          const idx = arr.indexOf(card);
+          if (idx >= 0) {
+            arr.splice(idx, 1);
+            this.$set(card, '_tapped', false);
+            this.$set(card, '_buf', 0);
+            if (destZone === 'hand') {
+              p.hand = p.hand || []; p.hand.push(card); p.handCount = p.hand.length;
+            } else if (destZone === 'graveyard') {
+              p.graveyard = p.graveyard || []; p.graveyard.push(card);
+            } else if (destZone === 'crumbled') {
+              p.crumbled = p.crumbled || []; p.crumbled.push(card);
+            }
+            return true;
+          }
+        }
+      }
+      return false;
+    },
+    _dslOpDraw(act) {
+      const n = Number(act.数 || 1);
+      const side = act.側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample[side];
+      if (!p) return;
+      this.battleSaveUndo();
+      for (let i = 0; i < n; i++) {
+        if (!p.deck || !p.deck.length) break;
+        const drawn = p.deck.shift();
+        if (side === 'self') { p.hand = p.hand || []; p.hand.push(drawn); p.handCount = p.hand.length; }
+        else { p.handCount = (p.handCount || 0) + 1; }
+      }
+      if (p.deck) p.deckCount = p.deck.length;
+      this.battleShowNotice('ドロー', `${side === 'opp' ? '相手' : '自分'}が ${n} 枚ドローしました。`);
+    },
+    _dslOpStat(act, key) {
+      const n = Number(act.数 || 0);
+      const side = act.側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample[side];
+      if (!p) return;
+      this.battleSaveUndo();
+      p[key] = Math.max(0, (Number(p[key]) || 0) + n);
+      this.battleShowNotice('天力変化', `${side === 'opp' ? '相手' : '自分'}の天力が ${n >= 0 ? '+' : ''}${n} (現在 ${p[key]})`);
+    },
+    _dslOpLife(act) {
+      const n = Number(act.数 || 0);
+      const side = act.側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample[side];
+      if (!p) return;
+      this.battleSaveUndo();
+      const max = Number(p.lifeMax || 10);
+      p.life = Math.max(0, Math.min(max, (Number(p.life) || 0) + n));
+      this.battleShowNotice('ライフ変化', `${side === 'opp' ? '相手' : '自分'}ライフ ${n >= 0 ? '+' : ''}${n}（現在 ${p.life}/${max}）`);
+      if (typeof this._battleCheckResult === 'function') this._battleCheckResult();
+    },
+    _dslOpManaMax(act) {
+      const n = Number(act.数 || 0);
+      const p = this.battleSample.self;
+      if (!p) return;
+      this.battleSaveUndo();
+      p.manaMax = Math.max(0, Math.min(10, (Number(p.manaMax) || 0) + n));
+      this.battleShowNotice('マナ最大値変化', `自分マナ最大値 ${n >= 0 ? '+' : ''}${n}（現在 ${p.manaMax}）`);
+    },
+    _dslOpManaRefill(act) {
+      const p = this.battleSample.self;
+      if (!p) return;
+      this.battleSaveUndo();
+      p.mana = p.manaMax;
+      this.battleShowNotice('マナ回復', `マナを最大値まで回復しました（${p.mana}/${p.manaMax}）。`);
+    },
+    /* 招来 → 既存モーダルへ橋渡し */
+    async _dslOpSummon(act, sourceCard) {
+      const target = act.対象 || act.招来 || {};
+      const targetText = target.名称 || target.種別 || (act.付与 && act.付与[0]) || '';
+      const count = Number(target.枚数 || act.数 || 1);
+      if (!targetText) {
+        this.battleShowNotice('招来：対象不明', '招来対象が指定されていません。手動で処理してください。', [sourceCard]);
+        return;
+      }
+      this.battleOpenAutoSummon(sourceCard, { targetText, count }, '出現時');
+    },
+    async _dslOpInduce(act, sourceCard) {
+      const target = act.対象 || {};
+      const count = Number(target.枚数 || act.数 || 1);
+      const criteria = target.絞込 || [];
+      const criteriaText = criteria.join('/');
+      this.battleOpenAutoInduce(sourceCard, { count, criteria, criteriaText }, '出現時');
+    },
+    async _dslOpReishi(act, sourceCard) {
+      const count = Number(act.数 || (act.対象 && act.対象.枚数) || 1);
+      this.battleOpenAutoReishi(sourceCard, { count }, '出現時');
+    },
+    async _dslOpSentei(act, sourceCard) {
+      const options = (act.選択肢 || act.options || []).map(o => typeof o === 'string' ? o : (o.説明 || JSON.stringify(o)));
+      const count = Number(act.数 || act.N || 1);
+      if (!options.length) {
+        this.battleShowNotice('選定：選択肢なし', 'specに選択肢が定義されていません。手動で処理してください。', [sourceCard]);
+        return;
+      }
+      this.battleOpenSentei(sourceCard, { count, options, sublimRules: [], paidCost: 0, baseCost: 0 }, '出現時');
+    },
+    async _dslOpBranch(act, sourceCard) {
+      for (const br of (act.分岐 || [])) {
+        if (this.dslEvalCond(br.条件)) {
+          await this.dslRunActions(br.処理 || [], sourceCard);
+          return;
+        }
+      }
+    },
+    async _dslOpChoice(act, sourceCard) {
+      // プレイヤーがA/Bを選ぶ。簡易実装：confirmで第1選択肢を採用するか問う
+      const opts = act.選択肢 || [];
+      if (!opts.length) return;
+      // 暫定：notice表示して自動的に最初の選択肢を実行（後で選択UIに拡張）
+      this.battleShowNotice('選択（簡易）', '複数選択肢の効果です。1番目の選択肢を自動実行します。詳細は手動で確認してください。', [sourceCard]);
+      await this.dslRunActions(opts[0].処理 || [], sourceCard);
+    },
+
+    /* ===================================================================
+       既存の効果キュー（Layer1：本文regex）
+       =================================================================== */
     battleRunEnterKeywordEffects(card, paidCost = null) {
+      // まずDSL spec があれば優先実行（出現時 or 使用時 or 昇華）
+      if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '出現時')) {
+        this.dslRunSpec(card, '出現時', paidCost);
+        // 昇華契機もspec側で同時走らせる
+        if (paidCost !== null) this.dslRunSpec(card, '昇華', paidCost);
+        return true;
+      }
+      if (this.effectSpecsReady && card.category === 'オラクル' && this.dslHasSpecForTrigger(card, '使用時')) {
+        this.dslRunSpec(card, '使用時', paidCost);
+        if (paidCost !== null) this.dslRunSpec(card, '昇華', paidCost);
+        return true;
+      }
       return this._battleQueueAndRunEffects(card, paidCost, '出現時');
     },
     battleRunDeathKeywordEffects(card) {
+      if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '死亡時')) {
+        this.dslRunSpec(card, '死亡時', null);
+        return true;
+      }
       return this._battleQueueAndRunEffects(card, null, '死亡時');
     },
     /* カード上のキーワード効果を全列挙してキューへ。1つずつ順に処理する */
@@ -10028,6 +10524,7 @@ new Vue({
     this.loadKamiImages();
     this.loadKamiIllustrations();
     this.loadCardBack();
+    this.loadEffectSpecs();
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("click", this.onWindowClick);
     // 対戦オンライン同期：自分が手番中（＋手番を渡す瞬間）の盤面変化をFirebaseへ公開
