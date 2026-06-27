@@ -3640,9 +3640,11 @@
         <div class="battle-row-legacy">
           <div class="battle-zone field legacy-field self-legacy-drop"
                :class="{ 'field-card-drop-ready': battleDragOverZone === 'legacies' && battleCanDropHandTo('legacies') }"
-               @dragover.prevent="battleUpdateDragOverZone($event)">
+               @dragover.prevent="battleUpdateDragOverZone($event)"
+               @contextmenu.self.prevent="battleOpenFieldZoneMenu('legacies', $event)">
             <span class="battle-zone-label">レガシー</span>
-            <div class="battle-card-row legacy-row">
+            <div class="battle-card-row legacy-row"
+                 @contextmenu.self.prevent="battleOpenFieldZoneMenu('legacies', $event)">
               <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
                    class="battle-card field-card"
                    :class="{ tapped: card._tapped, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i }"
@@ -3664,9 +3666,11 @@
         <div class="battle-row-self-bot">
           <div class="battle-zone field self-relic-drop"
                :class="{ 'field-card-drop-ready': battleDragOverZone === 'relics' && battleCanDropHandTo('relics') }"
-               @dragover.prevent="battleUpdateDragOverZone($event)">
+               @dragover.prevent="battleUpdateDragOverZone($event)"
+               @contextmenu.self.prevent="battleOpenFieldZoneMenu('relics', $event)">
             <span class="battle-zone-label">レリック</span>
-            <div class="battle-card-row">
+            <div class="battle-card-row"
+                 @contextmenu.self.prevent="battleOpenFieldZoneMenu('relics', $event)">
               <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i"
                    class="battle-card field-card"
                    :class="{ tapped: card._tapped, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i }"
@@ -4234,6 +4238,38 @@
           <button v-if="battleUndoStack.length" @click="battleUndo">一手戻る</button>
           <button @click="battleReturn">{{ battleReturnLabel }}へ戻る</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== フィールド空き部 右クリックメニュー（トークン招来） ===== -->
+  <div v-if="battleFieldZoneMenu" class="deck-context-menu"
+       :style="{ left: battleFieldZoneMenu.x + 'px', top: battleFieldZoneMenu.y + 'px' }"
+       @click.stop>
+    <button @click="battleFieldZoneMenuOpenPick">トークンを招来する</button>
+  </div>
+
+  <!-- ===== トークン招来 選択モーダル ===== -->
+  <div v-if="battleTokenPickModal" class="battle-zone-modal" @click.self="battleTokenPickModal = null">
+    <div class="battle-zone-modal-panel" style="max-width:680px;">
+      <h3 class="battle-zone-modal-title">
+        トークンを招来する
+        <span style="font-size:12px;color:#9aa;font-weight:400;">— {{ battleTokenPickModal.zone === 'relics' ? 'レリック' : 'レガシー' }}フィールドに配置</span>
+      </h3>
+      <div v-if="!battleTokenPickModal.candidates.length" class="battle-zone-modal-empty">対象のトークンが見つかりません</div>
+      <div v-else class="battle-zone-modal-grid">
+        <div v-for="c in battleTokenPickModal.candidates" :key="'tp'+c.no"
+             class="battle-deck-modal-card">
+          <div class="battle-card"
+               :style="cardImageUrl(c) ? { backgroundImage: 'url(' + cardImageUrl(c) + ')' } : {}"
+               @click="openPreview(c)"
+               @mouseenter="showCardHover(c, $event)"
+               @mouseleave="hideCardHover"></div>
+          <button class="battle-deck-modal-pick" @click="battleTokenPickPlace(c)">場に出す</button>
+        </div>
+      </div>
+      <div class="battle-zone-modal-actions">
+        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="battleTokenPickModal = null">キャンセル</button>
       </div>
     </div>
   </div>
@@ -5191,9 +5227,12 @@ new Vue({
     dslOptionalModal: null,   // { sourceCard, triggerLabel, summary, resolver }
     /* DSL：「選択」op専用モーダル */
     dslChoiceModal: null,     // { sourceCard, prompt, options, resolver }
+    /* フィールド空き部右クリック：トークン招来メニュー */
+    battleFieldZoneMenu: null, // { zone, x, y }
+    battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.5',
+    BUILD_VERSION: '1.14.6',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -9017,6 +9056,47 @@ new Vue({
       this.deckMenuOpen = { side, x, y };
       e.stopPropagation();   // window-click による即時クローズを防ぐ
     },
+    /* レガシー/レリックフィールドの空き部を右クリック：トークン招来メニュー */
+    battleOpenFieldZoneMenu(zone, e) {
+      if (this.battleSample.result) return;
+      const pad = 6;
+      const x = Math.min(e.clientX, window.innerWidth  - 220 - pad);
+      const y = Math.min(e.clientY, window.innerHeight - 80 - pad);
+      this.battleFieldZoneMenu = { zone, x, y };
+      e.stopPropagation();
+    },
+    battleFieldZoneMenuOpenPick() {
+      const m = this.battleFieldZoneMenu;
+      this.battleFieldZoneMenu = null;
+      if (!m) return;
+      // レガシーは No.181-185、レリックは No.186 を提示
+      const noRange = m.zone === 'relics' ? ['186'] : ['181','182','183','184','185'];
+      const candidates = noRange
+        .map(no => this.cardByNo[no])
+        .filter(Boolean);
+      if (!candidates.length) {
+        this.battleShowNotice('トークン招来', '対象のトークン (No.' + noRange.join(',') + ') が見つかりませんでした。カードデータの読み込み状況を確認してください。');
+        return;
+      }
+      this.battleTokenPickModal = { zone: m.zone, candidates };
+    },
+    battleTokenPickPlace(card) {
+      const modal = this.battleTokenPickModal;
+      this.battleTokenPickModal = null;
+      if (!modal || !card) return;
+      const zone = modal.zone;
+      const p = this.battleSample.self;
+      if (!p || !Array.isArray(p[zone])) return;
+      if (p[zone].length >= 7) {
+        this.battleShowNotice('フィールド上限です', `${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドには7枚まで配置できます。`, [card]);
+        return;
+      }
+      this.battleSaveUndo();
+      // 元のカードオブジェクトを共有しないよう浅いクローン（複数体出せる）
+      const clone = Object.assign({}, card);
+      p[zone].push(clone);
+      this.battleShowNotice('トークン招来', `「${this.fullName(card)}」を${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドに招来しました。`, [card]);
+    },
     battleOpenFieldMenu(side, zone, index, e) {
       if (this.battleSample.result) return;
       if (side !== 'self') return;
@@ -10286,6 +10366,8 @@ new Vue({
       if (e.key === "Escape") {
         // 上に重なっているものから順に閉じる
         if (this.battleFieldMenu)     this.battleFieldMenu = null;
+        else if (this.battleFieldZoneMenu) this.battleFieldZoneMenu = null;
+        else if (this.battleTokenPickModal) this.battleTokenPickModal = null;
         else if (this.battleHandMenu) this.battleHandMenu = null;
         else if (this.battleZoneCardMenu) this.battleZoneCardMenu = null;
         else if (this.deckMenuOpen)        this.deckMenuOpen = null;
@@ -10308,6 +10390,7 @@ new Vue({
       this.poolSortOpen = false;
       this.deckMenuOpen = null;   // 対戦画面：デッキ右クリックメニューを閉じる
       this.battleFieldMenu = null; // 対戦画面：フィールドカード右クリックメニューを閉じる
+      this.battleFieldZoneMenu = null;
       this.battleHandMenu = null;
       this.battleZoneCardMenu = null;
     },
