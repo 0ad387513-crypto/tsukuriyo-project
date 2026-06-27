@@ -2386,6 +2386,20 @@
     box-shadow: 0 2px 6px rgba(0,0,0,0.4);
     pointer-events: none; z-index: 4;
   }
+  .battle-card.field-card.effect-disabled {
+    filter: grayscale(0.65) brightness(0.78);
+    box-shadow: 0 0 0 2px #888, 0 0 10px rgba(120,120,120,.4);
+    position: relative;
+  }
+  .battle-card.field-card.effect-disabled::before {
+    content: '効果無効';
+    position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, #555, #333);
+    color: #fff; font-size: 10px; font-weight: 900; padding: 2px 8px;
+    border-radius: 8px; border: 1px solid #aaa; letter-spacing: .05em;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    pointer-events: none; z-index: 4;
+  }
   .battle-drag-guide {
     position: fixed;
     left: 0;
@@ -3674,7 +3688,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('legacies', $event)">
               <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, evolved: card._evolved, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i }"
+                   :class="{ tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','legacies',i,$event)"
                    @click="battleFieldCardClick(card)"
@@ -3700,7 +3714,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('relics', $event)">
               <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i }"
+                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','relics',i,$event)"
                    @click="battleFieldCardClick(card)"
@@ -5274,7 +5288,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.44',
+    BUILD_VERSION: '1.14.46',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7785,6 +7799,9 @@ new Vue({
       try {
         for (const ab of spec.能力) {
           if (!this._dslAbilityMatchesTrigger(ab, triggerLabel)) continue;
+          // 進化中代替：このカードが進化済の時、能力に進化中代替があれば差し替え扱いとしてスキップ
+          // （差し替え先の進化中・出現時 / 進化中 が別経路で発動するため）
+          if (ab.進化中代替 && card && card._evolved) continue;
           // 昇華契機：sublim差額が cost.昇華 以上か
           if (ab.契機 === '昇華') {
             const need = (ab.コスト && ab.コスト.昇華) || 0;
