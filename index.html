@@ -5251,7 +5251,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.35',
+    BUILD_VERSION: '1.14.36',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7509,6 +7509,13 @@ new Vue({
       return next;
     },
     async dslRunAction(act, sourceCard) {
+      if (!act) return;
+      if (act.条件 && !this.dslEvalCond(act.条件)) return;
+      if (act.任意) {
+        const summary = this._dslSummarizeActions([Object.assign({}, act, { 任意: false })]);
+        const ok = await this.dslAskOptional(sourceCard, '任意効果', summary);
+        if (!ok) return;
+      }
       const op = act.操作 || act.op;
       switch (op) {
         case '付与':       return this._dslOpGrant(act, sourceCard, false);
@@ -7869,6 +7876,15 @@ new Vue({
           .filter(Boolean));
         return ['赤', '青', '緑', '黄', '紫'].every(color => colors.has(color));
       }
+      if (/戻した/.test(s) && /3コスト以下/.test(s) && /神使レガシー/.test(s)) {
+        const returned = this._dslLastReturnedCards || [];
+        return returned.some(card =>
+          card &&
+          card.category === 'レガシー' &&
+          Number(card.cost || 0) <= 3 &&
+          this.battleCardMatchesInduceCriteria(card, ['神使レガシー'])
+        );
+      }
       return null;
     },
     _dslCompareNum(a, op, b) {
@@ -8114,6 +8130,7 @@ new Vue({
       this.battleSaveUndo();
       // 数参照用コンテキスト
       this._dslLastCrumbledCount = targets.length;
+      this._dslLastCrumbledCards = targets.slice();
       this._dslLastMovedCount = targets.length;
       targets.forEach(c => this._dslMoveFromField(c, 'crumbled'));
       this.battleShowNotice('崩壊', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を崩壊させました。`, targets);
@@ -8249,7 +8266,7 @@ new Vue({
       );
     },
     async _dslOpFreeUse(act, sourceCard) {
-      if (!act.対象 || act.対象.備考) {
+      if (!act.対象) {
         this.battleShowNotice(
           '無償使用：手動確認',
           `「${this.fullName(sourceCard)}」の無償使用対象を自動特定できませんでした。カード本文に従って手動で処理してください。`,
@@ -8257,8 +8274,9 @@ new Vue({
         );
         return;
       }
-      const sel = Object.assign({ 対象側: 'self', 領域: 'hand', 選択者: 'player', 枚数: 1 }, act.対象 || {});
-      const targets = await this.dslChooseTargets(sel, '無償使用するカードを選択');
+      const resolved = await this.dslResolveFreeUseTargets(act, sourceCard);
+      if (!resolved) return;
+      const { sel, targets } = resolved;
       if (!targets.length) return;
       const side = sel.対象側 === 'opp' ? 'opp' : 'self';
       const p = this.battleSample[side];
@@ -8302,6 +8320,36 @@ new Vue({
       if (used.length) {
         this.battleShowNotice('無償使用', `${used.map(c => `「${this.fullName(c)}」`).join('、')}をマナを支払わず使用しました。`, used);
       }
+    },
+    async dslResolveFreeUseTargets(act, sourceCard) {
+      const note = String(act.対象 && act.対象.備考 || '');
+      if (/崩壊した/.test(note) && /オラクル/.test(note)) {
+        const cards = (this._dslLastCrumbledCards || []).filter(card => card && card.category === 'オラクル');
+        if (!cards.length) {
+          this.battleShowNotice('無償使用：対象なし', '直前に崩壊したオラクルが見つかりませんでした。', sourceCard ? [sourceCard] : []);
+          return null;
+        }
+        return { sel: { 対象側: 'self', 領域: 'crumbled' }, targets: cards.slice(0, 1) };
+      }
+      if (/そのカード/.test(note)) {
+        const cards = (this._dslLastReturnedCards || []).filter(Boolean);
+        if (!cards.length) {
+          this.battleShowNotice('無償使用：対象なし', '直前に手札へ戻したカードが見つかりませんでした。', sourceCard ? [sourceCard] : []);
+          return null;
+        }
+        return { sel: { 対象側: 'self', 領域: 'hand' }, targets: cards.slice(0, 1) };
+      }
+      if (note) {
+        this.battleShowNotice(
+          '無償使用：手動確認',
+          `「${this.fullName(sourceCard)}」の無償使用対象を自動特定できませんでした。カード本文に従って手動で処理してください。`,
+          sourceCard ? [sourceCard] : []
+        );
+        return null;
+      }
+      const sel = Object.assign({ 対象側: 'self', 領域: 'hand', 選択者: 'player', 枚数: 1 }, act.対象 || {});
+      const targets = await this.dslChooseTargets(sel, '無償使用するカードを選択');
+      return { sel, targets };
     },
     async _dslOpCostChange(act, sourceCard) {
       const delta = Number(act.数 || 0);
