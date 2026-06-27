@@ -4071,6 +4071,53 @@
     </div>
 
     <!-- ===== フェイズ3：選定モーダル ===== -->
+    <!-- ===== αモード設定モーダル ===== -->
+    <div v-if="battleAlphaSetup" class="battle-zone-modal" @click.self="_battleCancelAlphaSetup">
+      <div class="battle-zone-modal-panel" style="max-width:560px;">
+        <h3 class="battle-zone-modal-title">対戦画面α 設定</h3>
+        <div style="display:flex;flex-direction:column;gap:14px;padding:8px 4px;">
+          <div>
+            <div style="color:#e8d4a0;font-weight:700;font-size:13px;margin-bottom:6px;">自分デッキの色</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              <label v-for="col in ['ミックス','赤','青','緑','黄','紫']" :key="'c'+col"
+                     style="cursor:pointer;padding:5px 12px;border-radius:4px;background:#232a3a;border:1px solid #3a4256;font-size:12px;"
+                     :style="battleAlphaSetup.selfColor === col ? 'background:#2a5cb8;border-color:#6090e0;color:#fff;' : ''">
+                <input type="radio" v-model="battleAlphaSetup.selfColor" :value="col" style="display:none;">
+                {{ col }}
+              </label>
+            </div>
+            <p style="font-size:11px;color:#9aa;margin:4px 0 0;">指定色で30枚揃わない場合は他色で補充されます</p>
+          </div>
+          <div>
+            <div style="color:#e8d4a0;font-weight:700;font-size:13px;margin-bottom:6px;">自分のカミ</div>
+            <select v-model="battleAlphaSetup.selfKamiNo" style="width:100%;padding:6px;background:#232a3a;border:1px solid #3a4256;color:#fff;border-radius:4px;">
+              <option v-for="k in battleAlphaSetup.kamiList" :key="'sk'+k.no" :value="String(k.no)">
+                {{ fullName(k) }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <div style="color:#e8d4a0;font-weight:700;font-size:13px;margin-bottom:6px;">相手のカミ</div>
+            <select v-model="battleAlphaSetup.oppKamiNo" style="width:100%;padding:6px;background:#232a3a;border:1px solid #3a4256;color:#fff;border-radius:4px;">
+              <option v-for="k in battleAlphaSetup.kamiList" :key="'ok'+k.no" :value="String(k.no)">
+                {{ fullName(k) }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#cbd3de;font-size:13px;">
+              <input type="checkbox" v-model="battleAlphaSetup.oppYorishiro">
+              相手フィールドにタップ済みのヨリシロを3体配置（戦闘検証用）
+            </label>
+          </div>
+        </div>
+        <div class="battle-zone-modal-actions">
+          <button class="battle-back-btn" style="background:#2a5cb8;border-color:#6090e0;color:#fff;" @click="_battleStartAlpha">対戦開始</button>
+          <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="_battleCancelAlphaSetup">キャンセル</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ===== DSL 対象選択モーダル ===== -->
     <div v-if="dslTargetModal" class="battle-zone-modal" @click.self="dslCancelTargets">
       <div class="battle-zone-modal-panel">
@@ -5091,13 +5138,16 @@ new Vue({
 
     /* ===== DSL効果エンジン（v1.14.0〜） ===== */
     effectSpecs: {},          // No → spec オブジェクト（effect_spec.json から fetch）
+    effectSpecsByName: {},    // 名称 → spec（同名カードを救うため）
     effectSpecsReady: false,
     dslTargetModal: null,     // { sourceCard, prompt, candidates, selected, need, onResolve }
     _dslCurrentSource: null,  // 実行中のソースカード参照
     _dslDeferred: null,       // 対象選択を待つPromiseのresolver
+    /* αモード設定 */
+    battleAlphaSetup: null,   // { selfColor, selfKamiNo, oppKamiNo, oppYorishiro }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.0',
+    BUILD_VERSION: '1.14.1',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6108,15 +6158,63 @@ new Vue({
       this.appView = 'cardlist';
     },
     goToBattle() {
-      const cards = this.allCards.filter(c => !c.isToken && !c.isKami && c.color !== '創');
+      // αモード設定モーダルを表示し、確定で _battleStartAlpha を呼ぶ
       const withIllust = this.allKamiCards.filter(k => this.hasKamiIllustration(k));
-      const kami = withIllust.length ? withIllust : this.allKamiCards;
+      const kamiList = withIllust.length ? withIllust : this.allKamiCards;
+      this.battleAlphaSetup = {
+        selfColor: 'ミックス',
+        selfKamiNo: kamiList[0] ? String(kamiList[0].no) : null,
+        oppKamiNo: (kamiList[1] || kamiList[0]) ? String((kamiList[1] || kamiList[0]).no) : null,
+        oppYorishiro: true,
+        kamiList,
+      };
+    },
+    _battleStartAlpha() {
+      const setup = this.battleAlphaSetup || {};
+      const color = setup.selfColor || 'ミックス';
+      const all = this.allCards.filter(c => !c.isToken && !c.isKami && c.color !== '創');
+      let selfPool;
+      if (color === 'ミックス') {
+        selfPool = all.slice(0, 30);
+      } else {
+        selfPool = all.filter(c => c.color === color);
+        if (selfPool.length < 30) {
+          // 不足分は他色で補う
+          const extra = all.filter(c => c.color !== color);
+          selfPool = selfPool.concat(extra).slice(0, 30);
+        } else {
+          selfPool = selfPool.slice(0, 30);
+        }
+      }
+      const oppPool = all.slice(30, 60);
+      const selfKami = this.allKamiCards.find(k => String(k.no) === String(setup.selfKamiNo)) || this.allKamiCards[0] || null;
+      const oppKami  = this.allKamiCards.find(k => String(k.no) === String(setup.oppKamiNo)) || this.allKamiCards[1] || this.allKamiCards[0] || null;
+      this.battleAlphaSetup = null;
       this._battleInitialize({
         source: 'preview', modeLabel: 'プレビュー', returnView: 'top',
         selfName: '自分', oppName: '相手', firstSide: 'self', life: 10,
-        selfDeck: cards.slice(0, 30), oppDeck: cards.slice(30, 60),
-        selfKami: kami[0] || null, oppKami: kami[1] || kami[0] || null,
+        selfDeck: selfPool, oppDeck: oppPool,
+        selfKami, oppKami,
       });
+      // 相手フィールドにタップ済みヨリシロを3体配置
+      if (setup.oppYorishiro) {
+        const yori = this.battleSummonCandidates('ヨリシロ');
+        if (yori && yori.length) {
+          const proto = yori[0];
+          const opp = this.battleSample && this.battleSample.opp;
+          if (opp && Array.isArray(opp.legacies)) {
+            for (let i = 0; i < 3; i++) {
+              const clone = Object.assign({}, proto, { _tapped: true, _alphaYori: true });
+              opp.legacies.push(clone);
+            }
+          }
+        } else {
+          this.battleShowNotice('ヨリシロ配置', 'ヨリシロのトークンデータが見つかりませんでした。');
+        }
+      }
+    },
+    _battleCancelAlphaSetup() {
+      this.battleAlphaSetup = null;
     },
     openBattleLaunch(source) {
       if (source === 'shield' && this.sb.phase !== 'complete') return;
@@ -6706,18 +6804,35 @@ new Vue({
         const resp = await fetch('effect_spec.json', { cache: 'no-cache' });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         this.effectSpecs = await resp.json();
+        // 名称→spec の逆引きマップを構築（同名カードを救う）
+        const byName = {};
+        for (const [no, spec] of Object.entries(this.effectSpecs)) {
+          if (spec && spec.名称) byName[spec.名称] = spec;
+        }
+        this.effectSpecsByName = byName;
         this.effectSpecsReady = true;
-        console.log('[DSL] effect_spec.json loaded:', Object.keys(this.effectSpecs).length, 'specs');
+        console.log('[DSL] effect_spec.json loaded:', Object.keys(this.effectSpecs).length, 'specs,', Object.keys(byName).length, 'unique names');
       } catch (e) {
         console.warn('[DSL] effect_spec.json 読み込み失敗:', e);
         this.effectSpecs = {};
+        this.effectSpecsByName = {};
         this.effectSpecsReady = false;
       }
     },
+    /* カード→spec（no優先、見つからなければ名前で検索） */
+    _dslGetSpec(card) {
+      if (!card) return null;
+      if (card.no != null) {
+        const byNo = this.effectSpecs[String(card.no)];
+        if (byNo) return byNo;
+      }
+      const nm = card.name || card.fullName;
+      if (nm && this.effectSpecsByName[nm]) return this.effectSpecsByName[nm];
+      return null;
+    },
     /* このカードに当該triggerのspec能力があるか */
     dslHasSpecForTrigger(card, triggerLabel) {
-      if (!card || card.no == null) return false;
-      const spec = this.effectSpecs[String(card.no)];
+      const spec = this._dslGetSpec(card);
       if (!spec || !Array.isArray(spec.能力)) return false;
       return spec.能力.some(ab => this._dslAbilityMatchesTrigger(ab, triggerLabel));
     },
@@ -6734,7 +6849,7 @@ new Vue({
     },
     /* spec を実行（出現時/使用時 等のトリガーで呼ばれる） */
     async dslRunSpec(card, triggerLabel = '出現時', paidCost = null) {
-      const spec = this.effectSpecs[String(card.no)];
+      const spec = this._dslGetSpec(card);
       if (!spec || !Array.isArray(spec.能力)) return false;
       this._dslCurrentSource = card;
       const baseCost = Math.max(0, Number(card.cost) || 0);
@@ -6808,7 +6923,16 @@ new Vue({
       const z = sel.領域 || 'field';
       const player = this.battleSample[side];
       if (!player) return [];
-      if (z === 'field')     return [...(player.legacies || []), ...(player.relics || [])];
+      if (z === 'field') {
+        // 絞込にレリック/レガシー指定があるかで対象ゾーンを判定
+        const crit = sel.絞込 || [];
+        const wantsLegacy = !crit.length || crit.some(c => /レガシー|カード$/.test(String(c)));
+        const wantsRelic  = crit.some(c => /レリック/.test(String(c)));
+        // デフォルト（絞込なし or レガシー系のみ）はレガシーのみ
+        if (wantsRelic && !wantsLegacy) return [...(player.relics || [])];
+        if (wantsRelic && wantsLegacy)  return [...(player.legacies || []), ...(player.relics || [])];
+        return [...(player.legacies || [])];
+      }
       if (z === 'graveyard') return [...(player.graveyard || [])];
       if (z === 'crumbled')  return [...(player.crumbled || [])];
       if (z === 'hand')      return [...(player.hand || [])];
@@ -6852,7 +6976,15 @@ new Vue({
       }
       const pool = this._dslEligible(sel);
       const need = sel.枚数 === 'all' ? pool.length : (Number(sel.枚数) || 1);
-      if (pool.length === 0) return Promise.resolve([]);
+      if (pool.length === 0) {
+        // 強制効果でも任意効果でも、対象なしは公開通知
+        this.battleShowNotice(
+          '対象なし',
+          `${promptLabel || '対象選択'} ：条件を満たすカードがフィールドにありません。効果は不発となります。`,
+          this._dslCurrentSource ? [this._dslCurrentSource] : []
+        );
+        return Promise.resolve([]);
+      }
       // 自動／ランダム
       if (sel.選択者 === 'auto' || sel.枚数 === 'all') return Promise.resolve(pool.slice(0, need));
       if (sel.選択者 === 'random') {
@@ -6937,7 +7069,10 @@ new Vue({
         const s = String(g);
         let m;
         if (m = s.match(/^補正[:：]?([+\-]?\d+)$/)) {
-          this.$set(card, '_buf', (Number(card._buf) || 0) + Number(m[1]));
+          // 一時補正：戦闘力表示も即時更新（ターン終了時のリセットは将来対応）
+          const delta = Number(m[1]);
+          this.$set(card, '_buf', (Number(card._buf) || 0) + delta);
+          this.$set(card, 'power', (Number(card.power) || 0) + delta);
         } else if (m = s.match(/^戦闘力([+\-]?\d+)\(恒常\)$/)) {
           this.$set(card, '_perm', (Number(card._perm) || 0) + Number(m[1]));
           this.$set(card, 'power', (Number(card.power) || 0) + Number(m[1]));
