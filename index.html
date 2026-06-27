@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.8',
+    BUILD_VERSION: '1.14.9',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7056,8 +7056,15 @@ new Vue({
       return ran;
     },
     async dslRunActions(actions, sourceCard) {
-      for (const act of actions) {
-        await this.dslRunAction(this.dslApplySublimAlternative(act), sourceCard);
+      const prevLastAction = this._dslLastAction;
+      try {
+        for (const act of actions) {
+          const resolved = this.dslApplySublimAlternative(act);
+          await this.dslRunAction(resolved, sourceCard);
+          this._dslLastAction = resolved;
+        }
+      } finally {
+        this._dslLastAction = prevLastAction;
       }
     },
     dslApplySublimAlternative(act) {
@@ -7111,6 +7118,8 @@ new Vue({
         case 'サーチ':     return this._dslOpSearch(act, sourceCard);
         case '手札に加える': return this._dslOpAddToHand(act, sourceCard);
         case 'デッキ墓地送り': return this._dslOpMillDeck(act, sourceCard);
+        case '再発動':     return this._dslOpRepeat(act, sourceCard);
+        case '効果倍化':   return this._dslOpEffectMultiplier(act, sourceCard);
         default:
           // 未対応op：手動フォールバック通知
           this.battleShowNotice(
@@ -7366,12 +7375,36 @@ new Vue({
         }
       });
     },
+    dslDynamicStaticGrants(act, sourceSide) {
+      const grants = Array.isArray(act.付与) ? act.付与.slice() : [];
+      const ref = String(act.数参照 || '');
+      const bs = this.battleSample;
+      if (!bs) return grants;
+      const side = sourceSide || 'self';
+      const player = bs[side] || {};
+      const relicCount = Array.isArray(player.relics) ? player.relics.length : 0;
+      const manaMax = Number(player.manaMax) || 0;
+      return grants.map(g => {
+        const s = String(g);
+        let m;
+        if ((/レリック/.test(ref) || /レリック数/.test(s)) && (m = s.match(/戦闘力([+\-]?\d+)×レリック数/))) {
+          const delta = (Number(m[1]) || 0) * relicCount;
+          return `戦闘力${delta >= 0 ? '+' : ''}${delta}(恒常)`;
+        }
+        if ((/マナ最大値/.test(ref) || /マナ最大値/.test(s)) && (m = s.match(/戦闘力([+\-]?\d+)×マナ最大値/))) {
+          const delta = (Number(m[1]) || 0) * manaMax;
+          return `戦闘力${delta >= 0 ? '+' : ''}${delta}(恒常)`;
+        }
+        return s;
+      });
+    },
     dslApplyStaticActions(actions, sourceCard, sourceSide) {
       (actions || []).forEach(act => {
         const op = act.操作 || act.op;
         if (op === '付与' || op === '静的バフ' || op === '補正' || op === '神威') {
           const targets = this.dslStaticEligible(act.対象 || { 自身: true }, sourceCard, sourceSide);
-          targets.forEach(t => this.dslApplyStaticGrant(t, act.付与 || []));
+          const grants = this.dslDynamicStaticGrants(act, sourceSide);
+          targets.forEach(t => this.dslApplyStaticGrant(t, grants));
         } else if (op === '分岐') {
           for (const br of (act.分岐 || [])) {
             if (!br.条件 || this.dslEvalCond(br.条件)) {
@@ -7715,6 +7748,35 @@ new Vue({
       p.deckCount = p.deck.length;
       this.dslRefreshStaticAbilities();
       this.battleShowNotice('デッキ墓地送り', `デッキ上から${milled.length}枚を墓地に送りました。`, milled);
+    },
+    async _dslOpRepeat(act, sourceCard) {
+      const target = String(act.対象 || '');
+      if (/このカードの出現時効果/.test(target)) {
+        if (sourceCard && sourceCard._dslRepeatingEnter) return;
+        if (sourceCard) this.$set(sourceCard, '_dslRepeatingEnter', true);
+        try {
+          await this.dslRunSpec(sourceCard, '出現時', this._dslSublimPaid || 0);
+        } finally {
+          if (sourceCard) this.$set(sourceCard, '_dslRepeatingEnter', false);
+        }
+        return;
+      }
+      if (/直前/.test(target) && this._dslLastAction) {
+        await this.dslRunAction(Object.assign({}, this._dslLastAction), sourceCard);
+        return;
+      }
+      this.battleShowNotice(
+        '再発動は手動確認',
+        `「${this.fullName(sourceCard)}」の再発動対象を自動判定できませんでした。必要に応じて手動で処理してください。`,
+        sourceCard ? [sourceCard] : []
+      );
+    },
+    _dslOpEffectMultiplier(act, sourceCard) {
+      this.battleShowNotice(
+        '効果倍化は手動確認',
+        `「${this.fullName(sourceCard)}」の効果倍化は、対象となる効果の発動時に手動で追加処理してください。`,
+        sourceCard ? [sourceCard] : []
+      );
     },
 
     /* ===================================================================
