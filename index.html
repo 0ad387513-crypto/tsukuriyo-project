@@ -6158,16 +6158,22 @@ new Vue({
       this.appView = 'cardlist';
     },
     goToBattle() {
-      // αモード設定モーダルを表示し、確定で _battleStartAlpha を呼ぶ
-      const withIllust = this.allKamiCards.filter(k => this.hasKamiIllustration(k));
-      const kamiList = withIllust.length ? withIllust : this.allKamiCards;
-      this.battleAlphaSetup = {
-        selfColor: 'ミックス',
-        selfKamiNo: kamiList[0] ? String(kamiList[0].no) : null,
-        oppKamiNo: (kamiList[1] || kamiList[0]) ? String((kamiList[1] || kamiList[0]).no) : null,
-        oppYorishiro: true,
-        kamiList,
-      };
+      console.log('[αsetup] goToBattle clicked. allKamiCards length=', (this.allKamiCards || []).length);
+      try {
+        const withIllust = (this.allKamiCards || []).filter(k => k && this.hasKamiIllustration && this.hasKamiIllustration(k));
+        const kamiList = withIllust.length ? withIllust : (this.allKamiCards || []);
+        this.battleAlphaSetup = {
+          selfColor: 'ミックス',
+          selfKamiNo: kamiList[0] ? String(kamiList[0].no) : null,
+          oppKamiNo: (kamiList[1] || kamiList[0]) ? String((kamiList[1] || kamiList[0]).no) : null,
+          oppYorishiro: true,
+          kamiList,
+        };
+        console.log('[αsetup] modal set, kamiList=', kamiList.length);
+      } catch (e) {
+        console.error('[αsetup] goToBattle error:', e);
+        alert('対戦画面α起動エラー：' + e.message);
+      }
     },
     _battleStartAlpha() {
       const setup = this.battleAlphaSetup || {};
