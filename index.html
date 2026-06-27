@@ -5148,7 +5148,7 @@ new Vue({
     battleAlphaSetup: null,   // { selfColor, selfKamiNo, oppKamiNo, oppYorishiro }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.3',
+    BUILD_VERSION: '1.14.4',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6604,10 +6604,79 @@ new Vue({
         endingPlayer.seal -= 1;
         this._battleHandleSealThreshold(endingSide, previousSeal, endingPlayer.seal);
       }
+      // 自分ターン終了時：このターン適用された【補正】を巻き戻し、戦闘力0以下のレガシーを破壊
+      this._battleExpireBuffsForSide(endingSide, bs.turn);
+      this._battleCheckDestroyZeroPower();
       const nextSide = bs.activeSide === 'self' ? 'opp' : 'self';
       if (nextSide === this.battleContext.firstSide) bs.turn += 1;
       bs.activeSide = nextSide;
       this._battleStartTurnFor(nextSide);
+    },
+    /* 当該side+turn で適用された一時補正を巻き戻す（戦闘力表示・_buf を復元） */
+    _battleExpireBuffsForSide(side, turn) {
+      const bs = this.battleSample;
+      if (!bs) return;
+      const expired = [];
+      ['self', 'opp'].forEach(s => {
+        const p = bs[s];
+        if (!p) return;
+        ['legacies', 'relics'].forEach(zone => {
+          const arr = p[zone];
+          if (!Array.isArray(arr)) return;
+          arr.forEach(card => {
+            const entries = Array.isArray(card._bufTurns) ? card._bufTurns : null;
+            if (!entries || !entries.length) return;
+            const keep = [];
+            let removedDelta = 0;
+            entries.forEach(e => {
+              if (e && e.side === side && e.turn === turn) {
+                removedDelta += Number(e.delta) || 0;
+              } else {
+                keep.push(e);
+              }
+            });
+            if (removedDelta !== 0) {
+              this.$set(card, '_bufTurns', keep);
+              this.$set(card, '_buf', (Number(card._buf) || 0) - removedDelta);
+              this.$set(card, 'power', (Number(card.power) || 0) - removedDelta);
+              expired.push(this.fullName(card));
+            }
+          });
+        });
+      });
+      if (expired.length) {
+        this.battleShowNotice('補正の効果が終了', `${expired.join('、')}に付与されていた【補正】の効果が終了しました。`);
+      }
+    },
+    /* 戦闘力0以下のレガシーを破壊（補正巻き戻し直後等に呼ぶ） */
+    _battleCheckDestroyZeroPower() {
+      const bs = this.battleSample;
+      if (!bs) return;
+      const destroyed = [];
+      ['self', 'opp'].forEach(s => {
+        const p = bs[s];
+        if (!p || !Array.isArray(p.legacies)) return;
+        const survivors = [];
+        p.legacies.forEach(card => {
+          // power は ベース＋_buf(一時)＋_perm(恒常) を反映済み（_dslApplyGrant で直接 card.power を更新）
+          const pw = Number(card.power);
+          if (!isNaN(pw) && pw <= 0) {
+            // 破壊：墓地へ
+            this.$set(card, '_tapped', false);
+            this.$set(card, '_buf', 0);
+            p.graveyard = p.graveyard || [];
+            p.graveyard.push(card);
+            destroyed.push({ side: s, name: this.fullName(card), card });
+          } else {
+            survivors.push(card);
+          }
+        });
+        if (survivors.length !== p.legacies.length) p.legacies = survivors;
+      });
+      if (destroyed.length) {
+        const lines = destroyed.map(d => `${d.side === 'self' ? '自分' : '相手'}の「${d.name}」`).join('、');
+        this.battleShowNotice('戦闘力0以下で破壊', `${lines}は戦闘力が0以下になったため破壊されました。`, destroyed.map(d => d.card));
+      }
     },
     /* ターン開始処理（アンタップ＋ドロー＋マナ回復＋疲労ダメージ） */
     _battleStartTurnFor(side) {
@@ -7076,8 +7145,13 @@ new Vue({
         const s = String(g);
         let m;
         if (m = s.match(/^補正[:：]?([+\-]?\d+)$/)) {
-          // 一時補正：戦闘力表示も即時更新（ターン終了時のリセットは将来対応）
+          // 一時補正：適用ターン＋適用者を記録（ターン終了時に巻き戻すため）
           const delta = Number(m[1]);
+          const applierSide = (this.battleSample && this.battleSample.activeSide) || 'self';
+          const turn = (this.battleSample && this.battleSample.turn) || 1;
+          const entries = Array.isArray(card._bufTurns) ? card._bufTurns.slice() : [];
+          entries.push({ side: applierSide, turn, delta });
+          this.$set(card, '_bufTurns', entries);
           this.$set(card, '_buf', (Number(card._buf) || 0) + delta);
           this.$set(card, 'power', (Number(card.power) || 0) + delta);
         } else if (m = s.match(/^戦闘力([+\-]?\d+)\(恒常\)$/)) {
@@ -7105,6 +7179,8 @@ new Vue({
         `${targets.map(c => `「${this.fullName(c)}」`).join('、')}に ${(act.付与 || []).join(' / ')} を付与しました。`,
         targets
       );
+      // 補正/静的バフでマイナスを受けて戦闘力0以下になったら即破壊
+      this._battleCheckDestroyZeroPower();
     },
     async _dslOpDestroy(act, sourceCard) {
       const targets = await this.dslChooseTargets(act.対象, '破壊する対象を選択');
