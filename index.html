@@ -5288,7 +5288,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.45',
+    BUILD_VERSION: '1.14.46',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7799,6 +7799,9 @@ new Vue({
       try {
         for (const ab of spec.能力) {
           if (!this._dslAbilityMatchesTrigger(ab, triggerLabel)) continue;
+          // 進化中代替：このカードが進化済の時、能力に進化中代替があれば差し替え扱いとしてスキップ
+          // （差し替え先の進化中・出現時 / 進化中 が別経路で発動するため）
+          if (ab.進化中代替 && card && card._evolved) continue;
           // 昇華契機：sublim差額が cost.昇華 以上か
           if (ab.契機 === '昇華') {
             const need = (ab.コスト && ab.コスト.昇華) || 0;
