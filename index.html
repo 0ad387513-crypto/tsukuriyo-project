@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.13',
+    BUILD_VERSION: '1.14.14',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7182,6 +7182,7 @@ new Vue({
         case '効果倍化':   return this._dslOpEffectMultiplier(act, sourceCard);
         case '種族追加':   return this._dslOpAddType(act, sourceCard);
         case '拘束':       return this._dslOpBind(act, sourceCard);
+        case '傀儡化':     return this._dslOpPuppet(act, sourceCard);
         default:
           // 未対応op：手動フォールバック通知
           this.battleShowNotice(
@@ -7608,6 +7609,43 @@ new Vue({
         this.$set(card, '_bindUntilTurn', this._battleBindingTurnForSide(side));
       });
       this.battleShowNotice('拘束', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}をタップし、次の対象側ターン終了時までアンタップできなくしました。`, targets);
+    },
+    async _dslOpPuppet(act, sourceCard) {
+      const selector = Object.assign({ 対象側: 'opp', 領域: 'field', 絞込: ['レガシー'], 枚数: 1, 選択者: 'player' }, act.対象 || {});
+      const targets = await this.dslChooseTargets(selector, '傀儡化する相手レガシーを選択');
+      if (!targets.length) return;
+      const self = this.battleSample.self;
+      const opp = this.battleSample.opp;
+      if (!self || !opp || !Array.isArray(self.legacies) || !Array.isArray(opp.legacies)) return;
+      if (self.legacies.length + targets.length > 7) {
+        this.battleShowNotice('フィールド上限です', `自分のレガシーフィールドには7枚まで配置できます。傀儡化する枚数を減らしてください。`, targets);
+        return;
+      }
+      this.battleSaveUndo();
+      const moved = [];
+      targets.forEach(card => {
+        const idx = opp.legacies.indexOf(card);
+        if (idx < 0) return;
+        opp.legacies.splice(idx, 1);
+        this.dslClearStaticFromCard(card);
+        this.$set(card, '_tapped', false);
+        this.$set(card, '_bindUntilSide', null);
+        this.$set(card, '_bindUntilTurn', null);
+        const grants = Array.isArray(card._kwGrant) ? card._kwGrant.slice() : [];
+        if (!grants.includes('疾駆')) grants.push('疾駆');
+        this.$set(card, '_kwGrant', grants);
+        this.$set(card, '_puppeted', true);
+        self.legacies.push(card);
+        moved.push(card);
+      });
+      if (!moved.length) return;
+      this.dslRefreshStaticAbilities();
+      const extra = act.期間 || (Array.isArray(act.付与) ? act.付与.join(' / ') : '');
+      this.battleShowNotice(
+        '傀儡化',
+        `${moved.map(c => `「${this.fullName(c)}」`).join('、')}を自分の場へ移し、アンタップして【疾駆】を付与しました。${extra ? `\n追加の期間処理: ${extra}` : ''}`,
+        moved
+      );
     },
     /* フィールドカードを別ゾーンへ移動（破壊・崩壊・手札戻し共通） */
     _dslMoveFromField(card, destZone, forceSide) {
