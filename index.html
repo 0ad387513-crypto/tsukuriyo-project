@@ -5251,7 +5251,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.33',
+    BUILD_VERSION: '1.14.34',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6488,7 +6488,7 @@ new Vue({
         name, life, lifeMax: life, mana: 0, manaMax: 0, tenryoku: 0,
         seal: isOrochi ? 8 : null, sealRewards: { four: false, zero: false },
         hand, handCount: hand.length, kami: kami || null, deck, relics: [], legacies: [],
-        deckCount: deck.length, graveyard: [], crumbled: [],
+        deckCount: deck.length, graveyard: [], crumbled: [], tempCostMods: [],
         senteiBoostUsed: false,
         kamiTriggerCounts: {},   // 天力トリガー：各ターンの発動回数管理（K5/K6/K7/K8/K9）
       };
@@ -7146,6 +7146,14 @@ new Vue({
           delta += Number(mod.delta) || 0;
         });
       });
+      ['self', 'opp'].forEach(ownerSide => {
+        const player = this.battleSample[ownerSide] || {};
+        const mods = Array.isArray(player.tempCostMods) ? player.tempCostMods : [];
+        mods.forEach(mod => {
+          if (!this.battleCostModMatches(card, mod, side, mod.sourceSide || ownerSide)) return;
+          delta += Number(mod.delta) || 0;
+        });
+      });
       return delta;
     },
     battleCostModMatches(card, mod, side = 'self', sourceSide = 'self') {
@@ -7157,6 +7165,26 @@ new Vue({
       if (/オラクル/.test(note) && card.category !== 'オラクル') return false;
       const criteria = Array.isArray(mod.criteria) ? mod.criteria : [];
       return !criteria.length || this.battleCardMatchesInduceCriteria(card, criteria);
+    },
+    battleAddTempCostMod(side, mod) {
+      const player = this.battleSample && this.battleSample[side];
+      if (!player) return;
+      const mods = Array.isArray(player.tempCostMods) ? player.tempCostMods.slice() : [];
+      mods.push(Object.assign({ once: true, sourceSide: side }, mod || {}));
+      this.$set(player, 'tempCostMods', mods);
+    },
+    battleConsumeTempCostMods(side, card) {
+      const player = this.battleSample && this.battleSample[side];
+      if (!player || !Array.isArray(player.tempCostMods) || !player.tempCostMods.length) return 0;
+      let consumed = 0;
+      const remaining = player.tempCostMods.filter(mod => {
+        if (!mod.once) return true;
+        const matches = this.battleCostModMatches(card, mod, side, mod.sourceSide || side);
+        if (matches) consumed++;
+        return !matches;
+      });
+      if (consumed) this.$set(player, 'tempCostMods', remaining);
+      return consumed;
     },
     battleSublimDeltaForCard(card) {
       if (!card) return 0;
@@ -8233,6 +8261,22 @@ new Vue({
       const delta = Number(act.数 || 0);
       const target = act.対象 || {};
       if (target.備考 && !target.自身) {
+        const note = String(target.備考 || '');
+        if (/次/.test(note)) {
+          this.battleSaveUndo();
+          this.battleAddTempCostMod('self', {
+            delta,
+            note,
+            criteria: Array.isArray(target.絞込) ? target.絞込.slice() : [],
+            sourceName: this.fullName(sourceCard),
+          });
+          this.battleShowNotice(
+            'コスト変更',
+            `次に条件を満たすカードを使う時、コストを ${delta >= 0 ? '+' : ''}${delta} します。`,
+            sourceCard ? [sourceCard] : []
+          );
+          return;
+        }
         this.battleShowNotice(
           'コスト変更：手動確認',
           `「${this.fullName(sourceCard)}」のコスト変更（${delta >= 0 ? '+' : ''}${delta}）は、対象指定が文章形式のため手動で確認してください。`,
@@ -9505,6 +9549,7 @@ new Vue({
       }
       this.battleSaveUndo();
       player.mana = Math.max(0, player.mana - cost);
+      this.battleConsumeTempCostMods('self', card);
       player.hand.splice(index, 1);
       player.graveyard.push(card);
       player.handCount = player.hand.length;
@@ -9543,6 +9588,7 @@ new Vue({
       }
       this.battleSaveUndo();
       player.mana = Math.max(0, player.mana - cost);
+      this.battleConsumeTempCostMods('self', card);
       player.hand.splice(index, 1);
       const fieldCard = this._battlePrepareFieldCard(card);
       if (evolveBase) {
