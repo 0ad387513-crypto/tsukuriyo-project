@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.24',
+    BUILD_VERSION: '1.14.25',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6434,6 +6434,7 @@ new Vue({
         hand, handCount: hand.length, kami: kami || null, deck, relics: [], legacies: [],
         deckCount: deck.length, graveyard: [], crumbled: [],
         senteiBoostUsed: false,
+        kamiTriggerCounts: {},   // 天力トリガー：各ターンの発動回数管理（K5/K6/K7/K8/K9）
       };
     },
     _battleInitialize(config) {
@@ -6690,6 +6691,10 @@ new Vue({
         target.seal = Math.max(0, Math.min(8, next));
         this._battleHandleSealThreshold(side, previous, target.seal);
       }
+      // 天力トリガー（K6 アメノウズメ）：手動操作でもライフ/マナ/マナ最大値が増加したら発火
+      if ((key === 'life' || key === 'mana' || key === 'manaMax') && delta > 0 && target[key] > previous) {
+        this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: key, n: target[key] - previous });
+      }
       this._battleCheckResult();
     },
     /* ターン終了：手番を相手に渡す
@@ -6697,6 +6702,141 @@ new Vue({
        - マナを最大値まで回復
        - ターン11以降は疲労ダメージ（11→1, 12→2, ...）
        先攻プレイヤーへ手番が戻る際にターン番号を+1。 */
+    /* ===================================================================
+       天力トリガー（カミ K1〜K9 の受動能力）
+       =================================================================== */
+    _battleKamiNo(side) {
+      const k = this.battleSample && this.battleSample[side] && this.battleSample[side].kami;
+      return k && k.no != null ? String(k.no) : null;
+    },
+    _battleKamiCanTrigger(side, eventKey, max) {
+      const p = this.battleSample[side];
+      if (!p) return false;
+      const counts = p.kamiTriggerCounts || (p.kamiTriggerCounts = {});
+      return Number(counts[eventKey] || 0) < max;
+    },
+    _battleKamiMarkTriggered(side, eventKey) {
+      const p = this.battleSample[side];
+      if (!p) return;
+      const counts = p.kamiTriggerCounts || (p.kamiTriggerCounts = {});
+      this.$set(p, 'kamiTriggerCounts', Object.assign({}, counts, { [eventKey]: Number(counts[eventKey] || 0) + 1 }));
+    },
+    _battleKamiGainTenryoku(side, n, reason) {
+      const p = this.battleSample[side];
+      if (!p || !n) return;
+      p.tenryoku = (Number(p.tenryoku) || 0) + n;
+      const kamiName = p.kami ? this.fullName(p.kami) : 'カミ';
+      this.battleShowNotice(
+        `天力トリガー：${reason}`,
+        `${side === 'opp' ? '相手' : '自分'}のカミ「${kamiName}」の効果で天力 +${n}（現在 ${p.tenryoku}）`,
+        p.kami ? [p.kami] : []
+      );
+    },
+    _battleHasOwnDuplicateLegacy(side) {
+      const p = this.battleSample[side];
+      if (!p) return false;
+      const counts = new Map();
+      const collect = (arr) => {
+        (arr || []).forEach(c => {
+          if (!c || c.isToken) return;
+          if ((c.category || '') !== 'レガシー') return;
+          const nm = this.fullName(c);
+          counts.set(nm, (counts.get(nm) || 0) + 1);
+        });
+      };
+      collect(p.legacies); collect(p.graveyard);
+      for (const [, n] of counts) { if (n >= 2) return true; }
+      return false;
+    },
+    _battleCountFieldRaces(side) {
+      const p = this.battleSample[side];
+      if (!p || !Array.isArray(p.legacies)) return 0;
+      const races = new Set();
+      p.legacies.forEach(c => { if (c && c.type) races.add(String(c.type)); });
+      return races.size;
+    },
+    _battleHasHighestPowerOnField(side) {
+      let maxP = -Infinity;
+      let ownerOnSide = false;
+      ['self', 'opp'].forEach(s => {
+        const p = this.battleSample[s];
+        if (!p || !Array.isArray(p.legacies)) return;
+        p.legacies.forEach(c => {
+          const pw = Number(c.power) || 0;
+          if (pw > maxP) maxP = pw;
+        });
+      });
+      if (maxP === -Infinity) return false;
+      const sp = this.battleSample[side];
+      if (!sp || !Array.isArray(sp.legacies)) return false;
+      return sp.legacies.some(c => (Number(c.power) || 0) === maxP);
+    },
+    _battleCardHasGuard(card) {
+      if (!card) return false;
+      const txt = this.battleCardRulesText ? this.battleCardRulesText(card) : '';
+      if (/【守護】|守護/.test(txt)) return true;
+      const kw = Array.isArray(card._kwGrant) ? card._kwGrant : [];
+      return kw.some(k => /守護/.test(String(k)));
+    },
+    /* 統一発火関数：カミ別ハンドラに振り分け */
+    battleFireKamiEvent(side, eventType, payload) {
+      if (!this.battleSample) return;
+      const kno = this._battleKamiNo(side);
+      if (!kno) return;
+      switch (kno) {
+        case 'K1': // スサノオ：進化または昇華したとき
+          if (eventType === 'evolveOrSublim') this._battleKamiGainTenryoku(side, 1, '進化または昇華');
+          return;
+        case 'K2': // ヤマトタケル：自ターン終了時、自フィールド+墓地に同名レガシーなし
+          if (eventType === 'turnEnd' && !this._battleHasOwnDuplicateLegacy(side)) {
+            this._battleKamiGainTenryoku(side, 1, '同名レガシーなし');
+          }
+          return;
+        case 'K3': // オオクニヌシ：自ターン終了時、自陣種族数で天力獲得
+          if (eventType === 'turnEnd') {
+            const races = this._battleCountFieldRaces(side);
+            if (races >= 3)      this._battleKamiGainTenryoku(side, 2, `自陣種族数 ${races}`);
+            else if (races >= 2) this._battleKamiGainTenryoku(side, 1, `自陣種族数 ${races}`);
+          }
+          return;
+        case 'K4': // タケミカヅチ：自ターン終了時、戦闘力最大レガシーを自分が所持
+          if (eventType === 'turnEnd' && this._battleHasHighestPowerOnField(side)) {
+            this._battleKamiGainTenryoku(side, 1, '戦闘力最大レガシーを所持');
+          }
+          return;
+        case 'K5': // オモイカネ：オラクル/レリック使用時（各ターン2回）
+          if (eventType === 'playOracleOrRelic' && this._battleKamiCanTrigger(side, 'K5', 2)) {
+            this._battleKamiMarkTriggered(side, 'K5');
+            this._battleKamiGainTenryoku(side, 1, 'オラクル/レリック使用');
+          }
+          return;
+        case 'K6': // アメノウズメ：マナフェイズ以外でマナ最大値/マナ/ライフ増加（各ターン2回）
+          if (eventType === 'manaOrLifeIncreased' && !this._battleInManaPhase && this._battleKamiCanTrigger(side, 'K6', 2)) {
+            this._battleKamiMarkTriggered(side, 'K6');
+            this._battleKamiGainTenryoku(side, 1, 'マナ/ライフ増加');
+          }
+          return;
+        case 'K7': // ヒノカグツチ：レガシー破壊時（各ターン2回）
+          if (eventType === 'legacyDestroyed' && this._battleKamiCanTrigger(side, 'K7', 2)) {
+            this._battleKamiMarkTriggered(side, 'K7');
+            this._battleKamiGainTenryoku(side, 1, 'レガシー破壊');
+          }
+          return;
+        case 'K8': // アマテラス：守護を持つ自分レガシーが1枚出たとき（各ターン2回）
+          if (eventType === 'guardLegacyPlayed' && this._battleKamiCanTrigger(side, 'K8', 2)) {
+            this._battleKamiMarkTriggered(side, 'K8');
+            this._battleKamiGainTenryoku(side, 1, '守護レガシー登場');
+          }
+          return;
+        case 'K9': // ツクヨミ：自分フィールドにトークンが1枚出たとき（各ターン2回）
+          if (eventType === 'tokenPlayed' && this._battleKamiCanTrigger(side, 'K9', 2)) {
+            this._battleKamiMarkTriggered(side, 'K9');
+            this._battleKamiGainTenryoku(side, 1, 'トークン登場');
+          }
+          return;
+      }
+    },
+
     battleEndTurn() {
       if (this.battleSample.result) return;
       this.battleSaveUndo();
@@ -6713,6 +6853,8 @@ new Vue({
       this._battleExpireBindingsForSide(endingSide, bs.turn);
       this._battleExpireEffectDisablesForSide(endingSide, bs.turn);
       this._battleCheckDestroyZeroPower();
+      // 天力トリガー（ターン終了系：K2 ヤマトタケル / K3 オオクニヌシ / K4 タケミカヅチ）
+      this.battleFireKamiEvent(endingSide, 'turnEnd', {});
       const nextSide = bs.activeSide === 'self' ? 'opp' : 'self';
       if (nextSide === this.battleContext.firstSide) bs.turn += 1;
       bs.activeSide = nextSide;
@@ -6787,16 +6929,25 @@ new Vue({
         const lines = destroyed.map(d => `${d.side === 'self' ? '自分' : '相手'}の「${d.name}」`).join('、');
         this.battleShowNotice('戦闘力0以下で破壊', `${lines}は戦闘力が0以下になったため破壊されました。`, destroyed.map(d => d.card));
         this.dslRefreshStaticAbilities();
+        // 天力トリガー：レガシー破壊（K7）— 破壊された各カードについて両サイドに通知
+        destroyed.forEach(d => {
+          this.battleFireKamiEvent('self', 'legacyDestroyed', { card: d.card });
+          this.battleFireKamiEvent('opp', 'legacyDestroyed', { card: d.card });
+        });
       }
     },
     /* ターン開始処理（アンタップ＋ドロー＋マナ回復＋疲労ダメージ） */
     _battleStartTurnFor(side) {
       const target = this.battleSample[side];
+      // マナフェイズ中はK6（アメノウズメ）等の「マナ/ライフ増加」トリガーを抑止
+      this._battleInManaPhase = true;
       // マナ最大値+1（上限10）→ 満タン回復
       target.manaMax = Math.min(10, target.manaMax + 1);
       target.mana    = target.manaMax;
       // 「自分ターンに1回、【選定】の値を＋1」系のブースト使用権を回復
       target.senteiBoostUsed = false;
+      // 天力トリガーの各ターン回数カウンタをリセット
+      target.kamiTriggerCounts = {};
       // 自分フィールドのカードを全てアンタップ
       this._battleUntapField(side);
       // ターン開始ドロー（先攻プレイヤーの最初のターンだけ無し）
@@ -6810,6 +6961,7 @@ new Vue({
         target.life = Math.max(0, target.life - dmg);
       }
       this._battleCheckResult();
+      this._battleInManaPhase = false;
     },
     /* 指定サイドのフィールド（レガシー・レリック）を全てアンタップ */
     _battleUntapField(side) {
@@ -8159,6 +8311,11 @@ new Vue({
             } else if (destZone === 'crumbled') {
               p.crumbled = p.crumbled || []; p.crumbled.push(card);
             }
+            // 天力トリガー：レガシー破壊（K7 ヒノカグツチ）— 墓地行きのみ・レガシーのみ
+            if (destZone === 'graveyard' && zone === 'legacies') {
+              this.battleFireKamiEvent(side, 'legacyDestroyed', { card });
+              this.battleFireKamiEvent(side === 'self' ? 'opp' : 'self', 'legacyDestroyed', { card });
+            }
             this.dslRefreshStaticAbilities();
             return true;
           }
@@ -8203,6 +8360,8 @@ new Vue({
       p.life = Math.max(0, Math.min(max, (Number(p.life) || 0) + n));
       this.battleShowNotice('ライフ変化', `${side === 'opp' ? '相手' : '自分'}ライフ ${n >= 0 ? '+' : ''}${n}（現在 ${p.life}/${max}）`);
       if (typeof this._battleCheckResult === 'function') this._battleCheckResult();
+      // 天力トリガー（K6 アメノウズメ）：自分のライフ増加時
+      if (n > 0) this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: 'life', n });
     },
     _dslOpLifeMax(act) {
       const n = Number(act.数 || 0);
@@ -8221,15 +8380,19 @@ new Vue({
       const p = this.battleSample.self;
       if (!p) return;
       this.battleSaveUndo();
-      p.manaMax = Math.max(0, Math.min(10, (Number(p.manaMax) || 0) + n));
+      const before = Number(p.manaMax) || 0;
+      p.manaMax = Math.max(0, Math.min(10, before + n));
       this.battleShowNotice('マナ最大値変化', `自分マナ最大値 ${n >= 0 ? '+' : ''}${n}（現在 ${p.manaMax}）`);
+      if (p.manaMax > before) this.battleFireKamiEvent('self', 'manaOrLifeIncreased', { kind: 'manaMax', n: p.manaMax - before });
     },
     _dslOpManaRefill(act) {
       const p = this.battleSample.self;
       if (!p) return;
       this.battleSaveUndo();
+      const before = Number(p.mana) || 0;
       p.mana = p.manaMax;
       this.battleShowNotice('マナ回復', `マナを最大値まで回復しました（${p.mana}/${p.manaMax}）。`);
+      if (p.mana > before) this.battleFireKamiEvent('self', 'manaOrLifeIncreased', { kind: 'mana', n: p.mana - before });
     },
     async _dslOpAddType(act, sourceCard) {
       const typeName = String(act.値 || act.種族 || '').trim();
@@ -8816,7 +8979,8 @@ new Vue({
         return;
       }
       this.battleSaveUndo();
-      player[zone].push(this._battlePrepareFieldCard(card));
+      const placedCard = this._battlePrepareFieldCard(card);
+      player[zone].push(placedCard);
       this.battleDeckModal = null;
       this.hideCardHover();
       this.dslRefreshStaticAbilities();
@@ -8827,6 +8991,11 @@ new Vue({
           : `「${this.fullName(card)}」を場に出しました。`,
         cards: [card],
       };
+      // 天力トリガー：トークン招来（K9）／守護持ち（K8）
+      if (zone === 'legacies') {
+        if (placedCard && placedCard.isToken) this.battleFireKamiEvent('self', 'tokenPlayed', { card: placedCard });
+        if (this._battleCardHasGuard(placedCard)) this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: placedCard });
+      }
       this._battleProcessNextEffect();
     },
     /* 自動招来モーダルから1体配置（残りがあればモーダル維持） */
@@ -8852,6 +9021,11 @@ new Vue({
       modal.remaining = (modal.remaining || 1) - 1;
       this.hideCardHover();
       this.dslRefreshStaticAbilities();
+      // 天力トリガー：トークン招来（K9）／守護持ち（K8）
+      if (zone === 'legacies') {
+        if (fieldCard && fieldCard.isToken) this.battleFireKamiEvent('self', 'tokenPlayed', { card: fieldCard });
+        if (this._battleCardHasGuard(fieldCard)) this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: fieldCard });
+      }
       // 残り0 または フィールド上限到達なら自動クローズ＋通知
       const fieldFull = player[zone].length >= 7;
       if (modal.remaining <= 0 || fieldFull) {
@@ -9001,6 +9175,10 @@ new Vue({
       player.handCount = player.hand.length;
       this.battleOracleEffect = { card };
       this.hideCardHover();
+      // 天力トリガー：オラクル使用（K5 オモイカネ）／昇華支払い（K1 スサノオ）
+      this.battleFireKamiEvent('self', 'playOracleOrRelic', { card, kind: 'オラクル' });
+      const baseCost = Math.max(0, Number(card.cost) || 0);
+      if (cost > baseCost) this.battleFireKamiEvent('self', 'evolveOrSublim', { card, paidCost: cost });
       // オラクル本文のキーワード効果（【選定】等）も自動処理
       if (!this.battleRunEnterKeywordEffects(card, cost)) this.battleKeywordGuide(card, cost);
     },
@@ -9022,6 +9200,22 @@ new Vue({
       player.handCount = player.hand.length;
       this.hideCardHover();
       this.dslRefreshStaticAbilities();
+      // 天力トリガー：
+      //  K5 オモイカネ → レリック使用
+      //  K8 アマテラス → 守護を持つレガシーが出た
+      //  K9 ツクヨミ  → トークンが場に出た
+      //  K1 スサノオ  → 昇華支払い
+      if (zone === 'relics') {
+        this.battleFireKamiEvent('self', 'playOracleOrRelic', { card: fieldCard, kind: 'レリック' });
+      }
+      if (zone === 'legacies' && this._battleCardHasGuard(fieldCard)) {
+        this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: fieldCard });
+      }
+      if (fieldCard && fieldCard.isToken) {
+        this.battleFireKamiEvent('self', 'tokenPlayed', { card: fieldCard });
+      }
+      const baseCost = Math.max(0, Number(card.cost) || 0);
+      if (cost > baseCost) this.battleFireKamiEvent('self', 'evolveOrSublim', { card: fieldCard, paidCost: cost });
       if (!this.battleRunEnterKeywordEffects(fieldCard, cost)) this.battleKeywordGuide(fieldCard, cost);
     },
     battleMoveHandCard(index, destinationZone) {
@@ -10132,6 +10326,11 @@ new Vue({
       p[zone].push(clone);
       this.dslRefreshStaticAbilities();
       this.battleShowNotice('トークン招来', `「${this.fullName(card)}」を${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドに招来しました。`, [card]);
+      // 天力トリガー：トークン登場（K9 ツクヨミ）／守護持ちなら（K8 アマテラス）
+      if (zone === 'legacies') {
+        this.battleFireKamiEvent('self', 'tokenPlayed', { card: clone });
+        if (this._battleCardHasGuard(clone)) this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: clone });
+      }
     },
     battleOpenFieldMenu(side, zone, index, e) {
       if (this.battleSample.result) return;
