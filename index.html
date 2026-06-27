@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.21',
+    BUILD_VERSION: '1.14.22',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6711,6 +6711,7 @@ new Vue({
       // 自分ターン終了時：このターン適用された【補正】を巻き戻し、戦闘力0以下のレガシーを破壊
       this._battleExpireBuffsForSide(endingSide, bs.turn);
       this._battleExpireBindingsForSide(endingSide, bs.turn);
+      this._battleExpireEffectDisablesForSide(endingSide, bs.turn);
       this._battleCheckDestroyZeroPower();
       const nextSide = bs.activeSide === 'self' ? 'opp' : 'self';
       if (nextSide === this.battleContext.firstSide) bs.turn += 1;
@@ -6831,6 +6832,9 @@ new Vue({
     _battleIsBindingActive(card, side, turn) {
       return !!(card && card._bindUntilSide === side && Number(turn) <= Number(card._bindUntilTurn));
     },
+    _battleIsEffectDisabled(card) {
+      return !!(card && card._effectsDisabled);
+    },
     _battleCanUntapCard(card) {
       if (!card || !this.battleSample) return true;
       const side = this._battleFieldCardSide(card);
@@ -6854,6 +6858,27 @@ new Vue({
       });
       if (released.length) {
         this.battleShowNotice('拘束解除', `${released.map(c => `「${this.fullName(c)}」`).join('、')}の【拘束】が解除されました。`, released);
+      }
+    },
+    _battleExpireEffectDisablesForSide(side, turn) {
+      const bs = this.battleSample;
+      if (!bs) return;
+      const released = [];
+      ['self', 'opp'].forEach(s => {
+        const p = bs[s];
+        if (!p) return;
+        ['hand', 'deck', 'graveyard', 'crumbled', 'legacies', 'relics'].forEach(zone => {
+          (p[zone] || []).forEach(card => {
+            if (!(card && card._effectDisableUntilSide === side && Number(card._effectDisableUntilTurn) === Number(turn))) return;
+            this.$set(card, '_effectsDisabled', false);
+            this.$set(card, '_effectDisableUntilSide', null);
+            this.$set(card, '_effectDisableUntilTurn', null);
+            released.push(card);
+          });
+        });
+      });
+      if (released.length) {
+        this.battleShowNotice('効果無効化解除', `${released.map(c => `「${this.fullName(c)}」`).join('、')}の効果無効化が解除されました。`, released);
       }
     },
     /* ターン開始ドロー（山札があれば1枚。同期で秘匿された相手山札はスキップ） */
@@ -7116,6 +7141,10 @@ new Vue({
     },
     /* spec を実行（出現時/使用時 等のトリガーで呼ばれる） */
     async dslRunSpec(card, triggerLabel = '出現時', paidCost = null) {
+      if (this._battleIsEffectDisabled(card)) {
+        this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、【${triggerLabel}】効果は発動しません。`, [card]);
+        return false;
+      }
       const spec = this._dslGetSpec(card);
       if (!spec || !Array.isArray(spec.能力)) return false;
       const prevSource = this._dslCurrentSource;
@@ -7238,8 +7267,8 @@ new Vue({
         case 'ステータス設定':
         case '置換':
         case '設置制限':
-        case '効果付与':
-        case '効果無効化': return this._dslOpManualRuleEffect(act, sourceCard);
+        case '効果付与': return this._dslOpManualRuleEffect(act, sourceCard);
+        case '効果無効化': return this._dslOpEffectDisable(act, sourceCard);
         default:
           // 未対応op：手動フォールバック通知
           this.battleShowNotice(
@@ -7906,6 +7935,48 @@ new Vue({
         sourceCard ? [sourceCard] : []
       );
     },
+    _dslEffectDisableCandidates(sel) {
+      const side = sel && sel.対象側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample && this.battleSample[side];
+      if (!p) return { side, cards: [] };
+      const zoneText = String((sel && sel.領域) || 'field');
+      const zones = [];
+      if (/手札|hand/.test(zoneText)) zones.push('hand');
+      if (/墓地|graveyard/.test(zoneText)) zones.push('graveyard');
+      if (/崩壊|crumbled/.test(zoneText)) zones.push('crumbled');
+      if (/フィールド|field/.test(zoneText)) zones.push('legacies', 'relics');
+      if (!zones.length) zones.push('legacies');
+      const criteria = (sel && sel.絞込) || [];
+      const cards = [];
+      zones.forEach(zone => {
+        (p[zone] || []).forEach(card => {
+          if (!card) return;
+          if (criteria.length && !this.battleCardMatchesInduceCriteria(card, criteria)) return;
+          cards.push(card);
+        });
+      });
+      return { side, cards };
+    },
+    _dslOpEffectDisable(act, sourceCard) {
+      const sel = act.対象 || { 対象側: 'opp', 領域: 'field', 絞込: ['レガシー'], 枚数: 'all' };
+      const { side, cards } = this._dslEffectDisableCandidates(sel);
+      if (!cards.length) {
+        this.battleShowNotice('効果無効化：対象なし', `効果無効化の対象になるカードがありません。`, sourceCard ? [sourceCard] : []);
+        return;
+      }
+      this.battleSaveUndo();
+      const untilTurn = this._battleBindingTurnForSide(side);
+      cards.forEach(card => {
+        this.$set(card, '_effectsDisabled', true);
+        this.$set(card, '_effectDisableUntilSide', side);
+        this.$set(card, '_effectDisableUntilTurn', untilTurn);
+      });
+      this.battleShowNotice(
+        '効果無効化',
+        `${cards.map(c => `「${this.fullName(c)}」`).join('、')}の効果を${side === 'opp' ? '次の相手ターン終了時' : '次の自分ターン終了時'}まで無効化しました。`,
+        cards
+      );
+    },
     _dslOpManualRuleEffect(act, sourceCard) {
       const op = act.操作 || act.op || '効果';
       const details = [
@@ -8337,6 +8408,10 @@ new Vue({
        既存の効果キュー（Layer1：本文regex）
        =================================================================== */
     battleRunEnterKeywordEffects(card, paidCost = null) {
+      if (this._battleIsEffectDisabled(card)) {
+        this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、効果は発動しません。`, [card]);
+        return true;
+      }
       // まずDSL spec があれば優先実行（出現時 or 使用時 or 昇華）
       if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '出現時')) {
         this.dslRunSpec(card, '出現時', paidCost);
@@ -8352,6 +8427,10 @@ new Vue({
       return this._battleQueueAndRunEffects(card, paidCost, '出現時');
     },
     battleRunDeathKeywordEffects(card) {
+      if (this._battleIsEffectDisabled(card)) {
+        this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、死亡時効果は発動しません。`, [card]);
+        return true;
+      }
       if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '死亡時')) {
         this.dslRunSpec(card, '死亡時', null);
         return true;
