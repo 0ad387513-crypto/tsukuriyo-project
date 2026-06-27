@@ -5251,7 +5251,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.34',
+    BUILD_VERSION: '1.14.35',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7131,6 +7131,7 @@ new Vue({
       let delta = 0;
       if (Number(card._staticCostDelta)) delta += Number(card._staticCostDelta) || 0;
       if (Number(card._costDelta)) delta += Number(card._costDelta) || 0;
+      delta += this.battleIntrinsicStaticCostDeltaForCard(card, side);
       const sourceCards = [];
       ['self', 'opp'].forEach(sourceSide => {
         const player = this.battleSample[sourceSide] || {};
@@ -7154,6 +7155,33 @@ new Vue({
           delta += Number(mod.delta) || 0;
         });
       });
+      return delta;
+    },
+    battleIntrinsicStaticCostDeltaForCard(card, side = 'self') {
+      if (!card || !this.effectSpecsReady || !this.battleSample) return 0;
+      const player = this.battleSample[side];
+      if (!player || !Array.isArray(player.hand) || !player.hand.includes(card)) return 0;
+      const spec = this._dslGetSpec(card);
+      if (!spec || !Array.isArray(spec.能力)) return 0;
+      const prevSource = this._dslCurrentSource;
+      let delta = 0;
+      try {
+        this._dslCurrentSource = card;
+        spec.能力.forEach(ab => {
+          if (!ab || ab.任意 || !this._dslAbilityMatchesTrigger(ab, '常在')) return;
+          if (ab.条件 && !this.dslEvalCond(ab.条件)) return;
+          (ab.処理 || []).forEach(act => {
+            const op = act && (act.操作 || act.op);
+            if (op !== 'コスト変更') return;
+            const target = act.対象 || {};
+            if (!target.自身) return;
+            if (act.数 === undefined || act.数 === null) return;
+            delta += Number(act.数) || 0;
+          });
+        });
+      } finally {
+        this._dslCurrentSource = prevSource;
+      }
       return delta;
     },
     battleCostModMatches(card, mod, side = 'self', sourceSide = 'self') {
@@ -7822,8 +7850,26 @@ new Vue({
       }
       if (cond.状態) { console.warn('[DSL] 未対応状態条件:', cond.状態); return true; }
       if (cond.存在) return this._dslEligible(cond.存在).length > 0;
-      if (cond.備考) { console.warn('[DSL] 備考条件は手動判定→真:', cond.備考); return true; }
+      if (cond.備考) {
+        const noteResult = this.dslEvalNoteCond(cond.備考);
+        if (noteResult !== null) return noteResult;
+        console.warn('[DSL] 備考条件は手動判定→真:', cond.備考);
+        return true;
+      }
       return true;
+    },
+    dslEvalNoteCond(note) {
+      const s = String(note || '').replace(/\s+/g, '');
+      if (/自分墓地/.test(s) && /全属性/.test(s) && /レガシー/.test(s)) {
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const player = this.battleSample && this.battleSample[side];
+        const colors = new Set(((player && player.graveyard) || [])
+          .filter(card => card && card.category === 'レガシー')
+          .map(card => card.color)
+          .filter(Boolean));
+        return ['赤', '青', '緑', '黄', '紫'].every(color => colors.has(color));
+      }
+      return null;
     },
     _dslCompareNum(a, op, b) {
       if (op === '>=') return a >= b;
