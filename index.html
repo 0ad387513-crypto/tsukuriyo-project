@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.17',
+    BUILD_VERSION: '1.14.18',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7186,6 +7186,7 @@ new Vue({
         case '傀儡化':     return this._dslOpPuppet(act, sourceCard);
         case 'トークン生成': return this._dslOpGenerateToken(act, sourceCard);
         case '選定値+1':   return this._dslOpSenteiBoost(act, sourceCard);
+        case '無償使用':   return this._dslOpFreeUse(act, sourceCard);
         default:
           // 未対応op：手動フォールバック通知
           this.battleShowNotice(
@@ -7699,6 +7700,57 @@ new Vue({
         `このターン中1回、「${this.fullName(sourceCard)}」により【選定】の値を +1 できます。`,
         [sourceCard]
       );
+    },
+    async _dslOpFreeUse(act, sourceCard) {
+      if (!act.対象 || act.対象.備考) {
+        this.battleShowNotice(
+          '無償使用：手動確認',
+          `「${this.fullName(sourceCard)}」の無償使用対象を自動特定できませんでした。カード本文に従って手動で処理してください。`,
+          sourceCard ? [sourceCard] : []
+        );
+        return;
+      }
+      const sel = Object.assign({ 対象側: 'self', 領域: 'hand', 選択者: 'player', 枚数: 1 }, act.対象 || {});
+      const targets = await this.dslChooseTargets(sel, '無償使用するカードを選択');
+      if (!targets.length) return;
+      const side = sel.対象側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample[side];
+      const fromZone = sel.領域 || 'hand';
+      if (!p || !Array.isArray(p[fromZone])) return;
+      this.battleSaveUndo();
+      const used = [];
+      targets.forEach(card => {
+        const arr = p[fromZone];
+        const idx = arr.indexOf(card);
+        if (idx < 0) return;
+        arr.splice(idx, 1);
+        if (card.category === 'オラクル') {
+          p.graveyard = p.graveyard || [];
+          p.graveyard.push(card);
+          this.battleOracleEffect = { card };
+          used.push(card);
+          if (!this.battleRunEnterKeywordEffects(card, 0)) this.battleKeywordGuide(card, 0);
+          return;
+        }
+        const zone = this.battleFieldZoneForCard(card);
+        if (!zone || !Array.isArray(p[zone]) || p[zone].length >= 7) {
+          p.hand = p.hand || [];
+          p.hand.push(card);
+          this.battleShowNotice('無償使用：配置不可', `「${this.fullName(card)}」を場に出せませんでした。手札に戻しました。`, [card]);
+          return;
+        }
+        const fieldCard = this._battlePrepareFieldCard(card);
+        p[zone].push(fieldCard);
+        used.push(fieldCard);
+        if (!this.battleRunEnterKeywordEffects(fieldCard, 0)) this.battleKeywordGuide(fieldCard, 0);
+      });
+      if (/シャッフル/.test(String(sel.備考 || '')) && Array.isArray(p.deck)) p.deck = this._battleShuffle(p.deck);
+      this._battleSyncSideCounts(side);
+      this.hideCardHover();
+      this.dslRefreshStaticAbilities();
+      if (used.length) {
+        this.battleShowNotice('無償使用', `${used.map(c => `「${this.fullName(c)}」`).join('、')}をマナを支払わず使用しました。`, used);
+      }
     },
     /* フィールドカードを別ゾーンへ移動（破壊・崩壊・手札戻し共通） */
     _dslMoveFromField(card, destZone, forceSide) {
