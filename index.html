@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.12',
+    BUILD_VERSION: '1.14.13',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6710,6 +6710,7 @@ new Vue({
       }
       // 自分ターン終了時：このターン適用された【補正】を巻き戻し、戦闘力0以下のレガシーを破壊
       this._battleExpireBuffsForSide(endingSide, bs.turn);
+      this._battleExpireBindingsForSide(endingSide, bs.turn);
       this._battleCheckDestroyZeroPower();
       const nextSide = bs.activeSide === 'self' ? 'opp' : 'self';
       if (nextSide === this.battleContext.firstSide) bs.turn += 1;
@@ -6769,6 +6770,8 @@ new Vue({
             // 破壊：墓地へ
             this.dslClearStaticFromCard(card);
             this.$set(card, '_tapped', false);
+            this.$set(card, '_bindUntilSide', null);
+            this.$set(card, '_bindUntilTurn', null);
             this.$set(card, '_buf', 0);
             p.graveyard = p.graveyard || [];
             p.graveyard.push(card);
@@ -6813,9 +6816,45 @@ new Vue({
       if (!target) return;
       ['legacies', 'relics'].forEach(zone => {
         (target[zone] || []).forEach(card => {
-          if (card && card._tapped) this.$set(card, '_tapped', false);
+          if (card && card._tapped && !this._battleIsBindingActive(card, side, this.battleSample.turn)) {
+            this.$set(card, '_tapped', false);
+          }
         });
       });
+    },
+    _battleBindingTurnForSide(side) {
+      const bs = this.battleSample;
+      if (!bs) return 1;
+      if (side === bs.activeSide) return bs.turn;
+      return side === this.battleContext.firstSide ? bs.turn + 1 : bs.turn;
+    },
+    _battleIsBindingActive(card, side, turn) {
+      return !!(card && card._bindUntilSide === side && Number(turn) <= Number(card._bindUntilTurn));
+    },
+    _battleCanUntapCard(card) {
+      if (!card || !this.battleSample) return true;
+      const side = this._battleFieldCardSide(card);
+      return !this._battleIsBindingActive(card, side, this.battleSample.turn);
+    },
+    _battleExpireBindingsForSide(side, turn) {
+      const bs = this.battleSample;
+      if (!bs) return;
+      const released = [];
+      ['self', 'opp'].forEach(s => {
+        const p = bs[s];
+        if (!p) return;
+        ['legacies', 'relics'].forEach(zone => {
+          (p[zone] || []).forEach(card => {
+            if (!(card && card._bindUntilSide === side && Number(card._bindUntilTurn) === Number(turn))) return;
+            this.$set(card, '_bindUntilSide', null);
+            this.$set(card, '_bindUntilTurn', null);
+            released.push(card);
+          });
+        });
+      });
+      if (released.length) {
+        this.battleShowNotice('拘束解除', `${released.map(c => `「${this.fullName(c)}」`).join('、')}の【拘束】が解除されました。`, released);
+      }
     },
     /* ターン開始ドロー（山札があれば1枚。同期で秘匿された相手山札はスキップ） */
     _battleDrawForTurn(side) {
@@ -7142,6 +7181,7 @@ new Vue({
         case '再発動':     return this._dslOpRepeat(act, sourceCard);
         case '効果倍化':   return this._dslOpEffectMultiplier(act, sourceCard);
         case '種族追加':   return this._dslOpAddType(act, sourceCard);
+        case '拘束':       return this._dslOpBind(act, sourceCard);
         default:
           // 未対応op：手動フォールバック通知
           this.battleShowNotice(
@@ -7536,9 +7576,38 @@ new Vue({
     async _dslOpTap(act, sourceCard, doTap) {
       const targets = await this.dslChooseTargets(act.対象, doTap ? 'タップする対象を選択' : 'アンタップする対象を選択');
       if (!targets.length) return;
+      if (!doTap) {
+        const blocked = targets.filter(c => this._battleIsBindingActive(c, this._battleFieldCardSide(c), this.battleSample.turn));
+        if (blocked.length) {
+          this.battleShowNotice('拘束中', `${blocked.map(c => `「${this.fullName(c)}」`).join('、')}は【拘束】中のためアンタップできません。`, blocked);
+          return;
+        }
+      }
       this.battleSaveUndo();
       targets.forEach(c => this.$set(c, '_tapped', doTap));
       this.battleShowNotice(doTap ? 'タップ' : 'アンタップ', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を${doTap ? 'タップ' : 'アンタップ'}しました。`, targets);
+    },
+    _battleFieldCardSide(card) {
+      const bs = this.battleSample;
+      if (!bs || !card) return 'self';
+      for (const side of ['self', 'opp']) {
+        const p = bs[side];
+        if (!p) continue;
+        if ((p.legacies || []).includes(card) || (p.relics || []).includes(card)) return side;
+      }
+      return bs.activeSide || 'self';
+    },
+    async _dslOpBind(act, sourceCard) {
+      const targets = await this.dslChooseTargets(act.対象, '拘束する対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(card => {
+        const side = this._battleFieldCardSide(card);
+        this.$set(card, '_tapped', true);
+        this.$set(card, '_bindUntilSide', side);
+        this.$set(card, '_bindUntilTurn', this._battleBindingTurnForSide(side));
+      });
+      this.battleShowNotice('拘束', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}をタップし、次の対象側ターン終了時までアンタップできなくしました。`, targets);
     },
     /* フィールドカードを別ゾーンへ移動（破壊・崩壊・手札戻し共通） */
     _dslMoveFromField(card, destZone, forceSide) {
@@ -7554,6 +7623,8 @@ new Vue({
             arr.splice(idx, 1);
             this.dslClearStaticFromCard(card);
             this.$set(card, '_tapped', false);
+            this.$set(card, '_bindUntilSide', null);
+            this.$set(card, '_bindUntilTurn', null);
             this.$set(card, '_buf', 0);
             if (destZone === 'hand') {
               p.hand = p.hand || []; p.hand.push(card); p.handCount = p.hand.length;
@@ -8920,6 +8991,10 @@ new Vue({
       const player = this.battleSample[hover.side];
       const card = player && player[hover.zone] && player[hover.zone][hover.index];
       if (!card) return false;
+      if (card._tapped && !this._battleCanUntapCard(card)) {
+        this.battleShowNotice('拘束中', `「${this.fullName(card)}」は【拘束】中のためアンタップできません。`, [card]);
+        return false;
+      }
       this.battleSaveUndo();
       this.$set(card, '_tapped', !card._tapped);
       this.dslRefreshStaticAbilities();
@@ -9451,6 +9526,10 @@ new Vue({
       const card = player && player[m.zone] && player[m.zone][m.index];
       if (!card) return;
       if (action === 'toggleTap') {
+        if (card._tapped && !this._battleCanUntapCard(card)) {
+          this.battleShowNotice('拘束中', `「${this.fullName(card)}」は【拘束】中のためアンタップできません。`, [card]);
+          return;
+        }
         this.battleSaveUndo();
         this.$set(card, '_tapped', !card._tapped);
         this.dslRefreshStaticAbilities();
