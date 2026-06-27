@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.7',
+    BUILD_VERSION: '1.14.8',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7017,40 +7017,69 @@ new Vue({
     async dslRunSpec(card, triggerLabel = '出現時', paidCost = null) {
       const spec = this._dslGetSpec(card);
       if (!spec || !Array.isArray(spec.能力)) return false;
+      const prevSource = this._dslCurrentSource;
+      const prevSublimPaid = this._dslSublimPaid;
       this._dslCurrentSource = card;
       const baseCost = Math.max(0, Number(card.cost) || 0);
       const sublimPaid = paidCost !== null ? Math.max(0, paidCost - baseCost) : 0;
+      this._dslSublimPaid = sublimPaid;
       let ran = false;
-      for (const ab of spec.能力) {
-        if (!this._dslAbilityMatchesTrigger(ab, triggerLabel)) continue;
-        // 昇華契機：sublim差額が cost.昇華 以上か
-        if (ab.契機 === '昇華') {
-          const need = (ab.コスト && ab.コスト.昇華) || 0;
-          if (sublimPaid < need) continue;
+      try {
+        for (const ab of spec.能力) {
+          if (!this._dslAbilityMatchesTrigger(ab, triggerLabel)) continue;
+          // 昇華契機：sublim差額が cost.昇華 以上か
+          if (ab.契機 === '昇華') {
+            const need = (ab.コスト && ab.コスト.昇華) || 0;
+            if (sublimPaid < need) continue;
+          }
+          // 条件評価
+          if (ab.条件 && !this.dslEvalCond(ab.条件)) continue;
+          // 任意能力：「〜してもよい」→ 確認モーダルでyes/no
+          if (ab.任意) {
+            const summary = this._dslSummarizeActions(ab.処理 || []);
+            const ok = await this.dslAskOptional(card, ab.契機 || triggerLabel, summary);
+            if (!ok) continue;
+          }
+          ran = true;
+          try {
+            await this.dslRunActions(ab.処理 || [], card);
+          } catch (e) {
+            console.warn('[DSL] action実行エラー:', e, ab);
+            this.battleShowNotice('効果処理エラー', `「${this.fullName(card)}」の自動処理中にエラーが発生しました。手動で処理してください。`, [card]);
+            break;
+          }
         }
-        // 条件評価
-        if (ab.条件 && !this.dslEvalCond(ab.条件)) continue;
-        // 任意能力：「〜してもよい」→ 確認モーダルでyes/no
-        if (ab.任意) {
-          const summary = this._dslSummarizeActions(ab.処理 || []);
-          const ok = await this.dslAskOptional(card, ab.契機 || triggerLabel, summary);
-          if (!ok) continue;
-        }
-        ran = true;
-        try {
-          await this.dslRunActions(ab.処理 || [], card);
-        } catch (e) {
-          console.warn('[DSL] action実行エラー:', e, ab);
-          this.battleShowNotice('効果処理エラー', `「${this.fullName(card)}」の自動処理中にエラーが発生しました。手動で処理してください。`, [card]);
-          break;
-        }
+      } finally {
+        this._dslCurrentSource = prevSource;
+        this._dslSublimPaid = prevSublimPaid;
       }
       return ran;
     },
     async dslRunActions(actions, sourceCard) {
       for (const act of actions) {
-        await this.dslRunAction(act, sourceCard);
+        await this.dslRunAction(this.dslApplySublimAlternative(act), sourceCard);
       }
+    },
+    dslApplySublimAlternative(act) {
+      if (!act || !Array.isArray(act.昇華代替) || !act.昇華代替.length) return act;
+      const paid = Number(this._dslSublimPaid || 0);
+      const alt = act.昇華代替
+        .filter(item => paid >= (Number(item.昇華) || 0))
+        .sort((a, b) => (Number(b.昇華) || 0) - (Number(a.昇華) || 0))[0];
+      if (!alt) return act;
+      const next = Object.assign({}, act);
+      const text = String(alt.効果 || '');
+      let m;
+      if (m = text.match(/選定[:：]\s*(\d+)/)) {
+        next.数 = Number(m[1]) || next.数;
+      } else if (m = text.match(/異なる獣霊\s*(\d+)種/)) {
+        next.数 = Number(m[1]) || next.数;
+        next.トークン = 'いずれかの獣霊';
+      } else if (/相手レガシーのみに限定/.test(text)) {
+        next.対象 = Object.assign({}, next.対象 || {}, { 対象側: 'opp', 絞込: ['レガシー'] });
+      }
+      next._sublimAlternative = alt;
+      return next;
     },
     async dslRunAction(act, sourceCard) {
       const op = act.操作 || act.op;
@@ -7506,7 +7535,7 @@ new Vue({
     /* 招来 → 既存モーダルへ橋渡し */
     async _dslOpSummon(act, sourceCard) {
       const target = act.対象 || act.招来 || {};
-      const targetText = target.名称 || target.種別 || (act.付与 && act.付与[0]) || '';
+      const targetText = target.名称 || target.種別 || act.トークン || (act.付与 && act.付与[0]) || '';
       const count = Number(target.枚数 || act.数 || 1);
       if (!targetText) {
         this.battleShowNotice('招来：対象不明', '招来対象が指定されていません。手動で処理してください。', [sourceCard]);
@@ -7532,7 +7561,9 @@ new Vue({
         this.battleShowNotice('選定：選択肢なし', 'specに選択肢が定義されていません。手動で処理してください。', [sourceCard]);
         return;
       }
-      this.battleOpenSentei(sourceCard, { count, options, sublimRules: [], paidCost: 0, baseCost: 0 }, '出現時');
+      const baseCost = Math.max(0, Number(sourceCard && sourceCard.cost) || 0);
+      const paidCost = baseCost + Math.max(0, Number(this._dslSublimPaid || 0));
+      this.battleOpenSentei(sourceCard, { count, options, sublimRules: [], paidCost, baseCost }, '出現時');
     },
     async _dslOpBranch(act, sourceCard) {
       for (const br of (act.分岐 || [])) {
@@ -7968,6 +7999,7 @@ new Vue({
       player[zone].push(this._battlePrepareFieldCard(card));
       this.battleDeckModal = null;
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       this.battleNotice = {
         title: '招来',
         message: sourceCard
@@ -7996,6 +8028,7 @@ new Vue({
       modal.summoned = [...(modal.summoned || []), card];
       modal.remaining = (modal.remaining || 1) - 1;
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       // 残り0 または フィールド上限到達なら自動クローズ＋通知
       const fieldFull = player[zone].length >= 7;
       if (modal.remaining <= 0 || fieldFull) {
