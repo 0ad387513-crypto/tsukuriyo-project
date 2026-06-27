@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.16',
+    BUILD_VERSION: '1.14.17',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7185,6 +7185,7 @@ new Vue({
         case '拘束':       return this._dslOpBind(act, sourceCard);
         case '傀儡化':     return this._dslOpPuppet(act, sourceCard);
         case 'トークン生成': return this._dslOpGenerateToken(act, sourceCard);
+        case '選定値+1':   return this._dslOpSenteiBoost(act, sourceCard);
         default:
           // 未対応op：手動フォールバック通知
           this.battleShowNotice(
@@ -7438,6 +7439,7 @@ new Vue({
       this.$set(card, '_staticPerm', 0);
       this.$set(card, '_staticAttack', 0);
       this.$set(card, '_staticKwGrant', []);
+      this.$set(card, '_staticSenteiBoost', false);
     },
     dslStaticEligible(sel, sourceCard, sourceSide) {
       if (!sel) return [];
@@ -7509,6 +7511,8 @@ new Vue({
               break;
             }
           }
+        } else if (op === '選定値+1' && sourceCard) {
+          this.$set(sourceCard, '_staticSenteiBoost', true);
         }
       });
     },
@@ -7682,6 +7686,19 @@ new Vue({
       player.hand.push(clone);
       this._battleSyncSideCounts(side || 'self');
       this.battleShowNotice('トークン生成', `「${this.fullName(card)}」を${side === 'opp' ? '相手' : '自分'}の手札に加えました。`, [card]);
+    },
+    _dslOpSenteiBoost(act, sourceCard) {
+      if (!sourceCard) return;
+      const side = this._battleFieldCardSide(sourceCard) || this._dslCurrentSourceSide();
+      const turn = this.battleSample ? this.battleSample.turn : 1;
+      this.$set(sourceCard, '_senteiBoost', true);
+      this.$set(sourceCard, '_senteiBoostSide', side || 'self');
+      this.$set(sourceCard, '_senteiBoostTurn', turn);
+      this.battleShowNotice(
+        '選定値+1',
+        `このターン中1回、「${this.fullName(sourceCard)}」により【選定】の値を +1 できます。`,
+        [sourceCard]
+      );
     },
     /* フィールドカードを別ゾーンへ移動（破壊・崩壊・手札戻し共通） */
     _dslMoveFromField(card, destZone, forceSide) {
@@ -8225,7 +8242,10 @@ new Vue({
     battleHasSenteiBoostLegacy(side) {
       const player = this.battleSample[side];
       if (!player || !Array.isArray(player.legacies)) return false;
+      const turn = this.battleSample ? this.battleSample.turn : 1;
       return player.legacies.some(c => {
+        if (c._staticSenteiBoost) return true;
+        if (c._senteiBoost && c._senteiBoostSide === side && c._senteiBoostTurn === turn) return true;
         const t = this.battleCardRulesText(c).replace(/\s+/g, '');
         return /【選定】の値を[＋\+]1/.test(t);
       });
