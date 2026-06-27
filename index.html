@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.10',
+    BUILD_VERSION: '1.14.11',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7174,16 +7174,48 @@ new Vue({
     _dslCardEffPower(card) {
       return Number(card && card.power) || 0;
     },
+    _dslCurrentSourceSide() {
+      const src = this._dslCurrentSource;
+      const bs = this.battleSample;
+      if (!src || !bs) return (bs && bs.activeSide) || 'self';
+      for (const side of ['self', 'opp']) {
+        const p = bs[side];
+        if (!p) continue;
+        for (const zone of ['legacies', 'relics', 'hand', 'graveyard', 'crumbled', 'deck']) {
+          if (Array.isArray(p[zone]) && p[zone].includes(src)) return side;
+        }
+      }
+      return bs.activeSide || 'self';
+    },
+    _dslCompareReferenceValue(name) {
+      const side = this._dslCurrentSourceSide();
+      const player = (this.battleSample && this.battleSample[side]) || {};
+      if (name === '天力') return Number(player.tenryoku) || 0;
+      if (name === 'マナ最大値') return Number(player.manaMax) || 0;
+      if (name === '自墓地枚数') return Array.isArray(player.graveyard) ? player.graveyard.length : 0;
+      if (name === 'self') return this._dslCardEffPower(this._dslCurrentSource);
+      return null;
+    },
     _dslPassCompare(card, cmp) {
       if (!cmp) return true;
       let m;
       if (m = String(cmp).match(/^powerLE:(\d+)$/)) return this._dslCardEffPower(card) <= +m[1];
       if (m = String(cmp).match(/^powerGE:(\d+)$/)) return this._dslCardEffPower(card) >= +m[1];
+      if (m = String(cmp).match(/^powerLT:(self)$/)) return this._dslCardEffPower(card) < this._dslCompareReferenceValue(m[1]);
+      if (m = String(cmp).match(/^powerGT:(self)$/)) return this._dslCardEffPower(card) > this._dslCompareReferenceValue(m[1]);
+      if (m = String(cmp).match(/^powerLE:(self)$/)) return this._dslCardEffPower(card) <= this._dslCompareReferenceValue(m[1]);
+      if (m = String(cmp).match(/^powerGE:(self)$/)) return this._dslCardEffPower(card) >= this._dslCompareReferenceValue(m[1]);
       if (m = String(cmp).match(/^costLE:(\d+)$/))  return (Number(card.cost) || 0) <= +m[1];
       if (m = String(cmp).match(/^costGE:(\d+)$/))  return (Number(card.cost) || 0) >= +m[1];
+      if (m = String(cmp).match(/^costLE:(天力|マナ最大値|自墓地枚数)$/)) {
+        return (Number(card.cost) || 0) <= this._dslCompareReferenceValue(m[1]);
+      }
+      if (m = String(cmp).match(/^costGE:(天力|マナ最大値|自墓地枚数)$/)) {
+        return (Number(card.cost) || 0) >= this._dslCompareReferenceValue(m[1]);
+      }
       if (cmp === 'tapped')   return !!card._tapped;
       if (cmp === 'untapped') return !card._tapped;
-      // powerLT.self / powerGT.self / costLE:天力 等の動的比較は今回未対応 → true
+      // カード名や直前処理の結果を参照する比較は、現時点では手動補助に委ねる
       return true;
     },
     _dslEligible(sel) {
