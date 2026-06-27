@@ -5238,7 +5238,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.27',
+    BUILD_VERSION: '1.14.28',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7525,24 +7525,97 @@ new Vue({
     _dslPassCompare(card, cmp) {
       if (!cmp) return true;
       let m;
-      if (m = String(cmp).match(/^powerLE:(\d+)$/)) return this._dslCardEffPower(card) <= +m[1];
-      if (m = String(cmp).match(/^powerGE:(\d+)$/)) return this._dslCardEffPower(card) >= +m[1];
-      if (m = String(cmp).match(/^powerLT:(self)$/)) return this._dslCardEffPower(card) < this._dslCompareReferenceValue(m[1]);
-      if (m = String(cmp).match(/^powerGT:(self)$/)) return this._dslCardEffPower(card) > this._dslCompareReferenceValue(m[1]);
-      if (m = String(cmp).match(/^powerLE:(self)$/)) return this._dslCardEffPower(card) <= this._dslCompareReferenceValue(m[1]);
-      if (m = String(cmp).match(/^powerGE:(self)$/)) return this._dslCardEffPower(card) >= this._dslCompareReferenceValue(m[1]);
-      if (m = String(cmp).match(/^costLE:(\d+)$/))  return (Number(card.cost) || 0) <= +m[1];
-      if (m = String(cmp).match(/^costGE:(\d+)$/))  return (Number(card.cost) || 0) >= +m[1];
+      const cardPower = this._dslCardEffPower(card);
+      const cardCost  = Number(card.cost) || 0;
+      if (m = String(cmp).match(/^powerLE:(\d+)$/)) return cardPower <= +m[1];
+      if (m = String(cmp).match(/^powerGE:(\d+)$/)) return cardPower >= +m[1];
+      // self参照（コロン or ドット両形式に対応）
+      if (m = String(cmp).match(/^power(LT|LE|GT|GE)[:.]self$/)) {
+        const v = this._dslCompareReferenceValue('self');
+        if (m[1] === 'LT') return cardPower <  v;
+        if (m[1] === 'LE') return cardPower <= v;
+        if (m[1] === 'GT') return cardPower >  v;
+        if (m[1] === 'GE') return cardPower >= v;
+      }
+      if (m = String(cmp).match(/^costLE:(\d+)$/))  return cardCost <= +m[1];
+      if (m = String(cmp).match(/^costGE:(\d+)$/))  return cardCost >= +m[1];
       if (m = String(cmp).match(/^costLE:(天力|マナ最大値|自墓地枚数)$/)) {
-        return (Number(card.cost) || 0) <= this._dslCompareReferenceValue(m[1]);
+        return cardCost <= this._dslCompareReferenceValue(m[1]);
       }
       if (m = String(cmp).match(/^costGE:(天力|マナ最大値|自墓地枚数)$/)) {
-        return (Number(card.cost) || 0) >= this._dslCompareReferenceValue(m[1]);
+        return cardCost >= this._dslCompareReferenceValue(m[1]);
       }
       if (cmp === 'tapped')   return !!card._tapped;
       if (cmp === 'untapped') return !card._tapped;
-      // カード名や直前処理の結果を参照する比較は、現時点では手動補助に委ねる
+      // 直前処理の結果を参照する比較
+      if (m = String(cmp).match(/^powerLE:(戻したレガシーの戦闘力|加えたレガシーの戦闘力|破壊したレガシーの戦闘力)$/)) {
+        const v = this._dslContextPowerReference(m[1]);
+        return v !== null && cardPower <= v;
+      }
+      // カード名や複数選択結果を参照する比較は、現時点では手動補助に委ねる
       return true;
+    },
+    /* 数参照を整数値に解決：選択上限・処理数・付与量などで利用 */
+    _dslResolveNumericReference(ref) {
+      if (ref === undefined || ref === null) return null;
+      const s = String(ref);
+      if (!s.trim()) return null;
+      const bs = this.battleSample;
+      if (!bs) return null;
+      const self = bs.self || {};
+      // 直前で墓地に送った/破棄した枚数
+      if (/直前.*(墓地|破棄|捨て)/.test(s)) return Number(this._dslLastMovedCount || 0);
+      if (/墓地に送った枚数|送った枚数/.test(s)) return Number(this._dslLastMovedCount || 0);
+      // 崩壊した枚数
+      if (/崩壊した枚数|崩壊枚数/.test(s)) return Number(this._dslLastCrumbledCount || 0);
+      // 戻した枚数
+      if (/戻した枚数/.test(s)) {
+        const list = this._dslLastReturnedCards || [];
+        return list.length + (/[\+＋]1/.test(s) ? 1 : 0);
+      }
+      // 招来した枚数
+      if (/招来した枚数/.test(s)) return (this._dslLastSummonedCards || []).length;
+      // 減らしたライフの数値分
+      if (/減らしたライフ/.test(s)) return Number(this._dslLastLifeReduced || 0);
+      // 自分フィールドの〜の数（合算もOK）
+      const mField = s.match(/自分フィールドの(.+?)の数/);
+      if (mField) {
+        const crit = mField[1].split(/[+＋]/).map(t => t.trim()).filter(Boolean);
+        return (self.legacies || []).filter(c => this.battleCardMatchesInduceCriteria(c, crit)).length;
+      }
+      // 自分マナ最大値
+      if (/自分マナ最大値/.test(s)) return Number(self.manaMax || 0);
+      // 自分天力
+      if (/自分天力/.test(s) || /^天力$/.test(s)) return Number(self.tenryoku || 0);
+      // 自分レリック数
+      if (/自分.*レリック.*数|レリック数/.test(s)) return (self.relics || []).length;
+      // 自墓地枚数
+      if (/自(分)?墓地枚数|自分の墓地枚数/.test(s)) return (self.graveyard || []).length;
+      // 自分フィールドの種族数
+      if (/自陣種族数|種族数/.test(s)) return this._battleCountFieldRaces ? this._battleCountFieldRaces('self') : 0;
+      // 数字単独
+      const mNum = s.match(/^\s*(\d+)\s*$/);
+      if (mNum) return Number(mNum[1]);
+      return null;
+    },
+    /* コンテキスト変数：直前の戻し/招来/破壊カードの戦闘力 */
+    _dslContextPowerReference(refName) {
+      if (/戻したレガシー/.test(refName)) {
+        const list = this._dslLastReturnedCards || [];
+        if (!list.length) return null;
+        return Math.max(...list.map(c => this._dslCardEffPower(c)));
+      }
+      if (/加えたレガシー/.test(refName)) {
+        const list = this._dslLastSummonedCards || [];
+        if (!list.length) return null;
+        return Math.max(...list.map(c => this._dslCardEffPower(c)));
+      }
+      if (/破壊したレガシー/.test(refName)) {
+        const list = this._dslLastDestroyedCards || [];
+        if (!list.length) return null;
+        return Math.max(...list.map(d => Number((d && d.power) || 0)));
+      }
+      return null;
     },
     _dslEligible(sel) {
       const pool = this._dslZoneOf(sel);
@@ -7562,7 +7635,18 @@ new Vue({
         return Promise.resolve(this._dslEligible(Object.assign({ 対象側: 'self', 領域: 'field' }, sel)));
       }
       const pool = this._dslEligible(sel);
-      const need = sel.枚数 === 'all' ? pool.length : (Number(sel.枚数) || 1);
+      // 動的枚数：枚数:"動的" や 枚数:"all" 以外の文字列 + 数参照 → 解決
+      let need;
+      if (sel.枚数 === 'all') {
+        need = pool.length;
+      } else if (typeof sel.枚数 === 'number') {
+        need = sel.枚数;
+      } else if (sel.枚数 === '動的' || (typeof sel.枚数 === 'string' && isNaN(Number(sel.枚数)))) {
+        const dyn = this._dslResolveNumericReference(sel.数参照 || sel.枚数);
+        need = (dyn === null || dyn === undefined) ? 1 : Math.max(0, Number(dyn));
+      } else {
+        need = Number(sel.枚数) || 1;
+      }
       if (pool.length === 0) {
         // 強制効果でも任意効果でも、対象なしは公開通知
         this.battleShowNotice(
@@ -7884,6 +7968,9 @@ new Vue({
       if (!targets.length) return;
       this.battleSaveUndo();
       const side = (act.対象 && act.対象.対象側 === 'opp') ? 'opp' : 'self';
+      // 数参照用コンテキスト
+      this._dslLastReturnedCards = targets.slice();
+      this._dslLastMovedCount = targets.length;
       targets.forEach(c => this._dslMoveFromField(c, 'hand', side));
       this.battleShowNotice('手札に戻す', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に戻しました。`, targets);
     },
@@ -7891,6 +7978,9 @@ new Vue({
       const targets = await this.dslChooseTargets(act.対象, '崩壊させる対象を選択');
       if (!targets.length) return;
       this.battleSaveUndo();
+      // 数参照用コンテキスト
+      this._dslLastCrumbledCount = targets.length;
+      this._dslLastMovedCount = targets.length;
       targets.forEach(c => this._dslMoveFromField(c, 'crumbled'));
       this.battleShowNotice('崩壊', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を崩壊させました。`, targets);
     },
@@ -8394,13 +8484,22 @@ new Vue({
       this.battleShowNotice('天力変化', `${side === 'opp' ? '相手' : '自分'}の天力が ${n >= 0 ? '+' : ''}${n} (現在 ${p[key]})`);
     },
     _dslOpLife(act) {
-      const n = Number(act.数 || 0);
+      // 数参照（例：減らしたライフの数値分）対応
+      let n = Number(act.数 || 0);
+      if (!n && act.数参照) {
+        const dyn = this._dslResolveNumericReference(act.数参照);
+        if (dyn !== null) n = Number(dyn) || 0;
+      }
       const side = act.側 === 'opp' ? 'opp' : 'self';
       const p = this.battleSample[side];
-      if (!p) return;
+      if (!p || !n) return;
       this.battleSaveUndo();
       const max = Number(p.lifeMax || 10);
-      p.life = Math.max(0, Math.min(max, (Number(p.life) || 0) + n));
+      const before = Number(p.life) || 0;
+      p.life = Math.max(0, Math.min(max, before + n));
+      const actualDelta = p.life - before;
+      // 減少した場合：コンテキストに記録（数参照「減らしたライフ」用）
+      if (actualDelta < 0) this._dslLastLifeReduced = Math.abs(actualDelta);
       this.battleShowNotice('ライフ変化', `${side === 'opp' ? '相手' : '自分'}ライフ ${n >= 0 ? '+' : ''}${n}（現在 ${p.life}/${max}）`);
       if (typeof this._battleCheckResult === 'function') this._battleCheckResult();
       // 天力トリガー（K6 アメノウズメ）：自分のライフ増加時
@@ -8458,11 +8557,17 @@ new Vue({
     async _dslOpSummon(act, sourceCard) {
       const target = act.対象 || act.招来 || {};
       const targetText = target.名称 || target.種別 || act.トークン || (act.付与 && act.付与[0]) || '';
-      const count = Number(target.枚数 || act.数 || 1);
+      let count = Number(target.枚数 || act.数 || 1);
+      // 数参照（例：「崩壊した枚数」「自分フィールドの〜の数まで」）対応
+      if (act.数参照) {
+        const dyn = this._dslResolveNumericReference(act.数参照);
+        if (dyn !== null && dyn !== undefined) count = Math.max(0, Number(dyn));
+      }
       if (!targetText) {
         this.battleShowNotice('招来：対象不明', '招来対象が指定されていません。手動で処理してください。', [sourceCard]);
         return;
       }
+      if (count <= 0) return;
       this.battleOpenAutoSummon(sourceCard, { targetText, count }, '出現時');
     },
     async _dslOpInduce(act, sourceCard) {
