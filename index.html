@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.20',
+    BUILD_VERSION: '1.14.21',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7749,6 +7749,7 @@ new Vue({
       this.battleSaveUndo();
       const clone = Object.assign({}, card);
       if (/場|フィールド|招来/.test(note)) {
+        if (!this.battleCanPlaceFromSource(clone, 'effect')) return;
         const zone = this.battleFieldZoneForSummon(clone) || 'legacies';
         if (!Array.isArray(player[zone]) || player[zone].length >= 7) {
           this.battleShowNotice('フィールド上限です', `「${this.fullName(card)}」を場に出せませんでした。手動で処理してください。`, [card]);
@@ -7799,6 +7800,10 @@ new Vue({
         const arr = p[fromZone];
         const idx = arr.indexOf(card);
         if (idx < 0) return;
+        if (fromZone !== 'hand' && this.battleHasHandOnlyPlacementRestriction(card)) {
+          this.battleCanPlaceFromSource(card, fromZone);
+          return;
+        }
         arr.splice(idx, 1);
         if (card.category === 'オラクル') {
           p.graveyard = p.graveyard || [];
@@ -7914,6 +7919,29 @@ new Vue({
         details || `「${this.fullName(sourceCard)}」の${op}はルール改変系のため、カード本文に従って手動で処理してください。`,
         sourceCard ? [sourceCard] : []
       );
+    },
+    battleHasHandOnlyPlacementRestriction(card) {
+      const spec = this._dslGetSpec(card);
+      if (!spec || !Array.isArray(spec.能力)) return false;
+      return spec.能力.some(ab => {
+        if (!this._dslAbilityMatchesTrigger(ab, '常在')) return false;
+        return (ab.処理 || []).some(act => {
+          const op = act.操作 || act.op;
+          return op === '設置制限' && /手札から使用する以外/.test(String(act.値 || act.備考 || ''));
+        });
+      });
+    },
+    battleCanPlaceFromSource(card, sourceZone, showNotice = true) {
+      if (!this.battleHasHandOnlyPlacementRestriction(card)) return true;
+      if (sourceZone === 'hand') return true;
+      if (showNotice) {
+        this.battleShowNotice(
+          '設置制限',
+          `「${this.fullName(card)}」は手札から使用する以外の方法では場に出せません。`,
+          [card]
+        );
+      }
+      return false;
     },
     /* フィールドカードを別ゾーンへ移動（破壊・崩壊・手札戻し共通） */
     _dslMoveFromField(card, destZone, forceSide) {
@@ -8145,6 +8173,7 @@ new Vue({
       const sourceZone = sel.領域 || 'hand';
       const placed = [];
       targets.forEach(card => {
+        if (!this.battleCanPlaceFromSource(card, sourceZone)) return;
         const srcArr = player[sourceZone];
         if (Array.isArray(srcArr)) {
           const idx = srcArr.indexOf(card);
@@ -8581,6 +8610,7 @@ new Vue({
       const player = this.battleSample.self;
       const zone = this.battleFieldZoneForSummon(card);
       if (!player || !zone || !Array.isArray(player[zone])) return;
+      if (!this.battleCanPlaceFromSource(card, 'effect')) return;
       if (player[zone].length >= 7) {
         this.battleShowNotice('フィールド上限です', `${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドには7枚まで配置できます。`, [card]);
         return;
@@ -8609,6 +8639,7 @@ new Vue({
       const player = this.battleSample.self;
       const zone = this.battleFieldZoneForSummon(card);
       if (!player || !zone || !Array.isArray(player[zone])) return;
+      if (!this.battleCanPlaceFromSource(card, 'effect')) return;
       if (player[zone].length >= 7) {
         this.battleShowNotice('フィールド上限です', `${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドには7枚まで配置できます。`, [card]);
         return;
@@ -9778,8 +9809,44 @@ new Vue({
         cards: card ? [card] : [],
       };
     },
+    battleFindLifeReplacementCard(side) {
+      const player = this.battleSample && this.battleSample[side];
+      if (!player) return null;
+      const field = []
+        .concat(Array.isArray(player.legacies) ? player.legacies : [])
+        .concat(Array.isArray(player.relics) ? player.relics : []);
+      return field.find(card => {
+        const spec = this._dslGetSpec(card);
+        if (!spec || !Array.isArray(spec.能力)) return false;
+        return spec.能力.some(ab => {
+          if (!this._dslAbilityMatchesTrigger(ab, '常在')) return false;
+          return (ab.処理 || []).some(act => {
+            const op = act.操作 || act.op;
+            const text = String(act.値 || act.備考 || '');
+            return op === '置換' && /ライフが0以下/.test(text) && /崩壊/.test(text);
+          });
+        });
+      }) || null;
+    },
+    battleApplyLifeReplacement(side) {
+      const player = this.battleSample && this.battleSample[side];
+      if (!player || player.life > 0) return false;
+      const card = this.battleFindLifeReplacementCard(side);
+      if (!card) return false;
+      const moved = this._dslMoveFromField(card, 'crumbled', side);
+      if (!moved) return false;
+      player.life = 1;
+      this.battleShowNotice(
+        '敗北置換',
+        `「${this.fullName(card)}」を崩壊させ、${side === 'self' ? '自分' : '相手'}のライフ0以下による敗北を置き換えました。`,
+        [card]
+      );
+      return true;
+    },
     _battleCheckResult() {
       if (this.battleSample.result) return;
+      this.battleApplyLifeReplacement('self');
+      this.battleApplyLifeReplacement('opp');
       if (this.battleSample.opp.life <= 0) {
         this.battleSample.result = { outcome: 'win', title: '星戦勝利！' };
       } else if (this.battleSample.self.life <= 0) {
@@ -9852,6 +9919,7 @@ new Vue({
       const zone = modal.zone;
       const p = this.battleSample.self;
       if (!p || !Array.isArray(p[zone])) return;
+      if (!this.battleCanPlaceFromSource(card, 'effect')) return;
       if (p[zone].length >= 7) {
         this.battleShowNotice('フィールド上限です', `${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドには7枚まで配置できます。`, [card]);
         return;
