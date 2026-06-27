@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.6',
+    BUILD_VERSION: '1.14.7',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6697,6 +6697,7 @@ new Vue({
       if (nextSide === this.battleContext.firstSide) bs.turn += 1;
       bs.activeSide = nextSide;
       this._battleStartTurnFor(nextSide);
+      this.dslRefreshStaticAbilities();
     },
     /* 当該side+turn で適用された一時補正を巻き戻す（戦闘力表示・_buf を復元） */
     _battleExpireBuffsForSide(side, turn) {
@@ -6748,6 +6749,7 @@ new Vue({
           const pw = Number(card.power);
           if (!isNaN(pw) && pw <= 0) {
             // 破壊：墓地へ
+            this.dslClearStaticFromCard(card);
             this.$set(card, '_tapped', false);
             this.$set(card, '_buf', 0);
             p.graveyard = p.graveyard || [];
@@ -6762,6 +6764,7 @@ new Vue({
       if (destroyed.length) {
         const lines = destroyed.map(d => `${d.side === 'self' ? '自分' : '相手'}の「${d.name}」`).join('、');
         this.battleShowNotice('戦闘力0以下で破壊', `${lines}は戦闘力が0以下になったため破壊されました。`, destroyed.map(d => d.card));
+        this.dslRefreshStaticAbilities();
       }
     },
     /* ターン開始処理（アンタップ＋ドロー＋マナ回復＋疲労ダメージ） */
@@ -6973,6 +6976,7 @@ new Vue({
         }
         this.effectSpecsByName = byName;
         this.effectSpecsReady = true;
+        this.dslRefreshStaticAbilities();
         console.log('[DSL] effect_spec.json loaded:', Object.keys(this.effectSpecs).length, 'specs,', Object.keys(byName).length, 'unique names');
       } catch (e) {
         console.warn('[DSL] effect_spec.json 読み込み失敗:', e);
@@ -7112,10 +7116,7 @@ new Vue({
       return [];
     },
     _dslCardEffPower(card) {
-      const base = Number(card.power || 0);
-      const tmp  = Number(card._buf || 0);     // 一時補正（このターン）
-      const perm = Number(card._perm || 0);    // 恒常バフ
-      return base + tmp + perm;
+      return Number(card && card.power) || 0;
     },
     _dslPassCompare(card, cmp) {
       if (!cmp) return true;
@@ -7212,14 +7213,24 @@ new Vue({
       if (cond.or)  return cond.or.some(c => this.dslEvalCond(c));
       if (cond.not) return !this.dslEvalCond(cond.not);
       if (cond.計数) {
-        const n = this._dslEligible({
+        let targets = this._dslEligible({
           対象側: cond.計数.対象側, 領域: cond.計数.領域, 絞込: cond.計数.絞込, 比較: cond.計数.比較,
-        }).length;
+        });
+        if (/以外/.test(String(cond.計数.備考 || '')) && this._dslCurrentSource) {
+          targets = targets.filter(c => c !== this._dslCurrentSource);
+        }
+        const n = targets.length;
         return this._dslCompareNum(n, cond.比較, cond.値);
       }
       if (cond.状態 === '天力') return this._dslCompareNum(this.battleSample.self.tenryoku, cond.比較, cond.値);
       if (cond.状態 === 'マナ最大値') return this._dslCompareNum(this.battleSample.self.manaMax, cond.比較, cond.値);
       if (cond.状態 === 'ライフ') return this._dslCompareNum(this.battleSample.self.life, cond.比較, cond.値);
+      if (cond.状態 === '自身タップ') return !!(this._dslCurrentSource && this._dslCurrentSource._tapped);
+      if (cond.状態 === '自身戦闘力') return this._dslCompareNum(this._dslCardEffPower(this._dslCurrentSource), cond.比較, cond.値);
+      if (cond.状態 === '自陣種族数') {
+        const types = new Set(((this.battleSample.self && this.battleSample.self.legacies) || []).map(c => c && c.type).filter(Boolean));
+        return this._dslCompareNum(types.size, cond.比較, cond.値);
+      }
       if (cond.状態) { console.warn('[DSL] 未対応状態条件:', cond.状態); return true; }
       if (cond.存在) return this._dslEligible(cond.存在).length > 0;
       if (cond.備考) { console.warn('[DSL] 備考条件は手動判定→真:', cond.備考); return true; }
@@ -7264,6 +7275,105 @@ new Vue({
           this.$set(card, '_kwGrant', list);
         }
       });
+    },
+    dslFieldCards() {
+      const list = [];
+      const bs = this.battleSample;
+      if (!bs) return list;
+      ['self', 'opp'].forEach(side => {
+        const p = bs[side];
+        if (!p) return;
+        ['legacies', 'relics'].forEach(zone => {
+          const arr = p[zone];
+          if (!Array.isArray(arr)) return;
+          arr.forEach(card => { if (card) list.push({ side, zone, card }); });
+        });
+      });
+      return list;
+    },
+    dslResetStaticEffects() {
+      this.dslFieldCards().forEach(({ card }) => this.dslClearStaticFromCard(card));
+    },
+    dslClearStaticFromCard(card) {
+      if (!card) return;
+      const prev = Number(card._staticPerm || 0);
+      if (prev) this.$set(card, 'power', (Number(card.power) || 0) - prev);
+      const prevAttack = Number(card._staticAttack || 0);
+      if (prevAttack) this.$set(card, 'attack', (Number(card.attack) || 0) - prevAttack);
+      this.$set(card, '_staticPerm', 0);
+      this.$set(card, '_staticAttack', 0);
+      this.$set(card, '_staticKwGrant', []);
+    },
+    dslStaticEligible(sel, sourceCard, sourceSide) {
+      if (!sel) return [];
+      if (sel.自身) return sourceCard ? [sourceCard] : [];
+      const base = Object.assign({}, sel);
+      if (!base.対象側) base.対象側 = sourceSide || 'self';
+      if (!base.領域) base.領域 = 'field';
+      let pool = this._dslEligible(base);
+      const note = String(base.備考 || '');
+      if (/以外/.test(note) && sourceCard) pool = pool.filter(c => c !== sourceCard);
+      return pool;
+    },
+    dslApplyStaticGrant(card, grants) {
+      if (!card) return;
+      (grants || []).forEach(g => {
+        const s = String(g);
+        let m;
+        if (m = s.match(/^戦闘力([+\-]?\d+)\(恒常\)$/)) {
+          const delta = Number(m[1]) || 0;
+          this.$set(card, '_staticPerm', (Number(card._staticPerm) || 0) + delta);
+          this.$set(card, 'power', (Number(card.power) || 0) + delta);
+        } else if (m = s.match(/^神攻力([+\-]?\d+)/)) {
+          const delta = Number(m[1]) || 0;
+          this.$set(card, '_staticAttack', (Number(card._staticAttack) || 0) + delta);
+          this.$set(card, 'attack', (Number(card.attack) || 0) + delta);
+        } else if (/×|動的/.test(s)) {
+          // 盤面数を参照する常在バフは専用実装まで手動扱い。キーワードとしては付与しない。
+        } else {
+          const list = Array.isArray(card._staticKwGrant) ? card._staticKwGrant.slice() : [];
+          if (!list.includes(s)) list.push(s);
+          this.$set(card, '_staticKwGrant', list);
+        }
+      });
+    },
+    dslApplyStaticActions(actions, sourceCard, sourceSide) {
+      (actions || []).forEach(act => {
+        const op = act.操作 || act.op;
+        if (op === '付与' || op === '静的バフ' || op === '補正' || op === '神威') {
+          const targets = this.dslStaticEligible(act.対象 || { 自身: true }, sourceCard, sourceSide);
+          targets.forEach(t => this.dslApplyStaticGrant(t, act.付与 || []));
+        } else if (op === '分岐') {
+          for (const br of (act.分岐 || [])) {
+            if (!br.条件 || this.dslEvalCond(br.条件)) {
+              this.dslApplyStaticActions(br.処理 || [], sourceCard, sourceSide);
+              break;
+            }
+          }
+        }
+      });
+    },
+    dslRefreshStaticAbilities() {
+      if (!this.effectSpecsReady || !this.battleSample) return;
+      if (this._dslRefreshingStatic) return;
+      this._dslRefreshingStatic = true;
+      try {
+        this.dslResetStaticEffects();
+        this.dslFieldCards().forEach(({ side, card }) => {
+          const spec = this._dslGetSpec(card);
+          if (!spec || !Array.isArray(spec.能力)) return;
+          spec.能力.forEach(ab => {
+            if (!this._dslAbilityMatchesTrigger(ab, '常在')) return;
+            if (ab.任意) return;
+            this._dslCurrentSource = card;
+            if (ab.条件 && !this.dslEvalCond(ab.条件)) return;
+            this.dslApplyStaticActions(ab.処理 || [], card, side);
+          });
+        });
+      } finally {
+        this._dslCurrentSource = null;
+        this._dslRefreshingStatic = false;
+      }
     },
     async _dslOpGrant(act, sourceCard, permanent) {
       const targets = await this.dslChooseTargets(act.対象, `【${(act.付与 || []).join('・')}】を付与`);
@@ -7326,6 +7436,7 @@ new Vue({
           const idx = arr.indexOf(card);
           if (idx >= 0) {
             arr.splice(idx, 1);
+            this.dslClearStaticFromCard(card);
             this.$set(card, '_tapped', false);
             this.$set(card, '_buf', 0);
             if (destZone === 'hand') {
@@ -7335,6 +7446,7 @@ new Vue({
             } else if (destZone === 'crumbled') {
               p.crumbled = p.crumbled || []; p.crumbled.push(card);
             }
+            this.dslRefreshStaticAbilities();
             return true;
           }
         }
@@ -7514,10 +7626,11 @@ new Vue({
         }
         const destZone = this.battleFieldZoneForSummon(card) || 'legacies';
         if (Array.isArray(player[destZone]) && player[destZone].length < 7) {
-          player[destZone].push(card);
+          player[destZone].push(this._battlePrepareFieldCard(card));
           placed.push(card);
         }
       });
+      if (placed.length) this.dslRefreshStaticAbilities();
       if (placed.length) {
         this.battleShowNotice('場に出す', `${placed.map(c => `「${this.fullName(c)}」`).join('、')}を場に出しました。`, placed);
       }
@@ -7569,6 +7682,7 @@ new Vue({
       p.graveyard = p.graveyard || [];
       p.graveyard.push(...milled);
       p.deckCount = p.deck.length;
+      this.dslRefreshStaticAbilities();
       this.battleShowNotice('デッキ墓地送り', `デッキ上から${milled.length}枚を墓地に送りました。`, milled);
     },
 
@@ -8047,10 +8161,12 @@ new Vue({
       this.battleSaveUndo();
       player.mana = Math.max(0, player.mana - cost);
       player.hand.splice(index, 1);
-      player[zone].push(this._battlePrepareFieldCard(card));
+      const fieldCard = this._battlePrepareFieldCard(card);
+      player[zone].push(fieldCard);
       player.handCount = player.hand.length;
       this.hideCardHover();
-      if (!this.battleRunEnterKeywordEffects(card, cost)) this.battleKeywordGuide(card, cost);
+      this.dslRefreshStaticAbilities();
+      if (!this.battleRunEnterKeywordEffects(fieldCard, cost)) this.battleKeywordGuide(fieldCard, cost);
     },
     battleMoveHandCard(index, destinationZone) {
       if (this.battleSample.result) return;
@@ -8063,6 +8179,7 @@ new Vue({
       player[destinationZone].push(card);
       player.handCount = player.hand.length;
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       const destLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
         title: destinationZone === 'graveyard' ? '手札を捨てる' : `手札から${destLabel}へ`,
@@ -8131,10 +8248,12 @@ new Vue({
       }
       this.battleSaveUndo();
       player.hand.splice(index, 1);
-      player[zone].push(this._battlePrepareFieldCard(card));
+      const fieldCard = this._battlePrepareFieldCard(card);
+      player[zone].push(fieldCard);
       player.handCount = player.hand.length;
       this.hideCardHover();
-      if (!this.battleRunEnterKeywordEffects(card, 0)) this.battleKeywordGuide(card, 0);
+      this.dslRefreshStaticAbilities();
+      if (!this.battleRunEnterKeywordEffects(fieldCard, 0)) this.battleKeywordGuide(fieldCard, 0);
     },
     battleMoveHandCardToDeck(index, mode) {
       if (this.battleSample.result) return;
@@ -8176,11 +8295,17 @@ new Vue({
       const fieldCard = Object.assign({}, card);
       this.$set(fieldCard, '_summonedTurn', this.battleSample.turn);
       this.$set(fieldCard, '_tapped', false);
+      this.$set(fieldCard, '_staticPerm', 0);
+      this.$set(fieldCard, '_staticAttack', 0);
+      this.$set(fieldCard, '_staticKwGrant', []);
       return fieldCard;
     },
     battleCardHasKeyword(card, keyword) {
       const text = this.battleCardRulesText(card).replace(/\s+/g, '');
-      return text.includes(`【${keyword}】`) || text.includes(keyword);
+      const grants = []
+        .concat(Array.isArray(card && card._kwGrant) ? card._kwGrant : [])
+        .concat(Array.isArray(card && card._staticKwGrant) ? card._staticKwGrant : []);
+      return text.includes(`【${keyword}】`) || text.includes(keyword) || grants.includes(keyword);
     },
     battleCanTargetLegacy(attacker, defender) {
       return !(this.battleCardHasKeyword(defender, '死角') && !this.battleCardHasKeyword(attacker, '死角'));
@@ -8484,6 +8609,7 @@ new Vue({
       const player = this.battleSample[side];
       if (!player || !player.legacies[index]) return;
       const card = player.legacies.splice(index, 1)[0];
+      this.dslClearStaticFromCard(card);
       this.$set(card, '_tapped', false);
       player.graveyard.push(card);
       destroyed.push({ side, card });
@@ -8524,6 +8650,7 @@ new Vue({
         `「${this.fullName(attacker)}」（戦闘力 ${ap}）と「${this.fullName(defender)}」（戦闘力 ${dp}）が戦闘しました。`,
         destroyed.length ? `破壊: ${destroyed.map(d => `「${this.fullName(d.card)}」`).join('、')}` : '破壊されるレガシーはありません。'
       ].filter(Boolean);
+      if (destroyed.length) this.dslRefreshStaticAbilities();
       this.battleShowNotice('戦闘解決', lines.join('\n'), [attacker, defender, ...destroyed.map(d => d.card)]);
       destroyed.forEach(d => { if (d.side === 'self') this.battleRunDeathKeywordEffects(d.card); });
     },
@@ -8617,6 +8744,7 @@ new Vue({
       if (!card) return false;
       this.battleSaveUndo();
       this.$set(card, '_tapped', !card._tapped);
+      this.dslRefreshStaticAbilities();
       return true;
     },
     battleMoveFieldCard(side, sourceZone, index, destinationZone) {
@@ -8628,10 +8756,12 @@ new Vue({
       if (!card) return;
       this.battleSaveUndo();
       player[sourceZone].splice(index, 1);
+      this.dslClearStaticFromCard(card);
       this.$set(card, '_tapped', false);
       player[destinationZone].push(card);
       this.hideCardHover();
       this.battleHoverField = null;
+      this.dslRefreshStaticAbilities();
       if (destinationZone === 'graveyard' && this.battleRunDeathKeywordEffects(card)) return;
       const destLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
@@ -8649,11 +8779,13 @@ new Vue({
       if (!card) return;
       this.battleSaveUndo();
       player[sourceZone].splice(index, 1);
+      this.dslClearStaticFromCard(card);
       this.$set(card, '_tapped', false);
       player.hand.push(card);
       player.handCount = player.hand.length;
       this.hideCardHover();
       this.battleHoverField = null;
+      this.dslRefreshStaticAbilities();
       this.battleNotice = {
         title: '場から手札へ',
         message: `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を場から手札へ戻しました。`,
@@ -8669,9 +8801,11 @@ new Vue({
       if (!card) return;
       this.battleSaveUndo();
       player[sourceZone].splice(index, 1);
+      this.dslClearStaticFromCard(card);
       player.deck.unshift(card);
       this._battleSyncSideCounts(side);
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       this.battleNotice = {
         title: '場からデッキ上へ',
         message: `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を場からデッキ上へ戻しました。`,
@@ -8699,6 +8833,7 @@ new Vue({
       player.handCount = player.hand.length;
       this.battleZoneModal = null;
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       const zoneLabel = zone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
         title: `${zoneLabel}から手札へ`,
@@ -8729,6 +8864,7 @@ new Vue({
       player[fieldZone].push(this._battlePrepareFieldCard(card));
       this.battleZoneModal = null;
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       const zoneLabel = zone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
         title: `${zoneLabel}から場へ`,
@@ -8751,6 +8887,7 @@ new Vue({
       this._battleSyncSideCounts(modal.side);
       this.battleZoneModal = null;
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       const zoneLabel = zone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
         title: `${zoneLabel}からデッキ上へ`,
@@ -8795,6 +8932,7 @@ new Vue({
       player[destinationZone].push(card);
       this.battleOpenZone('self', sourceZone);
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       const fromLabel = sourceZone === 'graveyard' ? '墓地' : '崩壊';
       const toLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
@@ -9093,8 +9231,9 @@ new Vue({
       }
       this.battleSaveUndo();
       // 元のカードオブジェクトを共有しないよう浅いクローン（複数体出せる）
-      const clone = Object.assign({}, card);
+      const clone = this._battlePrepareFieldCard(Object.assign({}, card));
       p[zone].push(clone);
+      this.dslRefreshStaticAbilities();
       this.battleShowNotice('トークン招来', `「${this.fullName(card)}」を${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドに招来しました。`, [card]);
     },
     battleOpenFieldMenu(side, zone, index, e) {
@@ -9136,6 +9275,7 @@ new Vue({
       if (action === 'toggleTap') {
         this.battleSaveUndo();
         this.$set(card, '_tapped', !card._tapped);
+        this.dslRefreshStaticAbilities();
         return;
       }
       // 場から外れる時はタップ状態をクリア
