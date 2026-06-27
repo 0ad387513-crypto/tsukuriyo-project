@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.19',
+    BUILD_VERSION: '1.14.20',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7231,6 +7231,15 @@ new Vue({
         case '無償使用':   return this._dslOpFreeUse(act, sourceCard);
         case 'コスト変更': return this._dslOpCostChange(act, sourceCard);
         case '昇華値変更': return this._dslOpSublimChange(act, sourceCard);
+        case '他効果発動': return this._dslOpTriggerOtherEffect(act, sourceCard);
+        case '公開':       return this._dslOpPublicNotice(act, sourceCard);
+        case '相手選択破棄':
+        case '相手選択保護':
+        case 'ステータス設定':
+        case '置換':
+        case '設置制限':
+        case '効果付与':
+        case '効果無効化': return this._dslOpManualRuleEffect(act, sourceCard);
         default:
           // 未対応op：手動フォールバック通知
           this.battleShowNotice(
@@ -7855,6 +7864,55 @@ new Vue({
         '昇華値変更',
         `${targets.map(c => `「${this.fullName(c)}」`).join('、')}の昇華値を ${delta >= 0 ? '+' : ''}${delta} しました。`,
         targets
+      );
+    },
+    async _dslOpTriggerOtherEffect(act, sourceCard) {
+      const targetText = String(act.対象 || act.値 || '');
+      const trigger = /死亡時/.test(targetText) ? '死亡時'
+        : /神攻時/.test(targetText) ? '神攻時'
+        : /出現時/.test(targetText) ? '出現時'
+        : null;
+      if (!trigger) {
+        this.battleShowNotice('他効果発動：手動確認', `対象効果を自動判定できませんでした。\n${targetText}`, sourceCard ? [sourceCard] : []);
+        return;
+      }
+      const selector = {
+        対象側: 'self',
+        領域: /墓地/.test(targetText) ? 'graveyard' : 'field',
+        絞込: ['レガシー'],
+        枚数: 1,
+        選択者: 'player',
+      };
+      const targets = await this.dslChooseTargets(selector, `${trigger}効果を発動するレガシーを選択`);
+      if (!targets.length) return;
+      const card = targets[0];
+      if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, trigger)) {
+        await this.dslRunSpec(card, trigger, null);
+        this.battleShowNotice('他効果発動', `「${this.fullName(card)}」の【${trigger}】効果を発動しました。`, [card]);
+      } else {
+        this.battleShowNotice('他効果発動：手動確認', `「${this.fullName(card)}」の【${trigger}】効果は自動処理できませんでした。カード本文に従って手動で処理してください。`, [card]);
+      }
+    },
+    _dslOpPublicNotice(act, sourceCard) {
+      const text = [act.値, act.備考, act.対象 && act.対象.備考].filter(Boolean).join('\n');
+      this.battleShowNotice(
+        '公開処理',
+        text || `「${this.fullName(sourceCard)}」の公開処理です。対象カードを両プレイヤーで確認してください。`,
+        sourceCard ? [sourceCard] : []
+      );
+    },
+    _dslOpManualRuleEffect(act, sourceCard) {
+      const op = act.操作 || act.op || '効果';
+      const details = [
+        act.値,
+        act.備考,
+        act.期間 ? `期間: ${act.期間}` : '',
+        act.対象 && act.対象.備考 ? `対象: ${act.対象.備考}` : '',
+      ].filter(Boolean).join('\n');
+      this.battleShowNotice(
+        `${op}：手動確認`,
+        details || `「${this.fullName(sourceCard)}」の${op}はルール改変系のため、カード本文に従って手動で処理してください。`,
+        sourceCard ? [sourceCard] : []
       );
     },
     /* フィールドカードを別ゾーンへ移動（破壊・崩壊・手札戻し共通） */
