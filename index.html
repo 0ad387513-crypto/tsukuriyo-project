@@ -5251,7 +5251,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.29',
+    BUILD_VERSION: '1.14.30',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7353,7 +7353,14 @@ new Vue({
       if (!crit || !crit.length) return [];
       const p = this.battleSample && this.battleSample.self;
       if (!p || !Array.isArray(p.legacies)) return [];
-      return p.legacies.filter(c => this.battleCardMatchesInduceCriteria(c, crit));
+      const field = p.legacies.filter(c => this.battleCardMatchesInduceCriteria(c, crit));
+      if (!p.graveyardEvolutionEnabled || !Array.isArray(p.graveyard)) return field;
+      const graveyard = p.graveyard.filter(c => {
+        if (!c || c._usedAsEvolutionBase) return false;
+        if ((c.category || '') !== 'レガシー') return false;
+        return this.battleCardMatchesInduceCriteria(c, crit);
+      });
+      return field.concat(graveyard);
     },
     _dslAbilityMatchesTrigger(ab, triggerLabel) {
       if (!ab) return false;
@@ -7490,8 +7497,8 @@ new Vue({
         case '他効果発動': return this._dslOpTriggerOtherEffect(act, sourceCard);
         case '公開':       return this._dslOpPublicNotice(act, sourceCard);
         case '置換':
-        case '設置制限':
-        case '効果付与': return this._dslOpManualRuleEffect(act, sourceCard);
+        case '設置制限': return this._dslOpManualRuleEffect(act, sourceCard);
+        case '効果付与': return this._dslOpEffectGrant(act, sourceCard);
         case 'ステータス設定': return this._dslOpStatusSet(act, sourceCard);
         case '相手選択破棄': return this._dslOpOpponentChooseDiscard(act, sourceCard);
         case '相手選択保護': return this._dslOpOpponentChooseProtect(act, sourceCard);
@@ -8418,6 +8425,22 @@ new Vue({
         [target, destroyed.card].filter(Boolean)
       );
     },
+    _dslOpEffectGrant(act, sourceCard) {
+      const value = String(act.値 || act.備考 || '');
+      if (/墓地の進化条件を満たすレガシー/.test(value) && /進化/.test(value)) {
+        const p = this.battleSample && this.battleSample.self;
+        if (!p) return;
+        this.battleSaveUndo();
+        this.$set(p, 'graveyardEvolutionEnabled', true);
+        this.battleShowNotice(
+          '効果付与',
+          'この星戦中、自分レガシーが進化するとき、自分墓地の進化条件を満たすレガシーも進化元に選べるようになりました。',
+          sourceCard ? [sourceCard] : []
+        );
+        return;
+      }
+      this._dslOpManualRuleEffect(act, sourceCard);
+    },
     _dslOpManualRuleEffect(act, sourceCard) {
       const op = act.操作 || act.op || '効果';
       const details = [
@@ -8467,6 +8490,7 @@ new Vue({
           const idx = arr.indexOf(card);
           if (idx >= 0) {
             arr.splice(idx, 1);
+            this.battleReleaseEvolutionBase(card);
             this.dslClearStaticFromCard(card);
             this.$set(card, '_tapped', false);
             this.$set(card, '_bindUntilSide', null);
@@ -8822,6 +8846,7 @@ new Vue({
           if (!Array.isArray(arr)) continue;
           const idx = arr.indexOf(card);
           if (idx >= 0) {
+            this.battleReleaseEvolutionBase(card);
             arr.splice(idx, 1);
             return side;
           }
@@ -9398,10 +9423,15 @@ new Vue({
       if (evolveBase) {
         // 進化として配置：既存カードの位置に上書き、_evolved を記録し、元カードは墓地へ
         const baseIdx = player.legacies.indexOf(evolveBase);
+        const graveIdx = (player.graveyard || []).indexOf(evolveBase);
         this.$set(fieldCard, '_evolved', true);
         this.$set(fieldCard, '_evolvedBase', evolveBase);
+        this.$set(fieldCard, '_evolvedFromGraveyard', graveIdx >= 0 && baseIdx < 0);
         if (baseIdx >= 0) {
           player.legacies.splice(baseIdx, 1, fieldCard);
+        } else if (graveIdx >= 0) {
+          player.legacies.push(fieldCard);
+          this.$set(evolveBase, '_usedAsEvolutionBase', true);
         } else {
           player.legacies.push(fieldCard);
         }
@@ -9410,10 +9440,12 @@ new Vue({
         this.$set(evolveBase, '_tapped', false);
         this.$set(evolveBase, '_buf', 0);
         player.graveyard = player.graveyard || [];
-        player.graveyard.push(evolveBase);
+        if (graveIdx < 0) player.graveyard.push(evolveBase);
         this.battleShowNotice(
           '進化として配置',
-          `「${this.fullName(evolveBase)}」の上に「${this.fullName(fieldCard)}」が進化として重ねられました。元カードは墓地へ。`,
+          graveIdx >= 0 && baseIdx < 0
+            ? `墓地の「${this.fullName(evolveBase)}」の上に「${this.fullName(fieldCard)}」が進化として重ねられました。`
+            : `「${this.fullName(evolveBase)}」の上に「${this.fullName(fieldCard)}」が進化として重ねられました。元カードは墓地へ。`,
           [fieldCard, evolveBase]
         );
       } else {
@@ -9442,8 +9474,10 @@ new Vue({
       if (evolveBase) {
         this.battleFireKamiEvent('self', 'evolveOrSublim', { card: fieldCard, evolved: true });
         // 進化元レガシーが墓地に行ったので K7 ヒノカグツチ 等にも発火
-        this.battleFireKamiEvent('self', 'legacyDestroyed', { card: evolveBase });
-        this.battleFireKamiEvent('opp',  'legacyDestroyed', { card: evolveBase });
+        if (!fieldCard._evolvedFromGraveyard) {
+          this.battleFireKamiEvent('self', 'legacyDestroyed', { card: evolveBase });
+          this.battleFireKamiEvent('opp',  'legacyDestroyed', { card: evolveBase });
+        }
       }
       // 通常の【出現時】効果
       if (!this.battleRunEnterKeywordEffects(fieldCard, cost)) this.battleKeywordGuide(fieldCard, cost);
@@ -9573,6 +9607,13 @@ new Vue({
       if (!el || !e || typeof e.clientX !== 'number') return false;
       const r = el.getBoundingClientRect();
       return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    },
+    battleReleaseEvolutionBase(card) {
+      if (!card || !card._evolvedBase) return;
+      if (card._evolvedFromGraveyard) {
+        this.$set(card._evolvedBase, '_usedAsEvolutionBase', false);
+      }
+      this.$set(card, '_evolvedFromGraveyard', false);
     },
     _battlePrepareFieldCard(card) {
       if (!card) return card;
@@ -10044,6 +10085,7 @@ new Vue({
       if (!card) return;
       this.battleSaveUndo();
       player[sourceZone].splice(index, 1);
+      this.battleReleaseEvolutionBase(card);
       this.dslClearStaticFromCard(card);
       this.$set(card, '_tapped', false);
       player[destinationZone].push(card);
@@ -10067,6 +10109,7 @@ new Vue({
       if (!card) return;
       this.battleSaveUndo();
       player[sourceZone].splice(index, 1);
+      this.battleReleaseEvolutionBase(card);
       this.dslClearStaticFromCard(card);
       this.$set(card, '_tapped', false);
       player.hand.push(card);
@@ -10089,6 +10132,7 @@ new Vue({
       if (!card) return;
       this.battleSaveUndo();
       player[sourceZone].splice(index, 1);
+      this.battleReleaseEvolutionBase(card);
       this.dslClearStaticFromCard(card);
       player.deck.unshift(card);
       this._battleSyncSideCounts(side);
