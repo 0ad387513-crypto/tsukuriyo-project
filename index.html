@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.25',
+    BUILD_VERSION: '1.14.26',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -10166,7 +10166,7 @@ new Vue({
       if (this.battleSample.result || this.battleSkillTone === 'disabled') return;
       this.battleSkillModal = { side: 'self' };
     },
-    battleUseKamiSkill(index) {
+    async battleUseKamiSkill(index) {
       const skill = this.battleSkillOptions.find(item => item.index === index);
       if (!skill || !skill.enabled || this.battleSample.result) return;
       this.battleSaveUndo();
@@ -10176,6 +10176,54 @@ new Vue({
         title: `${skill.name}を発動`,
         message: `${this.battleContext.selfName}が神技「${skill.name}」を発動し、天力を${skill.cost}消費しました。`,
       };
+      // DSL：神技spec を実行（index は 1/2 → spec 内の神技契機を順番で対応付け）
+      const kami = this.battleSample.self.kami;
+      if (!kami || !this.effectSpecsReady) return;
+      const spec = this._dslGetSpec(kami);
+      if (!spec || !Array.isArray(spec.能力)) {
+        this.battleShowNotice(
+          '神技spec未登録',
+          `「${this.fullName(kami)}」のカミ効果定義が見つかりませんでした。神技効果は手動で処理してください。`,
+          [kami]
+        );
+        return;
+      }
+      const skillAbilities = spec.能力.filter(ab => ab && ab.契機 === '神技');
+      const target = skillAbilities[index - 1];
+      if (!target) {
+        this.battleShowNotice(
+          '神技spec未登録',
+          `神技「${skill.name}」の効果定義が見つかりませんでした。手動で処理してください。`,
+          [kami]
+        );
+        return;
+      }
+      // 任意能力なら確認
+      if (target.任意) {
+        const summary = this._dslSummarizeActions(target.処理 || []);
+        const ok = await this.dslAskOptional(kami, '神技', summary);
+        if (!ok) return;
+      }
+      // 条件評価
+      if (target.条件 && !this.dslEvalCond(target.条件)) {
+        this.battleShowNotice(
+          '神技：条件未達',
+          `神技「${skill.name}」の発動条件を満たしていません。効果は不発となります。`,
+          [kami]
+        );
+        return;
+      }
+      this._dslCurrentSource = kami;
+      try {
+        await this.dslRunActions(target.処理 || [], kami);
+      } catch (e) {
+        console.warn('[DSL] 神技処理エラー:', e);
+        this.battleShowNotice(
+          '神技処理エラー',
+          `神技「${skill.name}」の自動処理中にエラーが発生しました。手動で処理してください。`,
+          [kami]
+        );
+      }
     },
     _battleHandleSealThreshold(side, previous, current) {
       const player = this.battleSample[side];
