@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.23',
+    BUILD_VERSION: '1.14.24',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7262,10 +7262,10 @@ new Vue({
         case '昇華値変更': return this._dslOpSublimChange(act, sourceCard);
         case '他効果発動': return this._dslOpTriggerOtherEffect(act, sourceCard);
         case '公開':       return this._dslOpPublicNotice(act, sourceCard);
-        case 'ステータス設定':
         case '置換':
         case '設置制限':
         case '効果付与': return this._dslOpManualRuleEffect(act, sourceCard);
+        case 'ステータス設定': return this._dslOpStatusSet(act, sourceCard);
         case '相手選択破棄': return this._dslOpOpponentChooseDiscard(act, sourceCard);
         case '相手選択保護': return this._dslOpOpponentChooseProtect(act, sourceCard);
         case '効果無効化': return this._dslOpEffectDisable(act, sourceCard);
@@ -7676,6 +7676,11 @@ new Vue({
       const targets = await this.dslChooseTargets(act.対象, '破壊する対象を選択');
       if (!targets.length) return;
       this.battleSaveUndo();
+      this._dslLastDestroyedCards = targets.map(card => ({
+        card,
+        power: this._dslCardEffPower(card),
+        attack: Number(card && card.attack) || 0
+      }));
       targets.forEach(c => this._dslMoveFromField(c, 'graveyard'));
       this.battleShowNotice('破壊', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を破壊しました。`, targets);
     },
@@ -7799,7 +7804,9 @@ new Vue({
           this.battleShowNotice('フィールド上限です', `「${this.fullName(card)}」を場に出せませんでした。手動で処理してください。`, [card]);
           return;
         }
-        player[zone].push(this._battlePrepareFieldCard(clone));
+        const fieldCard = this._battlePrepareFieldCard(clone);
+        player[zone].push(fieldCard);
+        this._dslLastSummonedCards = [fieldCard];
         this.dslRefreshStaticAbilities();
         this.battleShowNotice('トークン生成', `「${this.fullName(card)}」を${side === 'opp' ? '相手' : '自分'}の場に出しました。`, [card]);
         return;
@@ -8067,6 +8074,29 @@ new Vue({
         [protectedCard].concat(destroyed)
       );
       destroyed.forEach(card => this.battleRunDeathKeywordEffects(card));
+    },
+    _dslOpStatusSet(act, sourceCard) {
+      const ref = String(act.数参照 || act.備考 || '');
+      const destroyed = (this._dslLastDestroyedCards || [])[0];
+      const summoned = (this._dslLastSummonedCards || []);
+      const target = summoned[summoned.length - 1];
+      if (!/破壊した/.test(ref) || !destroyed || !target) {
+        this.battleShowNotice(
+          'ステータス設定：手動確認',
+          `「${this.fullName(sourceCard)}」のステータス設定対象を自動特定できませんでした。カード本文に従って手動で処理してください。`,
+          sourceCard ? [sourceCard] : []
+        );
+        return;
+      }
+      this.battleSaveUndo();
+      this.$set(target, 'power', Number(destroyed.power) || 0);
+      this.$set(target, 'attack', Number(destroyed.attack) || 0);
+      this.dslRefreshStaticAbilities();
+      this.battleShowNotice(
+        'ステータス設定',
+        `「${this.fullName(target)}」の戦闘力を${Number(destroyed.power) || 0}、神攻力を${Number(destroyed.attack) || 0}にしました。`,
+        [target, destroyed.card].filter(Boolean)
+      );
     },
     _dslOpManualRuleEffect(act, sourceCard) {
       const op = act.操作 || act.op || '効果';
@@ -8815,8 +8845,10 @@ new Vue({
         return;
       }
       this.battleSaveUndo();
-      player[zone].push(this._battlePrepareFieldCard(card));
-      modal.summoned = [...(modal.summoned || []), card];
+      const fieldCard = this._battlePrepareFieldCard(card);
+      player[zone].push(fieldCard);
+      modal.summoned = [...(modal.summoned || []), fieldCard];
+      this._dslLastSummonedCards = modal.summoned.slice();
       modal.remaining = (modal.remaining || 1) - 1;
       this.hideCardHover();
       this.dslRefreshStaticAbilities();
