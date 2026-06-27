@@ -2277,6 +2277,13 @@
     --status-w: clamp(214px, 19vw, 286px);
   }
   .battle-header { min-height: 44px; gap: 8px; }
+  .battle-sync-status {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;
+    border: 1px solid #4a5673;
+  }
+  .battle-sync-status.ready   { background: rgba(46,125,79,.35); border-color: #6cf09a; color: #d8ffd8; }
+  .battle-sync-status.waiting { background: rgba(200,120,40,.25); border-color: #f0b86c; color: #ffe2a8; }
   .battle-surrender-btn {
     background: #8e2430; border: 1px solid #df6672; color: #fff;
     padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 800;
@@ -3533,6 +3540,13 @@
       <span class="battle-matchup">{{ battleContext.selfName }} vs {{ battleContext.oppName }}</span>
       <span class="battle-phase">{{ battleContext.round ? 'ラウンド' + battleContext.round : battleContext.modeLabel }}</span>
       <span class="battle-setup-note">マリガン 自分{{ battleContext.selfMulligans }}回/相手{{ battleContext.oppMulligans }}回</span>
+      <!-- オンライン同期ステータス（対戦テストモードのみ表示） -->
+      <span v-if="battleNet.on" class="battle-sync-status" :class="{ ready: battleNet.oppReady, waiting: !battleNet.oppReady }">
+        🌐 同期: {{ battleNet.oppReady ? '相手接続済' : '相手待機中' }}
+        <span style="opacity:.7;margin-left:6px;">[コード: {{ battleNet.code }} / 席{{ battleNet.mySeat }}]</span>
+        <span v-if="battleNet.lastPublishedAt" style="opacity:.6;margin-left:6px;">↑ {{ battleNetPublishedAgo }}</span>
+        <span v-if="battleNet.lastReceivedAt" style="opacity:.6;margin-left:6px;">↓ {{ battleNetReceivedAgo }}</span>
+      </span>
       <span class="spacer"></span>
       <button class="battle-undo-btn" @click="battleUndo" :disabled="!battleUndoStack.length"
               :title="battleUndoStack.length ? '直前の操作を取り消します' : '取り消す操作がありません'">
@@ -5209,7 +5223,9 @@ new Vue({
     battleNet: {
       on: false, code: null, table: null, mySeat: null, oppSeat: null,
       statePath: null, oppReady: false, _unsub: null, _wasActive: false,
+      lastPublishedAt: null, lastReceivedAt: null, lastError: null,
     },
+    _battleSyncTickNow: Date.now(),  // 「○秒前」表示を再描画するためのトリガ
     _battleApplyingRemote: false,  // 鏡映適用中（watcherの再公開を抑止）
     battleZoneModal: null,   // { side, zone, cards }
     battleDeckModal: null,   // { side, action, cards, deckIndexes }
@@ -5252,7 +5268,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.40',
+    BUILD_VERSION: '1.14.41',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5315,6 +5331,14 @@ new Vue({
       if (this.battleContext.returnView === 'shield') return 'シールド戦';
       if (this.battleContext.returnView === 'game') return '星戦';
       return 'トップ';
+    },
+    battleNetPublishedAgo() {
+      const t = this.battleNet && this.battleNet.lastPublishedAt;
+      return t ? this._battleAgoText(this._battleSyncTickNow - t) : '';
+    },
+    battleNetReceivedAgo() {
+      const t = this.battleNet && this.battleNet.lastReceivedAt;
+      return t ? this._battleAgoText(this._battleSyncTickNow - t) : '';
     },
     battleFieldMenuTapLabel() {
       const m = this.battleFieldMenu;
@@ -6591,9 +6615,39 @@ new Vue({
 
     /* ===== 対戦オンライン同期（手番制権限・手札秘匿） ===== */
     // サイドを同期用にシリアライズ（手札・山札はカードを送らず枚数のみ）
+    /* カードオブジェクトを同期用に安全化：循環参照（_evolvedBase）を no参照に置換、
+       未使用の重い参照（cardByNoで復元できるもの）を間引き、UI用 _bufTurns 等は保持 */
+    _battleSerializeCard(c) {
+      if (!c) return null;
+      const out = {};
+      for (const k of Object.keys(c)) {
+        const v = c[k];
+        if (typeof v === 'function') continue;            // 関数は捨てる
+        if (k === '_evolvedBase') {                       // 循環防止：参照→no
+          out._evolvedBaseNo = (v && v.no != null) ? String(v.no) : null;
+          continue;
+        }
+        if (k === '_dslLastDestroyedCards' || k === '_dslLastSummonedCards' || k === '_dslLastReturnedCards') continue;
+        out[k] = v;
+      }
+      return out;
+    },
     _battleSerializeSide(side) {
       if (!side) return null;
-      const clone = JSON.parse(JSON.stringify(Object.assign({}, side, { hand: [], deck: [] })));
+      const clone = {};
+      for (const k of Object.keys(side)) {
+        const v = side[k];
+        if (typeof v === 'function') continue;
+        if (k === 'hand' || k === 'deck') continue;       // 手札/山札は枚数のみ
+        if (Array.isArray(v) && ['legacies','relics','graveyard','crumbled'].includes(k)) {
+          clone[k] = v.map(card => this._battleSerializeCard(card));
+        } else if (k === 'kami') {
+          clone[k] = this._battleSerializeCard(v);
+        } else {
+          // プリミティブ・JSON可能な軽量オブジェクト
+          try { clone[k] = JSON.parse(JSON.stringify(v)); } catch (e) { /* skip */ }
+        }
+      }
       clone.handCount = (side.hand || []).length;
       clone.deckCount = (side.deck || []).length;
       return clone;
@@ -6610,41 +6664,110 @@ new Vue({
       next.relics    = (next.relics    || []).map(fix);
       next.graveyard = (next.graveyard || []).map(fix);
       next.crumbled  = (next.crumbled  || []).map(fix);
+      // 循環防止：_evolvedBaseNo → カード参照に復元（同サイド legacies/graveyard から検索）
+      const lookupByNo = (no) => {
+        if (!no) return null;
+        const pools = [next.legacies, next.relics, next.graveyard, next.crumbled];
+        for (const arr of pools) {
+          for (const card of arr || []) {
+            if (card && String(card.no) === String(no)) return card;
+          }
+        }
+        return this.cardByNo[String(no)] || null;
+      };
+      [].concat(next.legacies || [], next.relics || []).forEach(c => {
+        if (!c) return;
+        if (c._evolvedBaseNo != null) {
+          c._evolvedBase = lookupByNo(c._evolvedBaseNo);
+        }
+      });
       if (preserveLocal) { next.hand = cur.hand || []; next.deck = cur.deck || []; }
       else { next.hand = []; next.deck = []; }   // 相手の手札・山札は非公開（枚数のみ）
       this.$set(this.battleSample, targetKey, next);
     },
     // 自分が手番中：盤面全体を共有状態へ公開（席キーで保存）
+    _battleAgoText(ms) {
+      const s = Math.max(0, Math.floor(ms / 1000));
+      if (s < 1) return '今';
+      if (s < 60) return s + '秒前';
+      const m = Math.floor(s / 60);
+      if (m < 60) return m + '分前';
+      const h = Math.floor(m / 60);
+      return h + '時間前';
+    },
+    _battleStartSyncTick() {
+      if (this._battleSyncTickTimer) return;
+      this._battleSyncTickTimer = setInterval(() => {
+        if (this.battleNet && this.battleNet.on) this._battleSyncTickNow = Date.now();
+      }, 1000);
+    },
+    _battleStopSyncTick() {
+      if (this._battleSyncTickTimer) {
+        clearInterval(this._battleSyncTickTimer);
+        this._battleSyncTickTimer = null;
+      }
+    },
     _battlePublishState() {
       const n = this.battleNet;
       if (!n.on || !n.statePath) return;
       const bs = this.battleSample;
-      const sides = {};
-      sides[n.mySeat]  = this._battleSerializeSide(bs.self);
-      sides[n.oppSeat] = this._battleSerializeSide(bs.opp);
-      const activeSeat = bs.activeSide === 'self' ? n.mySeat : n.oppSeat;
+      let payload;
       try {
-        getDb().ref(n.statePath).set({
-          writer: n.mySeat, activeSeat, turn: bs.turn, result: bs.result || null, sides,
-        });
-      } catch (e) {}
+        const sides = {};
+        sides[n.mySeat]  = this._battleSerializeSide(bs.self);
+        sides[n.oppSeat] = this._battleSerializeSide(bs.opp);
+        const activeSeat = bs.activeSide === 'self' ? n.mySeat : n.oppSeat;
+        payload = {
+          writer: n.mySeat, activeSeat, turn: bs.turn, result: bs.result || null,
+          sides, ts: Date.now(),
+        };
+      } catch (e) {
+        console.error('[sync] シリアライズ失敗:', e);
+        this.$set(this.battleNet, 'lastError', '送信前のシリアライズに失敗（' + (e && e.message) + '）');
+        return;
+      }
+      try {
+        getDb().ref(n.statePath).set(payload)
+          .then(() => {
+            this.$set(this.battleNet, 'lastPublishedAt', Date.now());
+            this._battleSyncTickNow = Date.now();
+            if (this.battleNet.lastError) this.$set(this.battleNet, 'lastError', null);
+          })
+          .catch(err => {
+            console.error('[sync] 送信失敗:', err);
+            this.$set(this.battleNet, 'lastError', '送信失敗：' + (err && err.message));
+          });
+      } catch (e) {
+        console.error('[sync] 送信例外:', e);
+        this.$set(this.battleNet, 'lastError', '送信例外：' + (e && e.message));
+      }
     },
     // 共有状態を受信して鏡映（自分のwriteは無視＝writerガード）
     _battleApplyRemoteState(state) {
       const n = this.battleNet;
       if (!state || !n.on) return;
       if (String(state.writer) === String(n.mySeat)) return;  // 自分のエコーは無視
-      this._battleApplyingRemote = true;
-      const sides = state.sides || {};
-      this._battleApplySide('self', sides[n.mySeat], true);   // 自分席（手札/山札はローカル保持）
-      this._battleApplySide('opp',  sides[n.oppSeat], false); // 相手席
-      const activeSide = String(state.activeSeat) === String(n.mySeat) ? 'self' : 'opp';
-      this.$set(this.battleSample, 'activeSide', activeSide);
-      this.$set(this.battleSample, 'turn', state.turn || this.battleSample.turn);
-      this.$set(this.battleSample, 'result', state.result || null);
-      n._wasActive = (activeSide === 'self');
-      n.oppReady = true;
-      this.$nextTick(() => { this._battleApplyingRemote = false; });
+      try {
+        this._battleApplyingRemote = true;
+        const sides = state.sides || {};
+        this._battleApplySide('self', sides[n.mySeat], true);   // 自分席（手札/山札はローカル保持）
+        this._battleApplySide('opp',  sides[n.oppSeat], false); // 相手席
+        const activeSide = String(state.activeSeat) === String(n.mySeat) ? 'self' : 'opp';
+        this.$set(this.battleSample, 'activeSide', activeSide);
+        this.$set(this.battleSample, 'turn', state.turn || this.battleSample.turn);
+        this.$set(this.battleSample, 'result', state.result || null);
+        n._wasActive = (activeSide === 'self');
+        this.$set(this.battleNet, 'oppReady', true);
+        this.$set(this.battleNet, 'lastReceivedAt', Date.now());
+        this._battleSyncTickNow = Date.now();
+        // 受信後に静的バフを再評価（DSL常在/進化中 効果が相手側にもある場合）
+        if (typeof this.dslRefreshStaticAbilities === 'function') this.dslRefreshStaticAbilities();
+      } catch (e) {
+        console.error('[sync] 受信適用失敗:', e);
+        this.$set(this.battleNet, 'lastError', '受信適用失敗：' + (e && e.message));
+      } finally {
+        this.$nextTick(() => { this._battleApplyingRemote = false; });
+      }
     },
     _battleSyncStart(code, table, mySeat, oppSeat) {
       this._battleSyncStop();
@@ -6652,12 +6775,20 @@ new Vue({
       this.battleNet = {
         on: true, code, table, mySeat, oppSeat, statePath: path,
         oppReady: false, _unsub: null, _wasActive: this.battleSample.activeSide === 'self',
+        lastPublishedAt: null, lastReceivedAt: null, lastError: null,
       };
-      if (this.battleSample.activeSide === 'self') this._battlePublishState();  // 先攻のみ初期公開
-      const ref = getDb().ref(path);
-      const handler = snap => this._battleApplyRemoteState(snap.val());
-      ref.on('value', handler);
-      this.battleNet._unsub = () => ref.off('value', handler);
+      this._battleStartSyncTick();
+      // 接続時は無条件で初期公開（双方が「最後の writer」を見られるように）
+      this._battlePublishState();
+      try {
+        const ref = getDb().ref(path);
+        const handler = snap => this._battleApplyRemoteState(snap.val());
+        ref.on('value', handler);
+        this.battleNet._unsub = () => ref.off('value', handler);
+      } catch (e) {
+        console.error('[sync] 購読開始失敗:', e);
+        this.$set(this.battleNet, 'lastError', '購読開始失敗：' + (e && e.message));
+      }
     },
     _battleSyncStop() {
       const n = this.battleNet;
@@ -6665,7 +6796,9 @@ new Vue({
       this.battleNet = {
         on: false, code: null, table: null, mySeat: null, oppSeat: null,
         statePath: null, oppReady: false, _unsub: null, _wasActive: false,
+        lastPublishedAt: null, lastReceivedAt: null, lastError: null,
       };
+      this._battleStopSyncTick();
     },
     battleReturn() {
       const decided = !!this.battleSample.result;
