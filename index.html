@@ -2277,6 +2277,13 @@
     --status-w: clamp(214px, 19vw, 286px);
   }
   .battle-header { min-height: 44px; gap: 8px; }
+  .battle-sync-status {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;
+    border: 1px solid #4a5673;
+  }
+  .battle-sync-status.ready   { background: rgba(46,125,79,.35); border-color: #6cf09a; color: #d8ffd8; }
+  .battle-sync-status.waiting { background: rgba(200,120,40,.25); border-color: #f0b86c; color: #ffe2a8; }
   .battle-surrender-btn {
     background: #8e2430; border: 1px solid #df6672; color: #fff;
     padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 800;
@@ -2365,6 +2372,19 @@
     transition: transform .2s ease;
     z-index: 3;
     box-shadow: 0 0 12px rgba(245, 202, 88, .55);
+  }
+  .battle-card.field-card.evolved {
+    box-shadow: 0 0 0 2px #c98aff, 0 0 14px rgba(180,120,255,.55);
+    position: relative;
+  }
+  .battle-card.field-card.evolved::after {
+    content: '進化';
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, #b46cff, #6a3aa6);
+    color: #fff; font-size: 10px; font-weight: 900; padding: 2px 8px;
+    border-radius: 8px; border: 1px solid #e0c6ff; letter-spacing: .05em;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    pointer-events: none; z-index: 4;
   }
   .battle-drag-guide {
     position: fixed;
@@ -3520,6 +3540,13 @@
       <span class="battle-matchup">{{ battleContext.selfName }} vs {{ battleContext.oppName }}</span>
       <span class="battle-phase">{{ battleContext.round ? 'ラウンド' + battleContext.round : battleContext.modeLabel }}</span>
       <span class="battle-setup-note">マリガン 自分{{ battleContext.selfMulligans }}回/相手{{ battleContext.oppMulligans }}回</span>
+      <!-- オンライン同期ステータス（対戦テストモードのみ表示） -->
+      <span v-if="battleNet.on" class="battle-sync-status" :class="{ ready: battleNet.oppReady, waiting: !battleNet.oppReady }">
+        🌐 同期: {{ battleNet.oppReady ? '相手接続済' : '相手待機中' }}
+        <span style="opacity:.7;margin-left:6px;">[コード: {{ battleNet.code }} / 席{{ battleNet.mySeat }}]</span>
+        <span v-if="battleNet.lastPublishedAt" style="opacity:.6;margin-left:6px;">↑ {{ battleNetPublishedAgo }}</span>
+        <span v-if="battleNet.lastReceivedAt" style="opacity:.6;margin-left:6px;">↓ {{ battleNetReceivedAgo }}</span>
+      </span>
       <span class="spacer"></span>
       <button class="battle-undo-btn" @click="battleUndo" :disabled="!battleUndoStack.length"
               :title="battleUndoStack.length ? '直前の操作を取り消します' : '取り消す操作がありません'">
@@ -3640,12 +3667,14 @@
         <div class="battle-row-legacy">
           <div class="battle-zone field legacy-field self-legacy-drop"
                :class="{ 'field-card-drop-ready': battleDragOverZone === 'legacies' && battleCanDropHandTo('legacies') }"
-               @dragover.prevent="battleUpdateDragOverZone($event)">
+               @dragover.prevent="battleUpdateDragOverZone($event)"
+               @contextmenu.self.prevent="battleOpenFieldZoneMenu('legacies', $event)">
             <span class="battle-zone-label">レガシー</span>
-            <div class="battle-card-row legacy-row">
+            <div class="battle-card-row legacy-row"
+                 @contextmenu.self.prevent="battleOpenFieldZoneMenu('legacies', $event)">
               <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i }"
+                   :class="{ tapped: card._tapped, evolved: card._evolved, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','legacies',i,$event)"
                    @click="battleFieldCardClick(card)"
@@ -3664,9 +3693,11 @@
         <div class="battle-row-self-bot">
           <div class="battle-zone field self-relic-drop"
                :class="{ 'field-card-drop-ready': battleDragOverZone === 'relics' && battleCanDropHandTo('relics') }"
-               @dragover.prevent="battleUpdateDragOverZone($event)">
+               @dragover.prevent="battleUpdateDragOverZone($event)"
+               @contextmenu.self.prevent="battleOpenFieldZoneMenu('relics', $event)">
             <span class="battle-zone-label">レリック</span>
-            <div class="battle-card-row">
+            <div class="battle-card-row"
+                 @contextmenu.self.prevent="battleOpenFieldZoneMenu('relics', $event)">
               <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i"
                    class="battle-card field-card"
                    :class="{ tapped: card._tapped, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i }"
@@ -3888,6 +3919,12 @@
          @click.stop>
       <template v-if="!battleFieldMenu.subMode">
         <button @click="battleFieldMenuAction('toggleTap')">{{ battleFieldMenuTapLabel }}</button>
+        <button v-for="(ab, ai) in battleFieldMenuActivatedAbilities" :key="'act'+ai"
+                :disabled="!ab.payable"
+                :title="ab.payable ? '' : ab.unpayableReason"
+                @click="battleFieldMenuActivate(ai)">
+          {{ ab.label }}
+        </button>
         <button v-if="battleFieldMenu.zone === 'legacies'" @click="battleFieldMenuOpenSub('power')">戦闘力を変更…</button>
         <button v-if="battleFieldMenu.zone === 'legacies'" @click="battleFieldMenuOpenSub('attack')">神攻力を変更…</button>
         <button @click="battleFieldMenuAction('hand')">手札へ戻す</button>
@@ -3942,6 +3979,12 @@
     <div v-if="battleZoneCardMenu" class="deck-context-menu zone-card-menu"
          :style="{ left: battleZoneCardMenu.x + 'px', top: battleZoneCardMenu.y + 'px' }"
          @click.stop>
+      <button v-for="(ab, ai) in battleZoneCardMenuGraveyardAbilities" :key="'zga'+ai"
+              :disabled="!ab.payable"
+              :title="ab.payable ? '' : ab.unpayableReason"
+              @click="battleZoneCardMenuGraveyardActivate(ai)">
+        {{ ab.label }}
+      </button>
       <button @click="battleZoneCardMenuAction('hand')">手札に戻す</button>
       <button @click="battleZoneCardMenuAction('field')">場に出す</button>
       <button v-if="battleZoneCardMenu.zone === 'graveyard'" @click="battleZoneCardMenuAction('crumbled')">崩壊ゾーンに移動させる</button>
@@ -4071,6 +4114,46 @@
     </div>
 
     <!-- ===== フェイズ3：選定モーダル ===== -->
+
+    <!-- ===== DSL 対象選択モーダル ===== -->
+    <div v-if="dslTargetModal" class="battle-zone-modal" @click.self="dslCancelTargets">
+      <div class="battle-zone-modal-panel">
+        <h3 class="battle-zone-modal-title">
+          {{ dslTargetModal.sourceCard ? '「' + fullName(dslTargetModal.sourceCard) + '」' : '' }}
+          {{ dslTargetModal.prompt }}
+          <span style="font-size:12px;color:#9aa;font-weight:400;">
+            — {{ dslTargetModal.selected.length }} / {{ dslTargetModal.need }} 選択
+          </span>
+        </h3>
+        <div class="public-process-badge">両プレイヤーへの公開処理</div>
+        <div v-if="!dslTargetModal.candidates.length" class="battle-zone-modal-empty">対象のカードはありません</div>
+        <div v-else class="battle-zone-modal-grid">
+          <div v-for="(c, i) in dslTargetModal.candidates" :key="'dt'+i"
+               class="battle-deck-modal-card"
+               :class="{ selected: dslTargetModal.selected.includes(c) }">
+            <div class="battle-card"
+                 :style="cardImageUrl(c) ? { backgroundImage: 'url(' + cardImageUrl(c) + ')' } : {}"
+                 @click="openPreview(c)"
+                 @mouseenter="showCardHover(c, $event)"
+                 @mouseleave="hideCardHover"></div>
+            <button class="battle-deck-modal-pick" @click="dslToggleTarget(c)">
+              {{ dslTargetModal.selected.includes(c) ? '解除' : '選択' }}
+            </button>
+          </div>
+        </div>
+        <div class="battle-zone-modal-actions">
+          <button class="battle-back-btn"
+                  :disabled="dslTargetModal.candidates.length > 0 && dslTargetModal.selected.length === 0 && !dslTargetModal.canSkip"
+                  @click="dslResolveTargets">
+            決定（{{ dslTargetModal.selected.length }} / {{ dslTargetModal.need }}）
+          </button>
+          <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="dslCancelTargets">
+            キャンセル
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="battleSenteiModal" class="battle-zone-modal" @click.self="battleSenteiModal = null">
       <div class="battle-zone-modal-panel">
         <h3 class="battle-zone-modal-title">
@@ -4194,6 +4277,126 @@
           <button v-if="battleUndoStack.length" @click="battleUndo">一手戻る</button>
           <button @click="battleReturn">{{ battleReturnLabel }}へ戻る</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== フィールド空き部 右クリックメニュー（トークン招来） ===== -->
+  <div v-if="battleFieldZoneMenu" class="deck-context-menu"
+       :style="{ left: battleFieldZoneMenu.x + 'px', top: battleFieldZoneMenu.y + 'px' }"
+       @click.stop>
+    <button @click="battleFieldZoneMenuOpenPick">トークンを招来する</button>
+  </div>
+
+  <!-- ===== トークン招来 選択モーダル ===== -->
+  <div v-if="battleTokenPickModal" class="battle-zone-modal" @click.self="battleTokenPickModal = null">
+    <div class="battle-zone-modal-panel" style="max-width:680px;">
+      <h3 class="battle-zone-modal-title">
+        トークンを招来する
+        <span style="font-size:12px;color:#9aa;font-weight:400;">— {{ battleTokenPickModal.zone === 'relics' ? 'レリック' : 'レガシー' }}フィールドに配置</span>
+      </h3>
+      <div v-if="!battleTokenPickModal.candidates.length" class="battle-zone-modal-empty">対象のトークンが見つかりません</div>
+      <div v-else class="battle-zone-modal-grid">
+        <div v-for="c in battleTokenPickModal.candidates" :key="'tp'+c.no"
+             class="battle-deck-modal-card">
+          <div class="battle-card"
+               :style="cardImageUrl(c) ? { backgroundImage: 'url(' + cardImageUrl(c) + ')' } : {}"
+               @click="openPreview(c)"
+               @mouseenter="showCardHover(c, $event)"
+               @mouseleave="hideCardHover"></div>
+          <button class="battle-deck-modal-pick" @click="battleTokenPickPlace(c)">場に出す</button>
+        </div>
+      </div>
+      <div class="battle-zone-modal-actions">
+        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="battleTokenPickModal = null">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DSL 任意能力 発動確認モーダル ===== -->
+  <div v-if="dslOptionalModal" class="battle-zone-modal" @click.self="dslAnswerOptional(false)">
+    <div class="battle-zone-modal-panel" style="max-width:520px;">
+      <h3 class="battle-zone-modal-title">
+        任意効果：発動しますか？
+        <span style="font-size:12px;color:#9aa;font-weight:400;">— {{ dslOptionalModal.triggerLabel }}</span>
+      </h3>
+      <div class="public-process-badge">両プレイヤーへの公開処理</div>
+      <p class="battle-deck-modal-message" style="margin:8px 0;">
+        「{{ fullName(dslOptionalModal.sourceCard) }}」の効果です。発動してもよいですが、必須ではありません。
+      </p>
+      <pre style="background:#10141d;color:#cbd3de;padding:10px 12px;border-radius:5px;font-size:12px;white-space:pre-wrap;line-height:1.55;margin:0 0 12px;">{{ dslOptionalModal.summary }}</pre>
+      <div class="battle-zone-modal-actions">
+        <button class="battle-back-btn" style="background:#2e7d4f;border-color:#7cf0a8;color:#fff;" @click="dslAnswerOptional(true)">発動する</button>
+        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="dslAnswerOptional(false)">発動しない</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DSL 選択op専用モーダル ===== -->
+  <div v-if="dslChoiceModal" class="battle-zone-modal" @click.self="dslCancelChoice">
+    <div class="battle-zone-modal-panel" style="max-width:560px;">
+      <h3 class="battle-zone-modal-title">
+        {{ dslChoiceModal.sourceCard ? '「' + fullName(dslChoiceModal.sourceCard) + '」' : '' }}
+        {{ dslChoiceModal.prompt }}
+      </h3>
+      <div class="public-process-badge">両プレイヤーへの公開処理</div>
+      <div style="display:flex;flex-direction:column;gap:8px;padding:6px 0;">
+        <button v-for="(opt, i) in dslChoiceModal.options" :key="'choice'+i"
+                class="battle-back-btn"
+                style="text-align:left;padding:10px 14px;background:#202840;border-color:#3a4256;color:#d4e0f0;"
+                @click="dslAnswerChoice(i)">
+          {{ i + 1 }}. {{ opt }}
+        </button>
+      </div>
+      <div class="battle-zone-modal-actions">
+        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="dslCancelChoice">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== αモード設定モーダル（appView非依存・トップメニューからも表示） ===== -->
+  <div v-if="battleAlphaSetup" class="battle-zone-modal" @click.self="battleCancelAlphaSetup">
+    <div class="battle-zone-modal-panel" style="max-width:560px;">
+      <h3 class="battle-zone-modal-title">対戦画面α 設定</h3>
+      <div style="display:flex;flex-direction:column;gap:14px;padding:8px 4px;">
+        <div>
+          <div style="color:#e8d4a0;font-weight:700;font-size:13px;margin-bottom:6px;">自分デッキの色</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            <label v-for="col in ['ミックス','赤','青','緑','黄','紫']" :key="'c'+col"
+                   style="cursor:pointer;padding:5px 12px;border-radius:4px;background:#232a3a;border:1px solid #3a4256;font-size:12px;color:#cbd3de;"
+                   :style="battleAlphaSetup.selfColor === col ? 'background:#2a5cb8;border-color:#6090e0;color:#fff;' : ''">
+              <input type="radio" v-model="battleAlphaSetup.selfColor" :value="col" style="display:none;">
+              {{ col }}
+            </label>
+          </div>
+          <p style="font-size:11px;color:#9aa;margin:4px 0 0;">指定色で30枚揃わない場合は他色で補充されます</p>
+        </div>
+        <div>
+          <div style="color:#e8d4a0;font-weight:700;font-size:13px;margin-bottom:6px;">自分のカミ</div>
+          <select v-model="battleAlphaSetup.selfKamiNo" style="width:100%;padding:6px;background:#232a3a;border:1px solid #3a4256;color:#fff;border-radius:4px;">
+            <option v-for="k in battleAlphaSetup.kamiList" :key="'sk'+k.no" :value="String(k.no)">
+              {{ fullName(k) }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <div style="color:#e8d4a0;font-weight:700;font-size:13px;margin-bottom:6px;">相手のカミ</div>
+          <select v-model="battleAlphaSetup.oppKamiNo" style="width:100%;padding:6px;background:#232a3a;border:1px solid #3a4256;color:#fff;border-radius:4px;">
+            <option v-for="k in battleAlphaSetup.kamiList" :key="'ok'+k.no" :value="String(k.no)">
+              {{ fullName(k) }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#cbd3de;font-size:13px;">
+            <input type="checkbox" v-model="battleAlphaSetup.oppYorishiro">
+            相手フィールドにタップ済みのヨリシロを3体配置（戦闘検証用）
+          </label>
+        </div>
+      </div>
+      <div class="battle-zone-modal-actions">
+        <button class="battle-back-btn" style="background:#2a5cb8;border-color:#6090e0;color:#fff;" @click="battleStartAlpha">対戦開始</button>
+        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="battleCancelAlphaSetup">キャンセル</button>
       </div>
     </div>
   </div>
@@ -5026,7 +5229,9 @@ new Vue({
     battleNet: {
       on: false, code: null, table: null, mySeat: null, oppSeat: null,
       statePath: null, oppReady: false, _unsub: null, _wasActive: false,
+      lastPublishedAt: null, lastReceivedAt: null, lastError: null,
     },
+    _battleSyncTickNow: Date.now(),  // 「○秒前」表示を再描画するためのトリガ
     _battleApplyingRemote: false,  // 鏡映適用中（watcherの再公開を抑止）
     battleZoneModal: null,   // { side, zone, cards }
     battleDeckModal: null,   // { side, action, cards, deckIndexes }
@@ -5050,8 +5255,26 @@ new Vue({
     battleSenteiModal: null,  // { count, options, selected, sourceCard, triggerLabel }
     battlePendingEffects: [], // 効果キュー：[{ type, card, data, triggerLabel, paidCost }, ...]
 
+    /* ===== DSL効果エンジン（v1.14.0〜） ===== */
+    effectSpecs: {},          // No → spec オブジェクト（effect_spec.json から fetch）
+    effectSpecsByName: {},    // 名称 → spec（同名カードを救うため）
+    effectSpecsReady: false,
+    dslTargetModal: null,     // { sourceCard, prompt, candidates, selected, need, onResolve }
+    _dslCurrentSource: null,  // 実行中のソースカード参照
+    _dslDeferred: null,       // 対象選択を待つPromiseのresolver
+    _dslCurrentTurnEndSide: null, // ターン終了時DSLの終了側
+    /* αモード設定 */
+    battleAlphaSetup: null,   // { selfColor, selfKamiNo, oppKamiNo, oppYorishiro }
+    /* DSL：任意能力の発動確認モーダル */
+    dslOptionalModal: null,   // { sourceCard, triggerLabel, summary, resolver }
+    /* DSL：「選択」op専用モーダル */
+    dslChoiceModal: null,     // { sourceCard, prompt, options, resolver }
+    /* フィールド空き部右クリック：トークン招来メニュー */
+    battleFieldZoneMenu: null, // { zone, x, y }
+    battleTokenPickModal: null, // { zone, candidates }
+
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.13.14',
+    BUILD_VERSION: '1.14.42',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5115,6 +5338,73 @@ new Vue({
       if (this.battleContext.returnView === 'game') return '星戦';
       return 'トップ';
     },
+    /* 墓地カード右クリックメニュー：墓地起動契機の能力リスト（コスト支払可否を含む） */
+    battleZoneCardMenuGraveyardAbilities() {
+      const menu = this.battleZoneCardMenu;
+      if (!menu || menu.zone !== 'graveyard' || menu.side !== 'self') return [];
+      const modal = this.battleZoneModal;
+      if (!modal) return [];
+      const card = modal.cards[menu.index];
+      if (!card || !this.effectSpecsReady || !this.battleSample) return [];
+      const spec = this._dslGetSpec(card);
+      if (!spec || !Array.isArray(spec.能力)) return [];
+      const list = [];
+      spec.能力.forEach((ab, ai) => {
+        if (!ab || ab.契機 !== '墓地起動') return;
+        const cost = ab.コスト || {};
+        const costStr = this._dslFormatActivationCost(cost);
+        let payable = true;
+        let reason = '';
+        // 自ターンでなければ不可
+        if (this.battleSample.activeSide !== 'self') {
+          payable = false; reason = '自分のターン中のみ発動できます。';
+        }
+        // マナ
+        const manaCost = Number(cost.マナ || 0);
+        if (payable && manaCost > 0) {
+          const myMana = Number(this.battleSample.self && this.battleSample.self.mana || 0);
+          if (myMana < manaCost) { payable = false; reason = `マナが ${manaCost} 必要ですが、現在 ${myMana} です。`; }
+        }
+        // 天力
+        const tenCost = Number(cost.天力 || 0);
+        if (payable && tenCost > 0) {
+          const myTen = Number(this.battleSample.self && this.battleSample.self.tenryoku || 0);
+          if (myTen < tenCost) { payable = false; reason = `天力が ${tenCost} 必要ですが、現在 ${myTen} です。`; }
+        }
+        // 破壊コスト：「このカード以外」フィルタは _dslEligible 内で処理されるので、ソースを一時設定して数を確認
+        if (payable && cost.破壊) {
+          const need = Math.max(1, Number(cost.破壊.枚数 || 1));
+          const prev = this._dslCurrentSource; this._dslCurrentSource = card;
+          try {
+            if (this._dslEligible(cost.破壊).length < need) { payable = false; reason = `破壊コストの対象が${need}枚必要です。`; }
+          } finally { this._dslCurrentSource = prev; }
+        }
+        if (payable && cost.崩壊) {
+          const need = Math.max(1, Number(cost.崩壊.枚数 || 1));
+          const prev = this._dslCurrentSource; this._dslCurrentSource = card;
+          try {
+            if (this._dslEligible(cost.崩壊).length < need) { payable = false; reason = `崩壊コストの対象が${need}枚必要です。`; }
+          } finally { this._dslCurrentSource = prev; }
+        }
+        list.push({
+          abilityIndex: ai,
+          ability: ab,
+          card,
+          label: '⚡ 墓地起動：場に出す' + (costStr ? `（${costStr}）` : ''),
+          payable,
+          unpayableReason: reason,
+        });
+      });
+      return list;
+    },
+    battleNetPublishedAgo() {
+      const t = this.battleNet && this.battleNet.lastPublishedAt;
+      return t ? this._battleAgoText(this._battleSyncTickNow - t) : '';
+    },
+    battleNetReceivedAgo() {
+      const t = this.battleNet && this.battleNet.lastReceivedAt;
+      return t ? this._battleAgoText(this._battleSyncTickNow - t) : '';
+    },
     battleFieldMenuTapLabel() {
       const m = this.battleFieldMenu;
       if (!m) return 'このカードをタップする';
@@ -5140,6 +5430,51 @@ new Vue({
     battleFieldMenuCurrentAttack() {
       const c = this.battleFieldMenuCurrentCard;
       return c ? Number(c.attack || 0) : 0;
+    },
+    /* 現在右クリック中のカードが持つ「起動」契機の能力リスト（コスト支払可否を含む） */
+    battleFieldMenuActivatedAbilities() {
+      const card = this.battleFieldMenuCurrentCard;
+      if (!card || !this.effectSpecsReady || !this.battleSample) return [];
+      const spec = this._dslGetSpec(card);
+      if (!spec || !Array.isArray(spec.能力)) return [];
+      const list = [];
+      spec.能力.forEach((ab, ai) => {
+        if (!ab || ab.契機 !== '起動') return;
+        const cost = ab.コスト || {};
+        const costStr = this._dslFormatActivationCost(cost);
+        let payable = true;
+        let reason = '';
+        // タップ自身
+        if (cost.タップ === '自身' && card._tapped) {
+          payable = false; reason = 'このカードは既にタップ済みです。';
+        }
+        // マナ
+        const manaCost = Number(cost.マナ || 0);
+        if (payable && manaCost > 0) {
+          const myMana = Number(this.battleSample.self && this.battleSample.self.mana || 0);
+          if (myMana < manaCost) { payable = false; reason = `マナが ${manaCost} 必要ですが、現在 ${myMana} です。`; }
+        }
+        if (payable && cost.破壊) {
+          const need = Math.max(1, Number(cost.破壊.枚数 || 1));
+          if (this._dslEligible(cost.破壊).length < need) { payable = false; reason = `破壊コストの対象が${need}枚必要です。`; }
+        }
+        if (payable && cost.崩壊) {
+          const need = Math.max(1, Number(cost.崩壊.枚数 || 1));
+          if (this._dslEligible(cost.崩壊).length < need) { payable = false; reason = `崩壊コストの対象が${need}枚必要です。`; }
+        }
+        // 自ターンでなければ不可
+        if (payable && this.battleSample.activeSide !== 'self') {
+          payable = false; reason = '自分のターン中のみ発動できます。';
+        }
+        list.push({
+          abilityIndex: ai,
+          ability: ab,
+          label: '⚡ 起動能力を発動' + (costStr ? `（${costStr}）` : ''),
+          payable,
+          unpayableReason: reason,
+        });
+      });
+      return list;
     },
     battleCanFieldDragToAttackTargets() {
       return !!(this.battleFieldDrag && this.battleFieldDrag.zone === 'legacies');
@@ -6061,16 +6396,88 @@ new Vue({
     goToCardlist() {
       this.appView = 'cardlist';
     },
-    goToBattle() {
-      const cards = this.allCards.filter(c => !c.isToken && !c.isKami && c.color !== '創');
-      const withIllust = this.allKamiCards.filter(k => this.hasKamiIllustration(k));
-      const kami = withIllust.length ? withIllust : this.allKamiCards;
+    async ensureBattleAssetsLoaded() {
+      const jobs = [];
+      if (!Array.isArray(this.allCards) || this.allCards.length === 0) jobs.push(this.loadCards());
+      if (!Array.isArray(this.allKamiCards) || this.allKamiCards.length === 0) jobs.push(this.loadKamiCards());
+      if (!this.cardFileMap || Object.keys(this.cardFileMap).length === 0) jobs.push(this.loadDriveImages());
+      if (!this.kamiFileMap || Object.keys(this.kamiFileMap).length === 0) jobs.push(this.loadKamiImages());
+      if (!Array.isArray(this.kamiIllustFiles) || this.kamiIllustFiles.length === 0) jobs.push(this.loadKamiIllustrations());
+      if (!this.cardBackUrl) jobs.push(this.loadCardBack());
+      if (!this.effectSpecsReady) jobs.push(this.loadEffectSpecs());
+      if (jobs.length) await Promise.allSettled(jobs);
+      if (!Array.isArray(this.allCards) || this.allCards.length === 0) {
+        throw new Error('カードデータを読み込めませんでした。通信状態を確認して再読み込みしてください。');
+      }
+      if (!Array.isArray(this.allKamiCards) || this.allKamiCards.length === 0) {
+        throw new Error('カミデータを読み込めませんでした。通信状態を確認して再読み込みしてください。');
+      }
+    },
+    async goToBattle() {
+      console.log('[αsetup] goToBattle clicked. allKamiCards length=', (this.allKamiCards || []).length);
+      try {
+        await this.ensureBattleAssetsLoaded();
+        const withIllust = (this.allKamiCards || []).filter(k => k && this.hasKamiIllustration && this.hasKamiIllustration(k));
+        const kamiList = withIllust.length ? withIllust : (this.allKamiCards || []);
+        this.battleAlphaSetup = {
+          selfColor: 'ミックス',
+          selfKamiNo: kamiList[0] ? String(kamiList[0].no) : null,
+          oppKamiNo: (kamiList[1] || kamiList[0]) ? String((kamiList[1] || kamiList[0]).no) : null,
+          oppYorishiro: true,
+          kamiList,
+        };
+        console.log('[αsetup] modal set, kamiList=', kamiList.length);
+      } catch (e) {
+        console.error('[αsetup] goToBattle error:', e);
+        alert('対戦画面α起動エラー：' + (e && e.message ? e.message : e));
+      }
+    },
+    battleStartAlpha() {
+      const setup = this.battleAlphaSetup || {};
+      const color = setup.selfColor || 'ミックス';
+      const all = this.allCards.filter(c => !c.isToken && !c.isKami && c.color !== '創');
+      let selfPool;
+      if (color === 'ミックス') {
+        selfPool = all.slice(0, 30);
+      } else {
+        selfPool = all.filter(c => c.color === color);
+        if (selfPool.length < 30) {
+          // 不足分は他色で補う
+          const extra = all.filter(c => c.color !== color);
+          selfPool = selfPool.concat(extra).slice(0, 30);
+        } else {
+          selfPool = selfPool.slice(0, 30);
+        }
+      }
+      const oppPool = all.slice(30, 60);
+      const selfKami = this.allKamiCards.find(k => String(k.no) === String(setup.selfKamiNo)) || this.allKamiCards[0] || null;
+      const oppKami  = this.allKamiCards.find(k => String(k.no) === String(setup.oppKamiNo)) || this.allKamiCards[1] || this.allKamiCards[0] || null;
+      this.battleAlphaSetup = null;
       this._battleInitialize({
         source: 'preview', modeLabel: 'プレビュー', returnView: 'top',
         selfName: '自分', oppName: '相手', firstSide: 'self', life: 10,
-        selfDeck: cards.slice(0, 30), oppDeck: cards.slice(30, 60),
-        selfKami: kami[0] || null, oppKami: kami[1] || kami[0] || null,
+        selfDeck: selfPool, oppDeck: oppPool,
+        selfKami, oppKami,
       });
+      // 相手フィールドにタップ済みヨリシロを3体配置
+      if (setup.oppYorishiro) {
+        const yori = this.battleSummonCandidates('ヨリシロ');
+        if (yori && yori.length) {
+          const proto = yori[0];
+          const opp = this.battleSample && this.battleSample.opp;
+          if (opp && Array.isArray(opp.legacies)) {
+            for (let i = 0; i < 3; i++) {
+              const clone = Object.assign({}, proto, { _tapped: true, _alphaYori: true });
+              opp.legacies.push(clone);
+            }
+          }
+        } else {
+          this.battleShowNotice('ヨリシロ配置', 'ヨリシロのトークンデータが見つかりませんでした。');
+        }
+      }
+    },
+    battleCancelAlphaSetup() {
+      this.battleAlphaSetup = null;
     },
     openBattleLaunch(source) {
       if (source === 'shield' && this.sb.phase !== 'complete') return;
@@ -6179,8 +6586,9 @@ new Vue({
         name, life, lifeMax: life, mana: 0, manaMax: 0, tenryoku: 0,
         seal: isOrochi ? 8 : null, sealRewards: { four: false, zero: false },
         hand, handCount: hand.length, kami: kami || null, deck, relics: [], legacies: [],
-        deckCount: deck.length, graveyard: [], crumbled: [],
+        deckCount: deck.length, graveyard: [], crumbled: [], tempCostMods: [], legacyDestroyedThisTurn: [],
         senteiBoostUsed: false,
+        kamiTriggerCounts: {},   // 天力トリガー：各ターンの発動回数管理（K5/K6/K7/K8/K9）
       };
     },
     _battleInitialize(config) {
@@ -6206,6 +6614,11 @@ new Vue({
       };
       this.battleUndoStack = [];
       this.battlePendingEffects = [];
+      this.dslTargetModal = null;
+      this.dslOptionalModal = null;
+      this.dslChoiceModal = null;
+      this._dslDeferred = null;
+      this._dslCurrentSource = null;
       this.battleSenteiModal = null;
       this.battleZoneModal = null;
       this.battleDeckModal = null;
@@ -6267,9 +6680,39 @@ new Vue({
 
     /* ===== 対戦オンライン同期（手番制権限・手札秘匿） ===== */
     // サイドを同期用にシリアライズ（手札・山札はカードを送らず枚数のみ）
+    /* カードオブジェクトを同期用に安全化：循環参照（_evolvedBase）を no参照に置換、
+       未使用の重い参照（cardByNoで復元できるもの）を間引き、UI用 _bufTurns 等は保持 */
+    _battleSerializeCard(c) {
+      if (!c) return null;
+      const out = {};
+      for (const k of Object.keys(c)) {
+        const v = c[k];
+        if (typeof v === 'function') continue;            // 関数は捨てる
+        if (k === '_evolvedBase') {                       // 循環防止：参照→no
+          out._evolvedBaseNo = (v && v.no != null) ? String(v.no) : null;
+          continue;
+        }
+        if (k === '_dslLastDestroyedCards' || k === '_dslLastSummonedCards' || k === '_dslLastReturnedCards') continue;
+        out[k] = v;
+      }
+      return out;
+    },
     _battleSerializeSide(side) {
       if (!side) return null;
-      const clone = JSON.parse(JSON.stringify(Object.assign({}, side, { hand: [], deck: [] })));
+      const clone = {};
+      for (const k of Object.keys(side)) {
+        const v = side[k];
+        if (typeof v === 'function') continue;
+        if (k === 'hand' || k === 'deck') continue;       // 手札/山札は枚数のみ
+        if (Array.isArray(v) && ['legacies','relics','graveyard','crumbled'].includes(k)) {
+          clone[k] = v.map(card => this._battleSerializeCard(card));
+        } else if (k === 'kami') {
+          clone[k] = this._battleSerializeCard(v);
+        } else {
+          // プリミティブ・JSON可能な軽量オブジェクト
+          try { clone[k] = JSON.parse(JSON.stringify(v)); } catch (e) { /* skip */ }
+        }
+      }
       clone.handCount = (side.hand || []).length;
       clone.deckCount = (side.deck || []).length;
       return clone;
@@ -6286,41 +6729,110 @@ new Vue({
       next.relics    = (next.relics    || []).map(fix);
       next.graveyard = (next.graveyard || []).map(fix);
       next.crumbled  = (next.crumbled  || []).map(fix);
+      // 循環防止：_evolvedBaseNo → カード参照に復元（同サイド legacies/graveyard から検索）
+      const lookupByNo = (no) => {
+        if (!no) return null;
+        const pools = [next.legacies, next.relics, next.graveyard, next.crumbled];
+        for (const arr of pools) {
+          for (const card of arr || []) {
+            if (card && String(card.no) === String(no)) return card;
+          }
+        }
+        return this.cardByNo[String(no)] || null;
+      };
+      [].concat(next.legacies || [], next.relics || []).forEach(c => {
+        if (!c) return;
+        if (c._evolvedBaseNo != null) {
+          c._evolvedBase = lookupByNo(c._evolvedBaseNo);
+        }
+      });
       if (preserveLocal) { next.hand = cur.hand || []; next.deck = cur.deck || []; }
       else { next.hand = []; next.deck = []; }   // 相手の手札・山札は非公開（枚数のみ）
       this.$set(this.battleSample, targetKey, next);
     },
     // 自分が手番中：盤面全体を共有状態へ公開（席キーで保存）
+    _battleAgoText(ms) {
+      const s = Math.max(0, Math.floor(ms / 1000));
+      if (s < 1) return '今';
+      if (s < 60) return s + '秒前';
+      const m = Math.floor(s / 60);
+      if (m < 60) return m + '分前';
+      const h = Math.floor(m / 60);
+      return h + '時間前';
+    },
+    _battleStartSyncTick() {
+      if (this._battleSyncTickTimer) return;
+      this._battleSyncTickTimer = setInterval(() => {
+        if (this.battleNet && this.battleNet.on) this._battleSyncTickNow = Date.now();
+      }, 1000);
+    },
+    _battleStopSyncTick() {
+      if (this._battleSyncTickTimer) {
+        clearInterval(this._battleSyncTickTimer);
+        this._battleSyncTickTimer = null;
+      }
+    },
     _battlePublishState() {
       const n = this.battleNet;
       if (!n.on || !n.statePath) return;
       const bs = this.battleSample;
-      const sides = {};
-      sides[n.mySeat]  = this._battleSerializeSide(bs.self);
-      sides[n.oppSeat] = this._battleSerializeSide(bs.opp);
-      const activeSeat = bs.activeSide === 'self' ? n.mySeat : n.oppSeat;
+      let payload;
       try {
-        getDb().ref(n.statePath).set({
-          writer: n.mySeat, activeSeat, turn: bs.turn, result: bs.result || null, sides,
-        });
-      } catch (e) {}
+        const sides = {};
+        sides[n.mySeat]  = this._battleSerializeSide(bs.self);
+        sides[n.oppSeat] = this._battleSerializeSide(bs.opp);
+        const activeSeat = bs.activeSide === 'self' ? n.mySeat : n.oppSeat;
+        payload = {
+          writer: n.mySeat, activeSeat, turn: bs.turn, result: bs.result || null,
+          sides, ts: Date.now(),
+        };
+      } catch (e) {
+        console.error('[sync] シリアライズ失敗:', e);
+        this.$set(this.battleNet, 'lastError', '送信前のシリアライズに失敗（' + (e && e.message) + '）');
+        return;
+      }
+      try {
+        getDb().ref(n.statePath).set(payload)
+          .then(() => {
+            this.$set(this.battleNet, 'lastPublishedAt', Date.now());
+            this._battleSyncTickNow = Date.now();
+            if (this.battleNet.lastError) this.$set(this.battleNet, 'lastError', null);
+          })
+          .catch(err => {
+            console.error('[sync] 送信失敗:', err);
+            this.$set(this.battleNet, 'lastError', '送信失敗：' + (err && err.message));
+          });
+      } catch (e) {
+        console.error('[sync] 送信例外:', e);
+        this.$set(this.battleNet, 'lastError', '送信例外：' + (e && e.message));
+      }
     },
     // 共有状態を受信して鏡映（自分のwriteは無視＝writerガード）
     _battleApplyRemoteState(state) {
       const n = this.battleNet;
       if (!state || !n.on) return;
       if (String(state.writer) === String(n.mySeat)) return;  // 自分のエコーは無視
-      this._battleApplyingRemote = true;
-      const sides = state.sides || {};
-      this._battleApplySide('self', sides[n.mySeat], true);   // 自分席（手札/山札はローカル保持）
-      this._battleApplySide('opp',  sides[n.oppSeat], false); // 相手席
-      const activeSide = String(state.activeSeat) === String(n.mySeat) ? 'self' : 'opp';
-      this.$set(this.battleSample, 'activeSide', activeSide);
-      this.$set(this.battleSample, 'turn', state.turn || this.battleSample.turn);
-      this.$set(this.battleSample, 'result', state.result || null);
-      n._wasActive = (activeSide === 'self');
-      n.oppReady = true;
-      this.$nextTick(() => { this._battleApplyingRemote = false; });
+      try {
+        this._battleApplyingRemote = true;
+        const sides = state.sides || {};
+        this._battleApplySide('self', sides[n.mySeat], true);   // 自分席（手札/山札はローカル保持）
+        this._battleApplySide('opp',  sides[n.oppSeat], false); // 相手席
+        const activeSide = String(state.activeSeat) === String(n.mySeat) ? 'self' : 'opp';
+        this.$set(this.battleSample, 'activeSide', activeSide);
+        this.$set(this.battleSample, 'turn', state.turn || this.battleSample.turn);
+        this.$set(this.battleSample, 'result', state.result || null);
+        n._wasActive = (activeSide === 'self');
+        this.$set(this.battleNet, 'oppReady', true);
+        this.$set(this.battleNet, 'lastReceivedAt', Date.now());
+        this._battleSyncTickNow = Date.now();
+        // 受信後に静的バフを再評価（DSL常在/進化中 効果が相手側にもある場合）
+        if (typeof this.dslRefreshStaticAbilities === 'function') this.dslRefreshStaticAbilities();
+      } catch (e) {
+        console.error('[sync] 受信適用失敗:', e);
+        this.$set(this.battleNet, 'lastError', '受信適用失敗：' + (e && e.message));
+      } finally {
+        this.$nextTick(() => { this._battleApplyingRemote = false; });
+      }
     },
     _battleSyncStart(code, table, mySeat, oppSeat) {
       this._battleSyncStop();
@@ -6328,12 +6840,20 @@ new Vue({
       this.battleNet = {
         on: true, code, table, mySeat, oppSeat, statePath: path,
         oppReady: false, _unsub: null, _wasActive: this.battleSample.activeSide === 'self',
+        lastPublishedAt: null, lastReceivedAt: null, lastError: null,
       };
-      if (this.battleSample.activeSide === 'self') this._battlePublishState();  // 先攻のみ初期公開
-      const ref = getDb().ref(path);
-      const handler = snap => this._battleApplyRemoteState(snap.val());
-      ref.on('value', handler);
-      this.battleNet._unsub = () => ref.off('value', handler);
+      this._battleStartSyncTick();
+      // 接続時は無条件で初期公開（双方が「最後の writer」を見られるように）
+      this._battlePublishState();
+      try {
+        const ref = getDb().ref(path);
+        const handler = snap => this._battleApplyRemoteState(snap.val());
+        ref.on('value', handler);
+        this.battleNet._unsub = () => ref.off('value', handler);
+      } catch (e) {
+        console.error('[sync] 購読開始失敗:', e);
+        this.$set(this.battleNet, 'lastError', '購読開始失敗：' + (e && e.message));
+      }
     },
     _battleSyncStop() {
       const n = this.battleNet;
@@ -6341,7 +6861,9 @@ new Vue({
       this.battleNet = {
         on: false, code: null, table: null, mySeat: null, oppSeat: null,
         statePath: null, oppReady: false, _unsub: null, _wasActive: false,
+        lastPublishedAt: null, lastReceivedAt: null, lastError: null,
       };
+      this._battleStopSyncTick();
     },
     battleReturn() {
       const decided = !!this.battleSample.result;
@@ -6432,6 +6954,10 @@ new Vue({
         target.seal = Math.max(0, Math.min(8, next));
         this._battleHandleSealThreshold(side, previous, target.seal);
       }
+      // 天力トリガー（K6 アメノウズメ）：手動操作でもライフ/マナ/マナ最大値が増加したら発火
+      if ((key === 'life' || key === 'mana' || key === 'manaMax') && delta > 0 && target[key] > previous) {
+        this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: key, n: target[key] - previous });
+      }
       this._battleCheckResult();
     },
     /* ターン終了：手番を相手に渡す
@@ -6439,7 +6965,163 @@ new Vue({
        - マナを最大値まで回復
        - ターン11以降は疲労ダメージ（11→1, 12→2, ...）
        先攻プレイヤーへ手番が戻る際にターン番号を+1。 */
-    battleEndTurn() {
+    /* ===================================================================
+       天力トリガー（カミ K1〜K9 の受動能力）
+       =================================================================== */
+    _battleKamiNo(side) {
+      const k = this.battleSample && this.battleSample[side] && this.battleSample[side].kami;
+      return k && k.no != null ? String(k.no) : null;
+    },
+    _battleKamiCanTrigger(side, eventKey, max) {
+      const p = this.battleSample[side];
+      if (!p) return false;
+      const counts = p.kamiTriggerCounts || (p.kamiTriggerCounts = {});
+      return Number(counts[eventKey] || 0) < max;
+    },
+    _battleKamiMarkTriggered(side, eventKey) {
+      const p = this.battleSample[side];
+      if (!p) return;
+      const counts = p.kamiTriggerCounts || (p.kamiTriggerCounts = {});
+      this.$set(p, 'kamiTriggerCounts', Object.assign({}, counts, { [eventKey]: Number(counts[eventKey] || 0) + 1 }));
+    },
+    _battleKamiGainTenryoku(side, n, reason) {
+      const p = this.battleSample[side];
+      if (!p || !n) return;
+      p.tenryoku = (Number(p.tenryoku) || 0) + n;
+      const kamiName = p.kami ? this.fullName(p.kami) : 'カミ';
+      this.battleShowNotice(
+        `天力トリガー：${reason}`,
+        `${side === 'opp' ? '相手' : '自分'}のカミ「${kamiName}」の効果で天力 +${n}（現在 ${p.tenryoku}）`,
+        p.kami ? [p.kami] : []
+      );
+    },
+    _battleHasOwnDuplicateLegacy(side) {
+      const p = this.battleSample[side];
+      if (!p) return false;
+      const counts = new Map();
+      const collect = (arr) => {
+        (arr || []).forEach(c => {
+          if (!c || c.isToken) return;
+          if ((c.category || '') !== 'レガシー') return;
+          const nm = this.fullName(c);
+          counts.set(nm, (counts.get(nm) || 0) + 1);
+        });
+      };
+      collect(p.legacies); collect(p.graveyard);
+      for (const [, n] of counts) { if (n >= 2) return true; }
+      return false;
+    },
+    _battleCountFieldRaces(side) {
+      const p = this.battleSample[side];
+      if (!p || !Array.isArray(p.legacies)) return 0;
+      const races = new Set();
+      p.legacies.forEach(c => { if (c && c.type) races.add(String(c.type)); });
+      return races.size;
+    },
+    _battleHasHighestPowerOnField(side) {
+      let maxP = -Infinity;
+      let ownerOnSide = false;
+      ['self', 'opp'].forEach(s => {
+        const p = this.battleSample[s];
+        if (!p || !Array.isArray(p.legacies)) return;
+        p.legacies.forEach(c => {
+          const pw = Number(c.power) || 0;
+          if (pw > maxP) maxP = pw;
+        });
+      });
+      if (maxP === -Infinity) return false;
+      const sp = this.battleSample[side];
+      if (!sp || !Array.isArray(sp.legacies)) return false;
+      return sp.legacies.some(c => (Number(c.power) || 0) === maxP);
+    },
+    _battleCardHasGuard(card) {
+      if (!card) return false;
+      const txt = this.battleCardRulesText ? this.battleCardRulesText(card) : '';
+      if (/【守護】|守護/.test(txt)) return true;
+      const kw = Array.isArray(card._kwGrant) ? card._kwGrant : [];
+      return kw.some(k => /守護/.test(String(k)));
+    },
+    /* 統一発火関数：カミ別ハンドラに振り分け */
+    battleFireKamiEvent(side, eventType, payload) {
+      if (!this.battleSample) return;
+      const kno = this._battleKamiNo(side);
+      if (!kno) return;
+      switch (kno) {
+        case 'K1': // スサノオ：進化または昇華したとき
+          if (eventType === 'evolveOrSublim') this._battleKamiGainTenryoku(side, 1, '進化または昇華');
+          return;
+        case 'K2': // ヤマトタケル：自ターン終了時、自フィールド+墓地に同名レガシーなし
+          if (eventType === 'turnEnd' && !this._battleHasOwnDuplicateLegacy(side)) {
+            this._battleKamiGainTenryoku(side, 1, '同名レガシーなし');
+          }
+          return;
+        case 'K3': // オオクニヌシ：自ターン終了時、自陣種族数で天力獲得
+          if (eventType === 'turnEnd') {
+            const races = this._battleCountFieldRaces(side);
+            if (races >= 3)      this._battleKamiGainTenryoku(side, 2, `自陣種族数 ${races}`);
+            else if (races >= 2) this._battleKamiGainTenryoku(side, 1, `自陣種族数 ${races}`);
+          }
+          return;
+        case 'K4': // タケミカヅチ：自ターン終了時、戦闘力最大レガシーを自分が所持
+          if (eventType === 'turnEnd' && this._battleHasHighestPowerOnField(side)) {
+            this._battleKamiGainTenryoku(side, 1, '戦闘力最大レガシーを所持');
+          }
+          return;
+        case 'K5': // オモイカネ：オラクル/レリック使用時（各ターン2回）
+          if (eventType === 'playOracleOrRelic' && this._battleKamiCanTrigger(side, 'K5', 2)) {
+            this._battleKamiMarkTriggered(side, 'K5');
+            this._battleKamiGainTenryoku(side, 1, 'オラクル/レリック使用');
+          }
+          return;
+        case 'K6': // アメノウズメ：マナフェイズ以外でマナ最大値/マナ/ライフ増加（各ターン2回）
+          if (eventType === 'manaOrLifeIncreased' && !this._battleInManaPhase && this._battleKamiCanTrigger(side, 'K6', 2)) {
+            this._battleKamiMarkTriggered(side, 'K6');
+            this._battleKamiGainTenryoku(side, 1, 'マナ/ライフ増加');
+          }
+          return;
+        case 'K7': // ヒノカグツチ：レガシー破壊時（各ターン2回）
+          if (eventType === 'legacyDestroyed' && this._battleKamiCanTrigger(side, 'K7', 2)) {
+            this._battleKamiMarkTriggered(side, 'K7');
+            this._battleKamiGainTenryoku(side, 1, 'レガシー破壊');
+          }
+          return;
+        case 'K8': // アマテラス：守護を持つ自分レガシーが1枚出たとき（各ターン2回）
+          if (eventType === 'guardLegacyPlayed' && this._battleKamiCanTrigger(side, 'K8', 2)) {
+            this._battleKamiMarkTriggered(side, 'K8');
+            this._battleKamiGainTenryoku(side, 1, '守護レガシー登場');
+          }
+          return;
+        case 'K9': // ツクヨミ：自分フィールドにトークンが1枚出たとき（各ターン2回）
+          if (eventType === 'tokenPlayed' && this._battleKamiCanTrigger(side, 'K9', 2)) {
+            this._battleKamiMarkTriggered(side, 'K9');
+            this._battleKamiGainTenryoku(side, 1, 'トークン登場');
+          }
+          return;
+      }
+    },
+
+    async battleRunTurnEndEffects(endingSide) {
+      if (!this.effectSpecsReady || !this.battleSample) return;
+      const bs = this.battleSample;
+      const cards = [];
+      ['self', 'opp'].forEach(side => {
+        const p = bs[side];
+        if (!p) return;
+        cards.push(...(p.legacies || []), ...(p.relics || []));
+      });
+      const prev = this._dslCurrentTurnEndSide;
+      this._dslCurrentTurnEndSide = endingSide;
+      try {
+        for (const card of cards.slice()) {
+          if (!card || !this.dslHasSpecForTrigger(card, 'ターン終了時')) continue;
+          if (!this._battleFieldCardSide(card)) continue;
+          await this.dslRunSpec(card, 'ターン終了時', null);
+        }
+      } finally {
+        this._dslCurrentTurnEndSide = prev;
+      }
+    },
+    async battleEndTurn() {
       if (this.battleSample.result) return;
       this.battleSaveUndo();
       const bs = this.battleSample;
@@ -6450,19 +7132,118 @@ new Vue({
         endingPlayer.seal -= 1;
         this._battleHandleSealThreshold(endingSide, previousSeal, endingPlayer.seal);
       }
+      // 自分ターン終了時：このターン適用された【補正】を巻き戻し、戦闘力0以下のレガシーを破壊
+      this._battleExpireBuffsForSide(endingSide, bs.turn);
+      this._battleExpireBindingsForSide(endingSide, bs.turn);
+      this._battleExpireEffectDisablesForSide(endingSide, bs.turn);
+      this._battleCheckDestroyZeroPower();
+      // 天力トリガー（ターン終了系：K2 ヤマトタケル / K3 オオクニヌシ / K4 タケミカヅチ）
+      this.battleFireKamiEvent(endingSide, 'turnEnd', {});
+      await this.battleRunTurnEndEffects(endingSide);
       const nextSide = bs.activeSide === 'self' ? 'opp' : 'self';
       if (nextSide === this.battleContext.firstSide) bs.turn += 1;
       bs.activeSide = nextSide;
       this._battleStartTurnFor(nextSide);
+      this.dslRefreshStaticAbilities();
+    },
+    /* 当該side+turn で適用された一時補正を巻き戻す（戦闘力表示・_buf を復元） */
+    _battleExpireBuffsForSide(side, turn) {
+      const bs = this.battleSample;
+      if (!bs) return;
+      const expired = [];
+      ['self', 'opp'].forEach(s => {
+        const p = bs[s];
+        if (!p) return;
+        ['legacies', 'relics'].forEach(zone => {
+          const arr = p[zone];
+          if (!Array.isArray(arr)) return;
+          arr.forEach(card => {
+            const entries = Array.isArray(card._bufTurns) ? card._bufTurns : null;
+            if (!entries || !entries.length) return;
+            const keep = [];
+            let removedDelta = 0;
+            entries.forEach(e => {
+              if (e && e.side === side && e.turn === turn) {
+                removedDelta += Number(e.delta) || 0;
+              } else {
+                keep.push(e);
+              }
+            });
+            if (removedDelta !== 0) {
+              this.$set(card, '_bufTurns', keep);
+              this.$set(card, '_buf', (Number(card._buf) || 0) - removedDelta);
+              this.$set(card, 'power', (Number(card.power) || 0) - removedDelta);
+              expired.push(this.fullName(card));
+            }
+          });
+        });
+      });
+      if (expired.length) {
+        this.battleShowNotice('補正の効果が終了', `${expired.join('、')}に付与されていた【補正】の効果が終了しました。`);
+      }
+    },
+    /* 戦闘力0以下のレガシーを破壊（補正巻き戻し直後等に呼ぶ） */
+    _battleCheckDestroyZeroPower() {
+      const bs = this.battleSample;
+      if (!bs) return;
+      const destroyed = [];
+      ['self', 'opp'].forEach(s => {
+        const p = bs[s];
+        if (!p || !Array.isArray(p.legacies)) return;
+        const survivors = [];
+        p.legacies.forEach(card => {
+          // power は ベース＋_buf(一時)＋_perm(恒常) を反映済み（_dslApplyGrant で直接 card.power を更新）
+          const pw = Number(card.power);
+          if (!isNaN(pw) && pw <= 0) {
+            // 破壊：墓地へ
+            this.dslClearStaticFromCard(card);
+            this.$set(card, '_tapped', false);
+            this.$set(card, '_bindUntilSide', null);
+            this.$set(card, '_bindUntilTurn', null);
+            this.$set(card, '_buf', 0);
+            this.$set(card, '_evolved', false);
+            this.$set(card, '_evolvedBase', null);
+            p.graveyard = p.graveyard || [];
+            p.graveyard.push(card);
+            destroyed.push({ side: s, name: this.fullName(card), card });
+          } else {
+            survivors.push(card);
+          }
+        });
+        if (survivors.length !== p.legacies.length) p.legacies = survivors;
+      });
+      if (destroyed.length) {
+        const lines = destroyed.map(d => `${d.side === 'self' ? '自分' : '相手'}の「${d.name}」`).join('、');
+        this.battleShowNotice('戦闘力0以下で破壊', `${lines}は戦闘力が0以下になったため破壊されました。`, destroyed.map(d => d.card));
+        this.dslRefreshStaticAbilities();
+        // 天力トリガー：レガシー破壊（K7）— 破壊された各カードについて両サイドに通知
+        destroyed.forEach(d => {
+          this.battleFireKamiEvent('self', 'legacyDestroyed', { card: d.card });
+          this.battleFireKamiEvent('opp', 'legacyDestroyed', { card: d.card });
+          this.battleRecordLegacyDestroyed(d.side, d.card);
+        });
+      }
+    },
+    battleRecordLegacyDestroyed(side, card) {
+      const player = this.battleSample && this.battleSample[side];
+      if (!player || !card || card.category !== 'レガシー') return;
+      const list = Array.isArray(player.legacyDestroyedThisTurn) ? player.legacyDestroyedThisTurn.slice() : [];
+      if (!list.includes(card)) list.push(card);
+      this.$set(player, 'legacyDestroyedThisTurn', list);
     },
     /* ターン開始処理（アンタップ＋ドロー＋マナ回復＋疲労ダメージ） */
     _battleStartTurnFor(side) {
       const target = this.battleSample[side];
+      // マナフェイズ中はK6（アメノウズメ）等の「マナ/ライフ増加」トリガーを抑止
+      this._battleInManaPhase = true;
       // マナ最大値+1（上限10）→ 満タン回復
       target.manaMax = Math.min(10, target.manaMax + 1);
       target.mana    = target.manaMax;
       // 「自分ターンに1回、【選定】の値を＋1」系のブースト使用権を回復
       target.senteiBoostUsed = false;
+      // 天力トリガーの各ターン回数カウンタをリセット
+      target.kamiTriggerCounts = {};
+      target.legacyDestroyedThisTurn = [];
       // 自分フィールドのカードを全てアンタップ
       this._battleUntapField(side);
       // ターン開始ドロー（先攻プレイヤーの最初のターンだけ無し）
@@ -6476,6 +7257,7 @@ new Vue({
         target.life = Math.max(0, target.life - dmg);
       }
       this._battleCheckResult();
+      this._battleInManaPhase = false;
     },
     /* 指定サイドのフィールド（レガシー・レリック）を全てアンタップ */
     _battleUntapField(side) {
@@ -6483,9 +7265,69 @@ new Vue({
       if (!target) return;
       ['legacies', 'relics'].forEach(zone => {
         (target[zone] || []).forEach(card => {
-          if (card && card._tapped) this.$set(card, '_tapped', false);
+          if (card && card._tapped && !this._battleIsBindingActive(card, side, this.battleSample.turn)) {
+            this.$set(card, '_tapped', false);
+          }
         });
       });
+    },
+    _battleBindingTurnForSide(side) {
+      const bs = this.battleSample;
+      if (!bs) return 1;
+      if (side === bs.activeSide) return bs.turn;
+      return side === this.battleContext.firstSide ? bs.turn + 1 : bs.turn;
+    },
+    _battleIsBindingActive(card, side, turn) {
+      return !!(card && card._bindUntilSide === side && Number(turn) <= Number(card._bindUntilTurn));
+    },
+    _battleIsEffectDisabled(card) {
+      return !!(card && card._effectsDisabled);
+    },
+    _battleCanUntapCard(card) {
+      if (!card || !this.battleSample) return true;
+      const side = this._battleFieldCardSide(card);
+      return !this._battleIsBindingActive(card, side, this.battleSample.turn);
+    },
+    _battleExpireBindingsForSide(side, turn) {
+      const bs = this.battleSample;
+      if (!bs) return;
+      const released = [];
+      ['self', 'opp'].forEach(s => {
+        const p = bs[s];
+        if (!p) return;
+        ['legacies', 'relics'].forEach(zone => {
+          (p[zone] || []).forEach(card => {
+            if (!(card && card._bindUntilSide === side && Number(card._bindUntilTurn) === Number(turn))) return;
+            this.$set(card, '_bindUntilSide', null);
+            this.$set(card, '_bindUntilTurn', null);
+            released.push(card);
+          });
+        });
+      });
+      if (released.length) {
+        this.battleShowNotice('拘束解除', `${released.map(c => `「${this.fullName(c)}」`).join('、')}の【拘束】が解除されました。`, released);
+      }
+    },
+    _battleExpireEffectDisablesForSide(side, turn) {
+      const bs = this.battleSample;
+      if (!bs) return;
+      const released = [];
+      ['self', 'opp'].forEach(s => {
+        const p = bs[s];
+        if (!p) return;
+        ['hand', 'deck', 'graveyard', 'crumbled', 'legacies', 'relics'].forEach(zone => {
+          (p[zone] || []).forEach(card => {
+            if (!(card && card._effectDisableUntilSide === side && Number(card._effectDisableUntilTurn) === Number(turn))) return;
+            this.$set(card, '_effectsDisabled', false);
+            this.$set(card, '_effectDisableUntilSide', null);
+            this.$set(card, '_effectDisableUntilTurn', null);
+            released.push(card);
+          });
+        });
+      });
+      if (released.length) {
+        this.battleShowNotice('効果無効化解除', `${released.map(c => `「${this.fullName(c)}」`).join('、')}の効果無効化が解除されました。`, released);
+      }
     },
     /* ターン開始ドロー（山札があれば1枚。同期で秘匿された相手山札はスキップ） */
     _battleDrawForTurn(side) {
@@ -6505,27 +7347,125 @@ new Vue({
       return !!(player && this._battleIsOrochiCard(player.kami));
     },
     battleHandCost(card) {
-      const base = Math.max(0, Number(card && card.cost) || 0);
+      const base = this.battleEffectiveCost(card);
       const text = [card && card.text, card && card.subType].filter(Boolean).join(' ');
       const extras = [];
       const pattern = /昇華\s*([0-9]+)/g;
+      const sublimDelta = this.battleSublimDeltaForCard(card);
       let match;
       while ((match = pattern.exec(text)) !== null) {
-        const extra = Number(match[1]);
+        const extra = Math.max(0, (Number(match[1]) || 0) + sublimDelta);
         if (extra > 0 && !extras.includes(extra)) extras.push(extra);
       }
       extras.sort((a, b) => a - b);
       return [base, ...extras.map(extra => base + extra)].join('/');
     },
+    battleEffectiveCost(card, side = 'self') {
+      const base = Math.max(0, Number(card && card.cost) || 0);
+      return Math.max(0, base + this.battleCostDeltaForCard(card, side));
+    },
+    battleCostDeltaForCard(card, side = 'self') {
+      if (!card || !this.battleSample) return 0;
+      let delta = 0;
+      if (Number(card._staticCostDelta)) delta += Number(card._staticCostDelta) || 0;
+      if (Number(card._costDelta)) delta += Number(card._costDelta) || 0;
+      delta += this.battleIntrinsicStaticCostDeltaForCard(card, side);
+      const sourceCards = [];
+      ['self', 'opp'].forEach(sourceSide => {
+        const player = this.battleSample[sourceSide] || {};
+        const cards = []
+          .concat(Array.isArray(player.legacies) ? player.legacies : [])
+          .concat(Array.isArray(player.relics) ? player.relics : []);
+        cards.forEach(source => sourceCards.push({ source, sourceSide }));
+      });
+      sourceCards.forEach(({ source, sourceSide }) => {
+        const mods = Array.isArray(source._staticCostMods) ? source._staticCostMods : [];
+        mods.forEach(mod => {
+          if (!this.battleCostModMatches(card, mod, side, sourceSide)) return;
+          delta += Number(mod.delta) || 0;
+        });
+      });
+      ['self', 'opp'].forEach(ownerSide => {
+        const player = this.battleSample[ownerSide] || {};
+        const mods = Array.isArray(player.tempCostMods) ? player.tempCostMods : [];
+        mods.forEach(mod => {
+          if (!this.battleCostModMatches(card, mod, side, mod.sourceSide || ownerSide)) return;
+          delta += Number(mod.delta) || 0;
+        });
+      });
+      return delta;
+    },
+    battleIntrinsicStaticCostDeltaForCard(card, side = 'self') {
+      if (!card || !this.effectSpecsReady || !this.battleSample) return 0;
+      const player = this.battleSample[side];
+      if (!player || !Array.isArray(player.hand) || !player.hand.includes(card)) return 0;
+      const spec = this._dslGetSpec(card);
+      if (!spec || !Array.isArray(spec.能力)) return 0;
+      const prevSource = this._dslCurrentSource;
+      let delta = 0;
+      try {
+        this._dslCurrentSource = card;
+        spec.能力.forEach(ab => {
+          if (!ab || ab.任意 || !this._dslAbilityMatchesTrigger(ab, '常在')) return;
+          if (ab.条件 && !this.dslEvalCond(ab.条件)) return;
+          (ab.処理 || []).forEach(act => {
+            const op = act && (act.操作 || act.op);
+            if (op !== 'コスト変更') return;
+            const target = act.対象 || {};
+            if (!target.自身) return;
+            if (act.数 === undefined || act.数 === null) return;
+            delta += Number(act.数) || 0;
+          });
+        });
+      } finally {
+        this._dslCurrentSource = prevSource;
+      }
+      return delta;
+    },
+    battleCostModMatches(card, mod, side = 'self', sourceSide = 'self') {
+      if (!card || !mod) return false;
+      const note = String(mod.note || '');
+      if (/自分/.test(note) && side !== sourceSide) return false;
+      if (/相手/.test(note) && side === sourceSide) return false;
+      if (/レリック/.test(note) && card.category !== 'レリック') return false;
+      if (/オラクル/.test(note) && card.category !== 'オラクル') return false;
+      const criteria = Array.isArray(mod.criteria) ? mod.criteria : [];
+      return !criteria.length || this.battleCardMatchesInduceCriteria(card, criteria);
+    },
+    battleAddTempCostMod(side, mod) {
+      const player = this.battleSample && this.battleSample[side];
+      if (!player) return;
+      const mods = Array.isArray(player.tempCostMods) ? player.tempCostMods.slice() : [];
+      mods.push(Object.assign({ once: true, sourceSide: side }, mod || {}));
+      this.$set(player, 'tempCostMods', mods);
+    },
+    battleConsumeTempCostMods(side, card) {
+      const player = this.battleSample && this.battleSample[side];
+      if (!player || !Array.isArray(player.tempCostMods) || !player.tempCostMods.length) return 0;
+      let consumed = 0;
+      const remaining = player.tempCostMods.filter(mod => {
+        if (!mod.once) return true;
+        const matches = this.battleCostModMatches(card, mod, side, mod.sourceSide || side);
+        if (matches) consumed++;
+        return !matches;
+      });
+      if (consumed) this.$set(player, 'tempCostMods', remaining);
+      return consumed;
+    },
+    battleSublimDeltaForCard(card) {
+      if (!card) return 0;
+      return (Number(card._staticSublimDelta) || 0) + (Number(card._sublimDelta) || 0);
+    },
     /* 昇華コストの選択肢を返す（基本コスト＋[基本+X]パターンを全部抽出） */
     battleSublimCostOptions(card) {
-      const base = Math.max(0, Number(card && card.cost) || 0);
+      const base = this.battleEffectiveCost(card);
       const text = [card && card.text, card && card.subType].filter(Boolean).join(' ');
       const extras = [];
       const pattern = /昇華\s*([0-9]+)/g;
+      const sublimDelta = this.battleSublimDeltaForCard(card);
       let m;
       while ((m = pattern.exec(text)) !== null) {
-        const x = Number(m[1]);
+        const x = Math.max(0, (Number(m[1]) || 0) + sublimDelta);
         if (x > 0 && !extras.includes(x)) extras.push(x);
       }
       extras.sort((a, b) => a - b);
@@ -6632,6 +7572,8 @@ new Vue({
     },
     battleCardMatchesInduceCriteria(card, criteria) {
       if (!card || !criteria || !criteria.length) return true;
+      const extraTypes = Array.isArray(card._typeGrant) ? card._typeGrant : [];
+      const hasType = (value) => card.type === value || card.subType === value || extraTypes.includes(value);
       return criteria.some(raw => {
         const c = String(raw || '').replace(/\s+/g, '');
         if (!c) return false;
@@ -6643,15 +7585,1991 @@ new Vue({
         if (c.endsWith('レガシー')) {
           const prefix = c.replace(/レガシー$/, '');
           if (card.category !== 'レガシー') return false;
-          return !prefix || card.color === prefix || card.type === prefix || card.subType === prefix;
+          return !prefix || card.color === prefix || hasType(prefix);
         }
-        return card.color === c || card.type === c || card.category === c || card.subType === c || this.fullName(card).includes(c);
+        return card.color === c || hasType(c) || card.category === c || this.fullName(card).includes(c);
       });
     },
+    /* ===================================================================
+       DSL効果エンジン（Layer2 effectSpec実行器）— v1.14.0〜
+       handoff: dsl-prototype/index.html のロジックを本番盤面 battleSample に移植
+       =================================================================== */
+    async loadEffectSpecs() {
+      try {
+        const resp = await fetch('effect_spec.json', { cache: 'no-cache' });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        this.effectSpecs = await resp.json();
+        // 名称→spec の逆引きマップを構築（同名カードを救う）
+        const byName = {};
+        for (const [no, spec] of Object.entries(this.effectSpecs)) {
+          if (spec && spec.名称) byName[spec.名称] = spec;
+        }
+        this.effectSpecsByName = byName;
+        this.effectSpecsReady = true;
+        this.dslRefreshStaticAbilities();
+        console.log('[DSL] effect_spec.json loaded:', Object.keys(this.effectSpecs).length, 'specs,', Object.keys(byName).length, 'unique names');
+      } catch (e) {
+        console.warn('[DSL] effect_spec.json 読み込み失敗:', e);
+        this.effectSpecs = {};
+        this.effectSpecsByName = {};
+        this.effectSpecsReady = false;
+      }
+    },
+    /* カード→spec（no優先、見つからなければ名前で検索） */
+    _dslGetSpec(card) {
+      if (!card) return null;
+      if (card.no != null) {
+        const byNo = this.effectSpecs[String(card.no)];
+        if (byNo) return byNo;
+      }
+      const nm = card.name || card.fullName;
+      if (nm && this.effectSpecsByName[nm]) return this.effectSpecsByName[nm];
+      return null;
+    },
+    /* このカードに当該triggerのspec能力があるか */
+    dslHasSpecForTrigger(card, triggerLabel) {
+      const spec = this._dslGetSpec(card);
+      if (!spec || !Array.isArray(spec.能力)) return false;
+      return spec.能力.some(ab => this._dslAbilityMatchesTrigger(ab, triggerLabel));
+    },
+    /* 進化条件（criteria配列）を取得 */
+    _dslEvolutionCriteria(card) {
+      const spec = this._dslGetSpec(card);
+      if (!spec || !Array.isArray(spec.能力)) return null;
+      const ab = spec.能力.find(a => a && a.進化条件);
+      if (!ab) return null;
+      const raw = String(ab.進化条件 || '');
+      return raw.split(/[\/／,、]/).map(s => s.trim()).filter(Boolean);
+    },
+    /* 自分フィールドから進化元候補となるレガシーを返す */
+    _dslEvolutionBaseCandidates(card) {
+      const crit = this._dslEvolutionCriteria(card);
+      if (!crit || !crit.length) return [];
+      const p = this.battleSample && this.battleSample.self;
+      if (!p || !Array.isArray(p.legacies)) return [];
+      const field = p.legacies.filter(c => this.battleCardMatchesInduceCriteria(c, crit));
+      if (!p.graveyardEvolutionEnabled || !Array.isArray(p.graveyard)) return field;
+      const graveyard = p.graveyard.filter(c => {
+        if (!c || c._usedAsEvolutionBase) return false;
+        if ((c.category || '') !== 'レガシー') return false;
+        return this.battleCardMatchesInduceCriteria(c, crit);
+      });
+      return field.concat(graveyard);
+    },
+    _dslAbilityMatchesTrigger(ab, triggerLabel) {
+      if (!ab) return false;
+      const tr = String(ab.契機 || '');
+      if (triggerLabel === '出現時') return /出現時/.test(tr) && !/進化中/.test(tr) || tr === '出現時';
+      if (triggerLabel === '死亡時') return /死亡時/.test(tr);
+      if (triggerLabel === '使用時') return /使用時/.test(tr);
+      if (triggerLabel === '神攻時') return /神攻時/.test(tr);
+      if (triggerLabel === '戦闘時') return /戦闘時/.test(tr);
+      if (triggerLabel === '常在')   return tr === '常在';
+      return tr === triggerLabel;
+    },
+    async dslPayAbilityCost(cost, sourceCard, label = '能力コスト') {
+      if (!cost) return true;
+      const side = this._battleFieldCardSide(sourceCard) || this._dslCurrentSourceSide() || 'self';
+      const player = this.battleSample && this.battleSample[side];
+      if (!player) return false;
+      if (cost.タップ === '自身') {
+        if (sourceCard && sourceCard._tapped) {
+          this.battleShowNotice('コスト支払い不可', `「${this.fullName(sourceCard)}」は既にタップされています。`, [sourceCard]);
+          return false;
+        }
+        if (sourceCard) this.$set(sourceCard, '_tapped', true);
+      }
+      const manaCost = Number(cost.マナ || 0);
+      if (manaCost > 0) {
+        if (Number(player.mana || 0) < manaCost) {
+          this.battleShowNotice('コスト支払い不可', `マナが ${manaCost} 必要ですが、現在 ${Number(player.mana || 0)} です。`, [sourceCard].filter(Boolean));
+          return false;
+        }
+        player.mana = Math.max(0, Number(player.mana || 0) - manaCost);
+      }
+      const tenryokuCost = Number(cost.天力 || 0);
+      if (tenryokuCost > 0) {
+        if (Number(player.tenryoku || 0) < tenryokuCost) {
+          this.battleShowNotice('コスト支払い不可', `天力が ${tenryokuCost} 必要ですが、現在 ${Number(player.tenryoku || 0)} です。`, [sourceCard].filter(Boolean));
+          return false;
+        }
+        player.tenryoku = Math.max(0, Number(player.tenryoku || 0) - tenryokuCost);
+      }
+      for (const item of [
+        { key: '破壊', dest: 'graveyard', title: '破壊するコスト対象を選択' },
+        { key: '崩壊', dest: 'crumbled', title: '崩壊するコスト対象を選択' },
+      ]) {
+        const sel = cost[item.key];
+        if (!sel) continue;
+        const need = Math.max(1, Number(sel.枚数 || 1));
+        const targets = await this.dslChooseTargets(sel, `${label}: ${item.title}`);
+        if (targets.length < need && !sel.まで) {
+          this.battleShowNotice('コスト支払い不可', `${item.key}するカードを${need}枚選ぶ必要があります。`, [sourceCard].filter(Boolean));
+          return false;
+        }
+        if (item.dest === 'crumbled') {
+          this._dslLastCrumbledCards = targets.slice();
+          this._dslLastCrumbledCount = targets.length;
+          this._dslLastCrumbledLocations = targets.map(card => this._dslFindCardLocation(card));
+        }
+        if (item.dest === 'graveyard') {
+          this._dslLastDestroyedCards = targets.map(card => ({
+            card,
+            power: this._dslCardEffPower(card),
+            attack: Number(card && card.attack) || 0
+          }));
+        }
+        targets.forEach(card => this._dslMoveCardToZone(card, item.dest));
+      }
+      this.dslRefreshStaticAbilities();
+      return true;
+    },
+    /* spec を実行（出現時/使用時 等のトリガーで呼ばれる） */
+    async dslRunSpec(card, triggerLabel = '出現時', paidCost = null) {
+      if (this._battleIsEffectDisabled(card)) {
+        this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、【${triggerLabel}】効果は発動しません。`, [card]);
+        return false;
+      }
+      const spec = this._dslGetSpec(card);
+      if (!spec || !Array.isArray(spec.能力)) return false;
+      const prevSource = this._dslCurrentSource;
+      const prevSublimPaid = this._dslSublimPaid;
+      this._dslCurrentSource = card;
+      const baseCost = this.battleEffectiveCost(card);
+      const sublimPaid = paidCost !== null ? Math.max(0, paidCost - baseCost - this.battleSublimDeltaForCard(card)) : 0;
+      this._dslSublimPaid = sublimPaid;
+      let ran = false;
+      try {
+        for (const ab of spec.能力) {
+          if (!this._dslAbilityMatchesTrigger(ab, triggerLabel)) continue;
+          // 昇華契機：sublim差額が cost.昇華 以上か
+          if (ab.契機 === '昇華') {
+            const need = (ab.コスト && ab.コスト.昇華) || 0;
+            if (sublimPaid < need) continue;
+          }
+          // 条件評価
+          if (ab.条件 && !this.dslEvalCond(ab.条件)) continue;
+          // 任意能力：「〜してもよい」→ 確認モーダルでyes/no
+          if (ab.任意) {
+            const summary = this._dslSummarizeActions(ab.処理 || []);
+            const ok = await this.dslAskOptional(card, ab.契機 || triggerLabel, summary);
+            if (!ok) continue;
+          }
+          if (ab.コスト) {
+            const paid = await this.dslPayAbilityCost(ab.コスト, card, `${triggerLabel}コスト`);
+            if (!paid) continue;
+          }
+          ran = true;
+          try {
+            await this.dslRunActions(ab.処理 || [], card);
+          } catch (e) {
+            console.warn('[DSL] action実行エラー:', e, ab);
+            this.battleShowNotice('効果処理エラー', `「${this.fullName(card)}」の自動処理中にエラーが発生しました。手動で処理してください。`, [card]);
+            break;
+          }
+        }
+      } finally {
+        this._dslCurrentSource = prevSource;
+        this._dslSublimPaid = prevSublimPaid;
+      }
+      return ran;
+    },
+    async dslRunActions(actions, sourceCard) {
+      const prevLastAction = this._dslLastAction;
+      try {
+        for (const act of actions) {
+          const resolved = this.dslApplySublimAlternative(act);
+          await this.dslRunAction(resolved, sourceCard);
+          this._dslLastAction = resolved;
+        }
+      } finally {
+        this._dslLastAction = prevLastAction;
+      }
+    },
+    dslApplySublimAlternative(act) {
+      if (!act || !Array.isArray(act.昇華代替) || !act.昇華代替.length) return act;
+      const paid = Number(this._dslSublimPaid || 0);
+      const alt = act.昇華代替
+        .filter(item => paid >= (Number(item.昇華) || 0))
+        .sort((a, b) => (Number(b.昇華) || 0) - (Number(a.昇華) || 0))[0];
+      if (!alt) return act;
+      const next = Object.assign({}, act);
+      const text = String(alt.効果 || '');
+      let m;
+      if (m = text.match(/選定[:：]\s*(\d+)/)) {
+        next.数 = Number(m[1]) || next.数;
+      } else if (m = text.match(/異なる獣霊\s*(\d+)種/)) {
+        next.数 = Number(m[1]) || next.数;
+        next.トークン = 'いずれかの獣霊';
+      } else if (/相手レガシーのみに限定/.test(text)) {
+        next.対象 = Object.assign({}, next.対象 || {}, { 対象側: 'opp', 絞込: ['レガシー'] });
+      }
+      next._sublimAlternative = alt;
+      return next;
+    },
+    async dslRunAction(act, sourceCard) {
+      if (!act) return;
+      if (act.条件 && !this.dslEvalCond(act.条件)) return;
+      if (act.任意) {
+        const summary = this._dslSummarizeActions([Object.assign({}, act, { 任意: false })]);
+        const ok = await this.dslAskOptional(sourceCard, '任意効果', summary);
+        if (!ok) return;
+      }
+      const op = act.操作 || act.op;
+      switch (op) {
+        case '付与':       return this._dslOpGrant(act, sourceCard, false);
+        case '静的バフ':   return this._dslOpGrant(act, sourceCard, true);
+        case '補正':       return this._dslOpGrant(act, sourceCard, false);
+        case '神威':       return this._dslOpGrant(act, sourceCard, false);
+        case '破壊':       return this._dslOpDestroy(act, sourceCard);
+        case 'ドロー':     return this._dslOpDraw(act);
+        case '天力':       return this._dslOpStat(act, 'tenryoku');
+        case 'ライフ':     return this._dslOpLife(act);
+        case 'ライフ最大値': return this._dslOpLifeMax(act);
+        case 'マナ最大値': return this._dslOpManaMax(act);
+        case 'マナ回復':   return this._dslOpManaRefill(act);
+        case '手札に戻す': return this._dslOpReturnToHand(act, sourceCard);
+        case '崩壊':       return this._dslOpCrumble(act, sourceCard);
+        case '墓地送り':   return this._dslOpToGraveyard(act, sourceCard);
+        case 'タップ':     return this._dslOpTap(act, sourceCard, true);
+        case 'アンタップ': return this._dslOpTap(act, sourceCard, false);
+        case '招来':       return this._dslOpSummon(act, sourceCard);
+        case '誘':         return this._dslOpInduce(act, sourceCard);
+        case '霊視':       return this._dslOpReishi(act, sourceCard);
+        case '選定':       return this._dslOpSentei(act, sourceCard);
+        case '分岐':       return this._dslOpBranch(act, sourceCard);
+        case '選択':       return this._dslOpChoice(act, sourceCard);
+        case '自身破壊':   return this._dslOpSelfDestroy(sourceCard, 'graveyard');
+        case '自身崩壊':   return this._dslOpSelfDestroy(sourceCard, 'crumbled');
+        case '場に出す':   return this._dslOpPutIntoField(act, sourceCard);
+        case 'サーチ':     return this._dslOpSearch(act, sourceCard);
+        case '手札に加える': return this._dslOpAddToHand(act, sourceCard);
+        case 'デッキ墓地送り': return this._dslOpMillDeck(act, sourceCard);
+        case 'デッキ下に戻す': return this._dslOpDeckBottom(act, sourceCard);
+        case '再発動':     return this._dslOpRepeat(act, sourceCard);
+        case '効果倍化':   return this._dslOpEffectMultiplier(act, sourceCard);
+        case '種族追加':   return this._dslOpAddType(act, sourceCard);
+        case '拘束':       return this._dslOpBind(act, sourceCard);
+        case '傀儡化':     return this._dslOpPuppet(act, sourceCard);
+        case 'トークン生成': return this._dslOpGenerateToken(act, sourceCard);
+        case '選定値+1':   return this._dslOpSenteiBoost(act, sourceCard);
+        case '無償使用':   return this._dslOpFreeUse(act, sourceCard);
+        case 'コスト変更': return this._dslOpCostChange(act, sourceCard);
+        case '昇華値変更': return this._dslOpSublimChange(act, sourceCard);
+        case '他効果発動': return this._dslOpTriggerOtherEffect(act, sourceCard);
+        case '公開':       return this._dslOpPublicNotice(act, sourceCard);
+        case '置換':
+        case '設置制限': return this._dslOpManualRuleEffect(act, sourceCard);
+        case '効果付与': return this._dslOpEffectGrant(act, sourceCard);
+        case 'ステータス設定': return this._dslOpStatusSet(act, sourceCard);
+        case '相手選択破棄': return this._dslOpOpponentChooseDiscard(act, sourceCard);
+        case '相手選択保護': return this._dslOpOpponentChooseProtect(act, sourceCard);
+        case '効果無効化': return this._dslOpEffectDisable(act, sourceCard);
+        default:
+          // 未対応op：手動フォールバック通知
+          this.battleShowNotice(
+            `自動処理未対応：${op}`,
+            `「${this.fullName(sourceCard)}」の効果「${op}」は自動処理未対応です。\n手動で処理してください。`,
+            [sourceCard]
+          );
+          return;
+      }
+    },
+
+    /* ---- 対象選択ヘルパ ---- */
+    _dslZoneOf(sel) {
+      const side = sel.対象側 === 'opp' ? 'opp' : 'self';
+      const z = sel.領域 || 'field';
+      if (sel.対象側 === 'both') {
+        return ['self', 'opp'].flatMap(s => this._dslZoneOf(Object.assign({}, sel, { 対象側: s })));
+      }
+      const player = this.battleSample[side];
+      if (!player) return [];
+      if (z === 'field') {
+        // 絞込にレリック/レガシー指定があるかで対象ゾーンを判定
+        const crit = sel.絞込 || [];
+        const wantsLegacy = !crit.length || crit.some(c => /レガシー|カード$/.test(String(c)));
+        const wantsRelic  = crit.some(c => /レリック/.test(String(c)));
+        // デフォルト（絞込なし or レガシー系のみ）はレガシーのみ
+        if (wantsRelic && !wantsLegacy) return [...(player.relics || [])];
+        if (wantsRelic && wantsLegacy)  return [...(player.legacies || []), ...(player.relics || [])];
+        return [...(player.legacies || [])];
+      }
+      if (z === 'graveyard') return [...(player.graveyard || [])];
+      if (z === 'crumbled')  return [...(player.crumbled || [])];
+      if (z === 'hand')      return [...(player.hand || [])];
+      if (z === 'deck')      return [...(player.deck || [])];
+      return [];
+    },
+    _dslCardEffPower(card) {
+      return Number(card && card.power) || 0;
+    },
+    _dslCurrentSourceSide() {
+      const src = this._dslCurrentSource;
+      const bs = this.battleSample;
+      if (!src || !bs) return (bs && bs.activeSide) || 'self';
+      for (const side of ['self', 'opp']) {
+        const p = bs[side];
+        if (!p) continue;
+        if (p.kami === src) return side;
+        for (const zone of ['legacies', 'relics', 'hand', 'graveyard', 'crumbled', 'deck']) {
+          if (Array.isArray(p[zone]) && p[zone].includes(src)) return side;
+        }
+      }
+      return bs.activeSide || 'self';
+    },
+    _dslCompareReferenceValue(name) {
+      const side = this._dslCurrentSourceSide();
+      const player = (this.battleSample && this.battleSample[side]) || {};
+      if (name === '天力') return Number(player.tenryoku) || 0;
+      if (name === 'マナ最大値') return Number(player.manaMax) || 0;
+      if (name === '自墓地枚数') return Array.isArray(player.graveyard) ? player.graveyard.length : 0;
+      if (name === 'self') return this._dslCardEffPower(this._dslCurrentSource);
+      return null;
+    },
+    _dslPassCompare(card, cmp) {
+      if (!cmp) return true;
+      let m;
+      const cardPower = this._dslCardEffPower(card);
+      const cardCost  = Number(card.cost) || 0;
+      if (m = String(cmp).match(/^powerLE:(\d+)$/)) return cardPower <= +m[1];
+      if (m = String(cmp).match(/^powerGE:(\d+)$/)) return cardPower >= +m[1];
+      // self参照（コロン or ドット両形式に対応）
+      if (m = String(cmp).match(/^power(LT|LE|GT|GE)[:.]self$/)) {
+        const v = this._dslCompareReferenceValue('self');
+        if (m[1] === 'LT') return cardPower <  v;
+        if (m[1] === 'LE') return cardPower <= v;
+        if (m[1] === 'GT') return cardPower >  v;
+        if (m[1] === 'GE') return cardPower >= v;
+      }
+      if (m = String(cmp).match(/^costLE:(\d+)$/))  return cardCost <= +m[1];
+      if (m = String(cmp).match(/^costGE:(\d+)$/))  return cardCost >= +m[1];
+      if (m = String(cmp).match(/^costLE:(天力|マナ最大値|自墓地枚数)$/)) {
+        return cardCost <= this._dslCompareReferenceValue(m[1]);
+      }
+      if (m = String(cmp).match(/^costGE:(天力|マナ最大値|自墓地枚数)$/)) {
+        return cardCost >= this._dslCompareReferenceValue(m[1]);
+      }
+      if (cmp === 'tapped')   return !!card._tapped;
+      if (cmp === 'untapped') return !card._tapped;
+      // 直前処理の結果を参照する比較
+      if (m = String(cmp).match(/^powerLE:(戻したレガシーの戦闘力|加えたレガシーの戦闘力|破壊したレガシーの戦闘力)$/)) {
+        const v = this._dslContextPowerReference(m[1]);
+        return v !== null && cardPower <= v;
+      }
+      // カード名や複数選択結果を参照する比較は、現時点では手動補助に委ねる
+      return true;
+    },
+    /* 数参照を整数値に解決：選択上限・処理数・付与量などで利用 */
+    _dslResolveNumericReference(ref) {
+      if (ref === undefined || ref === null) return null;
+      const s = String(ref);
+      if (!s.trim()) return null;
+      const bs = this.battleSample;
+      if (!bs) return null;
+      const self = bs.self || {};
+      // 直前で墓地に送った/破棄した枚数
+      if (/直前.*(墓地|破棄|捨て)/.test(s)) return Number(this._dslLastMovedCount || 0);
+      if (/墓地に送った枚数|送った枚数/.test(s)) return Number(this._dslLastMovedCount || 0);
+      // 崩壊した枚数
+      if (/崩壊した枚数|崩壊枚数/.test(s)) return Number(this._dslLastCrumbledCount || 0);
+      // 戻した枚数
+      if (/戻した枚数/.test(s)) {
+        const list = this._dslLastReturnedCards || [];
+        return list.length + (/[\+＋]1/.test(s) ? 1 : 0);
+      }
+      // 招来した枚数
+      if (/招来した枚数/.test(s)) return (this._dslLastSummonedCards || []).length;
+      // 減らしたライフの数値分
+      if (/減らしたライフ/.test(s)) return Number(this._dslLastLifeReduced || 0);
+      // 自分フィールドの〜の数（合算もOK）
+      const mField = s.match(/自分フィールドの(.+?)の数/);
+      if (mField) {
+        const crit = mField[1].split(/[+＋]/).map(t => t.trim()).filter(Boolean);
+        return (self.legacies || []).filter(c => this.battleCardMatchesInduceCriteria(c, crit)).length;
+      }
+      // 自分マナ最大値
+      if (/自分マナ最大値/.test(s)) return Number(self.manaMax || 0);
+      // 自分天力
+      if (/自分天力/.test(s) || /^天力$/.test(s)) return Number(self.tenryoku || 0);
+      // 自分レリック数
+      if (/自分.*レリック.*数|レリック数/.test(s)) return (self.relics || []).length;
+      // 自墓地枚数
+      if (/自(分)?墓地枚数|自分の墓地枚数/.test(s)) return (self.graveyard || []).length;
+      // 自分フィールドの種族数
+      if (/自陣種族数|種族数/.test(s)) return this._battleCountFieldRaces ? this._battleCountFieldRaces('self') : 0;
+      // 数字単独
+      const mNum = s.match(/^\s*(\d+)\s*$/);
+      if (mNum) return Number(mNum[1]);
+      return null;
+    },
+    /* コンテキスト変数：直前の戻し/招来/破壊カードの戦闘力 */
+    _dslContextPowerReference(refName) {
+      if (/戻したレガシー/.test(refName)) {
+        const list = this._dslLastReturnedCards || [];
+        if (!list.length) return null;
+        return Math.max(...list.map(c => this._dslCardEffPower(c)));
+      }
+      if (/加えたレガシー/.test(refName)) {
+        const list = this._dslLastSummonedCards || [];
+        if (!list.length) return null;
+        return Math.max(...list.map(c => this._dslCardEffPower(c)));
+      }
+      if (/破壊したレガシー/.test(refName)) {
+        const list = this._dslLastDestroyedCards || [];
+        if (!list.length) return null;
+        return Math.max(...list.map(d => Number((d && d.power) || 0)));
+      }
+      return null;
+    },
+    _dslEligible(sel) {
+      const pool = this._dslZoneOf(sel);
+      const crit = sel.絞込 || [];
+      const remarks = String(sel.備考 || '');
+      // 「このカード以外」備考：効果発動源のカード自身を選択肢から除外
+      const excludeSelf = /このカード以外/.test(remarks);
+      const src = excludeSelf ? this._dslCurrentSource : null;
+      return pool.filter(c => {
+        if (src && c === src) return false;
+        if (!this.battleCardMatchesInduceCriteria(c, crit)) return false;
+        if (!this._dslPassCompare(c, sel.比較)) return false;
+        return true;
+      });
+    },
+    /* 汎用対象選択：プレイヤー手動 or 自動 */
+    dslChooseTargets(sel, promptLabel) {
+      if (!sel) return Promise.resolve([]);
+      // 自身指定
+      if (sel.自身) {
+        const src = this._dslCurrentSource;
+        return Promise.resolve(src ? [src] : []);
+      }
+      // 自陣全体
+      if (sel.自陣全体) {
+        return Promise.resolve(this._dslEligible(Object.assign({ 対象側: 'self', 領域: 'field' }, sel)));
+      }
+      const pool = this._dslEligible(sel);
+      // 動的枚数：枚数:"動的" や 枚数:"all" 以外の文字列 + 数参照 → 解決
+      let need;
+      if (sel.枚数 === 'all') {
+        need = pool.length;
+      } else if (typeof sel.枚数 === 'number') {
+        need = sel.枚数;
+      } else if (sel.枚数 === '動的' || (typeof sel.枚数 === 'string' && isNaN(Number(sel.枚数)))) {
+        const dyn = this._dslResolveNumericReference(sel.数参照 || sel.枚数);
+        need = (dyn === null || dyn === undefined) ? 1 : Math.max(0, Number(dyn));
+      } else {
+        need = Number(sel.枚数) || 1;
+      }
+      if (pool.length === 0) {
+        // 強制効果でも任意効果でも、対象なしは公開通知
+        this.battleShowNotice(
+          '対象なし',
+          `${promptLabel || '対象選択'} ：条件を満たすカードがフィールドにありません。効果は不発となります。`,
+          this._dslCurrentSource ? [this._dslCurrentSource] : []
+        );
+        return Promise.resolve([]);
+      }
+      // 自動／ランダム
+      if (sel.選択者 === 'auto' || sel.枚数 === 'all') return Promise.resolve(pool.slice(0, need));
+      if (sel.選択者 === 'random') {
+        const shuf = pool.slice().sort(() => Math.random() - 0.5);
+        return Promise.resolve(shuf.slice(0, need));
+      }
+      // プレイヤー手動：モーダル
+      return new Promise((resolve) => {
+        this.dslTargetModal = {
+          sourceCard: this._dslCurrentSource,
+          prompt: promptLabel || '対象を選択',
+          candidates: pool,
+          selected: [],
+          need: Math.min(need, pool.length),
+          canSkip: !!sel.任意,
+        };
+        this._dslDeferred = resolve;
+      });
+    },
+    dslAskCustomTargets(promptLabel, candidates, need = 1, sourceCard = null, canSkip = false) {
+      const pool = (candidates || []).filter(Boolean);
+      if (!pool.length) return Promise.resolve([]);
+      return new Promise((resolve) => {
+        this.dslTargetModal = {
+          sourceCard: sourceCard || this._dslCurrentSource,
+          prompt: promptLabel || '対象を選択',
+          candidates: pool,
+          selected: [],
+          need: Math.min(Math.max(1, Number(need) || 1), pool.length),
+          canSkip: !!canSkip
+        };
+        this._dslDeferred = resolve;
+      });
+    },
+    /* 対象選択モーダルのトグル */
+    dslToggleTarget(card) {
+      const m = this.dslTargetModal;
+      if (!m) return;
+      const idx = m.selected.indexOf(card);
+      if (idx >= 0) { m.selected.splice(idx, 1); return; }
+      if (m.selected.length >= m.need) {
+        if (m.need === 1) { m.selected.splice(0, m.selected.length); m.selected.push(card); }
+        return;
+      }
+      m.selected.push(card);
+    },
+    dslResolveTargets() {
+      const m = this.dslTargetModal;
+      if (!m) return;
+      const sel = m.selected.slice();
+      const resolver = this._dslDeferred;
+      this.dslTargetModal = null;
+      this._dslDeferred = null;
+      if (resolver) resolver(sel);
+    },
+    dslCancelTargets() {
+      const resolver = this._dslDeferred;
+      this.dslTargetModal = null;
+      this._dslDeferred = null;
+      if (resolver) resolver([]);
+    },
+
+    /* ---- 条件評価器 ---- */
+    dslEvalCond(cond) {
+      if (!cond) return true;
+      if (cond === '既定') return true;
+      if (cond.and) return cond.and.every(c => this.dslEvalCond(c));
+      if (cond.or)  return cond.or.some(c => this.dslEvalCond(c));
+      if (cond.not) return !this.dslEvalCond(cond.not);
+      if (cond.計数) {
+        let targets = this._dslEligible({
+          対象側: cond.計数.対象側, 領域: cond.計数.領域, 絞込: cond.計数.絞込, 比較: cond.計数.比較,
+        });
+        if (/以外/.test(String(cond.計数.備考 || '')) && this._dslCurrentSource) {
+          targets = targets.filter(c => c !== this._dslCurrentSource);
+        }
+        const n = targets.length;
+        return this._dslCompareNum(n, cond.比較, cond.値);
+      }
+      if (cond.状態 === '天力') return this._dslCompareNum(this.battleSample.self.tenryoku, cond.比較, cond.値);
+      if (cond.状態 === 'マナ最大値') return this._dslCompareNum(this.battleSample.self.manaMax, cond.比較, cond.値);
+      if (cond.状態 === 'ライフ') return this._dslCompareNum(this.battleSample.self.life, cond.比較, cond.値);
+      if (cond.状態 === '自ライフ満タン') {
+        const self = this.battleSample.self || {};
+        return Number(self.life || 0) >= Number(self.lifeMax || 0);
+      }
+      if (cond.状態 === '自ライフ<相手ライフ') {
+        const self = this.battleSample.self || {};
+        const opp = this.battleSample.opp || {};
+        return Number(self.life || 0) < Number(opp.life || 0);
+      }
+      if (cond.状態 === '自身タップ') return !!(this._dslCurrentSource && this._dslCurrentSource._tapped);
+      if (cond.状態 === '自身戦闘力') return this._dslCompareNum(this._dslCardEffPower(this._dslCurrentSource), cond.比較, cond.値);
+      if (cond.状態 === '自陣種族数') {
+        const types = new Set(((this.battleSample.self && this.battleSample.self.legacies) || []).map(c => c && c.type).filter(Boolean));
+        return this._dslCompareNum(types.size, cond.比較, cond.値);
+      }
+      if (cond.状態) { console.warn('[DSL] 未対応状態条件:', cond.状態); return true; }
+      if (cond.存在) return this._dslEligible(cond.存在).length > 0;
+      if (cond.備考) {
+        const noteResult = this.dslEvalNoteCond(cond.備考);
+        if (noteResult !== null) return noteResult;
+        console.warn('[DSL] 備考条件は手動判定→真:', cond.備考);
+        return true;
+      }
+      return true;
+    },
+    dslEvalNoteCond(note) {
+      const s = String(note || '').replace(/\s+/g, '');
+      if (/自分墓地/.test(s) && /全属性/.test(s) && /レガシー/.test(s)) {
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const player = this.battleSample && this.battleSample[side];
+        const colors = new Set(((player && player.graveyard) || [])
+          .filter(card => card && card.category === 'レガシー')
+          .map(card => card.color)
+          .filter(Boolean));
+        return ['赤', '青', '緑', '黄', '紫'].every(color => colors.has(color));
+      }
+      if (/戻した/.test(s) && /3コスト以下/.test(s) && /神使レガシー/.test(s)) {
+        const returned = this._dslLastReturnedCards || [];
+        return returned.some(card =>
+          card &&
+          card.category === 'レガシー' &&
+          Number(card.cost || 0) <= 3 &&
+          this.battleCardMatchesInduceCriteria(card, ['神使レガシー'])
+        );
+      }
+      if (/このターン中に自分レガシーが破壊されている/.test(s)) {
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const player = this.battleSample && this.battleSample[side];
+        return !!(player && Array.isArray(player.legacyDestroyedThisTurn) && player.legacyDestroyedThisTurn.length);
+      }
+      if (/自分フィールドと墓地に同名レガシー/.test(s) && /いない/.test(s)) {
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        return this._battleHasOwnDuplicateLegacy ? !this._battleHasOwnDuplicateLegacy(side) : true;
+      }
+      if (/相手ターン終了時/.test(s) && /相手フィールド/.test(s) && /異なる種族3種以上/.test(s)) {
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const oppSide = side === 'self' ? 'opp' : 'self';
+        if (this._dslCurrentTurnEndSide !== oppSide) return false;
+        return this._battleCountFieldRaces ? this._battleCountFieldRaces(oppSide) >= 3 : false;
+      }
+      if (/崩壊したのが自分墓地のオラクルなら/.test(s)) {
+        const cards = this._dslLastCrumbledCards || [];
+        const locations = this._dslLastCrumbledLocations || [];
+        return cards.some((card, idx) =>
+          card &&
+          card.category === 'オラクル' &&
+          locations[idx] &&
+          locations[idx].side === 'self' &&
+          locations[idx].zone === 'graveyard'
+        );
+      }
+      return null;
+    },
+    _dslCompareNum(a, op, b) {
+      if (op === '>=') return a >= b;
+      if (op === '<=') return a <= b;
+      if (op === '==' || op === '=') return a === b;
+      if (op === '>')  return a > b;
+      if (op === '<')  return a < b;
+      return false;
+    },
+
+    /* ---- op実装 ---- */
+    _dslApplyGrant(card, grants, permanent) {
+      if (!card) return;
+      (grants || []).forEach(g => {
+        const s = String(g);
+        let m;
+        if (m = s.match(/^補正[:：]?([+\-]?\d+)$/)) {
+          // 一時補正：適用ターン＋適用者を記録（ターン終了時に巻き戻すため）
+          const delta = Number(m[1]);
+          const applierSide = (this.battleSample && this.battleSample.activeSide) || 'self';
+          const turn = (this.battleSample && this.battleSample.turn) || 1;
+          const entries = Array.isArray(card._bufTurns) ? card._bufTurns.slice() : [];
+          entries.push({ side: applierSide, turn, delta });
+          this.$set(card, '_bufTurns', entries);
+          this.$set(card, '_buf', (Number(card._buf) || 0) + delta);
+          this.$set(card, 'power', (Number(card.power) || 0) + delta);
+        } else if (m = s.match(/^戦闘力([+\-]?\d+)\(恒常\)$/)) {
+          this.$set(card, '_perm', (Number(card._perm) || 0) + Number(m[1]));
+          this.$set(card, 'power', (Number(card.power) || 0) + Number(m[1]));
+        } else if (m = s.match(/^神攻力([+\-]?\d+)/)) {
+          this.$set(card, 'attack', (Number(card.attack) || 0) + Number(m[1]));
+        } else if (m = s.match(/^神威[:：]?([+\-]?\d+)/)) {
+          this.$set(card, 'attack', (Number(card.attack) || 0) + Number(m[1]));
+        } else {
+          // キーワード付与（奇襲・疾駆・守護・死角・不可侵・呪殺 等）
+          const list = Array.isArray(card._kwGrant) ? card._kwGrant.slice() : [];
+          if (!list.includes(s)) list.push(s);
+          this.$set(card, '_kwGrant', list);
+        }
+      });
+    },
+    dslFieldCards() {
+      const list = [];
+      const bs = this.battleSample;
+      if (!bs) return list;
+      ['self', 'opp'].forEach(side => {
+        const p = bs[side];
+        if (!p) return;
+        ['legacies', 'relics'].forEach(zone => {
+          const arr = p[zone];
+          if (!Array.isArray(arr)) return;
+          arr.forEach(card => { if (card) list.push({ side, zone, card }); });
+        });
+      });
+      return list;
+    },
+    dslResetStaticEffects() {
+      this.dslFieldCards().forEach(({ card }) => this.dslClearStaticFromCard(card));
+    },
+    dslClearStaticFromCard(card) {
+      if (!card) return;
+      const prev = Number(card._staticPerm || 0);
+      if (prev) this.$set(card, 'power', (Number(card.power) || 0) - prev);
+      const prevAttack = Number(card._staticAttack || 0);
+      if (prevAttack) this.$set(card, 'attack', (Number(card.attack) || 0) - prevAttack);
+      this.$set(card, '_staticPerm', 0);
+      this.$set(card, '_staticAttack', 0);
+      this.$set(card, '_staticKwGrant', []);
+      this.$set(card, '_staticSenteiBoost', false);
+      this.$set(card, '_staticCostDelta', 0);
+      this.$set(card, '_staticCostMods', []);
+      this.$set(card, '_staticSublimDelta', 0);
+      this.$set(card, '_staticDoubleOwnDeath', false);
+      this.$set(card, '_staticDoubleShinshiEnter', false);
+    },
+    dslStaticEligible(sel, sourceCard, sourceSide) {
+      if (!sel) return [];
+      if (sel.自身) return sourceCard ? [sourceCard] : [];
+      const base = Object.assign({}, sel);
+      if (!base.対象側) base.対象側 = sourceSide || 'self';
+      if (!base.領域) base.領域 = 'field';
+      let pool = this._dslEligible(base);
+      const note = String(base.備考 || '');
+      if (/以外/.test(note) && sourceCard) pool = pool.filter(c => c !== sourceCard);
+      return pool;
+    },
+    dslApplyStaticGrant(card, grants) {
+      if (!card) return;
+      (grants || []).forEach(g => {
+        const s = String(g);
+        let m;
+        if (m = s.match(/^戦闘力([+\-]?\d+)\(恒常\)$/)) {
+          const delta = Number(m[1]) || 0;
+          this.$set(card, '_staticPerm', (Number(card._staticPerm) || 0) + delta);
+          this.$set(card, 'power', (Number(card.power) || 0) + delta);
+        } else if (m = s.match(/^神攻力([+\-]?\d+)/)) {
+          const delta = Number(m[1]) || 0;
+          this.$set(card, '_staticAttack', (Number(card._staticAttack) || 0) + delta);
+          this.$set(card, 'attack', (Number(card.attack) || 0) + delta);
+        } else if (/×|動的/.test(s)) {
+          // 盤面数を参照する常在バフは専用実装まで手動扱い。キーワードとしては付与しない。
+        } else {
+          const list = Array.isArray(card._staticKwGrant) ? card._staticKwGrant.slice() : [];
+          if (!list.includes(s)) list.push(s);
+          this.$set(card, '_staticKwGrant', list);
+        }
+      });
+    },
+    dslDynamicStaticGrants(act, sourceSide) {
+      const grants = Array.isArray(act.付与) ? act.付与.slice() : [];
+      const ref = String(act.数参照 || '');
+      const bs = this.battleSample;
+      if (!bs) return grants;
+      const side = sourceSide || 'self';
+      const player = bs[side] || {};
+      const relicCount = Array.isArray(player.relics) ? player.relics.length : 0;
+      const manaMax = Number(player.manaMax) || 0;
+      return grants.map(g => {
+        const s = String(g);
+        let m;
+        if ((/レリック/.test(ref) || /レリック数/.test(s)) && (m = s.match(/戦闘力([+\-]?\d+)×レリック数/))) {
+          const delta = (Number(m[1]) || 0) * relicCount;
+          return `戦闘力${delta >= 0 ? '+' : ''}${delta}(恒常)`;
+        }
+        if ((/マナ最大値/.test(ref) || /マナ最大値/.test(s)) && (m = s.match(/戦闘力([+\-]?\d+)×マナ最大値/))) {
+          const delta = (Number(m[1]) || 0) * manaMax;
+          return `戦闘力${delta >= 0 ? '+' : ''}${delta}(恒常)`;
+        }
+        return s;
+      });
+    },
+    dslApplyStaticActions(actions, sourceCard, sourceSide) {
+      (actions || []).forEach(act => {
+        const op = act.操作 || act.op;
+        if (op === '付与' || op === '静的バフ' || op === '補正' || op === '神威') {
+          const targets = this.dslStaticEligible(act.対象 || { 自身: true }, sourceCard, sourceSide);
+          const grants = this.dslDynamicStaticGrants(act, sourceSide);
+          targets.forEach(t => this.dslApplyStaticGrant(t, grants));
+        } else if (op === '分岐') {
+          for (const br of (act.分岐 || [])) {
+            if (!br.条件 || this.dslEvalCond(br.条件)) {
+              this.dslApplyStaticActions(br.処理 || [], sourceCard, sourceSide);
+              break;
+            }
+          }
+        } else if (op === '選定値+1' && sourceCard) {
+          this.$set(sourceCard, '_staticSenteiBoost', true);
+        } else if (op === 'コスト変更') {
+          this.dslApplyStaticCostChange(act, sourceCard);
+        } else if (op === '昇華値変更' && sourceCard) {
+          this.$set(sourceCard, '_staticSublimDelta', Number(act.数 || 0));
+        } else if (op === '効果倍化' && sourceCard) {
+          const targetText = String(act.対象 || act.備考 || '');
+          if (/死亡時/.test(targetText)) {
+            this.$set(sourceCard, '_staticDoubleOwnDeath', true);
+          } else if (/神使/.test(targetText) && /出現時/.test(targetText)) {
+            this.$set(sourceCard, '_staticDoubleShinshiEnter', true);
+          }
+        }
+      });
+    },
+    dslApplyStaticCostChange(act, sourceCard) {
+      if (!sourceCard) return;
+      const delta = Number(act.数 || 0);
+      const target = act.対象 || {};
+      if (target.自身) {
+        this.$set(sourceCard, '_staticCostDelta', (Number(sourceCard._staticCostDelta) || 0) + delta);
+        return;
+      }
+      const mods = Array.isArray(sourceCard._staticCostMods) ? sourceCard._staticCostMods.slice() : [];
+      mods.push({
+        delta,
+        note: String(target.備考 || ''),
+        criteria: Array.isArray(target.絞込) ? target.絞込.slice() : [],
+      });
+      this.$set(sourceCard, '_staticCostMods', mods);
+    },
+    dslRefreshStaticAbilities() {
+      if (!this.effectSpecsReady || !this.battleSample) return;
+      if (this._dslRefreshingStatic) return;
+      this._dslRefreshingStatic = true;
+      try {
+        this.dslResetStaticEffects();
+        this.dslFieldCards().forEach(({ side, card }) => {
+          const spec = this._dslGetSpec(card);
+          if (!spec || !Array.isArray(spec.能力)) return;
+          spec.能力.forEach(ab => {
+            const matchStatic = this._dslAbilityMatchesTrigger(ab, '常在');
+            // 進化中：このカードが進化済(_evolved)の間だけ静的能力として効く
+            const matchEvolved = !!card._evolved && this._dslAbilityMatchesTrigger(ab, '進化中');
+            if (!matchStatic && !matchEvolved) return;
+            if (ab.任意) return;
+            this._dslCurrentSource = card;
+            if (ab.条件 && !this.dslEvalCond(ab.条件)) return;
+            this.dslApplyStaticActions(ab.処理 || [], card, side);
+          });
+        });
+      } finally {
+        this._dslCurrentSource = null;
+        this._dslRefreshingStatic = false;
+      }
+    },
+    async _dslOpGrant(act, sourceCard, permanent) {
+      const targets = await this.dslChooseTargets(act.対象, `【${(act.付与 || []).join('・')}】を付与`);
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(c => this._dslApplyGrant(c, act.付与, permanent));
+      this.battleShowNotice(
+        permanent ? '静的バフ（恒常）' : '付与（このターン）',
+        `${targets.map(c => `「${this.fullName(c)}」`).join('、')}に ${(act.付与 || []).join(' / ')} を付与しました。`,
+        targets
+      );
+      // 補正/静的バフでマイナスを受けて戦闘力0以下になったら即破壊
+      this._battleCheckDestroyZeroPower();
+    },
+    async _dslOpDestroy(act, sourceCard) {
+      const targets = await this.dslChooseTargets(act.対象, '破壊する対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      this._dslLastDestroyedCards = targets.map(card => ({
+        card,
+        power: this._dslCardEffPower(card),
+        attack: Number(card && card.attack) || 0
+      }));
+      targets.forEach(c => this._dslMoveFromField(c, 'graveyard'));
+      this.battleShowNotice('破壊', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を破壊しました。`, targets);
+    },
+    async _dslOpReturnToHand(act, sourceCard) {
+      const targets = await this.dslChooseTargets(act.対象, '手札に戻す対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      const side = (act.対象 && act.対象.対象側 === 'opp') ? 'opp' : 'self';
+      // 数参照用コンテキスト
+      this._dslLastReturnedCards = targets.slice();
+      this._dslLastMovedCount = targets.length;
+      targets.forEach(c => this._dslMoveFromField(c, 'hand', side));
+      this.battleShowNotice('手札に戻す', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に戻しました。`, targets);
+    },
+    async _dslOpCrumble(act, sourceCard) {
+      const targets = await this.dslChooseTargets(act.対象, '崩壊させる対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      // 数参照用コンテキスト
+      this._dslLastCrumbledCount = targets.length;
+      this._dslLastCrumbledCards = targets.slice();
+      this._dslLastCrumbledLocations = targets.map(card => this._dslFindCardLocation(card));
+      this._dslLastMovedCount = targets.length;
+      targets.forEach(c => this._dslMoveCardToZone(c, 'crumbled'));
+      this.battleShowNotice('崩壊', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を崩壊させました。`, targets);
+      if (Array.isArray(act.後続) && act.後続.length) {
+        await this.dslRunActions(act.後続, sourceCard);
+      }
+    },
+    async _dslOpToGraveyard(act, sourceCard) {
+      const targets = await this.dslChooseTargets(act.対象, '墓地に送る対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(c => this._dslMoveCardToZone(c, 'graveyard'));
+      this.battleShowNotice('墓地送り', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を墓地に送りました。`, targets);
+    },
+    async _dslOpTap(act, sourceCard, doTap) {
+      const targets = await this.dslChooseTargets(act.対象, doTap ? 'タップする対象を選択' : 'アンタップする対象を選択');
+      if (!targets.length) return;
+      if (!doTap) {
+        const blocked = targets.filter(c => this._battleIsBindingActive(c, this._battleFieldCardSide(c), this.battleSample.turn));
+        if (blocked.length) {
+          this.battleShowNotice('拘束中', `${blocked.map(c => `「${this.fullName(c)}」`).join('、')}は【拘束】中のためアンタップできません。`, blocked);
+          return;
+        }
+      }
+      this.battleSaveUndo();
+      targets.forEach(c => this.$set(c, '_tapped', doTap));
+      this.battleShowNotice(doTap ? 'タップ' : 'アンタップ', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を${doTap ? 'タップ' : 'アンタップ'}しました。`, targets);
+    },
+    _battleFieldCardSide(card) {
+      const bs = this.battleSample;
+      if (!bs || !card) return 'self';
+      for (const side of ['self', 'opp']) {
+        const p = bs[side];
+        if (!p) continue;
+        if ((p.legacies || []).includes(card) || (p.relics || []).includes(card)) return side;
+      }
+      return bs.activeSide || 'self';
+    },
+    async _dslOpBind(act, sourceCard) {
+      const targets = await this.dslChooseTargets(act.対象, '拘束する対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(card => {
+        const side = this._battleFieldCardSide(card);
+        this.$set(card, '_tapped', true);
+        this.$set(card, '_bindUntilSide', side);
+        this.$set(card, '_bindUntilTurn', this._battleBindingTurnForSide(side));
+      });
+      this.battleShowNotice('拘束', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}をタップし、次の対象側ターン終了時までアンタップできなくしました。`, targets);
+    },
+    async _dslOpPuppet(act, sourceCard) {
+      const selector = Object.assign({ 対象側: 'opp', 領域: 'field', 絞込: ['レガシー'], 枚数: 1, 選択者: 'player' }, act.対象 || {});
+      const targets = await this.dslChooseTargets(selector, '傀儡化する相手レガシーを選択');
+      if (!targets.length) return;
+      const self = this.battleSample.self;
+      const opp = this.battleSample.opp;
+      if (!self || !opp || !Array.isArray(self.legacies) || !Array.isArray(opp.legacies)) return;
+      if (self.legacies.length + targets.length > 7) {
+        this.battleShowNotice('フィールド上限です', `自分のレガシーフィールドには7枚まで配置できます。傀儡化する枚数を減らしてください。`, targets);
+        return;
+      }
+      this.battleSaveUndo();
+      const moved = [];
+      targets.forEach(card => {
+        const idx = opp.legacies.indexOf(card);
+        if (idx < 0) return;
+        opp.legacies.splice(idx, 1);
+        this.dslClearStaticFromCard(card);
+        this.$set(card, '_tapped', false);
+        this.$set(card, '_bindUntilSide', null);
+        this.$set(card, '_bindUntilTurn', null);
+        const grants = Array.isArray(card._kwGrant) ? card._kwGrant.slice() : [];
+        if (!grants.includes('疾駆')) grants.push('疾駆');
+        this.$set(card, '_kwGrant', grants);
+        this.$set(card, '_puppeted', true);
+        self.legacies.push(card);
+        moved.push(card);
+      });
+      if (!moved.length) return;
+      this.dslRefreshStaticAbilities();
+      const extra = act.期間 || (Array.isArray(act.付与) ? act.付与.join(' / ') : '');
+      this.battleShowNotice(
+        '傀儡化',
+        `${moved.map(c => `「${this.fullName(c)}」`).join('、')}を自分の場へ移し、アンタップして【疾駆】を付与しました。${extra ? `\n追加の期間処理: ${extra}` : ''}`,
+        moved
+      );
+    },
+    _dslOpGenerateToken(act, sourceCard) {
+      const tokenText = String(act.値 || act.トークン || '').trim();
+      if (!tokenText) {
+        this.battleShowNotice('トークン生成：対象不明', '生成するトークン名が指定されていません。手動で処理してください。', sourceCard ? [sourceCard] : []);
+        return;
+      }
+      const candidates = this.battleSummonCandidates(tokenText);
+      const card = candidates[0] || this.allCards.find(c => String(c.no) === tokenText);
+      if (!card) {
+        this.battleShowNotice('トークン生成：カード未検出', `「${tokenText}」に該当するカードが見つかりませんでした。手動で処理してください。`, sourceCard ? [sourceCard] : []);
+        return;
+      }
+      const side = act.側 === 'opp' ? 'opp' : this._dslCurrentSourceSide();
+      const player = this.battleSample[side || 'self'];
+      if (!player) return;
+      const note = String(act.備考 || '');
+      this.battleSaveUndo();
+      const clone = Object.assign({}, card);
+      if (/場|フィールド|招来/.test(note)) {
+        if (!this.battleCanPlaceFromSource(clone, 'effect')) return;
+        const zone = this.battleFieldZoneForSummon(clone) || 'legacies';
+        if (!Array.isArray(player[zone]) || player[zone].length >= 7) {
+          this.battleShowNotice('フィールド上限です', `「${this.fullName(card)}」を場に出せませんでした。手動で処理してください。`, [card]);
+          return;
+        }
+        const fieldCard = this._battlePrepareFieldCard(clone);
+        player[zone].push(fieldCard);
+        this._dslLastSummonedCards = [fieldCard];
+        this.dslRefreshStaticAbilities();
+        this.battleShowNotice('トークン生成', `「${this.fullName(card)}」を${side === 'opp' ? '相手' : '自分'}の場に出しました。`, [card]);
+        return;
+      }
+      player.hand = player.hand || [];
+      player.hand.push(clone);
+      this._battleSyncSideCounts(side || 'self');
+      this.battleShowNotice('トークン生成', `「${this.fullName(card)}」を${side === 'opp' ? '相手' : '自分'}の手札に加えました。`, [card]);
+    },
+    _dslOpSenteiBoost(act, sourceCard) {
+      if (!sourceCard) return;
+      const side = this._battleFieldCardSide(sourceCard) || this._dslCurrentSourceSide();
+      const turn = this.battleSample ? this.battleSample.turn : 1;
+      this.$set(sourceCard, '_senteiBoost', true);
+      this.$set(sourceCard, '_senteiBoostSide', side || 'self');
+      this.$set(sourceCard, '_senteiBoostTurn', turn);
+      this.battleShowNotice(
+        '選定値+1',
+        `このターン中1回、「${this.fullName(sourceCard)}」により【選定】の値を +1 できます。`,
+        [sourceCard]
+      );
+    },
+    async _dslOpFreeUse(act, sourceCard) {
+      if (!act.対象) {
+        this.battleShowNotice(
+          '無償使用：手動確認',
+          `「${this.fullName(sourceCard)}」の無償使用対象を自動特定できませんでした。カード本文に従って手動で処理してください。`,
+          sourceCard ? [sourceCard] : []
+        );
+        return;
+      }
+      const resolved = await this.dslResolveFreeUseTargets(act, sourceCard);
+      if (!resolved) return;
+      const { sel, targets } = resolved;
+      if (!targets.length) return;
+      const side = sel.対象側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample[side];
+      const fromZone = sel.領域 || 'hand';
+      if (!p || !Array.isArray(p[fromZone])) return;
+      this.battleSaveUndo();
+      const used = [];
+      targets.forEach(card => {
+        const arr = p[fromZone];
+        const idx = arr.indexOf(card);
+        if (idx < 0) return;
+        if (fromZone !== 'hand' && this.battleHasHandOnlyPlacementRestriction(card)) {
+          this.battleCanPlaceFromSource(card, fromZone);
+          return;
+        }
+        arr.splice(idx, 1);
+        if (card.category === 'オラクル') {
+          p.graveyard = p.graveyard || [];
+          p.graveyard.push(card);
+          this.battleOracleEffect = { card };
+          used.push(card);
+          if (!this.battleRunEnterKeywordEffects(card, 0)) this.battleKeywordGuide(card, 0);
+          return;
+        }
+        const zone = this.battleFieldZoneForCard(card);
+        if (!zone || !Array.isArray(p[zone]) || p[zone].length >= 7) {
+          p.hand = p.hand || [];
+          p.hand.push(card);
+          this.battleShowNotice('無償使用：配置不可', `「${this.fullName(card)}」を場に出せませんでした。手札に戻しました。`, [card]);
+          return;
+        }
+        const fieldCard = this._battlePrepareFieldCard(card);
+        p[zone].push(fieldCard);
+        used.push(fieldCard);
+        if (!this.battleRunEnterKeywordEffects(fieldCard, 0)) this.battleKeywordGuide(fieldCard, 0);
+      });
+      if (/シャッフル/.test(String(sel.備考 || '')) && Array.isArray(p.deck)) p.deck = this._battleShuffle(p.deck);
+      this._battleSyncSideCounts(side);
+      this.hideCardHover();
+      this.dslRefreshStaticAbilities();
+      if (used.length) {
+        this.battleShowNotice('無償使用', `${used.map(c => `「${this.fullName(c)}」`).join('、')}をマナを支払わず使用しました。`, used);
+      }
+    },
+    async dslResolveFreeUseTargets(act, sourceCard) {
+      const note = String(act.対象 && act.対象.備考 || '');
+      if (/崩壊した/.test(note) && /オラクル/.test(note)) {
+        const cards = (this._dslLastCrumbledCards || []).filter(card => card && card.category === 'オラクル');
+        if (!cards.length) {
+          this.battleShowNotice('無償使用：対象なし', '直前に崩壊したオラクルが見つかりませんでした。', sourceCard ? [sourceCard] : []);
+          return null;
+        }
+        return { sel: { 対象側: 'self', 領域: 'crumbled' }, targets: cards.slice(0, 1) };
+      }
+      if (/そのカード/.test(note)) {
+        const cards = (this._dslLastReturnedCards || []).filter(Boolean);
+        if (!cards.length) {
+          this.battleShowNotice('無償使用：対象なし', '直前に手札へ戻したカードが見つかりませんでした。', sourceCard ? [sourceCard] : []);
+          return null;
+        }
+        return { sel: { 対象側: 'self', 領域: 'hand' }, targets: cards.slice(0, 1) };
+      }
+      if (note) {
+        this.battleShowNotice(
+          '無償使用：手動確認',
+          `「${this.fullName(sourceCard)}」の無償使用対象を自動特定できませんでした。カード本文に従って手動で処理してください。`,
+          sourceCard ? [sourceCard] : []
+        );
+        return null;
+      }
+      const sel = Object.assign({ 対象側: 'self', 領域: 'hand', 選択者: 'player', 枚数: 1 }, act.対象 || {});
+      const targets = await this.dslChooseTargets(sel, '無償使用するカードを選択');
+      return { sel, targets };
+    },
+    async _dslOpCostChange(act, sourceCard) {
+      const delta = Number(act.数 || 0);
+      const target = act.対象 || {};
+      if (target.備考 && !target.自身) {
+        const note = String(target.備考 || '');
+        if (/次/.test(note)) {
+          this.battleSaveUndo();
+          this.battleAddTempCostMod('self', {
+            delta,
+            note,
+            criteria: Array.isArray(target.絞込) ? target.絞込.slice() : [],
+            sourceName: this.fullName(sourceCard),
+          });
+          this.battleShowNotice(
+            'コスト変更',
+            `次に条件を満たすカードを使う時、コストを ${delta >= 0 ? '+' : ''}${delta} します。`,
+            sourceCard ? [sourceCard] : []
+          );
+          return;
+        }
+        this.battleShowNotice(
+          'コスト変更：手動確認',
+          `「${this.fullName(sourceCard)}」のコスト変更（${delta >= 0 ? '+' : ''}${delta}）は、対象指定が文章形式のため手動で確認してください。`,
+          sourceCard ? [sourceCard] : []
+        );
+        return;
+      }
+      const targets = await this.dslChooseTargets(target.自身 ? { 自身: true } : target, 'コストを変更する対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(card => {
+        this.$set(card, '_costDelta', (Number(card._costDelta) || 0) + delta);
+      });
+      this.battleShowNotice(
+        'コスト変更',
+        `${targets.map(c => `「${this.fullName(c)}」`).join('、')}のコストを ${delta >= 0 ? '+' : ''}${delta} しました。`,
+        targets
+      );
+    },
+    async _dslOpSublimChange(act, sourceCard) {
+      const delta = Number(act.数 || 0);
+      const target = act.対象 || { 自身: true };
+      const targets = await this.dslChooseTargets(target, '昇華値を変更する対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(card => {
+        this.$set(card, '_sublimDelta', (Number(card._sublimDelta) || 0) + delta);
+      });
+      this.battleShowNotice(
+        '昇華値変更',
+        `${targets.map(c => `「${this.fullName(c)}」`).join('、')}の昇華値を ${delta >= 0 ? '+' : ''}${delta} しました。`,
+        targets
+      );
+    },
+    async _dslOpTriggerOtherEffect(act, sourceCard) {
+      const targetText = String(act.対象 || act.値 || '');
+      const trigger = /死亡時/.test(targetText) ? '死亡時'
+        : /神攻時/.test(targetText) ? '神攻時'
+        : /出現時/.test(targetText) ? '出現時'
+        : null;
+      if (!trigger) {
+        this.battleShowNotice('他効果発動：手動確認', `対象効果を自動判定できませんでした。\n${targetText}`, sourceCard ? [sourceCard] : []);
+        return;
+      }
+      const selector = {
+        対象側: 'self',
+        領域: /墓地/.test(targetText) ? 'graveyard' : 'field',
+        絞込: ['レガシー'],
+        枚数: 1,
+        選択者: 'player',
+      };
+      const targets = await this.dslChooseTargets(selector, `${trigger}効果を発動するレガシーを選択`);
+      if (!targets.length) return;
+      const card = targets[0];
+      if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, trigger)) {
+        await this.dslRunSpec(card, trigger, null);
+        this.battleShowNotice('他効果発動', `「${this.fullName(card)}」の【${trigger}】効果を発動しました。`, [card]);
+      } else {
+        this.battleShowNotice('他効果発動：手動確認', `「${this.fullName(card)}」の【${trigger}】効果は自動処理できませんでした。カード本文に従って手動で処理してください。`, [card]);
+      }
+    },
+    _dslOpPublicNotice(act, sourceCard) {
+      const text = [act.値, act.備考, act.対象 && act.対象.備考].filter(Boolean).join('\n');
+      this.battleShowNotice(
+        '公開処理',
+        text || `「${this.fullName(sourceCard)}」の公開処理です。対象カードを両プレイヤーで確認してください。`,
+        sourceCard ? [sourceCard] : []
+      );
+    },
+    _dslEffectDisableCandidates(sel) {
+      const side = sel && sel.対象側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample && this.battleSample[side];
+      if (!p) return { side, cards: [] };
+      const zoneText = String((sel && sel.領域) || 'field');
+      const zones = [];
+      if (/手札|hand/.test(zoneText)) zones.push('hand');
+      if (/墓地|graveyard/.test(zoneText)) zones.push('graveyard');
+      if (/崩壊|crumbled/.test(zoneText)) zones.push('crumbled');
+      if (/フィールド|field/.test(zoneText)) zones.push('legacies', 'relics');
+      if (!zones.length) zones.push('legacies');
+      const criteria = (sel && sel.絞込) || [];
+      const cards = [];
+      zones.forEach(zone => {
+        (p[zone] || []).forEach(card => {
+          if (!card) return;
+          if (criteria.length && !this.battleCardMatchesInduceCriteria(card, criteria)) return;
+          cards.push(card);
+        });
+      });
+      return { side, cards };
+    },
+    _dslOpEffectDisable(act, sourceCard) {
+      const sel = act.対象 || { 対象側: 'opp', 領域: 'field', 絞込: ['レガシー'], 枚数: 'all' };
+      const { side, cards } = this._dslEffectDisableCandidates(sel);
+      if (!cards.length) {
+        this.battleShowNotice('効果無効化：対象なし', `効果無効化の対象になるカードがありません。`, sourceCard ? [sourceCard] : []);
+        return;
+      }
+      this.battleSaveUndo();
+      const untilTurn = this._battleBindingTurnForSide(side);
+      cards.forEach(card => {
+        this.$set(card, '_effectsDisabled', true);
+        this.$set(card, '_effectDisableUntilSide', side);
+        this.$set(card, '_effectDisableUntilTurn', untilTurn);
+      });
+      this.battleShowNotice(
+        '効果無効化',
+        `${cards.map(c => `「${this.fullName(c)}」`).join('、')}の効果を${side === 'opp' ? '次の相手ターン終了時' : '次の自分ターン終了時'}まで無効化しました。`,
+        cards
+      );
+    },
+    async _dslOpOpponentChooseDiscard(act, sourceCard) {
+      const opp = this.battleSample && this.battleSample.opp;
+      if (!opp) return;
+      const need = Math.max(1, Number(act.数 || 1));
+      const candidates = [
+        ...(opp.hand || []),
+        ...(opp.legacies || [])
+      ].filter(Boolean);
+      if (!candidates.length) {
+        this.battleShowNotice('相手選択破棄', '相手が選択できる手札またはレガシーがありません。', sourceCard ? [sourceCard] : []);
+        return;
+      }
+      const picked = await this.dslAskCustomTargets('相手が墓地へ送る手札/破壊するレガシーを選択', candidates, need, sourceCard);
+      if (!picked.length) return;
+      this.battleSaveUndo();
+      const moved = [];
+      const destroyed = [];
+      opp.graveyard = opp.graveyard || [];
+      picked.forEach(card => {
+        const handIdx = (opp.hand || []).indexOf(card);
+        if (handIdx >= 0) {
+          opp.hand.splice(handIdx, 1);
+          opp.graveyard.push(card);
+          moved.push(card);
+          return;
+        }
+        const legacyIdx = (opp.legacies || []).indexOf(card);
+        if (legacyIdx >= 0 && this._dslMoveFromField(card, 'graveyard', 'opp')) {
+          moved.push(card);
+          destroyed.push(card);
+        }
+      });
+      if (!moved.length) return;
+      this._battleSyncSideCounts('opp');
+      this.dslRefreshStaticAbilities();
+      this.battleShowNotice(
+        '相手選択破棄',
+        `${moved.map(c => `「${this.fullName(c)}」`).join('、')}を相手の墓地へ送りました。`,
+        moved
+      );
+      destroyed.forEach(card => this.battleRunDeathKeywordEffects(card));
+    },
+    async _dslOpOpponentChooseProtect(act, sourceCard) {
+      const opp = this.battleSample && this.battleSample.opp;
+      if (!opp) return;
+      const fieldCards = [
+        ...(opp.legacies || []),
+        ...(opp.relics || [])
+      ].filter(Boolean);
+      if (!fieldCards.length) {
+        this.battleShowNotice('相手選択保護', '相手フィールドに選択できるカードがありません。', sourceCard ? [sourceCard] : []);
+        return;
+      }
+      const picked = await this.dslAskCustomTargets('相手が破壊しないフィールドカードを1枚選択', fieldCards, Number(act.数 || 1), sourceCard);
+      if (!picked.length) return;
+      const protectedCard = picked[0];
+      const targets = fieldCards.filter(card => card !== protectedCard);
+      if (!targets.length) {
+        this.battleShowNotice('相手選択保護', `「${this.fullName(protectedCard)}」以外に破壊するカードがありません。`, [protectedCard]);
+        return;
+      }
+      this.battleSaveUndo();
+      const destroyed = [];
+      targets.forEach(card => {
+        if (this._dslMoveFromField(card, 'graveyard', 'opp')) destroyed.push(card);
+      });
+      if (!destroyed.length) return;
+      this._battleSyncSideCounts('opp');
+      this.dslRefreshStaticAbilities();
+      this.battleShowNotice(
+        '相手選択保護',
+        `相手は「${this.fullName(protectedCard)}」を残しました。${destroyed.map(c => `「${this.fullName(c)}」`).join('、')}を破壊しました。`,
+        [protectedCard].concat(destroyed)
+      );
+      destroyed.forEach(card => this.battleRunDeathKeywordEffects(card));
+    },
+    _dslOpStatusSet(act, sourceCard) {
+      const ref = String(act.数参照 || act.備考 || '');
+      const destroyed = (this._dslLastDestroyedCards || [])[0];
+      const summoned = (this._dslLastSummonedCards || []);
+      const target = summoned[summoned.length - 1];
+      if (!/破壊した/.test(ref) || !destroyed || !target) {
+        this.battleShowNotice(
+          'ステータス設定：手動確認',
+          `「${this.fullName(sourceCard)}」のステータス設定対象を自動特定できませんでした。カード本文に従って手動で処理してください。`,
+          sourceCard ? [sourceCard] : []
+        );
+        return;
+      }
+      this.battleSaveUndo();
+      this.$set(target, 'power', Number(destroyed.power) || 0);
+      this.$set(target, 'attack', Number(destroyed.attack) || 0);
+      this.dslRefreshStaticAbilities();
+      this.battleShowNotice(
+        'ステータス設定',
+        `「${this.fullName(target)}」の戦闘力を${Number(destroyed.power) || 0}、神攻力を${Number(destroyed.attack) || 0}にしました。`,
+        [target, destroyed.card].filter(Boolean)
+      );
+    },
+    _dslOpEffectGrant(act, sourceCard) {
+      const value = String(act.値 || act.備考 || '');
+      if (/墓地の進化条件を満たすレガシー/.test(value) && /進化/.test(value)) {
+        const p = this.battleSample && this.battleSample.self;
+        if (!p) return;
+        this.battleSaveUndo();
+        this.$set(p, 'graveyardEvolutionEnabled', true);
+        this.battleShowNotice(
+          '効果付与',
+          'この星戦中、自分レガシーが進化するとき、自分墓地の進化条件を満たすレガシーも進化元に選べるようになりました。',
+          sourceCard ? [sourceCard] : []
+        );
+        return;
+      }
+      this._dslOpManualRuleEffect(act, sourceCard);
+    },
+    _dslOpManualRuleEffect(act, sourceCard) {
+      const op = act.操作 || act.op || '効果';
+      const details = [
+        act.値,
+        act.備考,
+        act.期間 ? `期間: ${act.期間}` : '',
+        act.対象 && act.対象.備考 ? `対象: ${act.対象.備考}` : '',
+      ].filter(Boolean).join('\n');
+      this.battleShowNotice(
+        `${op}：手動確認`,
+        details || `「${this.fullName(sourceCard)}」の${op}はルール改変系のため、カード本文に従って手動で処理してください。`,
+        sourceCard ? [sourceCard] : []
+      );
+    },
+    battleHasHandOnlyPlacementRestriction(card) {
+      const spec = this._dslGetSpec(card);
+      if (!spec || !Array.isArray(spec.能力)) return false;
+      return spec.能力.some(ab => {
+        if (!this._dslAbilityMatchesTrigger(ab, '常在')) return false;
+        return (ab.処理 || []).some(act => {
+          const op = act.操作 || act.op;
+          return op === '設置制限' && /手札から使用する以外/.test(String(act.値 || act.備考 || ''));
+        });
+      });
+    },
+    battleCanPlaceFromSource(card, sourceZone, showNotice = true) {
+      if (!this.battleHasHandOnlyPlacementRestriction(card)) return true;
+      if (sourceZone === 'hand') return true;
+      if (showNotice) {
+        this.battleShowNotice(
+          '設置制限',
+          `「${this.fullName(card)}」は手札から使用する以外の方法では場に出せません。`,
+          [card]
+        );
+      }
+      return false;
+    },
+    /* フィールドカードを別ゾーンへ移動（破壊・崩壊・手札戻し共通） */
+    _dslMoveFromField(card, destZone, forceSide) {
+      const sides = forceSide ? [forceSide] : ['self', 'opp'];
+      for (const side of sides) {
+        const p = this.battleSample[side];
+        if (!p) continue;
+        for (const zone of ['legacies', 'relics']) {
+          const arr = p[zone];
+          if (!Array.isArray(arr)) continue;
+          const idx = arr.indexOf(card);
+          if (idx >= 0) {
+            this.$set(card, '_lastFieldSide', side);
+            arr.splice(idx, 1);
+            this.battleReleaseEvolutionBase(card);
+            this.dslClearStaticFromCard(card);
+            this.$set(card, '_tapped', false);
+            this.$set(card, '_bindUntilSide', null);
+            this.$set(card, '_bindUntilTurn', null);
+            this.$set(card, '_buf', 0);
+            this.$set(card, '_evolved', false);
+            this.$set(card, '_evolvedBase', null);
+            if (destZone === 'hand') {
+              p.hand = p.hand || []; p.hand.push(card); p.handCount = p.hand.length;
+            } else if (destZone === 'graveyard') {
+              p.graveyard = p.graveyard || []; p.graveyard.push(card);
+            } else if (destZone === 'crumbled') {
+              p.crumbled = p.crumbled || []; p.crumbled.push(card);
+            }
+            // 天力トリガー：レガシー破壊（K7 ヒノカグツチ）— 墓地行きのみ・レガシーのみ
+            if (destZone === 'graveyard' && zone === 'legacies') {
+              this.battleRecordLegacyDestroyed(side, card);
+              this.battleFireKamiEvent(side, 'legacyDestroyed', { card });
+              this.battleFireKamiEvent(side === 'self' ? 'opp' : 'self', 'legacyDestroyed', { card });
+            }
+            this.dslRefreshStaticAbilities();
+            return true;
+          }
+        }
+      }
+      return false;
+    },
+    _dslOpDraw(act) {
+      const ref = String(act.数参照 || '');
+      const n = /戻した数/.test(ref)
+        ? Math.max(0, Number(this._dslLastMovedCount || 0)) + (/[\+＋]1/.test(ref) ? 1 : 0)
+        : Number(act.数 || 1);
+      const side = act.側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample[side];
+      if (!p) return;
+      this.battleSaveUndo();
+      for (let i = 0; i < n; i++) {
+        if (!p.deck || !p.deck.length) break;
+        const drawn = p.deck.shift();
+        if (side === 'self') { p.hand = p.hand || []; p.hand.push(drawn); p.handCount = p.hand.length; }
+        else { p.handCount = (p.handCount || 0) + 1; }
+      }
+      if (p.deck) p.deckCount = p.deck.length;
+      this.battleShowNotice('ドロー', `${side === 'opp' ? '相手' : '自分'}が ${n} 枚ドローしました。`);
+    },
+    _dslOpStat(act, key) {
+      const n = Number(act.数 || 0);
+      const side = act.側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample[side];
+      if (!p) return;
+      this.battleSaveUndo();
+      p[key] = Math.max(0, (Number(p[key]) || 0) + n);
+      this.battleShowNotice('天力変化', `${side === 'opp' ? '相手' : '自分'}の天力が ${n >= 0 ? '+' : ''}${n} (現在 ${p[key]})`);
+    },
+    _dslOpLife(act) {
+      // 数参照（例：減らしたライフの数値分）対応
+      let n = Number(act.数 || 0);
+      if (!n && act.数参照) {
+        const dyn = this._dslResolveNumericReference(act.数参照);
+        if (dyn !== null) n = Number(dyn) || 0;
+      }
+      const side = act.側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample[side];
+      if (!p || !n) return;
+      this.battleSaveUndo();
+      const max = Number(p.lifeMax || 10);
+      const before = Number(p.life) || 0;
+      p.life = Math.max(0, Math.min(max, before + n));
+      const actualDelta = p.life - before;
+      // 減少した場合：コンテキストに記録（数参照「減らしたライフ」用）
+      if (actualDelta < 0) this._dslLastLifeReduced = Math.abs(actualDelta);
+      this.battleShowNotice('ライフ変化', `${side === 'opp' ? '相手' : '自分'}ライフ ${n >= 0 ? '+' : ''}${n}（現在 ${p.life}/${max}）`);
+      if (typeof this._battleCheckResult === 'function') this._battleCheckResult();
+      // 天力トリガー（K6 アメノウズメ）：自分のライフ増加時
+      if (n > 0) this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: 'life', n });
+    },
+    _dslOpLifeMax(act) {
+      const n = Number(act.数 || 0);
+      const side = act.側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample[side];
+      if (!p) return;
+      this.battleSaveUndo();
+      const nextMax = Math.max(1, Math.min(10, (Number(p.lifeMax) || 10) + n));
+      p.lifeMax = nextMax;
+      p.life = Math.max(0, Math.min(nextMax, Number(p.life) || 0));
+      this.battleShowNotice('ライフ最大値変化', `${side === 'opp' ? '相手' : '自分'}ライフ最大値 ${n >= 0 ? '+' : ''}${n}（現在 ${p.life}/${p.lifeMax}）`);
+      if (typeof this._battleCheckResult === 'function') this._battleCheckResult();
+    },
+    _dslOpManaMax(act) {
+      const n = Number(act.数 || 0);
+      const p = this.battleSample.self;
+      if (!p) return;
+      this.battleSaveUndo();
+      const before = Number(p.manaMax) || 0;
+      p.manaMax = Math.max(0, Math.min(10, before + n));
+      this.battleShowNotice('マナ最大値変化', `自分マナ最大値 ${n >= 0 ? '+' : ''}${n}（現在 ${p.manaMax}）`);
+      if (p.manaMax > before) this.battleFireKamiEvent('self', 'manaOrLifeIncreased', { kind: 'manaMax', n: p.manaMax - before });
+    },
+    _dslOpManaRefill(act) {
+      const p = this.battleSample.self;
+      if (!p) return;
+      this.battleSaveUndo();
+      const before = Number(p.mana) || 0;
+      p.mana = p.manaMax;
+      this.battleShowNotice('マナ回復', `マナを最大値まで回復しました（${p.mana}/${p.manaMax}）。`);
+      if (p.mana > before) this.battleFireKamiEvent('self', 'manaOrLifeIncreased', { kind: 'mana', n: p.mana - before });
+    },
+    async _dslOpAddType(act, sourceCard) {
+      const typeName = String(act.値 || act.種族 || '').trim();
+      if (!typeName) {
+        this.battleShowNotice('種族追加：対象不明', '追加する種族が指定されていません。手動で処理してください。', [sourceCard]);
+        return;
+      }
+      const targets = await this.dslChooseTargets(act.対象 || { 自身: true }, `種族「${typeName}」を追加する対象を選択`);
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(card => {
+        const list = Array.isArray(card._typeGrant) ? card._typeGrant.slice() : [];
+        if (!list.includes(typeName)) list.push(typeName);
+        this.$set(card, '_typeGrant', list);
+      });
+      this.dslRefreshStaticAbilities();
+      this.battleShowNotice('種族追加', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}に種族「${typeName}」を追加しました。`, targets);
+    },
+    /* 招来 → 既存モーダルへ橋渡し */
+    async _dslOpSummon(act, sourceCard) {
+      const target = act.対象 || act.招来 || {};
+      const targetText = target.名称 || target.種別 || act.トークン || (act.付与 && act.付与[0]) || '';
+      let count = Number(target.枚数 || act.数 || 1);
+      // 数参照（例：「崩壊した枚数」「自分フィールドの〜の数まで」）対応
+      if (act.数参照) {
+        const dyn = this._dslResolveNumericReference(act.数参照);
+        if (dyn !== null && dyn !== undefined) count = Math.max(0, Number(dyn));
+      }
+      if (!targetText) {
+        this.battleShowNotice('招来：対象不明', '招来対象が指定されていません。手動で処理してください。', [sourceCard]);
+        return;
+      }
+      if (count <= 0) return;
+      this.battleOpenAutoSummon(sourceCard, { targetText, count }, '出現時');
+    },
+    async _dslOpInduce(act, sourceCard) {
+      const target = act.対象 || {};
+      const count = Number(target.枚数 || act.数 || 1);
+      const criteria = target.絞込 || [];
+      const criteriaText = criteria.join('/');
+      this.battleOpenAutoInduce(sourceCard, { count, criteria, criteriaText }, '出現時');
+    },
+    async _dslOpReishi(act, sourceCard) {
+      const count = Number(act.数 || (act.対象 && act.対象.枚数) || 1);
+      this.battleOpenAutoReishi(sourceCard, { count }, '出現時');
+    },
+    async _dslOpSentei(act, sourceCard) {
+      const options = (act.選択肢 || act.options || []).map(o => typeof o === 'string' ? o : (o.説明 || JSON.stringify(o)));
+      const count = Number(act.数 || act.N || 1);
+      if (!options.length) {
+        this.battleShowNotice('選定：選択肢なし', 'specに選択肢が定義されていません。手動で処理してください。', [sourceCard]);
+        return;
+      }
+      const baseCost = Math.max(0, Number(sourceCard && sourceCard.cost) || 0);
+      const paidCost = baseCost + Math.max(0, Number(this._dslSublimPaid || 0));
+      this.battleOpenSentei(sourceCard, { count, options, sublimRules: [], paidCost, baseCost }, '出現時');
+    },
+    async _dslOpBranch(act, sourceCard) {
+      for (const br of (act.分岐 || [])) {
+        if (this.dslEvalCond(br.条件)) {
+          await this.dslRunActions(br.処理 || [], sourceCard);
+          return;
+        }
+      }
+    },
+    async _dslOpChoice(act, sourceCard) {
+      const opts = (act.選択肢 || []).filter(Boolean);
+      if (!opts.length) return;
+      const labels = opts.map((o, i) => o.説明 || `選択肢${i + 1}`);
+      const picked = await this.dslAskChoice(sourceCard, '効果を選んでください', labels);
+      if (picked < 0) return;
+      const chosen = opts[picked];
+      await this.dslRunActions(chosen.処理 || [], sourceCard);
+    },
+    /* 任意能力の発動可否を尋ねる */
+    dslAskOptional(card, triggerLabel, summary) {
+      return new Promise((resolve) => {
+        this.dslOptionalModal = {
+          sourceCard: card,
+          triggerLabel,
+          summary,
+          resolver: resolve,
+        };
+      });
+    },
+    dslAnswerOptional(yes) {
+      const m = this.dslOptionalModal;
+      this.dslOptionalModal = null;
+      if (m && m.resolver) m.resolver(!!yes);
+    },
+    /* 選択肢A/Bを尋ねる */
+    dslAskChoice(card, prompt, options) {
+      return new Promise((resolve) => {
+        this.dslChoiceModal = {
+          sourceCard: card,
+          prompt,
+          options,
+          resolver: resolve,
+        };
+      });
+    },
+    dslAnswerChoice(index) {
+      const m = this.dslChoiceModal;
+      this.dslChoiceModal = null;
+      if (m && m.resolver) m.resolver(index);
+    },
+    dslCancelChoice() {
+      const m = this.dslChoiceModal;
+      this.dslChoiceModal = null;
+      if (m && m.resolver) m.resolver(-1);
+    },
+    /* 処理リストを人間可読のサマリに変換（任意確認の表示用） */
+    _dslSummarizeActions(actions) {
+      if (!Array.isArray(actions) || !actions.length) return '';
+      return actions.map(a => {
+        const op = a.操作 || a.op || '?';
+        const extras = [];
+        if (a.付与) extras.push(`付与:${(a.付与 || []).join('・')}`);
+        if (a.対象 && a.対象.絞込) extras.push(`対象:${(a.対象.絞込 || []).join('/')}`);
+        if (a.数) extras.push(`数:${a.数}`);
+        return `・${op}${extras.length ? '（' + extras.join('、') + '）' : ''}`;
+      }).join('\n');
+    },
+    /* ---- 追加op ---- */
+    _dslOpSelfDestroy(sourceCard, destZone) {
+      if (!sourceCard) return;
+      const moved = this._dslMoveFromField(sourceCard, destZone);
+      const label = destZone === 'graveyard' ? '自身破壊（墓地送り）' : '自身崩壊';
+      if (moved) this.battleShowNotice(label, `「${this.fullName(sourceCard)}」を${destZone === 'graveyard' ? '墓地' : '崩壊ゾーン'}に送りました。`, [sourceCard]);
+    },
+    /* 手札・墓地から指定対象を場に出す */
+    async _dslOpPutIntoField(act, sourceCard) {
+      const sel = act.対象 || { 対象側: 'self', 領域: 'hand', 選択者: 'player', 枚数: 1 };
+      const targets = await this.dslChooseTargets(sel, '場に出すカードを選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      const side = sel.対象側 === 'opp' ? 'opp' : 'self';
+      const player = this.battleSample[side];
+      const sourceZone = sel.領域 || 'hand';
+      const placed = [];
+      targets.forEach(card => {
+        if (!this.battleCanPlaceFromSource(card, sourceZone)) return;
+        const srcArr = player[sourceZone];
+        if (Array.isArray(srcArr)) {
+          const idx = srcArr.indexOf(card);
+          if (idx >= 0) srcArr.splice(idx, 1);
+          if (sourceZone === 'hand') player.handCount = (player.hand || []).length;
+        }
+        const destZone = this.battleFieldZoneForSummon(card) || 'legacies';
+        if (Array.isArray(player[destZone]) && player[destZone].length < 7) {
+          player[destZone].push(this._battlePrepareFieldCard(card));
+          placed.push(card);
+        }
+      });
+      if (placed.length) this.dslRefreshStaticAbilities();
+      if (placed.length) {
+        this.battleShowNotice('場に出す', `${placed.map(c => `「${this.fullName(c)}」`).join('、')}を場に出しました。`, placed);
+      }
+    },
+    /* デッキから条件を満たすカードを探して手札に加える（サーチ） */
+    async _dslOpSearch(act, sourceCard) {
+      const sel = Object.assign({ 対象側: 'self', 領域: 'deck', 選択者: 'player', 枚数: 1 }, act.対象 || {});
+      const targets = await this.dslChooseTargets(sel, 'デッキからサーチするカードを選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      const p = this.battleSample.self;
+      targets.forEach(card => {
+        const idx = (p.deck || []).indexOf(card);
+        if (idx >= 0) p.deck.splice(idx, 1);
+        p.hand = p.hand || []; p.hand.push(card);
+      });
+      p.handCount = (p.hand || []).length;
+      p.deckCount = (p.deck || []).length;
+      this.battleShowNotice('サーチ', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に加えました。デッキはシャッフルしてください。`, targets);
+    },
+    /* 墓地などから指定対象を手札に加える */
+    async _dslOpAddToHand(act, sourceCard) {
+      const sel = Object.assign({ 対象側: 'self', 領域: 'graveyard', 選択者: 'player', 枚数: 1 }, act.対象 || {});
+      const targets = await this.dslChooseTargets(sel, '手札に加えるカードを選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      const side = sel.対象側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample[side];
+      const fromZone = sel.領域 || 'graveyard';
+      targets.forEach(card => {
+        const arr = p[fromZone];
+        if (Array.isArray(arr)) {
+          const idx = arr.indexOf(card);
+          if (idx >= 0) arr.splice(idx, 1);
+        }
+        p.hand = p.hand || []; p.hand.push(card);
+      });
+      p.handCount = (p.hand || []).length;
+      this.battleShowNotice('手札に加える', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に加えました。`, targets);
+    },
+    async _dslOpDeckBottom(act, sourceCard) {
+      const sel = Object.assign({ 対象側: 'self', 領域: 'hand', 選択者: 'player', 枚数: 1 }, act.対象 || {});
+      const targets = await this.dslChooseTargets(sel, 'デッキ下に戻すカードを選択');
+      if (!targets.length) return;
+      const side = sel.対象側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample[side];
+      if (!p) return;
+      this.battleSaveUndo();
+      p.deck = p.deck || [];
+      const fromZone = sel.領域 || 'hand';
+      const moved = [];
+      targets.forEach(card => {
+        let removed = false;
+        if (fromZone === 'field') {
+          removed = !!this._dslRemoveFromField(card, side);
+        } else {
+          const arr = p[fromZone];
+          if (Array.isArray(arr)) {
+            const idx = arr.indexOf(card);
+            if (idx >= 0) {
+              arr.splice(idx, 1);
+              removed = true;
+            }
+          }
+        }
+        if (!removed) return;
+        this.dslClearStaticFromCard(card);
+        this.$set(card, '_tapped', false);
+        p.deck.push(card);
+        moved.push(card);
+      });
+      if (!moved.length) return;
+      this._battleSyncSideCounts(side);
+      this.dslRefreshStaticAbilities();
+      this.battleShowNotice('デッキ下に戻す', `${moved.map(c => `「${this.fullName(c)}」`).join('、')}をデッキの一番下へ戻しました。`, moved);
+      if (Array.isArray(act.後続) && act.後続.length) {
+        const prevMoved = this._dslLastMovedCount;
+        this._dslLastMovedCount = moved.length;
+        try {
+          await this.dslRunActions(act.後続, sourceCard);
+        } finally {
+          this._dslLastMovedCount = prevMoved;
+        }
+      }
+    },
+    _dslRemoveFromField(card, forceSide) {
+      const sides = forceSide ? [forceSide] : ['self', 'opp'];
+      for (const side of sides) {
+        const p = this.battleSample[side];
+        if (!p) continue;
+        for (const zone of ['legacies', 'relics']) {
+          const arr = p[zone];
+          if (!Array.isArray(arr)) continue;
+          const idx = arr.indexOf(card);
+          if (idx >= 0) {
+            this.battleReleaseEvolutionBase(card);
+            arr.splice(idx, 1);
+            return side;
+          }
+        }
+      }
+      return null;
+    },
+    /* 自分デッキの上から N 枚を墓地へ送る */
+    _dslOpMillDeck(act, sourceCard) {
+      const n = Math.max(1, Number(act.数 || (act.対象 && act.対象.枚数) || 1));
+      const p = this.battleSample.self;
+      if (!p || !Array.isArray(p.deck)) return;
+      const milled = p.deck.splice(0, n);
+      if (!milled.length) return;
+      this.battleSaveUndo();
+      p.graveyard = p.graveyard || [];
+      p.graveyard.push(...milled);
+      p.deckCount = p.deck.length;
+      this.dslRefreshStaticAbilities();
+      this.battleShowNotice('デッキ墓地送り', `デッキ上から${milled.length}枚を墓地に送りました。`, milled);
+    },
+    async _dslOpRepeat(act, sourceCard) {
+      const target = String(act.対象 || '');
+      const ordinal = this._dslRepeatOrdinal(target);
+      if (ordinal) {
+        const ok = await this._dslRepeatAbilityByOrdinal(sourceCard, ordinal, target);
+        if (ok) return;
+      }
+      if (/このカードの出現時効果/.test(target)) {
+        if (sourceCard && sourceCard._dslRepeatingEnter) return;
+        if (sourceCard) this.$set(sourceCard, '_dslRepeatingEnter', true);
+        try {
+          await this.dslRunSpec(sourceCard, '出現時', this._dslSublimPaid || 0);
+        } finally {
+          if (sourceCard) this.$set(sourceCard, '_dslRepeatingEnter', false);
+        }
+        return;
+      }
+      if (/直前/.test(target) && this._dslLastAction) {
+        await this.dslRunAction(Object.assign({}, this._dslLastAction), sourceCard);
+        return;
+      }
+      this.battleShowNotice(
+        '再発動は手動確認',
+        `「${this.fullName(sourceCard)}」の再発動対象を自動判定できませんでした。必要に応じて手動で処理してください。`,
+        sourceCard ? [sourceCard] : []
+      );
+    },
+    _dslRepeatOrdinal(targetText) {
+      const text = String(targetText || '');
+      if (/①|1|一/.test(text)) return 1;
+      if (/②|2|二/.test(text)) return 2;
+      if (/③|3|三/.test(text)) return 3;
+      return 0;
+    },
+    async _dslRepeatAbilityByOrdinal(sourceCard, ordinal, targetText) {
+      if (!sourceCard || !ordinal) return false;
+      const spec = this._dslGetSpec(sourceCard);
+      if (!spec || !Array.isArray(spec.能力)) return false;
+      const abilities = spec.能力.filter(ab => ab && Array.isArray(ab.処理) && ab.処理.length);
+      const ab = abilities[ordinal - 1];
+      if (!ab) return false;
+      if (ab.条件 && !this.dslEvalCond(ab.条件)) {
+        this.battleShowNotice(
+          '再発動：条件未達',
+          `「${this.fullName(sourceCard)}」の${targetText}は条件を満たしていないため再発動できません。`,
+          [sourceCard]
+        );
+        return true;
+      }
+      if (ab.任意) {
+        const summary = this._dslSummarizeActions(ab.処理 || []);
+        const ok = await this.dslAskOptional(sourceCard, `再発動：${targetText}`, summary);
+        if (!ok) return true;
+      }
+      const key = `_dslRepeatingOrdinal${ordinal}`;
+      if (sourceCard[key]) return true;
+      this.$set(sourceCard, key, true);
+      const prevSource = this._dslCurrentSource;
+      try {
+        this._dslCurrentSource = sourceCard;
+        await this.dslRunActions(ab.処理 || [], sourceCard);
+      } finally {
+        this._dslCurrentSource = prevSource;
+        this.$set(sourceCard, key, false);
+      }
+      return true;
+    },
+    _dslOpEffectMultiplier(act, sourceCard) {
+      const targetText = String(act.対象 || act.備考 || '');
+      if (/死亡時/.test(targetText)) {
+        this.$set(sourceCard, '_staticDoubleOwnDeath', true);
+        return;
+      }
+      if (/神使/.test(targetText) && /出現時/.test(targetText)) {
+        this.$set(sourceCard, '_staticDoubleShinshiEnter', true);
+        return;
+      }
+      this.battleShowNotice(
+        '効果倍化は手動確認',
+        `「${this.fullName(sourceCard)}」の効果倍化は、対象となる効果の発動時に手動で追加処理してください。`,
+        sourceCard ? [sourceCard] : []
+      );
+    },
+    battleHasStaticEffectMultiplier(side, kind, card = null) {
+      const p = this.battleSample && this.battleSample[side];
+      if (!p) return false;
+      const field = []
+        .concat(Array.isArray(p.legacies) ? p.legacies : [])
+        .concat(Array.isArray(p.relics) ? p.relics : []);
+      if (kind === 'death') return field.some(c => !!(c && c._staticDoubleOwnDeath));
+      if (kind === 'shinshiEnter') {
+        if (!card || !this.battleCardMatchesInduceCriteria(card, ['神使レガシー'])) return false;
+        return field.some(c => !!(c && c._staticDoubleShinshiEnter));
+      }
+      return false;
+    },
+    _dslFindCardLocation(card) {
+      if (!card || !this.battleSample) return null;
+      for (const side of ['self', 'opp']) {
+        const p = this.battleSample[side];
+        if (!p) continue;
+        for (const zone of ['legacies', 'relics', 'hand', 'graveyard', 'crumbled', 'deck']) {
+          const arr = p[zone];
+          if (Array.isArray(arr) && arr.includes(card)) return { side, zone };
+        }
+      }
+      return null;
+    },
+    _dslMoveCardToZone(card, destZone, forceSide) {
+      if (!card || !destZone || !this.battleSample) return null;
+      if (this._dslMoveFromField(card, destZone, forceSide)) {
+        return forceSide || card._lastFieldSide || this._battleFieldCardSide(card) || null;
+      }
+      const sides = forceSide ? [forceSide] : ['self', 'opp'];
+      for (const side of sides) {
+        const p = this.battleSample[side];
+        if (!p) continue;
+        for (const zone of ['hand', 'graveyard', 'crumbled', 'deck']) {
+          const arr = p[zone];
+          if (!Array.isArray(arr)) continue;
+          const idx = arr.indexOf(card);
+          if (idx < 0) continue;
+          arr.splice(idx, 1);
+          p[destZone] = p[destZone] || [];
+          if (Array.isArray(p[destZone])) p[destZone].push(card);
+          this._battleSyncSideCounts(side);
+          return side;
+        }
+      }
+      return null;
+    },
+    battleConsumeEffectMultiplierOnce(side, key) {
+      const p = this.battleSample && this.battleSample[side];
+      if (!p) return false;
+      const turnKey = `${key}:${this.battleSample.turn}:${this.battleSample.activeSide}`;
+      const used = p.effectMultiplierUsed || {};
+      if (used[turnKey]) return false;
+      this.$set(p, 'effectMultiplierUsed', Object.assign({}, used, { [turnKey]: true }));
+      return true;
+    },
+    battleRunDoubledEnterEffect(card, paidCost) {
+      const side = this._battleFieldCardSide(card);
+      if (!this.effectSpecsReady || !this.dslHasSpecForTrigger(card, '出現時')) return;
+      if (!this.battleHasStaticEffectMultiplier(side, 'shinshiEnter', card)) return;
+      if (card._dslDoubleEnterRunning) return;
+      this.$set(card, '_dslDoubleEnterRunning', true);
+      try {
+        this.dslRunSpec(card, '出現時', paidCost);
+        this.battleShowNotice('効果倍化', `「${this.fullName(card)}」の出現時効果を追加でもう1回発動しました。`, [card]);
+      } finally {
+        this.$set(card, '_dslDoubleEnterRunning', false);
+      }
+    },
+    battleRunDoubledDeathEffect(card) {
+      const side = this._battleFieldCardSide(card);
+      if (!this.effectSpecsReady || !this.dslHasSpecForTrigger(card, '死亡時')) return;
+      const deathSide = card._lastFieldSide || side;
+      if (!this.battleHasStaticEffectMultiplier(deathSide, 'death', card)) return;
+      if (!this.battleConsumeEffectMultiplierOnce(deathSide, 'death')) return;
+      if (card._dslDoubleDeathRunning) return;
+      this.$set(card, '_dslDoubleDeathRunning', true);
+      try {
+        this.dslRunSpec(card, '死亡時', null);
+        this.battleShowNotice('効果倍化', `「${this.fullName(card)}」の死亡時効果を追加でもう1回発動しました。`, [card]);
+      } finally {
+        this.$set(card, '_dslDoubleDeathRunning', false);
+      }
+    },
+
+    /* ===================================================================
+       既存の効果キュー（Layer1：本文regex）
+       =================================================================== */
     battleRunEnterKeywordEffects(card, paidCost = null) {
+      if (this._battleIsEffectDisabled(card)) {
+        this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、効果は発動しません。`, [card]);
+        return true;
+      }
+      // まずDSL spec があれば優先実行（出現時 or 使用時 or 昇華）
+      if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '出現時')) {
+        this.dslRunSpec(card, '出現時', paidCost);
+        // 昇華契機もspec側で同時走らせる
+        if (paidCost !== null) this.dslRunSpec(card, '昇華', paidCost);
+        this.battleRunDoubledEnterEffect(card, paidCost);
+        return true;
+      }
+      if (this.effectSpecsReady && card.category === 'オラクル' && this.dslHasSpecForTrigger(card, '使用時')) {
+        this.dslRunSpec(card, '使用時', paidCost);
+        if (paidCost !== null) this.dslRunSpec(card, '昇華', paidCost);
+        return true;
+      }
       return this._battleQueueAndRunEffects(card, paidCost, '出現時');
     },
     battleRunDeathKeywordEffects(card) {
+      if (this._battleIsEffectDisabled(card)) {
+        this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、死亡時効果は発動しません。`, [card]);
+        return true;
+      }
+      if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '死亡時')) {
+        this.dslRunSpec(card, '死亡時', null);
+        this.battleRunDoubledDeathEffect(card);
+        return true;
+      }
       return this._battleQueueAndRunEffects(card, null, '死亡時');
     },
     /* カード上のキーワード効果を全列挙してキューへ。1つずつ順に処理する */
@@ -6782,7 +9700,10 @@ new Vue({
     battleHasSenteiBoostLegacy(side) {
       const player = this.battleSample[side];
       if (!player || !Array.isArray(player.legacies)) return false;
+      const turn = this.battleSample ? this.battleSample.turn : 1;
       return player.legacies.some(c => {
+        if (c._staticSenteiBoost) return true;
+        if (c._senteiBoost && c._senteiBoostSide === side && c._senteiBoostTurn === turn) return true;
         const t = this.battleCardRulesText(c).replace(/\s+/g, '');
         return /【選定】の値を[＋\+]1/.test(t);
       });
@@ -6903,14 +9824,17 @@ new Vue({
       const player = this.battleSample.self;
       const zone = this.battleFieldZoneForSummon(card);
       if (!player || !zone || !Array.isArray(player[zone])) return;
+      if (!this.battleCanPlaceFromSource(card, 'effect')) return;
       if (player[zone].length >= 7) {
         this.battleShowNotice('フィールド上限です', `${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドには7枚まで配置できます。`, [card]);
         return;
       }
       this.battleSaveUndo();
-      player[zone].push(this._battlePrepareFieldCard(card));
+      const placedCard = this._battlePrepareFieldCard(card);
+      player[zone].push(placedCard);
       this.battleDeckModal = null;
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       this.battleNotice = {
         title: '招来',
         message: sourceCard
@@ -6918,6 +9842,11 @@ new Vue({
           : `「${this.fullName(card)}」を場に出しました。`,
         cards: [card],
       };
+      // 天力トリガー：トークン招来（K9）／守護持ち（K8）
+      if (zone === 'legacies') {
+        if (placedCard && placedCard.isToken) this.battleFireKamiEvent('self', 'tokenPlayed', { card: placedCard });
+        if (this._battleCardHasGuard(placedCard)) this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: placedCard });
+      }
       this._battleProcessNextEffect();
     },
     /* 自動招来モーダルから1体配置（残りがあればモーダル維持） */
@@ -6930,15 +9859,24 @@ new Vue({
       const player = this.battleSample.self;
       const zone = this.battleFieldZoneForSummon(card);
       if (!player || !zone || !Array.isArray(player[zone])) return;
+      if (!this.battleCanPlaceFromSource(card, 'effect')) return;
       if (player[zone].length >= 7) {
         this.battleShowNotice('フィールド上限です', `${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドには7枚まで配置できます。`, [card]);
         return;
       }
       this.battleSaveUndo();
-      player[zone].push(this._battlePrepareFieldCard(card));
-      modal.summoned = [...(modal.summoned || []), card];
+      const fieldCard = this._battlePrepareFieldCard(card);
+      player[zone].push(fieldCard);
+      modal.summoned = [...(modal.summoned || []), fieldCard];
+      this._dslLastSummonedCards = modal.summoned.slice();
       modal.remaining = (modal.remaining || 1) - 1;
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
+      // 天力トリガー：トークン招来（K9）／守護持ち（K8）
+      if (zone === 'legacies') {
+        if (fieldCard && fieldCard.isToken) this.battleFireKamiEvent('self', 'tokenPlayed', { card: fieldCard });
+        if (this._battleCardHasGuard(fieldCard)) this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: fieldCard });
+      }
       // 残り0 または フィールド上限到達なら自動クローズ＋通知
       const fieldFull = player[zone].length >= 7;
       if (modal.remaining <= 0 || fieldFull) {
@@ -7083,16 +10021,21 @@ new Vue({
       }
       this.battleSaveUndo();
       player.mana = Math.max(0, player.mana - cost);
+      this.battleConsumeTempCostMods('self', card);
       player.hand.splice(index, 1);
       player.graveyard.push(card);
       player.handCount = player.hand.length;
       this.battleOracleEffect = { card };
       this.hideCardHover();
+      // 天力トリガー：オラクル使用（K5 オモイカネ）／昇華支払い（K1 スサノオ）
+      this.battleFireKamiEvent('self', 'playOracleOrRelic', { card, kind: 'オラクル' });
+      const baseCost = Math.max(0, Number(card.cost) || 0);
+      if (cost > baseCost) this.battleFireKamiEvent('self', 'evolveOrSublim', { card, paidCost: cost });
       // オラクル本文のキーワード効果（【選定】等）も自動処理
       if (!this.battleRunEnterKeywordEffects(card, cost)) this.battleKeywordGuide(card, cost);
     },
     /* 内部：レガシー/レリックを実際に配置（マナ消費＋場へ移動） */
-    _battlePlayLegacyOrRelic(index, zone, cost) {
+    async _battlePlayLegacyOrRelic(index, zone, cost) {
       if (!this.battleEnsureSelfTurn('手札からカードを使う操作')) return;
       const player = this.battleSample.self;
       const card = player.hand[index];
@@ -7101,13 +10044,91 @@ new Vue({
         this.battleShowNotice('マナが足りません', `必要マナは ${cost}、現在のマナは ${player.mana} です。`, [card]);
         return;
       }
+      // 進化判定：レガシーかつ進化条件あり＋自分フィールドに該当カードがあれば、進化として配置できる
+      let evolveBase = null;
+      if (zone === 'legacies') {
+        const candidates = this._dslEvolutionBaseCandidates(card);
+        if (candidates.length) {
+          const choice = await this.dslAskChoice(card, '進化として配置しますか？', ['通常配置（新規カードとして場に出す）', '進化として配置（既存のレガシーに重ねる）']);
+          if (choice < 0) return; // キャンセル
+          if (choice === 1) {
+            const picked = await this.dslAskCustomTargets('進化元となるレガシーを選択', candidates, 1, card);
+            if (!picked || !picked.length) return; // キャンセル
+            evolveBase = picked[0];
+          }
+        }
+      }
       this.battleSaveUndo();
       player.mana = Math.max(0, player.mana - cost);
+      this.battleConsumeTempCostMods('self', card);
       player.hand.splice(index, 1);
-      player[zone].push(this._battlePrepareFieldCard(card));
+      const fieldCard = this._battlePrepareFieldCard(card);
+      if (evolveBase) {
+        // 進化として配置：既存カードの位置に上書き、_evolved を記録し、元カードは墓地へ
+        const baseIdx = player.legacies.indexOf(evolveBase);
+        const graveIdx = (player.graveyard || []).indexOf(evolveBase);
+        this.$set(fieldCard, '_evolved', true);
+        this.$set(fieldCard, '_evolvedBase', evolveBase);
+        this.$set(fieldCard, '_evolvedFromGraveyard', graveIdx >= 0 && baseIdx < 0);
+        if (baseIdx >= 0) {
+          player.legacies.splice(baseIdx, 1, fieldCard);
+        } else if (graveIdx >= 0) {
+          player.legacies.push(fieldCard);
+          this.$set(evolveBase, '_usedAsEvolutionBase', true);
+        } else {
+          player.legacies.push(fieldCard);
+        }
+        // 進化元は墓地へ（タップ等の状態リセット）
+        this.dslClearStaticFromCard(evolveBase);
+        this.$set(evolveBase, '_tapped', false);
+        this.$set(evolveBase, '_buf', 0);
+        player.graveyard = player.graveyard || [];
+        if (graveIdx < 0) player.graveyard.push(evolveBase);
+        this.battleShowNotice(
+          '進化として配置',
+          graveIdx >= 0 && baseIdx < 0
+            ? `墓地の「${this.fullName(evolveBase)}」の上に「${this.fullName(fieldCard)}」が進化として重ねられました。`
+            : `「${this.fullName(evolveBase)}」の上に「${this.fullName(fieldCard)}」が進化として重ねられました。元カードは墓地へ。`,
+          [fieldCard, evolveBase]
+        );
+      } else {
+        player[zone].push(fieldCard);
+      }
       player.handCount = player.hand.length;
       this.hideCardHover();
-      if (!this.battleRunEnterKeywordEffects(card, cost)) this.battleKeywordGuide(card, cost);
+      this.dslRefreshStaticAbilities();
+      // 天力トリガー：
+      //  K5 オモイカネ → レリック使用
+      //  K8 アマテラス → 守護を持つレガシーが出た
+      //  K9 ツクヨミ  → トークンが場に出た
+      //  K1 スサノオ  → 昇華支払い
+      if (zone === 'relics') {
+        this.battleFireKamiEvent('self', 'playOracleOrRelic', { card: fieldCard, kind: 'レリック' });
+      }
+      if (zone === 'legacies' && this._battleCardHasGuard(fieldCard)) {
+        this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: fieldCard });
+      }
+      if (fieldCard && fieldCard.isToken) {
+        this.battleFireKamiEvent('self', 'tokenPlayed', { card: fieldCard });
+      }
+      const baseCost = Math.max(0, Number(card.cost) || 0);
+      if (cost > baseCost) this.battleFireKamiEvent('self', 'evolveOrSublim', { card: fieldCard, paidCost: cost });
+      // K1 スサノオ：進化したときも evolveOrSublim を発火
+      if (evolveBase) {
+        this.battleFireKamiEvent('self', 'evolveOrSublim', { card: fieldCard, evolved: true });
+        // 進化元レガシーが墓地に行ったので K7 ヒノカグツチ 等にも発火
+        if (!fieldCard._evolvedFromGraveyard) {
+          this.battleRecordLegacyDestroyed('self', evolveBase);
+          this.battleFireKamiEvent('self', 'legacyDestroyed', { card: evolveBase });
+          this.battleFireKamiEvent('opp',  'legacyDestroyed', { card: evolveBase });
+        }
+      }
+      // 通常の【出現時】効果
+      if (!this.battleRunEnterKeywordEffects(fieldCard, cost)) this.battleKeywordGuide(fieldCard, cost);
+      // 【進化中・出現時】効果：進化として配置した場合のみ
+      if (evolveBase && this.effectSpecsReady && this.dslHasSpecForTrigger(fieldCard, '進化中・出現時')) {
+        await this.dslRunSpec(fieldCard, '進化中・出現時', cost);
+      }
     },
     battleMoveHandCard(index, destinationZone) {
       if (this.battleSample.result) return;
@@ -7120,6 +10141,7 @@ new Vue({
       player[destinationZone].push(card);
       player.handCount = player.hand.length;
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       const destLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
         title: destinationZone === 'graveyard' ? '手札を捨てる' : `手札から${destLabel}へ`,
@@ -7188,10 +10210,12 @@ new Vue({
       }
       this.battleSaveUndo();
       player.hand.splice(index, 1);
-      player[zone].push(this._battlePrepareFieldCard(card));
+      const fieldCard = this._battlePrepareFieldCard(card);
+      player[zone].push(fieldCard);
       player.handCount = player.hand.length;
       this.hideCardHover();
-      if (!this.battleRunEnterKeywordEffects(card, 0)) this.battleKeywordGuide(card, 0);
+      this.dslRefreshStaticAbilities();
+      if (!this.battleRunEnterKeywordEffects(fieldCard, 0)) this.battleKeywordGuide(fieldCard, 0);
     },
     battleMoveHandCardToDeck(index, mode) {
       if (this.battleSample.result) return;
@@ -7228,16 +10252,29 @@ new Vue({
       const r = el.getBoundingClientRect();
       return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
     },
+    battleReleaseEvolutionBase(card) {
+      if (!card || !card._evolvedBase) return;
+      if (card._evolvedFromGraveyard) {
+        this.$set(card._evolvedBase, '_usedAsEvolutionBase', false);
+      }
+      this.$set(card, '_evolvedFromGraveyard', false);
+    },
     _battlePrepareFieldCard(card) {
       if (!card) return card;
       const fieldCard = Object.assign({}, card);
       this.$set(fieldCard, '_summonedTurn', this.battleSample.turn);
       this.$set(fieldCard, '_tapped', false);
+      this.$set(fieldCard, '_staticPerm', 0);
+      this.$set(fieldCard, '_staticAttack', 0);
+      this.$set(fieldCard, '_staticKwGrant', []);
       return fieldCard;
     },
     battleCardHasKeyword(card, keyword) {
       const text = this.battleCardRulesText(card).replace(/\s+/g, '');
-      return text.includes(`【${keyword}】`) || text.includes(keyword);
+      const grants = []
+        .concat(Array.isArray(card && card._kwGrant) ? card._kwGrant : [])
+        .concat(Array.isArray(card && card._staticKwGrant) ? card._staticKwGrant : []);
+      return text.includes(`【${keyword}】`) || text.includes(keyword) || grants.includes(keyword);
     },
     battleCanTargetLegacy(attacker, defender) {
       return !(this.battleCardHasKeyword(defender, '死角') && !this.battleCardHasKeyword(attacker, '死角'));
@@ -7541,8 +10578,11 @@ new Vue({
       const player = this.battleSample[side];
       if (!player || !player.legacies[index]) return;
       const card = player.legacies.splice(index, 1)[0];
+      this.$set(card, '_lastFieldSide', side);
+      this.dslClearStaticFromCard(card);
       this.$set(card, '_tapped', false);
       player.graveyard.push(card);
+      this.battleRecordLegacyDestroyed(side, card);
       destroyed.push({ side, card });
     },
     battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex) {
@@ -7581,6 +10621,7 @@ new Vue({
         `「${this.fullName(attacker)}」（戦闘力 ${ap}）と「${this.fullName(defender)}」（戦闘力 ${dp}）が戦闘しました。`,
         destroyed.length ? `破壊: ${destroyed.map(d => `「${this.fullName(d.card)}」`).join('、')}` : '破壊されるレガシーはありません。'
       ].filter(Boolean);
+      if (destroyed.length) this.dslRefreshStaticAbilities();
       this.battleShowNotice('戦闘解決', lines.join('\n'), [attacker, defender, ...destroyed.map(d => d.card)]);
       destroyed.forEach(d => { if (d.side === 'self') this.battleRunDeathKeywordEffects(d.card); });
     },
@@ -7672,8 +10713,13 @@ new Vue({
       const player = this.battleSample[hover.side];
       const card = player && player[hover.zone] && player[hover.zone][hover.index];
       if (!card) return false;
+      if (card._tapped && !this._battleCanUntapCard(card)) {
+        this.battleShowNotice('拘束中', `「${this.fullName(card)}」は【拘束】中のためアンタップできません。`, [card]);
+        return false;
+      }
       this.battleSaveUndo();
       this.$set(card, '_tapped', !card._tapped);
+      this.dslRefreshStaticAbilities();
       return true;
     },
     battleMoveFieldCard(side, sourceZone, index, destinationZone) {
@@ -7684,11 +10730,15 @@ new Vue({
       const card = player[sourceZone][index];
       if (!card) return;
       this.battleSaveUndo();
+      this.$set(card, '_lastFieldSide', side);
       player[sourceZone].splice(index, 1);
+      this.battleReleaseEvolutionBase(card);
+      this.dslClearStaticFromCard(card);
       this.$set(card, '_tapped', false);
       player[destinationZone].push(card);
       this.hideCardHover();
       this.battleHoverField = null;
+      this.dslRefreshStaticAbilities();
       if (destinationZone === 'graveyard' && this.battleRunDeathKeywordEffects(card)) return;
       const destLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
@@ -7706,11 +10756,14 @@ new Vue({
       if (!card) return;
       this.battleSaveUndo();
       player[sourceZone].splice(index, 1);
+      this.battleReleaseEvolutionBase(card);
+      this.dslClearStaticFromCard(card);
       this.$set(card, '_tapped', false);
       player.hand.push(card);
       player.handCount = player.hand.length;
       this.hideCardHover();
       this.battleHoverField = null;
+      this.dslRefreshStaticAbilities();
       this.battleNotice = {
         title: '場から手札へ',
         message: `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を場から手札へ戻しました。`,
@@ -7726,9 +10779,12 @@ new Vue({
       if (!card) return;
       this.battleSaveUndo();
       player[sourceZone].splice(index, 1);
+      this.battleReleaseEvolutionBase(card);
+      this.dslClearStaticFromCard(card);
       player.deck.unshift(card);
       this._battleSyncSideCounts(side);
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       this.battleNotice = {
         title: '場からデッキ上へ',
         message: `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を場からデッキ上へ戻しました。`,
@@ -7756,6 +10812,7 @@ new Vue({
       player.handCount = player.hand.length;
       this.battleZoneModal = null;
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       const zoneLabel = zone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
         title: `${zoneLabel}から手札へ`,
@@ -7786,6 +10843,7 @@ new Vue({
       player[fieldZone].push(this._battlePrepareFieldCard(card));
       this.battleZoneModal = null;
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       const zoneLabel = zone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
         title: `${zoneLabel}から場へ`,
@@ -7808,6 +10866,7 @@ new Vue({
       this._battleSyncSideCounts(modal.side);
       this.battleZoneModal = null;
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       const zoneLabel = zone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
         title: `${zoneLabel}からデッキ上へ`,
@@ -7841,6 +10900,53 @@ new Vue({
         this.battleMoveZoneCard(menu.zone, menu.index, action);
       }
     },
+    /* 墓地カードの墓地起動能力を発動：コスト支払い → spec処理 */
+    async battleZoneCardMenuGraveyardActivate(listIndex) {
+      const list = this.battleZoneCardMenuGraveyardAbilities;
+      const entry = list && list[listIndex];
+      const menu = this.battleZoneCardMenu;
+      this.battleZoneCardMenu = null;
+      if (!entry || !entry.card) return;
+      if (!entry.payable) {
+        this.battleShowNotice('墓地起動 不可', entry.unpayableReason || 'この墓地起動能力は今は発動できません。', [entry.card]);
+        return;
+      }
+      const card = entry.card;
+      const ab = entry.ability;
+      // 任意能力なら確認
+      if (ab.任意) {
+        const summary = this._dslSummarizeActions(ab.処理 || []);
+        const ok = await this.dslAskOptional(card, '墓地起動', summary);
+        if (!ok) return;
+      }
+      // 条件評価
+      if (ab.条件 && !this.dslEvalCond(ab.条件)) {
+        this.battleShowNotice('墓地起動：条件未達', '発動条件を満たしていません（備考含む）。手動で確認してください。', [card]);
+        // 備考のみの条件は真扱いになるので、警告通知だけ出して継続する。中止したい場合は return をここに足す。
+      }
+      this.battleSaveUndo();
+      // コスト支払い：共通処理を使用
+      this._dslCurrentSource = card;
+      const paid = await this.dslPayAbilityCost(ab.コスト || {}, card, '墓地起動コスト');
+      if (!paid) {
+        this._dslCurrentSource = null;
+        return;
+      }
+      this.battleZoneModal = null;  // 墓地一覧モーダルを閉じる
+      this.battleNotice = {
+        title: `墓地起動：${this.fullName(card)}`,
+        message: `コスト：${this._dslFormatActivationCost(ab.コスト || {}) || '無'} を支払い、効果を解決します。`,
+        cards: [card],
+      };
+      try {
+        await this.dslRunActions(ab.処理 || [], card);
+      } catch (e) {
+        console.warn('[DSL] 墓地起動エラー:', e);
+        this.battleShowNotice('墓地起動エラー', `「${this.fullName(card)}」の墓地起動処理中にエラーが発生しました。手動で処理してください。`, [card]);
+      } finally {
+        this._dslCurrentSource = null;
+      }
+    },
     battleMoveZoneCard(sourceZone, index, destinationZone) {
       if (this.battleSample.result) return;
       const player = this.battleSample.self;
@@ -7852,6 +10958,7 @@ new Vue({
       player[destinationZone].push(card);
       this.battleOpenZone('self', sourceZone);
       this.hideCardHover();
+      this.dslRefreshStaticAbilities();
       const fromLabel = sourceZone === 'graveyard' ? '墓地' : '崩壊';
       const toLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
@@ -8031,7 +11138,7 @@ new Vue({
       if (this.battleSample.result || this.battleSkillTone === 'disabled') return;
       this.battleSkillModal = { side: 'self' };
     },
-    battleUseKamiSkill(index) {
+    async battleUseKamiSkill(index) {
       const skill = this.battleSkillOptions.find(item => item.index === index);
       if (!skill || !skill.enabled || this.battleSample.result) return;
       this.battleSaveUndo();
@@ -8041,6 +11148,54 @@ new Vue({
         title: `${skill.name}を発動`,
         message: `${this.battleContext.selfName}が神技「${skill.name}」を発動し、天力を${skill.cost}消費しました。`,
       };
+      // DSL：神技spec を実行（index は 1/2 → spec 内の神技契機を順番で対応付け）
+      const kami = this.battleSample.self.kami;
+      if (!kami || !this.effectSpecsReady) return;
+      const spec = this._dslGetSpec(kami);
+      if (!spec || !Array.isArray(spec.能力)) {
+        this.battleShowNotice(
+          '神技spec未登録',
+          `「${this.fullName(kami)}」のカミ効果定義が見つかりませんでした。神技効果は手動で処理してください。`,
+          [kami]
+        );
+        return;
+      }
+      const skillAbilities = spec.能力.filter(ab => ab && ab.契機 === '神技');
+      const target = skillAbilities[index - 1];
+      if (!target) {
+        this.battleShowNotice(
+          '神技spec未登録',
+          `神技「${skill.name}」の効果定義が見つかりませんでした。手動で処理してください。`,
+          [kami]
+        );
+        return;
+      }
+      // 任意能力なら確認
+      if (target.任意) {
+        const summary = this._dslSummarizeActions(target.処理 || []);
+        const ok = await this.dslAskOptional(kami, '神技', summary);
+        if (!ok) return;
+      }
+      // 条件評価
+      if (target.条件 && !this.dslEvalCond(target.条件)) {
+        this.battleShowNotice(
+          '神技：条件未達',
+          `神技「${skill.name}」の発動条件を満たしていません。効果は不発となります。`,
+          [kami]
+        );
+        return;
+      }
+      this._dslCurrentSource = kami;
+      try {
+        await this.dslRunActions(target.処理 || [], kami);
+      } catch (e) {
+        console.warn('[DSL] 神技処理エラー:', e);
+        this.battleShowNotice(
+          '神技処理エラー',
+          `神技「${skill.name}」の自動処理中にエラーが発生しました。手動で処理してください。`,
+          [kami]
+        );
+      }
     },
     _battleHandleSealThreshold(side, previous, current) {
       const player = this.battleSample[side];
@@ -8070,8 +11225,44 @@ new Vue({
         cards: card ? [card] : [],
       };
     },
+    battleFindLifeReplacementCard(side) {
+      const player = this.battleSample && this.battleSample[side];
+      if (!player) return null;
+      const field = []
+        .concat(Array.isArray(player.legacies) ? player.legacies : [])
+        .concat(Array.isArray(player.relics) ? player.relics : []);
+      return field.find(card => {
+        const spec = this._dslGetSpec(card);
+        if (!spec || !Array.isArray(spec.能力)) return false;
+        return spec.能力.some(ab => {
+          if (!this._dslAbilityMatchesTrigger(ab, '常在')) return false;
+          return (ab.処理 || []).some(act => {
+            const op = act.操作 || act.op;
+            const text = String(act.値 || act.備考 || '');
+            return op === '置換' && /ライフが0以下/.test(text) && /崩壊/.test(text);
+          });
+        });
+      }) || null;
+    },
+    battleApplyLifeReplacement(side) {
+      const player = this.battleSample && this.battleSample[side];
+      if (!player || player.life > 0) return false;
+      const card = this.battleFindLifeReplacementCard(side);
+      if (!card) return false;
+      const moved = this._dslMoveFromField(card, 'crumbled', side);
+      if (!moved) return false;
+      player.life = 1;
+      this.battleShowNotice(
+        '敗北置換',
+        `「${this.fullName(card)}」を崩壊させ、${side === 'self' ? '自分' : '相手'}のライフ0以下による敗北を置き換えました。`,
+        [card]
+      );
+      return true;
+    },
     _battleCheckResult() {
       if (this.battleSample.result) return;
+      this.battleApplyLifeReplacement('self');
+      this.battleApplyLifeReplacement('opp');
       if (this.battleSample.opp.life <= 0) {
         this.battleSample.result = { outcome: 'win', title: '星戦勝利！' };
       } else if (this.battleSample.self.life <= 0) {
@@ -8113,6 +11304,54 @@ new Vue({
       this.deckMenuOpen = { side, x, y };
       e.stopPropagation();   // window-click による即時クローズを防ぐ
     },
+    /* レガシー/レリックフィールドの空き部を右クリック：トークン招来メニュー */
+    battleOpenFieldZoneMenu(zone, e) {
+      if (this.battleSample.result) return;
+      const pad = 6;
+      const x = Math.min(e.clientX, window.innerWidth  - 220 - pad);
+      const y = Math.min(e.clientY, window.innerHeight - 80 - pad);
+      this.battleFieldZoneMenu = { zone, x, y };
+      e.stopPropagation();
+    },
+    battleFieldZoneMenuOpenPick() {
+      const m = this.battleFieldZoneMenu;
+      this.battleFieldZoneMenu = null;
+      if (!m) return;
+      // レガシーは No.181-185、レリックは No.186 を提示
+      const noRange = m.zone === 'relics' ? ['186'] : ['181','182','183','184','185'];
+      const candidates = noRange
+        .map(no => this.cardByNo[no])
+        .filter(Boolean);
+      if (!candidates.length) {
+        this.battleShowNotice('トークン招来', '対象のトークン (No.' + noRange.join(',') + ') が見つかりませんでした。カードデータの読み込み状況を確認してください。');
+        return;
+      }
+      this.battleTokenPickModal = { zone: m.zone, candidates };
+    },
+    battleTokenPickPlace(card) {
+      const modal = this.battleTokenPickModal;
+      this.battleTokenPickModal = null;
+      if (!modal || !card) return;
+      const zone = modal.zone;
+      const p = this.battleSample.self;
+      if (!p || !Array.isArray(p[zone])) return;
+      if (!this.battleCanPlaceFromSource(card, 'effect')) return;
+      if (p[zone].length >= 7) {
+        this.battleShowNotice('フィールド上限です', `${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドには7枚まで配置できます。`, [card]);
+        return;
+      }
+      this.battleSaveUndo();
+      // 元のカードオブジェクトを共有しないよう浅いクローン（複数体出せる）
+      const clone = this._battlePrepareFieldCard(Object.assign({}, card));
+      p[zone].push(clone);
+      this.dslRefreshStaticAbilities();
+      this.battleShowNotice('トークン招来', `「${this.fullName(card)}」を${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドに招来しました。`, [card]);
+      // 天力トリガー：トークン登場（K9 ツクヨミ）／守護持ちなら（K8 アマテラス）
+      if (zone === 'legacies') {
+        this.battleFireKamiEvent('self', 'tokenPlayed', { card: clone });
+        if (this._battleCardHasGuard(clone)) this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: clone });
+      }
+    },
     battleOpenFieldMenu(side, zone, index, e) {
       if (this.battleSample.result) return;
       if (side !== 'self') return;
@@ -8142,6 +11381,68 @@ new Vue({
       this.battleSaveUndo();
       this.$set(card, 'attack', value);
     },
+    /* 起動コストを人間可読の文字列に整形 */
+    _dslFormatActivationCost(cost) {
+      if (!cost) return '';
+      const parts = [];
+      if (cost.タップ === '自身') parts.push('タップ');
+      if (cost.タップ && cost.タップ !== '自身') parts.push('対象タップ');
+      if (Number(cost.マナ || 0) > 0) parts.push(`マナ${cost.マナ}`);
+      if (cost.破壊) parts.push('対象破壊');
+      if (cost.崩壊) parts.push('対象崩壊');
+      if (cost.天力) parts.push(`天力${cost.天力}`);
+      if (cost.備考) parts.push(`※${cost.備考}`);
+      return parts.join('・');
+    },
+    /* 起動能力の発動：コスト支払 → spec処理を実行 */
+    async battleFieldMenuActivate(listIndex) {
+      const list = this.battleFieldMenuActivatedAbilities;
+      const entry = list && list[listIndex];
+      const card = this.battleFieldMenuCurrentCard;
+      this.battleFieldMenu = null;
+      if (!entry || !card) return;
+      if (!entry.payable) {
+        this.battleShowNotice('起動不可', entry.unpayableReason || 'この起動能力は今は発動できません。', [card]);
+        return;
+      }
+      const ab = entry.ability;
+      const cost = ab.コスト || {};
+      // 任意能力なら確認
+      if (ab.任意) {
+        const summary = this._dslSummarizeActions(ab.処理 || []);
+        const ok = await this.dslAskOptional(card, '起動能力', summary);
+        if (!ok) return;
+      }
+      // 条件評価
+      if (ab.条件 && !this.dslEvalCond(ab.条件)) {
+        this.battleShowNotice('起動：条件未達', '発動条件を満たしていません。効果は不発となります。', [card]);
+        return;
+      }
+      this.battleSaveUndo();
+      const paid = await this.dslPayAbilityCost(cost, card, '起動コスト');
+      if (!paid) return;
+      // 備考付きのコスト（例：ヨリシロちゃんの「戦闘/神攻の代わり」）は通知のみ
+      if (cost.備考) {
+        this.battleShowNotice('起動コスト：補足', `「${this.fullName(card)}」の起動コストには注釈があります：${cost.備考}。手動で内容を確認してください。`, [card]);
+      }
+      // 公開通知
+      this.battleNotice = {
+        title: `起動能力を発動：${this.fullName(card)}`,
+        message: `コスト：${this._dslFormatActivationCost(cost) || '無'} を支払い、効果を解決します。`,
+        cards: [card],
+      };
+      // spec処理を実行
+      const prevSource = this._dslCurrentSource;
+      this._dslCurrentSource = card;
+      try {
+        await this.dslRunActions(ab.処理 || [], card);
+      } catch (e) {
+        console.warn('[DSL] 起動能力エラー:', e);
+        this.battleShowNotice('起動能力エラー', `「${this.fullName(card)}」の起動能力処理中にエラーが発生しました。手動で処理してください。`, [card]);
+      } finally {
+        this._dslCurrentSource = prevSource;
+      }
+    },
     battleFieldMenuAction(action) {
       const m = this.battleFieldMenu;
       this.battleFieldMenu = null;
@@ -8150,8 +11451,13 @@ new Vue({
       const card = player && player[m.zone] && player[m.zone][m.index];
       if (!card) return;
       if (action === 'toggleTap') {
+        if (card._tapped && !this._battleCanUntapCard(card)) {
+          this.battleShowNotice('拘束中', `「${this.fullName(card)}」は【拘束】中のためアンタップできません。`, [card]);
+          return;
+        }
         this.battleSaveUndo();
         this.$set(card, '_tapped', !card._tapped);
+        this.dslRefreshStaticAbilities();
         return;
       }
       // 場から外れる時はタップ状態をクリア
@@ -9382,6 +12688,8 @@ new Vue({
       if (e.key === "Escape") {
         // 上に重なっているものから順に閉じる
         if (this.battleFieldMenu)     this.battleFieldMenu = null;
+        else if (this.battleFieldZoneMenu) this.battleFieldZoneMenu = null;
+        else if (this.battleTokenPickModal) this.battleTokenPickModal = null;
         else if (this.battleHandMenu) this.battleHandMenu = null;
         else if (this.battleZoneCardMenu) this.battleZoneCardMenu = null;
         else if (this.deckMenuOpen)        this.deckMenuOpen = null;
@@ -9404,6 +12712,7 @@ new Vue({
       this.poolSortOpen = false;
       this.deckMenuOpen = null;   // 対戦画面：デッキ右クリックメニューを閉じる
       this.battleFieldMenu = null; // 対戦画面：フィールドカード右クリックメニューを閉じる
+      this.battleFieldZoneMenu = null;
       this.battleHandMenu = null;
       this.battleZoneCardMenu = null;
     },
@@ -10028,6 +13337,7 @@ new Vue({
     this.loadKamiImages();
     this.loadKamiIllustrations();
     this.loadCardBack();
+    this.loadEffectSpecs();
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("click", this.onWindowClick);
     // 対戦オンライン同期：自分が手番中（＋手番を渡す瞬間）の盤面変化をFirebaseへ公開
