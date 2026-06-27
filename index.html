@@ -5251,7 +5251,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.36',
+    BUILD_VERSION: '1.14.37',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6488,7 +6488,7 @@ new Vue({
         name, life, lifeMax: life, mana: 0, manaMax: 0, tenryoku: 0,
         seal: isOrochi ? 8 : null, sealRewards: { four: false, zero: false },
         hand, handCount: hand.length, kami: kami || null, deck, relics: [], legacies: [],
-        deckCount: deck.length, graveyard: [], crumbled: [], tempCostMods: [],
+        deckCount: deck.length, graveyard: [], crumbled: [], tempCostMods: [], legacyDestroyedThisTurn: [],
         senteiBoostUsed: false,
         kamiTriggerCounts: {},   // 天力トリガー：各ターンの発動回数管理（K5/K6/K7/K8/K9）
       };
@@ -6991,8 +6991,16 @@ new Vue({
         destroyed.forEach(d => {
           this.battleFireKamiEvent('self', 'legacyDestroyed', { card: d.card });
           this.battleFireKamiEvent('opp', 'legacyDestroyed', { card: d.card });
+          this.battleRecordLegacyDestroyed(d.side, d.card);
         });
       }
+    },
+    battleRecordLegacyDestroyed(side, card) {
+      const player = this.battleSample && this.battleSample[side];
+      if (!player || !card || card.category !== 'レガシー') return;
+      const list = Array.isArray(player.legacyDestroyedThisTurn) ? player.legacyDestroyedThisTurn.slice() : [];
+      if (!list.includes(card)) list.push(card);
+      this.$set(player, 'legacyDestroyedThisTurn', list);
     },
     /* ターン開始処理（アンタップ＋ドロー＋マナ回復＋疲労ダメージ） */
     _battleStartTurnFor(side) {
@@ -7006,6 +7014,7 @@ new Vue({
       target.senteiBoostUsed = false;
       // 天力トリガーの各ターン回数カウンタをリセット
       target.kamiTriggerCounts = {};
+      target.legacyDestroyedThisTurn = [];
       // 自分フィールドのカードを全てアンタップ
       this._battleUntapField(side);
       // ターン開始ドロー（先攻プレイヤーの最初のターンだけ無し）
@@ -7885,6 +7894,11 @@ new Vue({
           this.battleCardMatchesInduceCriteria(card, ['神使レガシー'])
         );
       }
+      if (/このターン中に自分レガシーが破壊されている/.test(s)) {
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const player = this.battleSample && this.battleSample[side];
+        return !!(player && Array.isArray(player.legacyDestroyedThisTurn) && player.legacyDestroyedThisTurn.length);
+      }
       return null;
     },
     _dslCompareNum(a, op, b) {
@@ -8664,6 +8678,7 @@ new Vue({
             }
             // 天力トリガー：レガシー破壊（K7 ヒノカグツチ）— 墓地行きのみ・レガシーのみ
             if (destZone === 'graveyard' && zone === 'legacies') {
+              this.battleRecordLegacyDestroyed(side, card);
               this.battleFireKamiEvent(side, 'legacyDestroyed', { card });
               this.battleFireKamiEvent(side === 'self' ? 'opp' : 'self', 'legacyDestroyed', { card });
             }
@@ -9740,6 +9755,7 @@ new Vue({
         this.battleFireKamiEvent('self', 'evolveOrSublim', { card: fieldCard, evolved: true });
         // 進化元レガシーが墓地に行ったので K7 ヒノカグツチ 等にも発火
         if (!fieldCard._evolvedFromGraveyard) {
+          this.battleRecordLegacyDestroyed('self', evolveBase);
           this.battleFireKamiEvent('self', 'legacyDestroyed', { card: evolveBase });
           this.battleFireKamiEvent('opp',  'legacyDestroyed', { card: evolveBase });
         }
@@ -10203,6 +10219,7 @@ new Vue({
       this.dslClearStaticFromCard(card);
       this.$set(card, '_tapped', false);
       player.graveyard.push(card);
+      this.battleRecordLegacyDestroyed(side, card);
       destroyed.push({ side, card });
     },
     battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex) {
