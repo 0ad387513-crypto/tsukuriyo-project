@@ -5274,7 +5274,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.42',
+    BUILD_VERSION: '1.14.43',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6928,6 +6928,8 @@ new Vue({
       this.battleDragOverZone = null;
       this.battleFieldDrag = null;
       this.battleFieldDragTarget = null;
+      // 巻き戻し直後の盤面に常在能力を再評価
+      if (typeof this.dslRefreshStaticAbilities === 'function') this.dslRefreshStaticAbilities();
     },
     /* 対戦画面：ステータス±処理（手動調整＋Undo対応） */
     battleStat(side, key, delta) {
@@ -6959,6 +6961,8 @@ new Vue({
         this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: key, n: target[key] - previous });
       }
       this._battleCheckResult();
+      // 常在能力の動的再評価（マナ最大値・墓地枚数・種族数等が変動した可能性があるため）
+      if (typeof this.dslRefreshStaticAbilities === 'function') this.dslRefreshStaticAbilities();
     },
     /* ターン終了：手番を相手に渡す
        - 次プレイヤーのマナ最大値+1（最大10まで）
@@ -11373,6 +11377,8 @@ new Vue({
       if (!card) return;
       this.battleSaveUndo();
       this.$set(card, 'power', value);
+      // 戦闘力閾値で発火する分岐/条件を再評価
+      this.dslRefreshStaticAbilities();
     },
     battleFieldMenuSetAttack(value) {
       const card = this.battleFieldMenuCurrentCard;
@@ -11380,6 +11386,7 @@ new Vue({
       if (!card) return;
       this.battleSaveUndo();
       this.$set(card, 'attack', value);
+      this.dslRefreshStaticAbilities();
     },
     /* 起動コストを人間可読の文字列に整形 */
     _dslFormatActivationCost(cost) {
