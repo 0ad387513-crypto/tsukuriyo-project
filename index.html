@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.14',
+    BUILD_VERSION: '1.14.15',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7178,6 +7178,7 @@ new Vue({
         case 'サーチ':     return this._dslOpSearch(act, sourceCard);
         case '手札に加える': return this._dslOpAddToHand(act, sourceCard);
         case 'デッキ墓地送り': return this._dslOpMillDeck(act, sourceCard);
+        case 'デッキ下に戻す': return this._dslOpDeckBottom(act, sourceCard);
         case '再発動':     return this._dslOpRepeat(act, sourceCard);
         case '効果倍化':   return this._dslOpEffectMultiplier(act, sourceCard);
         case '種族追加':   return this._dslOpAddType(act, sourceCard);
@@ -7679,7 +7680,10 @@ new Vue({
       return false;
     },
     _dslOpDraw(act) {
-      const n = Number(act.数 || 1);
+      const ref = String(act.数参照 || '');
+      const n = /戻した数/.test(ref)
+        ? Math.max(0, Number(this._dslLastMovedCount || 0)) + (/[\+＋]1/.test(ref) ? 1 : 0)
+        : Number(act.数 || 1);
       const side = act.側 === 'opp' ? 'opp' : 'self';
       const p = this.battleSample[side];
       if (!p) return;
@@ -7926,6 +7930,68 @@ new Vue({
       });
       p.handCount = (p.hand || []).length;
       this.battleShowNotice('手札に加える', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に加えました。`, targets);
+    },
+    async _dslOpDeckBottom(act, sourceCard) {
+      const sel = Object.assign({ 対象側: 'self', 領域: 'hand', 選択者: 'player', 枚数: 1 }, act.対象 || {});
+      const targets = await this.dslChooseTargets(sel, 'デッキ下に戻すカードを選択');
+      if (!targets.length) return;
+      const side = sel.対象側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample[side];
+      if (!p) return;
+      this.battleSaveUndo();
+      p.deck = p.deck || [];
+      const fromZone = sel.領域 || 'hand';
+      const moved = [];
+      targets.forEach(card => {
+        let removed = false;
+        if (fromZone === 'field') {
+          removed = !!this._dslRemoveFromField(card, side);
+        } else {
+          const arr = p[fromZone];
+          if (Array.isArray(arr)) {
+            const idx = arr.indexOf(card);
+            if (idx >= 0) {
+              arr.splice(idx, 1);
+              removed = true;
+            }
+          }
+        }
+        if (!removed) return;
+        this.dslClearStaticFromCard(card);
+        this.$set(card, '_tapped', false);
+        p.deck.push(card);
+        moved.push(card);
+      });
+      if (!moved.length) return;
+      this._battleSyncSideCounts(side);
+      this.dslRefreshStaticAbilities();
+      this.battleShowNotice('デッキ下に戻す', `${moved.map(c => `「${this.fullName(c)}」`).join('、')}をデッキの一番下へ戻しました。`, moved);
+      if (Array.isArray(act.後続) && act.後続.length) {
+        const prevMoved = this._dslLastMovedCount;
+        this._dslLastMovedCount = moved.length;
+        try {
+          await this.dslRunActions(act.後続, sourceCard);
+        } finally {
+          this._dslLastMovedCount = prevMoved;
+        }
+      }
+    },
+    _dslRemoveFromField(card, forceSide) {
+      const sides = forceSide ? [forceSide] : ['self', 'opp'];
+      for (const side of sides) {
+        const p = this.battleSample[side];
+        if (!p) continue;
+        for (const zone of ['legacies', 'relics']) {
+          const arr = p[zone];
+          if (!Array.isArray(arr)) continue;
+          const idx = arr.indexOf(card);
+          if (idx >= 0) {
+            arr.splice(idx, 1);
+            return side;
+          }
+        }
+      }
+      return null;
     },
     /* 自分デッキの上から N 枚を墓地へ送る */
     _dslOpMillDeck(act, sourceCard) {
