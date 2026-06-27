@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.15',
+    BUILD_VERSION: '1.14.16',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7184,6 +7184,7 @@ new Vue({
         case '種族追加':   return this._dslOpAddType(act, sourceCard);
         case '拘束':       return this._dslOpBind(act, sourceCard);
         case '傀儡化':     return this._dslOpPuppet(act, sourceCard);
+        case 'トークン生成': return this._dslOpGenerateToken(act, sourceCard);
         default:
           // 未対応op：手動フォールバック通知
           this.battleShowNotice(
@@ -7647,6 +7648,40 @@ new Vue({
         `${moved.map(c => `「${this.fullName(c)}」`).join('、')}を自分の場へ移し、アンタップして【疾駆】を付与しました。${extra ? `\n追加の期間処理: ${extra}` : ''}`,
         moved
       );
+    },
+    _dslOpGenerateToken(act, sourceCard) {
+      const tokenText = String(act.値 || act.トークン || '').trim();
+      if (!tokenText) {
+        this.battleShowNotice('トークン生成：対象不明', '生成するトークン名が指定されていません。手動で処理してください。', sourceCard ? [sourceCard] : []);
+        return;
+      }
+      const candidates = this.battleSummonCandidates(tokenText);
+      const card = candidates[0] || this.allCards.find(c => String(c.no) === tokenText);
+      if (!card) {
+        this.battleShowNotice('トークン生成：カード未検出', `「${tokenText}」に該当するカードが見つかりませんでした。手動で処理してください。`, sourceCard ? [sourceCard] : []);
+        return;
+      }
+      const side = act.側 === 'opp' ? 'opp' : this._dslCurrentSourceSide();
+      const player = this.battleSample[side || 'self'];
+      if (!player) return;
+      const note = String(act.備考 || '');
+      this.battleSaveUndo();
+      const clone = Object.assign({}, card);
+      if (/場|フィールド|招来/.test(note)) {
+        const zone = this.battleFieldZoneForSummon(clone) || 'legacies';
+        if (!Array.isArray(player[zone]) || player[zone].length >= 7) {
+          this.battleShowNotice('フィールド上限です', `「${this.fullName(card)}」を場に出せませんでした。手動で処理してください。`, [card]);
+          return;
+        }
+        player[zone].push(this._battlePrepareFieldCard(clone));
+        this.dslRefreshStaticAbilities();
+        this.battleShowNotice('トークン生成', `「${this.fullName(card)}」を${side === 'opp' ? '相手' : '自分'}の場に出しました。`, [card]);
+        return;
+      }
+      player.hand = player.hand || [];
+      player.hand.push(clone);
+      this._battleSyncSideCounts(side || 'self');
+      this.battleShowNotice('トークン生成', `「${this.fullName(card)}」を${side === 'opp' ? '相手' : '自分'}の手札に加えました。`, [card]);
     },
     /* フィールドカードを別ゾーンへ移動（破壊・崩壊・手札戻し共通） */
     _dslMoveFromField(card, destZone, forceSide) {
