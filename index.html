@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.18',
+    BUILD_VERSION: '1.14.19',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6874,27 +6874,69 @@ new Vue({
       return !!(player && this._battleIsOrochiCard(player.kami));
     },
     battleHandCost(card) {
-      const base = Math.max(0, Number(card && card.cost) || 0);
+      const base = this.battleEffectiveCost(card);
       const text = [card && card.text, card && card.subType].filter(Boolean).join(' ');
       const extras = [];
       const pattern = /昇華\s*([0-9]+)/g;
+      const sublimDelta = this.battleSublimDeltaForCard(card);
       let match;
       while ((match = pattern.exec(text)) !== null) {
-        const extra = Number(match[1]);
+        const extra = Math.max(0, (Number(match[1]) || 0) + sublimDelta);
         if (extra > 0 && !extras.includes(extra)) extras.push(extra);
       }
       extras.sort((a, b) => a - b);
       return [base, ...extras.map(extra => base + extra)].join('/');
     },
+    battleEffectiveCost(card, side = 'self') {
+      const base = Math.max(0, Number(card && card.cost) || 0);
+      return Math.max(0, base + this.battleCostDeltaForCard(card, side));
+    },
+    battleCostDeltaForCard(card, side = 'self') {
+      if (!card || !this.battleSample) return 0;
+      let delta = 0;
+      if (Number(card._staticCostDelta)) delta += Number(card._staticCostDelta) || 0;
+      if (Number(card._costDelta)) delta += Number(card._costDelta) || 0;
+      const sourceCards = [];
+      ['self', 'opp'].forEach(sourceSide => {
+        const player = this.battleSample[sourceSide] || {};
+        const cards = []
+          .concat(Array.isArray(player.legacies) ? player.legacies : [])
+          .concat(Array.isArray(player.relics) ? player.relics : []);
+        cards.forEach(source => sourceCards.push({ source, sourceSide }));
+      });
+      sourceCards.forEach(({ source, sourceSide }) => {
+        const mods = Array.isArray(source._staticCostMods) ? source._staticCostMods : [];
+        mods.forEach(mod => {
+          if (!this.battleCostModMatches(card, mod, side, sourceSide)) return;
+          delta += Number(mod.delta) || 0;
+        });
+      });
+      return delta;
+    },
+    battleCostModMatches(card, mod, side = 'self', sourceSide = 'self') {
+      if (!card || !mod) return false;
+      const note = String(mod.note || '');
+      if (/自分/.test(note) && side !== sourceSide) return false;
+      if (/相手/.test(note) && side === sourceSide) return false;
+      if (/レリック/.test(note) && card.category !== 'レリック') return false;
+      if (/オラクル/.test(note) && card.category !== 'オラクル') return false;
+      const criteria = Array.isArray(mod.criteria) ? mod.criteria : [];
+      return !criteria.length || this.battleCardMatchesInduceCriteria(card, criteria);
+    },
+    battleSublimDeltaForCard(card) {
+      if (!card) return 0;
+      return (Number(card._staticSublimDelta) || 0) + (Number(card._sublimDelta) || 0);
+    },
     /* 昇華コストの選択肢を返す（基本コスト＋[基本+X]パターンを全部抽出） */
     battleSublimCostOptions(card) {
-      const base = Math.max(0, Number(card && card.cost) || 0);
+      const base = this.battleEffectiveCost(card);
       const text = [card && card.text, card && card.subType].filter(Boolean).join(' ');
       const extras = [];
       const pattern = /昇華\s*([0-9]+)/g;
+      const sublimDelta = this.battleSublimDeltaForCard(card);
       let m;
       while ((m = pattern.exec(text)) !== null) {
-        const x = Number(m[1]);
+        const x = Math.max(0, (Number(m[1]) || 0) + sublimDelta);
         if (x > 0 && !extras.includes(x)) extras.push(x);
       }
       extras.sort((a, b) => a - b);
@@ -7079,8 +7121,8 @@ new Vue({
       const prevSource = this._dslCurrentSource;
       const prevSublimPaid = this._dslSublimPaid;
       this._dslCurrentSource = card;
-      const baseCost = Math.max(0, Number(card.cost) || 0);
-      const sublimPaid = paidCost !== null ? Math.max(0, paidCost - baseCost) : 0;
+      const baseCost = this.battleEffectiveCost(card);
+      const sublimPaid = paidCost !== null ? Math.max(0, paidCost - baseCost - this.battleSublimDeltaForCard(card)) : 0;
       this._dslSublimPaid = sublimPaid;
       let ran = false;
       try {
@@ -7187,6 +7229,8 @@ new Vue({
         case 'トークン生成': return this._dslOpGenerateToken(act, sourceCard);
         case '選定値+1':   return this._dslOpSenteiBoost(act, sourceCard);
         case '無償使用':   return this._dslOpFreeUse(act, sourceCard);
+        case 'コスト変更': return this._dslOpCostChange(act, sourceCard);
+        case '昇華値変更': return this._dslOpSublimChange(act, sourceCard);
         default:
           // 未対応op：手動フォールバック通知
           this.battleShowNotice(
@@ -7441,6 +7485,9 @@ new Vue({
       this.$set(card, '_staticAttack', 0);
       this.$set(card, '_staticKwGrant', []);
       this.$set(card, '_staticSenteiBoost', false);
+      this.$set(card, '_staticCostDelta', 0);
+      this.$set(card, '_staticCostMods', []);
+      this.$set(card, '_staticSublimDelta', 0);
     },
     dslStaticEligible(sel, sourceCard, sourceSide) {
       if (!sel) return [];
@@ -7514,8 +7561,28 @@ new Vue({
           }
         } else if (op === '選定値+1' && sourceCard) {
           this.$set(sourceCard, '_staticSenteiBoost', true);
+        } else if (op === 'コスト変更') {
+          this.dslApplyStaticCostChange(act, sourceCard);
+        } else if (op === '昇華値変更' && sourceCard) {
+          this.$set(sourceCard, '_staticSublimDelta', Number(act.数 || 0));
         }
       });
+    },
+    dslApplyStaticCostChange(act, sourceCard) {
+      if (!sourceCard) return;
+      const delta = Number(act.数 || 0);
+      const target = act.対象 || {};
+      if (target.自身) {
+        this.$set(sourceCard, '_staticCostDelta', (Number(sourceCard._staticCostDelta) || 0) + delta);
+        return;
+      }
+      const mods = Array.isArray(sourceCard._staticCostMods) ? sourceCard._staticCostMods.slice() : [];
+      mods.push({
+        delta,
+        note: String(target.備考 || ''),
+        criteria: Array.isArray(target.絞込) ? target.絞込.slice() : [],
+      });
+      this.$set(sourceCard, '_staticCostMods', mods);
     },
     dslRefreshStaticAbilities() {
       if (!this.effectSpecsReady || !this.battleSample) return;
@@ -7751,6 +7818,44 @@ new Vue({
       if (used.length) {
         this.battleShowNotice('無償使用', `${used.map(c => `「${this.fullName(c)}」`).join('、')}をマナを支払わず使用しました。`, used);
       }
+    },
+    async _dslOpCostChange(act, sourceCard) {
+      const delta = Number(act.数 || 0);
+      const target = act.対象 || {};
+      if (target.備考 && !target.自身) {
+        this.battleShowNotice(
+          'コスト変更：手動確認',
+          `「${this.fullName(sourceCard)}」のコスト変更（${delta >= 0 ? '+' : ''}${delta}）は、対象指定が文章形式のため手動で確認してください。`,
+          sourceCard ? [sourceCard] : []
+        );
+        return;
+      }
+      const targets = await this.dslChooseTargets(target.自身 ? { 自身: true } : target, 'コストを変更する対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(card => {
+        this.$set(card, '_costDelta', (Number(card._costDelta) || 0) + delta);
+      });
+      this.battleShowNotice(
+        'コスト変更',
+        `${targets.map(c => `「${this.fullName(c)}」`).join('、')}のコストを ${delta >= 0 ? '+' : ''}${delta} しました。`,
+        targets
+      );
+    },
+    async _dslOpSublimChange(act, sourceCard) {
+      const delta = Number(act.数 || 0);
+      const target = act.対象 || { 自身: true };
+      const targets = await this.dslChooseTargets(target, '昇華値を変更する対象を選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(card => {
+        this.$set(card, '_sublimDelta', (Number(card._sublimDelta) || 0) + delta);
+      });
+      this.battleShowNotice(
+        '昇華値変更',
+        `${targets.map(c => `「${this.fullName(c)}」`).join('、')}の昇華値を ${delta >= 0 ? '+' : ''}${delta} しました。`,
+        targets
+      );
     },
     /* フィールドカードを別ゾーンへ移動（破壊・崩壊・手札戻し共通） */
     _dslMoveFromField(card, destZone, forceSide) {
