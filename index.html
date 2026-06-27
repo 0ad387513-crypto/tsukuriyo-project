@@ -5251,7 +5251,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.30',
+    BUILD_VERSION: '1.14.31',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8870,6 +8870,11 @@ new Vue({
     },
     async _dslOpRepeat(act, sourceCard) {
       const target = String(act.対象 || '');
+      const ordinal = this._dslRepeatOrdinal(target);
+      if (ordinal) {
+        const ok = await this._dslRepeatAbilityByOrdinal(sourceCard, ordinal, target);
+        if (ok) return;
+      }
       if (/このカードの出現時効果/.test(target)) {
         if (sourceCard && sourceCard._dslRepeatingEnter) return;
         if (sourceCard) this.$set(sourceCard, '_dslRepeatingEnter', true);
@@ -8889,6 +8894,46 @@ new Vue({
         `「${this.fullName(sourceCard)}」の再発動対象を自動判定できませんでした。必要に応じて手動で処理してください。`,
         sourceCard ? [sourceCard] : []
       );
+    },
+    _dslRepeatOrdinal(targetText) {
+      const text = String(targetText || '');
+      if (/①|1|一/.test(text)) return 1;
+      if (/②|2|二/.test(text)) return 2;
+      if (/③|3|三/.test(text)) return 3;
+      return 0;
+    },
+    async _dslRepeatAbilityByOrdinal(sourceCard, ordinal, targetText) {
+      if (!sourceCard || !ordinal) return false;
+      const spec = this._dslGetSpec(sourceCard);
+      if (!spec || !Array.isArray(spec.能力)) return false;
+      const abilities = spec.能力.filter(ab => ab && Array.isArray(ab.処理) && ab.処理.length);
+      const ab = abilities[ordinal - 1];
+      if (!ab) return false;
+      if (ab.条件 && !this.dslEvalCond(ab.条件)) {
+        this.battleShowNotice(
+          '再発動：条件未達',
+          `「${this.fullName(sourceCard)}」の${targetText}は条件を満たしていないため再発動できません。`,
+          [sourceCard]
+        );
+        return true;
+      }
+      if (ab.任意) {
+        const summary = this._dslSummarizeActions(ab.処理 || []);
+        const ok = await this.dslAskOptional(sourceCard, `再発動：${targetText}`, summary);
+        if (!ok) return true;
+      }
+      const key = `_dslRepeatingOrdinal${ordinal}`;
+      if (sourceCard[key]) return true;
+      this.$set(sourceCard, key, true);
+      const prevSource = this._dslCurrentSource;
+      try {
+        this._dslCurrentSource = sourceCard;
+        await this.dslRunActions(ab.処理 || [], sourceCard);
+      } finally {
+        this._dslCurrentSource = prevSource;
+        this.$set(sourceCard, key, false);
+      }
+      return true;
     },
     _dslOpEffectMultiplier(act, sourceCard) {
       this.battleShowNotice(
