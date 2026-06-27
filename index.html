@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.11',
+    BUILD_VERSION: '1.14.12',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6962,6 +6962,8 @@ new Vue({
     },
     battleCardMatchesInduceCriteria(card, criteria) {
       if (!card || !criteria || !criteria.length) return true;
+      const extraTypes = Array.isArray(card._typeGrant) ? card._typeGrant : [];
+      const hasType = (value) => card.type === value || card.subType === value || extraTypes.includes(value);
       return criteria.some(raw => {
         const c = String(raw || '').replace(/\s+/g, '');
         if (!c) return false;
@@ -6973,9 +6975,9 @@ new Vue({
         if (c.endsWith('レガシー')) {
           const prefix = c.replace(/レガシー$/, '');
           if (card.category !== 'レガシー') return false;
-          return !prefix || card.color === prefix || card.type === prefix || card.subType === prefix;
+          return !prefix || card.color === prefix || hasType(prefix);
         }
-        return card.color === c || card.type === c || card.category === c || card.subType === c || this.fullName(card).includes(c);
+        return card.color === c || hasType(c) || card.category === c || this.fullName(card).includes(c);
       });
     },
     /* ===================================================================
@@ -7117,6 +7119,7 @@ new Vue({
         case 'ドロー':     return this._dslOpDraw(act);
         case '天力':       return this._dslOpStat(act, 'tenryoku');
         case 'ライフ':     return this._dslOpLife(act);
+        case 'ライフ最大値': return this._dslOpLifeMax(act);
         case 'マナ最大値': return this._dslOpManaMax(act);
         case 'マナ回復':   return this._dslOpManaRefill(act);
         case '手札に戻す': return this._dslOpReturnToHand(act, sourceCard);
@@ -7138,6 +7141,7 @@ new Vue({
         case 'デッキ墓地送り': return this._dslOpMillDeck(act, sourceCard);
         case '再発動':     return this._dslOpRepeat(act, sourceCard);
         case '効果倍化':   return this._dslOpEffectMultiplier(act, sourceCard);
+        case '種族追加':   return this._dslOpAddType(act, sourceCard);
         default:
           // 未対応op：手動フォールバック通知
           this.battleShowNotice(
@@ -7600,6 +7604,18 @@ new Vue({
       this.battleShowNotice('ライフ変化', `${side === 'opp' ? '相手' : '自分'}ライフ ${n >= 0 ? '+' : ''}${n}（現在 ${p.life}/${max}）`);
       if (typeof this._battleCheckResult === 'function') this._battleCheckResult();
     },
+    _dslOpLifeMax(act) {
+      const n = Number(act.数 || 0);
+      const side = act.側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample[side];
+      if (!p) return;
+      this.battleSaveUndo();
+      const nextMax = Math.max(1, Math.min(10, (Number(p.lifeMax) || 10) + n));
+      p.lifeMax = nextMax;
+      p.life = Math.max(0, Math.min(nextMax, Number(p.life) || 0));
+      this.battleShowNotice('ライフ最大値変化', `${side === 'opp' ? '相手' : '自分'}ライフ最大値 ${n >= 0 ? '+' : ''}${n}（現在 ${p.life}/${p.lifeMax}）`);
+      if (typeof this._battleCheckResult === 'function') this._battleCheckResult();
+    },
     _dslOpManaMax(act) {
       const n = Number(act.数 || 0);
       const p = this.battleSample.self;
@@ -7614,6 +7630,23 @@ new Vue({
       this.battleSaveUndo();
       p.mana = p.manaMax;
       this.battleShowNotice('マナ回復', `マナを最大値まで回復しました（${p.mana}/${p.manaMax}）。`);
+    },
+    async _dslOpAddType(act, sourceCard) {
+      const typeName = String(act.値 || act.種族 || '').trim();
+      if (!typeName) {
+        this.battleShowNotice('種族追加：対象不明', '追加する種族が指定されていません。手動で処理してください。', [sourceCard]);
+        return;
+      }
+      const targets = await this.dslChooseTargets(act.対象 || { 自身: true }, `種族「${typeName}」を追加する対象を選択`);
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      targets.forEach(card => {
+        const list = Array.isArray(card._typeGrant) ? card._typeGrant.slice() : [];
+        if (!list.includes(typeName)) list.push(typeName);
+        this.$set(card, '_typeGrant', list);
+      });
+      this.dslRefreshStaticAbilities();
+      this.battleShowNotice('種族追加', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}に種族「${typeName}」を追加しました。`, targets);
     },
     /* 招来 → 既存モーダルへ橋渡し */
     async _dslOpSummon(act, sourceCard) {
