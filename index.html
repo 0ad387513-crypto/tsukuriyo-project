@@ -5251,7 +5251,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.37',
+    BUILD_VERSION: '1.14.38',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7618,6 +7618,7 @@ new Vue({
       for (const side of ['self', 'opp']) {
         const p = bs[side];
         if (!p) continue;
+        if (p.kami === src) return side;
         for (const zone of ['legacies', 'relics', 'hand', 'graveyard', 'crumbled', 'deck']) {
           if (Array.isArray(p[zone]) && p[zone].includes(src)) return side;
         }
@@ -7898,6 +7899,10 @@ new Vue({
         const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
         const player = this.battleSample && this.battleSample[side];
         return !!(player && Array.isArray(player.legacyDestroyedThisTurn) && player.legacyDestroyedThisTurn.length);
+      }
+      if (/自分フィールドと墓地に同名レガシー/.test(s) && /いない/.test(s)) {
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        return this._battleHasOwnDuplicateLegacy ? !this._battleHasOwnDuplicateLegacy(side) : true;
       }
       return null;
     },
