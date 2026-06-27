@@ -5251,7 +5251,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.31',
+    BUILD_VERSION: '1.14.32',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7859,6 +7859,8 @@ new Vue({
       this.$set(card, '_staticCostDelta', 0);
       this.$set(card, '_staticCostMods', []);
       this.$set(card, '_staticSublimDelta', 0);
+      this.$set(card, '_staticDoubleOwnDeath', false);
+      this.$set(card, '_staticDoubleShinshiEnter', false);
     },
     dslStaticEligible(sel, sourceCard, sourceSide) {
       if (!sel) return [];
@@ -7936,6 +7938,13 @@ new Vue({
           this.dslApplyStaticCostChange(act, sourceCard);
         } else if (op === '昇華値変更' && sourceCard) {
           this.$set(sourceCard, '_staticSublimDelta', Number(act.数 || 0));
+        } else if (op === '効果倍化' && sourceCard) {
+          const targetText = String(act.対象 || act.備考 || '');
+          if (/死亡時/.test(targetText)) {
+            this.$set(sourceCard, '_staticDoubleOwnDeath', true);
+          } else if (/神使/.test(targetText) && /出現時/.test(targetText)) {
+            this.$set(sourceCard, '_staticDoubleShinshiEnter', true);
+          }
         }
       });
     },
@@ -8489,6 +8498,7 @@ new Vue({
           if (!Array.isArray(arr)) continue;
           const idx = arr.indexOf(card);
           if (idx >= 0) {
+            this.$set(card, '_lastFieldSide', side);
             arr.splice(idx, 1);
             this.battleReleaseEvolutionBase(card);
             this.dslClearStaticFromCard(card);
@@ -8936,11 +8946,70 @@ new Vue({
       return true;
     },
     _dslOpEffectMultiplier(act, sourceCard) {
+      const targetText = String(act.対象 || act.備考 || '');
+      if (/死亡時/.test(targetText)) {
+        this.$set(sourceCard, '_staticDoubleOwnDeath', true);
+        return;
+      }
+      if (/神使/.test(targetText) && /出現時/.test(targetText)) {
+        this.$set(sourceCard, '_staticDoubleShinshiEnter', true);
+        return;
+      }
       this.battleShowNotice(
         '効果倍化は手動確認',
         `「${this.fullName(sourceCard)}」の効果倍化は、対象となる効果の発動時に手動で追加処理してください。`,
         sourceCard ? [sourceCard] : []
       );
+    },
+    battleHasStaticEffectMultiplier(side, kind, card = null) {
+      const p = this.battleSample && this.battleSample[side];
+      if (!p) return false;
+      const field = []
+        .concat(Array.isArray(p.legacies) ? p.legacies : [])
+        .concat(Array.isArray(p.relics) ? p.relics : []);
+      if (kind === 'death') return field.some(c => !!(c && c._staticDoubleOwnDeath));
+      if (kind === 'shinshiEnter') {
+        if (!card || !this.battleCardMatchesInduceCriteria(card, ['神使レガシー'])) return false;
+        return field.some(c => !!(c && c._staticDoubleShinshiEnter));
+      }
+      return false;
+    },
+    battleConsumeEffectMultiplierOnce(side, key) {
+      const p = this.battleSample && this.battleSample[side];
+      if (!p) return false;
+      const turnKey = `${key}:${this.battleSample.turn}:${this.battleSample.activeSide}`;
+      const used = p.effectMultiplierUsed || {};
+      if (used[turnKey]) return false;
+      this.$set(p, 'effectMultiplierUsed', Object.assign({}, used, { [turnKey]: true }));
+      return true;
+    },
+    battleRunDoubledEnterEffect(card, paidCost) {
+      const side = this._battleFieldCardSide(card);
+      if (!this.effectSpecsReady || !this.dslHasSpecForTrigger(card, '出現時')) return;
+      if (!this.battleHasStaticEffectMultiplier(side, 'shinshiEnter', card)) return;
+      if (card._dslDoubleEnterRunning) return;
+      this.$set(card, '_dslDoubleEnterRunning', true);
+      try {
+        this.dslRunSpec(card, '出現時', paidCost);
+        this.battleShowNotice('効果倍化', `「${this.fullName(card)}」の出現時効果を追加でもう1回発動しました。`, [card]);
+      } finally {
+        this.$set(card, '_dslDoubleEnterRunning', false);
+      }
+    },
+    battleRunDoubledDeathEffect(card) {
+      const side = this._battleFieldCardSide(card);
+      if (!this.effectSpecsReady || !this.dslHasSpecForTrigger(card, '死亡時')) return;
+      const deathSide = card._lastFieldSide || side;
+      if (!this.battleHasStaticEffectMultiplier(deathSide, 'death', card)) return;
+      if (!this.battleConsumeEffectMultiplierOnce(deathSide, 'death')) return;
+      if (card._dslDoubleDeathRunning) return;
+      this.$set(card, '_dslDoubleDeathRunning', true);
+      try {
+        this.dslRunSpec(card, '死亡時', null);
+        this.battleShowNotice('効果倍化', `「${this.fullName(card)}」の死亡時効果を追加でもう1回発動しました。`, [card]);
+      } finally {
+        this.$set(card, '_dslDoubleDeathRunning', false);
+      }
     },
 
     /* ===================================================================
@@ -8956,6 +9025,7 @@ new Vue({
         this.dslRunSpec(card, '出現時', paidCost);
         // 昇華契機もspec側で同時走らせる
         if (paidCost !== null) this.dslRunSpec(card, '昇華', paidCost);
+        this.battleRunDoubledEnterEffect(card, paidCost);
         return true;
       }
       if (this.effectSpecsReady && card.category === 'オラクル' && this.dslHasSpecForTrigger(card, '使用時')) {
@@ -8972,6 +9042,7 @@ new Vue({
       }
       if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '死亡時')) {
         this.dslRunSpec(card, '死亡時', null);
+        this.battleRunDoubledDeathEffect(card);
         return true;
       }
       return this._battleQueueAndRunEffects(card, null, '死亡時');
@@ -9979,6 +10050,7 @@ new Vue({
       const player = this.battleSample[side];
       if (!player || !player.legacies[index]) return;
       const card = player.legacies.splice(index, 1)[0];
+      this.$set(card, '_lastFieldSide', side);
       this.dslClearStaticFromCard(card);
       this.$set(card, '_tapped', false);
       player.graveyard.push(card);
@@ -10129,6 +10201,7 @@ new Vue({
       const card = player[sourceZone][index];
       if (!card) return;
       this.battleSaveUndo();
+      this.$set(card, '_lastFieldSide', side);
       player[sourceZone].splice(index, 1);
       this.battleReleaseEvolutionBase(card);
       this.dslClearStaticFromCard(card);
