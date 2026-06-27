@@ -5252,7 +5252,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.39',
+    BUILD_VERSION: '1.14.40',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5364,6 +5364,14 @@ new Vue({
         if (payable && manaCost > 0) {
           const myMana = Number(this.battleSample.self && this.battleSample.self.mana || 0);
           if (myMana < manaCost) { payable = false; reason = `マナが ${manaCost} 必要ですが、現在 ${myMana} です。`; }
+        }
+        if (payable && cost.破壊) {
+          const need = Math.max(1, Number(cost.破壊.枚数 || 1));
+          if (this._dslEligible(cost.破壊).length < need) { payable = false; reason = `破壊コストの対象が${need}枚必要です。`; }
+        }
+        if (payable && cost.崩壊) {
+          const need = Math.max(1, Number(cost.崩壊.枚数 || 1));
+          if (this._dslEligible(cost.崩壊).length < need) { payable = false; reason = `崩壊コストの対象が${need}枚必要です。`; }
         }
         // 自ターンでなければ不可
         if (payable && this.battleSample.activeSide !== 'self') {
@@ -7461,6 +7469,63 @@ new Vue({
       if (triggerLabel === '常在')   return tr === '常在';
       return tr === triggerLabel;
     },
+    async dslPayAbilityCost(cost, sourceCard, label = '能力コスト') {
+      if (!cost) return true;
+      const side = this._battleFieldCardSide(sourceCard) || this._dslCurrentSourceSide() || 'self';
+      const player = this.battleSample && this.battleSample[side];
+      if (!player) return false;
+      if (cost.タップ === '自身') {
+        if (sourceCard && sourceCard._tapped) {
+          this.battleShowNotice('コスト支払い不可', `「${this.fullName(sourceCard)}」は既にタップされています。`, [sourceCard]);
+          return false;
+        }
+        if (sourceCard) this.$set(sourceCard, '_tapped', true);
+      }
+      const manaCost = Number(cost.マナ || 0);
+      if (manaCost > 0) {
+        if (Number(player.mana || 0) < manaCost) {
+          this.battleShowNotice('コスト支払い不可', `マナが ${manaCost} 必要ですが、現在 ${Number(player.mana || 0)} です。`, [sourceCard].filter(Boolean));
+          return false;
+        }
+        player.mana = Math.max(0, Number(player.mana || 0) - manaCost);
+      }
+      const tenryokuCost = Number(cost.天力 || 0);
+      if (tenryokuCost > 0) {
+        if (Number(player.tenryoku || 0) < tenryokuCost) {
+          this.battleShowNotice('コスト支払い不可', `天力が ${tenryokuCost} 必要ですが、現在 ${Number(player.tenryoku || 0)} です。`, [sourceCard].filter(Boolean));
+          return false;
+        }
+        player.tenryoku = Math.max(0, Number(player.tenryoku || 0) - tenryokuCost);
+      }
+      for (const item of [
+        { key: '破壊', dest: 'graveyard', title: '破壊するコスト対象を選択' },
+        { key: '崩壊', dest: 'crumbled', title: '崩壊するコスト対象を選択' },
+      ]) {
+        const sel = cost[item.key];
+        if (!sel) continue;
+        const need = Math.max(1, Number(sel.枚数 || 1));
+        const targets = await this.dslChooseTargets(sel, `${label}: ${item.title}`);
+        if (targets.length < need && !sel.まで) {
+          this.battleShowNotice('コスト支払い不可', `${item.key}するカードを${need}枚選ぶ必要があります。`, [sourceCard].filter(Boolean));
+          return false;
+        }
+        if (item.dest === 'crumbled') {
+          this._dslLastCrumbledCards = targets.slice();
+          this._dslLastCrumbledCount = targets.length;
+          this._dslLastCrumbledLocations = targets.map(card => this._dslFindCardLocation(card));
+        }
+        if (item.dest === 'graveyard') {
+          this._dslLastDestroyedCards = targets.map(card => ({
+            card,
+            power: this._dslCardEffPower(card),
+            attack: Number(card && card.attack) || 0
+          }));
+        }
+        targets.forEach(card => this._dslMoveCardToZone(card, item.dest));
+      }
+      this.dslRefreshStaticAbilities();
+      return true;
+    },
     /* spec を実行（出現時/使用時 等のトリガーで呼ばれる） */
     async dslRunSpec(card, triggerLabel = '出現時', paidCost = null) {
       if (this._battleIsEffectDisabled(card)) {
@@ -7491,6 +7556,10 @@ new Vue({
             const summary = this._dslSummarizeActions(ab.処理 || []);
             const ok = await this.dslAskOptional(card, ab.契機 || triggerLabel, summary);
             if (!ok) continue;
+          }
+          if (ab.コスト) {
+            const paid = await this.dslPayAbilityCost(ab.コスト, card, `${triggerLabel}コスト`);
+            if (!paid) continue;
           }
           ran = true;
           try {
@@ -7613,6 +7682,9 @@ new Vue({
     _dslZoneOf(sel) {
       const side = sel.対象側 === 'opp' ? 'opp' : 'self';
       const z = sel.領域 || 'field';
+      if (sel.対象側 === 'both') {
+        return ['self', 'opp'].flatMap(s => this._dslZoneOf(Object.assign({}, sel, { 対象側: s })));
+      }
       const player = this.battleSample[side];
       if (!player) return [];
       if (z === 'field') {
@@ -7933,6 +8005,17 @@ new Vue({
         if (this._dslCurrentTurnEndSide !== oppSide) return false;
         return this._battleCountFieldRaces ? this._battleCountFieldRaces(oppSide) >= 3 : false;
       }
+      if (/崩壊したのが自分墓地のオラクルなら/.test(s)) {
+        const cards = this._dslLastCrumbledCards || [];
+        const locations = this._dslLastCrumbledLocations || [];
+        return cards.some((card, idx) =>
+          card &&
+          card.category === 'オラクル' &&
+          locations[idx] &&
+          locations[idx].side === 'self' &&
+          locations[idx].zone === 'graveyard'
+        );
+      }
       return null;
     },
     _dslCompareNum(a, op, b) {
@@ -8179,15 +8262,19 @@ new Vue({
       // 数参照用コンテキスト
       this._dslLastCrumbledCount = targets.length;
       this._dslLastCrumbledCards = targets.slice();
+      this._dslLastCrumbledLocations = targets.map(card => this._dslFindCardLocation(card));
       this._dslLastMovedCount = targets.length;
-      targets.forEach(c => this._dslMoveFromField(c, 'crumbled'));
+      targets.forEach(c => this._dslMoveCardToZone(c, 'crumbled'));
       this.battleShowNotice('崩壊', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を崩壊させました。`, targets);
+      if (Array.isArray(act.後続) && act.後続.length) {
+        await this.dslRunActions(act.後続, sourceCard);
+      }
     },
     async _dslOpToGraveyard(act, sourceCard) {
       const targets = await this.dslChooseTargets(act.対象, '墓地に送る対象を選択');
       if (!targets.length) return;
       this.battleSaveUndo();
-      targets.forEach(c => this._dslMoveFromField(c, 'graveyard'));
+      targets.forEach(c => this._dslMoveCardToZone(c, 'graveyard'));
       this.battleShowNotice('墓地送り', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を墓地に送りました。`, targets);
     },
     async _dslOpTap(act, sourceCard, doTap) {
@@ -9169,6 +9256,41 @@ new Vue({
         return field.some(c => !!(c && c._staticDoubleShinshiEnter));
       }
       return false;
+    },
+    _dslFindCardLocation(card) {
+      if (!card || !this.battleSample) return null;
+      for (const side of ['self', 'opp']) {
+        const p = this.battleSample[side];
+        if (!p) continue;
+        for (const zone of ['legacies', 'relics', 'hand', 'graveyard', 'crumbled', 'deck']) {
+          const arr = p[zone];
+          if (Array.isArray(arr) && arr.includes(card)) return { side, zone };
+        }
+      }
+      return null;
+    },
+    _dslMoveCardToZone(card, destZone, forceSide) {
+      if (!card || !destZone || !this.battleSample) return null;
+      if (this._dslMoveFromField(card, destZone, forceSide)) {
+        return forceSide || card._lastFieldSide || this._battleFieldCardSide(card) || null;
+      }
+      const sides = forceSide ? [forceSide] : ['self', 'opp'];
+      for (const side of sides) {
+        const p = this.battleSample[side];
+        if (!p) continue;
+        for (const zone of ['hand', 'graveyard', 'crumbled', 'deck']) {
+          const arr = p[zone];
+          if (!Array.isArray(arr)) continue;
+          const idx = arr.indexOf(card);
+          if (idx < 0) continue;
+          arr.splice(idx, 1);
+          p[destZone] = p[destZone] || [];
+          if (Array.isArray(p[destZone])) p[destZone].push(card);
+          this._battleSyncSideCounts(side);
+          return side;
+        }
+      }
+      return null;
     },
     battleConsumeEffectMultiplierOnce(side, key) {
       const p = this.battleSample && this.battleSample[side];
@@ -11043,13 +11165,8 @@ new Vue({
         return;
       }
       this.battleSaveUndo();
-      // コスト支払：タップ自身
-      if (cost.タップ === '自身') this.$set(card, '_tapped', true);
-      // マナ消費
-      const manaCost = Number(cost.マナ || 0);
-      if (manaCost > 0) {
-        this.battleSample.self.mana = Math.max(0, Number(this.battleSample.self.mana || 0) - manaCost);
-      }
+      const paid = await this.dslPayAbilityCost(cost, card, '起動コスト');
+      if (!paid) return;
       // 備考付きのコスト（例：ヨリシロちゃんの「戦闘/神攻の代わり」）は通知のみ
       if (cost.備考) {
         this.battleShowNotice('起動コスト：補足', `「${this.fullName(card)}」の起動コストには注釈があります：${cost.備考}。手動で内容を確認してください。`, [card]);
@@ -11061,12 +11178,15 @@ new Vue({
         cards: [card],
       };
       // spec処理を実行
+      const prevSource = this._dslCurrentSource;
       this._dslCurrentSource = card;
       try {
         await this.dslRunActions(ab.処理 || [], card);
       } catch (e) {
         console.warn('[DSL] 起動能力エラー:', e);
         this.battleShowNotice('起動能力エラー', `「${this.fullName(card)}」の起動能力処理中にエラーが発生しました。手動で処理してください。`, [card]);
+      } finally {
+        this._dslCurrentSource = prevSource;
       }
     },
     battleFieldMenuAction(action) {
