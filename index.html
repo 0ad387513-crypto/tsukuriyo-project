@@ -5251,7 +5251,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.32',
+    BUILD_VERSION: '1.14.33',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7777,6 +7777,15 @@ new Vue({
       if (cond.状態 === '天力') return this._dslCompareNum(this.battleSample.self.tenryoku, cond.比較, cond.値);
       if (cond.状態 === 'マナ最大値') return this._dslCompareNum(this.battleSample.self.manaMax, cond.比較, cond.値);
       if (cond.状態 === 'ライフ') return this._dslCompareNum(this.battleSample.self.life, cond.比較, cond.値);
+      if (cond.状態 === '自ライフ満タン') {
+        const self = this.battleSample.self || {};
+        return Number(self.life || 0) >= Number(self.lifeMax || 0);
+      }
+      if (cond.状態 === '自ライフ<相手ライフ') {
+        const self = this.battleSample.self || {};
+        const opp = this.battleSample.opp || {};
+        return Number(self.life || 0) < Number(opp.life || 0);
+      }
       if (cond.状態 === '自身タップ') return !!(this._dslCurrentSource && this._dslCurrentSource._tapped);
       if (cond.状態 === '自身戦闘力') return this._dslCompareNum(this._dslCardEffPower(this._dslCurrentSource), cond.比較, cond.値);
       if (cond.状態 === '自陣種族数') {
