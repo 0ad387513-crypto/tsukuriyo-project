@@ -4238,6 +4238,47 @@
     </div>
   </div>
 
+  <!-- ===== DSL 任意能力 発動確認モーダル ===== -->
+  <div v-if="dslOptionalModal" class="battle-zone-modal" @click.self="dslAnswerOptional(false)">
+    <div class="battle-zone-modal-panel" style="max-width:520px;">
+      <h3 class="battle-zone-modal-title">
+        任意効果：発動しますか？
+        <span style="font-size:12px;color:#9aa;font-weight:400;">— {{ dslOptionalModal.triggerLabel }}</span>
+      </h3>
+      <div class="public-process-badge">両プレイヤーへの公開処理</div>
+      <p class="battle-deck-modal-message" style="margin:8px 0;">
+        「{{ fullName(dslOptionalModal.sourceCard) }}」の効果です。発動してもよいですが、必須ではありません。
+      </p>
+      <pre style="background:#10141d;color:#cbd3de;padding:10px 12px;border-radius:5px;font-size:12px;white-space:pre-wrap;line-height:1.55;margin:0 0 12px;">{{ dslOptionalModal.summary }}</pre>
+      <div class="battle-zone-modal-actions">
+        <button class="battle-back-btn" style="background:#2e7d4f;border-color:#7cf0a8;color:#fff;" @click="dslAnswerOptional(true)">発動する</button>
+        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="dslAnswerOptional(false)">発動しない</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DSL 選択op専用モーダル ===== -->
+  <div v-if="dslChoiceModal" class="battle-zone-modal" @click.self="dslCancelChoice">
+    <div class="battle-zone-modal-panel" style="max-width:560px;">
+      <h3 class="battle-zone-modal-title">
+        {{ dslChoiceModal.sourceCard ? '「' + fullName(dslChoiceModal.sourceCard) + '」' : '' }}
+        {{ dslChoiceModal.prompt }}
+      </h3>
+      <div class="public-process-badge">両プレイヤーへの公開処理</div>
+      <div style="display:flex;flex-direction:column;gap:8px;padding:6px 0;">
+        <button v-for="(opt, i) in dslChoiceModal.options" :key="'choice'+i"
+                class="battle-back-btn"
+                style="text-align:left;padding:10px 14px;background:#202840;border-color:#3a4256;color:#d4e0f0;"
+                @click="dslAnswerChoice(i)">
+          {{ i + 1 }}. {{ opt }}
+        </button>
+      </div>
+      <div class="battle-zone-modal-actions">
+        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="dslCancelChoice">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== αモード設定モーダル（appView非依存・トップメニューからも表示） ===== -->
   <div v-if="battleAlphaSetup" class="battle-zone-modal" @click.self="battleCancelAlphaSetup">
     <div class="battle-zone-modal-panel" style="max-width:560px;">
@@ -5146,9 +5187,13 @@ new Vue({
     _dslDeferred: null,       // 対象選択を待つPromiseのresolver
     /* αモード設定 */
     battleAlphaSetup: null,   // { selfColor, selfKamiNo, oppKamiNo, oppYorishiro }
+    /* DSL：任意能力の発動確認モーダル */
+    dslOptionalModal: null,   // { sourceCard, triggerLabel, summary, resolver }
+    /* DSL：「選択」op専用モーダル */
+    dslChoiceModal: null,     // { sourceCard, prompt, options, resolver }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.4',
+    BUILD_VERSION: '1.14.5',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6358,6 +6403,8 @@ new Vue({
       this.battleUndoStack = [];
       this.battlePendingEffects = [];
       this.dslTargetModal = null;
+      this.dslOptionalModal = null;
+      this.dslChoiceModal = null;
       this._dslDeferred = null;
       this._dslCurrentSource = null;
       this.battleSenteiModal = null;
@@ -6940,8 +6987,12 @@ new Vue({
         }
         // 条件評価
         if (ab.条件 && !this.dslEvalCond(ab.条件)) continue;
-        // 任意能力：今は確認なしで自動実行（後で確認モーダル化可）
-        // if (ab.任意) { /* 任意確認 */ }
+        // 任意能力：「〜してもよい」→ 確認モーダルでyes/no
+        if (ab.任意) {
+          const summary = this._dslSummarizeActions(ab.処理 || []);
+          const ok = await this.dslAskOptional(card, ab.契機 || triggerLabel, summary);
+          if (!ok) continue;
+        }
         ran = true;
         try {
           await this.dslRunActions(ab.処理 || [], card);
@@ -6982,6 +7033,12 @@ new Vue({
         case '選定':       return this._dslOpSentei(act, sourceCard);
         case '分岐':       return this._dslOpBranch(act, sourceCard);
         case '選択':       return this._dslOpChoice(act, sourceCard);
+        case '自身破壊':   return this._dslOpSelfDestroy(sourceCard, 'graveyard');
+        case '自身崩壊':   return this._dslOpSelfDestroy(sourceCard, 'crumbled');
+        case '場に出す':   return this._dslOpPutIntoField(act, sourceCard);
+        case 'サーチ':     return this._dslOpSearch(act, sourceCard);
+        case '手札に加える': return this._dslOpAddToHand(act, sourceCard);
+        case 'デッキ墓地送り': return this._dslOpMillDeck(act, sourceCard);
         default:
           // 未対応op：手動フォールバック通知
           this.battleShowNotice(
@@ -7335,12 +7392,145 @@ new Vue({
       }
     },
     async _dslOpChoice(act, sourceCard) {
-      // プレイヤーがA/Bを選ぶ。簡易実装：confirmで第1選択肢を採用するか問う
-      const opts = act.選択肢 || [];
+      const opts = (act.選択肢 || []).filter(Boolean);
       if (!opts.length) return;
-      // 暫定：notice表示して自動的に最初の選択肢を実行（後で選択UIに拡張）
-      this.battleShowNotice('選択（簡易）', '複数選択肢の効果です。1番目の選択肢を自動実行します。詳細は手動で確認してください。', [sourceCard]);
-      await this.dslRunActions(opts[0].処理 || [], sourceCard);
+      const labels = opts.map((o, i) => o.説明 || `選択肢${i + 1}`);
+      const picked = await this.dslAskChoice(sourceCard, '効果を選んでください', labels);
+      if (picked < 0) return;
+      const chosen = opts[picked];
+      await this.dslRunActions(chosen.処理 || [], sourceCard);
+    },
+    /* 任意能力の発動可否を尋ねる */
+    dslAskOptional(card, triggerLabel, summary) {
+      return new Promise((resolve) => {
+        this.dslOptionalModal = {
+          sourceCard: card,
+          triggerLabel,
+          summary,
+          resolver: resolve,
+        };
+      });
+    },
+    dslAnswerOptional(yes) {
+      const m = this.dslOptionalModal;
+      this.dslOptionalModal = null;
+      if (m && m.resolver) m.resolver(!!yes);
+    },
+    /* 選択肢A/Bを尋ねる */
+    dslAskChoice(card, prompt, options) {
+      return new Promise((resolve) => {
+        this.dslChoiceModal = {
+          sourceCard: card,
+          prompt,
+          options,
+          resolver: resolve,
+        };
+      });
+    },
+    dslAnswerChoice(index) {
+      const m = this.dslChoiceModal;
+      this.dslChoiceModal = null;
+      if (m && m.resolver) m.resolver(index);
+    },
+    dslCancelChoice() {
+      const m = this.dslChoiceModal;
+      this.dslChoiceModal = null;
+      if (m && m.resolver) m.resolver(-1);
+    },
+    /* 処理リストを人間可読のサマリに変換（任意確認の表示用） */
+    _dslSummarizeActions(actions) {
+      if (!Array.isArray(actions) || !actions.length) return '';
+      return actions.map(a => {
+        const op = a.操作 || a.op || '?';
+        const extras = [];
+        if (a.付与) extras.push(`付与:${(a.付与 || []).join('・')}`);
+        if (a.対象 && a.対象.絞込) extras.push(`対象:${(a.対象.絞込 || []).join('/')}`);
+        if (a.数) extras.push(`数:${a.数}`);
+        return `・${op}${extras.length ? '（' + extras.join('、') + '）' : ''}`;
+      }).join('\n');
+    },
+    /* ---- 追加op ---- */
+    _dslOpSelfDestroy(sourceCard, destZone) {
+      if (!sourceCard) return;
+      const moved = this._dslMoveFromField(sourceCard, destZone);
+      const label = destZone === 'graveyard' ? '自身破壊（墓地送り）' : '自身崩壊';
+      if (moved) this.battleShowNotice(label, `「${this.fullName(sourceCard)}」を${destZone === 'graveyard' ? '墓地' : '崩壊ゾーン'}に送りました。`, [sourceCard]);
+    },
+    /* 手札・墓地から指定対象を場に出す */
+    async _dslOpPutIntoField(act, sourceCard) {
+      const sel = act.対象 || { 対象側: 'self', 領域: 'hand', 選択者: 'player', 枚数: 1 };
+      const targets = await this.dslChooseTargets(sel, '場に出すカードを選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      const side = sel.対象側 === 'opp' ? 'opp' : 'self';
+      const player = this.battleSample[side];
+      const sourceZone = sel.領域 || 'hand';
+      const placed = [];
+      targets.forEach(card => {
+        const srcArr = player[sourceZone];
+        if (Array.isArray(srcArr)) {
+          const idx = srcArr.indexOf(card);
+          if (idx >= 0) srcArr.splice(idx, 1);
+          if (sourceZone === 'hand') player.handCount = (player.hand || []).length;
+        }
+        const destZone = this.battleFieldZoneForSummon(card) || 'legacies';
+        if (Array.isArray(player[destZone]) && player[destZone].length < 7) {
+          player[destZone].push(card);
+          placed.push(card);
+        }
+      });
+      if (placed.length) {
+        this.battleShowNotice('場に出す', `${placed.map(c => `「${this.fullName(c)}」`).join('、')}を場に出しました。`, placed);
+      }
+    },
+    /* デッキから条件を満たすカードを探して手札に加える（サーチ） */
+    async _dslOpSearch(act, sourceCard) {
+      const sel = Object.assign({ 対象側: 'self', 領域: 'deck', 選択者: 'player', 枚数: 1 }, act.対象 || {});
+      const targets = await this.dslChooseTargets(sel, 'デッキからサーチするカードを選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      const p = this.battleSample.self;
+      targets.forEach(card => {
+        const idx = (p.deck || []).indexOf(card);
+        if (idx >= 0) p.deck.splice(idx, 1);
+        p.hand = p.hand || []; p.hand.push(card);
+      });
+      p.handCount = (p.hand || []).length;
+      p.deckCount = (p.deck || []).length;
+      this.battleShowNotice('サーチ', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に加えました。デッキはシャッフルしてください。`, targets);
+    },
+    /* 墓地などから指定対象を手札に加える */
+    async _dslOpAddToHand(act, sourceCard) {
+      const sel = Object.assign({ 対象側: 'self', 領域: 'graveyard', 選択者: 'player', 枚数: 1 }, act.対象 || {});
+      const targets = await this.dslChooseTargets(sel, '手札に加えるカードを選択');
+      if (!targets.length) return;
+      this.battleSaveUndo();
+      const side = sel.対象側 === 'opp' ? 'opp' : 'self';
+      const p = this.battleSample[side];
+      const fromZone = sel.領域 || 'graveyard';
+      targets.forEach(card => {
+        const arr = p[fromZone];
+        if (Array.isArray(arr)) {
+          const idx = arr.indexOf(card);
+          if (idx >= 0) arr.splice(idx, 1);
+        }
+        p.hand = p.hand || []; p.hand.push(card);
+      });
+      p.handCount = (p.hand || []).length;
+      this.battleShowNotice('手札に加える', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に加えました。`, targets);
+    },
+    /* 自分デッキの上から N 枚を墓地へ送る */
+    _dslOpMillDeck(act, sourceCard) {
+      const n = Math.max(1, Number(act.数 || (act.対象 && act.対象.枚数) || 1));
+      const p = this.battleSample.self;
+      if (!p || !Array.isArray(p.deck)) return;
+      const milled = p.deck.splice(0, n);
+      if (!milled.length) return;
+      this.battleSaveUndo();
+      p.graveyard = p.graveyard || [];
+      p.graveyard.push(...milled);
+      p.deckCount = p.deck.length;
+      this.battleShowNotice('デッキ墓地送り', `デッキ上から${milled.length}枚を墓地に送りました。`, milled);
     },
 
     /* ===================================================================
