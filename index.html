@@ -5232,7 +5232,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.22',
+    BUILD_VERSION: '1.14.23',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7262,12 +7262,12 @@ new Vue({
         case '昇華値変更': return this._dslOpSublimChange(act, sourceCard);
         case '他効果発動': return this._dslOpTriggerOtherEffect(act, sourceCard);
         case '公開':       return this._dslOpPublicNotice(act, sourceCard);
-        case '相手選択破棄':
-        case '相手選択保護':
         case 'ステータス設定':
         case '置換':
         case '設置制限':
         case '効果付与': return this._dslOpManualRuleEffect(act, sourceCard);
+        case '相手選択破棄': return this._dslOpOpponentChooseDiscard(act, sourceCard);
+        case '相手選択保護': return this._dslOpOpponentChooseProtect(act, sourceCard);
         case '効果無効化': return this._dslOpEffectDisable(act, sourceCard);
         default:
           // 未対応op：手動フォールバック通知
@@ -7392,6 +7392,21 @@ new Vue({
           selected: [],
           need: Math.min(need, pool.length),
           canSkip: !!sel.任意,
+        };
+        this._dslDeferred = resolve;
+      });
+    },
+    dslAskCustomTargets(promptLabel, candidates, need = 1, sourceCard = null, canSkip = false) {
+      const pool = (candidates || []).filter(Boolean);
+      if (!pool.length) return Promise.resolve([]);
+      return new Promise((resolve) => {
+        this.dslTargetModal = {
+          sourceCard: sourceCard || this._dslCurrentSource,
+          prompt: promptLabel || '対象を選択',
+          candidates: pool,
+          selected: [],
+          need: Math.min(Math.max(1, Number(need) || 1), pool.length),
+          canSkip: !!canSkip
         };
         this._dslDeferred = resolve;
       });
@@ -7976,6 +7991,82 @@ new Vue({
         `${cards.map(c => `「${this.fullName(c)}」`).join('、')}の効果を${side === 'opp' ? '次の相手ターン終了時' : '次の自分ターン終了時'}まで無効化しました。`,
         cards
       );
+    },
+    async _dslOpOpponentChooseDiscard(act, sourceCard) {
+      const opp = this.battleSample && this.battleSample.opp;
+      if (!opp) return;
+      const need = Math.max(1, Number(act.数 || 1));
+      const candidates = [
+        ...(opp.hand || []),
+        ...(opp.legacies || [])
+      ].filter(Boolean);
+      if (!candidates.length) {
+        this.battleShowNotice('相手選択破棄', '相手が選択できる手札またはレガシーがありません。', sourceCard ? [sourceCard] : []);
+        return;
+      }
+      const picked = await this.dslAskCustomTargets('相手が墓地へ送る手札/破壊するレガシーを選択', candidates, need, sourceCard);
+      if (!picked.length) return;
+      this.battleSaveUndo();
+      const moved = [];
+      const destroyed = [];
+      opp.graveyard = opp.graveyard || [];
+      picked.forEach(card => {
+        const handIdx = (opp.hand || []).indexOf(card);
+        if (handIdx >= 0) {
+          opp.hand.splice(handIdx, 1);
+          opp.graveyard.push(card);
+          moved.push(card);
+          return;
+        }
+        const legacyIdx = (opp.legacies || []).indexOf(card);
+        if (legacyIdx >= 0 && this._dslMoveFromField(card, 'graveyard', 'opp')) {
+          moved.push(card);
+          destroyed.push(card);
+        }
+      });
+      if (!moved.length) return;
+      this._battleSyncSideCounts('opp');
+      this.dslRefreshStaticAbilities();
+      this.battleShowNotice(
+        '相手選択破棄',
+        `${moved.map(c => `「${this.fullName(c)}」`).join('、')}を相手の墓地へ送りました。`,
+        moved
+      );
+      destroyed.forEach(card => this.battleRunDeathKeywordEffects(card));
+    },
+    async _dslOpOpponentChooseProtect(act, sourceCard) {
+      const opp = this.battleSample && this.battleSample.opp;
+      if (!opp) return;
+      const fieldCards = [
+        ...(opp.legacies || []),
+        ...(opp.relics || [])
+      ].filter(Boolean);
+      if (!fieldCards.length) {
+        this.battleShowNotice('相手選択保護', '相手フィールドに選択できるカードがありません。', sourceCard ? [sourceCard] : []);
+        return;
+      }
+      const picked = await this.dslAskCustomTargets('相手が破壊しないフィールドカードを1枚選択', fieldCards, Number(act.数 || 1), sourceCard);
+      if (!picked.length) return;
+      const protectedCard = picked[0];
+      const targets = fieldCards.filter(card => card !== protectedCard);
+      if (!targets.length) {
+        this.battleShowNotice('相手選択保護', `「${this.fullName(protectedCard)}」以外に破壊するカードがありません。`, [protectedCard]);
+        return;
+      }
+      this.battleSaveUndo();
+      const destroyed = [];
+      targets.forEach(card => {
+        if (this._dslMoveFromField(card, 'graveyard', 'opp')) destroyed.push(card);
+      });
+      if (!destroyed.length) return;
+      this._battleSyncSideCounts('opp');
+      this.dslRefreshStaticAbilities();
+      this.battleShowNotice(
+        '相手選択保護',
+        `相手は「${this.fullName(protectedCard)}」を残しました。${destroyed.map(c => `「${this.fullName(c)}」`).join('、')}を破壊しました。`,
+        [protectedCard].concat(destroyed)
+      );
+      destroyed.forEach(card => this.battleRunDeathKeywordEffects(card));
     },
     _dslOpManualRuleEffect(act, sourceCard) {
       const op = act.操作 || act.op || '効果';
