@@ -5240,6 +5240,7 @@ new Vue({
     dslTargetModal: null,     // { sourceCard, prompt, candidates, selected, need, onResolve }
     _dslCurrentSource: null,  // 実行中のソースカード参照
     _dslDeferred: null,       // 対象選択を待つPromiseのresolver
+    _dslCurrentTurnEndSide: null, // ターン終了時DSLの終了側
     /* αモード設定 */
     battleAlphaSetup: null,   // { selfColor, selfKamiNo, oppKamiNo, oppYorishiro }
     /* DSL：任意能力の発動確認モーダル */
@@ -5251,7 +5252,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.38',
+    BUILD_VERSION: '1.14.39',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6893,7 +6894,28 @@ new Vue({
       }
     },
 
-    battleEndTurn() {
+    async battleRunTurnEndEffects(endingSide) {
+      if (!this.effectSpecsReady || !this.battleSample) return;
+      const bs = this.battleSample;
+      const cards = [];
+      ['self', 'opp'].forEach(side => {
+        const p = bs[side];
+        if (!p) return;
+        cards.push(...(p.legacies || []), ...(p.relics || []));
+      });
+      const prev = this._dslCurrentTurnEndSide;
+      this._dslCurrentTurnEndSide = endingSide;
+      try {
+        for (const card of cards.slice()) {
+          if (!card || !this.dslHasSpecForTrigger(card, 'ターン終了時')) continue;
+          if (!this._battleFieldCardSide(card)) continue;
+          await this.dslRunSpec(card, 'ターン終了時', null);
+        }
+      } finally {
+        this._dslCurrentTurnEndSide = prev;
+      }
+    },
+    async battleEndTurn() {
       if (this.battleSample.result) return;
       this.battleSaveUndo();
       const bs = this.battleSample;
@@ -6911,6 +6933,7 @@ new Vue({
       this._battleCheckDestroyZeroPower();
       // 天力トリガー（ターン終了系：K2 ヤマトタケル / K3 オオクニヌシ / K4 タケミカヅチ）
       this.battleFireKamiEvent(endingSide, 'turnEnd', {});
+      await this.battleRunTurnEndEffects(endingSide);
       const nextSide = bs.activeSide === 'self' ? 'opp' : 'self';
       if (nextSide === this.battleContext.firstSide) bs.turn += 1;
       bs.activeSide = nextSide;
@@ -7903,6 +7926,12 @@ new Vue({
       if (/自分フィールドと墓地に同名レガシー/.test(s) && /いない/.test(s)) {
         const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
         return this._battleHasOwnDuplicateLegacy ? !this._battleHasOwnDuplicateLegacy(side) : true;
+      }
+      if (/相手ターン終了時/.test(s) && /相手フィールド/.test(s) && /異なる種族3種以上/.test(s)) {
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const oppSide = side === 'self' ? 'opp' : 'self';
+        if (this._dslCurrentTurnEndSide !== oppSide) return false;
+        return this._battleCountFieldRaces ? this._battleCountFieldRaces(oppSide) >= 3 : false;
       }
       return null;
     },
