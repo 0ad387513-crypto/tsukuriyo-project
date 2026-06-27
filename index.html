@@ -4072,7 +4072,7 @@
 
     <!-- ===== フェイズ3：選定モーダル ===== -->
     <!-- ===== αモード設定モーダル ===== -->
-    <div v-if="battleAlphaSetup" class="battle-zone-modal" @click.self="_battleCancelAlphaSetup">
+    <div v-if="battleAlphaSetup" class="battle-zone-modal" @click.self="battleCancelAlphaSetup">
       <div class="battle-zone-modal-panel" style="max-width:560px;">
         <h3 class="battle-zone-modal-title">対戦画面α 設定</h3>
         <div style="display:flex;flex-direction:column;gap:14px;padding:8px 4px;">
@@ -4112,8 +4112,8 @@
           </div>
         </div>
         <div class="battle-zone-modal-actions">
-          <button class="battle-back-btn" style="background:#2a5cb8;border-color:#6090e0;color:#fff;" @click="_battleStartAlpha">対戦開始</button>
-          <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="_battleCancelAlphaSetup">キャンセル</button>
+          <button class="battle-back-btn" style="background:#2a5cb8;border-color:#6090e0;color:#fff;" @click="battleStartAlpha">対戦開始</button>
+          <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="battleCancelAlphaSetup">キャンセル</button>
         </div>
       </div>
     </div>
@@ -5147,7 +5147,7 @@ new Vue({
     battleAlphaSetup: null,   // { selfColor, selfKamiNo, oppKamiNo, oppYorishiro }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.1',
+    BUILD_VERSION: '1.14.2',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6175,7 +6175,7 @@ new Vue({
         alert('対戦画面α起動エラー：' + e.message);
       }
     },
-    _battleStartAlpha() {
+    battleStartAlpha() {
       const setup = this.battleAlphaSetup || {};
       const color = setup.selfColor || 'ミックス';
       const all = this.allCards.filter(c => !c.isToken && !c.isKami && c.color !== '創');
@@ -6219,7 +6219,7 @@ new Vue({
         }
       }
     },
-    _battleCancelAlphaSetup() {
+    battleCancelAlphaSetup() {
       this.battleAlphaSetup = null;
     },
     openBattleLaunch(source) {
