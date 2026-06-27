@@ -3892,6 +3892,12 @@
          @click.stop>
       <template v-if="!battleFieldMenu.subMode">
         <button @click="battleFieldMenuAction('toggleTap')">{{ battleFieldMenuTapLabel }}</button>
+        <button v-for="(ab, ai) in battleFieldMenuActivatedAbilities" :key="'act'+ai"
+                :disabled="!ab.payable"
+                :title="ab.payable ? '' : ab.unpayableReason"
+                @click="battleFieldMenuActivate(ai)">
+          {{ ab.label }}
+        </button>
         <button v-if="battleFieldMenu.zone === 'legacies'" @click="battleFieldMenuOpenSub('power')">戦闘力を変更…</button>
         <button v-if="battleFieldMenu.zone === 'legacies'" @click="battleFieldMenuOpenSub('attack')">神攻力を変更…</button>
         <button @click="battleFieldMenuAction('hand')">手札へ戻す</button>
@@ -5232,7 +5238,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.26',
+    BUILD_VERSION: '1.14.27',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5321,6 +5327,43 @@ new Vue({
     battleFieldMenuCurrentAttack() {
       const c = this.battleFieldMenuCurrentCard;
       return c ? Number(c.attack || 0) : 0;
+    },
+    /* 現在右クリック中のカードが持つ「起動」契機の能力リスト（コスト支払可否を含む） */
+    battleFieldMenuActivatedAbilities() {
+      const card = this.battleFieldMenuCurrentCard;
+      if (!card || !this.effectSpecsReady || !this.battleSample) return [];
+      const spec = this._dslGetSpec(card);
+      if (!spec || !Array.isArray(spec.能力)) return [];
+      const list = [];
+      spec.能力.forEach((ab, ai) => {
+        if (!ab || ab.契機 !== '起動') return;
+        const cost = ab.コスト || {};
+        const costStr = this._dslFormatActivationCost(cost);
+        let payable = true;
+        let reason = '';
+        // タップ自身
+        if (cost.タップ === '自身' && card._tapped) {
+          payable = false; reason = 'このカードは既にタップ済みです。';
+        }
+        // マナ
+        const manaCost = Number(cost.マナ || 0);
+        if (payable && manaCost > 0) {
+          const myMana = Number(this.battleSample.self && this.battleSample.self.mana || 0);
+          if (myMana < manaCost) { payable = false; reason = `マナが ${manaCost} 必要ですが、現在 ${myMana} です。`; }
+        }
+        // 自ターンでなければ不可
+        if (payable && this.battleSample.activeSide !== 'self') {
+          payable = false; reason = '自分のターン中のみ発動できます。';
+        }
+        list.push({
+          abilityIndex: ai,
+          ability: ab,
+          label: '⚡ 起動能力を発動' + (costStr ? `（${costStr}）` : ''),
+          payable,
+          unpayableReason: reason,
+        });
+      });
+      return list;
     },
     battleCanFieldDragToAttackTargets() {
       return !!(this.battleFieldDrag && this.battleFieldDrag.zone === 'legacies');
@@ -10408,6 +10451,70 @@ new Vue({
       if (!card) return;
       this.battleSaveUndo();
       this.$set(card, 'attack', value);
+    },
+    /* 起動コストを人間可読の文字列に整形 */
+    _dslFormatActivationCost(cost) {
+      if (!cost) return '';
+      const parts = [];
+      if (cost.タップ === '自身') parts.push('タップ');
+      if (cost.タップ && cost.タップ !== '自身') parts.push('対象タップ');
+      if (Number(cost.マナ || 0) > 0) parts.push(`マナ${cost.マナ}`);
+      if (cost.破壊) parts.push('対象破壊');
+      if (cost.崩壊) parts.push('対象崩壊');
+      if (cost.天力) parts.push(`天力${cost.天力}`);
+      if (cost.備考) parts.push(`※${cost.備考}`);
+      return parts.join('・');
+    },
+    /* 起動能力の発動：コスト支払 → spec処理を実行 */
+    async battleFieldMenuActivate(listIndex) {
+      const list = this.battleFieldMenuActivatedAbilities;
+      const entry = list && list[listIndex];
+      const card = this.battleFieldMenuCurrentCard;
+      this.battleFieldMenu = null;
+      if (!entry || !card) return;
+      if (!entry.payable) {
+        this.battleShowNotice('起動不可', entry.unpayableReason || 'この起動能力は今は発動できません。', [card]);
+        return;
+      }
+      const ab = entry.ability;
+      const cost = ab.コスト || {};
+      // 任意能力なら確認
+      if (ab.任意) {
+        const summary = this._dslSummarizeActions(ab.処理 || []);
+        const ok = await this.dslAskOptional(card, '起動能力', summary);
+        if (!ok) return;
+      }
+      // 条件評価
+      if (ab.条件 && !this.dslEvalCond(ab.条件)) {
+        this.battleShowNotice('起動：条件未達', '発動条件を満たしていません。効果は不発となります。', [card]);
+        return;
+      }
+      this.battleSaveUndo();
+      // コスト支払：タップ自身
+      if (cost.タップ === '自身') this.$set(card, '_tapped', true);
+      // マナ消費
+      const manaCost = Number(cost.マナ || 0);
+      if (manaCost > 0) {
+        this.battleSample.self.mana = Math.max(0, Number(this.battleSample.self.mana || 0) - manaCost);
+      }
+      // 備考付きのコスト（例：ヨリシロちゃんの「戦闘/神攻の代わり」）は通知のみ
+      if (cost.備考) {
+        this.battleShowNotice('起動コスト：補足', `「${this.fullName(card)}」の起動コストには注釈があります：${cost.備考}。手動で内容を確認してください。`, [card]);
+      }
+      // 公開通知
+      this.battleNotice = {
+        title: `起動能力を発動：${this.fullName(card)}`,
+        message: `コスト：${this._dslFormatActivationCost(cost) || '無'} を支払い、効果を解決します。`,
+        cards: [card],
+      };
+      // spec処理を実行
+      this._dslCurrentSource = card;
+      try {
+        await this.dslRunActions(ab.処理 || [], card);
+      } catch (e) {
+        console.warn('[DSL] 起動能力エラー:', e);
+        this.battleShowNotice('起動能力エラー', `「${this.fullName(card)}」の起動能力処理中にエラーが発生しました。手動で処理してください。`, [card]);
+      }
     },
     battleFieldMenuAction(action) {
       const m = this.battleFieldMenu;
