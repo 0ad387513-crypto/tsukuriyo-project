@@ -5274,7 +5274,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.43',
+    BUILD_VERSION: '1.14.44',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6849,7 +6849,15 @@ new Vue({
         const ref = getDb().ref(path);
         const handler = snap => this._battleApplyRemoteState(snap.val());
         ref.on('value', handler);
-        this.battleNet._unsub = () => ref.off('value', handler);
+        // 通知（バナー）も同期：別パスで購読
+        const noticePath = path.replace(/\/state$/, '/notice');
+        const noticeRef = getDb().ref(noticePath);
+        const noticeHandler = snap => this._battleApplyRemoteNotice(snap.val());
+        noticeRef.on('value', noticeHandler);
+        this.battleNet._unsub = () => {
+          ref.off('value', handler);
+          try { noticeRef.off('value', noticeHandler); } catch (e) {}
+        };
       } catch (e) {
         console.error('[sync] 購読開始失敗:', e);
         this.$set(this.battleNet, 'lastError', '購読開始失敗：' + (e && e.message));
@@ -6862,6 +6870,7 @@ new Vue({
         on: false, code: null, table: null, mySeat: null, oppSeat: null,
         statePath: null, oppReady: false, _unsub: null, _wasActive: false,
         lastPublishedAt: null, lastReceivedAt: null, lastError: null,
+        _lastNoticeAt: 0,
       };
       this._battleStopSyncTick();
     },
@@ -7477,6 +7486,36 @@ new Vue({
     },
     battleShowNotice(title, message, cards = []) {
       this.battleNotice = { title, message, cards };
+      // オンライン同期：相手にも通知を共有（writerガードと重複防止のため ts を付与）
+      this._battlePublishNotice(title, message, cards);
+    },
+    _battlePublishNotice(title, message, cards) {
+      const n = this.battleNet;
+      if (!n || !n.on || !n.statePath || this._battleApplyingRemote) return;
+      // 自分のターンでない場合は publish しない（相手の操作で出した notice は相手側が publish する）
+      if (this.battleSample && this.battleSample.activeSide !== 'self') return;
+      try {
+        const cardNos = (cards || []).map(c => c && c.no != null ? String(c.no) : null).filter(Boolean);
+        const payload = {
+          writer: n.mySeat, title: String(title || ''), message: String(message || ''),
+          cardNos, ts: Date.now(),
+        };
+        const noticePath = n.statePath.replace(/\/state$/, '/notice');
+        getDb().ref(noticePath).set(payload).catch(() => {});
+      } catch (e) { /* silent */ }
+    },
+    _battleApplyRemoteNotice(payload) {
+      const n = this.battleNet;
+      if (!payload || !n || !n.on) return;
+      if (String(payload.writer) === String(n.mySeat)) return;       // 自分のは無視
+      if (payload.ts && payload.ts <= (n._lastNoticeAt || 0)) return; // 重複（同 ts 以下）は無視
+      n._lastNoticeAt = payload.ts || Date.now();
+      const cards = (payload.cardNos || []).map(no => this.cardByNo[String(no)]).filter(Boolean);
+      this.battleNotice = {
+        title: '【相手】' + (payload.title || ''),
+        message: payload.message || '',
+        cards,
+      };
     },
     battleCardRulesText(card) {
       if (!card) return '';
