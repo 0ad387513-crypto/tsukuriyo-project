@@ -3979,6 +3979,12 @@
     <div v-if="battleZoneCardMenu" class="deck-context-menu zone-card-menu"
          :style="{ left: battleZoneCardMenu.x + 'px', top: battleZoneCardMenu.y + 'px' }"
          @click.stop>
+      <button v-for="(ab, ai) in battleZoneCardMenuGraveyardAbilities" :key="'zga'+ai"
+              :disabled="!ab.payable"
+              :title="ab.payable ? '' : ab.unpayableReason"
+              @click="battleZoneCardMenuGraveyardActivate(ai)">
+        {{ ab.label }}
+      </button>
       <button @click="battleZoneCardMenuAction('hand')">手札に戻す</button>
       <button @click="battleZoneCardMenuAction('field')">場に出す</button>
       <button v-if="battleZoneCardMenu.zone === 'graveyard'" @click="battleZoneCardMenuAction('crumbled')">崩壊ゾーンに移動させる</button>
@@ -5268,7 +5274,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.41',
+    BUILD_VERSION: '1.14.42',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5331,6 +5337,65 @@ new Vue({
       if (this.battleContext.returnView === 'shield') return 'シールド戦';
       if (this.battleContext.returnView === 'game') return '星戦';
       return 'トップ';
+    },
+    /* 墓地カード右クリックメニュー：墓地起動契機の能力リスト（コスト支払可否を含む） */
+    battleZoneCardMenuGraveyardAbilities() {
+      const menu = this.battleZoneCardMenu;
+      if (!menu || menu.zone !== 'graveyard' || menu.side !== 'self') return [];
+      const modal = this.battleZoneModal;
+      if (!modal) return [];
+      const card = modal.cards[menu.index];
+      if (!card || !this.effectSpecsReady || !this.battleSample) return [];
+      const spec = this._dslGetSpec(card);
+      if (!spec || !Array.isArray(spec.能力)) return [];
+      const list = [];
+      spec.能力.forEach((ab, ai) => {
+        if (!ab || ab.契機 !== '墓地起動') return;
+        const cost = ab.コスト || {};
+        const costStr = this._dslFormatActivationCost(cost);
+        let payable = true;
+        let reason = '';
+        // 自ターンでなければ不可
+        if (this.battleSample.activeSide !== 'self') {
+          payable = false; reason = '自分のターン中のみ発動できます。';
+        }
+        // マナ
+        const manaCost = Number(cost.マナ || 0);
+        if (payable && manaCost > 0) {
+          const myMana = Number(this.battleSample.self && this.battleSample.self.mana || 0);
+          if (myMana < manaCost) { payable = false; reason = `マナが ${manaCost} 必要ですが、現在 ${myMana} です。`; }
+        }
+        // 天力
+        const tenCost = Number(cost.天力 || 0);
+        if (payable && tenCost > 0) {
+          const myTen = Number(this.battleSample.self && this.battleSample.self.tenryoku || 0);
+          if (myTen < tenCost) { payable = false; reason = `天力が ${tenCost} 必要ですが、現在 ${myTen} です。`; }
+        }
+        // 破壊コスト：「このカード以外」フィルタは _dslEligible 内で処理されるので、ソースを一時設定して数を確認
+        if (payable && cost.破壊) {
+          const need = Math.max(1, Number(cost.破壊.枚数 || 1));
+          const prev = this._dslCurrentSource; this._dslCurrentSource = card;
+          try {
+            if (this._dslEligible(cost.破壊).length < need) { payable = false; reason = `破壊コストの対象が${need}枚必要です。`; }
+          } finally { this._dslCurrentSource = prev; }
+        }
+        if (payable && cost.崩壊) {
+          const need = Math.max(1, Number(cost.崩壊.枚数 || 1));
+          const prev = this._dslCurrentSource; this._dslCurrentSource = card;
+          try {
+            if (this._dslEligible(cost.崩壊).length < need) { payable = false; reason = `崩壊コストの対象が${need}枚必要です。`; }
+          } finally { this._dslCurrentSource = prev; }
+        }
+        list.push({
+          abilityIndex: ai,
+          ability: ab,
+          card,
+          label: '⚡ 墓地起動：場に出す' + (costStr ? `（${costStr}）` : ''),
+          payable,
+          unpayableReason: reason,
+        });
+      });
+      return list;
     },
     battleNetPublishedAgo() {
       const t = this.battleNet && this.battleNet.lastPublishedAt;
@@ -7960,7 +8025,16 @@ new Vue({
     _dslEligible(sel) {
       const pool = this._dslZoneOf(sel);
       const crit = sel.絞込 || [];
-      return pool.filter(c => this.battleCardMatchesInduceCriteria(c, crit) && this._dslPassCompare(c, sel.比較));
+      const remarks = String(sel.備考 || '');
+      // 「このカード以外」備考：効果発動源のカード自身を選択肢から除外
+      const excludeSelf = /このカード以外/.test(remarks);
+      const src = excludeSelf ? this._dslCurrentSource : null;
+      return pool.filter(c => {
+        if (src && c === src) return false;
+        if (!this.battleCardMatchesInduceCriteria(c, crit)) return false;
+        if (!this._dslPassCompare(c, sel.比較)) return false;
+        return true;
+      });
     },
     /* 汎用対象選択：プレイヤー手動 or 自動 */
     dslChooseTargets(sel, promptLabel) {
@@ -10824,6 +10898,53 @@ new Vue({
         this.battleReturnZoneCardToField(menu.index);
       } else if (action === 'crumbled' || action === 'graveyard') {
         this.battleMoveZoneCard(menu.zone, menu.index, action);
+      }
+    },
+    /* 墓地カードの墓地起動能力を発動：コスト支払い → spec処理 */
+    async battleZoneCardMenuGraveyardActivate(listIndex) {
+      const list = this.battleZoneCardMenuGraveyardAbilities;
+      const entry = list && list[listIndex];
+      const menu = this.battleZoneCardMenu;
+      this.battleZoneCardMenu = null;
+      if (!entry || !entry.card) return;
+      if (!entry.payable) {
+        this.battleShowNotice('墓地起動 不可', entry.unpayableReason || 'この墓地起動能力は今は発動できません。', [entry.card]);
+        return;
+      }
+      const card = entry.card;
+      const ab = entry.ability;
+      // 任意能力なら確認
+      if (ab.任意) {
+        const summary = this._dslSummarizeActions(ab.処理 || []);
+        const ok = await this.dslAskOptional(card, '墓地起動', summary);
+        if (!ok) return;
+      }
+      // 条件評価
+      if (ab.条件 && !this.dslEvalCond(ab.条件)) {
+        this.battleShowNotice('墓地起動：条件未達', '発動条件を満たしていません（備考含む）。手動で確認してください。', [card]);
+        // 備考のみの条件は真扱いになるので、警告通知だけ出して継続する。中止したい場合は return をここに足す。
+      }
+      this.battleSaveUndo();
+      // コスト支払い：共通処理を使用
+      this._dslCurrentSource = card;
+      const paid = await this.dslPayAbilityCost(ab.コスト || {}, card, '墓地起動コスト');
+      if (!paid) {
+        this._dslCurrentSource = null;
+        return;
+      }
+      this.battleZoneModal = null;  // 墓地一覧モーダルを閉じる
+      this.battleNotice = {
+        title: `墓地起動：${this.fullName(card)}`,
+        message: `コスト：${this._dslFormatActivationCost(ab.コスト || {}) || '無'} を支払い、効果を解決します。`,
+        cards: [card],
+      };
+      try {
+        await this.dslRunActions(ab.処理 || [], card);
+      } catch (e) {
+        console.warn('[DSL] 墓地起動エラー:', e);
+        this.battleShowNotice('墓地起動エラー', `「${this.fullName(card)}」の墓地起動処理中にエラーが発生しました。手動で処理してください。`, [card]);
+      } finally {
+        this._dslCurrentSource = null;
       }
     },
     battleMoveZoneCard(sourceZone, index, destinationZone) {
