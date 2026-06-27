@@ -5288,7 +5288,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.46',
+    BUILD_VERSION: '1.14.47',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8508,8 +8508,13 @@ new Vue({
         power: this._dslCardEffPower(card),
         attack: Number(card && card.attack) || 0
       }));
-      targets.forEach(c => this._dslMoveFromField(c, 'graveyard'));
+      const movedFromField = [];
+      targets.forEach(c => {
+        if (this._dslMoveFromField(c, 'graveyard')) movedFromField.push(c);
+      });
       this.battleShowNotice('破壊', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を破壊しました。`, targets);
+      // 死亡時トリガー：場から墓地に行ったもののみ発火（手札からの破壊などには発火しない）
+      movedFromField.forEach(c => this.battleRunDeathKeywordEffects(c));
     },
     async _dslOpReturnToHand(act, sourceCard) {
       const targets = await this.dslChooseTargets(act.対象, '手札に戻す対象を選択');
@@ -10683,7 +10688,8 @@ new Vue({
       ].filter(Boolean);
       if (destroyed.length) this.dslRefreshStaticAbilities();
       this.battleShowNotice('戦闘解決', lines.join('\n'), [attacker, defender, ...destroyed.map(d => d.card)]);
-      destroyed.forEach(d => { if (d.side === 'self') this.battleRunDeathKeywordEffects(d.card); });
+      // 死亡時トリガー：両サイドのカードに対して発火（カードの所有者に紐づく効果）
+      destroyed.forEach(d => this.battleRunDeathKeywordEffects(d.card));
     },
     battleResolveDivineAttack(attackerSide, attackerIndex) {
       if (this.battleSample.result || attackerSide !== 'self') return;
