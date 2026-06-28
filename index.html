@@ -5288,7 +5288,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.53',
+    BUILD_VERSION: '1.14.54',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6603,6 +6603,7 @@ new Vue({
         deckCount: deck.length, graveyard: [], crumbled: [], tempCostMods: [], legacyDestroyedThisTurn: [],
         senteiBoostUsed: false,
         kamiTriggerCounts: {},   // 天力トリガー：各ターンの発動回数管理（K5/K6/K7/K8/K9）
+        cardPlaysThisTurn: 0,    // このターン中にこの側が使用したカード枚数（オラクル/レガシー/レリック合算）
       };
     },
     _battleInitialize(config) {
@@ -7302,6 +7303,8 @@ new Vue({
       // 天力トリガーの各ターン回数カウンタをリセット
       target.kamiTriggerCounts = {};
       target.legacyDestroyedThisTurn = [];
+      // このターン中のカード使用枚数をリセット（「2枚目以降」条件用）
+      target.cardPlaysThisTurn = 0;
       // 自分フィールドのカードを全てアンタップ
       this._battleUntapField(side);
       // ターン開始ドロー（先攻プレイヤーの最初のターンだけ無し）
@@ -8371,6 +8374,15 @@ new Vue({
       if (/自分フィールドにトークンが1枚出たとき/.test(s)) {
         const ev = this._dslCurrentEvent;
         return !!(ev && ev.type === 'tokenPlayed');
+      }
+      if (/相手ターン中/.test(s) && /相手の2枚目以降.*カード使用/.test(s)) {
+        // アラシ等：相手ターン中、相手が2枚目以降のカードを使うとき条件成立
+        const sourceSide = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const oppSide = sourceSide === 'self' ? 'opp' : 'self';
+        const bs = this.battleSample;
+        if (!bs || bs.activeSide !== oppSide) return false;
+        const oppPlayer = bs[oppSide];
+        return Number((oppPlayer && oppPlayer.cardPlaysThisTurn) || 0) >= 1;
       }
       if (/自分フィールドと墓地に同名レガシー/.test(s) && /いない/.test(s)) {
         const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
@@ -10246,6 +10258,8 @@ new Vue({
       player.hand.splice(index, 1);
       player.graveyard.push(card);
       player.handCount = player.hand.length;
+      // このターンのカード使用枚数を加算（「2枚目以降」条件用）
+      player.cardPlaysThisTurn = (Number(player.cardPlaysThisTurn) || 0) + 1;
       this.battleOracleEffect = { card };
       this.hideCardHover();
       // 天力トリガー：オラクル使用（K5 オモイカネ）／昇華支払い（K1 スサノオ）
@@ -10316,6 +10330,8 @@ new Vue({
         player[zone].push(fieldCard);
       }
       player.handCount = player.hand.length;
+      // このターンのカード使用枚数を加算（「2枚目以降」条件用）
+      player.cardPlaysThisTurn = (Number(player.cardPlaysThisTurn) || 0) + 1;
       this.hideCardHover();
       this.dslRefreshStaticAbilities();
       // 天力トリガー：
