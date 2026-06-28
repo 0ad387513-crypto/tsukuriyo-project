@@ -5288,7 +5288,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.54',
+    BUILD_VERSION: '1.14.55',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7870,14 +7870,26 @@ new Vue({
     },
     async dslRunActions(actions, sourceCard) {
       const prevLastAction = this._dslLastAction;
+      const prevSucceeded = this._dslLastActionSucceeded;
       try {
         for (const act of actions) {
           const resolved = this.dslApplySublimAlternative(act);
+          // 「ドローした場合の後続」「ドローした場合の後続コスト」「そうした場合」備考：
+          // 直前の op が成功した時のみ実行（失敗時はスキップ）
+          const noteText = String((resolved && resolved.備考) || '');
+          const gate = /ドローした場合|そうした場合/.test(noteText);
+          if (gate && !this._dslLastActionSucceeded) {
+            this._dslLastAction = resolved;
+            continue;
+          }
+          // 既定で成功扱い。op側で失敗時に false を立てる
+          this._dslLastActionSucceeded = true;
           await this.dslRunAction(resolved, sourceCard);
           this._dslLastAction = resolved;
         }
       } finally {
         this._dslLastAction = prevLastAction;
+        this._dslLastActionSucceeded = prevSucceeded;
       }
     },
     dslApplySublimAlternative(act) {
@@ -8687,7 +8699,7 @@ new Vue({
     },
     async _dslOpToGraveyard(act, sourceCard) {
       const targets = await this.dslChooseTargets(act.対象, '墓地に送る対象を選択');
-      if (!targets.length) return;
+      if (!targets.length) { this._dslLastActionSucceeded = false; return; }
       this.battleSaveUndo();
       targets.forEach(c => this._dslMoveCardToZone(c, 'graveyard'));
       this.battleShowNotice('墓地送り', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を墓地に送りました。`, targets);
@@ -9233,16 +9245,20 @@ new Vue({
         : Number(act.数 || 1);
       const side = act.側 === 'opp' ? 'opp' : 'self';
       const p = this.battleSample[side];
-      if (!p) return;
+      if (!p) { this._dslLastActionSucceeded = false; return; }
       this.battleSaveUndo();
+      let drawnCount = 0;
       for (let i = 0; i < n; i++) {
         if (!p.deck || !p.deck.length) break;
         const drawn = p.deck.shift();
         if (side === 'self') { p.hand = p.hand || []; p.hand.push(drawn); p.handCount = p.hand.length; }
         else { p.handCount = (p.handCount || 0) + 1; }
+        drawnCount++;
       }
       if (p.deck) p.deckCount = p.deck.length;
-      this.battleShowNotice('ドロー', `${side === 'opp' ? '相手' : '自分'}が ${n} 枚ドローしました。`);
+      this.battleShowNotice('ドロー', `${side === 'opp' ? '相手' : '自分'}が ${drawnCount} 枚ドローしました。${drawnCount < n ? '（山札不足のため一部のみ）' : ''}`);
+      // 後続備考「ドローした場合」の判定用：1枚以上ドローできていれば成功
+      if (drawnCount === 0) this._dslLastActionSucceeded = false;
     },
     _dslOpStat(act, key) {
       const n = Number(act.数 || 0);
