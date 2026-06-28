@@ -5305,7 +5305,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.60',
+    BUILD_VERSION: '1.14.61',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8219,6 +8219,7 @@ new Vue({
       return pool.filter(c => {
         if (src && c === src) return false;
         if (excludeReturned.includes(c)) return false;
+        if (/ジェネシス以外/.test(remarks) && /ジェネシス/.test(this.fullName(c))) return false;
         if (!this.battleCardMatchesInduceCriteria(c, crit)) return false;
         if (!this._dslPassCompare(c, sel.比較)) return false;
         return true;
@@ -8319,6 +8320,7 @@ new Vue({
           need: Math.min(need, pool.length),
           canSkip: !!sel.任意,
           maxTotalPower,
+          distinctNames: /カード名が異なる/.test(remarks),
         };
         this._dslDeferred = resolve;
       });
@@ -8344,6 +8346,13 @@ new Vue({
       if (!m) return;
       const idx = m.selected.indexOf(card);
       if (idx >= 0) { m.selected.splice(idx, 1); return; }
+      if (m.distinctNames) {
+        const name = this.fullName(card);
+        if (m.selected.some(c => this.fullName(c) === name)) {
+          this.battleShowNotice('選択できません', 'カード名が異なるカードを選んでください。', [card]);
+          return;
+        }
+      }
       if (m.selected.length >= m.need) {
         if (m.need === 1) { m.selected.splice(0, m.selected.length); m.selected.push(card); }
         return;
@@ -9014,7 +9023,7 @@ new Vue({
         }
         return { sel: { 対象側: 'self', 領域: 'hand' }, targets: cards.slice(0, 1) };
       }
-      if (note) {
+      if (note && !/ジェネシス以外|カード名が異なる|シャッフル/.test(note)) {
         this.battleShowNotice(
           '無償使用：手動確認',
           `「${this.fullName(sourceCard)}」の無償使用対象を自動特定できませんでした。カード本文に従って手動で処理してください。`,
