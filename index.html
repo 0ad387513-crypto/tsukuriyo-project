@@ -7297,11 +7297,26 @@ new Vue({
               this.$set(card, 'power', (Number(card.power) || 0) - removedDelta);
               expired.push(this.fullName(card));
             }
+            // 神威（一時神攻力）も同様にこのターン分を巻き戻す
+            const atkEntries = Array.isArray(card._atkTurns) ? card._atkTurns : null;
+            if (atkEntries && atkEntries.length) {
+              const keepA = [];
+              let removedAtk = 0;
+              atkEntries.forEach(e => {
+                if (e && e.side === side && e.turn === turn) removedAtk += Number(e.delta) || 0;
+                else keepA.push(e);
+              });
+              if (removedAtk !== 0) {
+                this.$set(card, '_atkTurns', keepA);
+                this.$set(card, 'attack', (Number(card.attack) || 0) - removedAtk);
+                if (!expired.includes(this.fullName(card))) expired.push(this.fullName(card));
+              }
+            }
           });
         });
       });
       if (expired.length) {
-        this.battleShowNotice('補正の効果が終了', `${expired.join('、')}に付与されていた【補正】の効果が終了しました。`);
+        this.battleShowNotice('補正・神威の効果が終了', `${expired.join('、')}に付与されていた【補正】／【神威】の効果が終了しました。`);
       }
     },
     /* 戦闘力0以下のレガシーを破壊（補正巻き戻し直後等に呼ぶ） */
@@ -8578,7 +8593,14 @@ new Vue({
         } else if (m = s.match(/^神攻力([+\-]?\d+)/)) {
           this.$set(card, 'attack', (Number(card.attack) || 0) + Number(m[1]));
         } else if (m = s.match(/^神威[:：]?([+\-]?\d+)/)) {
-          this.$set(card, 'attack', (Number(card.attack) || 0) + Number(m[1]));
+          // 一時神攻力（神威）：このターン中のみ。適用ターン＋適用者を記録し、ターン終了時に巻き戻す
+          const delta = Number(m[1]);
+          const applierSide = (this.battleSample && this.battleSample.activeSide) || 'self';
+          const turn = (this.battleSample && this.battleSample.turn) || 1;
+          const atkEntries = Array.isArray(card._atkTurns) ? card._atkTurns.slice() : [];
+          atkEntries.push({ side: applierSide, turn, delta });
+          this.$set(card, '_atkTurns', atkEntries);
+          this.$set(card, 'attack', (Number(card.attack) || 0) + delta);
         } else {
           // キーワード付与（奇襲・疾駆・守護・死角・不可侵・呪殺 等）
           const list = Array.isArray(card._kwGrant) ? card._kwGrant.slice() : [];
