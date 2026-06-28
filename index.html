@@ -5288,7 +5288,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.51',
+    BUILD_VERSION: '1.14.52',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8129,8 +8129,10 @@ new Vue({
       // 「このカード以外」備考：効果発動源のカード自身を選択肢から除外
       const excludeSelf = /このカード以外/.test(remarks);
       const src = excludeSelf ? this._dslCurrentSource : null;
+      const excludeReturned = /戻したカード以外/.test(remarks) ? (this._dslLastReturnedCards || []) : [];
       return pool.filter(c => {
         if (src && c === src) return false;
+        if (excludeReturned.includes(c)) return false;
         if (!this.battleCardMatchesInduceCriteria(c, crit)) return false;
         if (!this._dslPassCompare(c, sel.比較)) return false;
         return true;
@@ -8308,6 +8310,11 @@ new Vue({
           Number(card.cost || 0) <= 3 &&
           this.battleCardMatchesInduceCriteria(card, ['神使レガシー'])
         );
+      }
+      if (/自分レガシーを選んだ場合/.test(s)) {
+        const returned = this._dslLastReturnedCards || [];
+        const side = this._dslLastReturnedSide || 'self';
+        return side === 'self' && returned.some(card => card && card.category === 'レガシー');
       }
       if (/このターン中に自分レガシーが破壊されている/.test(s)) {
         const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
@@ -8629,6 +8636,7 @@ new Vue({
       const side = (act.対象 && act.対象.対象側 === 'opp') ? 'opp' : 'self';
       // 数参照用コンテキスト
       this._dslLastReturnedCards = targets.slice();
+      this._dslLastReturnedSide = side;
       this._dslLastMovedCount = targets.length;
       targets.forEach(c => this._dslMoveFromField(c, 'hand', side));
       this.battleShowNotice('手札に戻す', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に戻しました。`, targets);
