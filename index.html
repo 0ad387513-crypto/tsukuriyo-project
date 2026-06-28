@@ -2284,6 +2284,7 @@
   }
   .battle-sync-status.ready   { background: rgba(46,125,79,.35); border-color: #6cf09a; color: #d8ffd8; }
   .battle-sync-status.waiting { background: rgba(200,120,40,.25); border-color: #f0b86c; color: #ffe2a8; }
+  .battle-sync-status.error   { background: rgba(180,40,40,.35); border-color: #f06c6c; color: #ffd8d8; }
   .battle-surrender-btn {
     background: #8e2430; border: 1px solid #df6672; color: #fff;
     padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 800;
@@ -3555,8 +3556,10 @@
       <span class="battle-phase">{{ battleContext.round ? 'ラウンド' + battleContext.round : battleContext.modeLabel }}</span>
       <span class="battle-setup-note">マリガン 自分{{ battleContext.selfMulligans }}回/相手{{ battleContext.oppMulligans }}回</span>
       <!-- オンライン同期ステータス（対戦テストモードのみ表示） -->
-      <span v-if="battleNet.on" class="battle-sync-status" :class="{ ready: battleNet.oppReady, waiting: !battleNet.oppReady }">
-        🌐 同期: {{ battleNet.oppReady ? '相手接続済' : '相手待機中' }}
+      <span v-if="battleNet.on" class="battle-sync-status"
+            :class="{ ready: battleNet.oppReady && !battleNet.lastError, waiting: !battleNet.oppReady && !battleNet.lastError, error: battleNet.lastError }"
+            :title="battleNet.lastError || ''">
+        🌐 同期: {{ battleNet.lastError ? '⚠️ エラー' : (battleNet.oppReady ? '相手接続済' : '相手待機中') }}
         <span style="opacity:.7;margin-left:6px;">[コード: {{ battleNet.code }} / 席{{ battleNet.mySeat }}]</span>
         <span v-if="battleNet.lastPublishedAt" style="opacity:.6;margin-left:6px;">↑ {{ battleNetPublishedAgo }}</span>
         <span v-if="battleNet.lastReceivedAt" style="opacity:.6;margin-left:6px;">↓ {{ battleNetReceivedAgo }}</span>
@@ -3570,10 +3573,24 @@
     </div>
 
     <!-- ===== マリガン（引き直し）フェーズ ===== -->
+    <!-- マリガン後の相手待ちオーバーレイ -->
+    <div v-if="battleNet.on && battleNet.waitingForOppMulligan" class="battle-mulligan">
+      <div class="bm-inner" style="text-align:center;">
+        <div class="bm-title">⏳ 相手のマリガン待ち</div>
+        <div class="bm-sub" style="margin-top:14px;">
+          あなたは準備完了しました。<br>
+          相手プレイヤーのマリガン完了を待っています…<br>
+          <span style="font-size:11px;color:#9aa;">両者準備完了でターン1が開始されます</span>
+        </div>
+      </div>
+    </div>
     <div v-if="battleMulligan" class="battle-mulligan">
       <div class="bm-inner">
         <div class="bm-firstside">{{ battleContext.firstSide === 'self' ? '▶ 先攻（ON THE PLAY）' : '▶ 後攻（ON THE DRAW）' }}</div>
-        <div class="bm-title">マリガン（引き直し）</div>
+        <div class="bm-title">マリガン（引き直し）
+          <span v-if="battleNet.on && battleNet.mulliganReady && battleNet.mulliganReady[String(battleNet.oppSeat)]" style="font-size:11px;color:#7cf0a8;margin-left:8px;">[相手準備完了 ✓]</span>
+          <span v-else-if="battleNet.on" style="font-size:11px;color:#f0b86c;margin-left:8px;">[相手マリガン中…]</span>
+        </div>
         <div class="bm-sub">
           引き直したいカードを選んで「引き直す」、または「この手札で開始」を押してください。
           <span class="bm-remain">残り {{ battleMulligan.remaining }} 回</span>
@@ -5288,7 +5305,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.55',
+    BUILD_VERSION: '1.14.57',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6687,10 +6704,49 @@ new Vue({
     },
     /* マリガンせずこの手札で開始（任意でマリガン無し） */
     battleKeepHand() { this.battleFinishMulligan(); },
-    /* マリガン確定 → ターン開始 */
+    /* マリガン確定 → 同期モードでは相手の準備完了を待ってからターン開始 */
     battleFinishMulligan() {
       this.battleMulligan = null;
+      const n = this.battleNet;
+      if (n && n.on) {
+        // 自分の準備完了を公開
+        this._battlePublishMulliganReady(true);
+        // 相手も準備完了済みなら即ターン開始、そうでなければ待機
+        if (n.mulliganReady && n.mulliganReady[n.oppSeat]) {
+          this._battleStartTurnFor(this.battleContext.firstSide);
+        } else {
+          this.$set(this.battleNet, 'waitingForOppMulligan', true);
+        }
+        return;
+      }
       this._battleStartTurnFor(this.battleContext.firstSide);
+    },
+    _battlePublishMulliganReady(ready) {
+      const n = this.battleNet;
+      if (!n || !n.on || !n.statePath) return;
+      try {
+        const path = n.statePath.replace(/\/state$/, '/mulligan');
+        const update = {};
+        update[String(n.mySeat)] = !!ready;
+        getDb().ref(path).update(update).catch(() => {});
+        // ローカルにも反映
+        if (!n.mulliganReady) this.$set(n, 'mulliganReady', {});
+        this.$set(n.mulliganReady, String(n.mySeat), !!ready);
+      } catch (e) { /* silent */ }
+    },
+    _battleApplyRemoteMulligan(state) {
+      const n = this.battleNet;
+      if (!n || !n.on || !state) return;
+      if (!n.mulliganReady) this.$set(n, 'mulliganReady', {});
+      ['1','2'].forEach(seat => {
+        if (state[seat] !== undefined) this.$set(n.mulliganReady, seat, !!state[seat]);
+      });
+      // 自分が既に準備完了で、相手も完了 → ターン開始
+      const mySeat = String(n.mySeat), oppSeat = String(n.oppSeat);
+      if (n.waitingForOppMulligan && n.mulliganReady[mySeat] && n.mulliganReady[oppSeat]) {
+        this.$set(this.battleNet, 'waitingForOppMulligan', false);
+        this._battleStartTurnFor(this.battleContext.firstSide);
+      }
     },
 
     /* ===== 対戦オンライン同期（手番制権限・手札秘匿） ===== */
@@ -6856,6 +6912,7 @@ new Vue({
         on: true, code, table, mySeat, oppSeat, statePath: path,
         oppReady: false, _unsub: null, _wasActive: this.battleSample.activeSide === 'self',
         lastPublishedAt: null, lastReceivedAt: null, lastError: null,
+        mulliganReady: {}, waitingForOppMulligan: false,
       };
       this._battleStartSyncTick();
       // 接続時は無条件で初期公開（双方が「最後の writer」を見られるように）
@@ -6869,9 +6926,15 @@ new Vue({
         const noticeRef = getDb().ref(noticePath);
         const noticeHandler = snap => this._battleApplyRemoteNotice(snap.val());
         noticeRef.on('value', noticeHandler);
+        // マリガン準備状態も同期
+        const mulliganPath = path.replace(/\/state$/, '/mulligan');
+        const mulliganRef = getDb().ref(mulliganPath);
+        const mulliganHandler = snap => this._battleApplyRemoteMulligan(snap.val());
+        mulliganRef.on('value', mulliganHandler);
         this.battleNet._unsub = () => {
           ref.off('value', handler);
           try { noticeRef.off('value', noticeHandler); } catch (e) {}
+          try { mulliganRef.off('value', mulliganHandler); } catch (e) {}
         };
       } catch (e) {
         console.error('[sync] 購読開始失敗:', e);
