@@ -5288,7 +5288,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.52',
+    BUILD_VERSION: '1.14.53',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7915,7 +7915,7 @@ new Vue({
         case '破壊':       return this._dslOpDestroy(act, sourceCard);
         case 'ドロー':     return this._dslOpDraw(act);
         case '天力':       return this._dslOpStat(act, 'tenryoku');
-        case 'ライフ':     return this._dslOpLife(act);
+        case 'ライフ':     return this._dslOpLife(act, sourceCard);
         case 'ライフ最大値': return this._dslOpLifeMax(act);
         case 'マナ最大値': return this._dslOpManaMax(act);
         case 'マナ回復':   return this._dslOpManaRefill(act);
@@ -8315,6 +8315,23 @@ new Vue({
         const returned = this._dslLastReturnedCards || [];
         const side = this._dslLastReturnedSide || 'self';
         return side === 'self' && returned.some(card => card && card.category === 'レガシー');
+      }
+      if (/他のレガシーが神攻で相手ライフを減らしたとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(
+          ev &&
+          ev.type === 'opponentLifeDecreased' &&
+          ev.payload &&
+          ev.payload.by === 'divineAttack' &&
+          ev.payload.amount > 0 &&
+          ev.payload.source &&
+          ev.payload.source.category === 'レガシー' &&
+          ev.payload.source !== this._dslCurrentSource
+        );
+      }
+      if (/相手ライフを減らしたとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'opponentLifeDecreased' && ev.payload && ev.payload.amount > 0);
       }
       if (/このターン中に自分レガシーが破壊されている/.test(s)) {
         const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
@@ -9224,7 +9241,7 @@ new Vue({
       p[key] = Math.max(0, (Number(p[key]) || 0) + n);
       this.battleShowNotice('天力変化', `${side === 'opp' ? '相手' : '自分'}の天力が ${n >= 0 ? '+' : ''}${n} (現在 ${p[key]})`);
     },
-    _dslOpLife(act) {
+    _dslOpLife(act, sourceCard) {
       // 数参照（例：減らしたライフの数値分）対応
       let n = Number(act.数 || 0);
       if (!n && act.数参照) {
@@ -9240,7 +9257,19 @@ new Vue({
       p.life = Math.max(0, Math.min(max, before + n));
       const actualDelta = p.life - before;
       // 減少した場合：コンテキストに記録（数参照「減らしたライフ」用）
-      if (actualDelta < 0) this._dslLastLifeReduced = Math.abs(actualDelta);
+      if (actualDelta < 0) {
+        const amount = Math.abs(actualDelta);
+        this._dslLastLifeReduced = amount;
+        const sourceSide = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : (side === 'opp' ? 'self' : 'opp');
+        if (sourceSide && sourceSide !== side) {
+          this.battleFireKamiEvent(sourceSide, 'opponentLifeDecreased', {
+            source: sourceCard || this._dslCurrentSource,
+            targetSide: side,
+            amount,
+            by: 'effect'
+          });
+        }
+      }
       this.battleShowNotice('ライフ変化', `${side === 'opp' ? '相手' : '自分'}ライフ ${n >= 0 ? '+' : ''}${n}（現在 ${p.life}/${max}）`);
       if (typeof this._battleCheckResult === 'function') this._battleCheckResult();
       // 天力トリガー（K6 アメノウズメ）：自分のライフ増加時
@@ -10845,7 +10874,18 @@ new Vue({
       const damage = Math.max(0, Number(attacker.attack || 0));
       this.battleSaveUndo();
       this.$set(attacker, '_tapped', true);
+      const beforeLife = Number(this.battleSample.opp.life) || 0;
       this.battleSample.opp.life = Math.max(0, this.battleSample.opp.life - damage);
+      const actualDamage = Math.max(0, beforeLife - this.battleSample.opp.life);
+      if (actualDamage > 0) {
+        this._dslLastLifeReduced = actualDamage;
+        this.battleFireKamiEvent(attackerSide, 'opponentLifeDecreased', {
+          source: attacker,
+          targetSide: 'opp',
+          amount: actualDamage,
+          by: 'divineAttack'
+        });
+      }
       this._battleCheckResult();
       this.battleShowNotice('神攻成功', `「${this.fullName(attacker)}」が神攻し、相手カミに ${damage} ダメージを与えました。`, [attacker]);
     },
