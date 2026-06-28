@@ -2284,6 +2284,7 @@
   }
   .battle-sync-status.ready   { background: rgba(46,125,79,.35); border-color: #6cf09a; color: #d8ffd8; }
   .battle-sync-status.waiting { background: rgba(200,120,40,.25); border-color: #f0b86c; color: #ffe2a8; }
+  .battle-sync-status.error   { background: rgba(180,40,40,.35); border-color: #f06c6c; color: #ffd8d8; }
   .battle-surrender-btn {
     background: #8e2430; border: 1px solid #df6672; color: #fff;
     padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 800;
@@ -3555,8 +3556,10 @@
       <span class="battle-phase">{{ battleContext.round ? 'ラウンド' + battleContext.round : battleContext.modeLabel }}</span>
       <span class="battle-setup-note">マリガン 自分{{ battleContext.selfMulligans }}回/相手{{ battleContext.oppMulligans }}回</span>
       <!-- オンライン同期ステータス（対戦テストモードのみ表示） -->
-      <span v-if="battleNet.on" class="battle-sync-status" :class="{ ready: battleNet.oppReady, waiting: !battleNet.oppReady }">
-        🌐 同期: {{ battleNet.oppReady ? '相手接続済' : '相手待機中' }}
+      <span v-if="battleNet.on" class="battle-sync-status"
+            :class="{ ready: battleNet.oppReady && !battleNet.lastError, waiting: !battleNet.oppReady && !battleNet.lastError, error: battleNet.lastError }"
+            :title="battleNet.lastError || ''">
+        🌐 同期: {{ battleNet.lastError ? '⚠️ エラー' : (battleNet.oppReady ? '相手接続済' : '相手待機中') }}
         <span style="opacity:.7;margin-left:6px;">[コード: {{ battleNet.code }} / 席{{ battleNet.mySeat }}]</span>
         <span v-if="battleNet.lastPublishedAt" style="opacity:.6;margin-left:6px;">↑ {{ battleNetPublishedAgo }}</span>
         <span v-if="battleNet.lastReceivedAt" style="opacity:.6;margin-left:6px;">↓ {{ battleNetReceivedAgo }}</span>
@@ -5302,7 +5305,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.56',
+    BUILD_VERSION: '1.14.57',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
