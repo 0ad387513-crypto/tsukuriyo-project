@@ -5305,7 +5305,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.57',
+    BUILD_VERSION: '1.14.58',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8204,6 +8204,14 @@ new Vue({
       const pool = this._dslZoneOf(sel);
       const crit = sel.絞込 || [];
       const remarks = String(sel.備考 || '');
+      const remarkTargets = this._dslRemarkTargetCards(remarks);
+      if (remarkTargets) {
+        return pool.filter(c =>
+          remarkTargets.includes(c) &&
+          this.battleCardMatchesInduceCriteria(c, crit) &&
+          this._dslPassCompare(c, sel.比較)
+        );
+      }
       // 「このカード以外」備考：効果発動源のカード自身を選択肢から除外
       const excludeSelf = /このカード以外/.test(remarks);
       const src = excludeSelf ? this._dslCurrentSource : null;
@@ -8215,6 +8223,33 @@ new Vue({
         if (!this._dslPassCompare(c, sel.比較)) return false;
         return true;
       });
+    },
+    _dslRemarkTargetCards(remarks) {
+      const s = String(remarks || '');
+      if (!s) return null;
+      if (/今招来した影分身|その影分身/.test(s)) {
+        const summoned = this._dslLastSummonedCards || [];
+        return summoned.filter(card =>
+          card &&
+          /影分身/.test(this.fullName(card)) &&
+          (card.category === 'レガシー' || card.isToken)
+        );
+      }
+      if (/そのヨリシロちゃん|そのヨリシロ/.test(s)) {
+        const summoned = this._dslLastSummonedCards || [];
+        return summoned.filter(card =>
+          card &&
+          /ヨリシロ/.test(this.fullName(card)) &&
+          (card.category === 'レガシー' || card.isToken)
+        );
+      }
+      if (/そのカード/.test(s)) {
+        const returned = this._dslLastReturnedCards || [];
+        if (returned.length) return returned.filter(Boolean);
+        const chosen = this._dslLastChosenTargets || [];
+        if (chosen.length) return chosen.filter(Boolean);
+      }
+      return null;
     },
     /* 汎用対象選択：プレイヤー手動 or 自動 */
     dslChooseTargets(sel, promptLabel) {
@@ -9429,7 +9464,12 @@ new Vue({
         return;
       }
       if (count <= 0) return;
-      this.battleOpenAutoSummon(sourceCard, { targetText, count }, '出現時');
+      return new Promise((resolve) => {
+        this.battleOpenAutoSummon(sourceCard, { targetText, count }, '出現時', (summoned) => {
+          this._dslLastSummonedCards = (summoned || []).slice();
+          resolve(summoned || []);
+        });
+      });
     },
     async _dslOpInduce(act, sourceCard) {
       const target = act.対象 || {};
@@ -10103,16 +10143,18 @@ new Vue({
       if (/レガシー|トークン/.test(text) || (card && card.isToken)) return 'legacies';
       return this.battleFieldZoneForCard(card);
     },
-    battleOpenAutoSummon(sourceCard, summon, triggerLabel = '出現時') {
+    battleOpenAutoSummon(sourceCard, summon, triggerLabel = '出現時', onComplete = null) {
       const cards = this.battleSummonCandidates(summon.targetText);
       if (!cards.length) {
         this.battleShowNotice('招来：対象なし', `「${summon.targetText}」に該当するトークンが見つかりませんでした。`, [sourceCard]);
+        if (onComplete) onComplete([]);
         return;
       }
       const total = Math.max(1, Number(summon.count) || 1);
       // 招来 N=1 かつ候補1種: 即時解決
       if (cards.length === 1 && total === 1) {
-        this.battleResolveSummonCard(cards[0], sourceCard, triggerLabel);
+        const placed = this.battleResolveSummonCard(cards[0], sourceCard, triggerLabel, !!onComplete);
+        if (onComplete) onComplete(placed ? [placed] : []);
         return;
       }
       // N>=2 または候補複数: モーダルで N 枚まで繰り返し選択させる
@@ -10126,13 +10168,14 @@ new Vue({
         remaining: total,        // 残り選択枚数
         summoned: [],            // 選んだカード履歴
         cards,
+        onComplete,
         message: total > 1
           ? `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\n「${summon.targetText}」を最大${total}枚まで場に出せます。出さずに終了することもできます。`
           : `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\n招来するトークンを選んでください。`,
       };
     },
     /* 通常の招来（モーダル無し、即時1体配置） */
-    battleResolveSummonCard(card, sourceCard = null, triggerLabel = '招来') {
+    battleResolveSummonCard(card, sourceCard = null, triggerLabel = '招来', skipQueueProcess = false) {
       const player = this.battleSample.self;
       const zone = this.battleFieldZoneForSummon(card);
       if (!player || !zone || !Array.isArray(player[zone])) return;
@@ -10159,7 +10202,8 @@ new Vue({
         if (placedCard && placedCard.isToken) this.battleFireKamiEvent('self', 'tokenPlayed', { card: placedCard });
         if (this._battleCardHasGuard(placedCard)) this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: placedCard });
       }
-      this._battleProcessNextEffect();
+      if (!skipQueueProcess) this._battleProcessNextEffect();
+      return placedCard;
     },
     /* 自動招来モーダルから1体配置（残りがあればモーダル維持） */
     battleResolveAutoSummon(modalIndex) {
@@ -10203,7 +10247,8 @@ new Vue({
             : `${names}を場に出しました。`,
           cards: list,
         };
-        this._battleProcessNextEffect();
+        if (modal.onComplete) modal.onComplete(list.slice());
+        else this._battleProcessNextEffect();
       }
       // 残りがある場合はモーダルそのまま維持して継続選択
     },
@@ -10223,7 +10268,8 @@ new Vue({
             : '招来は行いませんでした。',
           cards: modal.sourceCard ? [modal.sourceCard] : [],
         };
-        this._battleProcessNextEffect();
+        if (modal.onComplete) modal.onComplete([]);
+        else this._battleProcessNextEffect();
         return;
       }
       const names = list.map(c => `「${this.fullName(c)}」`).join('、');
@@ -10234,7 +10280,8 @@ new Vue({
           : `${names}を場に出しました。`,
         cards: list,
       };
-      this._battleProcessNextEffect();
+      if (modal.onComplete) modal.onComplete(list.slice());
+      else this._battleProcessNextEffect();
     },
     battleAskConfirm({ action, title, message, confirmLabel = '実行', cards = [], payload = {} }) {
       this.battleConfirmModal = { action, title, message, confirmLabel, cards, payload };
