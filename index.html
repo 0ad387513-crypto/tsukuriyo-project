@@ -5305,7 +5305,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.58',
+    BUILD_VERSION: '1.14.59',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8249,6 +8249,21 @@ new Vue({
         const chosen = this._dslLastChosenTargets || [];
         if (chosen.length) return chosen.filter(Boolean);
       }
+      if (/その神攻したレガシー/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        const source = ev && ev.type === 'opponentLifeDecreased' && ev.payload && ev.payload.by === 'divineAttack'
+          ? ev.payload.source
+          : null;
+        return source ? [source] : [];
+      }
+      if (/その選んだレガシー|そのレガシー/.test(s)) {
+        const chosen = this._dslLastChosenTargets || [];
+        return chosen.filter(card => card && card.category === 'レガシー');
+      }
+      if (/今墓地に送った/.test(s)) {
+        const milled = this._dslLastMilledCards || [];
+        return milled.filter(Boolean);
+      }
       return null;
     },
     /* 汎用対象選択：プレイヤー手動 or 自動 */
@@ -9704,6 +9719,8 @@ new Vue({
       this.battleSaveUndo();
       p.graveyard = p.graveyard || [];
       p.graveyard.push(...milled);
+      this._dslLastMilledCards = milled.slice();
+      this._dslLastMovedCount = milled.length;
       p.deckCount = p.deck.length;
       this.dslRefreshStaticAbilities();
       this.battleShowNotice('デッキ墓地送り', `デッキ上から${milled.length}枚を墓地に送りました。`, milled);
