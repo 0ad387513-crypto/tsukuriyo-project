@@ -5288,7 +5288,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.47',
+    BUILD_VERSION: '1.14.55',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6603,6 +6603,7 @@ new Vue({
         deckCount: deck.length, graveyard: [], crumbled: [], tempCostMods: [], legacyDestroyedThisTurn: [],
         senteiBoostUsed: false,
         kamiTriggerCounts: {},   // 天力トリガー：各ターンの発動回数管理（K5/K6/K7/K8/K9）
+        cardPlaysThisTurn: 0,    // このターン中にこの側が使用したカード枚数（オラクル/レガシー/レリック合算）
       };
     },
     _battleInitialize(config) {
@@ -7068,9 +7069,40 @@ new Vue({
       const kw = Array.isArray(card._kwGrant) ? card._kwGrant : [];
       return kw.some(k => /守護/.test(String(k)));
     },
+    async battleRunEventStaticAbilities(side, eventType, payload = {}) {
+      if (!this.effectSpecsReady || !this.battleSample || !side || !eventType) return;
+      const p = this.battleSample[side];
+      if (!p) return;
+      const cards = [...(p.legacies || []), ...(p.relics || [])];
+      const prevEvent = this._dslCurrentEvent;
+      const prevSource = this._dslCurrentSource;
+      this._dslCurrentEvent = { side, type: eventType, payload };
+      try {
+        for (const card of cards.slice()) {
+          if (!card || !this._battleFieldCardSide(card)) continue;
+          const spec = this._dslGetSpec(card);
+          if (!spec || !Array.isArray(spec.能力)) continue;
+          for (const ab of spec.能力) {
+            if (!this._dslAbilityMatchesTrigger(ab, '常在')) continue;
+            if (!ab.各ターン || !ab.条件 || !ab.条件.備考) continue;
+            const key = `event:${eventType}:${this.battleSample.turn}:${this.battleSample.activeSide}:${spec.名称 || card.no}:${ab.備考 || ab.条件.備考}`;
+            const used = card._eventStaticUsed || {};
+            if (used[key]) continue;
+            this._dslCurrentSource = card;
+            if (!this.dslEvalCond(ab.条件)) continue;
+            this.$set(card, '_eventStaticUsed', Object.assign({}, used, { [key]: true }));
+            await this.dslRunActions(ab.処理 || [], card);
+          }
+        }
+      } finally {
+        this._dslCurrentEvent = prevEvent;
+        this._dslCurrentSource = prevSource;
+      }
+    },
     /* 統一発火関数：カミ別ハンドラに振り分け */
     battleFireKamiEvent(side, eventType, payload) {
       if (!this.battleSample) return;
+      this.battleRunEventStaticAbilities(side, eventType, payload || {});
       const kno = this._battleKamiNo(side);
       if (!kno) return;
       switch (kno) {
@@ -7271,6 +7303,8 @@ new Vue({
       // 天力トリガーの各ターン回数カウンタをリセット
       target.kamiTriggerCounts = {};
       target.legacyDestroyedThisTurn = [];
+      // このターン中のカード使用枚数をリセット（「2枚目以降」条件用）
+      target.cardPlaysThisTurn = 0;
       // 自分フィールドのカードを全てアンタップ
       this._battleUntapField(side);
       // ターン開始ドロー（先攻プレイヤーの最初のターンだけ無し）
@@ -7836,14 +7870,26 @@ new Vue({
     },
     async dslRunActions(actions, sourceCard) {
       const prevLastAction = this._dslLastAction;
+      const prevSucceeded = this._dslLastActionSucceeded;
       try {
         for (const act of actions) {
           const resolved = this.dslApplySublimAlternative(act);
+          // 「ドローした場合の後続」「ドローした場合の後続コスト」「そうした場合」備考：
+          // 直前の op が成功した時のみ実行（失敗時はスキップ）
+          const noteText = String((resolved && resolved.備考) || '');
+          const gate = /ドローした場合|そうした場合/.test(noteText);
+          if (gate && !this._dslLastActionSucceeded) {
+            this._dslLastAction = resolved;
+            continue;
+          }
+          // 既定で成功扱い。op側で失敗時に false を立てる
+          this._dslLastActionSucceeded = true;
           await this.dslRunAction(resolved, sourceCard);
           this._dslLastAction = resolved;
         }
       } finally {
         this._dslLastAction = prevLastAction;
+        this._dslLastActionSucceeded = prevSucceeded;
       }
     },
     dslApplySublimAlternative(act) {
@@ -7884,7 +7930,7 @@ new Vue({
         case '破壊':       return this._dslOpDestroy(act, sourceCard);
         case 'ドロー':     return this._dslOpDraw(act);
         case '天力':       return this._dslOpStat(act, 'tenryoku');
-        case 'ライフ':     return this._dslOpLife(act);
+        case 'ライフ':     return this._dslOpLife(act, sourceCard);
         case 'ライフ最大値': return this._dslOpLifeMax(act);
         case 'マナ最大値': return this._dslOpManaMax(act);
         case 'マナ回復':   return this._dslOpManaRefill(act);
@@ -8017,6 +8063,10 @@ new Vue({
         const v = this._dslContextPowerReference(m[1]);
         return v !== null && cardPower <= v;
       }
+      if (m = String(cmp).match(/^powerLE:(選んだ自分レガシー2枚の合計戦闘力)$/)) {
+        const v = this._dslContextPowerReference(m[1]);
+        return v !== null && cardPower <= v;
+      }
       // カード名や複数選択結果を参照する比較は、現時点では手動補助に委ねる
       return true;
     },
@@ -8080,6 +8130,11 @@ new Vue({
         if (!list.length) return null;
         return Math.max(...list.map(d => Number((d && d.power) || 0)));
       }
+      if (/選んだ自分レガシー2枚の合計戦闘力/.test(refName)) {
+        const list = this._dslLastChosenOwnLegacies || [];
+        if (!list.length) return null;
+        return list.reduce((sum, c) => sum + this._dslCardEffPower(c), 0);
+      }
       return null;
     },
     _dslEligible(sel) {
@@ -8089,8 +8144,10 @@ new Vue({
       // 「このカード以外」備考：効果発動源のカード自身を選択肢から除外
       const excludeSelf = /このカード以外/.test(remarks);
       const src = excludeSelf ? this._dslCurrentSource : null;
+      const excludeReturned = /戻したカード以外/.test(remarks) ? (this._dslLastReturnedCards || []) : [];
       return pool.filter(c => {
         if (src && c === src) return false;
+        if (excludeReturned.includes(c)) return false;
         if (!this.battleCardMatchesInduceCriteria(c, crit)) return false;
         if (!this._dslPassCompare(c, sel.比較)) return false;
         return true;
@@ -8109,6 +8166,9 @@ new Vue({
         return Promise.resolve(this._dslEligible(Object.assign({ 対象側: 'self', 領域: 'field' }, sel)));
       }
       const pool = this._dslEligible(sel);
+      const remarks = String(sel.備考 || '');
+      const totalPowerLimitMatch = remarks.match(/合計戦闘力(\d+)以下/);
+      const maxTotalPower = totalPowerLimitMatch ? Number(totalPowerLimitMatch[1]) : null;
       // 動的枚数：枚数:"動的" や 枚数:"all" 以外の文字列 + 数参照 → 解決
       let need;
       if (sel.枚数 === 'all') {
@@ -8145,6 +8205,7 @@ new Vue({
           selected: [],
           need: Math.min(need, pool.length),
           canSkip: !!sel.任意,
+          maxTotalPower,
         };
         this._dslDeferred = resolve;
       });
@@ -8174,6 +8235,13 @@ new Vue({
         if (m.need === 1) { m.selected.splice(0, m.selected.length); m.selected.push(card); }
         return;
       }
+      if (m.maxTotalPower !== null && m.maxTotalPower !== undefined) {
+        const total = m.selected.reduce((sum, c) => sum + this._dslCardEffPower(c), 0) + this._dslCardEffPower(card);
+        if (total > m.maxTotalPower) {
+          this.battleShowNotice('選択上限', `合計戦闘力が${m.maxTotalPower}以下になるように選んでください。現在の候補を加えると${total}になります。`, [card]);
+          return;
+        }
+      }
       m.selected.push(card);
     },
     dslResolveTargets() {
@@ -8183,6 +8251,7 @@ new Vue({
       const resolver = this._dslDeferred;
       this.dslTargetModal = null;
       this._dslDeferred = null;
+      this._dslLastChosenTargets = sel.slice();
       if (resolver) resolver(sel);
     },
     dslCancelTargets() {
@@ -8257,10 +8326,75 @@ new Vue({
           this.battleCardMatchesInduceCriteria(card, ['神使レガシー'])
         );
       }
+      if (/自分レガシーを選んだ場合/.test(s)) {
+        const returned = this._dslLastReturnedCards || [];
+        const side = this._dslLastReturnedSide || 'self';
+        return side === 'self' && returned.some(card => card && card.category === 'レガシー');
+      }
+      if (/他のレガシーが神攻で相手ライフを減らしたとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(
+          ev &&
+          ev.type === 'opponentLifeDecreased' &&
+          ev.payload &&
+          ev.payload.by === 'divineAttack' &&
+          ev.payload.amount > 0 &&
+          ev.payload.source &&
+          ev.payload.source.category === 'レガシー' &&
+          ev.payload.source !== this._dslCurrentSource
+        );
+      }
+      if (/相手ライフを減らしたとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'opponentLifeDecreased' && ev.payload && ev.payload.amount > 0);
+      }
       if (/このターン中に自分レガシーが破壊されている/.test(s)) {
         const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
         const player = this.battleSample && this.battleSample[side];
         return !!(player && Array.isArray(player.legacyDestroyedThisTurn) && player.legacyDestroyedThisTurn.length);
+      }
+      if (/自分レガシーが破壊されたとき/.test(s)) {
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const player = this.battleSample && this.battleSample[side];
+        return !!(player && Array.isArray(player.legacyDestroyedThisTurn) && player.legacyDestroyedThisTurn.length);
+      }
+      if (/手札が3枚以上なら/.test(s)) {
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const player = this.battleSample && this.battleSample[side];
+        return Number((player && player.hand ? player.hand.length : player && player.handCount) || 0) >= 3;
+      }
+      if (/オラクルを使用したとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'playOracleOrRelic' && ev.payload && ev.payload.kind === 'オラクル');
+      }
+      if (/レリックが出たとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'playOracleOrRelic' && ev.payload && ev.payload.kind === 'レリック');
+      }
+      if (/オラクルまたはレリックを使用したとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'playOracleOrRelic' && ev.payload && /オラクル|レリック/.test(String(ev.payload.kind || '')));
+      }
+      if (/マナフェイズ以外でマナ最大値・マナ・ライフのいずれかが増えたとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'manaOrLifeIncreased' && !this._battleInManaPhase);
+      }
+      if (/守護を持つ自分レガシーが1枚出たとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'guardLegacyPlayed');
+      }
+      if (/自分フィールドにトークンが1枚出たとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'tokenPlayed');
+      }
+      if (/相手ターン中/.test(s) && /相手の2枚目以降.*カード使用/.test(s)) {
+        // アラシ等：相手ターン中、相手が2枚目以降のカードを使うとき条件成立
+        const sourceSide = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const oppSide = sourceSide === 'self' ? 'opp' : 'self';
+        const bs = this.battleSample;
+        if (!bs || bs.activeSide !== oppSide) return false;
+        const oppPlayer = bs[oppSide];
+        return Number((oppPlayer && oppPlayer.cardPlaysThisTurn) || 0) >= 1;
       }
       if (/自分フィールドと墓地に同名レガシー/.test(s) && /いない/.test(s)) {
         const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
@@ -8282,6 +8416,12 @@ new Vue({
           locations[idx].side === 'self' &&
           locations[idx].zone === 'graveyard'
         );
+      }
+      if (/選んだ自分レガシー2枚が同種族なら/.test(s)) {
+        const list = this._dslLastChosenOwnLegacies || [];
+        if (list.length < 2) return false;
+        const types = list.map(card => card && card.type).filter(Boolean);
+        return types.length >= 2 && types.every(type => type === types[0]);
       }
       return null;
     },
@@ -8500,6 +8640,20 @@ new Vue({
       this._battleCheckDestroyZeroPower();
     },
     async _dslOpDestroy(act, sourceCard) {
+      if (act && act.対象 && String(act.対象.比較 || '') === 'powerLE:選んだ自分レガシー2枚の合計戦闘力') {
+        const picked = await this.dslChooseTargets({
+          対象側: 'self',
+          領域: 'field',
+          絞込: ['レガシー'],
+          枚数: 2,
+          選択者: 'player'
+        }, '合計戦闘力として参照する自分レガシー2枚を選択');
+        if (picked.length < 2) {
+          this.battleShowNotice('参照対象不足', '自分レガシーを2枚選ぶ必要があります。効果は不発となります。', sourceCard ? [sourceCard] : []);
+          return;
+        }
+        this._dslLastChosenOwnLegacies = picked.slice();
+      }
       const targets = await this.dslChooseTargets(act.対象, '破壊する対象を選択');
       if (!targets.length) return;
       this.battleSaveUndo();
@@ -8523,6 +8677,7 @@ new Vue({
       const side = (act.対象 && act.対象.対象側 === 'opp') ? 'opp' : 'self';
       // 数参照用コンテキスト
       this._dslLastReturnedCards = targets.slice();
+      this._dslLastReturnedSide = side;
       this._dslLastMovedCount = targets.length;
       targets.forEach(c => this._dslMoveFromField(c, 'hand', side));
       this.battleShowNotice('手札に戻す', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に戻しました。`, targets);
@@ -8544,7 +8699,7 @@ new Vue({
     },
     async _dslOpToGraveyard(act, sourceCard) {
       const targets = await this.dslChooseTargets(act.対象, '墓地に送る対象を選択');
-      if (!targets.length) return;
+      if (!targets.length) { this._dslLastActionSucceeded = false; return; }
       this.battleSaveUndo();
       targets.forEach(c => this._dslMoveCardToZone(c, 'graveyard'));
       this.battleShowNotice('墓地送り', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を墓地に送りました。`, targets);
@@ -8828,6 +8983,7 @@ new Vue({
         絞込: ['レガシー'],
         枚数: 1,
         選択者: 'player',
+        備考: /他の/.test(targetText) ? 'このカード以外' : '',
       };
       const targets = await this.dslChooseTargets(selector, `${trigger}効果を発動するレガシーを選択`);
       if (!targets.length) return;
@@ -9089,16 +9245,20 @@ new Vue({
         : Number(act.数 || 1);
       const side = act.側 === 'opp' ? 'opp' : 'self';
       const p = this.battleSample[side];
-      if (!p) return;
+      if (!p) { this._dslLastActionSucceeded = false; return; }
       this.battleSaveUndo();
+      let drawnCount = 0;
       for (let i = 0; i < n; i++) {
         if (!p.deck || !p.deck.length) break;
         const drawn = p.deck.shift();
         if (side === 'self') { p.hand = p.hand || []; p.hand.push(drawn); p.handCount = p.hand.length; }
         else { p.handCount = (p.handCount || 0) + 1; }
+        drawnCount++;
       }
       if (p.deck) p.deckCount = p.deck.length;
-      this.battleShowNotice('ドロー', `${side === 'opp' ? '相手' : '自分'}が ${n} 枚ドローしました。`);
+      this.battleShowNotice('ドロー', `${side === 'opp' ? '相手' : '自分'}が ${drawnCount} 枚ドローしました。${drawnCount < n ? '（山札不足のため一部のみ）' : ''}`);
+      // 後続備考「ドローした場合」の判定用：1枚以上ドローできていれば成功
+      if (drawnCount === 0) this._dslLastActionSucceeded = false;
     },
     _dslOpStat(act, key) {
       const n = Number(act.数 || 0);
@@ -9109,7 +9269,7 @@ new Vue({
       p[key] = Math.max(0, (Number(p[key]) || 0) + n);
       this.battleShowNotice('天力変化', `${side === 'opp' ? '相手' : '自分'}の天力が ${n >= 0 ? '+' : ''}${n} (現在 ${p[key]})`);
     },
-    _dslOpLife(act) {
+    _dslOpLife(act, sourceCard) {
       // 数参照（例：減らしたライフの数値分）対応
       let n = Number(act.数 || 0);
       if (!n && act.数参照) {
@@ -9125,7 +9285,19 @@ new Vue({
       p.life = Math.max(0, Math.min(max, before + n));
       const actualDelta = p.life - before;
       // 減少した場合：コンテキストに記録（数参照「減らしたライフ」用）
-      if (actualDelta < 0) this._dslLastLifeReduced = Math.abs(actualDelta);
+      if (actualDelta < 0) {
+        const amount = Math.abs(actualDelta);
+        this._dslLastLifeReduced = amount;
+        const sourceSide = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : (side === 'opp' ? 'self' : 'opp');
+        if (sourceSide && sourceSide !== side) {
+          this.battleFireKamiEvent(sourceSide, 'opponentLifeDecreased', {
+            source: sourceCard || this._dslCurrentSource,
+            targetSide: side,
+            amount,
+            by: 'effect'
+          });
+        }
+      }
       this.battleShowNotice('ライフ変化', `${side === 'opp' ? '相手' : '自分'}ライフ ${n >= 0 ? '+' : ''}${n}（現在 ${p.life}/${max}）`);
       if (typeof this._battleCheckResult === 'function') this._battleCheckResult();
       // 天力トリガー（K6 アメノウズメ）：自分のライフ増加時
@@ -9600,6 +9772,18 @@ new Vue({
       } finally {
         this.$set(card, '_dslDoubleDeathRunning', false);
       }
+    },
+    async battleRunActionTrigger(card, triggerLabel) {
+      if (!card || !triggerLabel) return false;
+      if (this._battleIsEffectDisabled(card)) {
+        this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、【${triggerLabel}】効果は発動しません。`, [card]);
+        return true;
+      }
+      if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, triggerLabel)) {
+        await this.dslRunSpec(card, triggerLabel, null);
+        return true;
+      }
+      return false;
     },
 
     /* ===================================================================
@@ -10090,6 +10274,8 @@ new Vue({
       player.hand.splice(index, 1);
       player.graveyard.push(card);
       player.handCount = player.hand.length;
+      // このターンのカード使用枚数を加算（「2枚目以降」条件用）
+      player.cardPlaysThisTurn = (Number(player.cardPlaysThisTurn) || 0) + 1;
       this.battleOracleEffect = { card };
       this.hideCardHover();
       // 天力トリガー：オラクル使用（K5 オモイカネ）／昇華支払い（K1 スサノオ）
@@ -10160,6 +10346,8 @@ new Vue({
         player[zone].push(fieldCard);
       }
       player.handCount = player.hand.length;
+      // このターンのカード使用枚数を加算（「2枚目以降」条件用）
+      player.cardPlaysThisTurn = (Number(player.cardPlaysThisTurn) || 0) + 1;
       this.hideCardHover();
       this.dslRefreshStaticAbilities();
       // 天力トリガー：
@@ -10650,7 +10838,7 @@ new Vue({
       this.battleRecordLegacyDestroyed(side, card);
       destroyed.push({ side, card });
     },
-    battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex) {
+    async battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex) {
       if (this.battleSample.result || attackerSide !== 'self') return;
       const attackerPlayer = this.battleSample[attackerSide];
       const defenderPlayer = this.battleSample[defenderSide];
@@ -10659,6 +10847,15 @@ new Vue({
       if (!attacker || !defender) return;
       const can = this.battleLegacyCanAct(attacker, 'battle');
       if (!can.ok) { this.battleShowNotice('戦闘できません', can.reason, [attacker]); return; }
+      await this.battleRunActionTrigger(attacker, '戦闘時');
+      if (this.battleSample.result) return;
+      attackerIndex = attackerPlayer.legacies.indexOf(attacker);
+      defenderIndex = defenderPlayer.legacies.indexOf(defender);
+      if (attackerIndex < 0) return;
+      if (defenderIndex < 0) {
+        this.battleShowNotice('戦闘対象なし', '戦闘時効果の処理により、対象レガシーが場を離れました。戦闘は不発となります。', [attacker]);
+        return;
+      }
       if (!this.battleCanTargetLegacy(attacker, defender)) {
         this.battleShowNotice('死角により対象にできません', `「${this.fullName(attacker)}」は【死角】を持たないため、「${this.fullName(defender)}」を戦闘対象に選べません。`, [attacker, defender]);
         return;
@@ -10691,12 +10888,16 @@ new Vue({
       // 死亡時トリガー：両サイドのカードに対して発火（カードの所有者に紐づく効果）
       destroyed.forEach(d => this.battleRunDeathKeywordEffects(d.card));
     },
-    battleResolveDivineAttack(attackerSide, attackerIndex) {
+    async battleResolveDivineAttack(attackerSide, attackerIndex) {
       if (this.battleSample.result || attackerSide !== 'self') return;
       const attacker = this.battleSample.self.legacies[attackerIndex];
       if (!attacker) return;
       const can = this.battleLegacyCanAct(attacker, 'divine');
       if (!can.ok) { this.battleShowNotice('神攻できません', can.reason, [attacker]); return; }
+      await this.battleRunActionTrigger(attacker, '神攻時');
+      if (this.battleSample.result) return;
+      attackerIndex = this.battleSample.self.legacies.indexOf(attacker);
+      if (attackerIndex < 0) return;
       const guard = this.battleResolveGuardTarget(attacker, 'opp', null);
       if (guard) {
         this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index);
@@ -10705,7 +10906,18 @@ new Vue({
       const damage = Math.max(0, Number(attacker.attack || 0));
       this.battleSaveUndo();
       this.$set(attacker, '_tapped', true);
+      const beforeLife = Number(this.battleSample.opp.life) || 0;
       this.battleSample.opp.life = Math.max(0, this.battleSample.opp.life - damage);
+      const actualDamage = Math.max(0, beforeLife - this.battleSample.opp.life);
+      if (actualDamage > 0) {
+        this._dslLastLifeReduced = actualDamage;
+        this.battleFireKamiEvent(attackerSide, 'opponentLifeDecreased', {
+          source: attacker,
+          targetSide: 'opp',
+          amount: actualDamage,
+          by: 'divineAttack'
+        });
+      }
       this._battleCheckResult();
       this.battleShowNotice('神攻成功', `「${this.fullName(attacker)}」が神攻し、相手カミに ${damage} ダメージを与えました。`, [attacker]);
     },
