@@ -5288,7 +5288,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.49',
+    BUILD_VERSION: '1.14.50',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8282,6 +8282,16 @@ new Vue({
         const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
         const player = this.battleSample && this.battleSample[side];
         return !!(player && Array.isArray(player.legacyDestroyedThisTurn) && player.legacyDestroyedThisTurn.length);
+      }
+      if (/自分レガシーが破壊されたとき/.test(s)) {
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const player = this.battleSample && this.battleSample[side];
+        return !!(player && Array.isArray(player.legacyDestroyedThisTurn) && player.legacyDestroyedThisTurn.length);
+      }
+      if (/手札が3枚以上なら/.test(s)) {
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const player = this.battleSample && this.battleSample[side];
+        return Number((player && player.hand ? player.hand.length : player && player.handCount) || 0) >= 3;
       }
       if (/自分フィールドと墓地に同名レガシー/.test(s) && /いない/.test(s)) {
         const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
