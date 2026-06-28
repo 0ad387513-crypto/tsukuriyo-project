@@ -5305,7 +5305,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.59',
+    BUILD_VERSION: '1.14.60',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -9031,17 +9031,23 @@ new Vue({
       const target = act.対象 || {};
       if (target.備考 && !target.自身) {
         const note = String(target.備考 || '');
-        if (/次/.test(note)) {
+        if (/次|自分のレリック|自分のオラクル|相手のカード/.test(note)) {
           this.battleSaveUndo();
-          this.battleAddTempCostMod('self', {
+          const modSide = /相手/.test(note) ? 'opp' : 'self';
+          const criteria = Array.isArray(target.絞込) ? target.絞込.slice() : [];
+          if (/レリック/.test(note) && !criteria.includes('レリック')) criteria.push('レリック');
+          if (/オラクル/.test(note) && !criteria.includes('オラクル')) criteria.push('オラクル');
+          this.battleAddTempCostMod(modSide, {
             delta,
             note,
-            criteria: Array.isArray(target.絞込) ? target.絞込.slice() : [],
+            criteria,
             sourceName: this.fullName(sourceCard),
+            sourceSide: this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self',
+            once: true,
           });
           this.battleShowNotice(
             'コスト変更',
-            `次に条件を満たすカードを使う時、コストを ${delta >= 0 ? '+' : ''}${delta} します。`,
+            `${/相手/.test(note) ? '相手' : '自分'}が次に条件を満たすカードを使う時、コストを ${delta >= 0 ? '+' : ''}${delta} します。`,
             sourceCard ? [sourceCard] : []
           );
           return;
