@@ -5288,7 +5288,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.47',
+    BUILD_VERSION: '1.14.48',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8017,6 +8017,10 @@ new Vue({
         const v = this._dslContextPowerReference(m[1]);
         return v !== null && cardPower <= v;
       }
+      if (m = String(cmp).match(/^powerLE:(選んだ自分レガシー2枚の合計戦闘力)$/)) {
+        const v = this._dslContextPowerReference(m[1]);
+        return v !== null && cardPower <= v;
+      }
       // カード名や複数選択結果を参照する比較は、現時点では手動補助に委ねる
       return true;
     },
@@ -8080,6 +8084,11 @@ new Vue({
         if (!list.length) return null;
         return Math.max(...list.map(d => Number((d && d.power) || 0)));
       }
+      if (/選んだ自分レガシー2枚の合計戦闘力/.test(refName)) {
+        const list = this._dslLastChosenOwnLegacies || [];
+        if (!list.length) return null;
+        return list.reduce((sum, c) => sum + this._dslCardEffPower(c), 0);
+      }
       return null;
     },
     _dslEligible(sel) {
@@ -8109,6 +8118,9 @@ new Vue({
         return Promise.resolve(this._dslEligible(Object.assign({ 対象側: 'self', 領域: 'field' }, sel)));
       }
       const pool = this._dslEligible(sel);
+      const remarks = String(sel.備考 || '');
+      const totalPowerLimitMatch = remarks.match(/合計戦闘力(\d+)以下/);
+      const maxTotalPower = totalPowerLimitMatch ? Number(totalPowerLimitMatch[1]) : null;
       // 動的枚数：枚数:"動的" や 枚数:"all" 以外の文字列 + 数参照 → 解決
       let need;
       if (sel.枚数 === 'all') {
@@ -8145,6 +8157,7 @@ new Vue({
           selected: [],
           need: Math.min(need, pool.length),
           canSkip: !!sel.任意,
+          maxTotalPower,
         };
         this._dslDeferred = resolve;
       });
@@ -8174,6 +8187,13 @@ new Vue({
         if (m.need === 1) { m.selected.splice(0, m.selected.length); m.selected.push(card); }
         return;
       }
+      if (m.maxTotalPower !== null && m.maxTotalPower !== undefined) {
+        const total = m.selected.reduce((sum, c) => sum + this._dslCardEffPower(c), 0) + this._dslCardEffPower(card);
+        if (total > m.maxTotalPower) {
+          this.battleShowNotice('選択上限', `合計戦闘力が${m.maxTotalPower}以下になるように選んでください。現在の候補を加えると${total}になります。`, [card]);
+          return;
+        }
+      }
       m.selected.push(card);
     },
     dslResolveTargets() {
@@ -8183,6 +8203,7 @@ new Vue({
       const resolver = this._dslDeferred;
       this.dslTargetModal = null;
       this._dslDeferred = null;
+      this._dslLastChosenTargets = sel.slice();
       if (resolver) resolver(sel);
     },
     dslCancelTargets() {
@@ -8282,6 +8303,12 @@ new Vue({
           locations[idx].side === 'self' &&
           locations[idx].zone === 'graveyard'
         );
+      }
+      if (/選んだ自分レガシー2枚が同種族なら/.test(s)) {
+        const list = this._dslLastChosenOwnLegacies || [];
+        if (list.length < 2) return false;
+        const types = list.map(card => card && card.type).filter(Boolean);
+        return types.length >= 2 && types.every(type => type === types[0]);
       }
       return null;
     },
@@ -8500,6 +8527,20 @@ new Vue({
       this._battleCheckDestroyZeroPower();
     },
     async _dslOpDestroy(act, sourceCard) {
+      if (act && act.対象 && String(act.対象.比較 || '') === 'powerLE:選んだ自分レガシー2枚の合計戦闘力') {
+        const picked = await this.dslChooseTargets({
+          対象側: 'self',
+          領域: 'field',
+          絞込: ['レガシー'],
+          枚数: 2,
+          選択者: 'player'
+        }, '合計戦闘力として参照する自分レガシー2枚を選択');
+        if (picked.length < 2) {
+          this.battleShowNotice('参照対象不足', '自分レガシーを2枚選ぶ必要があります。効果は不発となります。', sourceCard ? [sourceCard] : []);
+          return;
+        }
+        this._dslLastChosenOwnLegacies = picked.slice();
+      }
       const targets = await this.dslChooseTargets(act.対象, '破壊する対象を選択');
       if (!targets.length) return;
       this.battleSaveUndo();
