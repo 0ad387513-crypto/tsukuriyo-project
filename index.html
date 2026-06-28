@@ -5288,7 +5288,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.50',
+    BUILD_VERSION: '1.14.51',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7068,9 +7068,40 @@ new Vue({
       const kw = Array.isArray(card._kwGrant) ? card._kwGrant : [];
       return kw.some(k => /守護/.test(String(k)));
     },
+    async battleRunEventStaticAbilities(side, eventType, payload = {}) {
+      if (!this.effectSpecsReady || !this.battleSample || !side || !eventType) return;
+      const p = this.battleSample[side];
+      if (!p) return;
+      const cards = [...(p.legacies || []), ...(p.relics || [])];
+      const prevEvent = this._dslCurrentEvent;
+      const prevSource = this._dslCurrentSource;
+      this._dslCurrentEvent = { side, type: eventType, payload };
+      try {
+        for (const card of cards.slice()) {
+          if (!card || !this._battleFieldCardSide(card)) continue;
+          const spec = this._dslGetSpec(card);
+          if (!spec || !Array.isArray(spec.能力)) continue;
+          for (const ab of spec.能力) {
+            if (!this._dslAbilityMatchesTrigger(ab, '常在')) continue;
+            if (!ab.各ターン || !ab.条件 || !ab.条件.備考) continue;
+            const key = `event:${eventType}:${this.battleSample.turn}:${this.battleSample.activeSide}:${spec.名称 || card.no}:${ab.備考 || ab.条件.備考}`;
+            const used = card._eventStaticUsed || {};
+            if (used[key]) continue;
+            this._dslCurrentSource = card;
+            if (!this.dslEvalCond(ab.条件)) continue;
+            this.$set(card, '_eventStaticUsed', Object.assign({}, used, { [key]: true }));
+            await this.dslRunActions(ab.処理 || [], card);
+          }
+        }
+      } finally {
+        this._dslCurrentEvent = prevEvent;
+        this._dslCurrentSource = prevSource;
+      }
+    },
     /* 統一発火関数：カミ別ハンドラに振り分け */
     battleFireKamiEvent(side, eventType, payload) {
       if (!this.battleSample) return;
+      this.battleRunEventStaticAbilities(side, eventType, payload || {});
       const kno = this._battleKamiNo(side);
       if (!kno) return;
       switch (kno) {
@@ -8292,6 +8323,30 @@ new Vue({
         const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
         const player = this.battleSample && this.battleSample[side];
         return Number((player && player.hand ? player.hand.length : player && player.handCount) || 0) >= 3;
+      }
+      if (/オラクルを使用したとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'playOracleOrRelic' && ev.payload && ev.payload.kind === 'オラクル');
+      }
+      if (/レリックが出たとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'playOracleOrRelic' && ev.payload && ev.payload.kind === 'レリック');
+      }
+      if (/オラクルまたはレリックを使用したとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'playOracleOrRelic' && ev.payload && /オラクル|レリック/.test(String(ev.payload.kind || '')));
+      }
+      if (/マナフェイズ以外でマナ最大値・マナ・ライフのいずれかが増えたとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'manaOrLifeIncreased' && !this._battleInManaPhase);
+      }
+      if (/守護を持つ自分レガシーが1枚出たとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'guardLegacyPlayed');
+      }
+      if (/自分フィールドにトークンが1枚出たとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'tokenPlayed');
       }
       if (/自分フィールドと墓地に同名レガシー/.test(s) && /いない/.test(s)) {
         const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
