@@ -10686,12 +10686,33 @@ new Vue({
       this.$set(fieldCard, '_staticKwGrant', []);
       return fieldCard;
     },
+    /* カード本文から「固有キーワード」を抽出する。
+       単独のキーワード能力（例: 「①【守護】」「【死角】」）のみを固有として扱い、
+       文中に埋め込まれた条件付き・他者付与のキーワード
+       （例: 「レリックがあれば代わりに【疾駆】を持つ」「【奇襲】を付与」「【昇華3】≫【疾駆】を得る」）は
+       固有とみなさない（それらは DSL engine が条件成立時に _kwGrant へ付与する）。 */
+    battleCardInherentKeywords(card) {
+      if (!card) return new Set();
+      const text = this.battleCardRulesText(card) || '';
+      const TRIGGERS = new Set(['出現時', '死亡時', '神攻時', '戦闘時', 'ターン終了時', 'ターン開始時', '使用時', '常在', '進化中', '墓地起動']);
+      const out = new Set();
+      // 能力境界（改行・丸数字・句読点）で分割し、【…】のみで構成されるセグメントを固有キーワードとする
+      text.split(/[\n。、①-⑳]/).forEach(seg => {
+        const s = seg.replace(/\s+/g, '');
+        if (!s || !/^(【[^】]+】)+$/.test(s)) return;
+        (s.match(/【([^】]+)】/g) || []).forEach(tok => {
+          const kw = tok.replace(/[【】]/g, '').split(/[:：]/)[0];
+          if (!TRIGGERS.has(kw)) out.add(kw);
+        });
+      });
+      return out;
+    },
     battleCardHasKeyword(card, keyword) {
-      const text = this.battleCardRulesText(card).replace(/\s+/g, '');
       const grants = []
         .concat(Array.isArray(card && card._kwGrant) ? card._kwGrant : [])
         .concat(Array.isArray(card && card._staticKwGrant) ? card._staticKwGrant : []);
-      return text.includes(`【${keyword}】`) || text.includes(keyword) || grants.includes(keyword);
+      if (grants.includes(keyword)) return true;
+      return this.battleCardInherentKeywords(card).has(keyword);
     },
     battleCanTargetLegacy(attacker, defender) {
       return !(this.battleCardHasKeyword(defender, '死角') && !this.battleCardHasKeyword(attacker, '死角'));
@@ -10985,7 +11006,8 @@ new Vue({
       for (let i = 0; i < defender.legacies.length; i++) {
         if (i === originalIndex) continue;
         const guard = defender.legacies[i];
-        if (this.battleCardHasKeyword(guard, '守護') && this.battleCanTargetLegacy(attacker, guard)) {
+        // 守護は「このレガシーをタップすることで」攻撃先を変更させる＝未タップの守護のみredirect可能
+        if (guard && !guard._tapped && this.battleCardHasKeyword(guard, '守護') && this.battleCanTargetLegacy(attacker, guard)) {
           return { index: i, card: guard };
         }
       }
