@@ -5329,7 +5329,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.65',
+    BUILD_VERSION: '1.14.66',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7767,6 +7767,15 @@ new Vue({
         const c = String(raw || '').replace(/\s+/g, '');
         if (!c) return false;
         if (c === 'カード') return true;
+        // 「【選定】を持つカード」等：指定キーワード/効果を持つカード（テキストに当該キーワードを含む）
+        const kwMatch = c.match(/^【?([^】]+?)】?を持つ(カード|レガシー)?$/);
+        if (kwMatch) {
+          if (kwMatch[2] === 'レガシー' && card.category !== 'レガシー') return false;
+          const kw = kwMatch[1].replace(/[【】]/g, '').split(/[:：]/)[0];
+          if (this.battleCardHasKeyword(card, kw)) return true;
+          const text = (this.battleCardRulesText(card) || '').replace(/\s+/g, '');
+          return text.includes('【' + kw);
+        }
         if (c.endsWith('カード')) {
           const color = c.replace(/カード$/, '');
           return !color || card.color === color;
@@ -9692,13 +9701,18 @@ new Vue({
         }
         const destZone = this.battleFieldZoneForSummon(card) || 'legacies';
         if (Array.isArray(player[destZone]) && player[destZone].length < 7) {
-          player[destZone].push(this._battlePrepareFieldCard(card));
-          placed.push(card);
+          const fieldCard = this._battlePrepareFieldCard(card);
+          player[destZone].push(fieldCard);
+          placed.push(fieldCard);
         }
       });
       if (placed.length) this.dslRefreshStaticAbilities();
       if (placed.length) {
         this.battleShowNotice('場に出す', `${placed.map(c => `「${this.fullName(c)}」`).join('、')}を場に出しました。`, placed);
+      }
+      // 場に出したレガシーの【出現時】効果を発動させる（イロハ#13等：墓地から出したレガシーの出現時）
+      for (const fc of placed) {
+        if (!this.battleRunEnterKeywordEffects(fc, null)) this.battleKeywordGuide(fc, null);
       }
     },
     /* デッキから条件を満たすカードを探して手札に加える（サーチ） */
@@ -11202,10 +11216,6 @@ new Vue({
       if (!attacker) return;
       const can = this.battleLegacyCanAct(attacker, 'divine');
       if (!can.ok) { this.battleShowNotice('神攻できません', can.reason, [attacker]); return; }
-      await this.battleRunActionTrigger(attacker, '神攻時');
-      if (this.battleSample.result) return;
-      attackerIndex = this.battleSample.self.legacies.indexOf(attacker);
-      if (attackerIndex < 0) return;
       const guard = await this._battleChooseGuard(attacker, 'opp', null);
       if (guard) {
         this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index);
@@ -11226,6 +11236,9 @@ new Vue({
           by: 'divineAttack'
         });
       }
+      // 神攻時効果：神攻を宣言しタップ・ダメージを与えた「後」に発動する
+      // （「このレガシーをアンタップする」#5夜風、「相手ライフを減らしたとき〜」#81 等が正しく機能するように）
+      await this.battleRunActionTrigger(attacker, '神攻時');
       this._battleCheckResult();
       this.battleShowNotice('神攻成功', `「${this.fullName(attacker)}」が神攻し、相手カミに ${damage} ダメージを与えました。`, [attacker]);
     },
