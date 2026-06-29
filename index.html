@@ -788,6 +788,21 @@
     width: 100%; aspect-ratio: 744 / 1039;
     background: #0a0c12 center / contain no-repeat;
   }
+  .card-hover-preview.chp-evolved {
+    width: 484px; display: flex; gap: 4px; padding: 4px;
+    background: rgba(10,12,18,0.92);
+  }
+  .card-hover-preview.chp-evolved .chp-col { flex: 1; min-width: 0; }
+  .chp-label {
+    font-size: 11px; color: #ffd86a; font-weight: 700;
+    text-align: center; padding: 2px 0; line-height: 1.2;
+  }
+  /* 手札ドラッグ中、進化元になり得るレガシーのハイライト */
+  .battle-card.field-card.evolve-target {
+    outline: 3px solid #ffd86a; outline-offset: -1px;
+    box-shadow: 0 0 14px 3px rgba(255, 216, 106, 0.85);
+    z-index: 5;
+  }
 
   /* ===== プレビュー モーダル ===== */
   .modal-bg {
@@ -3705,7 +3720,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('legacies', $event)">
               <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i }"
+                   :class="{ tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i, 'evolve-target': battleHandDragOverBaseIdx === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','legacies',i,$event)"
                    @click="battleFieldCardClick(card)"
@@ -4820,8 +4835,16 @@
   <!-- ===== カード画像ホバープレビュー（画像のみ拡大表示） ===== -->
   <div v-if="hoverCard && cardImageUrl(hoverCard) && !previewCard"
        class="card-hover-preview"
+       :class="{ 'chp-evolved': hoverCard._evolvedBase && cardImageUrl(hoverCard._evolvedBase) }"
        :style="{ left: hoverLeft + 'px', top: hoverTop + 'px' }">
-    <div class="chp-img" :style="{ backgroundImage: 'url(' + cardImageUrl(hoverCard) + ')' }"></div>
+    <div class="chp-col">
+      <div v-if="hoverCard._evolvedBase && cardImageUrl(hoverCard._evolvedBase)" class="chp-label">進化</div>
+      <div class="chp-img" :style="{ backgroundImage: 'url(' + cardImageUrl(hoverCard) + ')' }"></div>
+    </div>
+    <div v-if="hoverCard._evolvedBase && cardImageUrl(hoverCard._evolvedBase)" class="chp-col">
+      <div class="chp-label">進化元（重なり）</div>
+      <div class="chp-img" :style="{ backgroundImage: 'url(' + cardImageUrl(hoverCard._evolvedBase) + ')' }"></div>
+    </div>
   </div>
 
   <!-- ===== カードプレビュー モーダル ===== -->
@@ -5279,6 +5302,7 @@ new Vue({
     battleDragIndex: null,    // ドラッグ中の手札index（null=非ドラッグ中）
     battleHandDrag: null,
     battleDragOverZone: null, // ドラッグ中に重なっているゾーン: graveyard / legacies / relics
+    battleHandDragOverBaseIdx: -1, // 手札ドラッグ中、進化元になり得る自分レガシーのindex（-1=なし）
     battleFieldDrag: null,    // { side, zone, index } — 自分レガシーの戦闘/神攻ドラッグ
     battleFieldDragTarget: null, // 'kami' | 'legacy:N' — 攻撃ドラッグ中の相手側ドロップ先
     battleSublimModal: null,  // { card, index, options:[basecost, basecost+x, ...] } 昇華コスト選択
@@ -5305,7 +5329,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.62',
+    BUILD_VERSION: '1.14.63',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -10420,7 +10444,7 @@ new Vue({
       );
       return false;
     },
-    battlePlayFromHand(index, expectedZone) {
+    battlePlayFromHand(index, expectedZone, evolveBaseHint = undefined) {
       if (this.battleSample.result) return;
       if (!this.battleEnsureSelfTurn('手札からカードを使う操作')) return;
       const player = this.battleSample.self;
@@ -10451,15 +10475,15 @@ new Vue({
         this.battleShowNotice('フィールド上限です', `${card.category}フィールドには7枚まで配置できます。`, [card]);
         return;
       }
-      // 昇華持ち → 支払いコスト選択モーダルへ
+      // 昇華持ち → 支払いコスト選択モーダルへ（進化元ヒントを引き継ぐ）
       const options = this.battleSublimCostOptions(card);
       if (options.length > 1) {
-        this.battleSublimModal = { card, index, zone, options };
+        this.battleSublimModal = { card, index, zone, options, evolveBase: evolveBaseHint };
         return;
       }
       // 通常配置（コスト1択）
       const cost = options[0];
-      this._battlePlayLegacyOrRelic(index, zone, cost);
+      this._battlePlayLegacyOrRelic(index, zone, cost, evolveBaseHint);
     },
     /* 昇華選択モーダルからの決定 */
     battleSublimChoose(payCost) {
@@ -10469,7 +10493,7 @@ new Vue({
       if (m.zone === null) {
         this._battlePlayOracle(m.index, payCost);
       } else {
-        this._battlePlayLegacyOrRelic(m.index, m.zone, payCost);
+        this._battlePlayLegacyOrRelic(m.index, m.zone, payCost, m.evolveBase);
       }
     },
     /* 内部：オラクルを実際に発動（マナ消費＋墓地＋演出＋キーワード処理） */
@@ -10500,7 +10524,7 @@ new Vue({
       if (!this.battleRunEnterKeywordEffects(card, cost)) this.battleKeywordGuide(card, cost);
     },
     /* 内部：レガシー/レリックを実際に配置（マナ消費＋場へ移動） */
-    async _battlePlayLegacyOrRelic(index, zone, cost) {
+    async _battlePlayLegacyOrRelic(index, zone, cost, evolveBaseOverride = undefined) {
       if (!this.battleEnsureSelfTurn('手札からカードを使う操作')) return;
       const player = this.battleSample.self;
       const card = player.hand[index];
@@ -10512,14 +10536,20 @@ new Vue({
       // 進化判定：レガシーかつ進化条件あり＋自分フィールドに該当カードがあれば、進化として配置できる
       let evolveBase = null;
       if (zone === 'legacies') {
-        const candidates = this._dslEvolutionBaseCandidates(card);
-        if (candidates.length) {
-          const choice = await this.dslAskChoice(card, '進化として配置しますか？', ['通常配置（新規カードとして場に出す）', '進化として配置（既存のレガシーに重ねる）']);
-          if (choice < 0) return; // キャンセル
-          if (choice === 1) {
-            const picked = await this.dslAskCustomTargets('進化元となるレガシーを選択', candidates, 1, card);
-            if (!picked || !picked.length) return; // キャンセル
-            evolveBase = picked[0];
+        if (evolveBaseOverride !== undefined) {
+          // ドラッグ配置で配置先が確定済み：レガシー上に落とした(=有効な進化元)なら進化、空きなら通常配置
+          evolveBase = (evolveBaseOverride && this._dslEvolutionBaseCandidates(card).includes(evolveBaseOverride)) ? evolveBaseOverride : null;
+        } else {
+          // 非ドラッグ経路（旧フロー）：選択モーダルで確認
+          const candidates = this._dslEvolutionBaseCandidates(card);
+          if (candidates.length) {
+            const choice = await this.dslAskChoice(card, '進化として配置しますか？', ['通常配置（新規カードとして場に出す）', '進化として配置（既存のレガシーに重ねる）']);
+            if (choice < 0) return; // キャンセル
+            if (choice === 1) {
+              const picked = await this.dslAskCustomTargets('進化元となるレガシーを選択', candidates, 1, card);
+              if (!picked || !picked.length) return; // キャンセル
+              evolveBase = picked[0];
+            }
           }
         }
       }
@@ -11206,6 +11236,17 @@ new Vue({
       else if (this.battlePointInElement(e, relicEl)) this.battleDragOverZone = 'relics';
       else if (this.battlePointInElement(e, crumbledEl)) this.battleDragOverZone = 'crumbled';
       else this.battleDragOverZone = null;
+      // 進化配置のハイライト：レガシーゾーン上で、真下のレガシーがドラッグ中の手札カードの有効な進化元なら印を付ける
+      let baseIdx = -1;
+      if (this.battleDragOverZone === 'legacies' && this.battleDragIndex !== null) {
+        const handCard = this.battleSample.self.hand[this.battleDragIndex];
+        const li = this._battleSelfLegacyIndexUnderPoint(e.clientX, e.clientY);
+        if (handCard && li >= 0) {
+          const baseCard = this.battleSample.self.legacies[li];
+          if (baseCard && this._dslEvolutionBaseCandidates(handCard).includes(baseCard)) baseIdx = li;
+        }
+      }
+      this.battleHandDragOverBaseIdx = baseIdx;
       this.battleUpdateHandDragGuide(e);
     },
     battleHandDragTargetElement(zone) {
@@ -11591,6 +11632,17 @@ new Vue({
       if (this.battlePointInElement(evt, root.querySelector('.self-relic-drop'))) return 'relics';
       return null;
     },
+    /* ドラッグ位置の真下にある自分レガシーの index（無ければ -1）。進化配置の判定に使う。 */
+    _battleSelfLegacyIndexUnderPoint(x, y) {
+      const root = this.$el;
+      if (!root) return -1;
+      const cards = root.querySelectorAll('.self-legacy-drop .battle-card.field-card');
+      for (let i = 0; i < cards.length; i++) {
+        const r = cards[i].getBoundingClientRect();
+        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return i;
+      }
+      return -1;
+    },
     _battleHandPointerUp(e) {
       const p = this._handPointer;
       if (!p) return;
@@ -11601,14 +11653,16 @@ new Vue({
       if (!p.active) return;
       const idx = this.battleDragIndex;
       const target = this._battleHandDropTargetFromPoint(e.clientX, e.clientY);
+      const overLegacyIdx = this._battleSelfLegacyIndexUnderPoint(e.clientX, e.clientY);
       this.battleDragIndex = null;
       this.battleDragOverZone = null;
+      this.battleHandDragOverBaseIdx = -1;
       this.battleHandDrag = null;
       this.battleDragGuide = null;
       this.battleSuppressPostDragPreview();
-      this.battleResolveHandDrop(idx, target);
+      this.battleResolveHandDrop(idx, target, overLegacyIdx);
     },
-    battleResolveHandDrop(idx, target) {
+    battleResolveHandDrop(idx, target, overLegacyIdx = -1) {
       if (idx === null || idx === undefined || target === 'hand' || !target) return;
       if (target === 'graveyard') {
         const card = this.battleSample.self.hand[idx];
@@ -11628,7 +11682,14 @@ new Vue({
         return;
       }
       if (target === 'legacies' || target === 'relics') {
-        this.battlePlayFromHand(idx, target);
+        // ドラッグ配置：レガシー上に落とせば進化（有効な進化元のとき）、それ以外は通常配置
+        let evolveBase = null;
+        if (target === 'legacies' && overLegacyIdx >= 0) {
+          const card = this.battleSample.self.hand[idx];
+          const baseCard = this.battleSample.self.legacies[overLegacyIdx];
+          if (card && baseCard && this._dslEvolutionBaseCandidates(card).includes(baseCard)) evolveBase = baseCard;
+        }
+        this.battlePlayFromHand(idx, target, evolveBase);
       }
     },
     battleHandDragStart(index, e) {
@@ -13198,8 +13259,9 @@ new Vue({
       this.hoverCard = card;
       const el = event.currentTarget.closest('.card') || event.currentTarget;
       const rect = el.getBoundingClientRect();
-      const pw = 360; // プレビュー幅
-      const ph = Math.round(pw * 1039 / 744); // カード縦横比
+      const evolved = !!(card && card._evolvedBase && this.cardImageUrl(card._evolvedBase));
+      const pw = evolved ? 484 : 360; // プレビュー幅（進化時は2枚並べ）
+      const ph = evolved ? Math.round(240 * 1039 / 744) + 22 : Math.round(pw * 1039 / 744); // カード縦横比
       const margin = 10;
       // 右に出す → 右端が画面外なら左に
       let left = rect.right + margin;
