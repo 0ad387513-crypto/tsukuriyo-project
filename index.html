@@ -7339,8 +7339,9 @@ new Vue({
             this.$set(card, '_bindUntilTurn', null);
             this.$set(card, '_evolved', false);
             this.$set(card, '_evolvedBase', null);
-            p.graveyard = p.graveyard || [];
-            p.graveyard.push(card);
+            const zpZone = this._battleLeaveZone(card, 'graveyard');
+            p[zpZone] = p[zpZone] || [];
+            p[zpZone].push(card);
             destroyed.push({ side: s, name: this.fullName(card), card });
           } else {
             survivors.push(card);
@@ -8660,6 +8661,12 @@ new Vue({
       this.$set(card, '_atkTurns', []);
       this.$set(card, '_kwGrant', []);
     },
+    /* トークンが場を離れる先のゾーンを返す。
+       トークン（無属性カード）は手札・墓地に置かれると崩壊する＝崩壊ゾーンへ送る。 */
+    _battleLeaveZone(card, intendedZone) {
+      if (card && card.isToken && (intendedZone === 'graveyard' || intendedZone === 'hand')) return 'crumbled';
+      return intendedZone;
+    },
     dslStaticEligible(sel, sourceCard, sourceSide) {
       if (!sel) return [];
       if (sel.自身) return sourceCard ? [sourceCard] : [];
@@ -9384,11 +9391,12 @@ new Vue({
             this.$set(card, '_bindUntilTurn', null);
             this.$set(card, '_evolved', false);
             this.$set(card, '_evolvedBase', null);
-            if (destZone === 'hand') {
+            const lz = this._battleLeaveZone(card, destZone); // トークンは手札/墓地→崩壊
+            if (lz === 'hand') {
               p.hand = p.hand || []; p.hand.push(card); p.handCount = p.hand.length;
-            } else if (destZone === 'graveyard') {
+            } else if (lz === 'graveyard') {
               p.graveyard = p.graveyard || []; p.graveyard.push(card);
-            } else if (destZone === 'crumbled') {
+            } else if (lz === 'crumbled') {
               p.crumbled = p.crumbled || []; p.crumbled.push(card);
             }
             // 天力トリガー：レガシー破壊（K7 ヒノカグツチ）— 墓地行きのみ・レガシーのみ
@@ -10251,6 +10259,18 @@ new Vue({
       if (!player || !zone || !Array.isArray(player[zone])) return;
       if (!this.battleCanPlaceFromSource(card, 'effect')) return;
       if (player[zone].length >= 7) {
+        if (card.isToken) {
+          // 上限超過：トークンは場に出られず崩壊する
+          this.battleSaveUndo();
+          const crumbledCard = this._battlePrepareFieldCard(card);
+          player.crumbled = player.crumbled || [];
+          player.crumbled.push(crumbledCard);
+          this.battleDeckModal = null;
+          this.hideCardHover();
+          this.battleShowNotice('上限超過で崩壊', `レガシーフィールドが上限のため、「${this.fullName(card)}」は場に出られず崩壊しました。`, [card]);
+          if (!skipQueueProcess) this._battleProcessNextEffect();
+          return crumbledCard;
+        }
         this.battleShowNotice('フィールド上限です', `${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドには7枚まで配置できます。`, [card]);
         return;
       }
@@ -10287,6 +10307,18 @@ new Vue({
       if (!player || !zone || !Array.isArray(player[zone])) return;
       if (!this.battleCanPlaceFromSource(card, 'effect')) return;
       if (player[zone].length >= 7) {
+        if (card.isToken) {
+          // 上限超過：トークンは場に出られず崩壊する（残り枚数は消費して次へ）
+          this.battleSaveUndo();
+          const crumbledCard = this._battlePrepareFieldCard(card);
+          player.crumbled = player.crumbled || [];
+          player.crumbled.push(crumbledCard);
+          modal.remaining = (modal.remaining || 1) - 1;
+          this.hideCardHover();
+          this.battleShowNotice('上限超過で崩壊', `レガシーフィールドが上限のため、「${this.fullName(card)}」は場に出られず崩壊しました。`, [card]);
+          if ((modal.remaining || 0) <= 0) { this.battleDeckModal = null; this._battleProcessNextEffect(); }
+          return;
+        }
         this.battleShowNotice('フィールド上限です', `${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドには7枚まで配置できます。`, [card]);
         return;
       }
@@ -11057,7 +11089,9 @@ new Vue({
       this.$set(card, '_lastFieldSide', side);
       this._battleResetCardBuffs(card);
       this.$set(card, '_tapped', false);
-      player.graveyard.push(card);
+      const destZone = this._battleLeaveZone(card, 'graveyard');
+      player[destZone] = player[destZone] || [];
+      player[destZone].push(card);
       this.battleRecordLegacyDestroyed(side, card);
       destroyed.push({ side, card });
     },
@@ -11236,12 +11270,14 @@ new Vue({
       this.battleReleaseEvolutionBase(card);
       this._battleResetCardBuffs(card);
       this.$set(card, '_tapped', false);
-      player[destinationZone].push(card);
+      const moveZone = this._battleLeaveZone(card, destinationZone);
+      player[moveZone] = player[moveZone] || [];
+      player[moveZone].push(card);
       this.hideCardHover();
       this.battleHoverField = null;
       this.dslRefreshStaticAbilities();
-      if (destinationZone === 'graveyard' && this.battleRunDeathKeywordEffects(card)) return;
-      const destLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
+      if (moveZone === 'graveyard' && this.battleRunDeathKeywordEffects(card)) return;
+      const destLabel = moveZone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
         title: `${destLabel}へ移動`,
         message: `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${destLabel}へ送りました。`,
@@ -11260,8 +11296,14 @@ new Vue({
       this.battleReleaseEvolutionBase(card);
       this._battleResetCardBuffs(card);
       this.$set(card, '_tapped', false);
-      player.hand.push(card);
-      player.handCount = player.hand.length;
+      if (card.isToken) {
+        // トークンは手札に置けず崩壊する
+        player.crumbled = player.crumbled || [];
+        player.crumbled.push(card);
+      } else {
+        player.hand.push(card);
+        player.handCount = player.hand.length;
+      }
       this.hideCardHover();
       this.battleHoverField = null;
       this.dslRefreshStaticAbilities();
