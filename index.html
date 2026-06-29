@@ -7297,11 +7297,26 @@ new Vue({
               this.$set(card, 'power', (Number(card.power) || 0) - removedDelta);
               expired.push(this.fullName(card));
             }
+            // 神威（一時神攻力）も同様にこのターン分を巻き戻す
+            const atkEntries = Array.isArray(card._atkTurns) ? card._atkTurns : null;
+            if (atkEntries && atkEntries.length) {
+              const keepA = [];
+              let removedAtk = 0;
+              atkEntries.forEach(e => {
+                if (e && e.side === side && e.turn === turn) removedAtk += Number(e.delta) || 0;
+                else keepA.push(e);
+              });
+              if (removedAtk !== 0) {
+                this.$set(card, '_atkTurns', keepA);
+                this.$set(card, 'attack', (Number(card.attack) || 0) - removedAtk);
+                if (!expired.includes(this.fullName(card))) expired.push(this.fullName(card));
+              }
+            }
           });
         });
       });
       if (expired.length) {
-        this.battleShowNotice('補正の効果が終了', `${expired.join('、')}に付与されていた【補正】の効果が終了しました。`);
+        this.battleShowNotice('補正・神威の効果が終了', `${expired.join('、')}に付与されていた【補正】／【神威】の効果が終了しました。`);
       }
     },
     /* 戦闘力0以下のレガシーを破壊（補正巻き戻し直後等に呼ぶ） */
@@ -7318,15 +7333,16 @@ new Vue({
           const pw = Number(card.power);
           if (!isNaN(pw) && pw <= 0) {
             // 破壊：墓地へ
-            this.dslClearStaticFromCard(card);
+            this.$set(card, '_lastFieldSide', s);
+            this.battleReleaseEvolutionBase(card, s); // 進化元を墓地へ（効果は発動しない）
+            this._battleResetCardBuffs(card);
             this.$set(card, '_tapped', false);
             this.$set(card, '_bindUntilSide', null);
             this.$set(card, '_bindUntilTurn', null);
-            this.$set(card, '_buf', 0);
             this.$set(card, '_evolved', false);
-            this.$set(card, '_evolvedBase', null);
-            p.graveyard = p.graveyard || [];
-            p.graveyard.push(card);
+            const zpZone = this._battleLeaveZone(card, 'graveyard');
+            p[zpZone] = p[zpZone] || [];
+            p[zpZone].push(card);
             destroyed.push({ side: s, name: this.fullName(card), card });
           } else {
             survivors.push(card);
@@ -7801,10 +7817,11 @@ new Vue({
       if (!crit || !crit.length) return [];
       const p = this.battleSample && this.battleSample.self;
       if (!p || !Array.isArray(p.legacies)) return [];
-      const field = p.legacies.filter(c => this.battleCardMatchesInduceCriteria(c, crit));
+      // 進化元は無属性カード（トークン）を除く
+      const field = p.legacies.filter(c => c && !c.isToken && this.battleCardMatchesInduceCriteria(c, crit));
       if (!p.graveyardEvolutionEnabled || !Array.isArray(p.graveyard)) return field;
       const graveyard = p.graveyard.filter(c => {
-        if (!c || c._usedAsEvolutionBase) return false;
+        if (!c || c._usedAsEvolutionBase || c.isToken) return false;
         if ((c.category || '') !== 'レガシー') return false;
         return this.battleCardMatchesInduceCriteria(c, crit);
       });
@@ -8578,7 +8595,14 @@ new Vue({
         } else if (m = s.match(/^神攻力([+\-]?\d+)/)) {
           this.$set(card, 'attack', (Number(card.attack) || 0) + Number(m[1]));
         } else if (m = s.match(/^神威[:：]?([+\-]?\d+)/)) {
-          this.$set(card, 'attack', (Number(card.attack) || 0) + Number(m[1]));
+          // 一時神攻力（神威）：このターン中のみ。適用ターン＋適用者を記録し、ターン終了時に巻き戻す
+          const delta = Number(m[1]);
+          const applierSide = (this.battleSample && this.battleSample.activeSide) || 'self';
+          const turn = (this.battleSample && this.battleSample.turn) || 1;
+          const atkEntries = Array.isArray(card._atkTurns) ? card._atkTurns.slice() : [];
+          atkEntries.push({ side: applierSide, turn, delta });
+          this.$set(card, '_atkTurns', atkEntries);
+          this.$set(card, 'attack', (Number(card.attack) || 0) + delta);
         } else {
           // キーワード付与（奇襲・疾駆・守護・死角・不可侵・呪殺 等）
           const list = Array.isArray(card._kwGrant) ? card._kwGrant.slice() : [];
@@ -8620,6 +8644,30 @@ new Vue({
       this.$set(card, '_staticSublimDelta', 0);
       this.$set(card, '_staticDoubleOwnDeath', false);
       this.$set(card, '_staticDoubleShinshiEnter', false);
+    },
+    /* カードが場を離れる時に呼ぶ：常在グラントに加え、一時補正(_buf)・恒常戦闘力(_perm)・
+       神威(_atkTurns)・付与キーワード(_kwGrant)も全て巻き戻して基礎値に戻す。
+       （進化元同様「フィールドを離れたらあらゆる効果を失う」ため）
+       ※ dslClearStaticFromCard は静的再計算でも毎フレーム呼ばれるので、こちらは退場時のみ使う。 */
+    _battleResetCardBuffs(card) {
+      if (!card) return;
+      this.dslClearStaticFromCard(card);
+      const buf = Number(card._buf) || 0;
+      const perm = Number(card._perm) || 0;
+      if (buf || perm) this.$set(card, 'power', (Number(card.power) || 0) - buf - perm);
+      const atkSum = Array.isArray(card._atkTurns) ? card._atkTurns.reduce((a, e) => a + (Number(e.delta) || 0), 0) : 0;
+      if (atkSum) this.$set(card, 'attack', (Number(card.attack) || 0) - atkSum);
+      this.$set(card, '_buf', 0);
+      this.$set(card, '_bufTurns', []);
+      this.$set(card, '_perm', 0);
+      this.$set(card, '_atkTurns', []);
+      this.$set(card, '_kwGrant', []);
+    },
+    /* トークンが場を離れる先のゾーンを返す。
+       トークン（無属性カード）は手札・墓地に置かれると崩壊する＝崩壊ゾーンへ送る。 */
+    _battleLeaveZone(card, intendedZone) {
+      if (card && card.isToken && (intendedZone === 'graveyard' || intendedZone === 'hand')) return 'crumbled';
+      return intendedZone;
     },
     dslStaticEligible(sel, sourceCard, sourceSide) {
       if (!sel) return [];
@@ -9339,18 +9387,18 @@ new Vue({
             this.$set(card, '_lastFieldSide', side);
             arr.splice(idx, 1);
             this.battleReleaseEvolutionBase(card);
-            this.dslClearStaticFromCard(card);
+            this._battleResetCardBuffs(card);
             this.$set(card, '_tapped', false);
             this.$set(card, '_bindUntilSide', null);
             this.$set(card, '_bindUntilTurn', null);
-            this.$set(card, '_buf', 0);
             this.$set(card, '_evolved', false);
             this.$set(card, '_evolvedBase', null);
-            if (destZone === 'hand') {
+            const lz = this._battleLeaveZone(card, destZone); // トークンは手札/墓地→崩壊
+            if (lz === 'hand') {
               p.hand = p.hand || []; p.hand.push(card); p.handCount = p.hand.length;
-            } else if (destZone === 'graveyard') {
+            } else if (lz === 'graveyard') {
               p.graveyard = p.graveyard || []; p.graveyard.push(card);
-            } else if (destZone === 'crumbled') {
+            } else if (lz === 'crumbled') {
               p.crumbled = p.crumbled || []; p.crumbled.push(card);
             }
             // 天力トリガー：レガシー破壊（K7 ヒノカグツチ）— 墓地行きのみ・レガシーのみ
@@ -10213,6 +10261,18 @@ new Vue({
       if (!player || !zone || !Array.isArray(player[zone])) return;
       if (!this.battleCanPlaceFromSource(card, 'effect')) return;
       if (player[zone].length >= 7) {
+        if (card.isToken) {
+          // 上限超過：トークンは場に出られず崩壊する
+          this.battleSaveUndo();
+          const crumbledCard = this._battlePrepareFieldCard(card);
+          player.crumbled = player.crumbled || [];
+          player.crumbled.push(crumbledCard);
+          this.battleDeckModal = null;
+          this.hideCardHover();
+          this.battleShowNotice('上限超過で崩壊', `レガシーフィールドが上限のため、「${this.fullName(card)}」は場に出られず崩壊しました。`, [card]);
+          if (!skipQueueProcess) this._battleProcessNextEffect();
+          return crumbledCard;
+        }
         this.battleShowNotice('フィールド上限です', `${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドには7枚まで配置できます。`, [card]);
         return;
       }
@@ -10249,6 +10309,18 @@ new Vue({
       if (!player || !zone || !Array.isArray(player[zone])) return;
       if (!this.battleCanPlaceFromSource(card, 'effect')) return;
       if (player[zone].length >= 7) {
+        if (card.isToken) {
+          // 上限超過：トークンは場に出られず崩壊する（残り枚数は消費して次へ）
+          this.battleSaveUndo();
+          const crumbledCard = this._battlePrepareFieldCard(card);
+          player.crumbled = player.crumbled || [];
+          player.crumbled.push(crumbledCard);
+          modal.remaining = (modal.remaining || 1) - 1;
+          this.hideCardHover();
+          this.battleShowNotice('上限超過で崩壊', `レガシーフィールドが上限のため、「${this.fullName(card)}」は場に出られず崩壊しました。`, [card]);
+          if ((modal.remaining || 0) <= 0) { this.battleDeckModal = null; this._battleProcessNextEffect(); }
+          return;
+        }
         this.battleShowNotice('フィールド上限です', `${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドには7枚まで配置できます。`, [card]);
         return;
       }
@@ -10457,9 +10529,10 @@ new Vue({
       player.hand.splice(index, 1);
       const fieldCard = this._battlePrepareFieldCard(card);
       if (evolveBase) {
-        // 進化として配置：既存カードの位置に上書き、_evolved を記録し、元カードは墓地へ
+        // 進化として配置：進化元の上に重ねる（進化元は墓地に送らず _evolvedBase として保持）
         const baseIdx = player.legacies.indexOf(evolveBase);
         const graveIdx = (player.graveyard || []).indexOf(evolveBase);
+        const baseTapped = !!evolveBase._tapped; // タップ／アンタップ状態を引き継ぐ
         this.$set(fieldCard, '_evolved', true);
         this.$set(fieldCard, '_evolvedBase', evolveBase);
         this.$set(fieldCard, '_evolvedFromGraveyard', graveIdx >= 0 && baseIdx < 0);
@@ -10471,17 +10544,17 @@ new Vue({
         } else {
           player.legacies.push(fieldCard);
         }
-        // 進化元は墓地へ（タップ等の状態リセット）
+        // 進化元は重ねた状態で保持（あらゆる効果を失う）。墓地へは進化カードが場を離れた時に送られる。
         this.dslClearStaticFromCard(evolveBase);
-        this.$set(evolveBase, '_tapped', false);
         this.$set(evolveBase, '_buf', 0);
-        player.graveyard = player.graveyard || [];
-        if (graveIdx < 0) player.graveyard.push(evolveBase);
+        // タップ状態を進化カードへ引き継ぐ ＋ 進化カードは【疾駆】を持つ
+        this.$set(fieldCard, '_tapped', baseTapped);
+        const kw = Array.isArray(fieldCard._kwGrant) ? fieldCard._kwGrant.slice() : [];
+        if (!kw.includes('疾駆')) kw.push('疾駆');
+        this.$set(fieldCard, '_kwGrant', kw);
         this.battleShowNotice(
           '進化として配置',
-          graveIdx >= 0 && baseIdx < 0
-            ? `墓地の「${this.fullName(evolveBase)}」の上に「${this.fullName(fieldCard)}」が進化として重ねられました。`
-            : `「${this.fullName(evolveBase)}」の上に「${this.fullName(fieldCard)}」が進化として重ねられました。元カードは墓地へ。`,
+          `「${this.fullName(evolveBase)}」の上に「${this.fullName(fieldCard)}」が進化として重ねられました（【疾駆】付与・タップ状態継承）。`,
           [fieldCard, evolveBase]
         );
       } else {
@@ -10509,14 +10582,10 @@ new Vue({
       const baseCost = Math.max(0, Number(card.cost) || 0);
       if (cost > baseCost) this.battleFireKamiEvent('self', 'evolveOrSublim', { card: fieldCard, paidCost: cost });
       // K1 スサノオ：進化したときも evolveOrSublim を発火
+      // ※進化元は破壊されず「重ねられる」だけなので legacyDestroyed は発火しない
+      //   （進化カードが場を離れた時に初めて進化元が墓地へ送られる。その時も効果は失われている）
       if (evolveBase) {
         this.battleFireKamiEvent('self', 'evolveOrSublim', { card: fieldCard, evolved: true });
-        // 進化元レガシーが墓地に行ったので K7 ヒノカグツチ 等にも発火
-        if (!fieldCard._evolvedFromGraveyard) {
-          this.battleRecordLegacyDestroyed('self', evolveBase);
-          this.battleFireKamiEvent('self', 'legacyDestroyed', { card: evolveBase });
-          this.battleFireKamiEvent('opp',  'legacyDestroyed', { card: evolveBase });
-        }
       }
       // 通常の【出現時】効果
       if (!this.battleRunEnterKeywordEffects(fieldCard, cost)) this.battleKeywordGuide(fieldCard, cost);
@@ -10647,12 +10716,29 @@ new Vue({
       const r = el.getBoundingClientRect();
       return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
     },
-    battleReleaseEvolutionBase(card) {
+    battleReleaseEvolutionBase(card, side = null) {
       if (!card || !card._evolvedBase) return;
+      const base = card._evolvedBase;
       if (card._evolvedFromGraveyard) {
-        this.$set(card._evolvedBase, '_usedAsEvolutionBase', false);
+        // 墓地から進化元にした場合：進化元は墓地に残ったまま。使用フラグだけ解除。
+        this.$set(base, '_usedAsEvolutionBase', false);
+      } else {
+        // 場の進化元を重ねていた場合：進化カードが場を離れたので進化元を墓地へ送る。
+        // 進化元はあらゆる効果を失っているため【死亡時】等は発動しない（墓地へ送るだけ）。
+        const s = side || card._lastFieldSide || 'self';
+        const player = this.battleSample && this.battleSample[s];
+        if (player) {
+          this.dslClearStaticFromCard(base);
+          this.$set(base, '_tapped', false);
+          this.$set(base, '_buf', 0);
+          this.$set(base, '_evolved', false);
+          this.$set(base, '_evolvedBase', null);
+          player.graveyard = player.graveyard || [];
+          if (!player.graveyard.includes(base)) player.graveyard.push(base);
+        }
       }
       this.$set(card, '_evolvedFromGraveyard', false);
+      this.$set(card, '_evolvedBase', null);
     },
     _battlePrepareFieldCard(card) {
       if (!card) return card;
@@ -10664,12 +10750,33 @@ new Vue({
       this.$set(fieldCard, '_staticKwGrant', []);
       return fieldCard;
     },
+    /* カード本文から「固有キーワード」を抽出する。
+       単独のキーワード能力（例: 「①【守護】」「【死角】」）のみを固有として扱い、
+       文中に埋め込まれた条件付き・他者付与のキーワード
+       （例: 「レリックがあれば代わりに【疾駆】を持つ」「【奇襲】を付与」「【昇華3】≫【疾駆】を得る」）は
+       固有とみなさない（それらは DSL engine が条件成立時に _kwGrant へ付与する）。 */
+    battleCardInherentKeywords(card) {
+      if (!card) return new Set();
+      const text = this.battleCardRulesText(card) || '';
+      const TRIGGERS = new Set(['出現時', '死亡時', '神攻時', '戦闘時', 'ターン終了時', 'ターン開始時', '使用時', '常在', '進化中', '墓地起動']);
+      const out = new Set();
+      // 能力境界（改行・丸数字・句読点）で分割し、【…】のみで構成されるセグメントを固有キーワードとする
+      text.split(/[\n。、①-⑳]/).forEach(seg => {
+        const s = seg.replace(/\s+/g, '');
+        if (!s || !/^(【[^】]+】)+$/.test(s)) return;
+        (s.match(/【([^】]+)】/g) || []).forEach(tok => {
+          const kw = tok.replace(/[【】]/g, '').split(/[:：]/)[0];
+          if (!TRIGGERS.has(kw)) out.add(kw);
+        });
+      });
+      return out;
+    },
     battleCardHasKeyword(card, keyword) {
-      const text = this.battleCardRulesText(card).replace(/\s+/g, '');
       const grants = []
         .concat(Array.isArray(card && card._kwGrant) ? card._kwGrant : [])
         .concat(Array.isArray(card && card._staticKwGrant) ? card._staticKwGrant : []);
-      return text.includes(`【${keyword}】`) || text.includes(keyword) || grants.includes(keyword);
+      if (grants.includes(keyword)) return true;
+      return this.battleCardInherentKeywords(card).has(keyword);
     },
     battleCanTargetLegacy(attacker, defender) {
       return !(this.battleCardHasKeyword(defender, '死角') && !this.battleCardHasKeyword(attacker, '死角'));
@@ -10963,8 +11070,30 @@ new Vue({
       for (let i = 0; i < defender.legacies.length; i++) {
         if (i === originalIndex) continue;
         const guard = defender.legacies[i];
-        if (this.battleCardHasKeyword(guard, '守護') && this.battleCanTargetLegacy(attacker, guard)) {
+        // 守護は「このレガシーをタップすることで」攻撃先を変更させる＝未タップの守護のみredirect可能
+        if (guard && !guard._tapped && this.battleCardHasKeyword(guard, '守護') && this.battleCanTargetLegacy(attacker, guard)) {
           return { index: i, card: guard };
+        }
+      }
+      return null;
+    },
+    /* 守護による攻撃先変更を防御側の任意で確認する。
+       未タップ守護を順に提示し、引き受けると答えたらその守護をタップして返す。
+       全て辞退（または該当なし）なら null（攻撃は元の対象へ）。 */
+    async _battleChooseGuard(attacker, defenderSide, originalIndex = null) {
+      const defender = this.battleSample[defenderSide];
+      if (!defender || !Array.isArray(defender.legacies)) return null;
+      for (let i = 0; i < defender.legacies.length; i++) {
+        if (i === originalIndex) continue;
+        const guard = defender.legacies[i];
+        if (!guard || guard._tapped) continue;
+        if (!this.battleCardHasKeyword(guard, '守護') || !this.battleCanTargetLegacy(attacker, guard)) continue;
+        const ok = await this.dslAskOptional(guard, '守護', `「${this.fullName(guard)}」をタップして相手の攻撃を【守護】で引き受けますか？`);
+        if (ok) {
+          const idx = defender.legacies.indexOf(guard);
+          if (idx < 0) continue;
+          this.$set(guard, '_tapped', true);
+          return { index: idx, card: guard };
         }
       }
       return null;
@@ -10974,9 +11103,12 @@ new Vue({
       if (!player || !player.legacies[index]) return;
       const card = player.legacies.splice(index, 1)[0];
       this.$set(card, '_lastFieldSide', side);
-      this.dslClearStaticFromCard(card);
+      this.battleReleaseEvolutionBase(card, side); // 進化元を墓地へ（効果は発動しない）
+      this._battleResetCardBuffs(card);
       this.$set(card, '_tapped', false);
-      player.graveyard.push(card);
+      const destZone = this._battleLeaveZone(card, 'graveyard');
+      player[destZone] = player[destZone] || [];
+      player[destZone].push(card);
       this.battleRecordLegacyDestroyed(side, card);
       destroyed.push({ side, card });
     },
@@ -11002,7 +11134,7 @@ new Vue({
         this.battleShowNotice('死角により対象にできません', `「${this.fullName(attacker)}」は【死角】を持たないため、「${this.fullName(defender)}」を戦闘対象に選べません。`, [attacker, defender]);
         return;
       }
-      const guard = this.battleCardHasKeyword(defender, '守護') ? null : this.battleResolveGuardTarget(attacker, defenderSide, defenderIndex);
+      const guard = this.battleCardHasKeyword(defender, '守護') ? null : await this._battleChooseGuard(attacker, defenderSide, defenderIndex);
       const guarded = !!guard;
       if (guarded) {
         defenderIndex = guard.index;
@@ -11040,7 +11172,7 @@ new Vue({
       if (this.battleSample.result) return;
       attackerIndex = this.battleSample.self.legacies.indexOf(attacker);
       if (attackerIndex < 0) return;
-      const guard = this.battleResolveGuardTarget(attacker, 'opp', null);
+      const guard = await this._battleChooseGuard(attacker, 'opp', null);
       if (guard) {
         this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index);
         return;
@@ -11153,14 +11285,16 @@ new Vue({
       this.$set(card, '_lastFieldSide', side);
       player[sourceZone].splice(index, 1);
       this.battleReleaseEvolutionBase(card);
-      this.dslClearStaticFromCard(card);
+      this._battleResetCardBuffs(card);
       this.$set(card, '_tapped', false);
-      player[destinationZone].push(card);
+      const moveZone = this._battleLeaveZone(card, destinationZone);
+      player[moveZone] = player[moveZone] || [];
+      player[moveZone].push(card);
       this.hideCardHover();
       this.battleHoverField = null;
       this.dslRefreshStaticAbilities();
-      if (destinationZone === 'graveyard' && this.battleRunDeathKeywordEffects(card)) return;
-      const destLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
+      if (moveZone === 'graveyard' && this.battleRunDeathKeywordEffects(card)) return;
+      const destLabel = moveZone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
         title: `${destLabel}へ移動`,
         message: `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${destLabel}へ送りました。`,
@@ -11177,10 +11311,16 @@ new Vue({
       this.battleSaveUndo();
       player[sourceZone].splice(index, 1);
       this.battleReleaseEvolutionBase(card);
-      this.dslClearStaticFromCard(card);
+      this._battleResetCardBuffs(card);
       this.$set(card, '_tapped', false);
-      player.hand.push(card);
-      player.handCount = player.hand.length;
+      if (card.isToken) {
+        // トークンは手札に置けず崩壊する
+        player.crumbled = player.crumbled || [];
+        player.crumbled.push(card);
+      } else {
+        player.hand.push(card);
+        player.handCount = player.hand.length;
+      }
       this.hideCardHover();
       this.battleHoverField = null;
       this.dslRefreshStaticAbilities();
