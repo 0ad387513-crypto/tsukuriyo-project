@@ -5329,7 +5329,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.63',
+    BUILD_VERSION: '1.14.64',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6495,14 +6495,9 @@ new Vue({
       if (color === 'ミックス') {
         selfPool = all.slice(0, 30);
       } else {
+        // 選んだ色のカードを全て入れる（その色のレガシー/オラクル/レリック＝合計36枚）
         selfPool = all.filter(c => c.color === color);
-        if (selfPool.length < 30) {
-          // 不足分は他色で補う
-          const extra = all.filter(c => c.color !== color);
-          selfPool = selfPool.concat(extra).slice(0, 30);
-        } else {
-          selfPool = selfPool.slice(0, 30);
-        }
+        if (!selfPool.length) selfPool = all.slice(0, 30); // 念のためのフォールバック
       }
       const oppPool = all.slice(30, 60);
       const selfKami = this.allKamiCards.find(k => String(k.no) === String(setup.selfKamiNo)) || this.allKamiCards[0] || null;
@@ -8345,6 +8340,12 @@ new Vue({
         );
         return Promise.resolve([]);
       }
+      // 備考で対象が一意に定まるもの（今招来した影分身／そのヨリシロ／そのカード 等）は
+      // 手動選択不要で自動適用する（候補＝解決済みの具体カードなのでモーダルを開かない）
+      if (this._dslRemarkTargetCards(remarks)) {
+        const n = (sel.枚数 === 'all' || sel.枚数 == null) ? pool.length : (Number(sel.枚数) || pool.length);
+        return Promise.resolve(pool.slice(0, n));
+      }
       // 自動／ランダム
       if (sel.選択者 === 'auto' || sel.枚数 === 'all') return Promise.resolve(pool.slice(0, need));
       if (sel.選択者 === 'random') {
@@ -10002,16 +10003,16 @@ new Vue({
         return true;
       }
       // まずDSL spec があれば優先実行（出現時 or 使用時 or 昇華）
-      if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '出現時')) {
-        this.dslRunSpec(card, '出現時', paidCost);
-        // 昇華契機もspec側で同時走らせる
-        if (paidCost !== null) this.dslRunSpec(card, '昇華', paidCost);
-        this.battleRunDoubledEnterEffect(card, paidCost);
-        return true;
-      }
-      if (this.effectSpecsReady && card.category === 'オラクル' && this.dslHasSpecForTrigger(card, '使用時')) {
-        this.dslRunSpec(card, '使用時', paidCost);
-        if (paidCost !== null) this.dslRunSpec(card, '昇華', paidCost);
+      // ※昇華契機は出現時/使用時の有無に関わらず、昇華コストを払っていれば発動する
+      //   （#5夜風のように出現時を持たず昇華効果のみのカードでも昇華が発火するように）
+      const hasEnter = this.effectSpecsReady && this.dslHasSpecForTrigger(card, '出現時');
+      const hasUse = this.effectSpecsReady && card.category === 'オラクル' && this.dslHasSpecForTrigger(card, '使用時');
+      const hasSublim = paidCost !== null && this.effectSpecsReady && this.dslHasSpecForTrigger(card, '昇華');
+      if (hasEnter || hasUse || hasSublim) {
+        if (hasEnter) this.dslRunSpec(card, '出現時', paidCost);
+        else if (hasUse) this.dslRunSpec(card, '使用時', paidCost);
+        if (hasSublim) this.dslRunSpec(card, '昇華', paidCost);
+        if (hasEnter) this.battleRunDoubledEnterEffect(card, paidCost);
         return true;
       }
       return this._battleQueueAndRunEffects(card, paidCost, '出現時');
