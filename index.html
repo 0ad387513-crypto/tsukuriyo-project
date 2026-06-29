@@ -7333,11 +7333,10 @@ new Vue({
           const pw = Number(card.power);
           if (!isNaN(pw) && pw <= 0) {
             // 破壊：墓地へ
-            this.dslClearStaticFromCard(card);
+            this._battleResetCardBuffs(card);
             this.$set(card, '_tapped', false);
             this.$set(card, '_bindUntilSide', null);
             this.$set(card, '_bindUntilTurn', null);
-            this.$set(card, '_buf', 0);
             this.$set(card, '_evolved', false);
             this.$set(card, '_evolvedBase', null);
             p.graveyard = p.graveyard || [];
@@ -8643,6 +8642,24 @@ new Vue({
       this.$set(card, '_staticDoubleOwnDeath', false);
       this.$set(card, '_staticDoubleShinshiEnter', false);
     },
+    /* カードが場を離れる時に呼ぶ：常在グラントに加え、一時補正(_buf)・恒常戦闘力(_perm)・
+       神威(_atkTurns)・付与キーワード(_kwGrant)も全て巻き戻して基礎値に戻す。
+       （進化元同様「フィールドを離れたらあらゆる効果を失う」ため）
+       ※ dslClearStaticFromCard は静的再計算でも毎フレーム呼ばれるので、こちらは退場時のみ使う。 */
+    _battleResetCardBuffs(card) {
+      if (!card) return;
+      this.dslClearStaticFromCard(card);
+      const buf = Number(card._buf) || 0;
+      const perm = Number(card._perm) || 0;
+      if (buf || perm) this.$set(card, 'power', (Number(card.power) || 0) - buf - perm);
+      const atkSum = Array.isArray(card._atkTurns) ? card._atkTurns.reduce((a, e) => a + (Number(e.delta) || 0), 0) : 0;
+      if (atkSum) this.$set(card, 'attack', (Number(card.attack) || 0) - atkSum);
+      this.$set(card, '_buf', 0);
+      this.$set(card, '_bufTurns', []);
+      this.$set(card, '_perm', 0);
+      this.$set(card, '_atkTurns', []);
+      this.$set(card, '_kwGrant', []);
+    },
     dslStaticEligible(sel, sourceCard, sourceSide) {
       if (!sel) return [];
       if (sel.自身) return sourceCard ? [sourceCard] : [];
@@ -9361,11 +9378,10 @@ new Vue({
             this.$set(card, '_lastFieldSide', side);
             arr.splice(idx, 1);
             this.battleReleaseEvolutionBase(card);
-            this.dslClearStaticFromCard(card);
+            this._battleResetCardBuffs(card);
             this.$set(card, '_tapped', false);
             this.$set(card, '_bindUntilSide', null);
             this.$set(card, '_bindUntilTurn', null);
-            this.$set(card, '_buf', 0);
             this.$set(card, '_evolved', false);
             this.$set(card, '_evolvedBase', null);
             if (destZone === 'hand') {
@@ -11039,7 +11055,7 @@ new Vue({
       if (!player || !player.legacies[index]) return;
       const card = player.legacies.splice(index, 1)[0];
       this.$set(card, '_lastFieldSide', side);
-      this.dslClearStaticFromCard(card);
+      this._battleResetCardBuffs(card);
       this.$set(card, '_tapped', false);
       player.graveyard.push(card);
       this.battleRecordLegacyDestroyed(side, card);
@@ -11218,7 +11234,7 @@ new Vue({
       this.$set(card, '_lastFieldSide', side);
       player[sourceZone].splice(index, 1);
       this.battleReleaseEvolutionBase(card);
-      this.dslClearStaticFromCard(card);
+      this._battleResetCardBuffs(card);
       this.$set(card, '_tapped', false);
       player[destinationZone].push(card);
       this.hideCardHover();
@@ -11242,7 +11258,7 @@ new Vue({
       this.battleSaveUndo();
       player[sourceZone].splice(index, 1);
       this.battleReleaseEvolutionBase(card);
-      this.dslClearStaticFromCard(card);
+      this._battleResetCardBuffs(card);
       this.$set(card, '_tapped', false);
       player.hand.push(card);
       player.handCount = player.hand.length;
