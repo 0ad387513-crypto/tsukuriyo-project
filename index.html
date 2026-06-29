@@ -9997,16 +9997,16 @@ new Vue({
         return true;
       }
       // まずDSL spec があれば優先実行（出現時 or 使用時 or 昇華）
-      if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '出現時')) {
-        this.dslRunSpec(card, '出現時', paidCost);
-        // 昇華契機もspec側で同時走らせる
-        if (paidCost !== null) this.dslRunSpec(card, '昇華', paidCost);
-        this.battleRunDoubledEnterEffect(card, paidCost);
-        return true;
-      }
-      if (this.effectSpecsReady && card.category === 'オラクル' && this.dslHasSpecForTrigger(card, '使用時')) {
-        this.dslRunSpec(card, '使用時', paidCost);
-        if (paidCost !== null) this.dslRunSpec(card, '昇華', paidCost);
+      // ※昇華契機は出現時/使用時の有無に関わらず、昇華コストを払っていれば発動する
+      //   （#5夜風のように出現時を持たず昇華効果のみのカードでも昇華が発火するように）
+      const hasEnter = this.effectSpecsReady && this.dslHasSpecForTrigger(card, '出現時');
+      const hasUse = this.effectSpecsReady && card.category === 'オラクル' && this.dslHasSpecForTrigger(card, '使用時');
+      const hasSublim = paidCost !== null && this.effectSpecsReady && this.dslHasSpecForTrigger(card, '昇華');
+      if (hasEnter || hasUse || hasSublim) {
+        if (hasEnter) this.dslRunSpec(card, '出現時', paidCost);
+        else if (hasUse) this.dslRunSpec(card, '使用時', paidCost);
+        if (hasSublim) this.dslRunSpec(card, '昇華', paidCost);
+        if (hasEnter) this.battleRunDoubledEnterEffect(card, paidCost);
         return true;
       }
       return this._battleQueueAndRunEffects(card, paidCost, '出現時');
