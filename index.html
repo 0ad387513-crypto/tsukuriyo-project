@@ -11013,6 +11013,27 @@ new Vue({
       }
       return null;
     },
+    /* 守護による攻撃先変更を防御側の任意で確認する。
+       未タップ守護を順に提示し、引き受けると答えたらその守護をタップして返す。
+       全て辞退（または該当なし）なら null（攻撃は元の対象へ）。 */
+    async _battleChooseGuard(attacker, defenderSide, originalIndex = null) {
+      const defender = this.battleSample[defenderSide];
+      if (!defender || !Array.isArray(defender.legacies)) return null;
+      for (let i = 0; i < defender.legacies.length; i++) {
+        if (i === originalIndex) continue;
+        const guard = defender.legacies[i];
+        if (!guard || guard._tapped) continue;
+        if (!this.battleCardHasKeyword(guard, '守護') || !this.battleCanTargetLegacy(attacker, guard)) continue;
+        const ok = await this.dslAskOptional(guard, '守護', `「${this.fullName(guard)}」をタップして相手の攻撃を【守護】で引き受けますか？`);
+        if (ok) {
+          const idx = defender.legacies.indexOf(guard);
+          if (idx < 0) continue;
+          this.$set(guard, '_tapped', true);
+          return { index: idx, card: guard };
+        }
+      }
+      return null;
+    },
     battleDestroyLegacy(side, index, destroyed) {
       const player = this.battleSample[side];
       if (!player || !player.legacies[index]) return;
@@ -11046,7 +11067,7 @@ new Vue({
         this.battleShowNotice('死角により対象にできません', `「${this.fullName(attacker)}」は【死角】を持たないため、「${this.fullName(defender)}」を戦闘対象に選べません。`, [attacker, defender]);
         return;
       }
-      const guard = this.battleCardHasKeyword(defender, '守護') ? null : this.battleResolveGuardTarget(attacker, defenderSide, defenderIndex);
+      const guard = this.battleCardHasKeyword(defender, '守護') ? null : await this._battleChooseGuard(attacker, defenderSide, defenderIndex);
       const guarded = !!guard;
       if (guarded) {
         defenderIndex = guard.index;
@@ -11084,7 +11105,7 @@ new Vue({
       if (this.battleSample.result) return;
       attackerIndex = this.battleSample.self.legacies.indexOf(attacker);
       if (attackerIndex < 0) return;
-      const guard = this.battleResolveGuardTarget(attacker, 'opp', null);
+      const guard = await this._battleChooseGuard(attacker, 'opp', null);
       if (guard) {
         this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index);
         return;
