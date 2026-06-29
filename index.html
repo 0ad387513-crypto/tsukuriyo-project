@@ -7333,12 +7333,13 @@ new Vue({
           const pw = Number(card.power);
           if (!isNaN(pw) && pw <= 0) {
             // 破壊：墓地へ
+            this.$set(card, '_lastFieldSide', s);
+            this.battleReleaseEvolutionBase(card, s); // 進化元を墓地へ（効果は発動しない）
             this._battleResetCardBuffs(card);
             this.$set(card, '_tapped', false);
             this.$set(card, '_bindUntilSide', null);
             this.$set(card, '_bindUntilTurn', null);
             this.$set(card, '_evolved', false);
-            this.$set(card, '_evolvedBase', null);
             const zpZone = this._battleLeaveZone(card, 'graveyard');
             p[zpZone] = p[zpZone] || [];
             p[zpZone].push(card);
@@ -7816,10 +7817,11 @@ new Vue({
       if (!crit || !crit.length) return [];
       const p = this.battleSample && this.battleSample.self;
       if (!p || !Array.isArray(p.legacies)) return [];
-      const field = p.legacies.filter(c => this.battleCardMatchesInduceCriteria(c, crit));
+      // 進化元は無属性カード（トークン）を除く
+      const field = p.legacies.filter(c => c && !c.isToken && this.battleCardMatchesInduceCriteria(c, crit));
       if (!p.graveyardEvolutionEnabled || !Array.isArray(p.graveyard)) return field;
       const graveyard = p.graveyard.filter(c => {
-        if (!c || c._usedAsEvolutionBase) return false;
+        if (!c || c._usedAsEvolutionBase || c.isToken) return false;
         if ((c.category || '') !== 'レガシー') return false;
         return this.battleCardMatchesInduceCriteria(c, crit);
       });
@@ -10527,9 +10529,10 @@ new Vue({
       player.hand.splice(index, 1);
       const fieldCard = this._battlePrepareFieldCard(card);
       if (evolveBase) {
-        // 進化として配置：既存カードの位置に上書き、_evolved を記録し、元カードは墓地へ
+        // 進化として配置：進化元の上に重ねる（進化元は墓地に送らず _evolvedBase として保持）
         const baseIdx = player.legacies.indexOf(evolveBase);
         const graveIdx = (player.graveyard || []).indexOf(evolveBase);
+        const baseTapped = !!evolveBase._tapped; // タップ／アンタップ状態を引き継ぐ
         this.$set(fieldCard, '_evolved', true);
         this.$set(fieldCard, '_evolvedBase', evolveBase);
         this.$set(fieldCard, '_evolvedFromGraveyard', graveIdx >= 0 && baseIdx < 0);
@@ -10541,17 +10544,17 @@ new Vue({
         } else {
           player.legacies.push(fieldCard);
         }
-        // 進化元は墓地へ（タップ等の状態リセット）
+        // 進化元は重ねた状態で保持（あらゆる効果を失う）。墓地へは進化カードが場を離れた時に送られる。
         this.dslClearStaticFromCard(evolveBase);
-        this.$set(evolveBase, '_tapped', false);
         this.$set(evolveBase, '_buf', 0);
-        player.graveyard = player.graveyard || [];
-        if (graveIdx < 0) player.graveyard.push(evolveBase);
+        // タップ状態を進化カードへ引き継ぐ ＋ 進化カードは【疾駆】を持つ
+        this.$set(fieldCard, '_tapped', baseTapped);
+        const kw = Array.isArray(fieldCard._kwGrant) ? fieldCard._kwGrant.slice() : [];
+        if (!kw.includes('疾駆')) kw.push('疾駆');
+        this.$set(fieldCard, '_kwGrant', kw);
         this.battleShowNotice(
           '進化として配置',
-          graveIdx >= 0 && baseIdx < 0
-            ? `墓地の「${this.fullName(evolveBase)}」の上に「${this.fullName(fieldCard)}」が進化として重ねられました。`
-            : `「${this.fullName(evolveBase)}」の上に「${this.fullName(fieldCard)}」が進化として重ねられました。元カードは墓地へ。`,
+          `「${this.fullName(evolveBase)}」の上に「${this.fullName(fieldCard)}」が進化として重ねられました（【疾駆】付与・タップ状態継承）。`,
           [fieldCard, evolveBase]
         );
       } else {
@@ -10579,14 +10582,10 @@ new Vue({
       const baseCost = Math.max(0, Number(card.cost) || 0);
       if (cost > baseCost) this.battleFireKamiEvent('self', 'evolveOrSublim', { card: fieldCard, paidCost: cost });
       // K1 スサノオ：進化したときも evolveOrSublim を発火
+      // ※進化元は破壊されず「重ねられる」だけなので legacyDestroyed は発火しない
+      //   （進化カードが場を離れた時に初めて進化元が墓地へ送られる。その時も効果は失われている）
       if (evolveBase) {
         this.battleFireKamiEvent('self', 'evolveOrSublim', { card: fieldCard, evolved: true });
-        // 進化元レガシーが墓地に行ったので K7 ヒノカグツチ 等にも発火
-        if (!fieldCard._evolvedFromGraveyard) {
-          this.battleRecordLegacyDestroyed('self', evolveBase);
-          this.battleFireKamiEvent('self', 'legacyDestroyed', { card: evolveBase });
-          this.battleFireKamiEvent('opp',  'legacyDestroyed', { card: evolveBase });
-        }
       }
       // 通常の【出現時】効果
       if (!this.battleRunEnterKeywordEffects(fieldCard, cost)) this.battleKeywordGuide(fieldCard, cost);
@@ -10717,12 +10716,29 @@ new Vue({
       const r = el.getBoundingClientRect();
       return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
     },
-    battleReleaseEvolutionBase(card) {
+    battleReleaseEvolutionBase(card, side = null) {
       if (!card || !card._evolvedBase) return;
+      const base = card._evolvedBase;
       if (card._evolvedFromGraveyard) {
-        this.$set(card._evolvedBase, '_usedAsEvolutionBase', false);
+        // 墓地から進化元にした場合：進化元は墓地に残ったまま。使用フラグだけ解除。
+        this.$set(base, '_usedAsEvolutionBase', false);
+      } else {
+        // 場の進化元を重ねていた場合：進化カードが場を離れたので進化元を墓地へ送る。
+        // 進化元はあらゆる効果を失っているため【死亡時】等は発動しない（墓地へ送るだけ）。
+        const s = side || card._lastFieldSide || 'self';
+        const player = this.battleSample && this.battleSample[s];
+        if (player) {
+          this.dslClearStaticFromCard(base);
+          this.$set(base, '_tapped', false);
+          this.$set(base, '_buf', 0);
+          this.$set(base, '_evolved', false);
+          this.$set(base, '_evolvedBase', null);
+          player.graveyard = player.graveyard || [];
+          if (!player.graveyard.includes(base)) player.graveyard.push(base);
+        }
       }
       this.$set(card, '_evolvedFromGraveyard', false);
+      this.$set(card, '_evolvedBase', null);
     },
     _battlePrepareFieldCard(card) {
       if (!card) return card;
@@ -11087,6 +11103,7 @@ new Vue({
       if (!player || !player.legacies[index]) return;
       const card = player.legacies.splice(index, 1)[0];
       this.$set(card, '_lastFieldSide', side);
+      this.battleReleaseEvolutionBase(card, side); // 進化元を墓地へ（効果は発動しない）
       this._battleResetCardBuffs(card);
       this.$set(card, '_tapped', false);
       const destZone = this._battleLeaveZone(card, 'graveyard');
