@@ -5329,7 +5329,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.64',
+    BUILD_VERSION: '1.14.65',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8800,6 +8800,9 @@ new Vue({
       if (!this.effectSpecsReady || !this.battleSample) return;
       if (this._dslRefreshingStatic) return;
       this._dslRefreshingStatic = true;
+      // 静的再計算は内部で _dslCurrentSource を書き換えるため、呼び出し元の文脈を退避・復元する
+      // （コスト付きアビリティのコスト支払い中に呼ばれても、直後の「自身」付与等が source を失わないように）
+      const prevSource = this._dslCurrentSource;
       try {
         this.dslResetStaticEffects();
         this.dslFieldCards().forEach(({ side, card }) => {
@@ -8817,7 +8820,7 @@ new Vue({
           });
         });
       } finally {
-        this._dslCurrentSource = null;
+        this._dslCurrentSource = prevSource;
         this._dslRefreshingStatic = false;
       }
     },
