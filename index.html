@@ -6495,14 +6495,9 @@ new Vue({
       if (color === 'ミックス') {
         selfPool = all.slice(0, 30);
       } else {
+        // 選んだ色のカードを全て入れる（その色のレガシー/オラクル/レリック＝合計36枚）
         selfPool = all.filter(c => c.color === color);
-        if (selfPool.length < 30) {
-          // 不足分は他色で補う
-          const extra = all.filter(c => c.color !== color);
-          selfPool = selfPool.concat(extra).slice(0, 30);
-        } else {
-          selfPool = selfPool.slice(0, 30);
-        }
+        if (!selfPool.length) selfPool = all.slice(0, 30); // 念のためのフォールバック
       }
       const oppPool = all.slice(30, 60);
       const selfKami = this.allKamiCards.find(k => String(k.no) === String(setup.selfKamiNo)) || this.allKamiCards[0] || null;
