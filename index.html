@@ -5329,7 +5329,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.63',
+    BUILD_VERSION: '1.14.64',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8339,6 +8339,12 @@ new Vue({
           this._dslCurrentSource ? [this._dslCurrentSource] : []
         );
         return Promise.resolve([]);
+      }
+      // 備考で対象が一意に定まるもの（今招来した影分身／そのヨリシロ／そのカード 等）は
+      // 手動選択不要で自動適用する（候補＝解決済みの具体カードなのでモーダルを開かない）
+      if (this._dslRemarkTargetCards(remarks)) {
+        const n = (sel.枚数 === 'all' || sel.枚数 == null) ? pool.length : (Number(sel.枚数) || pool.length);
+        return Promise.resolve(pool.slice(0, n));
       }
       // 自動／ランダム
       if (sel.選択者 === 'auto' || sel.枚数 === 'all') return Promise.resolve(pool.slice(0, need));
