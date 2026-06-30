@@ -2479,6 +2479,15 @@
     background: #20a95a; border-color: #8ce8ae; font-size: clamp(11px, 0.95vw, 15px);
     box-shadow: 0 2px 6px rgba(0,0,0,0.5);
   }
+  /* コスト増減中（効果でコストが変化している）：昇華の「3/5」表記とは別の見た目にする */
+  .hand-cost-badge.cost-reduced {
+    background: #1f6fd6; border-color: #9cd0ff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 0 8px rgba(80,150,255,.7);
+  }
+  .hand-cost-badge.cost-increased {
+    background: #c0392b; border-color: #ffb09c;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5), 0 0 8px rgba(255,110,80,.7);
+  }
   .hand-playable { position: relative; overflow: visible; }
   .hand-playable:hover { transform: translateY(-6px); border-color: #e8bb63; }
   .hand-disabled { opacity: .82; }
@@ -3817,7 +3826,10 @@
                    @contextmenu.prevent="battleOpenHandMenu(i,$event)"
                    @mouseenter="showCardHover(card, $event)"
                    @mouseleave="hideCardHover">
-                <span class="battle-card-overlay hand-cost-badge">{{ battleHandCost(card) }}</span>
+                <span class="battle-card-overlay hand-cost-badge"
+                      :class="{ 'cost-reduced': battleHandCostModified(card) < 0, 'cost-increased': battleHandCostModified(card) > 0 }"
+                      :title="battleHandCostModified(card) ? `本来のコスト：${card.cost}` : ''"
+                      >{{ battleHandCostModified(card) < 0 ? '▼' : battleHandCostModified(card) > 0 ? '▲' : '' }}{{ battleHandCost(card) }}</span>
               </div>
             </div>
           </div>
@@ -4130,9 +4142,10 @@
             </button>
             <button v-if="battleDeckModal.action === 'autoSummon'"
                     class="battle-deck-modal-pick"
-                    :disabled="(battleDeckModal.remaining || 0) <= 0"
+                    :disabled="(battleDeckModal.remaining || 0) <= 0 || (battleDeckModal.distinct && (battleDeckModal.summoned || []).some(s => s && String(s.no) === String(c.no)))"
                     @click="battleResolveAutoSummon(i)">
-              場に出す<span v-if="battleDeckModal.count > 1">（残り{{ battleDeckModal.remaining }}枚）</span>
+              <template v-if="battleDeckModal.distinct && (battleDeckModal.summoned || []).some(s => s && String(s.no) === String(c.no))">選択済み</template>
+              <template v-else>場に出す<span v-if="battleDeckModal.count > 1">（残り{{ battleDeckModal.remaining }}枚）</span></template>
             </button>
             <button v-if="battleDeckModal.action === 'reishi'"
                     class="battle-deck-modal-pick"
@@ -5339,7 +5352,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.73',
+    BUILD_VERSION: '1.14.74',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7291,6 +7304,7 @@ new Vue({
       this._battleExpireBindingsForSide(endingSide, bs.turn);
       this._battleExpireEffectDisablesForSide(endingSide, bs.turn);
       this._battleCheckDestroyZeroPower();
+      this._battleCheckTurnEndDestroy();
       // 天力トリガー（ターン終了系：K2 ヤマトタケル / K3 オオクニヌシ / K4 タケミカヅチ）
       this.battleFireKamiEvent(endingSide, 'turnEnd', {});
       await this.battleRunTurnEndEffects(endingSide);
@@ -7392,6 +7406,34 @@ new Vue({
           this.battleFireKamiEvent('opp', 'legacyDestroyed', { card: d.card });
           this.battleRecordLegacyDestroyed(d.side, d.card);
         });
+      }
+    },
+    /* 【ターン終了時破壊】が付与されたカード（例：#47影分身トークン）をターン終了時に破壊する */
+    _battleCheckTurnEndDestroy() {
+      const bs = this.battleSample;
+      if (!bs) return;
+      const destroyed = [];
+      ['self', 'opp'].forEach(s => {
+        const p = bs[s];
+        if (!p) return;
+        ['legacies', 'relics'].forEach(zone => {
+          const arr = Array.isArray(p[zone]) ? p[zone].slice() : [];
+          arr.forEach(card => {
+            if (!card) return;
+            const grants = []
+              .concat(Array.isArray(card._kwGrant) ? card._kwGrant : [])
+              .concat(Array.isArray(card._staticKwGrant) ? card._staticKwGrant : []);
+            if (!grants.some(g => /^ターン終了時破壊/.test(String(g)))) return;
+            if (this._dslMoveFromField(card, 'graveyard', s)) {
+              destroyed.push({ side: s, name: this.fullName(card), card });
+            }
+          });
+        });
+      });
+      if (destroyed.length) {
+        const lines = destroyed.map(d => `${d.side === 'self' ? '自分' : '相手'}の「${d.name}」`).join('、');
+        this.battleShowNotice('ターン終了時破壊', `${lines}は【ターン終了時破壊】の効果で破壊されました。`, destroyed.map(d => d.card));
+        destroyed.forEach(d => this.battleRunDeathKeywordEffects(d.card));
       }
     },
     battleRecordLegacyDestroyed(side, card) {
@@ -7533,6 +7575,15 @@ new Vue({
       }
       extras.sort((a, b) => a - b);
       return [base, ...extras.map(extra => base + extra)].join('/');
+    },
+    /* コスト増減：0=変化なし、-1=減少、+1=増加（昇華の表記とは別に、手札コスト表示の色分けに使う） */
+    battleHandCostModified(card) {
+      if (!card) return 0;
+      const raw = Math.max(0, Number(card.cost) || 0);
+      const effective = this.battleEffectiveCost(card);
+      if (effective < raw) return -1;
+      if (effective > raw) return 1;
+      return 0;
     },
     battleEffectiveCost(card, side = 'self') {
       const base = Math.max(0, Number(card && card.cost) || 0);
@@ -8058,6 +8109,7 @@ new Vue({
       } else if (m = text.match(/異なる獣霊\s*(\d+)種/)) {
         next.数 = Number(m[1]) || next.数;
         next.トークン = 'いずれかの獣霊';
+        next.重複不可 = true; // 「異なるN種」＝同じ獣霊を複数回選べない
       } else if (/相手レガシーのみに限定/.test(text)) {
         next.対象 = Object.assign({}, next.対象 || {}, { 対象側: 'opp', 絞込: ['レガシー'] });
       }
@@ -8302,8 +8354,8 @@ new Vue({
           this._dslPassCompare(c, sel.比較)
         );
       }
-      // 「このカード以外」備考：効果発動源のカード自身を選択肢から除外
-      const excludeSelf = /このカード以外/.test(remarks);
+      // 「このカード以外」「このレガシー以外」「自身以外」備考：効果発動源のカード自身を選択肢から除外
+      const excludeSelf = /このカード以外|このレガシー以外|自身以外/.test(remarks);
       const src = excludeSelf ? this._dslCurrentSource : null;
       const excludeReturned = /戻したカード以外/.test(remarks) ? (this._dslLastReturnedCards || []) : [];
       return pool.filter(c => {
@@ -8744,6 +8796,7 @@ new Vue({
       this.$set(card, '_perm', 0);
       this.$set(card, '_atkTurns', []);
       this.$set(card, '_kwGrant', []);
+      this.$set(card, '_typeGrant', []);
     },
     /* トークンが場を離れる先のゾーンを返す。
        トークン（無属性カード）は手札・墓地に置かれると崩壊する＝崩壊ゾーンへ送る。 */
@@ -8812,7 +8865,7 @@ new Vue({
         return s;
       });
     },
-    dslApplyStaticActions(actions, sourceCard, sourceSide) {
+    dslApplyStaticActions(actions, sourceCard, sourceSide, abilityLimit = 0) {
       (actions || []).forEach(act => {
         const op = act.操作 || act.op;
         if (op === '付与' || op === '静的バフ' || op === '補正' || op === '神威') {
@@ -8824,14 +8877,14 @@ new Vue({
         } else if (op === '分岐') {
           for (const br of (act.分岐 || [])) {
             if (!br.条件 || this.dslEvalCond(br.条件)) {
-              this.dslApplyStaticActions(br.処理 || [], sourceCard, sourceSide);
+              this.dslApplyStaticActions(br.処理 || [], sourceCard, sourceSide, abilityLimit);
               break;
             }
           }
         } else if (op === '選定値+1' && sourceCard) {
           this.$set(sourceCard, '_staticSenteiBoost', true);
         } else if (op === 'コスト変更') {
-          this.dslApplyStaticCostChange(act, sourceCard);
+          this.dslApplyStaticCostChange(act, sourceCard, abilityLimit);
         } else if (op === '昇華値変更' && sourceCard) {
           this.$set(sourceCard, '_staticSublimDelta', Number(act.数 || 0));
         } else if (op === '効果倍化' && sourceCard) {
@@ -8844,7 +8897,7 @@ new Vue({
         }
       });
     },
-    dslApplyStaticCostChange(act, sourceCard) {
+    dslApplyStaticCostChange(act, sourceCard, abilityLimit = 0) {
       if (!sourceCard) return;
       const delta = Number(act.数 || 0);
       const target = act.対象 || {};
@@ -8852,13 +8905,43 @@ new Vue({
         this.$set(sourceCard, '_staticCostDelta', (Number(sourceCard._staticCostDelta) || 0) + delta);
         return;
       }
+      // 「各ターンN回」の上限：今ターン既にN回使い切っていたら、これ以上は適用しない
+      if (abilityLimit > 0) {
+        const turn = this.battleSample.turn;
+        const usage = sourceCard._costChangeUsage;
+        const usedCount = (usage && usage.turn === turn) ? usage.count : 0;
+        if (usedCount >= abilityLimit) return;
+      }
       const mods = Array.isArray(sourceCard._staticCostMods) ? sourceCard._staticCostMods.slice() : [];
       mods.push({
         delta,
         note: String(target.備考 || ''),
         criteria: Array.isArray(target.絞込) ? target.絞込.slice() : [],
+        limitPerTurn: abilityLimit || 0,
       });
       this.$set(sourceCard, '_staticCostMods', mods);
+    },
+    /* 各ターンN回までの常在コスト軽減について、実際にカードが使用されたときに消費回数を記録する */
+    battleConsumeStaticCostChangeUsage(side, card) {
+      if (!card || !this.battleSample) return;
+      const turn = this.battleSample.turn;
+      ['self', 'opp'].forEach(sourceSide => {
+        const player = this.battleSample[sourceSide] || {};
+        const sources = []
+          .concat(Array.isArray(player.legacies) ? player.legacies : [])
+          .concat(Array.isArray(player.relics) ? player.relics : []);
+        sources.forEach(source => {
+          const mods = Array.isArray(source._staticCostMods) ? source._staticCostMods : [];
+          mods.forEach(mod => {
+            if (!mod.limitPerTurn) return;
+            if (!this.battleCostModMatches(card, mod, side, sourceSide)) return;
+            const usage = source._costChangeUsage;
+            const usedCount = (usage && usage.turn === turn) ? usage.count : 0;
+            if (usedCount >= mod.limitPerTurn) return;
+            this.$set(source, '_costChangeUsage', { turn, count: usedCount + 1 });
+          });
+        });
+      });
     },
     dslRefreshStaticAbilities() {
       if (!this.effectSpecsReady || !this.battleSample) return;
@@ -8880,7 +8963,7 @@ new Vue({
             if (ab.任意) return;
             this._dslCurrentSource = card;
             if (ab.条件 && !this.dslEvalCond(ab.条件)) return;
-            this.dslApplyStaticActions(ab.処理 || [], card, side);
+            this.dslApplyStaticActions(ab.処理 || [], card, side, Number(ab.各ターン) || 0);
           });
         });
       } finally {
@@ -9607,8 +9690,22 @@ new Vue({
       if (!p) return;
       this.battleSaveUndo();
       const before = Number(p.mana) || 0;
-      p.mana = p.manaMax;
-      this.battleShowNotice('マナ回復', `マナを最大値まで回復しました（${p.mana}/${p.manaMax}）。`);
+      const note = String((act && act.期間) || (act && act.備考) || '');
+      if (act && act.数 != null) {
+        const n = Number(act.数) || 0;
+        if (/このターンのみ/.test(note)) {
+          // 最大値を超えて、このターン使用可能なマナを増やす（次の自分ターン開始時に通常通りリセットされる）
+          p.mana = before + n;
+          this.battleShowNotice('マナ回復', `このターンのみ使えるマナが +${n}（現在 ${p.mana}/${p.manaMax}）。`);
+        } else {
+          // 通常のマナ回復：最大値までしか回復しない
+          p.mana = Math.max(0, Math.min(p.manaMax, before + n));
+          this.battleShowNotice('マナ回復', `マナが +${n} 回復しました（現在 ${p.mana}/${p.manaMax}）。`);
+        }
+      } else {
+        p.mana = p.manaMax;
+        this.battleShowNotice('マナ回復', `マナを最大値まで回復しました（${p.mana}/${p.manaMax}）。`);
+      }
       if (p.mana > before) this.battleFireKamiEvent('self', 'manaOrLifeIncreased', { kind: 'mana', n: p.mana - before });
     },
     async _dslOpAddType(act, sourceCard) {
@@ -9643,8 +9740,9 @@ new Vue({
         return;
       }
       if (count <= 0) return;
+      const distinct = !!act.重複不可;
       return new Promise((resolve) => {
-        this.battleOpenAutoSummon(sourceCard, { targetText, count }, '出現時', (summoned) => {
+        this.battleOpenAutoSummon(sourceCard, { targetText, count, distinct }, '出現時', (summoned) => {
           this._dslLastSummonedCards = (summoned || []).slice();
           resolve(summoned || []);
         });
@@ -9856,7 +9954,7 @@ new Vue({
           }
         }
         if (!removed) return;
-        this.dslClearStaticFromCard(card);
+        this._battleResetCardBuffs(card);
         this.$set(card, '_tapped', false);
         p.deck.push(card);
         moved.push(card);
@@ -10408,8 +10506,9 @@ new Vue({
         summoned: [],            // 選んだカード履歴
         cards,
         onComplete,
+        distinct: !!summon.distinct, // true: 既に選んだ種類は再選択不可（「異なるN種」効果用）
         message: total > 1
-          ? `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\n「${summon.targetText}」を最大${total}枚まで場に出せます。出さずに終了することもできます。`
+          ? `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\n「${summon.targetText}」を最大${total}枚まで場に出せます。${summon.distinct ? '同じ種類は選べません。' : ''}出さずに終了することもできます。`
           : `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\n招来するトークンを選んでください。`,
       };
     },
@@ -10463,6 +10562,10 @@ new Vue({
       if ((modal.remaining || 0) <= 0) { this.battleDeckModal = null; return; }
       const card = modal.cards && modal.cards[modalIndex];
       if (!card) return;
+      if (modal.distinct && (modal.summoned || []).some(c => c && card && String(c.no) === String(card.no))) {
+        this.battleShowNotice('選択不可', `「${this.fullName(card)}」は既に選んでいるため、同じ種類は選べません。`, [card]);
+        return;
+      }
       const player = this.battleSample.self;
       const zone = this.battleFieldZoneForSummon(card);
       if (!player || !zone || !Array.isArray(player[zone])) return;
@@ -10656,6 +10759,7 @@ new Vue({
       this.battleSaveUndo();
       player.mana = Math.max(0, player.mana - cost);
       this.battleConsumeTempCostMods('self', card);
+      this.battleConsumeStaticCostChangeUsage('self', card);
       player.hand.splice(index, 1);
       player.graveyard.push(card);
       player.handCount = player.hand.length;
@@ -10703,6 +10807,7 @@ new Vue({
       this.battleSaveUndo();
       player.mana = Math.max(0, player.mana - cost);
       this.battleConsumeTempCostMods('self', card);
+      this.battleConsumeStaticCostChangeUsage('self', card);
       player.hand.splice(index, 1);
       const fieldCard = this._battlePrepareFieldCard(card);
       if (evolveBase) {
@@ -11388,17 +11493,9 @@ new Vue({
       else if (this.battlePointInElement(e, relicEl)) this.battleDragOverZone = 'relics';
       else if (this.battlePointInElement(e, crumbledEl)) this.battleDragOverZone = 'crumbled';
       else this.battleDragOverZone = null;
-      // 進化配置のハイライト：レガシーゾーン上で、真下のレガシーがドラッグ中の手札カードの有効な進化元なら印を付ける
-      let baseIdx = -1;
-      if (this.battleDragOverZone === 'legacies' && this.battleDragIndex !== null) {
-        const handCard = this.battleSample.self.hand[this.battleDragIndex];
-        const li = this._battleSelfLegacyIndexUnderPoint(e.clientX, e.clientY);
-        if (handCard && li >= 0) {
-          const baseCard = this.battleSample.self.legacies[li];
-          if (baseCard && this._dslEvolutionBaseCandidates(handCard).includes(baseCard)) baseIdx = li;
-        }
-      }
-      this.battleHandDragOverBaseIdx = baseIdx;
+      // 元の仕様：配置先（ドロップ位置）では進化の成否を決めない（進化は常に選択モーダルで確認するため、
+      // ハイライト表示も行わない）
+      this.battleHandDragOverBaseIdx = -1;
       this.battleUpdateHandDragGuide(e);
     },
     battleHandDragTargetElement(zone) {
@@ -11533,7 +11630,7 @@ new Vue({
       this.battleSaveUndo();
       player[sourceZone].splice(index, 1);
       this.battleReleaseEvolutionBase(card);
-      this.dslClearStaticFromCard(card);
+      this._battleResetCardBuffs(card);
       player.deck.unshift(card);
       this._battleSyncSideCounts(side);
       this.hideCardHover();
@@ -11887,17 +11984,6 @@ new Vue({
       if (this.battlePointInElement(evt, root.querySelector('.self-relic-drop'))) return 'relics';
       return null;
     },
-    /* ドラッグ位置の真下にある自分レガシーの index（無ければ -1）。進化配置の判定に使う。 */
-    _battleSelfLegacyIndexUnderPoint(x, y) {
-      const root = this.$el;
-      if (!root) return -1;
-      const cards = root.querySelectorAll('.self-legacy-drop .battle-card.field-card');
-      for (let i = 0; i < cards.length; i++) {
-        const r = cards[i].getBoundingClientRect();
-        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return i;
-      }
-      return -1;
-    },
     _battleHandPointerUp(e) {
       const p = this._handPointer;
       if (!p) return;
@@ -11908,16 +11994,15 @@ new Vue({
       if (!p.active) return;
       const idx = this.battleDragIndex;
       const target = this._battleHandDropTargetFromPoint(e.clientX, e.clientY);
-      const overLegacyIdx = this._battleSelfLegacyIndexUnderPoint(e.clientX, e.clientY);
       this.battleDragIndex = null;
       this.battleDragOverZone = null;
       this.battleHandDragOverBaseIdx = -1;
       this.battleHandDrag = null;
       this.battleDragGuide = null;
       this.battleSuppressPostDragPreview();
-      this.battleResolveHandDrop(idx, target, overLegacyIdx);
+      this.battleResolveHandDrop(idx, target);
     },
-    battleResolveHandDrop(idx, target, overLegacyIdx = -1) {
+    battleResolveHandDrop(idx, target) {
       if (idx === null || idx === undefined || target === 'hand' || !target) return;
       if (target === 'graveyard') {
         const card = this.battleSample.self.hand[idx];
@@ -11937,14 +12022,8 @@ new Vue({
         return;
       }
       if (target === 'legacies' || target === 'relics') {
-        // ドラッグ配置：レガシー上に落とせば進化（有効な進化元のとき）、それ以外は通常配置
-        let evolveBase = null;
-        if (target === 'legacies' && overLegacyIdx >= 0) {
-          const card = this.battleSample.self.hand[idx];
-          const baseCard = this.battleSample.self.legacies[overLegacyIdx];
-          if (card && baseCard && this._dslEvolutionBaseCandidates(card).includes(baseCard)) evolveBase = baseCard;
-        }
-        this.battlePlayFromHand(idx, target, evolveBase);
+        // 元の仕様：ドラッグの落とし先に関わらず、進化元候補があれば選択モーダルで確認する
+        this.battlePlayFromHand(idx, target);
       }
     },
     battleHandDragStart(index, e) {
