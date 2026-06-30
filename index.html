@@ -2215,8 +2215,10 @@
   }
   .battle-zone-list-item {
     display: block; padding: 0; border: 1px solid transparent; border-radius: 6px;
-    background: transparent; cursor: pointer;
+    background: transparent; cursor: grab;
   }
+  .battle-zone-list-item:active { cursor: grabbing; }
+  .battle-zone-list-item.zone-list-dragging { opacity: 0.4; }
   .battle-zone-list-item:hover { border-color: #6f8fca; background: rgba(111,143,202,.12); }
   .battle-zone-list-thumb {
     width: 100%; aspect-ratio: 744 / 1039; background: #2a2f3d center/cover no-repeat;
@@ -4049,7 +4051,9 @@
         <div v-else class="battle-zone-modal-list">
           <div v-for="(c, i) in battleZoneModal.cards" :key="i"
                class="battle-zone-list-item"
-               @click="openPreview(c)"
+               :class="{ 'zone-list-dragging': battleZoneListDrag && battleZoneListDrag.zone === battleZoneModal.zone && battleZoneListDrag.index === i }"
+               @mousedown="battleZoneListPointerDown(i, $event)"
+               @click="battleZoneListCardClick(c)"
                @contextmenu.prevent="battleOpenZoneCardMenu(i,$event)"
                @mouseenter="showCardHover(c, $event)"
                @mouseleave="hideCardHover">
@@ -5310,6 +5314,7 @@ new Vue({
     battleHandDragOverBaseIdx: -1, // 手札ドラッグ中、進化元になり得る自分レガシーのindex（-1=なし）
     battleFieldDrag: null,    // { side, zone, index } — 自分レガシーの戦闘/神攻ドラッグ
     battleFieldDragTarget: null, // 'kami' | 'legacy:N' — 攻撃ドラッグ中の相手側ドロップ先
+    battleZoneListDrag: null, // { zone, index, sourceX, sourceY } — 墓地/崩壊一覧モーダルからのドラッグ
     battleSublimModal: null,  // { card, index, options:[basecost, basecost+x, ...] } 昇華コスト選択
     battleOracleEffect: null, // { card } オラクル発動演出（中央表示中）
     battleSenteiModal: null,  // { count, options, selected, sourceCard, triggerLabel }
@@ -5334,7 +5339,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.71',
+    BUILD_VERSION: '1.14.72',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -11680,6 +11685,109 @@ new Vue({
         message: `「${this.fullName(card)}」を${fromLabel}から${toLabel}へ移動しました。`,
         cards: [card],
       };
+    },
+    /* ===== 墓地・崩壊一覧モーダルからのドラッグ&ドロップ（手札/場/対のゾーンへ戻す） ===== */
+    battleZoneListCardClick(c) {
+      if (Date.now() < (this._battleSuppressZoneListClickUntil || 0)) return;
+      this.openPreview(c);
+    },
+    battleZoneListDragColor(target) {
+      if (target === 'hand') return 'rgba(82, 166, 255, .95)';
+      if (target === 'graveyard') return 'rgba(177, 109, 255, .95)';
+      if (target === 'crumbled') return 'rgba(255, 93, 112, .95)';
+      if (target === 'legacies' || target === 'relics') return 'rgba(255, 134, 64, .95)';
+      return 'rgba(230, 238, 255, .82)';
+    },
+    battleZoneListDragTargetElement(target) {
+      if (!target || !this.$el) return null;
+      if (target === 'hand') return this.$el.querySelector('.self-hand-drop');
+      if (target === 'graveyard') return this.$el.querySelector('.self-graveyard-drop');
+      if (target === 'crumbled') return this.$el.querySelector('.self-crumbled-drop');
+      if (target === 'legacies') return this.$el.querySelector('.self-legacy-drop');
+      if (target === 'relics') return this.$el.querySelector('.self-relic-drop');
+      return null;
+    },
+    battleZoneListPointerDown(modalIndex, e) {
+      if (e.button !== 0) return;
+      if (this.battleSample.result) return;
+      const modal = this.battleZoneModal;
+      if (!modal || modal.side !== 'self') return;
+      const card = modal.cards[modalIndex];
+      if (!card) return;
+      const rect = e.currentTarget && e.currentTarget.getBoundingClientRect ? e.currentTarget.getBoundingClientRect() : null;
+      const move = (ev) => this._battleZoneListPointerMove(ev);
+      const up = (ev) => this._battleZoneListPointerUp(ev);
+      this._zoneListPointer = {
+        zone: modal.zone, index: modalIndex, active: false,
+        startX: e.clientX, startY: e.clientY,
+        sourceX: rect ? rect.left + rect.width / 2 : e.clientX,
+        sourceY: rect ? rect.top + rect.height / 2 : e.clientY,
+        move, up, rafId: 0, lastEvt: null,
+      };
+      window.addEventListener('mousemove', move, true);
+      window.addEventListener('mouseup', up, true);
+      e.preventDefault();
+    },
+    _battleZoneListActivateDrag() {
+      const p = this._zoneListPointer;
+      if (!p) return;
+      p.active = true;
+      this.battleZoneListDrag = { zone: p.zone, index: p.index, sourceX: p.sourceX, sourceY: p.sourceY };
+      this.battleZoneCardMenu = null;
+      this.hideCardHover();
+    },
+    _battleZoneListPointerMove(e) {
+      const p = this._zoneListPointer;
+      if (!p) return;
+      if (!p.active) {
+        const dx = e.clientX - p.startX, dy = e.clientY - p.startY;
+        if (dx * dx + dy * dy < 25) return; // 5px しきい値を超えてからドラッグ開始
+        this._battleZoneListActivateDrag();
+      }
+      p.lastEvt = { clientX: e.clientX, clientY: e.clientY };
+      if (!p.rafId) {
+        p.rafId = requestAnimationFrame(() => {
+          p.rafId = 0;
+          if (this._zoneListPointer && p.lastEvt) this._battleZoneListUpdateGuide(p.lastEvt);
+        });
+      }
+    },
+    _battleZoneListUpdateGuide(e) {
+      const drag = this.battleZoneListDrag;
+      if (!drag) return;
+      const targetRaw = this._battleHandDropTargetFromPoint(e.clientX, e.clientY);
+      const target = (targetRaw && targetRaw !== drag.zone) ? targetRaw : null;
+      let tx = e.clientX, ty = e.clientY;
+      const el = this.battleZoneListDragTargetElement(target);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        tx = r.left + r.width / 2;
+        ty = r.top + r.height / 2;
+      }
+      const dx = tx - drag.sourceX, dy = ty - drag.sourceY;
+      this.battleDragGuide = {
+        x: drag.sourceX, y: drag.sourceY - 2,
+        length: Math.max(16, Math.sqrt(dx * dx + dy * dy)),
+        angle: Math.atan2(dy, dx) * 180 / Math.PI,
+        color: this.battleZoneListDragColor(target),
+      };
+    },
+    _battleZoneListPointerUp(e) {
+      const p = this._zoneListPointer;
+      if (!p) return;
+      window.removeEventListener('mousemove', p.move, true);
+      window.removeEventListener('mouseup', p.up, true);
+      if (p.rafId) { cancelAnimationFrame(p.rafId); p.rafId = 0; }
+      this._zoneListPointer = null;
+      if (!p.active) return; // 動かなければクリック扱い（プレビュー）に任せる
+      const target = this._battleHandDropTargetFromPoint(e.clientX, e.clientY);
+      this.battleZoneListDrag = null;
+      this.battleDragGuide = null;
+      this._battleSuppressZoneListClickUntil = Date.now() + 350;
+      if (!target || target === p.zone) return;
+      if (target === 'hand') this.battleReturnZoneCardToHand(p.index);
+      else if (target === 'legacies' || target === 'relics') this.battleReturnZoneCardToField(p.index);
+      else if (target === 'graveyard' || target === 'crumbled') this.battleMoveZoneCard(p.zone, p.index, target);
     },
     /* ===== 手札ドラッグ&ドロップ ===== */
     battleHandCardClick(card) {
