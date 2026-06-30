@@ -4148,6 +4148,11 @@
           </div>
         </div>
         <div class="battle-zone-modal-actions">
+          <button v-if="battleDeckModal.action === 'autoSummon' && battleDeckModal.cards.length === 1 && (battleDeckModal.remaining || 0) > 1"
+                  class="battle-deck-modal-pick" style="font-weight:700;"
+                  @click="battleSummonAllRemaining">
+            まとめて全部出す（残り{{ battleDeckModal.remaining }}体）
+          </button>
           <button v-if="battleDeckModal.action === 'autoSummon'" class="battle-back-btn"
                   @click="battleFinishAutoSummon">
             {{ (battleDeckModal.summoned && battleDeckModal.summoned.length) ? 'ここで終了（残りを見送り）' : '招来しない' }}
@@ -5329,7 +5334,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.69',
+    BUILD_VERSION: '1.14.70',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7080,7 +7085,10 @@ new Vue({
        =================================================================== */
     _battleKamiNo(side) {
       const k = this.battleSample && this.battleSample[side] && this.battleSample[side].kami;
-      return k && k.no != null ? String(k.no) : null;
+      if (!k || k.no == null) return null;
+      const no = String(k.no);
+      // battleFireKamiEvent の switch は 'K1'..'K10' で照合するため、数字のみのカミ番号には 'K' を前置する
+      return /^K/i.test(no) ? no.toUpperCase() : ('K' + no);
     },
     _battleKamiCanTrigger(side, eventKey, max) {
       const p = this.battleSample[side];
@@ -7818,6 +7826,11 @@ new Vue({
     /* カード→spec（no優先、見つからなければ名前で検索） */
     _dslGetSpec(card) {
       if (!card) return null;
+      // カミは effect_spec の "K{no}" キーで管理（同じ数字のカード#{no} と衝突しないように）
+      if (card.isKami && card.no != null && this.effectSpecs) {
+        const kno = /^K/i.test(String(card.no)) ? String(card.no).toUpperCase() : ('K' + card.no);
+        if (this.effectSpecs[kno]) return this.effectSpecs[kno];
+      }
       if (card.no != null) {
         const byNo = this.effectSpecs[String(card.no)];
         if (byNo) return byNo;
@@ -10470,6 +10483,18 @@ new Vue({
       // 残りがある場合はモーダルそのまま維持して継続選択
     },
     /* 自動招来モーダルを途中で終了（残りを放棄） */
+    /* 単一候補の招来で、残り全てをまとめて場に出す（#14無双の影分身×2 等のUX改善） */
+    battleSummonAllRemaining() {
+      const modal = this.battleDeckModal;
+      if (!modal || modal.action !== 'autoSummon') return;
+      let guard = 0;
+      while (this.battleDeckModal === modal && (modal.remaining || 0) > 0 && guard++ < 20) {
+        const before = modal.remaining;
+        this.battleResolveAutoSummon(0); // 先頭候補（単一候補時のみ表示するボタン）
+        if (this.battleDeckModal !== modal) break;     // remaining が 0 になりモーダルが閉じた
+        if (modal.remaining === before) break;         // 進まない（上限到達等）なら中断
+      }
+    },
     battleFinishAutoSummon() {
       const modal = this.battleDeckModal;
       if (!modal || modal.action !== 'autoSummon') return;
