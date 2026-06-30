@@ -4193,8 +4193,8 @@
                   @click="dslResolveTargets">
             決定（{{ dslTargetModal.selected.length }} / {{ dslTargetModal.need }}）
           </button>
-          <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="dslCancelTargets">
-            キャンセル
+          <button v-if="dslTargetModal.canSkip || !dslTargetModal.candidates.length" class="battle-back-btn" style="background:#444;border-color:#666;" @click="dslCancelTargets">
+            {{ dslTargetModal.canSkip ? 'スキップ（行わない）' : '閉じる' }}
           </button>
         </div>
       </div>
@@ -5329,7 +5329,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.68',
+    BUILD_VERSION: '1.14.69',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7417,6 +7417,8 @@ new Vue({
       }
       this._battleCheckResult();
       this._battleInManaPhase = false;
+      // ターンが切り替わったので静的効果を再計算（期間:自分ターン中 のオーラ#15 や自ターン中の死角#74 等）
+      if (typeof this.dslRefreshStaticAbilities === 'function') this.dslRefreshStaticAbilities();
     },
     /* 指定サイドのフィールド（レガシー・レリック）を全てアンタップ */
     _battleUntapField(side) {
@@ -8111,11 +8113,13 @@ new Vue({
       const player = this.battleSample[side];
       if (!player) return [];
       if (z === 'field') {
-        // 絞込にレリック/レガシー指定があるかで対象ゾーンを判定
+        // 絞込/備考にレリック/レガシー/カード指定があるかで対象ゾーンを判定。
+        // 「カード」表記はレガシーorレリック両方を意味する（ルール）。
         const crit = sel.絞込 || [];
-        const wantsLegacy = !crit.length || crit.some(c => /レガシー|カード$/.test(String(c)));
-        const wantsRelic  = crit.some(c => /レリック/.test(String(c)));
-        // デフォルト（絞込なし or レガシー系のみ）はレガシーのみ
+        const note = String(sel.備考 || '');
+        const wantsLegacy = !crit.length || crit.some(c => /レガシー|カード$/.test(String(c))) || /カード|レガシー/.test(note);
+        const wantsRelic  = crit.some(c => /レリック|カード$/.test(String(c))) || /レリック|カード/.test(note);
+        // デフォルト（絞込なし・備考なし）はレガシーのみ
         if (wantsRelic && !wantsLegacy) return [...(player.relics || [])];
         if (wantsRelic && wantsLegacy)  return [...(player.legacies || []), ...(player.relics || [])];
         return [...(player.legacies || [])];
@@ -8380,7 +8384,7 @@ new Vue({
           candidates: pool,
           selected: [],
           need: Math.min(need, pool.length),
-          canSkip: !!sel.任意,
+          canSkip: !!sel.任意 || /任意/.test(remarks),
           maxTotalPower,
           distinctNames: /カード名が異なる/.test(remarks),
         };
@@ -8439,6 +8443,9 @@ new Vue({
       if (resolver) resolver(sel);
     },
     dslCancelTargets() {
+      const modal = this.dslTargetModal;
+      // 強制対象（任意でない・候補あり）は取り消し不可。必ず選ばせる（#9の捨て等の強制効果）。
+      if (modal && !modal.canSkip && Array.isArray(modal.candidates) && modal.candidates.length > 0) return;
       const resolver = this._dslDeferred;
       this.dslTargetModal = null;
       this._dslDeferred = null;
@@ -8734,6 +8741,11 @@ new Vue({
           const delta = Number(m[1]) || 0;
           this.$set(card, '_staticPerm', (Number(card._staticPerm) || 0) + delta);
           this.$set(card, 'power', (Number(card.power) || 0) + delta);
+        } else if (m = s.match(/^補正[:：]?([+\-]?\d+)$/)) {
+          // 静的バフ（常在/進化中オーラ）としての補正は、効果が続く間の戦闘力加算として扱う（#15ゲンザン等）
+          const delta = Number(m[1]) || 0;
+          this.$set(card, '_staticPerm', (Number(card._staticPerm) || 0) + delta);
+          this.$set(card, 'power', (Number(card.power) || 0) + delta);
         } else if (m = s.match(/^神攻力([+\-]?\d+)/)) {
           const delta = Number(m[1]) || 0;
           this.$set(card, '_staticAttack', (Number(card._staticAttack) || 0) + delta);
@@ -8774,6 +8786,8 @@ new Vue({
       (actions || []).forEach(act => {
         const op = act.操作 || act.op;
         if (op === '付与' || op === '静的バフ' || op === '補正' || op === '神威') {
+          // 期間:自分ターン中 → 適用側のターン中のみ有効（#15ゲンザン等）
+          if (act.期間 === '自分ターン中' && this.battleSample && this.battleSample.activeSide !== (sourceSide || 'self')) return;
           const targets = this.dslStaticEligible(act.対象 || { 自身: true }, sourceCard, sourceSide);
           const grants = this.dslDynamicStaticGrants(act, sourceSide);
           targets.forEach(t => this.dslApplyStaticGrant(t, grants));
@@ -9605,7 +9619,10 @@ new Vue({
       const criteria = (Array.isArray(target.絞込) && target.絞込.length) ? target.絞込
         : (Array.isArray(act.絞込) ? act.絞込 : []);
       const criteriaText = criteria.join('/');
-      this.battleOpenAutoInduce(sourceCard, { count, criteria, criteriaText }, '出現時');
+      // 誘の解決を待つ（その後に「手札から出す」等の後続処理がある場合の順序保証・#22忍の王）
+      return new Promise((resolve) => {
+        this.battleOpenAutoInduce(sourceCard, { count, criteria, criteriaText, onComplete: resolve }, '出現時');
+      });
     },
     async _dslOpReishi(act, sourceCard) {
       const count = Number(act.数 || (act.対象 && act.対象.枚数) || 1);
@@ -9701,7 +9718,9 @@ new Vue({
     },
     /* 手札・墓地から指定対象を場に出す */
     async _dslOpPutIntoField(act, sourceCard) {
-      const sel = act.対象 || { 対象側: 'self', 領域: 'hand', 選択者: 'player', 枚数: 1 };
+      let sel = act.対象 || { 対象側: 'self', 領域: 'hand', 選択者: 'player', 枚数: 1 };
+      // act.備考 の「任意」（#22「その後・任意」＝出してもよい）を対象選択の skip 可へ伝える
+      if (/任意/.test(String(act.備考 || '')) && !sel.任意) sel = Object.assign({}, sel, { 任意: true });
       const targets = await this.dslChooseTargets(sel, '場に出すカードを選択');
       if (!targets.length) return;
       this.battleSaveUndo();
@@ -10112,6 +10131,7 @@ new Vue({
         count: induce.count,
         criteriaText: induce.criteriaText,
         criteria: induce.criteria,
+        onComplete: induce.onComplete || null,
         cards,
         deckIndexes: cards.map((_, i) => i),
         eligibleIndexes,
@@ -12317,6 +12337,7 @@ new Vue({
       const modal = this.battleDeckModal;
       if (!modal || modal.action !== 'autoInduce' || this.battleSample.result) return;
       if (modal.side !== 'self') return;
+      const onComplete = modal.onComplete;
       const player = this.battleSample.self;
       if (!player || !Array.isArray(player.deck)) return;
       const revealedCount = modal.cards.length;
@@ -12346,7 +12367,9 @@ new Vue({
           : '対象のカードはありませんでした。公開カードをデッキの一番下へ送りました。',
         cards: selectedCard ? [selectedCard] : [],
       };
-      this._battleProcessNextEffect();
+      this._dslLastInducedToHand = selectedCard ? [selectedCard] : [];
+      if (onComplete) onComplete(selectedCard ? [selectedCard] : []);
+      else this._battleProcessNextEffect();
     },
     battleToggleAutoReishi(modalIndex) {
       const modal = this.battleDeckModal;
