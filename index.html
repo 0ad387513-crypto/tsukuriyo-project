@@ -2381,6 +2381,14 @@
     left: 6px; right: 6px; bottom: 3px; min-height: 22px;
     font-size: 13px; white-space: nowrap; padding: 2px 4px;
   }
+  /* 【守護】【死角】：カード中央に半透明アイコンを重ねて表示（両面とも視認できるように） */
+  .battle-card.field-card .status-icon {
+    position: absolute; left: 50%; transform: translate(-50%, -50%);
+    width: 42%; height: 42%; opacity: .58; pointer-events: none; z-index: 1;
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,.65));
+  }
+  .battle-card.field-card .guard-icon { top: 40%; color: #cfe0ff; fill: #cfe0ff; }
+  .battle-card.field-card .blindspot-icon { top: 62%; color: #fff3cf; fill: #fff3cf; }
   .battle-card.field-card[draggable="true"] { cursor: grab; }
   .battle-card.field-card[draggable="true"]:active { cursor: grabbing; }
   .battle-card.field-card.battle-attack-dragging { opacity: .48; }
@@ -2596,6 +2604,8 @@
     border: 1px solid #a9afb8; justify-self: center; box-shadow: inset 0 0 4px rgba(0,0,0,.45);
   }
   .mana-orb.available { background: #20a95a; border-color: #8ce8ae; box-shadow: 0 0 6px rgba(45,210,105,.52); }
+  /* 最大値を超えて使えるマナ（このターンのみ等）：通常の緑とは別の金色で目立たせる */
+  .mana-orb.bonus { background: #e8b23a; border-color: #ffe29a; box-shadow: 0 0 8px rgba(232,178,58,.75); }
   .mana-empty { grid-column: 1 / -1; color: #687383; font-size: 10px; text-align: center; }
   .mana-controls { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
   .mana-controls span { color: #9ca9bb; font-size: 9px; }
@@ -3689,6 +3699,7 @@
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.opp.relics" :key="'or'+i"
                    class="battle-card field-card"
+                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)"
@@ -3706,7 +3717,7 @@
             <div class="battle-card-row legacy-row">
               <div v-for="(card, i) in battleSample.opp.legacies" :key="'ol'+i"
                    class="battle-card field-card opp-legacy-target"
-                   :class="{ 'battle-target-legacy': battleCanFieldDragToAttackTargets }"
+                   :class="{ 'battle-target-legacy': battleCanFieldDragToAttackTargets, tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @dragover.prevent="battleUpdateFieldAttackTarget($event)"
@@ -3715,6 +3726,14 @@
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
                 <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
                 <span class="battle-card-overlay battle-card-power">戦闘力 {{ card.power || 0 }}</span>
+                <svg v-if="battleCardHasKeyword(card, '守護')" class="status-icon guard-icon" viewBox="0 0 24 24">
+                  <path d="M12 2 L21 6 V11 C21 16.5 17.5 20.8 12 22 C6.5 20.8 3 16.5 3 11 V6 Z" />
+                </svg>
+                <svg v-if="battleCardHasKeyword(card, '死角')" class="status-icon blindspot-icon" viewBox="0 0 24 24">
+                  <path d="M12 5 C6 5 2 12 2 12 C2 12 6 19 12 19 C18 19 22 12 22 12 C22 12 18 5 12 5 Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                  <circle cx="12" cy="12" r="3.2" fill="currentColor"/>
+                  <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" stroke-width="2.4"/>
+                </svg>
               </div>
             </div>
           </div>
@@ -3741,6 +3760,14 @@
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
                 <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
                 <span class="battle-card-overlay battle-card-power">戦闘力 {{ card.power || 0 }}</span>
+                <svg v-if="battleCardHasKeyword(card, '守護')" class="status-icon guard-icon" viewBox="0 0 24 24">
+                  <path d="M12 2 L21 6 V11 C21 16.5 17.5 20.8 12 22 C6.5 20.8 3 16.5 3 11 V6 Z" />
+                </svg>
+                <svg v-if="battleCardHasKeyword(card, '死角')" class="status-icon blindspot-icon" viewBox="0 0 24 24">
+                  <path d="M12 5 C6 5 2 12 2 12 C2 12 6 19 12 19 C18 19 22 12 22 12 C22 12 18 5 12 5 Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                  <circle cx="12" cy="12" r="3.2" fill="currentColor"/>
+                  <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" stroke-width="2.4"/>
+                </svg>
               </div>
             </div>
           </div>
@@ -3842,8 +3869,8 @@
         <div class="mana-panel">
           <div class="mana-head"><span>相手マナ</span><span class="mana-value">{{ battleSample.opp.mana }}/{{ battleSample.opp.manaMax }}</span></div>
           <div class="mana-orbs">
-            <span v-for="n in battleSample.opp.manaMax" :key="'om'+n" class="mana-orb" :class="{ available: n <= battleSample.opp.mana }"></span>
-            <span v-if="battleSample.opp.manaMax === 0" class="mana-empty">0</span>
+            <span v-for="n in Math.max(battleSample.opp.manaMax, battleSample.opp.mana)" :key="'om'+n" class="mana-orb" :class="{ available: n <= battleSample.opp.mana, bonus: n > battleSample.opp.manaMax && n <= battleSample.opp.mana }"></span>
+            <span v-if="battleSample.opp.manaMax === 0 && battleSample.opp.mana === 0" class="mana-empty">0</span>
           </div>
         </div>
 
@@ -3908,8 +3935,8 @@
         <div class="mana-panel">
           <div class="mana-head"><span>自分マナ</span><span class="mana-value">{{ battleSample.self.mana }}/{{ battleSample.self.manaMax }}</span></div>
           <div class="mana-orbs">
-            <span v-for="n in battleSample.self.manaMax" :key="'sm'+n" class="mana-orb" :class="{ available: n <= battleSample.self.mana }"></span>
-            <span v-if="battleSample.self.manaMax === 0" class="mana-empty">0</span>
+            <span v-for="n in Math.max(battleSample.self.manaMax, battleSample.self.mana)" :key="'sm'+n" class="mana-orb" :class="{ available: n <= battleSample.self.mana, bonus: n > battleSample.self.manaMax && n <= battleSample.self.mana }"></span>
+            <span v-if="battleSample.self.manaMax === 0 && battleSample.self.mana === 0" class="mana-empty">0</span>
           </div>
           <div class="mana-controls">
             <div><span>最大</span><div class="mana-control-group"><button @click="battleStat('self','manaMax',-1)">▽</button><button @click="battleStat('self','manaMax',1)">△</button></div></div>
@@ -5352,7 +5379,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.74',
+    BUILD_VERSION: '1.14.75',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7305,6 +7332,7 @@ new Vue({
       this._battleExpireEffectDisablesForSide(endingSide, bs.turn);
       this._battleCheckDestroyZeroPower();
       this._battleCheckTurnEndDestroy();
+      this._battleApplyStaticTurnEndUntap(endingSide);
       // 天力トリガー（ターン終了系：K2 ヤマトタケル / K3 オオクニヌシ / K4 タケミカヅチ）
       this.battleFireKamiEvent(endingSide, 'turnEnd', {});
       await this.battleRunTurnEndEffects(endingSide);
@@ -7434,6 +7462,41 @@ new Vue({
         const lines = destroyed.map(d => `${d.side === 'self' ? '自分' : '相手'}の「${d.name}」`).join('、');
         this.battleShowNotice('ターン終了時破壊', `${lines}は【ターン終了時破壊】の効果で破壊されました。`, destroyed.map(d => d.card));
         destroyed.forEach(d => this.battleRunDeathKeywordEffects(d.card));
+      }
+    },
+    /* 常在能力中の「アンタップ（期間:自分ターン終了時）」（例：#83ミズホ③）をターン終了時に解決する */
+    _battleApplyStaticTurnEndUntap(endingSide) {
+      if (!this.effectSpecsReady || !this.battleSample) return;
+      const bs = this.battleSample;
+      const untapped = [];
+      this.dslFieldCards().forEach(({ side, card }) => {
+        if (side !== endingSide || !card) return; // 「自分ターン終了時」＝そのカードの持ち主のターン終了時
+        const spec = this._dslGetSpec(card);
+        if (!spec || !Array.isArray(spec.能力)) return;
+        spec.能力.forEach(ab => {
+          if (ab.任意 || !this._dslAbilityMatchesTrigger(ab, '常在')) return;
+          if (ab.条件 && !this.dslEvalCond(ab.条件)) return;
+          (ab.処理 || []).forEach(act => {
+            const op = act.操作 || act.op;
+            if (op !== 'アンタップ' || act.期間 !== '自分ターン終了時') return;
+            const prevSource = this._dslCurrentSource;
+            this._dslCurrentSource = card;
+            try {
+              const targets = this.dslStaticEligible(act.対象 || { 自身: true }, card, side);
+              targets.forEach(t => {
+                if (t && t._tapped && !this._battleIsBindingActive(t, side, bs.turn)) {
+                  this.$set(t, '_tapped', false);
+                  if (!untapped.includes(t)) untapped.push(t);
+                }
+              });
+            } finally {
+              this._dslCurrentSource = prevSource;
+            }
+          });
+        });
+      });
+      if (untapped.length) {
+        this.battleShowNotice('常在効果でアンタップ', `${untapped.map(c => `「${this.fullName(c)}」`).join('、')}がターン終了時の常在効果でアンタップされました。`, untapped);
       }
     },
     battleRecordLegacyDestroyed(side, card) {
@@ -8865,7 +8928,7 @@ new Vue({
         return s;
       });
     },
-    dslApplyStaticActions(actions, sourceCard, sourceSide, abilityLimit = 0) {
+    dslApplyStaticActions(actions, sourceCard, sourceSide, abilityLimit = 0, abilityNote = '') {
       (actions || []).forEach(act => {
         const op = act.操作 || act.op;
         if (op === '付与' || op === '静的バフ' || op === '補正' || op === '神威') {
@@ -8875,10 +8938,13 @@ new Vue({
           const grants = this.dslDynamicStaticGrants(act, sourceSide);
           targets.forEach(t => this.dslApplyStaticGrant(t, grants));
         } else if (op === '分岐') {
+          // 備考に「累積」とあれば、条件を満たす分岐を全て適用する（例：#80アヤト 種族数による段階適用）。
+          // それ以外は従来通り、最初に条件を満たした分岐のみ適用する（if/else if 相当）。
+          const cumulative = /累積/.test(abilityNote);
           for (const br of (act.分岐 || [])) {
             if (!br.条件 || this.dslEvalCond(br.条件)) {
-              this.dslApplyStaticActions(br.処理 || [], sourceCard, sourceSide, abilityLimit);
-              break;
+              this.dslApplyStaticActions(br.処理 || [], sourceCard, sourceSide, abilityLimit, abilityNote);
+              if (!cumulative) break;
             }
           }
         } else if (op === '選定値+1' && sourceCard) {
@@ -8963,7 +9029,7 @@ new Vue({
             if (ab.任意) return;
             this._dslCurrentSource = card;
             if (ab.条件 && !this.dslEvalCond(ab.条件)) return;
-            this.dslApplyStaticActions(ab.処理 || [], card, side, Number(ab.各ターン) || 0);
+            this.dslApplyStaticActions(ab.処理 || [], card, side, Number(ab.各ターン) || 0, String(ab.備考 || ''));
           });
         });
       } finally {
@@ -11075,6 +11141,14 @@ new Vue({
     battleLegacyCanAct(card, action) {
       if (!card) return { ok: false, reason: 'カードがありません。' };
       if (card._tapped) return { ok: false, reason: `「${this.fullName(card)}」はタップされています。` };
+      if ((action === 'battle' || action === 'divine')) {
+        const grants = []
+          .concat(Array.isArray(card._kwGrant) ? card._kwGrant : [])
+          .concat(Array.isArray(card._staticKwGrant) ? card._staticKwGrant : []);
+        if (grants.some(g => /^戦闘・神攻不可/.test(String(g)))) {
+          return { ok: false, reason: `「${this.fullName(card)}」は【戦闘・神攻不可】の効果により戦闘・神攻できません。` };
+        }
+      }
       const fresh = this.battleLegacyIsSummonedThisTurn(card);
       if (action === 'battle' && fresh && !this.battleCardHasKeyword(card, '奇襲') && !this.battleCardHasKeyword(card, '疾駆')) {
         return { ok: false, reason: `「${this.fullName(card)}」は場に出たターンのため、【奇襲】または【疾駆】がなければ戦闘できません。` };
@@ -11458,6 +11532,8 @@ new Vue({
       if (!can.ok) { this.battleShowNotice('神攻できません', can.reason, [attacker]); return; }
       const guard = await this._battleChooseGuard(attacker, 'opp', null);
       if (guard) {
+        // 【神攻時】は神攻を宣言した時点で発動が確定する効果のため、守護で戦闘に差し替えられても発動する
+        await this.battleRunActionTrigger(attacker, '神攻時');
         this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index);
         return;
       }
