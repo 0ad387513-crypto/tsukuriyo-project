@@ -5329,7 +5329,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.67',
+    BUILD_VERSION: '1.14.68',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7951,6 +7951,13 @@ new Vue({
           }
           // 条件評価
           if (ab.条件 && !this.dslEvalCond(ab.条件)) continue;
+          // 各ターン制限：このターンに既定回数使っていたらスキップ（#5神攻時/#12③選定時 等の「自分ターンに1回」）
+          let _ptKey = null;
+          if (ab.各ターン) {
+            _ptKey = (ab.契機 || triggerLabel) + '@' + ((this.battleSample && this.battleSample.turn) || 0);
+            const uses = (card._perTurnUses && card._perTurnUses[_ptKey]) || 0;
+            if (uses >= Number(ab.各ターン)) continue;
+          }
           // 任意能力：「〜してもよい」→ 確認モーダルでyes/no
           if (ab.任意) {
             const summary = this._dslSummarizeActions(ab.処理 || []);
@@ -7962,6 +7969,10 @@ new Vue({
             if (!paid) continue;
           }
           ran = true;
+          if (_ptKey) {
+            card._perTurnUses = card._perTurnUses || {};
+            card._perTurnUses[_ptKey] = (card._perTurnUses[_ptKey] || 0) + 1;
+          }
           try {
             await this.dslRunActions(ab.処理 || [], card);
           } catch (e) {
@@ -9589,7 +9600,10 @@ new Vue({
     async _dslOpInduce(act, sourceCard) {
       const target = act.対象 || {};
       const count = Number(target.枚数 || act.数 || 1);
-      const criteria = target.絞込 || [];
+      // 絞込は act.対象.絞込 だけでなく act.絞込（トップレベル）にも対応（#12隠居等）。
+      // 空配列のまま battleCardMatchesInduceCriteria に渡すと全カードが対象になってしまうため。
+      const criteria = (Array.isArray(target.絞込) && target.絞込.length) ? target.絞込
+        : (Array.isArray(act.絞込) ? act.絞込 : []);
       const criteriaText = criteria.join('/');
       this.battleOpenAutoInduce(sourceCard, { count, criteria, criteriaText }, '出現時');
     },
@@ -10270,8 +10284,19 @@ new Vue({
       } finally {
         this._dslCurrentSource = prevSource;
       }
+      // 選定時トリガー：自分フィールドの「選定時」効果（隠居#12③：選定したとき影分身招来 等）を発動
+      await this._battleFireSenteiTimeTriggers(sourceCard);
       if (onComplete) onComplete(chosenIdx.map(i => optionData[i]));
       else this._battleProcessNextEffect();
+    },
+    /* 選定が行われた後、自分フィールドの「選定時」効果を発動する（各ターン制限は dslRunSpec が処理） */
+    async _battleFireSenteiTimeTriggers(senteiSource) {
+      const p = this.battleSample && this.battleSample.self;
+      if (!p || !Array.isArray(p.legacies) || !this.effectSpecsReady) return;
+      for (const card of p.legacies.slice()) {
+        if (!card || !this.dslHasSpecForTrigger(card, '選定時')) continue;
+        await this.dslRunSpec(card, '選定時', null);
+      }
     },
     battleSummonCandidates(targetText) {
       const target = String(targetText || '').trim();
