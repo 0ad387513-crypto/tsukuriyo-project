@@ -5473,7 +5473,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.80',
+    BUILD_VERSION: '1.14.81',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5646,6 +5646,13 @@ new Vue({
         // タップ自身
         if (cost.タップ === '自身' && card._tapped) {
           payable = false; reason = 'このカードは既にタップ済みです。';
+        }
+        // 戦闘/神攻の代わりにタップするコスト：召喚酔い（【奇襲】【疾駆】が無く場に出たターン）は発動不可
+        if (payable && cost.タップ === '自身' && /戦闘.神攻.*代わり/.test(String(cost.備考 || ''))) {
+          const fresh = this.battleLegacyIsSummonedThisTurn(card);
+          if (fresh && !this.battleCardHasKeyword(card, '奇襲') && !this.battleCardHasKeyword(card, '疾駆')) {
+            payable = false; reason = '場に出たターンのため、【奇襲】または【疾駆】がなければ発動できません。';
+          }
         }
         // マナ
         const manaCost = Number(cost.マナ || 0);
@@ -6639,7 +6646,9 @@ new Vue({
       const all = this.allCards.filter(c => !c.isToken && !c.isKami && c.color !== '創');
       let selfPool;
       if (color === 'ミックス') {
-        selfPool = all;
+        // ミックスの場合はジェネシスカード（創属性）もデッキに含める
+        const genesis = this.allCards.filter(c => !c.isToken && !c.isKami && c.color === '創');
+        selfPool = [...all, ...genesis];
       } else {
         // 選んだ色のカードを全て入れる（その色のレガシー/オラクル/レリック＝合計36枚）
         selfPool = all.filter(c => c.color === color);
@@ -9493,8 +9502,10 @@ new Vue({
         }
         arr.splice(idx, 1);
         if (card.category === 'オラクル') {
-          p.graveyard = p.graveyard || [];
-          p.graveyard.push(card);
+          // トークンのオラクル（例：#187隷属の龍血）は墓地ではなく崩壊ゾーンへ
+          const zpZone = this._battleLeaveZone(card, 'graveyard');
+          p[zpZone] = p[zpZone] || [];
+          p[zpZone].push(card);
           this.battleOracleEffect = { card };
           used.push(card);
           if (!this.battleRunEnterKeywordEffects(card, 0)) this.battleKeywordGuide(card, 0);
@@ -11170,7 +11181,10 @@ new Vue({
       this.battleConsumeTempCostMods('self', card);
       this.battleConsumeStaticCostChangeUsage('self', card);
       player.hand.splice(index, 1);
-      player.graveyard.push(card);
+      // トークンのオラクル（例：#187隷属の龍血）は墓地ではなく崩壊ゾーンへ
+      const oracleZone = this._battleLeaveZone(card, 'graveyard');
+      player[oracleZone] = player[oracleZone] || [];
+      player[oracleZone].push(card);
       player.handCount = player.hand.length;
       // このターンのカード使用枚数を加算（「2枚目以降」条件用）
       player.cardPlaysThisTurn = (Number(player.cardPlaysThisTurn) || 0) + 1;
@@ -11347,7 +11361,10 @@ new Vue({
       if (card.category === 'オラクル') {
         this.battleSaveUndo();
         player.hand.splice(index, 1);
-        player.graveyard.push(card);
+        // トークンのオラクル（例：#187隷属の龍血）は墓地ではなく崩壊ゾーンへ
+        const oracleZone = this._battleLeaveZone(card, 'graveyard');
+        player[oracleZone] = player[oracleZone] || [];
+        player[oracleZone].push(card);
         player.handCount = player.hand.length;
         this.battleOracleEffect = { card };
         this.hideCardHover();
@@ -12022,7 +12039,9 @@ new Vue({
       this.hideCardHover();
       this.battleHoverField = null;
       this.dslRefreshStaticAbilities();
-      if (moveZone === 'graveyard' && this.battleRunDeathKeywordEffects(card)) return;
+      // トークンは墓地送りでも崩壊ゾーンへ実際には移るが、「墓地へ送る」が要求された場合は
+      // 死亡時トリガーを発動する（明示的に「崩壊へ送る」を選んだ場合は発動しない）
+      if (destinationZone === 'graveyard' && this.battleRunDeathKeywordEffects(card)) return;
       const destLabel = moveZone === 'graveyard' ? '墓地' : '崩壊';
       this.battleNotice = {
         title: `${destLabel}へ移動`,
