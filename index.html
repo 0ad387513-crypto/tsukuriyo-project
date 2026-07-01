@@ -2259,6 +2259,26 @@
     border-color: #b76cff;
     box-shadow: 0 0 0 2px rgba(183,108,255,.55), 0 0 18px rgba(183,108,255,.35);
   }
+  /* 対象選択モーダル：自分/相手・タップ状態・戦闘力バフの明示 */
+  .dsl-target-side-badge {
+    position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+    font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 4px; color: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,.5); z-index: 2; white-space: nowrap;
+  }
+  .dsl-target-side-badge.self { background: #1f6fd6; }
+  .dsl-target-side-badge.opp  { background: #c0392b; }
+  .dsl-target-tapped-badge {
+    position: absolute; top: -8px; right: -6px;
+    background: #6a5a1f; color: #ffe27a; font-size: 9px; font-weight: 900;
+    padding: 2px 6px; border-radius: 4px; z-index: 2; box-shadow: 0 2px 6px rgba(0,0,0,.5);
+  }
+  .dsl-target-power-badge {
+    position: absolute; left: 4px; right: 4px; bottom: 3px;
+    background: rgba(21,25,34,.9); border: 1px solid #c9d0da; color: #fff;
+    font-size: 11px; font-weight: 700; text-align: center; padding: 2px 4px; border-radius: 4px; z-index: 2;
+  }
+  .dsl-target-power-badge.buffed   { border-color: #6fe08a; color: #b8ffcf; }
+  .dsl-target-power-badge.debuffed { border-color: #e06f6f; color: #ffb8b8; }
   .battle-deck-modal-pick {
     width: 100%; max-width: 108px; padding: 5px 7px; border-radius: 4px;
     border: 1px solid #7e94ba; background: #294c84; color: #fff;
@@ -2388,7 +2408,7 @@
     width: 92%; pointer-events: none; z-index: 1;
   }
   .battle-card.field-card .status-icon {
-    width: 30%; height: auto; aspect-ratio: 1 / 1; opacity: .62; flex: 0 0 auto;
+    width: 42%; height: auto; aspect-ratio: 1 / 1; opacity: .68; flex: 0 0 auto;
     filter: drop-shadow(0 1px 3px rgba(0,0,0,.65));
   }
   .battle-card.field-card .guard-icon { color: #cfe0ff; fill: #cfe0ff; }
@@ -4263,11 +4283,21 @@
           <div v-for="(c, i) in dslTargetModal.candidates" :key="'dt'+i"
                class="battle-deck-modal-card"
                :class="{ selected: dslTargetModal.selected.includes(c) }">
-            <div class="battle-card"
+            <div class="battle-card dsl-target-card"
                  :style="cardImageUrl(c) ? { backgroundImage: 'url(' + cardImageUrl(c) + ')' } : {}"
                  @click="openPreview(c)"
                  @mouseenter="showCardHover(c, $event)"
-                 @mouseleave="hideCardHover"></div>
+                 @mouseleave="hideCardHover">
+              <span class="dsl-target-side-badge" :class="dslCandidateSide(c) === 'opp' ? 'opp' : 'self'">
+                {{ dslCandidateSide(c) === 'opp' ? '相手' : '自分' }}
+              </span>
+              <span v-if="c._tapped" class="dsl-target-tapped-badge">タップ中</span>
+              <span v-if="c.category === 'レガシー' || c.isToken"
+                    class="dsl-target-power-badge"
+                    :class="{ buffed: dslCandidateBuffDelta(c) > 0, debuffed: dslCandidateBuffDelta(c) < 0 }">
+                戦闘力 {{ c.power || 0 }}{{ dslCandidateBuffDelta(c) !== 0 ? (dslCandidateBuffDelta(c) > 0 ? '（+' + dslCandidateBuffDelta(c) + '）' : '（' + dslCandidateBuffDelta(c) + '）') : '' }}
+              </span>
+            </div>
             <button class="battle-deck-modal-pick" @click="dslToggleTarget(c)">
               {{ dslTargetModal.selected.includes(c) ? '解除' : '選択' }}
             </button>
@@ -5416,7 +5446,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.77',
+    BUILD_VERSION: '1.14.78',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8625,6 +8655,16 @@ new Vue({
       });
     },
     /* 対象選択モーダルのトグル */
+    /* 対象選択モーダル：候補カードがどちら側の場/手札/墓地等にあるかを判定（自分/相手バッジ表示用） */
+    dslCandidateSide(card) {
+      const loc = this._dslFindCardLocation(card);
+      return loc ? loc.side : null;
+    },
+    /* 対象選択モーダル：現在の補正合計（バフ/デバフ表示用）。正なら強化、負なら弱体化中 */
+    dslCandidateBuffDelta(card) {
+      if (!card) return 0;
+      return (Number(card._buf) || 0) + (Number(card._perm) || 0) + (Number(card._staticPerm) || 0);
+    },
     dslToggleTarget(card) {
       const m = this.dslTargetModal;
       if (!m) return;
@@ -9932,10 +9972,13 @@ new Vue({
       });
     },
     async _dslOpBranch(act, sourceCard) {
+      // 備考に「累積」とあれば、条件を満たす分岐を全て適用する（例：#138外界への憧憬 マナ最大値による段階適用）。
+      // それ以外は従来通り、最初に条件を満たした分岐のみ適用する（if/else if 相当）。
+      const cumulative = /累積/.test(String(act.備考 || ''));
       for (const br of (act.分岐 || [])) {
         if (this.dslEvalCond(br.条件)) {
           await this.dslRunActions(br.処理 || [], sourceCard);
-          return;
+          if (!cumulative) return;
         }
       }
     },
@@ -10002,7 +10045,11 @@ new Vue({
       if (!sourceCard) return;
       const moved = this._dslMoveFromField(sourceCard, destZone);
       const label = destZone === 'graveyard' ? '自身破壊（墓地送り）' : '自身崩壊';
-      if (moved) this.battleShowNotice(label, `「${this.fullName(sourceCard)}」を${destZone === 'graveyard' ? '墓地' : '崩壊ゾーン'}に送りました。`, [sourceCard]);
+      if (moved) {
+        this.battleShowNotice(label, `「${this.fullName(sourceCard)}」を${destZone === 'graveyard' ? '墓地' : '崩壊ゾーン'}に送りました。`, [sourceCard]);
+        // 墓地に送られた場合のみ死亡時トリガーを発火（例：#186社の施し 死亡時マナ効果）。崩壊は死亡時扱いしない。
+        if (destZone === 'graveyard') this.battleRunDeathKeywordEffects(sourceCard);
+      }
     },
     /* 手札・墓地から指定対象を場に出す */
     async _dslOpPutIntoField(act, sourceCard) {
@@ -10041,7 +10088,65 @@ new Vue({
       }
     },
     /* デッキから条件を満たすカードを探して手札に加える（サーチ） */
+    /* デッキの上からN枚を公開し、レガシーとレリックを1枚ずつ選んで手札に加える（コスト3以下なら代わりに場へ出せる）。
+       選ばなかった残りはデッキの下へ戻す。（例：#139覚悟の出陣） */
+    async _dslOpSearchTopNPickOnePerCategory(act, sourceCard) {
+      const p = this.battleSample.self;
+      if (!p || !Array.isArray(p.deck)) return;
+      const n = Math.max(1, Number((act.対象 && act.対象.枚数) || 6));
+      if (!p.deck.length) {
+        this.battleShowNotice('サーチ', 'デッキが残っていません。', sourceCard ? [sourceCard] : []);
+        return;
+      }
+      this.battleSaveUndo();
+      const revealed = p.deck.splice(0, n);
+      const remaining = revealed.slice();
+      const gainedToHand = [];
+      const gainedToField = [];
+      for (const cat of ['レガシー', 'レリック']) {
+        const candidates = remaining.filter(c => c && c.category === cat);
+        if (!candidates.length) continue;
+        const picked = await this.dslAskCustomTargets(`公開した${n}枚から${cat}を1枚選んで手札に加えてもよい`, candidates, 1, sourceCard, true);
+        if (!picked || !picked.length) continue;
+        const card = picked[0];
+        const idx = remaining.indexOf(card);
+        if (idx >= 0) remaining.splice(idx, 1);
+        const cost = Math.max(0, Number(card.cost) || 0);
+        let toField = false;
+        if (cost <= 3) {
+          toField = await this.dslAskOptional(sourceCard, '場に出す', `「${this.fullName(card)}」（コスト${cost}）を手札に加える代わりに場に出しますか？`);
+        }
+        const zone = toField ? (this.battleFieldZoneForSummon(card) || 'legacies') : null;
+        if (toField && Array.isArray(p[zone]) && p[zone].length < 7) {
+          const fieldCard = this._battlePrepareFieldCard(card);
+          p[zone].push(fieldCard);
+          gainedToField.push(fieldCard);
+        } else {
+          p.hand.push(card);
+          gainedToHand.push(card);
+        }
+      }
+      p.handCount = (p.hand || []).length;
+      p.deck.push(...remaining);
+      p.deckCount = p.deck.length;
+      this.dslRefreshStaticAbilities();
+      const parts = [];
+      if (gainedToHand.length) parts.push(`${gainedToHand.map(c => `「${this.fullName(c)}」`).join('、')}を手札に加えました`);
+      if (gainedToField.length) parts.push(`${gainedToField.map(c => `「${this.fullName(c)}」`).join('、')}を場に出しました`);
+      this.battleShowNotice(
+        'サーチ',
+        `${parts.length ? parts.join('。') + '。' : '対象を選びませんでした。'}残りの${remaining.length}枚をデッキの下へ戻しました。`,
+        [...gainedToHand, ...gainedToField]
+      );
+      for (const fc of gainedToField) {
+        if (!(await this.battleRunEnterKeywordEffects(fc, null))) this.battleKeywordGuide(fc, null);
+      }
+    },
     async _dslOpSearch(act, sourceCard) {
+      // 「上N枚を見る」＋「レガシーとレリックを1枚ずつ手札に加える」型の複雑なサーチは専用処理に委譲する
+      if (/上\d+枚を見る/.test(String((act.対象 && act.対象.備考) || '')) && /レガシーとレリックを1枚ずつ/.test(String(act.備考 || ''))) {
+        return this._dslOpSearchTopNPickOnePerCategory(act, sourceCard);
+      }
       const sel = Object.assign({ 対象側: 'self', 領域: 'deck', 選択者: 'player', 枚数: 1 }, act.対象 || {});
       const targets = await this.dslChooseTargets(sel, 'デッキからサーチするカードを選択');
       if (!targets.length) return;
