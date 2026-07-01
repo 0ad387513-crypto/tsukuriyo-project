@@ -2381,14 +2381,21 @@
     left: 6px; right: 6px; bottom: 3px; min-height: 22px;
     font-size: 13px; white-space: nowrap; padding: 2px 4px;
   }
-  /* 【守護】【死角】：カード中央に半透明アイコンを重ねて表示（両面とも視認できるように） */
+  /* 【守護】【死角】【呪殺】【奇襲】【疾駆】：イラスト下部に半透明アイコンを横並びで重ねて表示（両面とも視認できるように） */
+  .battle-card.field-card .status-icon-row {
+    position: absolute; left: 50%; top: 62%; transform: translate(-50%, -50%);
+    display: flex; align-items: center; justify-content: center; gap: 4%;
+    width: 92%; pointer-events: none; z-index: 1;
+  }
   .battle-card.field-card .status-icon {
-    position: absolute; left: 50%; transform: translate(-50%, -50%);
-    width: 42%; height: 42%; opacity: .58; pointer-events: none; z-index: 1;
+    width: 30%; height: auto; aspect-ratio: 1 / 1; opacity: .62; flex: 0 0 auto;
     filter: drop-shadow(0 1px 3px rgba(0,0,0,.65));
   }
-  .battle-card.field-card .guard-icon { top: 40%; color: #cfe0ff; fill: #cfe0ff; }
-  .battle-card.field-card .blindspot-icon { top: 62%; color: #fff3cf; fill: #fff3cf; }
+  .battle-card.field-card .guard-icon { color: #cfe0ff; fill: #cfe0ff; }
+  .battle-card.field-card .blindspot-icon { color: #fff3cf; fill: #fff3cf; }
+  .battle-card.field-card .cursekill-icon { color: #ffb0b0; fill: #ffb0b0; }
+  .battle-card.field-card .surprise-icon { color: #ffe27a; fill: #ffe27a; }
+  .battle-card.field-card .dash-icon { color: #b8ffcf; fill: #b8ffcf; }
   .battle-card.field-card[draggable="true"] { cursor: grab; }
   .battle-card.field-card[draggable="true"]:active { cursor: grabbing; }
   .battle-card.field-card.battle-attack-dragging { opacity: .48; }
@@ -3726,14 +3733,29 @@
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
                 <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
                 <span class="battle-card-overlay battle-card-power">戦闘力 {{ card.power || 0 }}</span>
-                <svg v-if="battleCardHasKeyword(card, '守護')" class="status-icon guard-icon" viewBox="0 0 24 24">
-                  <path d="M12 2 L21 6 V11 C21 16.5 17.5 20.8 12 22 C6.5 20.8 3 16.5 3 11 V6 Z" />
-                </svg>
-                <svg v-if="battleCardHasKeyword(card, '死角')" class="status-icon blindspot-icon" viewBox="0 0 24 24">
-                  <path d="M12 5 C6 5 2 12 2 12 C2 12 6 19 12 19 C18 19 22 12 22 12 C22 12 18 5 12 5 Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
-                  <circle cx="12" cy="12" r="3.2" fill="currentColor"/>
-                  <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" stroke-width="2.4"/>
-                </svg>
+                <div class="status-icon-row">
+                  <svg v-if="battleCardHasKeyword(card, '守護')" class="status-icon guard-icon" viewBox="0 0 24 24">
+                    <path d="M12 2 L21 6 V11 C21 16.5 17.5 20.8 12 22 C6.5 20.8 3 16.5 3 11 V6 Z" />
+                  </svg>
+                  <svg v-if="battleCardHasKeyword(card, '死角')" class="status-icon blindspot-icon" viewBox="0 0 24 24">
+                    <path d="M12 5 C6 5 2 12 2 12 C2 12 6 19 12 19 C18 19 22 12 22 12 C22 12 18 5 12 5 Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                    <circle cx="12" cy="12" r="3.2" fill="currentColor"/>
+                    <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" stroke-width="2.4"/>
+                  </svg>
+                  <svg v-if="battleCardHasKeyword(card, '呪殺')" class="status-icon cursekill-icon" viewBox="0 0 24 24">
+                    <path d="M4 20 L10 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                    <path d="M9 13 C9 7 14 3 20 4 C19 9 15 13 10 14 C9.6 14 9.2 13.6 9 13 Z" fill="currentColor"/>
+                  </svg>
+                  <svg v-if="battleCardHasKeyword(card, '奇襲')" class="status-icon surprise-icon" viewBox="0 0 24 24">
+                    <rect x="10" y="3" width="4" height="12" rx="2" fill="currentColor"/>
+                    <circle cx="12" cy="19" r="2.4" fill="currentColor"/>
+                  </svg>
+                  <svg v-if="battleCardHasKeyword(card, '疾駆')" class="status-icon dash-icon" viewBox="0 0 24 24">
+                    <circle cx="14" cy="4" r="2" fill="currentColor"/>
+                    <path d="M13 7 L10 11 L13 13 L12 20 M13 13 L17 16 M10 11 L6 13 M12 20 L9 22 M12 20 L15 22" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M2 8 L6 8 M1 12 L5 12 M2 16 L6 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
@@ -3760,14 +3782,29 @@
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
                 <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
                 <span class="battle-card-overlay battle-card-power">戦闘力 {{ card.power || 0 }}</span>
-                <svg v-if="battleCardHasKeyword(card, '守護')" class="status-icon guard-icon" viewBox="0 0 24 24">
-                  <path d="M12 2 L21 6 V11 C21 16.5 17.5 20.8 12 22 C6.5 20.8 3 16.5 3 11 V6 Z" />
-                </svg>
-                <svg v-if="battleCardHasKeyword(card, '死角')" class="status-icon blindspot-icon" viewBox="0 0 24 24">
-                  <path d="M12 5 C6 5 2 12 2 12 C2 12 6 19 12 19 C18 19 22 12 22 12 C22 12 18 5 12 5 Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
-                  <circle cx="12" cy="12" r="3.2" fill="currentColor"/>
-                  <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" stroke-width="2.4"/>
-                </svg>
+                <div class="status-icon-row">
+                  <svg v-if="battleCardHasKeyword(card, '守護')" class="status-icon guard-icon" viewBox="0 0 24 24">
+                    <path d="M12 2 L21 6 V11 C21 16.5 17.5 20.8 12 22 C6.5 20.8 3 16.5 3 11 V6 Z" />
+                  </svg>
+                  <svg v-if="battleCardHasKeyword(card, '死角')" class="status-icon blindspot-icon" viewBox="0 0 24 24">
+                    <path d="M12 5 C6 5 2 12 2 12 C2 12 6 19 12 19 C18 19 22 12 22 12 C22 12 18 5 12 5 Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                    <circle cx="12" cy="12" r="3.2" fill="currentColor"/>
+                    <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" stroke-width="2.4"/>
+                  </svg>
+                  <svg v-if="battleCardHasKeyword(card, '呪殺')" class="status-icon cursekill-icon" viewBox="0 0 24 24">
+                    <path d="M4 20 L10 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                    <path d="M9 13 C9 7 14 3 20 4 C19 9 15 13 10 14 C9.6 14 9.2 13.6 9 13 Z" fill="currentColor"/>
+                  </svg>
+                  <svg v-if="battleCardHasKeyword(card, '奇襲')" class="status-icon surprise-icon" viewBox="0 0 24 24">
+                    <rect x="10" y="3" width="4" height="12" rx="2" fill="currentColor"/>
+                    <circle cx="12" cy="19" r="2.4" fill="currentColor"/>
+                  </svg>
+                  <svg v-if="battleCardHasKeyword(card, '疾駆')" class="status-icon dash-icon" viewBox="0 0 24 24">
+                    <circle cx="14" cy="4" r="2" fill="currentColor"/>
+                    <path d="M13 7 L10 11 L13 13 L12 20 M13 13 L17 16 M10 11 L6 13 M12 20 L9 22 M12 20 L15 22" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M2 8 L6 8 M1 12 L5 12 M2 16 L6 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
@@ -5379,7 +5416,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.75',
+    BUILD_VERSION: '1.14.76',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8406,17 +8443,20 @@ new Vue({
       return null;
     },
     _dslEligible(sel) {
-      const pool = this._dslZoneOf(sel);
       const crit = sel.絞込 || [];
       const remarks = String(sel.備考 || '');
       const remarkTargets = this._dslRemarkTargetCards(remarks);
       if (remarkTargets) {
-        return pool.filter(c =>
-          remarkTargets.includes(c) &&
+        // 備考で対象が一意に定まる場合（例：「①で手札に戻したカード」）は、対象側/領域の指定に関わらず
+        // 実際にその対象が今いるゾーンに関係なく解決する（手札に戻した直後のカードは自陣手札にあり、
+        // 対象側/領域未指定だと自陣フィールドとして解釈されズレてしまうため、ゾーン絞り込みは行わない）。
+        return remarkTargets.filter(c =>
+          c &&
           this.battleCardMatchesInduceCriteria(c, crit) &&
           this._dslPassCompare(c, sel.比較)
         );
       }
+      const pool = this._dslZoneOf(sel);
       // 「このカード以外」「このレガシー以外」「自身以外」備考：効果発動源のカード自身を選択肢から除外
       const excludeSelf = /このカード以外|このレガシー以外|自身以外/.test(remarks);
       const src = excludeSelf ? this._dslCurrentSource : null;
@@ -8454,6 +8494,10 @@ new Vue({
         if (returned.length) return returned.filter(Boolean);
         const chosen = this._dslLastChosenTargets || [];
         if (chosen.length) return chosen.filter(Boolean);
+      }
+      if (/手札に戻したカード/.test(s)) {
+        const returned = this._dslLastReturnedCards || [];
+        return returned.filter(Boolean);
       }
       if (/その神攻したレガシー/.test(s)) {
         const ev = this._dslCurrentEvent;
@@ -9093,8 +9137,13 @@ new Vue({
       this._dslLastReturnedCards = targets.slice();
       this._dslLastReturnedSide = side;
       this._dslLastMovedCount = targets.length;
-      targets.forEach(c => this._dslMoveFromField(c, 'hand', side));
+      // 場のカードだけでなく墓地・崩壊等からも手札に戻せるよう、汎用のゾーン移動を使う
+      // （トークンは手札に置けないため崩壊へ変換：_battleLeaveZone）
+      targets.forEach(c => this._dslMoveCardToZone(c, this._battleLeaveZone(c, 'hand'), side));
       this.battleShowNotice('手札に戻す', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に戻しました。`, targets);
+      if (Array.isArray(act.後続) && act.後続.length) {
+        await this.dslRunActions(act.後続, sourceCard);
+      }
     },
     async _dslOpCrumble(act, sourceCard) {
       const targets = await this.dslChooseTargets(act.対象, '崩壊させる対象を選択');
@@ -10071,7 +10120,7 @@ new Vue({
       this._dslLastMovedCount = milled.length;
       p.deckCount = p.deck.length;
       this.dslRefreshStaticAbilities();
-      this.battleShowNotice('デッキ墓地送り', `デッキ上から${milled.length}枚を墓地に送りました。`, milled);
+      this.battleShowNotice('デッキ墓地送り', `デッキ上から${milled.map(c => `「${this.fullName(c)}」`).join('、')}を墓地に送りました。`, milled);
     },
     async _dslOpRepeat(act, sourceCard) {
       const target = String(act.対象 || '');
@@ -11474,7 +11523,7 @@ new Vue({
       this.battleRecordLegacyDestroyed(side, card);
       destroyed.push({ side, card });
     },
-    async battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex) {
+    async battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex, extraTrigger = null) {
       if (this.battleSample.result || attackerSide !== 'self') return;
       const attackerPlayer = this.battleSample[attackerSide];
       const defenderPlayer = this.battleSample[defenderSide];
@@ -11483,6 +11532,12 @@ new Vue({
       if (!attacker || !defender) return;
       const can = this.battleLegacyCanAct(attacker, 'battle');
       if (!can.ok) { this.battleShowNotice('戦闘できません', can.reason, [attacker]); return; }
+      // 戦闘を宣言した時点でタップする（【戦闘時】発動より前）。
+      // タップが後回しだと、効果解決中は未タップのままのため、同じターンに何度も戦闘/神攻を宣言し直せてしまう。
+      this.battleSaveUndo();
+      this.$set(attacker, '_tapped', true);
+      // 守護により神攻から戦闘へ差し替えられた場合：【神攻時】も宣言時点で発動確定しているため、タップ後にここで発動する
+      if (extraTrigger) await this.battleRunActionTrigger(attacker, extraTrigger);
       await this.battleRunActionTrigger(attacker, '戦闘時');
       if (this.battleSample.result) return;
       attackerIndex = attackerPlayer.legacies.indexOf(attacker);
@@ -11502,9 +11557,7 @@ new Vue({
         defenderIndex = guard.index;
         defender = guard.card;
       }
-      this.battleSaveUndo();
       if (guarded) this.$set(defender, '_tapped', true);
-      this.$set(attacker, '_tapped', true);
       const ap = Number(attacker.power || 0);
       const dp = Number(defender.power || 0);
       const destroyed = [];
@@ -11532,9 +11585,9 @@ new Vue({
       if (!can.ok) { this.battleShowNotice('神攻できません', can.reason, [attacker]); return; }
       const guard = await this._battleChooseGuard(attacker, 'opp', null);
       if (guard) {
-        // 【神攻時】は神攻を宣言した時点で発動が確定する効果のため、守護で戦闘に差し替えられても発動する
-        await this.battleRunActionTrigger(attacker, '神攻時');
-        this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index);
+        // 【神攻時】は神攻を宣言した時点で発動が確定する効果のため、守護で戦闘に差し替えられても発動する。
+        // タップは battleResolveLegacyBattle 側で（トリガー発動より前に）行われる。
+        this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index, '神攻時');
         return;
       }
       const damage = Math.max(0, Number(attacker.attack || 0));
