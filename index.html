@@ -2187,6 +2187,28 @@
     font-size: 10px; color: #d8c8ff; margin-left: 4px; font-weight: 600;
   }
 
+  /* フィールド確認中：選択系モーダルを一時的に非表示にして盤面を見えるようにする（状態は保持） */
+  .modal-peeking .battle-zone-modal,
+  .modal-peeking .battle-action-modal,
+  .modal-peeking .oracle-effect-overlay {
+    display: none !important;
+  }
+  /* フィールド確認中は誤操作防止のため盤面の操作を無効化（閲覧のみ） */
+  .modal-peeking .battle-overlay {
+    pointer-events: none;
+  }
+  .modal-peek-return-btn {
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+    z-index: 950; padding: 12px 24px; border-radius: 24px; border: 1px solid #6a86c8;
+    background: #24314f; color: #dce6ff; font-weight: 800; font-size: 14px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.6); cursor: pointer;
+  }
+  .modal-peek-btn {
+    padding: 8px 14px; border-radius: 6px; border: 1px solid #4a5a80;
+    background: #232c44; color: #b9c8e8; font-weight: 700; font-size: 12px; cursor: pointer;
+  }
+  .modal-peek-btn:hover { background: #2c3856; }
+
   /* ===== 墓地・崩壊 一覧モーダル ===== */
   .battle-zone-modal {
     position: fixed; inset: 0; z-index: 400;
@@ -2715,9 +2737,9 @@
   .sublim-cost-btn:hover:not(:disabled) { background: linear-gradient(135deg, #344a78, #243155); border-color: #9ab4d8; }
   .sublim-cost-btn:disabled, .sublim-cost-btn.disabled { opacity: .35; cursor: not-allowed; }
 
-  /* オラクル発動 中央演出 */
+  /* オラクル発動 中央演出（招来等の選択モーダルより下に表示し、効果解決中に操作を塞がないようにする） */
   .oracle-effect-overlay {
-    position: fixed; inset: 0; z-index: 690;
+    position: fixed; inset: 0; z-index: 390;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     background: radial-gradient(circle at center, rgba(80,40,150,0.55) 0%, rgba(0,0,0,0.85) 70%);
     backdrop-filter: blur(6px);
@@ -2877,7 +2899,10 @@
 </style>
 </head>
 <body>
-<div id="app" class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game' }">
+<div id="app" class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek }">
+
+  <!-- フィールド確認中：選択画面へ戻るボタン -->
+  <button v-if="battleModalPeek" class="modal-peek-return-btn" @click="battleModalPeek = false">選択画面に戻る</button>
 
   <!-- ===== ツクリヨオンライン トップメニュー ===== -->
   <div v-if="appView === 'top'" class="top-menu">
@@ -3896,7 +3921,7 @@
               </div>
             </div>
             <!-- カミの真下：神技ボタン と カミ名 のみ -->
-            <button class="kami-skill-btn kami-below" :class="battleSkillTone" :disabled="battleSkillTone === 'disabled'" @click="openKamiSkills">神技</button>
+            <button class="kami-skill-btn kami-below" :class="battleSkillTone" :disabled="battleSkillTone === 'disabled' || battleSample.activeSide !== 'self'" @click="openKamiSkills">神技</button>
             <div class="kami-name kami-below">{{ battleSample.self.kami ? fullName(battleSample.self.kami) : 'カミ未設定' }}</div>
           </div>
           <div class="battle-zone hand-self self-hand-drop"
@@ -4251,24 +4276,39 @@
               崩壊へ
             </button>
             <div v-if="battleDeckModal.action === 'gokugoPick'" class="battle-deck-modal-card-cat">{{ c.category || '?' }}{{ c.cost !== '' && c.cost != null ? ' / コスト' + c.cost : '' }}</div>
-            <button v-if="battleDeckModal.action === 'gokugoPick' && c.category === 'レガシー'"
+            <button v-if="battleDeckModal.action === 'gokugoPick' && c.category === 'レガシー' && battleDeckModal.pickedLegacy !== c"
                     class="battle-deck-modal-pick"
                     :disabled="!!battleDeckModal.pickedLegacy"
                     @click="battleGokugoPick(i, 'レガシー')">
-              {{ battleDeckModal.pickedLegacy === c ? '選択済み' : (battleDeckModal.pickedLegacy ? '選択不可' : '手札に加える') }}
+              {{ battleDeckModal.pickedLegacy ? '選択不可' : '手札に加える' }}
             </button>
-            <button v-if="battleDeckModal.action === 'gokugoPick' && c.category === 'レリック'"
+            <button v-if="battleDeckModal.action === 'gokugoPick' && c.category === 'レガシー' && battleDeckModal.pickedLegacy === c"
+                    class="battle-deck-modal-pick" style="background:#4a2b2b;border-color:#a05a5a;"
+                    @click="battleGokugoPickCancel('レガシー')">
+              選択解除
+            </button>
+            <button v-if="battleDeckModal.action === 'gokugoPick' && c.category === 'レリック' && battleDeckModal.pickedRelic !== c"
                     class="battle-deck-modal-pick"
                     :disabled="!!battleDeckModal.pickedRelic"
                     @click="battleGokugoPick(i, 'レリック')">
-              {{ battleDeckModal.pickedRelic === c ? '選択済み' : (battleDeckModal.pickedRelic ? '選択不可' : '手札に加える') }}
+              {{ battleDeckModal.pickedRelic ? '選択不可' : '手札に加える' }}
+            </button>
+            <button v-if="battleDeckModal.action === 'gokugoPick' && c.category === 'レリック' && battleDeckModal.pickedRelic === c"
+                    class="battle-deck-modal-pick" style="background:#4a2b2b;border-color:#a05a5a;"
+                    @click="battleGokugoPickCancel('レリック')">
+              選択解除
             </button>
             <div v-if="battleDeckModal.action === 'gokugoPlaceDistinct'" class="battle-deck-modal-card-cat">{{ c.category || '?' }}{{ c.cost !== '' && c.cost != null ? ' / コスト' + c.cost : '' }}{{ c.type ? ' / ' + c.type : '' }}</div>
-            <button v-if="battleDeckModal.action === 'gokugoPlaceDistinct'"
+            <button v-if="battleDeckModal.action === 'gokugoPlaceDistinct' && !(battleDeckModal.placed || []).includes(c)"
                     class="battle-deck-modal-pick"
-                    :disabled="(battleDeckModal.placed || []).includes(c) || !battleGokugoPlaceDistinctEligible(battleDeckModal, c)"
+                    :disabled="!battleGokugoPlaceDistinctEligible(battleDeckModal, c)"
                     @click="battleGokugoPlaceDistinct(i)">
-              {{ (battleDeckModal.placed || []).includes(c) ? '選択済み' : '場に出す' }}
+              場に出す
+            </button>
+            <button v-if="battleDeckModal.action === 'gokugoPlaceDistinct' && (battleDeckModal.placed || []).includes(c)"
+                    class="battle-deck-modal-pick" style="background:#4a2b2b;border-color:#a05a5a;"
+                    @click="battleGokugoPlaceDistinctCancel(c)">
+              選択解除
             </button>
           </div>
         </div>
@@ -4293,6 +4333,7 @@
           <button v-else class="battle-back-btn" @click="battleCloseDeckModal">
             {{ ['autoInduce','autoReishi'].includes(battleDeckModal.action) ? '解決して閉じる' : '閉じる' }}
           </button>
+          <button class="modal-peek-btn" @click="battleModalPeek = true">フィールドを確認</button>
         </div>
       </div>
     </div>
@@ -4348,6 +4389,7 @@
           <button v-if="dslTargetModal.canSkip || !dslTargetModal.candidates.length" class="battle-back-btn" style="background:#444;border-color:#666;" @click="dslCancelTargets">
             {{ dslTargetModal.canSkip ? 'スキップ（行わない）' : '閉じる' }}
           </button>
+          <button class="modal-peek-btn" @click="battleModalPeek = true">フィールドを確認</button>
         </div>
       </div>
     </div>
@@ -4380,6 +4422,7 @@
             選定を確定（{{ battleSenteiModal.selected.length }}/{{ battleSenteiModal.count }} 選択）
           </button>
           <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="battleCancelSentei">キャンセル</button>
+          <button class="modal-peek-btn" @click="battleModalPeek = true">フィールドを確認</button>
         </div>
       </div>
     </div>
@@ -4392,7 +4435,10 @@
           <strong>{{ skill.name }}　消費天力 {{ skill.cost }}</strong>
           <span>{{ skill.effect || '効果テキストはカミカードを確認してください。' }}</span>
         </button>
-        <div class="battle-action-buttons"><button @click="battleSkillModal = null">閉じる</button></div>
+        <div class="battle-action-buttons">
+          <button @click="battleSkillModal = null">閉じる</button>
+          <button class="modal-peek-btn" @click="battleModalPeek = true">フィールドを確認</button>
+        </div>
       </div>
     </div>
 
@@ -4447,7 +4493,10 @@
             マナ {{ c }}{{ idx === 0 ? '（通常）' : '（昇華 +' + (c - battleSublimModal.options[0]) + '）' }}
           </button>
         </div>
-        <div class="battle-action-buttons"><button @click="battleSublimModal = null">キャンセル</button></div>
+        <div class="battle-action-buttons">
+          <button @click="battleSublimModal = null">キャンセル</button>
+          <button class="modal-peek-btn" @click="battleModalPeek = true">フィールドを確認</button>
+        </div>
       </div>
     </div>
 
@@ -4548,6 +4597,7 @@
       </div>
       <div class="battle-zone-modal-actions">
         <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="dslCancelChoice">キャンセル</button>
+        <button class="modal-peek-btn" @click="battleModalPeek = true">フィールドを確認</button>
       </div>
     </div>
   </div>
@@ -5477,12 +5527,14 @@ new Vue({
     dslOptionalModal: null,   // { sourceCard, triggerLabel, summary, resolver }
     /* DSL：「選択」op専用モーダル */
     dslChoiceModal: null,     // { sourceCard, prompt, options, resolver }
+    /* カード/コスト選択系モーダルを開いたまま盤面を確認するための一時退避フラグ */
+    battleModalPeek: false,
     /* フィールド空き部右クリック：トークン招来メニュー */
     battleFieldZoneMenu: null, // { zone, x, y }
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.83',
+    BUILD_VERSION: '1.14.84',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5725,16 +5777,18 @@ new Vue({
         // K10ヤマタノオロチは天力を扱わないため、天力コストのチェックを行わない（封印数が発動条件）
         const isOrochi = this._battleKamiNo('self') === 'K10';
         const hasCost = isOrochi ? true : this.battleSample.self.tenryoku >= cost;
-        return { index, name, effect, cost: isOrochi ? 0 : cost, exists, enabled: exists && isSelfTurn && hasCost };
+        // affordable：コストの充足のみ判定（相手ターン中でも枠の光る演出を維持するため）
+        return { index, name, effect, cost: isOrochi ? 0 : cost, exists, affordable: hasCost, enabled: exists && isSelfTurn && hasCost };
       }).filter(skill => skill.exists);
     },
+    /* 枠の光る色（コストの充足のみで判定。相手ターン中に使用できない場合でも演出は維持する） */
     battleSkillTone() {
       const skills = this.battleSkillOptions;
       if (!skills.length) return 'disabled';
       const skill2 = skills.find(skill => skill.index === 2);
-      if (skill2 && skill2.enabled) return 'gold';
+      if (skill2 && skill2.affordable) return 'gold';
       const skill1 = skills.find(skill => skill.index === 1);
-      return skill1 && skill1.enabled ? 'silver' : 'disabled';
+      return skill1 && skill1.affordable ? 'silver' : 'disabled';
     },
     filteredCards() {
       const q = this.searchText.trim().toLowerCase();
@@ -12798,6 +12852,7 @@ new Vue({
     },
     openKamiSkills() {
       if (this.battleSample.result || this.battleSkillTone === 'disabled') return;
+      if (this.battleSample.activeSide !== 'self') return;
       this.battleSkillModal = { side: 'self' };
     },
     async battleUseKamiSkill(index) {
@@ -13325,6 +13380,16 @@ new Vue({
         await this.battleFinishGokugoPick();
       }
     },
+    /* まだ確定（場に出す/手札に加える）前のカード選択を取り消す */
+    battleGokugoPickCancel(category) {
+      const modal = this.battleDeckModal;
+      if (!modal || modal.action !== 'gokugoPick') return;
+      const picked = category === 'レガシー' ? modal.pickedLegacy : modal.pickedRelic;
+      if (!picked) return;
+      modal.queue = (modal.queue || []).filter(q => q.card !== picked);
+      if (category === 'レガシー') this.$set(modal, 'pickedLegacy', null);
+      else this.$set(modal, 'pickedRelic', null);
+    },
     async battleFinishGokugoPick() {
       const modal = this.battleDeckModal;
       if (!modal || modal.action !== 'gokugoPick') return;
@@ -13390,6 +13455,14 @@ new Vue({
       if (modal.placed.length >= modal.config.maxCount) {
         await this.battleFinishGokugoPlaceDistinct();
       }
+    },
+    /* まだ場に出す前のカード選択を取り消す */
+    battleGokugoPlaceDistinctCancel(card) {
+      const modal = this.battleDeckModal;
+      if (!modal || modal.action !== 'gokugoPlaceDistinct') return;
+      const idx = (modal.placed || []).indexOf(card);
+      if (idx < 0) return;
+      modal.placed.splice(idx, 1);
     },
     async battleFinishGokugoPlaceDistinct() {
       const modal = this.battleDeckModal;
