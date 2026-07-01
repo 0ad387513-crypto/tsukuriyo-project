@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.88',
+    BUILD_VERSION: '1.14.89',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7398,13 +7398,20 @@ new Vue({
             const matchStatic = this._dslAbilityMatchesTrigger(ab, '常在');
             const matchEvolved = !!card._evolved && this._dslAbilityMatchesTrigger(ab, '進化中');
             if (!matchStatic && !matchEvolved) continue;
-            if (!ab.各ターン || !ab.条件 || !ab.条件.備考) continue;
-            const key = `event:${eventType}:${this.battleSample.turn}:${this.battleSample.activeSide}:${spec.名称 || card.no}:${ab.備考 || ab.条件.備考}`;
-            const used = card._eventStaticUsed || {};
-            if (used[key]) continue;
-            this._dslCurrentSource = card;
-            if (!this.dslEvalCond(ab.条件)) continue;
-            this.$set(card, '_eventStaticUsed', Object.assign({}, used, { [key]: true }));
+            if (!ab.条件 || !ab.条件.備考) continue;
+            // 「各ターン」の記載が無いカードは回数無制限（例：ヴィリデ。都度発火が正しい仕様として確認済み）。
+            // 記載がある場合のみ、同一ターン内で同じイベント種別につき1回に制限する。
+            if (ab.各ターン) {
+              const key = `event:${eventType}:${this.battleSample.turn}:${this.battleSample.activeSide}:${spec.名称 || card.no}:${ab.備考 || ab.条件.備考}`;
+              const used = card._eventStaticUsed || {};
+              if (used[key]) continue;
+              this._dslCurrentSource = card;
+              if (!this.dslEvalCond(ab.条件)) continue;
+              this.$set(card, '_eventStaticUsed', Object.assign({}, used, { [key]: true }));
+            } else {
+              this._dslCurrentSource = card;
+              if (!this.dslEvalCond(ab.条件)) continue;
+            }
             await this.dslRunActions(ab.処理 || [], card);
           }
         }
@@ -9149,6 +9156,29 @@ new Vue({
         const ev = this._dslCurrentEvent;
         return !!(ev && ev.type === 'tokenPlayed');
       }
+      if (/他の.*レガシーが出たとき/.test(s)) {
+        // 例：不器用な勧誘人「他の神使レガシーが出たとき」。自分自身の登場や絞込条件に合わないカードでは成立しない
+        const ev = this._dslCurrentEvent;
+        if (!ev || ev.type !== 'legacyEntered' || !ev.payload || !ev.payload.card) return false;
+        const enteredCard = ev.payload.card;
+        if (enteredCard === this._dslCurrentSource) return false;
+        const m = s.match(/他の(.+?)レガシーが出たとき/);
+        const crit = m && m[1] ? [`${m[1]}レガシー`] : [];
+        return !crit.length || this.battleCardMatchesInduceCriteria(enteredCard, crit);
+      }
+      if (/自分ターン中・自分の緑\/龍レガが戦闘でレガシーを破壊したとき/.test(s)) {
+        // 例：ヴィリデ。自分ターン中、かつ破壊した自分レガシーが緑カードまたは龍レガシーの場合のみ成立
+        const ev = this._dslCurrentEvent;
+        if (!ev || ev.type !== 'legacyDestroyedInCombat' || !ev.payload || !ev.payload.by) return false;
+        const bs = this.battleSample;
+        const sourceSide = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        if (!bs || bs.activeSide !== sourceSide) return false;
+        return this.battleCardMatchesInduceCriteria(ev.payload.by, ['緑カード', '龍レガシー']);
+      }
+      if (/自分レガシーが戦闘でレガシーを破壊したとき/.test(s)) {
+        const ev = this._dslCurrentEvent;
+        return !!(ev && ev.type === 'legacyDestroyedInCombat');
+      }
       if (/相手ターン中/.test(s) && /相手の2枚目以降.*カード使用/.test(s)) {
         // アラシ等：相手ターン中、相手が2枚目以降のカードを使うとき条件成立
         const sourceSide = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
@@ -10600,6 +10630,15 @@ new Vue({
       if (placed.length) {
         this.battleShowNotice('場に出す', `${placed.map(c => `「${this.fullName(c)}」`).join('、')}を場に出しました。`, placed);
       }
+      placed.forEach(fc => {
+        if (this.battleFieldZoneForSummon(fc) !== 'relics') {
+          if (this._battleCardHasGuard(fc) && !fc._guardEventFired) {
+            this.$set(fc, '_guardEventFired', true);
+            this.battleFireKamiEvent(side, 'guardLegacyPlayed', { card: fc });
+          }
+          this.battleFireKamiEvent(side, 'legacyEntered', { card: fc });
+        }
+      });
       // 場に出したレガシーの【出現時】効果を発動させる（イロハ#13等：墓地から出したレガシーの出現時）
       for (const fc of placed) {
         if (!(await this.battleRunEnterKeywordEffects(fc, null))) this.battleKeywordGuide(fc, null);
@@ -11369,6 +11408,8 @@ new Vue({
           this.$set(placedCard, '_guardEventFired', true);
           this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: placedCard });
         }
+        // 常在の「他の〜レガシーが出たとき」条件用（例：不器用な勧誘人「他の神使レガシーが出たとき」）
+        this.battleFireKamiEvent('self', 'legacyEntered', { card: placedCard });
       } else if (zone === 'relics') {
         // 天力トリガー：レリック使用扱い（K5オモイカネ）。社の施し等トークンレリックの招来にも対応
         this.battleFireKamiEvent('self', 'playOracleOrRelic', { card: placedCard, kind: 'レリック' });
@@ -11424,6 +11465,8 @@ new Vue({
           this.$set(fieldCard, '_guardEventFired', true);
           this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: fieldCard });
         }
+        // 常在の「他の〜レガシーが出たとき」条件用（例：不器用な勧誘人「他の神使レガシーが出たとき」）
+        this.battleFireKamiEvent('self', 'legacyEntered', { card: fieldCard });
       } else if (zone === 'relics') {
         // 天力トリガー：レリック使用扱い（K5オモイカネ）。社の施し等トークンレリックの招来にも対応
         this.battleFireKamiEvent('self', 'playOracleOrRelic', { card: fieldCard, kind: 'レリック' });
@@ -11701,6 +11744,10 @@ new Vue({
       }
       if (fieldCard && fieldCard.isToken) {
         this.battleFireKamiEvent('self', 'tokenPlayed', { card: fieldCard });
+      }
+      if (zone === 'legacies') {
+        // 常在の「他の〜レガシーが出たとき」条件用（例：不器用な勧誘人「他の神使レガシーが出たとき」）
+        this.battleFireKamiEvent('self', 'legacyEntered', { card: fieldCard });
       }
       const baseCost = Math.max(0, Number(card.cost) || 0);
       if (cost > baseCost) this.battleFireKamiEvent('self', 'evolveOrSublim', { card: fieldCard, paidCost: cost });
@@ -12316,6 +12363,13 @@ new Vue({
       this.battleShowNotice('戦闘解決', lines.join('\n'), [attacker, defender, ...destroyed.map(d => d.card)]);
       // 死亡時トリガー：両サイドのカードに対して発火（カードの所有者に紐づく効果）
       destroyed.forEach(d => this.battleRunDeathKeywordEffects(d.card));
+      // 常在の「自分レガシーが戦闘でレガシーを破壊したとき」条件用（例：ヴィリデ、木漏れ日の道場）
+      if (destroyed.some(d => d.card === defender)) {
+        this.battleFireKamiEvent(attackerSide, 'legacyDestroyedInCombat', { by: attacker, destroyed: defender });
+      }
+      if (destroyed.some(d => d.card === attacker)) {
+        this.battleFireKamiEvent(defenderSide, 'legacyDestroyedInCombat', { by: defender, destroyed: attacker });
+      }
       // 「戦闘でレガシー破壊時1ドロー」：攻撃対象のレガシーを破壊できていればドロー
       if (attackerDrawsOnKill && destroyed.some(d => d.card === defender)) {
         const drawPlayer = this.battleSample[attackerSide];
@@ -13224,6 +13278,8 @@ new Vue({
           this.$set(clone, '_guardEventFired', true);
           this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: clone });
         }
+        // 常在の「他の〜レガシーが出たとき」条件用（例：不器用な勧誘人「他の神使レガシーが出たとき」）
+        this.battleFireKamiEvent('self', 'legacyEntered', { card: clone });
       }
     },
     battleOpenFieldMenu(side, zone, index, e) {
@@ -13570,6 +13626,15 @@ new Vue({
       if (placedCards.length) {
         this.battleShowNotice('場に出す', `${placedCards.map(c => `「${this.fullName(c)}」`).join('、')}を場に出しました。`, placedCards);
       }
+      placedCards.forEach(fc => {
+        if (this.battleFieldZoneForSummon(fc) !== 'relics') {
+          if (this._battleCardHasGuard(fc) && !fc._guardEventFired) {
+            this.$set(fc, '_guardEventFired', true);
+            this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: fc });
+          }
+          this.battleFireKamiEvent('self', 'legacyEntered', { card: fc });
+        }
+      });
       for (const placedCard of placedCards) {
         if (!(await this.battleRunEnterKeywordEffects(placedCard, null))) this.battleKeywordGuide(placedCard, null);
       }
@@ -13644,6 +13709,15 @@ new Vue({
       if (placedCards.length) {
         this.battleShowNotice('場に出す', `${placedCards.map(c => `「${this.fullName(c)}」`).join('、')}を場に出しました。`, placedCards);
       }
+      placedCards.forEach(fc => {
+        if (this.battleFieldZoneForSummon(fc) !== 'relics') {
+          if (this._battleCardHasGuard(fc) && !fc._guardEventFired) {
+            this.$set(fc, '_guardEventFired', true);
+            this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: fc });
+          }
+          this.battleFireKamiEvent('self', 'legacyEntered', { card: fc });
+        }
+      });
       for (const fieldCard of placedCards) {
         if (!(await this.battleRunEnterKeywordEffects(fieldCard, null))) this.battleKeywordGuide(fieldCard, null);
       }
