@@ -2408,7 +2408,7 @@
     width: 92%; pointer-events: none; z-index: 1;
   }
   .battle-card.field-card .status-icon {
-    width: 42%; height: auto; aspect-ratio: 1 / 1; opacity: .68; flex: 0 0 auto;
+    width: 52%; height: auto; aspect-ratio: 1 / 1; opacity: .72; flex: 0 0 auto;
     filter: drop-shadow(0 1px 3px rgba(0,0,0,.65));
   }
   .battle-card.field-card .guard-icon { color: #cfe0ff; fill: #cfe0ff; }
@@ -3771,9 +3771,8 @@
                     <circle cx="12" cy="19" r="2.4" fill="currentColor"/>
                   </svg>
                   <svg v-if="battleCardHasKeyword(card, '疾駆')" class="status-icon dash-icon" viewBox="0 0 24 24">
-                    <circle cx="14" cy="4" r="2" fill="currentColor"/>
-                    <path d="M13 7 L10 11 L13 13 L12 20 M13 13 L17 16 M10 11 L6 13 M12 20 L9 22 M12 20 L15 22" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M2 8 L6 8 M1 12 L5 12 M2 16 L6 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    <path d="M1 7.5h4M0.5 11.5h4M1 15.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                    <path fill="currentColor" d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
                   </svg>
                 </div>
               </div>
@@ -3820,9 +3819,8 @@
                     <circle cx="12" cy="19" r="2.4" fill="currentColor"/>
                   </svg>
                   <svg v-if="battleCardHasKeyword(card, '疾駆')" class="status-icon dash-icon" viewBox="0 0 24 24">
-                    <circle cx="14" cy="4" r="2" fill="currentColor"/>
-                    <path d="M13 7 L10 11 L13 13 L12 20 M13 13 L17 16 M10 11 L6 13 M12 20 L9 22 M12 20 L15 22" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M2 8 L6 8 M1 12 L5 12 M2 16 L6 16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    <path d="M1 7.5h4M0.5 11.5h4M1 15.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                    <path fill="currentColor" d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
                   </svg>
                 </div>
               </div>
@@ -5446,7 +5444,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.78',
+    BUILD_VERSION: '1.14.79',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7400,6 +7398,8 @@ new Vue({
       this._battleCheckDestroyZeroPower();
       this._battleCheckTurnEndDestroy();
       this._battleApplyStaticTurnEndUntap(endingSide);
+      this._battleCheckDelayedReturnToHand(endingSide);
+      this._battleExpireTempManaMaxMods(endingSide);
       // 天力トリガー（ターン終了系：K2 ヤマトタケル / K3 オオクニヌシ / K4 タケミカヅチ）
       this.battleFireKamiEvent(endingSide, 'turnEnd', {});
       await this.battleRunTurnEndEffects(endingSide);
@@ -7565,6 +7565,53 @@ new Vue({
       if (untapped.length) {
         this.battleShowNotice('常在効果でアンタップ', `${untapped.map(c => `「${this.fullName(c)}」`).join('、')}がターン終了時の常在効果でアンタップされました。`, untapped);
       }
+    },
+    /* 「次の相手ターン終了時に手札に戻る」（例：#155狂乱の幻霧の傀儡化）を解決する。
+       傀儡化で奪ったカードは、元の持ち主のターン（＝奪った側から見た相手ターン）終了時に元の持ち主の手札へ戻す。 */
+    _battleCheckDelayedReturnToHand(endingSide) {
+      const bs = this.battleSample;
+      if (!bs) return;
+      const returned = [];
+      ['self', 'opp'].forEach(holderSide => {
+        const originalOwnerSide = holderSide === 'self' ? 'opp' : 'self';
+        if (originalOwnerSide !== endingSide) return; // 元の持ち主のターン終了時のみ
+        const holder = bs[holderSide];
+        const owner = bs[originalOwnerSide];
+        if (!holder || !owner) return;
+        ['legacies', 'relics'].forEach(zone => {
+          const arr = Array.isArray(holder[zone]) ? holder[zone] : [];
+          for (let i = arr.length - 1; i >= 0; i--) {
+            const card = arr[i];
+            if (!card || !card._returnToHandOnOppTurnEnd) continue;
+            arr.splice(i, 1);
+            this.battleReleaseEvolutionBase(card, holderSide);
+            this._battleResetCardBuffs(card);
+            this.$set(card, '_tapped', false);
+            this.$set(card, '_returnToHandOnOppTurnEnd', false);
+            this.$set(card, '_puppeted', false);
+            owner.hand = owner.hand || [];
+            owner.hand.push(card);
+            owner.handCount = owner.hand.length;
+            returned.push({ card, ownerSide: originalOwnerSide });
+          }
+        });
+      });
+      if (returned.length) {
+        this.dslRefreshStaticAbilities();
+        const lines = returned.map(r => `${r.ownerSide === 'self' ? '自分' : '相手'}の「${this.fullName(r.card)}」`).join('、');
+        this.battleShowNotice('手札に戻る', `${lines}が元の持ち主の手札に戻りました。`, returned.map(r => r.card));
+      }
+    },
+    /* 「次の(相手)ターン終了時まで」のマナ最大値の一時的な変化（例：#164鬼哭爪襲）を、対象側のターン終了時に元へ戻す */
+    _battleExpireTempManaMaxMods(endingSide) {
+      const p = this.battleSample && this.battleSample[endingSide];
+      if (!p || !Array.isArray(p._tempManaMaxMods) || !p._tempManaMaxMods.length) return;
+      const totalRevert = p._tempManaMaxMods.reduce((sum, m) => sum + (Number(m && m.delta) || 0), 0);
+      this.$set(p, '_tempManaMaxMods', []);
+      if (!totalRevert) return;
+      p.manaMax = Math.max(0, Math.min(10, p.manaMax - totalRevert));
+      if (p.mana > p.manaMax) p.mana = p.manaMax;
+      this.battleShowNotice('マナ最大値変化の終了', `${endingSide === 'opp' ? '相手' : '自分'}の一時的なマナ最大値変化が終了しました（現在 ${p.manaMax}）。`);
     },
     battleRecordLegacyDestroyed(side, card) {
       const player = this.battleSample && this.battleSample[side];
@@ -8973,6 +9020,7 @@ new Vue({
       this.$set(card, '_atkTurns', []);
       this.$set(card, '_kwGrant', []);
       this.$set(card, '_typeGrant', []);
+      this.$set(card, '_senteiChosenDescriptions', []);
     },
     /* トークンが場を離れる先のゾーンを返す。
        トークン（無属性カード）は手札・墓地に置かれると崩壊する＝崩壊ゾーンへ送る。 */
@@ -9203,17 +9251,25 @@ new Vue({
       }
     },
     async _dslOpReturnToHand(act, sourceCard) {
-      const targets = await this.dslChooseTargets(act.対象, '手札に戻す対象を選択');
+      // 「レガシーを手札に戻す」等、対象側の指定がない効果は自分・相手を問わず対象にする
+      const returnSel = (act.対象 && !act.対象.対象側 && !act.対象.自陣全体 && !act.対象.自身)
+        ? Object.assign({}, act.対象, { 対象側: 'both' })
+        : act.対象;
+      const targets = await this.dslChooseTargets(returnSel, '手札に戻す対象を選択');
       if (!targets.length) return;
       this.battleSaveUndo();
-      const side = (act.対象 && act.対象.対象側 === 'opp') ? 'opp' : 'self';
+      const defaultSide = (act.対象 && act.対象.対象側 === 'opp') ? 'opp' : 'self';
       // 数参照用コンテキスト
       this._dslLastReturnedCards = targets.slice();
-      this._dslLastReturnedSide = side;
+      this._dslLastReturnedSide = defaultSide;
       this._dslLastMovedCount = targets.length;
-      // 場のカードだけでなく墓地・崩壊等からも手札に戻せるよう、汎用のゾーン移動を使う
+      // 場のカードだけでなく墓地・崩壊等からも手札に戻せるよう、汎用のゾーン移動を使う。
+      // 対象側「both」の場合はカードごとに実際の所属側を判定して、その側の手札へ戻す
       // （トークンは手札に置けないため崩壊へ変換：_battleLeaveZone）
-      targets.forEach(c => this._dslMoveCardToZone(c, this._battleLeaveZone(c, 'hand'), side));
+      targets.forEach(c => {
+        const cardSide = this._battleFieldCardSide(c) || defaultSide;
+        this._dslMoveCardToZone(c, this._battleLeaveZone(c, 'hand'), cardSide);
+      });
       this.battleShowNotice('手札に戻す', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に戻しました。`, targets);
       if (Array.isArray(act.後続) && act.後続.length) {
         await this.dslRunActions(act.後続, sourceCard);
@@ -9312,8 +9368,14 @@ new Vue({
         moved.push(card);
       });
       if (!moved.length) return;
+      // 「次の相手ターン終了時に手札に戻る」：元の持ち主（相手）のターン終了時に自動で手札へ戻す
+      const grants = Array.isArray(act.付与) ? act.付与 : [];
+      if (grants.some(g => /次の相手ターン終了時に手札に戻る/.test(String(g)))) {
+        moved.forEach(c => this.$set(c, '_returnToHandOnOppTurnEnd', true));
+      }
       this.dslRefreshStaticAbilities();
-      const extra = act.期間 || (Array.isArray(act.付与) ? act.付与.join(' / ') : '');
+      const extraGrants = grants.filter(g => !/次の相手ターン終了時に手札に戻る/.test(String(g)));
+      const extra = act.期間 || (extraGrants.length ? extraGrants.join(' / ') : '');
       this.battleShowNotice(
         '傀儡化',
         `${moved.map(c => `「${this.fullName(c)}」`).join('、')}を自分の場へ移し、アンタップして【疾駆】を付与しました。${extra ? `\n追加の期間処理: ${extra}` : ''}`,
@@ -9866,13 +9928,25 @@ new Vue({
     },
     _dslOpManaMax(act) {
       const n = Number(act.数 || 0);
-      const p = this.battleSample.self;
+      const side = (act && act.側 === 'opp') ? 'opp' : 'self';
+      const p = this.battleSample[side];
       if (!p) return;
       this.battleSaveUndo();
       const before = Number(p.manaMax) || 0;
       p.manaMax = Math.max(0, Math.min(10, before + n));
-      this.battleShowNotice('マナ最大値変化', `自分マナ最大値 ${n >= 0 ? '+' : ''}${n}（現在 ${p.manaMax}）`);
-      if (p.manaMax > before) this.battleFireKamiEvent('self', 'manaOrLifeIncreased', { kind: 'manaMax', n: p.manaMax - before });
+      if (p.mana > p.manaMax) p.mana = p.manaMax;
+      const sideLabel = side === 'opp' ? '相手' : '自分';
+      const note = String((act && act.期間) || '');
+      if (/次の相手ターン終了時まで/.test(note)) {
+        // 対象側（side）自身の次のターン終了時に元へ戻す一時的な変化として記録
+        const mods = Array.isArray(p._tempManaMaxMods) ? p._tempManaMaxMods.slice() : [];
+        mods.push({ delta: n });
+        this.$set(p, '_tempManaMaxMods', mods);
+        this.battleShowNotice('マナ最大値変化', `${sideLabel}のマナ最大値 ${n >= 0 ? '+' : ''}${n}（現在 ${p.manaMax}、次の${sideLabel}ターン終了時まで）`);
+      } else {
+        this.battleShowNotice('マナ最大値変化', `${sideLabel}のマナ最大値 ${n >= 0 ? '+' : ''}${n}（現在 ${p.manaMax}）`);
+      }
+      if (p.manaMax > before) this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: 'manaMax', n: p.manaMax - before });
     },
     _dslOpManaRefill(act) {
       // 効果の発動源（このカード）を所有するプレイヤーがマナを得る（破壊した側ではない）
@@ -9957,18 +10031,40 @@ new Vue({
       this.battleOpenAutoReishi(sourceCard, { count }, '出現時');
     },
     async _dslOpSentei(act, sourceCard) {
-      const optionData = (act.選択肢 || act.options || []);
+      let optionData = (act.選択肢 || act.options || []);
+      // 「一度選んだ効果はこのカードが場にいる限り選択不可」（例：#168色彩の旅絵巻）
+      const noRepeat = /このターン以前に選んだ効果は選択不可|一度選んだ効果は(選べない|選択不可)/.test(String(act.備考 || ''));
+      if (noRepeat && sourceCard) {
+        const chosen = Array.isArray(sourceCard._senteiChosenDescriptions) ? sourceCard._senteiChosenDescriptions : [];
+        optionData = optionData.filter(o => !chosen.includes(typeof o === 'string' ? o : o.説明));
+      }
       const options = optionData.map(o => typeof o === 'string' ? o : (o.説明 || JSON.stringify(o)));
-      const count = Number(act.数 || act.N || 1);
+      let count = Number(act.数 || act.N || 1);
+      // 「動的選定数」：条件に応じて選定の値を差し替える（例：#161断禍の三重奏「自陣種族2種以上→2、3種以上→3」）
+      if (act.動的選定数) {
+        const dyn = String(act.動的選定数 || '');
+        const types = new Set(((this.battleSample.self && this.battleSample.self.legacies) || []).map(c => c && c.type).filter(Boolean));
+        let best = count;
+        const re = /自陣種族(\d+)種以上→(\d+)/g;
+        let m;
+        while ((m = re.exec(dyn)) !== null) {
+          if (types.size >= Number(m[1]) && Number(m[2]) > best) best = Number(m[2]);
+        }
+        count = best;
+      }
       if (!options.length) {
-        this.battleShowNotice('選定：選択肢なし', 'specに選択肢が定義されていません。手動で処理してください。', [sourceCard]);
+        this.battleShowNotice(
+          '選定：選択肢なし',
+          noRepeat ? 'すべての選択肢を選び終えているため、これ以上選べません。' : 'specに選択肢が定義されていません。手動で処理してください。',
+          sourceCard ? [sourceCard] : []
+        );
         return;
       }
       const baseCost = Math.max(0, Number(sourceCard && sourceCard.cost) || 0);
       const paidCost = baseCost + Math.max(0, Number(this._dslSublimPaid || 0));
       // 選定完了まで待つ（後続処理がある場合の順序保証）。選択肢のDSL処理を battleResolveSentei が実行する。
       return new Promise((resolve) => {
-        this.battleOpenSentei(sourceCard, { count, options, optionData, onComplete: resolve, sublimRules: [], paidCost, baseCost }, '出現時');
+        this.battleOpenSentei(sourceCard, { count, options, optionData, onComplete: resolve, sublimRules: [], paidCost, baseCost, noRepeat }, '出現時');
       });
     },
     async _dslOpBranch(act, sourceCard) {
@@ -10558,6 +10654,10 @@ new Vue({
       const compact = rawText.replace(/\s+/g, '');
       const hasEnter = /【出現時】/.test(compact);
       const hasDeath = /【死亡時】/.test(compact);
+      const hasActivate = /【(墓地)?起動】/.test(compact);
+      // 【起動】（タップ等で能動的に発動する効果）しか無いカードは、出現時としては発動させない
+      // （#168色彩の旅絵巻等：出現時マーカーが無く起動マーカーのみのカードで誤発動していた問題を修正）
+      if (triggerLabel === '出現時' && hasActivate && !hasEnter) return null;
       if (triggerLabel === '死亡時') {
         // 【死亡時】直後〜次の【出現時】/末尾 までの区間に【選定】があるか
         if (!/【死亡時】[^】]*(?:】[^【]*)*?[\s\S]*?【選定[：:]/.test(compact)) return null;
@@ -10634,6 +10734,7 @@ new Vue({
         sublimApplied,
         canBoost,
         boostApplied: false,
+        noRepeat: !!sentei.noRepeat,
       };
     },
     battleCancelSentei() {
@@ -10703,6 +10804,12 @@ new Vue({
         }
       } finally {
         this._dslCurrentSource = prevSource;
+      }
+      // 「一度選んだ効果はこのカードが場にいる限り選択不可」：選んだ選択肢を記録する
+      if (modal.noRepeat && sourceCard) {
+        const labels = chosenIdx.map(i => (optionData[i] && optionData[i].説明) || (modal.options && modal.options[i])).filter(Boolean);
+        const prevChosen = Array.isArray(sourceCard._senteiChosenDescriptions) ? sourceCard._senteiChosenDescriptions.slice() : [];
+        this.$set(sourceCard, '_senteiChosenDescriptions', [...prevChosen, ...labels]);
       }
       // 選定時トリガー：自分フィールドの「選定時」効果（隠居#12③：選定したとき影分身招来 等）を発動
       await this._battleFireSenteiTimeTriggers(sourceCard);
