@@ -2272,6 +2272,11 @@
     background: #6a5a1f; color: #ffe27a; font-size: 9px; font-weight: 900;
     padding: 2px 6px; border-radius: 4px; z-index: 2; box-shadow: 0 2px 6px rgba(0,0,0,.5);
   }
+  .dsl-target-zone-badge {
+    position: absolute; top: -8px; left: -6px;
+    background: #2f3a52; color: #cfe0ff; font-size: 9px; font-weight: 900;
+    padding: 2px 6px; border-radius: 4px; z-index: 2; box-shadow: 0 2px 6px rgba(0,0,0,.5);
+  }
   .dsl-target-power-badge {
     position: absolute; left: 4px; right: 4px; bottom: 3px;
     background: rgba(21,25,34,.9); border: 1px solid #c9d0da; color: #fff;
@@ -3764,8 +3769,8 @@
                     <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" stroke-width="2.4"/>
                   </svg>
                   <svg v-if="battleCardHasKeyword(card, '呪殺')" class="status-icon cursekill-icon" viewBox="0 0 24 24">
-                    <path d="M4 20 L10 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-                    <path d="M9 13 C9 7 14 3 20 4 C19 9 15 13 10 14 C9.6 14 9.2 13.6 9 13 Z" fill="currentColor"/>
+                    <path d="M3 22 L15.5 6.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/>
+                    <path d="M14.5 8 C13 3.5 16 0.5 21.5 1.5 C20.5 4 18.8 6.5 16.7 8.7 C14.8 10.7 12.3 11.6 10 11 C11.4 10 12.9 9 14.5 8 Z" fill="currentColor"/>
                   </svg>
                   <svg v-if="battleCardHasKeyword(card, '奇襲')" class="status-icon surprise-icon" viewBox="0 0 24 24">
                     <rect x="10" y="3" width="4" height="12" rx="2" fill="currentColor"/>
@@ -3812,8 +3817,8 @@
                     <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" stroke-width="2.4"/>
                   </svg>
                   <svg v-if="battleCardHasKeyword(card, '呪殺')" class="status-icon cursekill-icon" viewBox="0 0 24 24">
-                    <path d="M4 20 L10 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-                    <path d="M9 13 C9 7 14 3 20 4 C19 9 15 13 10 14 C9.6 14 9.2 13.6 9 13 Z" fill="currentColor"/>
+                    <path d="M3 22 L15.5 6.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/>
+                    <path d="M14.5 8 C13 3.5 16 0.5 21.5 1.5 C20.5 4 18.8 6.5 16.7 8.7 C14.8 10.7 12.3 11.6 10 11 C11.4 10 12.9 9 14.5 8 Z" fill="currentColor"/>
                   </svg>
                   <svg v-if="battleCardHasKeyword(card, '奇襲')" class="status-icon surprise-icon" viewBox="0 0 24 24">
                     <rect x="10" y="3" width="4" height="12" rx="2" fill="currentColor"/>
@@ -4318,6 +4323,7 @@
               <span class="dsl-target-side-badge" :class="dslCandidateSide(c) === 'opp' ? 'opp' : 'self'">
                 {{ dslCandidateSide(c) === 'opp' ? '相手' : '自分' }}
               </span>
+              <span v-if="dslCandidateZoneLabel(c)" class="dsl-target-zone-badge">{{ dslCandidateZoneLabel(c) }}</span>
               <span v-if="c._tapped" class="dsl-target-tapped-badge">タップ中</span>
               <span v-if="c.category === 'レガシー' || c.isToken"
                     class="dsl-target-power-badge"
@@ -5473,7 +5479,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.81',
+    BUILD_VERSION: '1.14.82',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5712,7 +5718,11 @@ new Vue({
         const name = kami[`skill${index}name`] || `神技${index}`;
         const effect = kami[`skill${index}effect`] || '';
         const exists = !!(kami[`skill${index}name`] || effect || rawCost !== '');
-        return { index, name, effect, cost, exists, enabled: exists && this.battleSample.self.tenryoku >= cost };
+        const isSelfTurn = this.battleSample.activeSide === 'self';
+        // K10ヤマタノオロチは天力を扱わないため、天力コストのチェックを行わない（封印数が発動条件）
+        const isOrochi = this._battleKamiNo('self') === 'K10';
+        const hasCost = isOrochi ? true : this.battleSample.self.tenryoku >= cost;
+        return { index, name, effect, cost: isOrochi ? 0 : cost, exists, enabled: exists && isSelfTurn && hasCost };
       }).filter(skill => skill.exists);
     },
     battleSkillTone() {
@@ -6795,6 +6805,7 @@ new Vue({
         senteiBoostUsed: false,
         kamiTriggerCounts: {},   // 天力トリガー：各ターンの発動回数管理（K5/K6/K7/K8/K9）
         cardPlaysThisTurn: 0,    // このターン中にこの側が使用したカード枚数（オラクル/レガシー/レリック合算）
+        _orochiSealUnleashed: false, // K10ヤマタノオロチ「封神・終極八岐」発動済みか
       };
     },
     _battleInitialize(config) {
@@ -7218,8 +7229,9 @@ new Vue({
         this._battleHandleSealThreshold(side, previous, target.seal);
       }
       // 天力トリガー（K6 アメノウズメ）：手動操作でもライフ/マナ/マナ最大値が増加したら発火
-      if ((key === 'life' || key === 'mana' || key === 'manaMax') && delta > 0 && target[key] > previous) {
-        this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: key, n: target[key] - previous });
+      // （既に上限に達していて実際の値は変わらなくても、増加を試みたこと自体で発火する）
+      if ((key === 'life' || key === 'mana' || key === 'manaMax') && delta > 0) {
+        this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: key, n: Math.max(delta, target[key] - previous) });
       }
       this._battleCheckResult();
       // 常在能力の動的再評価（マナ最大値・墓地枚数・種族数等が変動した可能性があるため）
@@ -7304,6 +7316,8 @@ new Vue({
     },
     _battleCardHasGuard(card) {
       if (!card) return false;
+      // 常在効果による条件付き付与（例：#86眩き黄の眷属、影分身選定効果等）も含めて判定する
+      if (this.battleCardHasKeyword(card, '守護')) return true;
       const txt = this.battleCardRulesText ? this.battleCardRulesText(card) : '';
       if (/【守護】|守護/.test(txt)) return true;
       const kw = Array.isArray(card._kwGrant) ? card._kwGrant : [];
@@ -7438,6 +7452,7 @@ new Vue({
       this._battleCheckDestroyZeroPower();
       this._battleCheckTurnEndDestroy();
       this._battleApplyStaticTurnEndUntap(endingSide);
+      this._battleApplyPendingTurnEndUntap();
       this._battleCheckDelayedReturnToHand(endingSide);
       this._battleExpireTempManaMaxMods(endingSide);
       // 天力トリガー（ターン終了系：K2 ヤマトタケル / K3 オオクニヌシ / K4 タケミカヅチ）
@@ -7604,6 +7619,23 @@ new Vue({
       });
       if (untapped.length) {
         this.battleShowNotice('常在効果でアンタップ', `${untapped.map(c => `「${this.fullName(c)}」`).join('、')}がターン終了時の常在効果でアンタップされました。`, untapped);
+      }
+    },
+    /* 「期間:このターン終了時」で予約されたアンタップ（例：K8アマテラス神技1「照護」）を解決する */
+    _battleApplyPendingTurnEndUntap() {
+      const pending = this._dslPendingTurnEndUntap;
+      this._dslPendingTurnEndUntap = [];
+      if (!pending || !pending.length) return;
+      const untapped = [];
+      pending.forEach(card => {
+        if (!card || !card._tapped) return;
+        const side = this._battleFieldCardSide(card);
+        if (this._battleIsBindingActive(card, side, this.battleSample.turn)) return;
+        this.$set(card, '_tapped', false);
+        untapped.push(card);
+      });
+      if (untapped.length) {
+        this.battleShowNotice('アンタップ', `${untapped.map(c => `「${this.fullName(c)}」`).join('、')}がこのターン終了時の効果でアンタップされました。`, untapped);
       }
     },
     /* 「次の相手ターン終了時に手札に戻る」（例：#155狂乱の幻霧の傀儡化）を解決する。
@@ -8700,8 +8732,10 @@ new Vue({
         return Promise.resolve([]);
       }
       // 備考で対象が一意に定まるもの（今招来した影分身／そのヨリシロ／そのカード 等）は
-      // 手動選択不要で自動適用する（候補＝解決済みの具体カードなのでモーダルを開かない）
-      if (this._dslRemarkTargetCards(remarks)) {
+      // 手動選択不要で自動適用する（候補＝解決済みの具体カードなのでモーダルを開かない）。
+      // ただし「選択者:player」が明示されている場合（例：K7帰灰「今墓地に送った3枚から」選択）は
+      // 複数候補からプレイヤーが選ぶ必要があるため、自動適用せずモーダルを開く。
+      if (this._dslRemarkTargetCards(remarks) && sel.選択者 !== 'player') {
         const n = (sel.枚数 === 'all' || sel.枚数 == null) ? pool.length : (Number(sel.枚数) || pool.length);
         return Promise.resolve(pool.slice(0, n));
       }
@@ -8751,6 +8785,16 @@ new Vue({
     dslCandidateBuffDelta(card) {
       if (!card) return 0;
       return (Number(card._buf) || 0) + (Number(card._perm) || 0) + (Number(card._staticPerm) || 0);
+    },
+    /* 対象選択モーダル：候補カードが場/墓地のどちらにあるか（例：#K1スサノオ神技2で墓地からの進化元選択時） */
+    dslCandidateZoneLabel(card) {
+      const loc = this._dslFindCardLocation(card);
+      if (!loc) return '';
+      if (loc.zone === 'legacies' || loc.zone === 'relics') return '場';
+      if (loc.zone === 'graveyard') return '墓地';
+      if (loc.zone === 'crumbled') return '崩壊';
+      if (loc.zone === 'hand') return '手札';
+      return '';
     },
     dslToggleTarget(card) {
       const m = this.dslTargetModal;
@@ -8863,9 +8907,10 @@ new Vue({
         );
       }
       if (/自分レガシーを選んだ場合/.test(s)) {
+        // 対象側「both」（例：K9月蝕）でも実際に選んだカードごとの所属側で正しく判定する
         const returned = this._dslLastReturnedCards || [];
-        const side = this._dslLastReturnedSide || 'self';
-        return side === 'self' && returned.some(card => card && card.category === 'レガシー');
+        const sides = this._dslLastReturnedCardSides || [];
+        return returned.some((card, i) => card && card.category === 'レガシー' && (sides[i] || this._dslLastReturnedSide || 'self') === 'self');
       }
       if (/他のレガシーが神攻で相手ライフを減らしたとき/.test(s)) {
         const ev = this._dslCurrentEvent;
@@ -9048,6 +9093,8 @@ new Vue({
        ※ dslClearStaticFromCard は静的再計算でも毎フレーム呼ばれるので、こちらは退場時のみ使う。 */
     _battleResetCardBuffs(card) {
       if (!card) return;
+      // 「場を離れるとき崩壊」付与（例：K8アマテラス神技2）はここでキーワードが失われる前に判定を保持しておく
+      this.$set(card, '_crumbleOnLeaveGrant', this.battleCardHasKeyword(card, '場を離れるとき崩壊'));
       this.dslClearStaticFromCard(card);
       const buf = Number(card._buf) || 0;
       const perm = Number(card._perm) || 0;
@@ -9061,11 +9108,17 @@ new Vue({
       this.$set(card, '_kwGrant', []);
       this.$set(card, '_typeGrant', []);
       this.$set(card, '_senteiChosenDescriptions', []);
+      this.$set(card, '_onceUntapConsumed', false);
+      this.$set(card, '_guardEventFired', false);
     },
     /* トークンが場を離れる先のゾーンを返す。
        トークン（無属性カード）は手札・墓地に置かれると崩壊する＝崩壊ゾーンへ送る。 */
     _battleLeaveZone(card, intendedZone) {
-      if (card && card.isToken && (intendedZone === 'graveyard' || intendedZone === 'hand')) return 'crumbled';
+      if (!card) return intendedZone;
+      // 「場を離れるとき崩壊」付与（例：K8アマテラス神技2「恩光・八咫神鏡」）：
+      // _battleResetCardBuffs 実行前ならキーワードが残っている、実行後は _crumbleOnLeaveGrant に退避済み
+      const crumbleGrant = this.battleCardHasKeyword(card, '場を離れるとき崩壊') || card._crumbleOnLeaveGrant;
+      if ((card.isToken || crumbleGrant) && (intendedZone === 'graveyard' || intendedZone === 'hand')) return 'crumbled';
       return intendedZone;
     },
     dslStaticEligible(sel, sourceCard, sourceSide) {
@@ -9248,6 +9301,16 @@ new Vue({
         `${targets.map(c => `「${this.fullName(c)}」`).join('、')}に ${(act.付与 || []).join(' / ')} を付与しました。`,
         targets
       );
+      // 天力トリガー（K8アマテラス）：出現時の効果選択などで後から守護を付与された場合も、
+      // 自分レガシーが守護持ちとして場に出た扱いとして発火する（例：#94二つ影の絡繰師「影分身」の選定効果）
+      if (Array.isArray(act.付与) && act.付与.includes('守護')) {
+        targets.forEach(c => {
+          if (c && c.category === 'レガシー' && !c._guardEventFired && this._battleFieldCardSide(c) === 'self') {
+            this.$set(c, '_guardEventFired', true);
+            this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: c });
+          }
+        });
+      }
       // 補正/静的バフでマイナスを受けて戦闘力0以下になったら即破壊
       this._battleCheckDestroyZeroPower();
     },
@@ -9265,6 +9328,10 @@ new Vue({
           return;
         }
         this._dslLastChosenOwnLegacies = picked.slice();
+      }
+      // 「自分と相手が各1枚選び、それ以外の全レガシーを破壊」（例：K2ヤマトタケル神技2）
+      if (act && act.対象 && /自分と相手が各1枚選び、それ以外の全レガシーを破壊/.test(String(act.対象.備考 || ''))) {
+        return this._dslOpDestroyExceptOnePerSide(sourceCard);
       }
       // 「レガシーを破壊する」等、対象側の指定がない破壊効果は自分・相手を問わず対象にする（備考等で対象が
       // 一意に定まる場合は _dslEligible 側で解決されるためここでは上書きしない）
@@ -9290,6 +9357,45 @@ new Vue({
         await this.dslRunActions(act.後続, sourceCard);
       }
     },
+    /* 自分と相手がそれぞれ自分のレガシー1枚を選んで残し、それ以外の全レガシーを破壊する（例：K2ヤマトタケル神技2） */
+    async _dslOpDestroyExceptOnePerSide(sourceCard) {
+      const self = this.battleSample.self;
+      const opp = this.battleSample.opp;
+      const selfLegacies = ((self && self.legacies) || []).filter(Boolean);
+      const oppLegacies = ((opp && opp.legacies) || []).filter(Boolean);
+      let selfKeep = null;
+      let oppKeep = null;
+      if (selfLegacies.length) {
+        const picked = await this.dslAskCustomTargets('残す自分のレガシーを1枚選択', selfLegacies, 1, sourceCard);
+        selfKeep = (picked && picked[0]) || null;
+      }
+      if (oppLegacies.length) {
+        const picked = await this.dslAskCustomTargets('相手が残すレガシーを1枚選択', oppLegacies, 1, sourceCard);
+        oppKeep = (picked && picked[0]) || null;
+      }
+      this.battleSaveUndo();
+      const destroyed = [];
+      selfLegacies.forEach(card => {
+        if (card === selfKeep) return;
+        if (this._dslMoveFromField(card, 'graveyard', 'self')) destroyed.push(card);
+      });
+      oppLegacies.forEach(card => {
+        if (card === oppKeep) return;
+        if (this._dslMoveFromField(card, 'graveyard', 'opp')) destroyed.push(card);
+      });
+      this._dslLastDestroyedCards = destroyed.map(card => ({
+        card,
+        power: this._dslCardEffPower(card),
+        attack: Number(card && card.attack) || 0
+      }));
+      this.dslRefreshStaticAbilities();
+      const lines = [];
+      if (selfKeep) lines.push(`自分は「${this.fullName(selfKeep)}」を残しました。`);
+      if (oppKeep) lines.push(`相手は「${this.fullName(oppKeep)}」を残しました。`);
+      lines.push(destroyed.length ? `破壊：${destroyed.map(c => `「${this.fullName(c)}」`).join('、')}` : '破壊されるレガシーはありません。');
+      this.battleShowNotice('孤影刃・天翔', lines.join('\n'), [selfKeep, oppKeep, ...destroyed].filter(Boolean));
+      destroyed.forEach(card => this.battleRunDeathKeywordEffects(card));
+    },
     async _dslOpReturnToHand(act, sourceCard) {
       // 「レガシーを手札に戻す」等、対象側の指定がない効果は自分・相手を問わず対象にする
       const returnSel = (act.対象 && !act.対象.対象側 && !act.対象.自陣全体 && !act.対象.自身)
@@ -9306,11 +9412,15 @@ new Vue({
       // 場のカードだけでなく墓地・崩壊等からも手札に戻せるよう、汎用のゾーン移動を使う。
       // 対象側「both」の場合はカードごとに実際の所属側（場に限らず墓地等も含めて）を判定して、その側の手札へ戻す
       // （トークンは手札に置けないため崩壊へ変換：_battleLeaveZone）
+      // カードごとの実際の所属側を記録（「自分レガシーを選んだ場合」等、後続の条件判定で使用）
+      const returnedSides = [];
       targets.forEach(c => {
         const loc = this._dslFindCardLocation(c);
         const cardSide = (loc && loc.side) || defaultSide;
+        returnedSides.push(cardSide);
         this._dslMoveCardToZone(c, this._battleLeaveZone(c, 'hand'), cardSide);
       });
+      this._dslLastReturnedCardSides = returnedSides;
       this.battleShowNotice('手札に戻す', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に戻しました。`, targets);
       if (Array.isArray(act.後続) && act.後続.length) {
         await this.dslRunActions(act.後続, sourceCard);
@@ -9339,8 +9449,21 @@ new Vue({
       this.battleShowNotice('墓地送り', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を墓地に送りました。`, targets);
     },
     async _dslOpTap(act, sourceCard, doTap) {
-      const targets = await this.dslChooseTargets(act.対象, doTap ? 'タップする対象を選択' : 'アンタップする対象を選択');
+      // 「レガシーをタップする」等、対象側の指定がない効果は自分・相手を問わず対象にする
+      const tapSel = (act.対象 && !act.対象.対象側 && !act.対象.自陣全体 && !act.対象.自身)
+        ? Object.assign({}, act.対象, { 対象側: 'both' })
+        : act.対象;
+      const targets = await this.dslChooseTargets(tapSel, doTap ? 'タップする対象を選択' : 'アンタップする対象を選択');
       if (!targets.length) { this._dslLastActionSucceeded = false; return; }
+      // 期間:このターン終了時 のアンタップ（例：K8アマテラス神技1「照護」）は即時実行せず、このターンの終了時まで予約する
+      if (!doTap && act.期間 === 'このターン終了時') {
+        this._dslPendingTurnEndUntap = this._dslPendingTurnEndUntap || [];
+        targets.forEach(c => {
+          if (!this._dslPendingTurnEndUntap.includes(c)) this._dslPendingTurnEndUntap.push(c);
+        });
+        this.battleShowNotice('アンタップ予約', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}はこのターン終了時にアンタップされます。`, targets);
+        return;
+      }
       if (!doTap) {
         const blocked = targets.filter(c => this._battleIsBindingActive(c, this._battleFieldCardSide(c), this.battleSample.turn));
         if (blocked.length) {
@@ -9693,11 +9816,22 @@ new Vue({
         this.$set(card, '_effectDisableUntilSide', side);
         this.$set(card, '_effectDisableUntilTurn', untilTurn);
       });
-      this.battleShowNotice(
-        '効果無効化',
-        `${cards.map(c => `「${this.fullName(c)}」`).join('、')}の効果を${side === 'opp' ? '次の相手ターン終了時' : '次の自分ターン終了時'}まで無効化しました。`,
-        cards
-      );
+      // 相手の手札を含む場合、手札は非公開情報のためカード名・画像を公開せず、発動側視点の一般的な通知にする
+      // （例：K9ツクヨミ神技2「凍刻・八尺瓊勾月」）
+      const zoneText = String(sel.領域 || '');
+      const includesOppHand = side === 'opp' && /手札|hand/.test(zoneText);
+      if (includesOppHand) {
+        this.battleShowNotice(
+          '効果無効化',
+          `相手の手札、フィールド、墓地のカードが${untilTurn ? '次の相手ターン終了時' : 'このターン終了時'}まで効果を失いました。`
+        );
+      } else {
+        this.battleShowNotice(
+          '効果無効化',
+          `${cards.map(c => `「${this.fullName(c)}」`).join('、')}の効果を${side === 'opp' ? '次の相手ターン終了時' : '次の自分ターン終了時'}まで無効化しました。`,
+          cards
+        );
+      }
     },
     async _dslOpOpponentChooseDiscard(act, sourceCard) {
       const opp = this.battleSample && this.battleSample.opp;
@@ -9989,7 +10123,8 @@ new Vue({
       } else {
         this.battleShowNotice('マナ最大値変化', `${sideLabel}のマナ最大値 ${n >= 0 ? '+' : ''}${n}（現在 ${p.manaMax}）`);
       }
-      if (p.manaMax > before) this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: 'manaMax', n: p.manaMax - before });
+      // 天力トリガー（K6アメノウズメ）：既に上限で実際の値が変わらなくても、増加を試みたこと自体で発火する
+      if (n > 0) this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: 'manaMax', n: Math.max(n, p.manaMax - before) });
     },
     _dslOpManaRefill(act) {
       // 効果の発動源（このカード）を所有するプレイヤーがマナを得る（破壊した側ではない）
@@ -9999,8 +10134,10 @@ new Vue({
       this.battleSaveUndo();
       const before = Number(p.mana) || 0;
       const note = String((act && act.期間) || (act && act.備考) || '');
+      let requestedN = 0;
       if (act && act.数 != null) {
         const n = Number(act.数) || 0;
+        requestedN = n;
         if (/このターンのみ/.test(note)) {
           // 最大値を超えて、このターン使用可能なマナを増やす（次の自分ターン開始時に通常通りリセットされる）
           p.mana = before + n;
@@ -10014,7 +10151,10 @@ new Vue({
         p.mana = p.manaMax;
         this.battleShowNotice('マナ回復', `${side === 'opp' ? '相手' : '自分'}のマナを最大値まで回復しました（${p.mana}/${p.manaMax}）。`);
       }
-      if (p.mana > before) this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: 'mana', n: p.mana - before });
+      // 天力トリガー（K6アメノウズメ）：既に上限で実際の値が変わらなくても、増加を試みたこと自体で発火する
+      if (p.mana > before || requestedN > 0) {
+        this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: 'mana', n: Math.max(requestedN, p.mana - before) });
+      }
     },
     async _dslOpAddType(act, sourceCard) {
       const typeName = String(act.値 || act.種族 || '').trim();
@@ -10217,6 +10357,10 @@ new Vue({
           placed.push(fieldCard);
         }
       });
+      // 「場に出す」アクション自体への付与（例：K8アマテラス神技2「恩光・八咫神鏡」場を離れるとき崩壊）
+      if (Array.isArray(act.付与) && act.付与.length) {
+        placed.forEach(fc => this._dslApplyGrant(fc, act.付与, false));
+      }
       if (placed.length) this.dslRefreshStaticAbilities();
       if (placed.length) {
         this.battleShowNotice('場に出す', `${placed.map(c => `「${this.fullName(c)}」`).join('、')}を場に出しました。`, placed);
@@ -10968,7 +11112,15 @@ new Vue({
       // 天力トリガー：トークン招来（K9）／守護持ち（K8）
       if (zone === 'legacies') {
         if (placedCard && placedCard.isToken) this.battleFireKamiEvent('self', 'tokenPlayed', { card: placedCard });
-        if (this._battleCardHasGuard(placedCard)) this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: placedCard });
+        if (this._battleCardHasGuard(placedCard) && !placedCard._guardEventFired) {
+          this.$set(placedCard, '_guardEventFired', true);
+          this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: placedCard });
+        }
+      } else if (zone === 'relics') {
+        // 天力トリガー：レリック使用扱い（K5オモイカネ）。社の施し等トークンレリックの招来にも対応
+        this.battleFireKamiEvent('self', 'playOracleOrRelic', { card: placedCard, kind: 'レリック' });
+        // 天力トリガー（K9ツクヨミ）：社の施し等トークンレリックが場に出たときも発火
+        if (placedCard && placedCard.isToken) this.battleFireKamiEvent('self', 'tokenPlayed', { card: placedCard });
       }
       if (!skipQueueProcess) this._battleProcessNextEffect();
       return placedCard;
@@ -11015,7 +11167,15 @@ new Vue({
       // 天力トリガー：トークン招来（K9）／守護持ち（K8）
       if (zone === 'legacies') {
         if (fieldCard && fieldCard.isToken) this.battleFireKamiEvent('self', 'tokenPlayed', { card: fieldCard });
-        if (this._battleCardHasGuard(fieldCard)) this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: fieldCard });
+        if (this._battleCardHasGuard(fieldCard) && !fieldCard._guardEventFired) {
+          this.$set(fieldCard, '_guardEventFired', true);
+          this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: fieldCard });
+        }
+      } else if (zone === 'relics') {
+        // 天力トリガー：レリック使用扱い（K5オモイカネ）。社の施し等トークンレリックの招来にも対応
+        this.battleFireKamiEvent('self', 'playOracleOrRelic', { card: fieldCard, kind: 'レリック' });
+        // 天力トリガー（K9ツクヨミ）：社の施し等トークンレリックが場に出たときも発火
+        if (fieldCard && fieldCard.isToken) this.battleFireKamiEvent('self', 'tokenPlayed', { card: fieldCard });
       }
       // 残り0 または フィールド上限到達なら自動クローズ＋通知
       const fieldFull = player[zone].length >= 7;
@@ -11278,7 +11438,8 @@ new Vue({
       if (zone === 'relics') {
         this.battleFireKamiEvent('self', 'playOracleOrRelic', { card: fieldCard, kind: 'レリック' });
       }
-      if (zone === 'legacies' && this._battleCardHasGuard(fieldCard)) {
+      if (zone === 'legacies' && this._battleCardHasGuard(fieldCard) && !fieldCard._guardEventFired) {
+        this.$set(fieldCard, '_guardEventFired', true);
         this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: fieldCard });
       }
       if (fieldCard && fieldCard.isToken) {
@@ -11462,6 +11623,8 @@ new Vue({
       this.$set(fieldCard, '_evolved', false);
       this.$set(fieldCard, '_evolvedBase', null);
       this.$set(fieldCard, '_evolvedFromGraveyard', false);
+      this.$set(fieldCard, '_kwGrant', []);
+      this.$set(fieldCard, '_crumbleOnLeaveGrant', false);
       return fieldCard;
     },
     /* カード本文から「固有キーワード」を抽出する。
@@ -11832,6 +11995,9 @@ new Vue({
       player[destZone] = player[destZone] || [];
       player[destZone].push(card);
       this.battleRecordLegacyDestroyed(side, card);
+      // 天力トリガー（K7ヒノカグツチ）：戦闘でレガシーが破壊された場合も発火
+      this.battleFireKamiEvent('self', 'legacyDestroyed', { card });
+      this.battleFireKamiEvent('opp', 'legacyDestroyed', { card });
       destroyed.push({ side, card });
     },
     async battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex, extraTrigger = null) {
@@ -11873,6 +12039,9 @@ new Vue({
       const dp = Number(defender.power || 0);
       // 破壊で場を離れると付与キーワードが失われるため、破壊前に判定しておく（例：#172忠義の一刀）
       const attackerDrawsOnKill = this.battleCardHasKeyword(attacker, '戦闘でレガシー破壊時1ドロー');
+      // K4タケミカヅチ神技2：戦闘でレガシー破壊時に一度だけアンタップ（このターン中、未消費の場合のみ）
+      const attackerUntapsOnKill = this.battleCardHasKeyword(attacker, 'このターン:戦闘でレガシー破壊時に一度だけアンタップ')
+        && !attacker._onceUntapConsumed;
       const destroyed = [];
       if (ap > dp) this.battleDestroyLegacy(defenderSide, defenderIndex, destroyed);
       else if (ap < dp) this.battleDestroyLegacy(attackerSide, attackerIndex, destroyed);
@@ -11903,6 +12072,12 @@ new Vue({
           );
         }
       }
+      // K4タケミカヅチ神技2：戦闘でレガシーを破壊できていれば、攻撃側が場に残っている場合のみ一度だけアンタップ
+      if (attackerUntapsOnKill && destroyed.some(d => d.card === defender) && !destroyed.some(d => d.card === attacker)) {
+        this.$set(attacker, '_tapped', false);
+        this.$set(attacker, '_onceUntapConsumed', true);
+        this.battleShowNotice('戦闘破壊アンタップ', `「${this.fullName(attacker)}」の効果でアンタップしました。`, [attacker]);
+      }
     },
     async battleResolveDivineAttack(attackerSide, attackerIndex) {
       if (this.battleSample.result || attackerSide !== 'self') return;
@@ -11916,6 +12091,20 @@ new Vue({
         // タップは battleResolveLegacyBattle 側で（トリガー発動より前に）行われる。
         this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index, '神攻時');
         return;
+      }
+      // K10ヤマタノオロチ「封神・終極八岐」発動中：龍レガシーの神攻時、1ターンに1度だけ【神威：+2】を付与するか確認する
+      if (
+        this.battleSample.self._orochiSealUnleashed &&
+        this._battleKamiNo('self') === 'K10' &&
+        this.battleCardMatchesInduceCriteria(attacker, ['龍レガシー']) &&
+        this._battleKamiCanTrigger('self', 'K10sealAtkBonus', 1)
+      ) {
+        const grantOk = await this.dslAskOptional(attacker, '封神・終極八岐', `「${this.fullName(attacker)}」の神攻に【神威：+2】を付与しますか？`);
+        if (grantOk) {
+          this._battleKamiMarkTriggered('self', 'K10sealAtkBonus');
+          this.battleSaveUndo();
+          this._dslApplyGrant(attacker, ['神威:+2'], false);
+        }
       }
       const damage = Math.max(0, Number(attacker.attack || 0));
       this.battleSaveUndo();
@@ -12609,6 +12798,11 @@ new Vue({
           [kami]
         );
       }
+      // K10ヤマタノオロチ「封神・終極八岐」：発動後は永続的に有効化し、以後は龍レガシーが神攻するたび
+      // 1ターンに1度だけ【神威：+2】を付与するか確認する（battleResolveDivineAttack側で処理）
+      if (target.技名 === '封神・終極八岐') {
+        this.$set(this.battleSample.self, '_orochiSealUnleashed', true);
+      }
     },
     _battleHandleSealThreshold(side, previous, current) {
       const player = this.battleSample[side];
@@ -12762,7 +12956,10 @@ new Vue({
       // 天力トリガー：トークン登場（K9 ツクヨミ）／守護持ちなら（K8 アマテラス）
       if (zone === 'legacies') {
         this.battleFireKamiEvent('self', 'tokenPlayed', { card: clone });
-        if (this._battleCardHasGuard(clone)) this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: clone });
+        if (this._battleCardHasGuard(clone) && !clone._guardEventFired) {
+          this.$set(clone, '_guardEventFired', true);
+          this.battleFireKamiEvent('self', 'guardLegacyPlayed', { card: clone });
+        }
       }
     },
     battleOpenFieldMenu(side, zone, index, e) {
