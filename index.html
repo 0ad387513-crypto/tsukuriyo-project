@@ -5416,7 +5416,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.76',
+    BUILD_VERSION: '1.14.77',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7796,6 +7796,34 @@ new Vue({
       extras.sort((a, b) => a - b);
       return [base, ...extras.map(e => base + e)];
     },
+    /* 「使用時」コストの「任意タップ」（例：#120忠臣の予感 — レリックをタップしてコストを下げてもよい）を解決する。
+       戻り値：実際に減らすコスト（タップしなければ0）。対象が無ければダイアログ自体を出さない。 */
+    async battleResolveOptionalTapCost(card) {
+      if (!this.effectSpecsReady || !card) return 0;
+      const spec = this._dslGetSpec(card);
+      if (!spec || !Array.isArray(spec.能力)) return 0;
+      const ab = spec.能力.find(a => this._dslAbilityMatchesTrigger(a, '使用時') && a.コスト && a.コスト.任意タップ);
+      if (!ab) return 0;
+      // 既にタップ済みのカードはコストとしてタップできないため候補から除外する
+      const costSel = Object.assign({ 選択者: 'player' }, ab.コスト.任意タップ, { 比較: 'untapped', 任意: true });
+      const m = String(ab.コスト.任意タップ.効果 || '').match(/コスト[-−](\d+)/);
+      const delta = m ? Number(m[1]) : 1;
+      const prevSource = this._dslCurrentSource;
+      this._dslCurrentSource = card;
+      let picked;
+      try {
+        // 候補が無ければ「対象なし」通知を出さずに静かにスキップする（任意効果のため）
+        if (!this._dslEligible(costSel).length) return 0;
+        picked = await this.dslChooseTargets(costSel, `タップして${this.fullName(card)}のコストを${delta}下げてもよい`);
+      } finally {
+        this._dslCurrentSource = prevSource;
+      }
+      if (!picked || !picked.length) return 0;
+      this.battleSaveUndo();
+      this.$set(picked[0], '_tapped', true);
+      this.battleShowNotice('コスト減少', `「${this.fullName(picked[0])}」をタップし、「${this.fullName(card)}」のコストを${delta}下げました。`, [picked[0]]);
+      return delta;
+    },
     battleShowNotice(title, message, cards = []) {
       // 同じ効果解決中（ユーザー確認を挟まず連続発火）の通知は、前の通知が表示される前に
       // 上書きされて消えてしまうため、1つの通知にまとめて表示する（例：複数のステータス変化を続けて行うカード）。
@@ -8426,7 +8454,8 @@ new Vue({
         return Math.max(...list.map(c => this._dslCardEffPower(c)));
       }
       if (/加えたレガシー/.test(refName)) {
-        const list = this._dslLastSummonedCards || [];
+        // 「加えた」＝誘（デッキから手札に加える）／招来（場に出す）どちらの直後にも参照され得るため両方を見る
+        const list = [...(this._dslLastInducedToHand || []), ...(this._dslLastSummonedCards || [])];
         if (!list.length) return null;
         return Math.max(...list.map(c => this._dslCardEffPower(c)));
       }
@@ -9109,7 +9138,12 @@ new Vue({
         }
         this._dslLastChosenOwnLegacies = picked.slice();
       }
-      const targets = await this.dslChooseTargets(act.対象, '破壊する対象を選択');
+      // 「レガシーを破壊する」等、対象側の指定がない破壊効果は自分・相手を問わず対象にする（備考等で対象が
+      // 一意に定まる場合は _dslEligible 側で解決されるためここでは上書きしない）
+      const destroySel = (act.対象 && !act.対象.対象側 && !act.対象.自陣全体 && !act.対象.自身)
+        ? Object.assign({}, act.対象, { 対象側: 'both' })
+        : act.対象;
+      const targets = await this.dslChooseTargets(destroySel, '破壊する対象を選択');
       if (!targets.length) return;
       this.battleSaveUndo();
       this._dslLastDestroyedCards = targets.map(card => ({
@@ -9801,7 +9835,9 @@ new Vue({
       if (p.manaMax > before) this.battleFireKamiEvent('self', 'manaOrLifeIncreased', { kind: 'manaMax', n: p.manaMax - before });
     },
     _dslOpManaRefill(act) {
-      const p = this.battleSample.self;
+      // 効果の発動源（このカード）を所有するプレイヤーがマナを得る（破壊した側ではない）
+      const side = (act && act.側 === 'opp') ? 'opp' : this._dslCurrentSourceSide();
+      const p = this.battleSample[side];
       if (!p) return;
       this.battleSaveUndo();
       const before = Number(p.mana) || 0;
@@ -9811,17 +9847,17 @@ new Vue({
         if (/このターンのみ/.test(note)) {
           // 最大値を超えて、このターン使用可能なマナを増やす（次の自分ターン開始時に通常通りリセットされる）
           p.mana = before + n;
-          this.battleShowNotice('マナ回復', `このターンのみ使えるマナが +${n}（現在 ${p.mana}/${p.manaMax}）。`);
+          this.battleShowNotice('マナ回復', `${side === 'opp' ? '相手' : '自分'}のこのターンのみ使えるマナが +${n}（現在 ${p.mana}/${p.manaMax}）。`);
         } else {
           // 通常のマナ回復：最大値までしか回復しない
           p.mana = Math.max(0, Math.min(p.manaMax, before + n));
-          this.battleShowNotice('マナ回復', `マナが +${n} 回復しました（現在 ${p.mana}/${p.manaMax}）。`);
+          this.battleShowNotice('マナ回復', `${side === 'opp' ? '相手' : '自分'}のマナが +${n} 回復しました（現在 ${p.mana}/${p.manaMax}）。`);
         }
       } else {
         p.mana = p.manaMax;
-        this.battleShowNotice('マナ回復', `マナを最大値まで回復しました（${p.mana}/${p.manaMax}）。`);
+        this.battleShowNotice('マナ回復', `${side === 'opp' ? '相手' : '自分'}のマナを最大値まで回復しました（${p.mana}/${p.manaMax}）。`);
       }
-      if (p.mana > before) this.battleFireKamiEvent('self', 'manaOrLifeIncreased', { kind: 'mana', n: p.mana - before });
+      if (p.mana > before) this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: 'mana', n: p.mana - before });
     },
     async _dslOpAddType(act, sourceCard) {
       const typeName = String(act.値 || act.種族 || '').trim();
@@ -10809,7 +10845,7 @@ new Vue({
       );
       return false;
     },
-    battlePlayFromHand(index, expectedZone, evolveBaseHint = undefined) {
+    async battlePlayFromHand(index, expectedZone, evolveBaseHint = undefined) {
       if (this.battleSample.result) return;
       if (!this.battleEnsureSelfTurn('手札からカードを使う操作')) return;
       const player = this.battleSample.self;
@@ -10817,7 +10853,9 @@ new Vue({
       if (!card) return;
       // オラクル：中央発動演出 → 墓地。昇華持ちはコスト選択モーダルへ
       if (card.category === 'オラクル') {
-        const oracleOptions = this.battleSublimCostOptions(card);
+        const tapDiscount = await this.battleResolveOptionalTapCost(card);
+        if (player.hand[index] !== card) return; // タップ選択中に手札状況が変わっていたら中断
+        const oracleOptions = this.battleSublimCostOptions(card).map(c => Math.max(0, c - tapDiscount));
         if (oracleOptions.length > 1) {
           this.battleSublimModal = { card, index, zone: null, options: oracleOptions };
           return;
