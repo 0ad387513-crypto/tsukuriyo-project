@@ -2288,6 +2288,7 @@
   .battle-deck-modal-pick:disabled {
     opacity: .42; cursor: not-allowed; background: #293044; color: #aab;
   }
+  .battle-deck-modal-card-cat { font-size: 10px; color: #9aa; text-align: center; }
 
   /* ===== 選定モーダル ===== */
   .sentei-options { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding: 4px 0; margin: 4px 0; }
@@ -4244,6 +4245,26 @@
                     @click="battleDeckMoveVisible(i, 'crumbled')">
               崩壊へ
             </button>
+            <div v-if="battleDeckModal.action === 'gokugoPick'" class="battle-deck-modal-card-cat">{{ c.category || '?' }}{{ c.cost !== '' && c.cost != null ? ' / コスト' + c.cost : '' }}</div>
+            <button v-if="battleDeckModal.action === 'gokugoPick' && c.category === 'レガシー'"
+                    class="battle-deck-modal-pick"
+                    :disabled="!!battleDeckModal.pickedLegacy"
+                    @click="battleGokugoPick(i, 'レガシー')">
+              {{ battleDeckModal.pickedLegacy === c ? '選択済み' : (battleDeckModal.pickedLegacy ? '選択不可' : '手札に加える') }}
+            </button>
+            <button v-if="battleDeckModal.action === 'gokugoPick' && c.category === 'レリック'"
+                    class="battle-deck-modal-pick"
+                    :disabled="!!battleDeckModal.pickedRelic"
+                    @click="battleGokugoPick(i, 'レリック')">
+              {{ battleDeckModal.pickedRelic === c ? '選択済み' : (battleDeckModal.pickedRelic ? '選択不可' : '手札に加える') }}
+            </button>
+            <div v-if="battleDeckModal.action === 'gokugoPlaceDistinct'" class="battle-deck-modal-card-cat">{{ c.category || '?' }}{{ c.cost !== '' && c.cost != null ? ' / コスト' + c.cost : '' }}{{ c.type ? ' / ' + c.type : '' }}</div>
+            <button v-if="battleDeckModal.action === 'gokugoPlaceDistinct'"
+                    class="battle-deck-modal-pick"
+                    :disabled="(battleDeckModal.placed || []).includes(c) || !battleGokugoPlaceDistinctEligible(battleDeckModal, c)"
+                    @click="battleGokugoPlaceDistinct(i)">
+              {{ (battleDeckModal.placed || []).includes(c) ? '選択済み' : '場に出す' }}
+            </button>
           </div>
         </div>
         <div class="battle-zone-modal-actions">
@@ -4255,6 +4276,14 @@
           <button v-if="battleDeckModal.action === 'autoSummon'" class="battle-back-btn"
                   @click="battleFinishAutoSummon">
             {{ (battleDeckModal.summoned && battleDeckModal.summoned.length) ? 'ここで終了（残りを見送り）' : '招来しない' }}
+          </button>
+          <button v-else-if="battleDeckModal.action === 'gokugoPick'" class="battle-back-btn"
+                  @click="battleFinishGokugoPick">
+            終了（選ばなかった{{ battleDeckModal.cards.length - (battleDeckModal.pickedLegacy ? 1 : 0) - (battleDeckModal.pickedRelic ? 1 : 0) }}枚をデッキの下へ）
+          </button>
+          <button v-else-if="battleDeckModal.action === 'gokugoPlaceDistinct'" class="battle-back-btn"
+                  @click="battleFinishGokugoPlaceDistinct">
+            終了（選ばなかった{{ battleDeckModal.cards.length - (battleDeckModal.placed || []).length }}枚をデッキの下へ）
           </button>
           <button v-else class="battle-back-btn" @click="battleCloseDeckModal">
             {{ ['autoInduce','autoReishi'].includes(battleDeckModal.action) ? '解決して閉じる' : '閉じる' }}
@@ -5444,7 +5473,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.79',
+    BUILD_VERSION: '1.14.80',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5662,6 +5691,8 @@ new Vue({
           : `招来 — ${this.battleDeckModal.targetText || 'トークン'}を選択`;
       }
       if (this.battleDeckModal.action === 'reishi') return '霊視 — デッキ上から5枚を確認';
+      if (this.battleDeckModal.action === 'gokugoPick') return `デッキ上から${(this.battleDeckModal.cards || []).length}枚を公開`;
+      if (this.battleDeckModal.action === 'gokugoPlaceDistinct') return `デッキ上から${(this.battleDeckModal.cards || []).length}枚を公開`;
       return 'デッキ';
     },
     battleSkillOptions() {
@@ -9264,10 +9295,11 @@ new Vue({
       this._dslLastReturnedSide = defaultSide;
       this._dslLastMovedCount = targets.length;
       // 場のカードだけでなく墓地・崩壊等からも手札に戻せるよう、汎用のゾーン移動を使う。
-      // 対象側「both」の場合はカードごとに実際の所属側を判定して、その側の手札へ戻す
+      // 対象側「both」の場合はカードごとに実際の所属側（場に限らず墓地等も含めて）を判定して、その側の手札へ戻す
       // （トークンは手札に置けないため崩壊へ変換：_battleLeaveZone）
       targets.forEach(c => {
-        const cardSide = this._battleFieldCardSide(c) || defaultSide;
+        const loc = this._dslFindCardLocation(c);
+        const cardSide = (loc && loc.side) || defaultSide;
         this._dslMoveCardToZone(c, this._battleLeaveZone(c, 'hand'), cardSide);
       });
       this.battleShowNotice('手札に戻す', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に戻しました。`, targets);
@@ -10185,7 +10217,7 @@ new Vue({
     },
     /* デッキから条件を満たすカードを探して手札に加える（サーチ） */
     /* デッキの上からN枚を公開し、レガシーとレリックを1枚ずつ選んで手札に加える（コスト3以下なら代わりに場へ出せる）。
-       選ばなかった残りはデッキの下へ戻す。（例：#139覚悟の出陣） */
+       公開したN枚は全て一覧表示し、選ばなかった残りはデッキの下へ戻す。（例：#139覚悟の出陣・#174誓いの契り） */
     async _dslOpSearchTopNPickOnePerCategory(act, sourceCard) {
       const p = this.battleSample.self;
       if (!p || !Array.isArray(p.deck)) return;
@@ -10196,52 +10228,64 @@ new Vue({
       }
       this.battleSaveUndo();
       const revealed = p.deck.splice(0, n);
-      const remaining = revealed.slice();
-      const gainedToHand = [];
-      const gainedToField = [];
-      for (const cat of ['レガシー', 'レリック']) {
-        const candidates = remaining.filter(c => c && c.category === cat);
-        if (!candidates.length) continue;
-        const picked = await this.dslAskCustomTargets(`公開した${n}枚から${cat}を1枚選んで手札に加えてもよい`, candidates, 1, sourceCard, true);
-        if (!picked || !picked.length) continue;
-        const card = picked[0];
-        const idx = remaining.indexOf(card);
-        if (idx >= 0) remaining.splice(idx, 1);
-        const cost = Math.max(0, Number(card.cost) || 0);
-        let toField = false;
-        if (cost <= 3) {
-          toField = await this.dslAskOptional(sourceCard, '場に出す', `「${this.fullName(card)}」（コスト${cost}）を手札に加える代わりに場に出しますか？`);
-        }
-        const zone = toField ? (this.battleFieldZoneForSummon(card) || 'legacies') : null;
-        if (toField && Array.isArray(p[zone]) && p[zone].length < 7) {
-          const fieldCard = this._battlePrepareFieldCard(card);
-          p[zone].push(fieldCard);
-          gainedToField.push(fieldCard);
-        } else {
-          p.hand.push(card);
-          gainedToHand.push(card);
-        }
+      return new Promise((resolve) => {
+        this.battleDeckModal = {
+          side: 'self',
+          action: 'gokugoPick',
+          sourceCard,
+          cards: revealed,
+          pickedLegacy: null,
+          pickedRelic: null,
+          onComplete: resolve,
+          message: `デッキの上から${n}枚を公開しました。レガシー・レリックを1枚ずつ選んで手札に加えられます（コスト3以下なら代わりに場に出せます）。選ばなかったカードはデッキの下へ戻ります。`,
+        };
+      });
+    },
+    /* デッキの上からN枚を公開し、種族が異なるカードを条件内で場に出す（例：#174誓いの契り、K3オオクニヌシ神技2） */
+    async _dslOpSearchTopNPlaceDistinctSpecies(act, sourceCard, config) {
+      const p = this.battleSample.self;
+      if (!p || !Array.isArray(p.deck)) return;
+      const n = Math.max(1, Number((act.対象 && act.対象.枚数) || 6));
+      if (!p.deck.length) {
+        this.battleShowNotice('サーチ', 'デッキが残っていません。', sourceCard ? [sourceCard] : []);
+        return;
       }
-      p.handCount = (p.hand || []).length;
-      p.deck.push(...remaining);
-      p.deckCount = p.deck.length;
-      this.dslRefreshStaticAbilities();
-      const parts = [];
-      if (gainedToHand.length) parts.push(`${gainedToHand.map(c => `「${this.fullName(c)}」`).join('、')}を手札に加えました`);
-      if (gainedToField.length) parts.push(`${gainedToField.map(c => `「${this.fullName(c)}」`).join('、')}を場に出しました`);
-      this.battleShowNotice(
-        'サーチ',
-        `${parts.length ? parts.join('。') + '。' : '対象を選びませんでした。'}残りの${remaining.length}枚をデッキの下へ戻しました。`,
-        [...gainedToHand, ...gainedToField]
-      );
-      for (const fc of gainedToField) {
-        if (!(await this.battleRunEnterKeywordEffects(fc, null))) this.battleKeywordGuide(fc, null);
-      }
+      this.battleSaveUndo();
+      const revealed = p.deck.splice(0, n);
+      const costLabel = config.perCardMaxCost != null
+        ? `コスト${config.perCardMaxCost}以下の`
+        : `合計コスト${config.totalMaxCost}以下になるように`;
+      return new Promise((resolve) => {
+        this.battleDeckModal = {
+          side: 'self',
+          action: 'gokugoPlaceDistinct',
+          sourceCard,
+          cards: revealed,
+          placed: [],
+          config,
+          onComplete: resolve,
+          message: `デッキの上から${n}枚を公開しました。種族が異なる${costLabel}${config.category}を${config.maxCount}枚まで場に出せます。選ばなかったカードはデッキの下へ戻ります。`,
+        };
+      });
+    },
+    /* 「異なる種族のコストX以下カードY枚を場に出す」「異なる種族のカードY枚まで合計コストX以下で場に出す」を解析する
+       （例：#174誓いの契り、K3オオクニヌシ神技2） */
+    _dslParseDistinctSpeciesFieldPlacement(note) {
+      const s = String(note || '');
+      let m = s.match(/異なる種族のコスト(\d+)以下(レガシー|レリック|カード)(\d+)枚(?:まで)?を?場に出す/);
+      if (m) return { category: m[2], maxCount: Number(m[3]), perCardMaxCost: Number(m[1]), totalMaxCost: null };
+      m = s.match(/異なる種族の(レガシー|レリック|カード)(\d+)枚まで合計(\d+)コスト以下で場に出す/);
+      if (m) return { category: m[1], maxCount: Number(m[2]), perCardMaxCost: null, totalMaxCost: Number(m[3]) };
+      return null;
     },
     async _dslOpSearch(act, sourceCard) {
       // 「上N枚を見る」＋「レガシーとレリックを1枚ずつ手札に加える」型の複雑なサーチは専用処理に委譲する
       if (/上\d+枚を見る/.test(String((act.対象 && act.対象.備考) || '')) && /レガシーとレリックを1枚ずつ/.test(String(act.備考 || ''))) {
         return this._dslOpSearchTopNPickOnePerCategory(act, sourceCard);
+      }
+      const distinctConfig = this._dslParseDistinctSpeciesFieldPlacement(act.備考);
+      if (distinctConfig) {
+        return this._dslOpSearchTopNPlaceDistinctSpecies(act, sourceCard, distinctConfig);
       }
       const sel = Object.assign({ 対象側: 'self', 領域: 'deck', 選択者: 'player', 枚数: 1 }, act.対象 || {});
       const targets = await this.dslChooseTargets(sel, 'デッキからサーチするカードを選択');
@@ -11810,6 +11854,8 @@ new Vue({
       if (guarded) this.$set(defender, '_tapped', true);
       const ap = Number(attacker.power || 0);
       const dp = Number(defender.power || 0);
+      // 破壊で場を離れると付与キーワードが失われるため、破壊前に判定しておく（例：#172忠義の一刀）
+      const attackerDrawsOnKill = this.battleCardHasKeyword(attacker, '戦闘でレガシー破壊時1ドロー');
       const destroyed = [];
       if (ap > dp) this.battleDestroyLegacy(defenderSide, defenderIndex, destroyed);
       else if (ap < dp) this.battleDestroyLegacy(attackerSide, attackerIndex, destroyed);
@@ -11826,6 +11872,20 @@ new Vue({
       this.battleShowNotice('戦闘解決', lines.join('\n'), [attacker, defender, ...destroyed.map(d => d.card)]);
       // 死亡時トリガー：両サイドのカードに対して発火（カードの所有者に紐づく効果）
       destroyed.forEach(d => this.battleRunDeathKeywordEffects(d.card));
+      // 「戦闘でレガシー破壊時1ドロー」：攻撃対象のレガシーを破壊できていればドロー
+      if (attackerDrawsOnKill && destroyed.some(d => d.card === defender)) {
+        const drawPlayer = this.battleSample[attackerSide];
+        if (drawPlayer && Array.isArray(drawPlayer.deck) && drawPlayer.deck.length) {
+          const drawnCard = drawPlayer.deck.shift();
+          drawPlayer.hand.push(drawnCard);
+          this._battleSyncSideCounts(attackerSide);
+          this.battleShowNotice(
+            '戦闘破壊ドロー',
+            `「${this.fullName(attacker)}」の効果で${attackerSide === 'opp' ? '相手' : '自分'}が1枚ドローしました。`,
+            attackerSide === 'self' ? [drawnCard] : []
+          );
+        }
+      }
     },
     async battleResolveDivineAttack(attackerSide, attackerIndex) {
       if (this.battleSample.result || attackerSide !== 'self') return;
@@ -12954,9 +13014,111 @@ new Vue({
       } else if (modal && modal.action === 'autoSummon') {
         // 招来途中で背景クリック等でも、要約通知＋見送りを正しく行う
         this.battleFinishAutoSummon();
+      } else if (modal && modal.action === 'gokugoPick') {
+        this.battleFinishGokugoPick();
+      } else if (modal && modal.action === 'gokugoPlaceDistinct') {
+        this.battleFinishGokugoPlaceDistinct();
       } else {
         this.battleDeckModal = null;
       }
+    },
+    /* 公開した上からN枚のうち、レガシー/レリックのカードを1枚選んで手札に加える（コスト3以下は場に出す選択肢も）。
+       例：#139覚悟の出陣・#174誓いの契り */
+    async battleGokugoPick(modalIndex, category) {
+      const modal = this.battleDeckModal;
+      if (!modal || modal.action !== 'gokugoPick' || this.battleSample.result) return;
+      const card = modal.cards[modalIndex];
+      if (!card || card.category !== category) return;
+      if (category === 'レガシー' && modal.pickedLegacy) return;
+      if (category === 'レリック' && modal.pickedRelic) return;
+      const p = this.battleSample.self;
+      const cost = Math.max(0, Number(card.cost) || 0);
+      let toField = false;
+      if (cost <= 3) {
+        toField = await this.dslAskOptional(modal.sourceCard, '場に出す', `「${this.fullName(card)}」（コスト${cost}）を手札に加える代わりに場に出しますか？`);
+      }
+      // battleDeckModal が閉じられていないか確認（任意確認中に別操作された場合の保護）
+      if (this.battleDeckModal !== modal) return;
+      const zone = toField ? (this.battleFieldZoneForSummon(card) || 'legacies') : null;
+      let placedCard = null;
+      if (toField && Array.isArray(p[zone]) && p[zone].length < 7) {
+        placedCard = this._battlePrepareFieldCard(card);
+        p[zone].push(placedCard);
+      } else {
+        p.hand.push(card);
+        p.handCount = (p.hand || []).length;
+      }
+      if (category === 'レガシー') this.$set(modal, 'pickedLegacy', card);
+      else this.$set(modal, 'pickedRelic', card);
+      this.dslRefreshStaticAbilities();
+      this.battleShowNotice(
+        placedCard ? '場に出す' : '手札に加える',
+        `「${this.fullName(card)}」を${placedCard ? '場に出しました' : '手札に加えました'}。`,
+        [card]
+      );
+      if (placedCard) {
+        if (!(await this.battleRunEnterKeywordEffects(placedCard, null))) this.battleKeywordGuide(placedCard, null);
+      }
+    },
+    battleFinishGokugoPick() {
+      const modal = this.battleDeckModal;
+      if (!modal || modal.action !== 'gokugoPick') return;
+      const p = this.battleSample.self;
+      const onComplete = modal.onComplete;
+      const remaining = modal.cards.filter(c => c !== modal.pickedLegacy && c !== modal.pickedRelic);
+      if (p && Array.isArray(p.deck)) {
+        p.deck.push(...remaining);
+        p.deckCount = p.deck.length;
+      }
+      this.battleDeckModal = null;
+      this.battleShowNotice('サーチ', `選ばなかった${remaining.length}枚をデッキの下へ戻しました。`, []);
+      if (onComplete) onComplete();
+    },
+    /* 種族が異なるカードを場に出す型のモーダル：このカードが選択可能か（種族重複・コスト条件） */
+    battleGokugoPlaceDistinctEligible(modal, card) {
+      if (!modal || !card || card.category !== modal.config.category) return false;
+      if ((modal.placed || []).length >= modal.config.maxCount) return false;
+      const usedTypes = (modal.placed || []).map(c => c.type).filter(Boolean);
+      if (card.type && usedTypes.includes(card.type)) return false;
+      const cost = Math.max(0, Number(card.cost) || 0);
+      if (modal.config.perCardMaxCost != null && cost > modal.config.perCardMaxCost) return false;
+      if (modal.config.totalMaxCost != null) {
+        const usedCost = (modal.placed || []).reduce((s, c) => s + Math.max(0, Number(c.cost) || 0), 0);
+        if (usedCost + cost > modal.config.totalMaxCost) return false;
+      }
+      return true;
+    },
+    async battleGokugoPlaceDistinct(modalIndex) {
+      const modal = this.battleDeckModal;
+      if (!modal || modal.action !== 'gokugoPlaceDistinct' || this.battleSample.result) return;
+      const card = modal.cards[modalIndex];
+      if (!this.battleGokugoPlaceDistinctEligible(modal, card)) return;
+      const p = this.battleSample.self;
+      const zone = this.battleFieldZoneForSummon(card) || 'legacies';
+      if (!Array.isArray(p[zone]) || p[zone].length >= 7) {
+        this.battleShowNotice('フィールド上限です', `${zone === 'relics' ? 'レリック' : 'レガシー'}フィールドには7枚まで配置できます。`, [card]);
+        return;
+      }
+      const fieldCard = this._battlePrepareFieldCard(card);
+      p[zone].push(fieldCard);
+      modal.placed.push(card);
+      this.dslRefreshStaticAbilities();
+      this.battleShowNotice('場に出す', `「${this.fullName(fieldCard)}」を場に出しました。`, [fieldCard]);
+      if (!(await this.battleRunEnterKeywordEffects(fieldCard, null))) this.battleKeywordGuide(fieldCard, null);
+    },
+    battleFinishGokugoPlaceDistinct() {
+      const modal = this.battleDeckModal;
+      if (!modal || modal.action !== 'gokugoPlaceDistinct') return;
+      const p = this.battleSample.self;
+      const onComplete = modal.onComplete;
+      const remaining = modal.cards.filter(c => !(modal.placed || []).includes(c));
+      if (p && Array.isArray(p.deck)) {
+        p.deck.push(...remaining);
+        p.deckCount = p.deck.length;
+      }
+      this.battleDeckModal = null;
+      this.battleShowNotice('サーチ', `選ばなかった${remaining.length}枚をデッキの下へ戻しました。`, []);
+      if (onComplete) onComplete();
     },
     battleResolveAutoInduce(modalIndex) {
       const modal = this.battleDeckModal;
