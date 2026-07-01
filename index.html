@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.87',
+    BUILD_VERSION: '1.14.88',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7394,7 +7394,10 @@ new Vue({
           const spec = this._dslGetSpec(card);
           if (!spec || !Array.isArray(spec.能力)) continue;
           for (const ab of spec.能力) {
-            if (!this._dslAbilityMatchesTrigger(ab, '常在')) continue;
+            // 常在に加え、進化済みカードの「進化中」代替能力も対象にする（例：#65算盤弾きの刀剣商「レリックが出たとき」）
+            const matchStatic = this._dslAbilityMatchesTrigger(ab, '常在');
+            const matchEvolved = !!card._evolved && this._dslAbilityMatchesTrigger(ab, '進化中');
+            if (!matchStatic && !matchEvolved) continue;
             if (!ab.各ターン || !ab.条件 || !ab.条件.備考) continue;
             const key = `event:${eventType}:${this.battleSample.turn}:${this.battleSample.activeSide}:${spec.名称 || card.no}:${ab.備考 || ab.条件.備考}`;
             const used = card._eventStaticUsed || {};
