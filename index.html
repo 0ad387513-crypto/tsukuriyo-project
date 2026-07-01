@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.86',
+    BUILD_VERSION: '1.14.87',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7511,6 +7511,8 @@ new Vue({
       this._battleApplyStaticTurnEndUntap(endingSide);
       this._battleApplyPendingTurnEndUntap();
       this._battleCheckDelayedReturnToHand(endingSide);
+      this._battleCheckDelayedReturnToOppField(endingSide);
+      this._battleCheckPuppetSourceGone();
       this._battleExpireTempManaMaxMods(endingSide);
       // 天力トリガー（ターン終了系：K2 ヤマトタケル / K3 オオクニヌシ / K4 タケミカヅチ）
       this.battleFireKamiEvent(endingSide, 'turnEnd', {});
@@ -7681,11 +7683,15 @@ new Vue({
         const spec = this._dslGetSpec(card);
         if (!spec || !Array.isArray(spec.能力)) return;
         spec.能力.forEach(ab => {
-          if (ab.任意 || !this._dslAbilityMatchesTrigger(ab, '常在')) return;
+          // 常在に加え、進化済みカードの「進化中」代替能力も対象にする（例：#59葛ノ葉亭の若女将「神攻したそれら」）
+          const matchStatic = this._dslAbilityMatchesTrigger(ab, '常在');
+          const matchEvolved = !!card._evolved && this._dslAbilityMatchesTrigger(ab, '進化中');
+          if (ab.任意 || (!matchStatic && !matchEvolved)) return;
           if (ab.条件 && !this.dslEvalCond(ab.条件)) return;
           (ab.処理 || []).forEach(act => {
             const op = act.操作 || act.op;
-            if (op !== 'アンタップ' || act.期間 !== '自分ターン終了時') return;
+            // 「自分ターン終了時」「そのターン終了時」＝どちらもこのカードの持ち主のターン終了時を指す
+            if (op !== 'アンタップ' || !/^(自分ターン終了時|そのターン終了時)$/.test(String(act.期間 || ''))) return;
             const prevSource = this._dslCurrentSource;
             this._dslCurrentSource = card;
             try {
@@ -7759,6 +7765,72 @@ new Vue({
         this.battleShowNotice('手札に戻る', `${lines}が元の持ち主の手札に戻りました。`, returned.map(r => r.card));
       }
     },
+    /* 「(次の)相手ターン終了時まで」の傀儡化（例：#4ハゼ）を解決する。
+       奪ったカードは、元の持ち主のターン終了時に元の持ち主の場（レガシー）へ戻す。 */
+    _battleCheckDelayedReturnToOppField(endingSide) {
+      const bs = this.battleSample;
+      if (!bs) return;
+      const returned = [];
+      ['self', 'opp'].forEach(holderSide => {
+        const originalOwnerSide = holderSide === 'self' ? 'opp' : 'self';
+        if (originalOwnerSide !== endingSide) return; // 元の持ち主のターン終了時のみ
+        const holder = bs[holderSide];
+        const owner = bs[originalOwnerSide];
+        if (!holder || !owner) return;
+        const arr = Array.isArray(holder.legacies) ? holder.legacies : [];
+        for (let i = arr.length - 1; i >= 0; i--) {
+          const card = arr[i];
+          if (!card || !card._returnToFieldOnOppTurnEnd) continue;
+          if (!Array.isArray(owner.legacies) || owner.legacies.length >= 7) continue;
+          arr.splice(i, 1);
+          this.battleReleaseEvolutionBase(card, holderSide);
+          this._battleResetCardBuffs(card);
+          this.$set(card, '_tapped', false);
+          this.$set(card, '_returnToFieldOnOppTurnEnd', false);
+          this.$set(card, '_puppeted', false);
+          owner.legacies.push(card);
+          returned.push({ card, ownerSide: originalOwnerSide });
+        }
+      });
+      if (returned.length) {
+        this.dslRefreshStaticAbilities();
+        const lines = returned.map(r => `${r.ownerSide === 'self' ? '自分' : '相手'}の「${this.fullName(r.card)}」`).join('、');
+        this.battleShowNotice('傀儡化解除', `${lines}が元の持ち主の場に戻りました。`, returned.map(r => r.card));
+      }
+    },
+    /* 「このカードが場にある間」の傀儡化（例：呪縛の玉座）：発動源カードが場から居なくなったら
+       奪ったカードを即座に元の持ち主の場へ戻す。 */
+    _battleCheckPuppetSourceGone() {
+      const bs = this.battleSample;
+      if (!bs) return;
+      const fieldCards = this.dslFieldCards().map(({ card }) => card);
+      const returned = [];
+      ['self', 'opp'].forEach(holderSide => {
+        const originalOwnerSide = holderSide === 'self' ? 'opp' : 'self';
+        const holder = bs[holderSide];
+        const owner = bs[originalOwnerSide];
+        if (!holder || !owner || !Array.isArray(holder.legacies)) return;
+        for (let i = holder.legacies.length - 1; i >= 0; i--) {
+          const card = holder.legacies[i];
+          const source = card && card._puppetTiedToSourceCard;
+          if (!source || fieldCards.includes(source)) continue;
+          if (!Array.isArray(owner.legacies) || owner.legacies.length >= 7) continue;
+          holder.legacies.splice(i, 1);
+          this.battleReleaseEvolutionBase(card, holderSide);
+          this._battleResetCardBuffs(card);
+          this.$set(card, '_tapped', false);
+          this.$set(card, '_puppetTiedToSourceCard', null);
+          this.$set(card, '_puppeted', false);
+          owner.legacies.push(card);
+          returned.push({ card, ownerSide: originalOwnerSide });
+        }
+      });
+      if (returned.length) {
+        this.dslRefreshStaticAbilities();
+        const lines = returned.map(r => `${r.ownerSide === 'self' ? '自分' : '相手'}の「${this.fullName(r.card)}」`).join('、');
+        this.battleShowNotice('傀儡化解除', `効果の発動源が場を離れたため、${lines}が元の持ち主の場に戻りました。`, returned.map(r => r.card));
+      }
+    },
     /* 「次の(相手)ターン終了時まで」のマナ最大値の一時的な変化（例：#164鬼哭爪襲）を、対象側のターン終了時に元へ戻す */
     _battleExpireTempManaMaxMods(endingSide) {
       const p = this.battleSample && this.battleSample[endingSide];
@@ -7790,6 +7862,8 @@ new Vue({
       // 天力トリガーの各ターン回数カウンタをリセット
       target.kamiTriggerCounts = {};
       target.legacyDestroyedThisTurn = [];
+      // このターン中に神攻したレガシー（「神攻したそれら」参照用。例：#59葛ノ葉亭の若女将）
+      target.divineAttackersThisTurn = [];
       // このターン中のカード使用枚数をリセット（「2枚目以降」条件用）
       target.cardPlaysThisTurn = 0;
       // 自分フィールドのカードを全てアンタップ
@@ -8776,6 +8850,12 @@ new Vue({
           : null;
         return source ? [source] : [];
       }
+      if (/神攻したそれら/.test(s)) {
+        // このターン中に神攻を宣言したカードの持ち主側のリストを参照する（例：#59葛ノ葉亭の若女将）
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const player = this.battleSample && this.battleSample[side];
+        return ((player && player.divineAttackersThisTurn) || []).filter(Boolean);
+      }
       if (/その選んだレガシー|そのレガシー/.test(s)) {
         const chosen = this._dslLastChosenTargets || [];
         return chosen.filter(card => card && card.category === 'レガシー');
@@ -9674,8 +9754,18 @@ new Vue({
       if (!moved.length) return;
       // 「次の相手ターン終了時に手札に戻る」：元の持ち主（相手）のターン終了時に自動で手札へ戻す
       const grants = Array.isArray(act.付与) ? act.付与 : [];
-      if (grants.some(g => /次の相手ターン終了時に手札に戻る/.test(String(g)))) {
+      const hasHandReturnGrant = grants.some(g => /次の相手ターン終了時に手札に戻る/.test(String(g)));
+      if (hasHandReturnGrant) {
         moved.forEach(c => this.$set(c, '_returnToHandOnOppTurnEnd', true));
+      }
+      // 期間:(次の)相手ターン終了時まで：元の持ち主（相手）のターン終了時に自動で相手の場へ戻す（例：#4ハゼ）
+      const period = String(act.期間 || '');
+      if (!hasHandReturnGrant && /相手ターン終了時まで/.test(period)) {
+        moved.forEach(c => this.$set(c, '_returnToFieldOnOppTurnEnd', true));
+      }
+      // 期間:このカードが場にある間：発動源カードが場を離れたら自動で相手の場へ戻す（例：呪縛の玉座）
+      if (period === 'このカードが場にある間' && sourceCard) {
+        moved.forEach(c => this.$set(c, '_puppetTiedToSourceCard', sourceCard));
       }
       this.dslRefreshStaticAbilities();
       const extraGrants = grants.filter(g => !/次の相手ターン終了時に手札に戻る/.test(String(g)));
@@ -12250,6 +12340,11 @@ new Vue({
       if (!attacker) return;
       const can = this.battleLegacyCanAct(attacker, 'divine');
       if (!can.ok) { this.battleShowNotice('神攻できません', can.reason, [attacker]); return; }
+      // 「神攻したそれら」参照用（例：#59葛ノ葉亭の若女将）：守護で戦闘に差し替えられた場合も神攻の宣言自体は成立する
+      const selfPlayer = this.battleSample.self;
+      const divineList = Array.isArray(selfPlayer.divineAttackersThisTurn) ? selfPlayer.divineAttackersThisTurn.slice() : [];
+      if (!divineList.includes(attacker)) divineList.push(attacker);
+      this.$set(selfPlayer, 'divineAttackersThisTurn', divineList);
       const guard = await this._battleChooseGuard(attacker, 'opp', null);
       if (guard) {
         // 【神攻時】は神攻を宣言した時点で発動が確定する効果のため、守護で戦闘に差し替えられても発動する。
