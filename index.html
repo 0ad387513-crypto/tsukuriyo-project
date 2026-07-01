@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.85',
+    BUILD_VERSION: '1.14.86',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -9114,18 +9114,32 @@ new Vue({
     },
 
     /* ---- op実装 ---- */
+    /* 「期間」テキストから、実際に効果が切れる対象側＋ターンを算出する（【拘束】と同じ考え方を流用）。
+       defaultToCurrentTurn=true の場合、期間未指定でも「このターン」扱い（従来の補正/神威のデフォルト）。
+       未対応・無期限の期間（「このカードが場にある間」等）は null を返し、場を離れるまで持続扱いとする。 */
+    _dslGrantExpireTarget(period, defaultToCurrentTurn) {
+      const applierSide = (this.battleSample && this.battleSample.activeSide) || 'self';
+      const oppSide = applierSide === 'self' ? 'opp' : 'self';
+      const s = String(period || '');
+      let side = null;
+      if (/次の相手ターン終了時まで|相手ターン終了時まで/.test(s)) side = oppSide;
+      else if (/次の自分ターン終了時まで/.test(s)) side = applierSide;
+      else if (s === 'このターン') side = applierSide;
+      else if (defaultToCurrentTurn) side = applierSide; // 未対応・未指定の期間は従来通り「このターン」扱い
+      else return null; // キーワード付与で期間未指定・無期限（「このカードが場にある間」等）は場を離れるまで持続
+      return { side, turn: this._battleBindingTurnForSide(side) };
+    },
     _dslApplyGrant(card, grants, permanent, period) {
       if (!card) return;
       (grants || []).forEach(g => {
         const s = String(g);
         let m;
         if (m = s.match(/^補正[:：]?([+\-]?\d+)$/)) {
-          // 一時補正：適用ターン＋適用者を記録（ターン終了時に巻き戻すため）
+          // 一時補正：適用ターン＋適用者を記録（期間に応じたターン終了時に巻き戻すため）
           const delta = Number(m[1]);
-          const applierSide = (this.battleSample && this.battleSample.activeSide) || 'self';
-          const turn = (this.battleSample && this.battleSample.turn) || 1;
+          const target = this._dslGrantExpireTarget(period, true);
           const entries = Array.isArray(card._bufTurns) ? card._bufTurns.slice() : [];
-          entries.push({ side: applierSide, turn, delta });
+          entries.push({ side: target.side, turn: target.turn, delta });
           this.$set(card, '_bufTurns', entries);
           this.$set(card, '_buf', (Number(card._buf) || 0) + delta);
           this.$set(card, 'power', (Number(card.power) || 0) + delta);
@@ -9135,12 +9149,11 @@ new Vue({
         } else if (m = s.match(/^神攻力([+\-]?\d+)/)) {
           this.$set(card, 'attack', (Number(card.attack) || 0) + Number(m[1]));
         } else if (m = s.match(/^神威[:：]?([+\-]?\d+)/)) {
-          // 一時神攻力（神威）：このターン中のみ。適用ターン＋適用者を記録し、ターン終了時に巻き戻す
+          // 一時神攻力（神威）：期間に応じたターン終了時に巻き戻す
           const delta = Number(m[1]);
-          const applierSide = (this.battleSample && this.battleSample.activeSide) || 'self';
-          const turn = (this.battleSample && this.battleSample.turn) || 1;
+          const target = this._dslGrantExpireTarget(period, true);
           const atkEntries = Array.isArray(card._atkTurns) ? card._atkTurns.slice() : [];
-          atkEntries.push({ side: applierSide, turn, delta });
+          atkEntries.push({ side: target.side, turn: target.turn, delta });
           this.$set(card, '_atkTurns', atkEntries);
           this.$set(card, 'attack', (Number(card.attack) || 0) + delta);
         } else {
@@ -9148,13 +9161,14 @@ new Vue({
           const list = Array.isArray(card._kwGrant) ? card._kwGrant.slice() : [];
           if (!list.includes(s)) list.push(s);
           this.$set(card, '_kwGrant', list);
-          // 期間:このターン のキーワード付与は、ターン終了時に自動で消えるよう記録しておく
-          // （例：シラトリ・暴食たる牙の竜人・月見草の修行場・K4タケミカヅチ神技）
-          if (period === 'このターン') {
-            const applierSide = (this.battleSample && this.battleSample.activeSide) || 'self';
-            const turn = (this.battleSample && this.battleSample.turn) || 1;
+          // 期間が明示されているキーワード付与は、対応するターン終了時に自動で消えるよう記録しておく
+          // （例：シラトリ・暴食たる牙の竜人・月見草の修行場・K4タケミカヅチ神技＝このターン、
+          // 　　狂乱の幻霧・忠義の一刀・鎮魂の花畑・K8アマテラス神技1＝次の相手ターン終了時まで）
+          // 期間未指定の場合は従来通りカードが場を離れるまで持続する（追跡しない）。
+          const target = this._dslGrantExpireTarget(period, false);
+          if (target) {
             const kwTurns = Array.isArray(card._kwGrantTurns) ? card._kwGrantTurns.slice() : [];
-            kwTurns.push({ keyword: s, side: applierSide, turn });
+            kwTurns.push({ keyword: s, side: target.side, turn: target.turn });
             this.$set(card, '_kwGrantTurns', kwTurns);
           }
         }
