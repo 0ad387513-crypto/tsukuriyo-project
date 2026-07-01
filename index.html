@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.89',
+    BUILD_VERSION: '1.14.90',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -9165,6 +9165,28 @@ new Vue({
         const m = s.match(/他の(.+?)レガシーが出たとき/);
         const crit = m && m[1] ? [`${m[1]}レガシー`] : [];
         return !crit.length || this.battleCardMatchesInduceCriteria(enteredCard, crit);
+      }
+      if (/自分の他の.*レガが神攻したとき/.test(s)) {
+        // 例：ハクレン「自分の他の緑/人獣レガが神攻したとき」。自分自身の神攻や絞込条件に合わないカードでは成立しない
+        const ev = this._dslCurrentEvent;
+        if (!ev || ev.type !== 'opponentLifeDecreased' || !ev.payload || ev.payload.by !== 'divineAttack' || !ev.payload.source) return false;
+        const attackerCard = ev.payload.source;
+        if (attackerCard === this._dslCurrentSource) return false;
+        const m = s.match(/自分の他の(.+?)レガが神攻したとき/);
+        const crit = m && m[1] ? m[1].split('/').map(p => `${p}レガシー`) : [];
+        return !crit.length || this.battleCardMatchesInduceCriteria(attackerCard, crit);
+      }
+      if (/全ての封印が解かれたとき/.test(s)) {
+        // K10ヤマタノオロチ神技「封神・終極八岐」：封印が0（自分側）まで解けていれば成立
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const player = this.battleSample && this.battleSample[side];
+        return !!(player && Number(player.seal) <= 0);
+      }
+      if (/封印が4つ解かれたとき/.test(s)) {
+        // K10ヤマタノオロチ神技「四岐龍胤」：封印が4以下（自分側）まで解けていれば成立
+        const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+        const player = this.battleSample && this.battleSample[side];
+        return !!(player && Number(player.seal) <= 4);
       }
       if (/自分ターン中・自分の緑\/龍レガが戦闘でレガシーを破壊したとき/.test(s)) {
         // 例：ヴィリデ。自分ターン中、かつ破壊した自分レガシーが緑カードまたは龍レガシーの場合のみ成立
@@ -13096,7 +13118,8 @@ new Vue({
         const ok = await this.dslAskOptional(kami, '神技', summary);
         if (!ok) return;
       }
-      // 条件評価
+      // 条件評価（_dslCurrentSourceSide 等で正しくカミ自身の側を参照できるよう、判定前に source を設定する）
+      this._dslCurrentSource = kami;
       if (target.条件 && !this.dslEvalCond(target.条件)) {
         this.battleShowNotice(
           '神技：条件未達',
@@ -13105,7 +13128,6 @@ new Vue({
         );
         return;
       }
-      this._dslCurrentSource = kami;
       try {
         await this.dslRunActions(target.処理 || [], kami);
       } catch (e) {
