@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.84',
+    BUILD_VERSION: '1.14.85',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7526,6 +7526,7 @@ new Vue({
       const bs = this.battleSample;
       if (!bs) return;
       const expired = [];
+      const keywordExpiredNames = [];
       ['self', 'opp'].forEach(s => {
         const p = bs[s];
         if (!p) return;
@@ -7568,8 +7569,33 @@ new Vue({
           });
         });
       });
+      // 「期間:このターン」で付与されたキーワード（奇襲・死角・疾駆 等）も、付与元の対象側+ターンが
+      // 一致すればここで消える（例：シラトリ・暴食たる牙の竜人・月見草の修行場・K4タケミカヅチ神技）
+      this.dslFieldCards().forEach(({ card }) => {
+        const kwTurns = Array.isArray(card._kwGrantTurns) ? card._kwGrantTurns : null;
+        if (!kwTurns || !kwTurns.length) return;
+        const keep = [];
+        const expiredKeywords = [];
+        kwTurns.forEach(e => {
+          if (e && e.side === side && e.turn === turn) expiredKeywords.push(e.keyword);
+          else keep.push(e);
+        });
+        if (!expiredKeywords.length) return;
+        this.$set(card, '_kwGrantTurns', keep);
+        // 別の付与元でまだ有効な同名キーワードは残す（重複付与のケース）
+        const stillActive = new Set(keep.map(e => e.keyword));
+        const kwList = Array.isArray(card._kwGrant) ? card._kwGrant.slice() : [];
+        const newKwList = kwList.filter(k => stillActive.has(k) || !expiredKeywords.includes(k));
+        if (newKwList.length !== kwList.length) {
+          this.$set(card, '_kwGrant', newKwList);
+          keywordExpiredNames.push(this.fullName(card));
+        }
+      });
       if (expired.length) {
         this.battleShowNotice('補正・神威の効果が終了', `${expired.join('、')}に付与されていた【補正】／【神威】の効果が終了しました。`);
+      }
+      if (keywordExpiredNames.length) {
+        this.battleShowNotice('付与キーワードの効果が終了', `${keywordExpiredNames.join('、')}に付与されていたこのターン限定のキーワードが終了しました。`);
       }
     },
     /* 戦闘力0以下のレガシーを破壊（補正巻き戻し直後等に呼ぶ） */
@@ -9088,7 +9114,7 @@ new Vue({
     },
 
     /* ---- op実装 ---- */
-    _dslApplyGrant(card, grants, permanent) {
+    _dslApplyGrant(card, grants, permanent, period) {
       if (!card) return;
       (grants || []).forEach(g => {
         const s = String(g);
@@ -9122,6 +9148,15 @@ new Vue({
           const list = Array.isArray(card._kwGrant) ? card._kwGrant.slice() : [];
           if (!list.includes(s)) list.push(s);
           this.$set(card, '_kwGrant', list);
+          // 期間:このターン のキーワード付与は、ターン終了時に自動で消えるよう記録しておく
+          // （例：シラトリ・暴食たる牙の竜人・月見草の修行場・K4タケミカヅチ神技）
+          if (period === 'このターン') {
+            const applierSide = (this.battleSample && this.battleSample.activeSide) || 'self';
+            const turn = (this.battleSample && this.battleSample.turn) || 1;
+            const kwTurns = Array.isArray(card._kwGrantTurns) ? card._kwGrantTurns.slice() : [];
+            kwTurns.push({ keyword: s, side: applierSide, turn });
+            this.$set(card, '_kwGrantTurns', kwTurns);
+          }
         }
       });
     },
@@ -9178,6 +9213,7 @@ new Vue({
       this.$set(card, '_perm', 0);
       this.$set(card, '_atkTurns', []);
       this.$set(card, '_kwGrant', []);
+      this.$set(card, '_kwGrantTurns', []);
       this.$set(card, '_typeGrant', []);
       this.$set(card, '_senteiChosenDescriptions', []);
       this.$set(card, '_onceUntapConsumed', false);
@@ -9367,7 +9403,7 @@ new Vue({
       const targets = await this.dslChooseTargets(act.対象, `【${(act.付与 || []).join('・')}】を付与`);
       if (!targets.length) return;
       this.battleSaveUndo();
-      targets.forEach(c => this._dslApplyGrant(c, act.付与, permanent));
+      targets.forEach(c => this._dslApplyGrant(c, act.付与, permanent, act.期間));
       this.battleShowNotice(
         permanent ? '静的バフ（恒常）' : '付与（このターン）',
         `${targets.map(c => `「${this.fullName(c)}」`).join('、')}に ${(act.付与 || []).join(' / ')} を付与しました。`,
@@ -11738,6 +11774,7 @@ new Vue({
       this.$set(fieldCard, '_evolvedBase', null);
       this.$set(fieldCard, '_evolvedFromGraveyard', false);
       this.$set(fieldCard, '_kwGrant', []);
+      this.$set(fieldCard, '_kwGrantTurns', []);
       this.$set(fieldCard, '_crumbleOnLeaveGrant', false);
       return fieldCard;
     },
