@@ -2278,13 +2278,22 @@
   .battle-log-turn-marker.self { color: #8fb0f0; }
   .battle-log-turn-marker.opp { color: #ff9a9a; }
   .battle-log-entry {
-    display: flex; flex-direction: column; gap: 2px; padding: 8px 10px;
-    border-radius: 6px; border-left: 3px solid #4a4f5d; background: rgba(255,255,255,.03);
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+    border-radius: 6px; border-left: 4px solid #4a4f5d; background: rgba(255,255,255,.03);
   }
-  .battle-log-entry.self { border-left-color: #6f8fca; }
-  .battle-log-entry.opp { border-left-color: #ca6f6f; }
+  .battle-log-entry.self { border-left-color: #6f8fca; background: rgba(111,143,202,.10); }
+  .battle-log-entry.opp { border-left-color: #ca6f6f; background: rgba(202,111,111,.10); }
+  .battle-log-entry-icon {
+    flex: 0 0 auto; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    font-size: 15px; border-radius: 50%; background: rgba(0,0,0,.28);
+  }
+  .battle-log-entry-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
   .battle-log-entry-title { font-size: 12px; font-weight: 700; color: #e8d4a0; }
   .battle-log-entry-message { font-size: 12px; color: #cbd3de; white-space: pre-line; }
+  .battle-log-entry-thumb {
+    flex: 0 0 auto; width: 34px; aspect-ratio: 744 / 1039; background: #2a2f3d center/cover no-repeat;
+    border: 1px solid #4a4f5d; border-radius: 4px;
+  }
   .battle-deck-modal-message {
     margin: 8px 0 12px; color: #cbd3de; line-height: 1.55; white-space: pre-line;
     font-size: 13px;
@@ -4263,9 +4272,16 @@
               <div v-if="entry.isTurnMarker" :key="'t'+i" class="battle-log-turn-marker" :class="entry.side">
                 {{ entry.message }}
               </div>
-              <div v-else :key="i" class="battle-log-entry" :class="entry.side">
-                <span class="battle-log-entry-title">{{ entry.title }}</span>
-                <span class="battle-log-entry-message">{{ entry.message }}</span>
+              <div v-else :key="i" class="battle-log-entry" :class="entry.side"
+                   @mouseenter="entry.cards && entry.cards[0] ? showCardHover(entry.cards[0], $event) : null"
+                   @mouseleave="hideCardHover">
+                <span class="battle-log-entry-icon" :class="'icon-' + (entry.icon || 'effect')">{{ battleLogIconGlyph(entry.icon) }}</span>
+                <div class="battle-log-entry-body">
+                  <span class="battle-log-entry-title">{{ entry.title }}</span>
+                  <span class="battle-log-entry-message">{{ entry.message }}</span>
+                </div>
+                <div v-if="entry.cards && entry.cards[0]" class="battle-log-entry-thumb"
+                     :style="cardImageUrl(entry.cards[0]) ? { backgroundImage: 'url(' + cardImageUrl(entry.cards[0]) + ')' } : {}"></div>
               </div>
             </template>
           </div>
@@ -5621,7 +5637,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.106',
+    BUILD_VERSION: '1.14.107',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7524,15 +7540,25 @@ new Vue({
       await this.battleRunEventStaticAbilities(side, eventType, payload || {});
       this._battleFireKamiEventKamiEffects(side, eventType, payload);
     },
-    /* バトルログ「プレイ」タブ用：場に出た/使用されたカード（トークンを除く）を記録する */
+    /* バトルログ「プレイ」タブ用：場に出た/使用されたカード（トークンを除く）を記録する。
+       あわせて「ログ」タブにも「〜をプレイした」という1件を追加する
+       （出現時等の固有効果を持たないカードは従来ログに一切残らなかったため）。 */
     _battleTrackPlayedCard(side, eventType, payload) {
       if (!this.battleSample) return;
       if (eventType !== 'legacyEntered' && eventType !== 'playOracleOrRelic') return;
       const card = payload && payload.card;
       if (!card || card.isToken) return;
       const list = this.battlePlayLog[side] || (this.battlePlayLog[side] = []);
-      if (list.some(e => e.card === card)) return;
-      list.push({ turn: this.battleSample.turn, card });
+      const alreadyPlayed = list.some(e => e.card === card);
+      if (!alreadyPlayed) list.push({ turn: this.battleSample.turn, card });
+      this.battleLog.push({
+        turn: this.battleSample.turn,
+        side,
+        title: 'プレイ',
+        message: `「${this.fullName(card)}」を${side === 'self' ? '' : '相手が'}プレイした`,
+        cards: [card],
+        icon: 'play',
+      });
     },
     _battleFireKamiEventKamiEffects(side, eventType, payload) {
       const kno = this._battleKamiNo(side);
@@ -8316,19 +8342,39 @@ new Vue({
         this._battleNoticeMerging = true;
         Promise.resolve().then(() => { this._battleNoticeMerging = false; });
       }
-      this._battleAppendLogEntry(title, message);
+      this._battleAppendLogEntry(title, message, cards);
       // オンライン同期：相手にも通知を共有（writerガードと重複防止のため ts を付与）
       this._battlePublishNotice(title, message, cards);
     },
-    /* バトルログ（一挙一動の履歴）に1件追加する */
-    _battleAppendLogEntry(title, message) {
+    /* バトルログ（一挙一動の履歴）に1件追加する。cardsの最初の1枚が今いる場所からサイド（自分/相手）を判定する
+       （所有者ではなく「今その場にあるサイド」を見るのは、破壊/崩壊等で移動した後の表示にも対応するため） */
+    _battleAppendLogEntry(title, message, cards) {
       if (!this.battleSample) return;
+      const list = Array.isArray(cards) ? cards.filter(Boolean) : [];
+      let side = this.battleSample.activeSide;
+      if (list.length) {
+        const loc = this._dslFindCardLocation(list[0]);
+        if (loc) side = loc.side;
+      }
       this.battleLog.push({
         turn: this.battleSample.turn,
-        side: this.battleSample.activeSide,
+        side,
         title: String(title || ''),
         message: String(message || ''),
+        cards: list,
+        icon: this._battleLogEntryIcon(title, message),
       });
+    },
+    /* ログ1件の見た目分類（アイコン切替用）。タイトル/本文のキーワードから大まかに判定する */
+    _battleLogEntryIcon(title, message) {
+      const t = String(title || '');
+      const m = String(message || '');
+      if (/破壊|崩壊/.test(t)) return 'destroy';
+      if (/神攻成功/.test(t) || /ライフを.*減ら|にダメージ/.test(m)) return 'damage';
+      if (/付与|バフ|補正|神威/.test(t)) return 'buff';
+      if (/招来|出現|選定|場に出す|無償使用|プレイ/.test(t)) return 'play';
+      if (/ドロー/.test(t)) return 'draw';
+      return 'effect';
     },
     _battlePublishNotice(title, message, cards) {
       const n = this.battleNet;
@@ -13190,6 +13236,18 @@ new Vue({
     /* バトルログモーダルを開く（tab: 'log' | 'play'） */
     battleOpenLogModal(tab) {
       this.battleLogModal = { tab: tab || 'log', playSide: 'self' };
+    },
+    /* ログ1件のアイコン絵文字（_battleLogEntryIconで分類したkindに対応） */
+    battleLogIconGlyph(icon) {
+      const map = {
+        play: '📥',
+        effect: '✨',
+        buff: '⬆️',
+        destroy: '💀',
+        damage: '💥',
+        draw: '🎴',
+      };
+      return map[icon] || '✨';
     },
     battleZoneListCardClick(c) {
       if (Date.now() < (this._battleSuppressZoneListClickUntil || 0)) return;
