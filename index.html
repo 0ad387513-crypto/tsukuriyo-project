@@ -5546,7 +5546,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.104',
+    BUILD_VERSION: '1.14.105',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8496,7 +8496,7 @@ new Vue({
         { key: '破壊', dest: 'graveyard', title: '破壊するコスト対象を選択' },
         { key: '崩壊', dest: 'crumbled', title: '崩壊するコスト対象を選択' },
       ]) {
-        const sel = cost[item.key];
+        const sel = this._dslDefaultBothCategoriesIfUnrestricted(cost[item.key]);
         if (!sel) continue;
         const need = Math.max(1, Number(sel.枚数 || 1));
         const targets = await this.dslChooseTargets(sel, `${label}: ${item.title}`);
@@ -9364,21 +9364,31 @@ new Vue({
       else return null; // キーワード付与で期間未指定・無期限（「このカードが場にある間」等）は場を離れるまで持続
       return { side, turn: this._battleBindingTurnForSide(side) };
     },
-    /* 数参照が「直前で墓地に送った中の◯◯の枚数だけ補正X」のような動的倍率を示す場合、
-       実際に該当する枚数を数えて補正量を計算し直す（例：#19カゲロウ）。該当しなければそのまま返す。 */
+    /* 数参照が「直前で墓地に送った中の◯◯の枚数だけ補正X」「自分墓地の◯◯数だけ補正X」のような
+       動的倍率を示す場合、実際に該当する枚数を数えて補正量を計算し直す
+       （例：#19カゲロウ、#132蠢く陰謀）。該当しなければそのまま返す。 */
     _dslResolveDynamicGrantAmounts(act) {
       const grants = Array.isArray(act && act.付与) ? act.付与.slice() : [];
       const ref = String((act && act.数参照) || '');
-      const m = ref.match(/直前で墓地に送った中の(.+?)の枚数だけ補正([+\-]?\d+)/);
-      if (!m) return grants;
-      const criteria = m[1].split(/[+＋]/).map(t => t.trim()).filter(Boolean);
-      const milled = this._dslLastMilledCards || [];
-      const count = milled.filter(c => c && this.battleCardMatchesInduceCriteria(c, criteria)).length;
-      const total = (Number(m[2]) || 0) * count;
-      return grants.map(g => {
+      const applyTotal = (total) => grants.map(g => {
         const gs = String(g);
         return /^補正[:：]?[+\-]?\d+$/.test(gs) ? `補正:${total >= 0 ? '+' : ''}${total}` : g;
       });
+      const m = ref.match(/直前で墓地に送った中の(.+?)の枚数だけ補正([+\-]?\d+)/);
+      if (m) {
+        const criteria = m[1].split(/[+＋]/).map(t => t.trim()).filter(Boolean);
+        const milled = this._dslLastMilledCards || [];
+        const count = milled.filter(c => c && this.battleCardMatchesInduceCriteria(c, criteria)).length;
+        return applyTotal((Number(m[2]) || 0) * count);
+      }
+      const mGrave = ref.match(/自分墓地の(.+?)数だけ補正([+\-]?\d+)/);
+      if (mGrave) {
+        const criteria = mGrave[1].replace(/[のを]$/, '').split(/[+＋]/).map(t => t.trim()).filter(Boolean);
+        const self = this.battleSample.self || {};
+        const count = (self.graveyard || []).filter(c => c && this.battleCardMatchesInduceCriteria(c, criteria)).length;
+        return applyTotal((Number(mGrave[2]) || 0) * count);
+      }
+      return grants;
     },
     /* act.繰返し が「自分フィールド+墓地の◯◯1枚につき+1回」のような動的リピートを示す場合、
        該当枚数ぶん付与を重ねがけした倍率を返す（例：#115プルプラ）。該当しなければ1を返す。 */
@@ -9732,6 +9742,12 @@ new Vue({
       // 補正/静的バフでマイナスを受けて戦闘力0以下になったら即破壊
       this._battleCheckDestroyZeroPower();
     },
+    /* 「レガシーorレリック」等の指定（絞込）がない破壊/崩壊は、レガシー・レリック両方を対象にする
+       （「カード」絞込は _dslZoneOf 側で両カテゴリを含む扱いになっている既存ルールを流用） */
+    _dslDefaultBothCategoriesIfUnrestricted(sel) {
+      if (!sel || (Array.isArray(sel.絞込) && sel.絞込.length)) return sel;
+      return Object.assign({}, sel, { 絞込: ['カード'] });
+    },
     async _dslOpDestroy(act, sourceCard) {
       if (act && act.対象 && String(act.対象.比較 || '') === 'powerLE:選んだ自分レガシー2枚の合計戦闘力') {
         const picked = await this.dslChooseTargets({
@@ -9761,9 +9777,10 @@ new Vue({
       }
       // 「レガシーを破壊する」等、対象側の指定がない破壊効果は自分・相手を問わず対象にする（備考等で対象が
       // 一意に定まる場合は _dslEligible 側で解決されるためここでは上書きしない）
-      const destroySel = (act.対象 && !act.対象.対象側 && !act.対象.自陣全体 && !act.対象.自身)
+      let destroySel = (act.対象 && !act.対象.対象側 && !act.対象.自陣全体 && !act.対象.自身)
         ? Object.assign({}, act.対象, { 対象側: 'both' })
         : act.対象;
+      destroySel = this._dslDefaultBothCategoriesIfUnrestricted(destroySel);
       // 「加えたレガシーの戦闘力」等、動的な数値を参照する比較は、実際の数値をプロンプトに明記する
       // （例：#119刹那の救援：手札に加えたレガシーの戦闘力によって破壊できる範囲が変わる）
       let destroyPrompt = '破壊する対象を選択';
@@ -9863,7 +9880,9 @@ new Vue({
       }
     },
     async _dslOpCrumble(act, sourceCard) {
-      const targets = await this.dslChooseTargets(act.対象, '崩壊させる対象を選択');
+      // 「レガシーを崩壊させる」等、絞込の指定がない崩壊効果はレガシー・レリック両方を対象にする
+      const crumbleSel = this._dslDefaultBothCategoriesIfUnrestricted(act.対象);
+      const targets = await this.dslChooseTargets(crumbleSel, '崩壊させる対象を選択');
       if (!targets.length) return;
       this.battleSaveUndo();
       // 数参照用コンテキスト
