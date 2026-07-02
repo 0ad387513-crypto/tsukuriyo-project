@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.102',
+    BUILD_VERSION: '1.14.103',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7659,6 +7659,7 @@ new Vue({
           this.battleFireKamiEvent('self', 'legacyDestroyed', { card: d.card });
           this.battleFireKamiEvent('opp', 'legacyDestroyed', { card: d.card });
           this.battleRecordLegacyDestroyed(d.side, d.card);
+          this._battleCheckGraveyardActivationPrompt(d.side);
         });
         // 死亡時トリガー（例：#192覇道による補正で戦闘力0以下になったレガシーも死亡時効果を発動する）
         destroyed.forEach(d => this.battleRunDeathKeywordEffects(d.card));
@@ -7867,6 +7868,35 @@ new Vue({
       const list = Array.isArray(player.legacyDestroyedThisTurn) ? player.legacyDestroyedThisTurn.slice() : [];
       if (!list.includes(card)) list.push(card);
       this.$set(player, 'legacyDestroyedThisTurn', list);
+    },
+    /* 「自分レガシーが破壊されたとき」条件の墓地起動能力を、戦闘・効果破壊を問わず破壊された直後に
+       自動で確認する（例：#114怨嗟の狂骨②）。従来は墓地カードを右クリックしないと発動機会に気づけなかった。
+       あくまで発動タイミングの自動検知＋確認ダイアログであり、発動自体は引き続き任意（プレイヤーが選ぶ）。 */
+    async _battleCheckGraveyardActivationPrompt(side) {
+      if (side !== 'self' || !this.effectSpecsReady || !this.battleSample) return;
+      const player = this.battleSample[side];
+      if (!player || !Array.isArray(player.graveyard)) return;
+      for (const card of player.graveyard.slice()) {
+        if (!card || !player.graveyard.includes(card)) continue;
+        const spec = this._dslGetSpec(card);
+        if (!spec || !Array.isArray(spec.能力)) continue;
+        for (const ab of spec.能力) {
+          if (!ab || ab.契機 !== '墓地起動' || !ab.任意) continue;
+          if (!ab.条件 || !/自分レガシーが破壊されたとき/.test(String(ab.条件.備考 || ''))) continue;
+          this._dslCurrentSource = card;
+          if (!this.dslEvalCond(ab.条件)) continue;
+          const summary = this._dslSummarizeActions(ab.処理 || []);
+          const ok = await this.dslAskOptional(card, '墓地起動（自分レガシーが破壊されたとき）', summary);
+          if (!ok) continue;
+          this.battleSaveUndo();
+          this._dslCurrentSource = card;
+          const paid = await this.dslPayAbilityCost(ab.コスト || {}, card, '墓地起動コスト');
+          if (!paid) continue;
+          await this.dslRunActions(ab.処理 || [], card);
+          this.dslRefreshStaticAbilities();
+          this.battleShowNotice('墓地起動', `「${this.fullName(card)}」の墓地起動能力を発動しました。`, [card]);
+        }
+      }
     },
     /* ターン開始処理（アンタップ＋ドロー＋マナ回復＋疲労ダメージ） */
     _battleStartTurnFor(side) {
@@ -10044,6 +10074,19 @@ new Vue({
         const fieldCard = this._battlePrepareFieldCard(card);
         p[zone].push(fieldCard);
         used.push(fieldCard);
+        // 天力トリガー・常在の「〜が出たとき」条件用（例：#105不器用な勧誘人②「他の神使レガシーが出たとき」）。
+        // 従来はこれらのイベントが一切発火せず、無償使用で出した神使レガシー等が他の常在能力から見えなかった
+        if (zone === 'legacies') {
+          if (fieldCard.isToken) this.battleFireKamiEvent(side, 'tokenPlayed', { card: fieldCard });
+          if (this._battleCardHasGuard(fieldCard) && !fieldCard._guardEventFired) {
+            this.$set(fieldCard, '_guardEventFired', true);
+            this.battleFireKamiEvent(side, 'guardLegacyPlayed', { card: fieldCard });
+          }
+          this.battleFireKamiEvent(side, 'legacyEntered', { card: fieldCard });
+        } else if (zone === 'relics') {
+          this.battleFireKamiEvent(side, 'playOracleOrRelic', { card: fieldCard, kind: 'レリック' });
+          if (fieldCard.isToken) this.battleFireKamiEvent(side, 'tokenPlayed', { card: fieldCard });
+        }
         if (!this.battleRunEnterKeywordEffects(fieldCard, 0)) this.battleKeywordGuide(fieldCard, 0);
       });
       if (/シャッフル/.test(String(sel.備考 || '')) && Array.isArray(p.deck)) p.deck = this._battleShuffle(p.deck);
@@ -10431,6 +10474,7 @@ new Vue({
               this.battleRecordLegacyDestroyed(side, card);
               this.battleFireKamiEvent(side, 'legacyDestroyed', { card });
               this.battleFireKamiEvent(side === 'self' ? 'opp' : 'self', 'legacyDestroyed', { card });
+              this._battleCheckGraveyardActivationPrompt(side);
             }
             this.dslRefreshStaticAbilities();
             return true;
@@ -12475,6 +12519,7 @@ new Vue({
       // 天力トリガー（K7ヒノカグツチ）：戦闘でレガシーが破壊された場合も発火
       this.battleFireKamiEvent('self', 'legacyDestroyed', { card });
       this.battleFireKamiEvent('opp', 'legacyDestroyed', { card });
+      this._battleCheckGraveyardActivationPrompt(side);
       destroyed.push({ side, card });
     },
     async battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex) {
@@ -12620,7 +12665,10 @@ new Vue({
           type: 'opponentLifeDecreased',
           payload: { source: attacker, targetSide: 'opp', amount: actualDamage, by: 'divineAttack' }
         };
-        this.battleFireKamiEvent(attackerSide, 'opponentLifeDecreased', {
+        // battleFireKamiEvent は常在能力走査を待たないため、awaited版で確実に完了させてから次に進む
+        // （例：#97八百万の代弁者②「他のレガシーが神攻で相手ライフを減らしたとき」ドローが、
+        // 　次の【神攻時】フェーズ発動と競合して取りこぼされないように）
+        await this.battleFireKamiEventAwaited(attackerSide, 'opponentLifeDecreased', {
           source: attacker,
           targetSide: 'opp',
           amount: actualDamage,
