@@ -2266,6 +2266,25 @@
   .battle-zone-modal-empty {
     color: #889; font-size: 13px; text-align: center; padding: 32px;
   }
+  .battle-log-play-name { font-size: 12px; color: #e8e8f0; font-weight: 600; margin-top: 4px; }
+  .battle-log-play-meta { font-size: 11px; color: #9aa; }
+  .battle-log-entries {
+    flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px;
+  }
+  .battle-log-turn-marker {
+    text-align: center; font-weight: 700; font-size: 14px; padding: 8px 0;
+    margin: 6px 0; border-top: 1px solid #4a4f5d; border-bottom: 1px solid #4a4f5d;
+  }
+  .battle-log-turn-marker.self { color: #8fb0f0; }
+  .battle-log-turn-marker.opp { color: #ff9a9a; }
+  .battle-log-entry {
+    display: flex; flex-direction: column; gap: 2px; padding: 8px 10px;
+    border-radius: 6px; border-left: 3px solid #4a4f5d; background: rgba(255,255,255,.03);
+  }
+  .battle-log-entry.self { border-left-color: #6f8fca; }
+  .battle-log-entry.opp { border-left-color: #ca6f6f; }
+  .battle-log-entry-title { font-size: 12px; font-weight: 700; color: #e8d4a0; }
+  .battle-log-entry-message { font-size: 12px; color: #cbd3de; white-space: pre-line; }
   .battle-deck-modal-message {
     margin: 8px 0 12px; color: #cbd3de; line-height: 1.55; white-space: pre-line;
     font-size: 13px;
@@ -3669,6 +3688,9 @@
         <span v-if="battleNet.lastReceivedAt" style="opacity:.6;margin-left:6px;">↓ {{ battleNetReceivedAgo }}</span>
       </span>
       <span class="spacer"></span>
+      <button class="battle-undo-btn" @click="battleOpenLogModal('log')" title="バトルログを表示">
+        📜 バトルログ
+      </button>
       <button class="battle-undo-btn" @click="battleUndo" :disabled="!battleUndoStack.length"
               :title="battleUndoStack.length ? '直前の操作を取り消します' : '取り消す操作がありません'">
         ↶ 一手戻る<span v-if="battleUndoStack.length" class="undo-count">({{ battleUndoStack.length }})</span>
@@ -4222,6 +4244,55 @@
         </div>
         <div class="battle-zone-modal-actions">
           <button class="battle-back-btn" @click="battleZoneModal = null; battleZoneCardMenu = null">閉じる</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== バトルログモーダル ===== -->
+    <div v-if="battleLogModal" class="battle-zone-modal" @click.self="battleLogModal = null">
+      <div class="battle-zone-modal-panel">
+        <h3 class="battle-zone-modal-title">バトルログ</h3>
+        <div class="battle-zone-modal-sort">
+          <button class="battle-zone-sort-btn" :class="{ active: battleLogModal.tab === 'log' }" @click="battleLogModal.tab = 'log'">ログ</button>
+          <button class="battle-zone-sort-btn" :class="{ active: battleLogModal.tab === 'play' }" @click="battleLogModal.tab = 'play'">プレイ</button>
+        </div>
+        <template v-if="battleLogModal.tab === 'log'">
+          <div v-if="!battleLog.length" class="battle-zone-modal-empty">ログがありません</div>
+          <div v-else class="battle-log-entries">
+            <template v-for="(entry, i) in battleLog">
+              <div v-if="entry.isTurnMarker" :key="'t'+i" class="battle-log-turn-marker" :class="entry.side">
+                {{ entry.message }}
+              </div>
+              <div v-else :key="i" class="battle-log-entry" :class="entry.side">
+                <span class="battle-log-entry-title">{{ entry.title }}</span>
+                <span class="battle-log-entry-message">{{ entry.message }}</span>
+              </div>
+            </template>
+          </div>
+        </template>
+        <template v-else>
+          <div class="battle-zone-modal-sort">
+            <button class="battle-zone-sort-btn" :class="{ active: battleLogModal.playSide === 'self' }" @click="battleLogModal.playSide = 'self'">自分がプレイしたカード</button>
+            <button class="battle-zone-sort-btn" :class="{ active: battleLogModal.playSide === 'opp' }" @click="battleLogModal.playSide = 'opp'">相手がプレイしたカード</button>
+          </div>
+          <div v-if="!battlePlayLog[battleLogModal.playSide].length" class="battle-zone-modal-empty">プレイしたカードがありません</div>
+          <div v-else class="battle-zone-modal-list">
+            <div v-for="(entry, i) in battlePlayLog[battleLogModal.playSide]" :key="i"
+                 class="battle-zone-list-item"
+                 @click="openPreview(entry.card)"
+                 @mouseenter="showCardHover(entry.card, $event)"
+                 @mouseleave="hideCardHover">
+              <div class="battle-zone-list-thumb"
+                   :style="cardImageUrl(entry.card) ? { backgroundImage: 'url(' + cardImageUrl(entry.card) + ')' } : {}"></div>
+              <div>
+                <div class="battle-log-play-name">{{ fullName(entry.card) }}</div>
+                <div class="battle-log-play-meta">ターン{{ entry.turn }}</div>
+              </div>
+            </div>
+          </div>
+        </template>
+        <div class="battle-zone-modal-actions">
+          <button class="battle-back-btn" @click="battleLogModal = null">閉じる</button>
         </div>
       </div>
     </div>
@@ -5524,6 +5595,10 @@ new Vue({
     battleOracleEffect: null, // { card } オラクル発動演出（中央表示中）
     battleSenteiModal: null,  // { count, options, selected, sourceCard, triggerLabel }
     battlePendingEffects: [], // 効果キュー：[{ type, card, data, triggerLabel, paidCost }, ...]
+    /* バトルログ */
+    battleLog: [],           // 一挙一動の履歴：[{ turn, side, title, message, isTurnMarker }]
+    battlePlayLog: { self: [], opp: [] }, // 各サイドがプレイ（場に出す/使用）したカード：[{ turn, card }]
+    battleLogModal: null,    // { tab: 'log' | 'play', playSide: 'self' | 'opp' }
 
     /* ===== DSL効果エンジン（v1.14.0〜） ===== */
     effectSpecs: {},          // No → spec オブジェクト（effect_spec.json から fetch）
@@ -5546,7 +5621,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.105',
+    BUILD_VERSION: '1.14.106',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6899,6 +6974,9 @@ new Vue({
       };
       this.battleUndoStack = [];
       this.battlePendingEffects = [];
+      this.battleLog = [];
+      this.battlePlayLog = { self: [], opp: [] };
+      this.battleLogModal = null;
       this.dslTargetModal = null;
       this.dslOptionalModal = null;
       this.dslChoiceModal = null;
@@ -7434,6 +7512,7 @@ new Vue({
     /* 統一発火関数：カミ別ハンドラに振り分け */
     battleFireKamiEvent(side, eventType, payload) {
       if (!this.battleSample) return;
+      this._battleTrackPlayedCard(side, eventType, payload);
       this.battleRunEventStaticAbilities(side, eventType, payload || {});
       this._battleFireKamiEventKamiEffects(side, eventType, payload);
     },
@@ -7441,8 +7520,19 @@ new Vue({
        例：#60ハクレンの「神攻宣言時」神威付与を、ダメージ計算より前に確定させる必要がある場合。 */
     async battleFireKamiEventAwaited(side, eventType, payload) {
       if (!this.battleSample) return;
+      this._battleTrackPlayedCard(side, eventType, payload);
       await this.battleRunEventStaticAbilities(side, eventType, payload || {});
       this._battleFireKamiEventKamiEffects(side, eventType, payload);
+    },
+    /* バトルログ「プレイ」タブ用：場に出た/使用されたカード（トークンを除く）を記録する */
+    _battleTrackPlayedCard(side, eventType, payload) {
+      if (!this.battleSample) return;
+      if (eventType !== 'legacyEntered' && eventType !== 'playOracleOrRelic') return;
+      const card = payload && payload.card;
+      if (!card || card.isToken) return;
+      const list = this.battlePlayLog[side] || (this.battlePlayLog[side] = []);
+      if (list.some(e => e.card === card)) return;
+      list.push({ turn: this.battleSample.turn, card });
     },
     _battleFireKamiEventKamiEffects(side, eventType, payload) {
       const kno = this._battleKamiNo(side);
@@ -7553,6 +7643,13 @@ new Vue({
       bs.activeSide = nextSide;
       this._battleStartTurnFor(nextSide);
       this.dslRefreshStaticAbilities();
+      this.battleLog.push({
+        turn: bs.turn,
+        side: nextSide,
+        title: 'ターン',
+        message: `${nextSide === 'self' ? 'あなた' : '相手'}のターン (${bs.turn})`,
+        isTurnMarker: true,
+      });
     },
     /* 当該side+turn で適用された一時補正を巻き戻す（戦闘力表示・_buf を復元） */
     _battleExpireBuffsForSide(side, turn) {
@@ -8219,8 +8316,19 @@ new Vue({
         this._battleNoticeMerging = true;
         Promise.resolve().then(() => { this._battleNoticeMerging = false; });
       }
+      this._battleAppendLogEntry(title, message);
       // オンライン同期：相手にも通知を共有（writerガードと重複防止のため ts を付与）
       this._battlePublishNotice(title, message, cards);
+    },
+    /* バトルログ（一挙一動の履歴）に1件追加する */
+    _battleAppendLogEntry(title, message) {
+      if (!this.battleSample) return;
+      this.battleLog.push({
+        turn: this.battleSample.turn,
+        side: this.battleSample.activeSide,
+        title: String(title || ''),
+        message: String(message || ''),
+      });
     },
     _battlePublishNotice(title, message, cards) {
       const n = this.battleNet;
@@ -13078,6 +13186,10 @@ new Vue({
       const modal = this.battleZoneModal;
       if (!modal) return;
       this.$set(modal, 'categoryFilter', modal.categoryFilter === category ? 'all' : category);
+    },
+    /* バトルログモーダルを開く（tab: 'log' | 'play'） */
+    battleOpenLogModal(tab) {
+      this.battleLogModal = { tab: tab || 'log', playSide: 'self' };
     },
     battleZoneListCardClick(c) {
       if (Date.now() < (this._battleSuppressZoneListClickUntil || 0)) return;
