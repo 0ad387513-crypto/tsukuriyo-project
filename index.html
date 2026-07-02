@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.91',
+    BUILD_VERSION: '1.14.92',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -10057,8 +10057,21 @@ new Vue({
         this.battleShowNotice('他効果発動：手動確認', `「${this.fullName(card)}」の【${trigger}】効果は自動処理できませんでした。カード本文に従って手動で処理してください。`, [card]);
       }
     },
-    _dslOpPublicNotice(act, sourceCard) {
-      const text = [act.値, act.備考, act.対象 && act.対象.備考].filter(Boolean).join('\n');
+    async _dslOpPublicNotice(act, sourceCard) {
+      // 対象指定がある場合（例：カシマ「レリック1枚を手札から見せる」）は、通常の対象選択と同様に
+      // プレイヤーに選ばせ、実際に選んだカードを通知に表示して公開する
+      if (act.対象) {
+        const targets = await this.dslChooseTargets(act.対象, '公開するカードを選択');
+        if (!targets.length) return;
+        const text = [act.値, act.備考].filter(Boolean).join('\n');
+        this.battleShowNotice(
+          '公開処理',
+          text || `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を公開しました。`,
+          targets
+        );
+        return;
+      }
+      const text = [act.値, act.備考].filter(Boolean).join('\n');
       this.battleShowNotice(
         '公開処理',
         text || `「${this.fullName(sourceCard)}」の公開処理です。対象カードを両プレイヤーで確認してください。`,
