@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.97',
+    BUILD_VERSION: '1.14.98',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8037,6 +8037,19 @@ new Vue({
       });
       return delta;
     },
+    /* コスト変更actの数値を解決する（act.数 があればそのまま、なければ act.数参照 の動的パターンを解決する）
+       例：#38神出鬼没の小鼠「このターン自分レガシーの神攻回数だけ-1」 */
+    _dslResolveCostChangeDelta(act, side = 'self') {
+      if (act.数 !== undefined && act.数 !== null) return Number(act.数) || 0;
+      const ref = String(act.数参照 || '');
+      const m = ref.match(/このターン自分レガシーの神攻回数だけ([+\-]?\d+)/);
+      if (m) {
+        const player = this.battleSample && this.battleSample[side];
+        const count = Array.isArray(player && player.divineAttackersThisTurn) ? player.divineAttackersThisTurn.length : 0;
+        return (Number(m[1]) || 0) * count;
+      }
+      return 0;
+    },
     battleIntrinsicStaticCostDeltaForCard(card, side = 'self') {
       if (!card || !this.effectSpecsReady || !this.battleSample) return 0;
       const player = this.battleSample[side];
@@ -8055,8 +8068,7 @@ new Vue({
             if (op !== 'コスト変更') return;
             const target = act.対象 || {};
             if (!target.自身) return;
-            if (act.数 === undefined || act.数 === null) return;
-            delta += Number(act.数) || 0;
+            delta += this._dslResolveCostChangeDelta(act, side);
           });
         });
       } finally {
@@ -9297,6 +9309,21 @@ new Vue({
         return /^補正[:：]?[+\-]?\d+$/.test(gs) ? `補正:${total >= 0 ? '+' : ''}${total}` : g;
       });
     },
+    /* act.繰返し が「自分フィールド+墓地の◯◯1枚につき+1回」のような動的リピートを示す場合、
+       該当枚数ぶん付与を重ねがけした倍率を返す（例：#115プルプラ）。該当しなければ1を返す。 */
+    _dslResolveRepeatMultiplier(act) {
+      const text = String((act && act.繰返し) || '');
+      const m = text.match(/自分(?:フィールド)?\+?墓地の(.+?)(\d+)枚につき\+(\d+)回/);
+      if (!m) return 1;
+      const criteria = m[1].split(/[+＋]/).map(t => t.trim()).filter(Boolean);
+      const perCount = Number(m[2]) || 1;
+      const perRepeat = Number(m[3]) || 1;
+      const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
+      const player = this.battleSample && this.battleSample[side];
+      const pool = [].concat((player && player.legacies) || [], (player && player.graveyard) || []);
+      const count = pool.filter(c => c && this.battleCardMatchesInduceCriteria(c, criteria)).length;
+      return 1 + Math.floor(count / perCount) * perRepeat;
+    },
     _dslApplyGrant(card, grants, permanent, period) {
       if (!card) return;
       (grants || []).forEach(g => {
@@ -9494,7 +9521,7 @@ new Vue({
         } else if (op === '選定値+1' && sourceCard) {
           this.$set(sourceCard, '_staticSenteiBoost', true);
         } else if (op === 'コスト変更') {
-          this.dslApplyStaticCostChange(act, sourceCard, abilityLimit);
+          this.dslApplyStaticCostChange(act, sourceCard, abilityLimit, sourceSide);
         } else if (op === '昇華値変更' && sourceCard) {
           this.$set(sourceCard, '_staticSublimDelta', Number(act.数 || 0));
         } else if (op === '効果倍化' && sourceCard) {
@@ -9507,9 +9534,9 @@ new Vue({
         }
       });
     },
-    dslApplyStaticCostChange(act, sourceCard, abilityLimit = 0) {
+    dslApplyStaticCostChange(act, sourceCard, abilityLimit = 0, sourceSide = 'self') {
       if (!sourceCard) return;
-      const delta = Number(act.数 || 0);
+      const delta = this._dslResolveCostChangeDelta(act, sourceSide);
       const target = act.対象 || {};
       if (target.自身) {
         this.$set(sourceCard, '_staticCostDelta', (Number(sourceCard._staticCostDelta) || 0) + delta);
@@ -9585,7 +9612,14 @@ new Vue({
       const targets = await this.dslChooseTargets(this._dslMergeActNumRef(act.対象, act), `【${(act.付与 || []).join('・')}】を付与`);
       if (!targets.length) return;
       this.battleSaveUndo();
-      const grants = this._dslResolveDynamicGrantAmounts(act);
+      const baseGrants = this._dslResolveDynamicGrantAmounts(act);
+      const repeatMultiplier = this._dslResolveRepeatMultiplier(act);
+      const grants = repeatMultiplier === 1 ? baseGrants : baseGrants.map(g => {
+        const m = String(g).match(/^補正[:：]?([+\-]?\d+)$/);
+        if (!m) return g;
+        const total = Number(m[1]) * repeatMultiplier;
+        return `補正:${total >= 0 ? '+' : ''}${total}`;
+      });
       targets.forEach(c => this._dslApplyGrant(c, grants, permanent, act.期間));
       this.battleShowNotice(
         permanent ? '静的バフ（恒常）' : '付与（このターン）',
