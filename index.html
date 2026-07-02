@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.98',
+    BUILD_VERSION: '1.14.99',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -10938,20 +10938,42 @@ new Vue({
       return null;
     },
     /* 自分デッキの上から N 枚を墓地へ送る */
-    _dslOpMillDeck(act, sourceCard) {
+    async _dslOpMillDeck(act, sourceCard) {
       const n = Math.max(1, Number(act.数 || (act.対象 && act.対象.枚数) || 1));
+      const optional = !!act.まで || !!act.任意;
       const p = this.battleSample.self;
       if (!p || !Array.isArray(p.deck)) return;
-      const milled = p.deck.splice(0, n);
-      if (!milled.length) return;
+      const revealed = p.deck.slice(0, n);
+      if (!revealed.length) return;
+      let milled = revealed;
+      // 「まで」（0〜n枚）指定の場合、デッキ上からn枚を公開した上で墓地に送る枚数をプレイヤーに選ばせる
+      // （例：#19カゲロウ、#106貪食の童女、#109昏き紫の眷属）
+      if (optional) {
+        milled = await this.dslAskCustomTargets(
+          `デッキ上から墓地に送るカードを選択（0〜${revealed.length}枚）`,
+          revealed,
+          revealed.length,
+          sourceCard,
+          true
+        );
+      }
       this.battleSaveUndo();
+      const milledSet = new Set(milled);
+      const kept = revealed.filter(c => !milledSet.has(c));
+      p.deck = kept.concat(p.deck.slice(revealed.length));
       p.graveyard = p.graveyard || [];
       p.graveyard.push(...milled);
       this._dslLastMilledCards = milled.slice();
       this._dslLastMovedCount = milled.length;
       p.deckCount = p.deck.length;
       this.dslRefreshStaticAbilities();
-      this.battleShowNotice('デッキ墓地送り', `デッキ上から${milled.map(c => `「${this.fullName(c)}」`).join('、')}を墓地に送りました。`, milled);
+      this.battleShowNotice(
+        'デッキ墓地送り',
+        milled.length
+          ? `デッキ上から${milled.map(c => `「${this.fullName(c)}」`).join('、')}を墓地に送りました。`
+          : 'デッキから墓地へ送るカードを選びませんでした。',
+        milled
+      );
     },
     async _dslOpRepeat(act, sourceCard) {
       const target = String(act.対象 || '');
@@ -12543,7 +12565,18 @@ new Vue({
       }
       // 神攻時効果：神攻を宣言しタップ・ダメージを与えた「後」に発動する
       // （「このレガシーをアンタップする」#5夜風、「相手ライフを減らしたとき〜」#81 等が正しく機能するように）
+      // battleFireKamiEvent は常在能力の走査後に _dslCurrentEvent を復元してしまうため、
+      // 「神攻時」契機の通常発動（dslRunSpec）でも同じイベントを条件判定に使えるよう、ここで再設定する
+      // （例：#19カゲロウ②、#34胡蝶の密偵③「相手ライフを減らしたとき」）
+      if (actualDamage > 0) {
+        this._dslCurrentEvent = {
+          side: attackerSide,
+          type: 'opponentLifeDecreased',
+          payload: { source: attacker, targetSide: 'opp', amount: actualDamage, by: 'divineAttack' }
+        };
+      }
       await this.battleRunActionTrigger(attacker, '神攻時');
+      this._dslCurrentEvent = null;
       this._battleCheckResult();
       this.battleShowNotice(
         '神攻成功',
