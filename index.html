@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.101',
+    BUILD_VERSION: '1.14.102',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8967,6 +8967,10 @@ new Vue({
         const shuf = pool.slice().sort(() => Math.random() - 0.5);
         return Promise.resolve(shuf.slice(0, need));
       }
+      // 動的枚数などが0に解決した場合、対象候補が場にあってもモーダルを開かず自動的に0枚選択とする。
+      // （例：#87ヤマブキ「自分の忍者レガシー1枚につき〜」で忍者が0枚の場合、
+      // 　従来は候補（相手フィールド）が1枚でもあると「決定」ボタンが無効化されたまま選択を強制されていた）
+      if (need <= 0) return Promise.resolve([]);
       // プレイヤー手動：モーダル
       return new Promise((resolve) => {
         this.dslTargetModal = {
@@ -10025,6 +10029,8 @@ new Vue({
           p[zpZone].push(card);
           this.battleOracleEffect = { card };
           used.push(card);
+          // 「オラクルを使用したとき」条件用（例：#84お節介な陰陽師③は自身①の無償使用でも発動する）
+          this.battleFireKamiEvent(side, 'playOracleOrRelic', { card, kind: 'オラクル' });
           if (!this.battleRunEnterKeywordEffects(card, 0)) this.battleKeywordGuide(card, 0);
           return;
         }
