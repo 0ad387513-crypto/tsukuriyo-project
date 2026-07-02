@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.100',
+    BUILD_VERSION: '1.14.101',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7423,6 +7423,16 @@ new Vue({
     battleFireKamiEvent(side, eventType, payload) {
       if (!this.battleSample) return;
       this.battleRunEventStaticAbilities(side, eventType, payload || {});
+      this._battleFireKamiEventKamiEffects(side, eventType, payload);
+    },
+    /* battleFireKamiEvent の常在能力走査（非同期）を確実に完了させてから続きの処理をしたい場合に使う。
+       例：#60ハクレンの「神攻宣言時」神威付与を、ダメージ計算より前に確定させる必要がある場合。 */
+    async battleFireKamiEventAwaited(side, eventType, payload) {
+      if (!this.battleSample) return;
+      await this.battleRunEventStaticAbilities(side, eventType, payload || {});
+      this._battleFireKamiEventKamiEffects(side, eventType, payload);
+    },
+    _battleFireKamiEventKamiEffects(side, eventType, payload) {
       const kno = this._battleKamiNo(side);
       if (!kno) return;
       switch (kno) {
@@ -8463,8 +8473,16 @@ new Vue({
       this.dslRefreshStaticAbilities();
       return true;
     },
-    /* spec を実行（出現時/使用時 等のトリガーで呼ばれる） */
-    async dslRunSpec(card, triggerLabel = '出現時', paidCost = null) {
+    /* 「相手ライフを減らしたとき」等、神攻の結果（ダメージが実際に通ったか）に依存する条件を持つ能力かどうか。
+       【神攻時】は宣言時点で発動が確定するが、この種の能力だけはダメージ計算後に実行結果を評価する必要がある
+       （例：#19カゲロウ②、#34胡蝶の密偵③、#81麗しの狐姫）。 */
+    _dslIsDamageOutcomeAbility(ab) {
+      return /相手ライフを減らしたとき/.test(String((ab && ab.条件 && ab.条件.備考) || ''));
+    },
+    /* spec を実行（出現時/使用時 等のトリガーで呼ばれる）
+       abilityFilter を渡すと、トリガーラベルが一致する能力のうち条件を満たすものだけを実行する
+       （例：【神攻時】を宣言時点／ダメージ確定後の2フェーズに分けて発動させる場合） */
+    async dslRunSpec(card, triggerLabel = '出現時', paidCost = null, abilityFilter = null) {
       if (this._battleIsEffectDisabled(card)) {
         this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、【${triggerLabel}】効果は発動しません。`, [card]);
         return false;
@@ -8481,6 +8499,7 @@ new Vue({
       try {
         for (const ab of spec.能力) {
           if (!this._dslAbilityMatchesTrigger(ab, triggerLabel)) continue;
+          if (abilityFilter && !abilityFilter(ab)) continue;
           // 進化中代替：このカードが進化済の時、能力に進化中代替があれば差し替え扱いとしてスキップ
           // （差し替え先の進化中・出現時 / 進化中 が別経路で発動するため）
           if (ab.進化中代替 && card && card._evolved) continue;
@@ -8876,10 +8895,9 @@ new Vue({
         return returned.filter(Boolean);
       }
       if (/その神攻したレガシー/.test(s)) {
+        // 【神攻時】は神攻の宣言時点で発動が確定するため、ダメージ結果ではなく宣言イベントを参照する
         const ev = this._dslCurrentEvent;
-        const source = ev && ev.type === 'opponentLifeDecreased' && ev.payload && ev.payload.by === 'divineAttack'
-          ? ev.payload.source
-          : null;
+        const source = ev && ev.type === 'divineAttackDeclared' && ev.payload ? ev.payload.source : null;
         return source ? [source] : [];
       }
       if (/神攻したそれら/.test(s)) {
@@ -9189,9 +9207,10 @@ new Vue({
         return !crit.length || this.battleCardMatchesInduceCriteria(enteredCard, crit);
       }
       if (/自分の他の.*レガが神攻したとき/.test(s)) {
-        // 例：ハクレン「自分の他の緑/人獣レガが神攻したとき」。自分自身の神攻や絞込条件に合わないカードでは成立しない
+        // 例：ハクレン「自分の他の緑/人獣レガが神攻したとき」。神攻の宣言時点で発動するため、
+        // ダメージ結果（opponentLifeDecreased）ではなく宣言イベント（divineAttackDeclared）を参照する
         const ev = this._dslCurrentEvent;
-        if (!ev || ev.type !== 'opponentLifeDecreased' || !ev.payload || ev.payload.by !== 'divineAttack' || !ev.payload.source) return false;
+        if (!ev || ev.type !== 'divineAttackDeclared' || !ev.payload || !ev.payload.source) return false;
         const attackerCard = ev.payload.source;
         if (attackerCard === this._dslCurrentSource) return false;
         const m = s.match(/自分の他の(.+?)レガが神攻したとき/);
@@ -9386,6 +9405,14 @@ new Vue({
     },
     dslResetStaticEffects() {
       this.dslFieldCards().forEach(({ card }) => this.dslClearStaticFromCard(card));
+      // 昇華値変更（例：#60ハクレン、#イズモ）は自分の手札カードに作用するため、手札側も毎回リセットする
+      // （手札はdslFieldCardsに含まれず、能力の発動元が場を離れても割引が残り続けてしまうのを防ぐ）
+      ['self', 'opp'].forEach(side => {
+        const p = this.battleSample && this.battleSample[side];
+        (p && Array.isArray(p.hand) ? p.hand : []).forEach(card => {
+          if (card && card._staticSublimDelta) this.$set(card, '_staticSublimDelta', 0);
+        });
+      });
     },
     dslClearStaticFromCard(card) {
       if (!card) return;
@@ -9523,7 +9550,19 @@ new Vue({
         } else if (op === 'コスト変更') {
           this.dslApplyStaticCostChange(act, sourceCard, abilityLimit, sourceSide);
         } else if (op === '昇華値変更' && sourceCard) {
-          this.$set(sourceCard, '_staticSublimDelta', Number(act.数 || 0));
+          // 対象指定がない場合、自分の手札カードの昇華コストを軽減する効果として扱う
+          // （例：#60ハクレン「自分の手札の【昇華】を持つカードのコストが-1」、#イズモも同型）
+          const delta = Number(act.数 || 0);
+          const side = sourceSide || 'self';
+          const player = this.battleSample && this.battleSample[side];
+          if (!act.対象 && player && Array.isArray(player.hand)) {
+            player.hand.forEach(card => {
+              if (!card) return;
+              this.$set(card, '_staticSublimDelta', (Number(card._staticSublimDelta) || 0) + delta);
+            });
+          } else {
+            this.$set(sourceCard, '_staticSublimDelta', (Number(sourceCard._staticSublimDelta) || 0) + delta);
+          }
         } else if (op === '効果倍化' && sourceCard) {
           const targetText = String(act.対象 || act.備考 || '');
           if (/死亡時/.test(targetText)) {
@@ -9597,7 +9636,9 @@ new Vue({
             // 進化中：このカードが進化済(_evolved)の間だけ静的能力として効く
             const matchEvolved = !!card._evolved && this._dslAbilityMatchesTrigger(ab, '進化中');
             if (!matchStatic && !matchEvolved) return;
-            if (ab.任意) return;
+            // 静的エンジンの各opは確認ダイアログを出さない（常時有効な受動効果のため）ので、
+            // 「任意」は素通りさせる。常時使える能力を単に持っているだけの表現として扱う
+            // （例：#60ハクレン③昇華値変更-1。従来はここで丸ごとスキップされ機能していなかった）
             this._dslCurrentSource = card;
             if (ab.条件 && !this.dslEvalCond(ab.条件)) return;
             this.dslApplyStaticActions(ab.処理 || [], card, side, Number(ab.各ターン) || 0, String(ab.備考 || ''));
@@ -11143,14 +11184,14 @@ new Vue({
         this.$set(card, '_dslDoubleDeathRunning', false);
       }
     },
-    async battleRunActionTrigger(card, triggerLabel) {
+    async battleRunActionTrigger(card, triggerLabel, abilityFilter = null) {
       if (!card || !triggerLabel) return false;
       if (this._battleIsEffectDisabled(card)) {
         this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、【${triggerLabel}】効果は発動しません。`, [card]);
         return true;
       }
       if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, triggerLabel)) {
-        await this.dslRunSpec(card, triggerLabel, null);
+        await this.dslRunSpec(card, triggerLabel, null, abilityFilter);
         return true;
       }
       return false;
@@ -12430,7 +12471,7 @@ new Vue({
       this.battleFireKamiEvent('opp', 'legacyDestroyed', { card });
       destroyed.push({ side, card });
     },
-    async battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex, extraTrigger = null) {
+    async battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex) {
       if (this.battleSample.result || attackerSide !== 'self') return;
       const attackerPlayer = this.battleSample[attackerSide];
       const defenderPlayer = this.battleSample[defenderSide];
@@ -12441,10 +12482,9 @@ new Vue({
       if (!can.ok) { this.battleShowNotice('戦闘できません', can.reason, [attacker]); return; }
       // 戦闘を宣言した時点でタップする（【戦闘時】発動より前）。
       // タップが後回しだと、効果解決中は未タップのままのため、同じターンに何度も戦闘/神攻を宣言し直せてしまう。
+      // （神攻から守護で差し替えられた場合の【神攻時】は battleResolveDivineAttack 側で宣言時点に発動済み）
       this.battleSaveUndo();
       this.$set(attacker, '_tapped', true);
-      // 守護により神攻から戦闘へ差し替えられた場合：【神攻時】も宣言時点で発動確定しているため、タップ後にここで発動する
-      if (extraTrigger) await this.battleRunActionTrigger(attacker, extraTrigger);
       await this.battleRunActionTrigger(attacker, '戦闘時');
       if (this.battleSample.result) return;
       attackerIndex = attackerPlayer.legacies.indexOf(attacker);
@@ -12527,11 +12567,25 @@ new Vue({
       const divineList = Array.isArray(selfPlayer.divineAttackersThisTurn) ? selfPlayer.divineAttackersThisTurn.slice() : [];
       if (!divineList.includes(attacker)) divineList.push(attacker);
       this.$set(selfPlayer, 'divineAttackersThisTurn', divineList);
+      // 【神攻時】は神攻を「宣言した時点」（守護判定・ダメージ計算より前）で発動が確定する。
+      // タップも宣言確定の一部としてここで行う（#戦闘時と同様、同ターンの再宣言を防ぐ）。
+      // ただし「相手ライフを減らしたとき」等、ダメージの結果に依存する条件を持つ能力だけは
+      // ここでは発動させず、実際にダメージが確定した後に評価する（#19カゲロウ②、#34胡蝶の密偵③）。
+      // 例：#60ハクレンの神威付与はここで確定するため、このままこの神攻のダメージに反映される。
+      //     #65ライカ＆コマの相手タップも、守護が選ばれる前にここで発動する。
+      this.battleSaveUndo();
+      this.$set(attacker, '_tapped', true);
+      this._dslCurrentEvent = { side: attackerSide, type: 'divineAttackDeclared', payload: { source: attacker } };
+      await this.battleFireKamiEventAwaited(attackerSide, 'divineAttackDeclared', { source: attacker });
+      await this.battleRunActionTrigger(attacker, '神攻時', ab => !this._dslIsDamageOutcomeAbility(ab));
+      this._dslCurrentEvent = null;
+      if (this.battleSample.result) return;
+      attackerIndex = this.battleSample.self.legacies.indexOf(attacker);
+      if (attackerIndex < 0) return;
       const guard = await this._battleChooseGuard(attacker, 'opp', null);
       if (guard) {
-        // 【神攻時】は神攻を宣言した時点で発動が確定する効果のため、守護で戦闘に差し替えられても発動する。
-        // タップは battleResolveLegacyBattle 側で（トリガー発動より前に）行われる。
-        this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index, '神攻時');
+        // 【神攻時】は宣言時点（上記）で既に発動済みのため、ここでは再発動させない。
+        this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index);
         return;
       }
       // K10ヤマタノオロチ「封神・終極八岐」：全ての封印が解かれている間、神技の発動なしに自動で有効。
@@ -12550,33 +12604,26 @@ new Vue({
       }
       const damage = Math.max(0, Number(attacker.attack || 0));
       this.battleSaveUndo();
-      this.$set(attacker, '_tapped', true);
       const beforeLife = Number(this.battleSample.opp.life) || 0;
       this.battleSample.opp.life = Math.max(0, this.battleSample.opp.life - damage);
       const actualDamage = Math.max(0, beforeLife - this.battleSample.opp.life);
       if (actualDamage > 0) {
         this._dslLastLifeReduced = actualDamage;
+        this._dslCurrentEvent = {
+          side: attackerSide,
+          type: 'opponentLifeDecreased',
+          payload: { source: attacker, targetSide: 'opp', amount: actualDamage, by: 'divineAttack' }
+        };
         this.battleFireKamiEvent(attackerSide, 'opponentLifeDecreased', {
           source: attacker,
           targetSide: 'opp',
           amount: actualDamage,
           by: 'divineAttack'
         });
+        // 「相手ライフを減らしたとき」等、ダメージの結果に依存する条件を持つ【神攻時】能力はここで発動する
+        await this.battleRunActionTrigger(attacker, '神攻時', ab => this._dslIsDamageOutcomeAbility(ab));
+        this._dslCurrentEvent = null;
       }
-      // 神攻時効果：神攻を宣言しタップ・ダメージを与えた「後」に発動する
-      // （「このレガシーをアンタップする」#5夜風、「相手ライフを減らしたとき〜」#81 等が正しく機能するように）
-      // battleFireKamiEvent は常在能力の走査後に _dslCurrentEvent を復元してしまうため、
-      // 「神攻時」契機の通常発動（dslRunSpec）でも同じイベントを条件判定に使えるよう、ここで再設定する
-      // （例：#19カゲロウ②、#34胡蝶の密偵③「相手ライフを減らしたとき」）
-      if (actualDamage > 0) {
-        this._dslCurrentEvent = {
-          side: attackerSide,
-          type: 'opponentLifeDecreased',
-          payload: { source: attacker, targetSide: 'opp', amount: actualDamage, by: 'divineAttack' }
-        };
-      }
-      await this.battleRunActionTrigger(attacker, '神攻時');
-      this._dslCurrentEvent = null;
       this._battleCheckResult();
       this.battleShowNotice(
         '神攻成功',
