@@ -2225,6 +2225,15 @@
     font-size: 16px; font-weight: 700; color: #e8d4a0;
     margin: 0 0 12px; display: flex; align-items: center; gap: 10px;
   }
+  .battle-zone-modal-sort {
+    display: flex; gap: 6px; margin: -6px 0 12px; flex-wrap: wrap;
+  }
+  .battle-zone-sort-btn {
+    background: #2a2f3d; border: 1px solid #4a4f5d; color: #cbd;
+    padding: 4px 12px; border-radius: 14px; font-size: 12px; cursor: pointer;
+  }
+  .battle-zone-sort-btn:hover { background: #3a3f4d; color: #ffd; }
+  .battle-zone-sort-btn.active { background: #6f8fca; border-color: #8fb0f0; color: #fff; font-weight: 700; }
   .battle-zone-modal-grid {
     flex: 1; overflow-y: auto;
     display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
@@ -2444,6 +2453,7 @@
   .battle-card.field-card .cursekill-icon { color: #ffb0b0; fill: #ffb0b0; }
   .battle-card.field-card .surprise-icon { color: #ffe27a; fill: #ffe27a; }
   .battle-card.field-card .dash-icon { color: #b8ffcf; fill: #b8ffcf; }
+  .battle-card.field-card .bind-icon { color: #c9a26a; fill: none; }
   .battle-card.field-card[draggable="true"] { cursor: grab; }
   .battle-card.field-card[draggable="true"]:active { cursor: grabbing; }
   .battle-card.field-card.battle-attack-dragging { opacity: .48; }
@@ -3805,6 +3815,12 @@
                     <path d="M1 7.5h4M0.5 11.5h4M1 15.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
                     <path fill="currentColor" d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
                   </svg>
+                  <svg v-if="battleCardIsBound(card, 'opp')" class="status-icon bind-icon" viewBox="0 0 24 24">
+                    <ellipse cx="12" cy="4.5" rx="7.2" ry="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                    <ellipse cx="12" cy="9.5" rx="7.2" ry="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                    <ellipse cx="12" cy="14.5" rx="7.2" ry="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                    <ellipse cx="12" cy="19.5" rx="7.2" ry="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                  </svg>
                 </div>
               </div>
             </div>
@@ -3852,6 +3868,12 @@
                   <svg v-if="battleCardHasKeyword(card, '疾駆')" class="status-icon dash-icon" viewBox="0 0 24 24">
                     <path d="M1 7.5h4M0.5 11.5h4M1 15.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
                     <path fill="currentColor" d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
+                  </svg>
+                  <svg v-if="battleCardIsBound(card, 'self')" class="status-icon bind-icon" viewBox="0 0 24 24">
+                    <ellipse cx="12" cy="4.5" rx="7.2" ry="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                    <ellipse cx="12" cy="9.5" rx="7.2" ry="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                    <ellipse cx="12" cy="14.5" rx="7.2" ry="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                    <ellipse cx="12" cy="19.5" rx="7.2" ry="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
                   </svg>
                 </div>
               </div>
@@ -4172,40 +4194,30 @@
           <span v-if="battleZoneModal.side !== 'self'" style="font-size:12px;color:#9aa;font-weight:400;">— 閲覧のみ</span>
           <span style="font-size:12px;color:#9aa;font-weight:400;">— {{ battleZoneModal.cards.length }}枚</span>
         </h3>
+        <div class="battle-zone-modal-sort">
+          <button class="battle-zone-sort-btn" :class="{ active: !battleZoneModal.categoryFilter || battleZoneModal.categoryFilter === 'all' }" @click="battleSetZoneModalFilter('all')">すべて</button>
+          <button class="battle-zone-sort-btn" :class="{ active: battleZoneModal.categoryFilter === 'レガシー' }" @click="battleSetZoneModalFilter('レガシー')">レガシー</button>
+          <button class="battle-zone-sort-btn" :class="{ active: battleZoneModal.categoryFilter === 'オラクル' }" @click="battleSetZoneModalFilter('オラクル')">オラクル</button>
+          <button class="battle-zone-sort-btn" :class="{ active: battleZoneModal.categoryFilter === 'レリック' }" @click="battleSetZoneModalFilter('レリック')">レリック</button>
+        </div>
         <div v-if="!battleZoneModal.cards.length" class="battle-zone-modal-empty">カードがありません</div>
+        <div v-else-if="!battleZoneModalEntries().length" class="battle-zone-modal-empty">該当するカードがありません</div>
         <div v-else class="battle-zone-modal-list">
-          <div v-for="(c, i) in battleZoneModal.cards" :key="i"
+          <div v-for="entry in battleZoneModalEntries()" :key="entry.index"
                class="battle-zone-list-item"
-               :class="{ 'zone-list-dragging': battleZoneListDrag && battleZoneListDrag.zone === battleZoneModal.zone && battleZoneListDrag.index === i }"
-               @mousedown="battleZoneListPointerDown(i, $event)"
-               @click="battleZoneListCardClick(c)"
-               @contextmenu.prevent="battleOpenZoneCardMenu(i,$event)"
-               @mouseenter="showCardHover(c, $event)"
+               :class="{ 'zone-list-dragging': battleZoneListDrag && battleZoneListDrag.zone === battleZoneModal.zone && battleZoneListDrag.index === entry.index }"
+               @mousedown="battleZoneListPointerDown(entry.index, $event)"
+               @click="battleZoneListCardClick(entry.card)"
+               @contextmenu.prevent="battleOpenZoneCardMenu(entry.index,$event)"
+               @mouseenter="showCardHover(entry.card, $event)"
                @mouseleave="hideCardHover">
             <div class="battle-zone-list-thumb"
-                 :style="cardImageUrl(c) ? { backgroundImage: 'url(' + cardImageUrl(c) + ')' } : {}"></div>
+                 :style="cardImageUrl(entry.card) ? { backgroundImage: 'url(' + cardImageUrl(entry.card) + ')' } : {}"></div>
             <div>
-              <div class="battle-zone-list-name">{{ fullName(c) }}</div>
-              <div class="battle-zone-list-meta">{{ c.category || '' }}{{ c.cost !== '' && c.cost != null ? ' / コスト ' + c.cost : '' }}</div>
+              <div class="battle-zone-list-name">{{ fullName(entry.card) }}</div>
+              <div class="battle-zone-list-meta">{{ entry.card.category || '' }}{{ entry.card.cost !== '' && entry.card.cost != null ? ' / コスト ' + entry.card.cost : '' }}</div>
             </div>
             <div class="battle-zone-list-hint">{{ battleZoneModal.side === 'self' ? '右クリックで操作' : '閲覧のみ' }}</div>
-            <template v-if="false">
-            <button v-if="battleZoneModal.side === 'self'"
-                    class="battle-deck-modal-pick"
-                    @click="battleReturnZoneCardToHand(i)">
-              手札へ戻す
-            </button>
-            <button v-if="battleZoneModal.side === 'self' && battleFieldZoneForCard(c)"
-                    class="battle-deck-modal-pick"
-                    @click="battleReturnZoneCardToField(i)">
-              場へ戻す
-            </button>
-            <button v-if="battleZoneModal.side === 'self'"
-                    class="battle-deck-modal-pick"
-                    @click="battleReturnZoneCardToDeckTop(i)">
-              デッキ上へ戻す
-            </button>
-            </template>
           </div>
         </div>
         <div class="battle-zone-modal-actions">
@@ -5534,7 +5546,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.103',
+    BUILD_VERSION: '1.14.104',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8334,6 +8346,12 @@ new Vue({
     battleParseDeathSummon(card) {
       return this.battleParseTriggeredSummon(card, '死亡時');
     },
+    /* 創属性のカードは、あらゆる場所で全属性（赤/青/緑/黄/紫）のカードとして扱う */
+    _dslCardMatchesColor(card, color) {
+      if (!card || !color) return false;
+      if (card.color === color) return true;
+      return card.color === '創' && ['赤', '青', '緑', '黄', '紫'].includes(color);
+    },
     battleCardMatchesInduceCriteria(card, criteria) {
       if (!card || !criteria || !criteria.length) return true;
       const extraTypes = Array.isArray(card._typeGrant) ? card._typeGrant : [];
@@ -8353,14 +8371,14 @@ new Vue({
         }
         if (c.endsWith('カード')) {
           const color = c.replace(/カード$/, '');
-          return !color || card.color === color;
+          return !color || this._dslCardMatchesColor(card, color);
         }
         if (c.endsWith('レガシー')) {
           const prefix = c.replace(/レガシー$/, '');
           if (card.category !== 'レガシー') return false;
-          return !prefix || card.color === prefix || hasType(prefix);
+          return !prefix || this._dslCardMatchesColor(card, prefix) || hasType(prefix);
         }
-        return card.color === c || hasType(c) || card.category === c || this.fullName(card).includes(c);
+        return this._dslCardMatchesColor(card, c) || hasType(c) || card.category === c || this.fullName(card).includes(c);
       });
     },
     /* ===================================================================
@@ -12179,6 +12197,10 @@ new Vue({
     battleCanTargetLegacy(attacker, defender) {
       return !(this.battleCardHasKeyword(defender, '死角') && !this.battleCardHasKeyword(attacker, '死角'));
     },
+    /* フィールド表示用：このカードが【拘束】中かどうか（縄アイコン表示に使用） */
+    battleCardIsBound(card, side) {
+      return this._battleIsBindingActive(card, side, this.battleSample.turn);
+    },
     battleLegacyIsSummonedThisTurn(card) {
       return Number(card && card._summonedTurn) === Number(this.battleSample.turn);
     },
@@ -13023,6 +13045,21 @@ new Vue({
       };
     },
     /* ===== 墓地・崩壊一覧モーダルからのドラッグ&ドロップ（手札/場/対のゾーンへ戻す） ===== */
+    /* 墓地/崩壊モーダル：カテゴリボタンで絞り込んだ一覧を返す（{card, index}のindexは元配列での実インデックス） */
+    battleZoneModalEntries() {
+      const modal = this.battleZoneModal;
+      if (!modal || !Array.isArray(modal.cards)) return [];
+      const filter = modal.categoryFilter || 'all';
+      return modal.cards
+        .map((card, index) => ({ card, index }))
+        .filter(entry => filter === 'all' || (entry.card && entry.card.category === filter));
+    },
+    /* 墓地/崩壊モーダル：レガシー/オラクル/レリックボタンで絞り込む（もう一度押すと解除） */
+    battleSetZoneModalFilter(category) {
+      const modal = this.battleZoneModal;
+      if (!modal) return;
+      this.$set(modal, 'categoryFilter', modal.categoryFilter === category ? 'all' : category);
+    },
     battleZoneListCardClick(c) {
       if (Date.now() < (this._battleSuppressZoneListClickUntil || 0)) return;
       this.openPreview(c);
