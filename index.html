@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.94',
+    BUILD_VERSION: '1.14.95',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5766,6 +5766,8 @@ new Vue({
     battleSkillOptions() {
       const kami = this.battleSample.self && this.battleSample.self.kami;
       if (!kami) return [];
+      // K10ヤマタノオロチは全ての能力が封印数に応じて自動発動するため、神技ボタンは常に非表示（光らない）
+      if (this._battleKamiNo('self') === 'K10') return [];
       return [1, 2].map(index => {
         const rawCost = kami[`skill${index}cost`];
         const matched = String(rawCost == null ? '' : rawCost).match(/\d+/);
@@ -5774,11 +5776,9 @@ new Vue({
         const effect = kami[`skill${index}effect`] || '';
         const exists = !!(kami[`skill${index}name`] || effect || rawCost !== '');
         const isSelfTurn = this.battleSample.activeSide === 'self';
-        // K10ヤマタノオロチは天力を扱わないため、天力コストのチェックを行わない（封印数が発動条件）
-        const isOrochi = this._battleKamiNo('self') === 'K10';
-        const hasCost = isOrochi ? true : this.battleSample.self.tenryoku >= cost;
+        const hasCost = this.battleSample.self.tenryoku >= cost;
         // affordable：コストの充足のみ判定（相手ターン中でも枠の光る演出を維持するため）
-        return { index, name, effect, cost: isOrochi ? 0 : cost, exists, affordable: hasCost, enabled: exists && isSelfTurn && hasCost };
+        return { index, name, effect, cost, exists, affordable: hasCost, enabled: exists && isSelfTurn && hasCost };
       }).filter(skill => skill.exists);
     },
     /* 枠の光る色（コストの充足のみで判定。相手ターン中に使用できない場合でも演出は維持する） */
@@ -7260,7 +7260,7 @@ new Vue({
       if (typeof this.dslRefreshStaticAbilities === 'function') this.dslRefreshStaticAbilities();
     },
     /* 対戦画面：ステータス±処理（手動調整＋Undo対応） */
-    battleStat(side, key, delta) {
+    async battleStat(side, key, delta) {
       if (this.battleSample.result) return;
       if (side !== 'self') return;
       const target = this.battleSample[side];
@@ -7282,7 +7282,7 @@ new Vue({
       else if (key === 'tenryoku') target.tenryoku = Math.max(0, next);
       else if (key === 'seal' && target.seal !== null) {
         target.seal = Math.max(0, Math.min(8, next));
-        this._battleHandleSealThreshold(side, previous, target.seal);
+        await this._battleHandleSealThreshold(side, previous, target.seal);
       }
       // 天力トリガー（K6 アメノウズメ）：手動操作でもライフ/マナ/マナ最大値が増加したら発火
       // （既に上限に達していて実際の値は変わらなくても、増加を試みたこと自体で発火する）
@@ -7509,7 +7509,7 @@ new Vue({
       if (this.battleIsOrochi(endingSide) && endingPlayer.seal > 0) {
         const previousSeal = endingPlayer.seal;
         endingPlayer.seal -= 1;
-        this._battleHandleSealThreshold(endingSide, previousSeal, endingPlayer.seal);
+        await this._battleHandleSealThreshold(endingSide, previousSeal, endingPlayer.seal);
       }
       // 自分ターン終了時：このターン適用された【補正】を巻き戻し、戦闘力0以下のレガシーを破壊
       this._battleExpireBuffsForSide(endingSide, bs.turn);
@@ -12480,6 +12480,7 @@ new Vue({
       }
       // K10ヤマタノオロチ「封神・終極八岐」：全ての封印が解かれている間、神技の発動なしに自動で有効。
       // このターン最初に神攻した龍レガシーが自動で【神威：+2】を得る（1ターンに1度）
+      let sealBonusApplied = false;
       if (
         this._battleKamiNo('self') === 'K10' &&
         Number(this.battleSample.self.seal) <= 0 &&
@@ -12489,7 +12490,7 @@ new Vue({
         this._battleKamiMarkTriggered('self', 'K10sealAtkBonus');
         this.battleSaveUndo();
         this._dslApplyGrant(attacker, ['神威:+2'], false);
-        this.battleShowNotice('封神・終極八岐', `「${this.fullName(attacker)}」が【神威：+2】を得ました。`, [attacker]);
+        sealBonusApplied = true;
       }
       const damage = Math.max(0, Number(attacker.attack || 0));
       this.battleSaveUndo();
@@ -12510,7 +12511,11 @@ new Vue({
       // （「このレガシーをアンタップする」#5夜風、「相手ライフを減らしたとき〜」#81 等が正しく機能するように）
       await this.battleRunActionTrigger(attacker, '神攻時');
       this._battleCheckResult();
-      this.battleShowNotice('神攻成功', `「${this.fullName(attacker)}」が神攻し、相手カミに ${damage} ダメージを与えました。`, [attacker]);
+      this.battleShowNotice(
+        '神攻成功',
+        `「${this.fullName(attacker)}」が神攻し、相手カミに ${damage} ダメージを与えました。${sealBonusApplied ? '\n（「封神・終極八岐」の効果でこのターン最初の神攻に【神威：+2】を得ました）' : ''}`,
+        [attacker]
+      );
     },
     battleUpdateDragOverZone(e) {
       if (this.battleDragIndex === null) return;
@@ -13185,7 +13190,7 @@ new Vue({
         );
       }
     },
-    _battleHandleSealThreshold(side, previous, current) {
+    async _battleHandleSealThreshold(side, previous, current) {
       const player = this.battleSample[side];
       if (!player || !player.sealRewards) return;
       let cardNo = null;
@@ -13212,6 +13217,30 @@ new Vue({
           : `${owner}はヤマタノオロチの能力を処理しましたが、No.${cardNo}のカードデータを確認できませんでした。`,
         cards: card ? [card] : [],
       };
+      // 封印4つの閾値では、自動で1枚ドロー→手札1枚を墓地に送る（旧「四岐龍胤」の神技を自動化）
+      if (threshold === 4 && side === 'self') {
+        if (Array.isArray(player.deck) && player.deck.length) {
+          const drawn = player.deck.shift();
+          player.hand.push(drawn);
+          player.handCount = player.hand.length;
+          player.deckCount = player.deck.length;
+          this.battleShowNotice('ドロー', 'ヤマタノオロチの能力で1枚ドローしました。', [drawn]);
+        }
+        const discardable = player.hand.filter(c => c !== card);
+        if (discardable.length) {
+          const picked = await this.dslAskCustomTargets('ヤマタノオロチの能力：手札から墓地に送るカードを選択', discardable, 1, null, false);
+          const toDiscard = picked[0];
+          if (toDiscard) {
+            const idx = player.hand.indexOf(toDiscard);
+            if (idx >= 0) player.hand.splice(idx, 1);
+            player.handCount = player.hand.length;
+            const destZone = this._battleLeaveZone(toDiscard, 'graveyard');
+            player[destZone] = player[destZone] || [];
+            player[destZone].push(toDiscard);
+            this.battleShowNotice('墓地送り', `「${this.fullName(toDiscard)}」を墓地に送りました。`, [toDiscard]);
+          }
+        }
+      }
     },
     battleFindLifeReplacementCard(side) {
       const player = this.battleSample && this.battleSample[side];
