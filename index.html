@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.96',
+    BUILD_VERSION: '1.14.97',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -9089,10 +9089,10 @@ new Vue({
       if (/自分墓地/.test(s) && /全属性/.test(s) && /レガシー/.test(s)) {
         const side = this._dslCurrentSourceSide ? this._dslCurrentSourceSide() : 'self';
         const player = this.battleSample && this.battleSample[side];
-        const colors = new Set(((player && player.graveyard) || [])
-          .filter(card => card && card.category === 'レガシー')
-          .map(card => card.color)
-          .filter(Boolean));
+        const graveyardLegacies = ((player && player.graveyard) || []).filter(card => card && card.category === 'レガシー');
+        // 創属性は全属性を満たすワイルドカードとして扱う（例：終焉龍・ディエスイレ）
+        if (graveyardLegacies.some(card => card.color === '創')) return true;
+        const colors = new Set(graveyardLegacies.map(card => card.color).filter(Boolean));
         return ['赤', '青', '緑', '黄', '紫'].every(color => colors.has(color));
       }
       if (/戻した/.test(s) && /3コスト以下/.test(s) && /神使レガシー/.test(s)) {
