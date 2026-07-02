@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.93',
+    BUILD_VERSION: '1.14.94',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6862,7 +6862,6 @@ new Vue({
         senteiBoostUsed: false,
         kamiTriggerCounts: {},   // 天力トリガー：各ターンの発動回数管理（K5/K6/K7/K8/K9）
         cardPlaysThisTurn: 0,    // このターン中にこの側が使用したカード枚数（オラクル/レガシー/レリック合算）
-        _orochiSealUnleashed: false, // K10ヤマタノオロチ「封神・終極八岐」発動済みか
       };
     },
     _battleInitialize(config) {
@@ -12479,19 +12478,18 @@ new Vue({
         this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index, '神攻時');
         return;
       }
-      // K10ヤマタノオロチ「封神・終極八岐」発動中：龍レガシーの神攻時、1ターンに1度だけ【神威：+2】を付与するか確認する
+      // K10ヤマタノオロチ「封神・終極八岐」：全ての封印が解かれている間、神技の発動なしに自動で有効。
+      // このターン最初に神攻した龍レガシーが自動で【神威：+2】を得る（1ターンに1度）
       if (
-        this.battleSample.self._orochiSealUnleashed &&
         this._battleKamiNo('self') === 'K10' &&
+        Number(this.battleSample.self.seal) <= 0 &&
         this.battleCardMatchesInduceCriteria(attacker, ['龍レガシー']) &&
         this._battleKamiCanTrigger('self', 'K10sealAtkBonus', 1)
       ) {
-        const grantOk = await this.dslAskOptional(attacker, '封神・終極八岐', `「${this.fullName(attacker)}」の神攻に【神威：+2】を付与しますか？`);
-        if (grantOk) {
-          this._battleKamiMarkTriggered('self', 'K10sealAtkBonus');
-          this.battleSaveUndo();
-          this._dslApplyGrant(attacker, ['神威:+2'], false);
-        }
+        this._battleKamiMarkTriggered('self', 'K10sealAtkBonus');
+        this.battleSaveUndo();
+        this._dslApplyGrant(attacker, ['神威:+2'], false);
+        this.battleShowNotice('封神・終極八岐', `「${this.fullName(attacker)}」が【神威：+2】を得ました。`, [attacker]);
       }
       const damage = Math.max(0, Number(attacker.attack || 0));
       this.battleSaveUndo();
@@ -13185,11 +13183,6 @@ new Vue({
           `神技「${skill.name}」の自動処理中にエラーが発生しました。手動で処理してください。`,
           [kami]
         );
-      }
-      // K10ヤマタノオロチ「封神・終極八岐」：発動後は永続的に有効化し、以後は龍レガシーが神攻するたび
-      // 1ターンに1度だけ【神威：+2】を付与するか確認する（battleResolveDivineAttack側で処理）
-      if (target.技名 === '封神・終極八岐') {
-        this.$set(this.battleSample.self, '_orochiSealUnleashed', true);
       }
     },
     _battleHandleSealThreshold(side, previous, current) {
