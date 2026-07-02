@@ -5534,7 +5534,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.92',
+    BUILD_VERSION: '1.14.93',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8736,7 +8736,12 @@ new Vue({
       // 直前で墓地に送った/破棄した枚数
       if (/直前.*(墓地|破棄|捨て)/.test(s)) return Number(this._dslLastMovedCount || 0);
       if (/墓地に送った枚数|送った枚数/.test(s)) return Number(this._dslLastMovedCount || 0);
-      // 崩壊した枚数
+      // 崩壊した枚数（÷N の割り算指定にも対応。例：#85陰陽かぶれの犬神「崩壊した枚数÷2」）
+      const mCrumbleDiv = s.match(/崩壊した?枚数÷(\d+)/);
+      if (mCrumbleDiv) {
+        const divisor = Number(mCrumbleDiv[1]) || 1;
+        return Math.floor(Number(this._dslLastCrumbledCount || 0) / divisor);
+      }
       if (/崩壊した枚数|崩壊枚数/.test(s)) return Number(this._dslLastCrumbledCount || 0);
       // 戻した枚数
       if (/戻した枚数/.test(s)) {
@@ -8747,8 +8752,8 @@ new Vue({
       if (/招来した枚数/.test(s)) return (this._dslLastSummonedCards || []).length;
       // 減らしたライフの数値分
       if (/減らしたライフ/.test(s)) return Number(this._dslLastLifeReduced || 0);
-      // 自分フィールドの〜の数（合算もOK）
-      const mField = s.match(/自分フィールドの(.+?)の数/);
+      // 自分フィールドの〜の数（合算もOK）／自分の〜レガシーの数（例：#87ヤマブキ「自分の忍者レガシーの数」）
+      const mField = s.match(/自分(?:フィールド)?の(.+?)の数/);
       if (mField) {
         const crit = mField[1].split(/[+＋]/).map(t => t.trim()).filter(Boolean);
         return (self.legacies || []).filter(c => this.battleCardMatchesInduceCriteria(c, crit)).length;
@@ -8759,6 +8764,12 @@ new Vue({
       if (/自分天力/.test(s) || /^天力$/.test(s)) return Number(self.tenryoku || 0);
       // 自分レリック数
       if (/自分.*レリック.*数|レリック数/.test(s)) return (self.relics || []).length;
+      // 自墓地の〜数（絞込対応。例：#蠢く陰謀「自分墓地のレガシー数」）
+      const mGraveCrit = s.match(/自分墓地の(.+?)数/);
+      if (mGraveCrit) {
+        const crit = mGraveCrit[1].split(/[+＋]/).map(t => t.trim()).filter(Boolean);
+        return (self.graveyard || []).filter(c => !crit.length || this.battleCardMatchesInduceCriteria(c, crit)).length;
+      }
       // 自墓地枚数
       if (/自(分)?墓地枚数|自分の墓地枚数/.test(s)) return (self.graveyard || []).length;
       // 自分フィールドの種族数
@@ -9239,6 +9250,13 @@ new Vue({
       }
       return null;
     },
+    /* act.対象.数参照 が無く act.数参照（アクション直下）にのみ指定されている場合、
+       dslChooseTargets の「動的」枚数解決で参照できるようマージする
+       （例：サフィロス、ヤマブキ、蠢く陰謀） */
+    _dslMergeActNumRef(sel, act) {
+      if (!sel || !act || sel.数参照 || !act.数参照) return sel;
+      return Object.assign({}, sel, { 数参照: act.数参照 });
+    },
     _dslCompareNum(a, op, b) {
       if (op === '>=') return a >= b;
       if (op === '<=') return a <= b;
@@ -9263,6 +9281,22 @@ new Vue({
       else if (defaultToCurrentTurn) side = applierSide; // 未対応・未指定の期間は従来通り「このターン」扱い
       else return null; // キーワード付与で期間未指定・無期限（「このカードが場にある間」等）は場を離れるまで持続
       return { side, turn: this._battleBindingTurnForSide(side) };
+    },
+    /* 数参照が「直前で墓地に送った中の◯◯の枚数だけ補正X」のような動的倍率を示す場合、
+       実際に該当する枚数を数えて補正量を計算し直す（例：#19カゲロウ）。該当しなければそのまま返す。 */
+    _dslResolveDynamicGrantAmounts(act) {
+      const grants = Array.isArray(act && act.付与) ? act.付与.slice() : [];
+      const ref = String((act && act.数参照) || '');
+      const m = ref.match(/直前で墓地に送った中の(.+?)の枚数だけ補正([+\-]?\d+)/);
+      if (!m) return grants;
+      const criteria = m[1].split(/[+＋]/).map(t => t.trim()).filter(Boolean);
+      const milled = this._dslLastMilledCards || [];
+      const count = milled.filter(c => c && this.battleCardMatchesInduceCriteria(c, criteria)).length;
+      const total = (Number(m[2]) || 0) * count;
+      return grants.map(g => {
+        const gs = String(g);
+        return /^補正[:：]?[+\-]?\d+$/.test(gs) ? `補正:${total >= 0 ? '+' : ''}${total}` : g;
+      });
     },
     _dslApplyGrant(card, grants, permanent, period) {
       if (!card) return;
@@ -9549,13 +9583,14 @@ new Vue({
       }
     },
     async _dslOpGrant(act, sourceCard, permanent) {
-      const targets = await this.dslChooseTargets(act.対象, `【${(act.付与 || []).join('・')}】を付与`);
+      const targets = await this.dslChooseTargets(this._dslMergeActNumRef(act.対象, act), `【${(act.付与 || []).join('・')}】を付与`);
       if (!targets.length) return;
       this.battleSaveUndo();
-      targets.forEach(c => this._dslApplyGrant(c, act.付与, permanent, act.期間));
+      const grants = this._dslResolveDynamicGrantAmounts(act);
+      targets.forEach(c => this._dslApplyGrant(c, grants, permanent, act.期間));
       this.battleShowNotice(
         permanent ? '静的バフ（恒常）' : '付与（このターン）',
-        `${targets.map(c => `「${this.fullName(c)}」`).join('、')}に ${(act.付与 || []).join(' / ')} を付与しました。`,
+        `${targets.map(c => `「${this.fullName(c)}」`).join('、')}に ${grants.join(' / ')} を付与しました。`,
         targets
       );
       // 天力トリガー（K8アマテラス）：出現時の効果選択などで後から守護を付与された場合も、
@@ -9673,9 +9708,9 @@ new Vue({
     },
     async _dslOpReturnToHand(act, sourceCard) {
       // 「レガシーを手札に戻す」等、対象側の指定がない効果は自分・相手を問わず対象にする
-      const returnSel = (act.対象 && !act.対象.対象側 && !act.対象.自陣全体 && !act.対象.自身)
+      const returnSel = this._dslMergeActNumRef((act.対象 && !act.対象.対象側 && !act.対象.自陣全体 && !act.対象.自身)
         ? Object.assign({}, act.対象, { 対象側: 'both' })
-        : act.対象;
+        : act.対象, act);
       const targets = await this.dslChooseTargets(returnSel, '手札に戻す対象を選択');
       if (!targets.length) return;
       this.battleSaveUndo();
@@ -9725,9 +9760,9 @@ new Vue({
     },
     async _dslOpTap(act, sourceCard, doTap) {
       // 「レガシーをタップする」等、対象側の指定がない効果は自分・相手を問わず対象にする
-      const tapSel = (act.対象 && !act.対象.対象側 && !act.対象.自陣全体 && !act.対象.自身)
+      const tapSel = this._dslMergeActNumRef((act.対象 && !act.対象.対象側 && !act.対象.自陣全体 && !act.対象.自身)
         ? Object.assign({}, act.対象, { 対象側: 'both' })
-        : act.対象;
+        : act.対象, act);
       const targets = await this.dslChooseTargets(tapSel, doTap ? 'タップする対象を選択' : 'アンタップする対象を選択');
       if (!targets.length) { this._dslLastActionSucceeded = false; return; }
       // 期間:このターン終了時 のアンタップ（例：K8アマテラス神技1「照護」）は即時実行せず、このターンの終了時まで予約する
