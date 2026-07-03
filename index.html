@@ -4674,17 +4674,18 @@
   <div v-if="dslOptionalModal" class="battle-zone-modal" @click.self="dslAnswerOptional(false)">
     <div class="battle-zone-modal-panel" style="max-width:520px;">
       <h3 class="battle-zone-modal-title">
-        任意効果：発動しますか？
+        {{ dslOptionalModal.kind === 'reroll' ? 'リロールしますか？' : '任意効果：発動しますか？' }}
         <span style="font-size:12px;color:#9aa;font-weight:400;">— {{ dslOptionalModal.triggerLabel }}</span>
       </h3>
       <div class="public-process-badge">両プレイヤーへの公開処理</div>
       <p class="battle-deck-modal-message" style="margin:8px 0;">
-        「{{ fullName(dslOptionalModal.sourceCard) }}」の効果です。発動してもよいですが、必須ではありません。
+        <template v-if="dslOptionalModal.kind === 'reroll'">カードの効果ではなく、ゲームのシステムとして誰でも使えるルールです。行わなくても問題ありません。</template>
+        <template v-else>「{{ fullName(dslOptionalModal.sourceCard) }}」の効果です。発動してもよいですが、必須ではありません。</template>
       </p>
       <pre style="background:#10141d;color:#cbd3de;padding:10px 12px;border-radius:5px;font-size:12px;white-space:pre-wrap;line-height:1.55;margin:0 0 12px;">{{ dslOptionalModal.summary }}</pre>
       <div class="battle-zone-modal-actions">
-        <button class="battle-back-btn" style="background:#2e7d4f;border-color:#7cf0a8;color:#fff;" @click="dslAnswerOptional(true)">発動する</button>
-        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="dslAnswerOptional(false)">発動しない</button>
+        <button class="battle-back-btn" style="background:#2e7d4f;border-color:#7cf0a8;color:#fff;" @click="dslAnswerOptional(true)">{{ dslOptionalModal.kind === 'reroll' ? 'リロールする' : '発動する' }}</button>
+        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="dslAnswerOptional(false)">{{ dslOptionalModal.kind === 'reroll' ? 'リロールしない' : '発動しない' }}</button>
       </div>
     </div>
   </div>
@@ -5648,7 +5649,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.109',
+    BUILD_VERSION: '1.14.110',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -10929,13 +10930,14 @@ new Vue({
       const chosen = opts[picked];
       await this.dslRunActions(chosen.処理 || [], sourceCard);
     },
-    /* 任意能力の発動可否を尋ねる */
-    dslAskOptional(card, triggerLabel, summary) {
+    /* 任意能力の発動可否を尋ねる。kind='reroll' の場合はカード効果ではなくシステムルールとして文言を出し分ける */
+    dslAskOptional(card, triggerLabel, summary, kind = 'ability') {
       return new Promise((resolve) => {
         this.dslOptionalModal = {
           sourceCard: card,
           triggerLabel,
           summary,
+          kind,
           resolver: resolve,
         };
       });
@@ -12052,13 +12054,16 @@ new Vue({
       if (!playedCard || !player) return;
       const candidates = (player.hand || []).filter(c => c && this._dslColorsMatchForReroll(c.color, playedCard.color));
       if (!candidates.length) return;
+      // 創属性は全属性のワイルドカードのため、使用カードが創の場合は「任意の色」と案内する
+      const colorLabel = playedCard.color === '創' ? '任意の色' : `${playedCard.color}色`;
       const ok = await this.dslAskOptional(
         playedCard,
         'リロール',
-        `使用した「${this.fullName(playedCard)}」と同じ色のカードを手札から1枚公開し、デッキに戻してシャッフルした上で1枚ドローできます。`
+        `${colorLabel}のカードを手札から1枚公開し、デッキに戻してシャッフルした上で1枚ドローできます。`,
+        'reroll'
       );
       if (!ok) return;
-      const picked = await this.dslAskCustomTargets('公開する同色カードを選択', candidates, 1, playedCard);
+      const picked = await this.dslAskCustomTargets(`公開する${colorLabel}のカードを選択`, candidates, 1, playedCard);
       if (!picked.length) return;
       const revealed = picked[0];
       this.battleSaveUndo();
