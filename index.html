@@ -5649,7 +5649,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.110',
+    BUILD_VERSION: '1.14.111',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -11474,7 +11474,12 @@ new Vue({
         if (hasEnter) this.battleRunDoubledEnterEffect(card, paidCost);
         return true;
       }
-      return this._battleQueueAndRunEffects(card, paidCost, '出現時');
+      if (this._battleQueueAndRunEffects(card, paidCost, '出現時')) return true;
+      // 「進化中・出現時」等、進化時にのみ出現時効果を持つカードは、通常配置では①出現時が
+      // 何もしないのが仕様通り。effect_specでレビュー済み（specエントリが存在する）カードについては、
+      // 誤解を招く「自動処理未対応」警告を出さない（例：#91千変万化の大妖狐）
+      if (this.effectSpecsReady && this._dslGetSpec(card)) return true;
+      return false;
     },
     battleRunDeathKeywordEffects(card) {
       if (this._battleIsEffectDisabled(card)) {
