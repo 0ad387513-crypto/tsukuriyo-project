@@ -2288,6 +2288,13 @@
     font-size: 15px; border-radius: 50%; background: rgba(0,0,0,.28);
   }
   .battle-log-entry-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .battle-log-entry-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .battle-log-entry-side-tag {
+    font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; color: #fff;
+  }
+  .battle-log-entry-side-tag.self { background: #4a6bb0; }
+  .battle-log-entry-side-tag.opp { background: #b04a4a; }
+  .battle-log-entry-turn-tag { font-size: 10px; color: #9aa; }
   .battle-log-entry-title { font-size: 12px; font-weight: 700; color: #e8d4a0; }
   .battle-log-entry-message { font-size: 12px; color: #cbd3de; white-space: pre-line; }
   .battle-log-entry-thumb {
@@ -4277,7 +4284,11 @@
                    @mouseleave="hideCardHover">
                 <span class="battle-log-entry-icon" :class="'icon-' + (entry.icon || 'effect')">{{ battleLogIconGlyph(entry.icon) }}</span>
                 <div class="battle-log-entry-body">
-                  <span class="battle-log-entry-title">{{ entry.title }}</span>
+                  <div class="battle-log-entry-meta">
+                    <span class="battle-log-entry-side-tag" :class="entry.side">{{ entry.side === 'self' ? '自分' : '相手' }}</span>
+                    <span class="battle-log-entry-turn-tag">ターン{{ entry.turn }}</span>
+                    <span class="battle-log-entry-title">{{ entry.title }}</span>
+                  </div>
                   <span class="battle-log-entry-message">{{ entry.message }}</span>
                 </div>
                 <div v-if="entry.cards && entry.cards[0]" class="battle-log-entry-thumb"
@@ -5637,7 +5648,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.107',
+    BUILD_VERSION: '1.14.108',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
