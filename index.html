@@ -2739,9 +2739,13 @@
     position: fixed; inset: 0; z-index: 620; display: flex; align-items: center; justify-content: center;
     padding: 20px; background: rgba(3,5,10,.82);
   }
-  /* 成功報告・状態変化の自動消滅トースト：右上・非ブロッキング */
+  /* 成功報告・状態変化の自動消滅トースト：右上（ヘッダーのボタン行より下）・非ブロッキング・積み重ね表示 */
+  .notice-toast-stack {
+    position: fixed; top: 58px; right: 12px; z-index: 640;
+    display: flex; flex-direction: column; gap: 6px;
+    pointer-events: none; /* 個々のトースト要素だけクリックを受け付ける */
+  }
   .notice-toast {
-    position: fixed; top: 12px; right: 12px; z-index: 640;
     width: min(300px, 80vw); padding: 10px 14px; border-radius: 8px;
     background: rgba(23,30,45,.94); border: 1px solid #4a5877;
     box-shadow: 0 8px 24px rgba(0,0,0,.5);
@@ -2751,6 +2755,8 @@
   .notice-toast-message { font-size: 12px; color: #cbd3de; line-height: 1.5; white-space: pre-line; }
   .notice-toast-fade-enter-active, .notice-toast-fade-leave-active { transition: opacity .25s, transform .25s; }
   .notice-toast-fade-enter-from, .notice-toast-fade-leave-to { opacity: 0; transform: translateY(-8px); }
+  .notice-toast-fade-move { transition: transform .25s; }
+  .notice-toast-fade-leave-active { position: absolute; }
   /* 通知に紐づくカードの一時ハイライト（トーストで見落としても分かるように） */
   @keyframes notice-glow-pulse {
     0%   { box-shadow: 0 0 0 0 rgba(255, 216, 106, 0); }
@@ -4577,7 +4583,7 @@
       </div>
     </div>
 
-    <div v-if="battleNotice && _battleNoticeIsBlocking(battleNotice.title.replace(/^【相手】/, ''), battleNotice.message)" class="battle-action-modal">
+    <div v-if="battleNotice" class="battle-action-modal">
       <div class="battle-action-panel">
         <div class="public-process-badge">両プレイヤーへの公開処理</div>
         <h3>{{ battleNotice.title }}</h3>
@@ -4594,14 +4600,16 @@
       </div>
     </div>
 
-    <!-- 成功報告・状態変化の通知：クリック不要の自動消滅トースト（右上） -->
-    <transition name="notice-toast-fade">
-      <div v-if="battleNotice && !_battleNoticeIsBlocking(battleNotice.title.replace(/^【相手】/, ''), battleNotice.message)"
-           class="notice-toast" @click="battleNotice = null">
-        <div class="notice-toast-title">{{ battleNotice.title }}</div>
-        <div class="notice-toast-message">{{ battleNotice.message }}</div>
-      </div>
-    </transition>
+    <!-- 成功報告・状態変化の通知：クリック不要の自動消滅トースト（右上・積み重ね表示） -->
+    <div class="notice-toast-stack">
+      <transition-group name="notice-toast-fade">
+        <div v-for="t in battleToasts" :key="t.id"
+             class="notice-toast" @click="battleToasts = battleToasts.filter(x => x.id !== t.id)">
+          <div class="notice-toast-title">{{ t.title }}</div>
+          <div class="notice-toast-message">{{ t.message }}</div>
+        </div>
+      </transition-group>
+    </div>
 
     <div v-if="battleConfirmModal" class="battle-action-modal battle-confirm-modal" @click.self="battleCancelConfirm">
       <div class="battle-action-panel">
@@ -5645,7 +5653,8 @@ new Vue({
     battleZoneCardMenu: null,
     battleDragGuide: null,
     battleSkillModal: null,
-    battleNotice: null,
+    battleNotice: null, // ブロッキングモーダル用（クリックで確認が必要な通知のみ使う）
+    battleToasts: [], // 自動消滅トースト（成功報告・状態変化）：[{ id, title, message }]、積み重ね表示・各々独立したタイマーで消える
     battleGlowCardNos: [], // 直近の通知に紐づくカード（no配列）：一時的にハイライトする
     battleConfirmModal: null, // { action, title, message, confirmLabel, cards, payload }
     /* 手札ドラッグ・場出し */
@@ -5686,7 +5695,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.116',
+    BUILD_VERSION: '1.14.117',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8596,36 +8605,38 @@ new Vue({
       this._battleGlowTimer = setTimeout(() => { this.battleGlowCardNos = []; }, 1100);
     },
     battleShowNotice(title, message, cards = []) {
-      // 同じ効果解決中（ユーザー確認を挟まず連続発火）の通知は、前の通知が表示される前に
-      // 上書きされて消えてしまうため、1つの通知にまとめて表示する（例：複数のステータス変化を続けて行うカード）。
-      if (this._battleNoticeMerging && this.battleNotice) {
-        this.battleNotice = {
-          title: this.battleNotice.title,
-          message: `${this.battleNotice.message}\n【${title}】${message}`,
-          cards: [...this.battleNotice.cards, ...cards],
-        };
-      } else {
-        this.battleNotice = { title, message, cards };
-        this._battleNoticeMerging = true;
-        Promise.resolve().then(() => { this._battleNoticeMerging = false; });
-      }
       this._battleAppendLogEntry(title, message, cards);
       // オンライン同期：相手にも通知を共有（writerガードと重複防止のため ts を付与）
       this._battlePublishNotice(title, message, cards);
       this._battleGlowNoticeCards(cards);
-      this._battleScheduleNoticeAutoDismiss();
-    },
-    /* 成功報告・状態変化の通知（ブロッキング不要と判定されたもの）は、一定時間で自動的に消す。
-       操作不可/エラー/条件未達等（クリックで読んでもらう必要があるもの）は対象外。 */
-    _battleScheduleNoticeAutoDismiss() {
-      clearTimeout(this._battleNoticeAutoTimer);
-      const notice = this.battleNotice;
-      if (!notice || this._battleNoticeIsBlocking(notice.title.replace(/^【相手】/, ''), notice.message)) return;
-      this._battleNoticeAutoTimer = setTimeout(() => {
-        const n = this.battleNotice;
-        if (n && !this._battleNoticeIsBlocking(n.title.replace(/^【相手】/, ''), n.message)) {
-          this.battleNotice = null;
+      if (this._battleNoticeIsBlocking(title, message)) {
+        // ブロッキングモーダル：同じ効果解決中（ユーザー確認を挟まず連続発火）の通知は、
+        // 前の通知が表示される前に上書きされて消えてしまうため、1つにまとめて表示する。
+        if (this._battleNoticeMerging && this.battleNotice) {
+          this.battleNotice = {
+            title: this.battleNotice.title,
+            message: `${this.battleNotice.message}\n【${title}】${message}`,
+            cards: [...this.battleNotice.cards, ...cards],
+          };
+        } else {
+          this.battleNotice = { title, message, cards };
+          this._battleNoticeMerging = true;
+          Promise.resolve().then(() => { this._battleNoticeMerging = false; });
         }
+      } else {
+        // 自動消滅トースト：積み重ね表示。それぞれ独立したタイマーで自分だけ消える
+        // （連続発火しても他のトーストの表示時間が延びたり巻き込まれて消えたりしない）。
+        this._battlePushToast(title, message);
+      }
+    },
+    _battlePushToast(title, message) {
+      const id = (this._battleToastSeq = (this._battleToastSeq || 0) + 1);
+      this.battleToasts.push({ id, title, message });
+      // 積みすぎ防止：古いものから最大6件まで
+      if (this.battleToasts.length > 6) this.battleToasts.splice(0, this.battleToasts.length - 6);
+      setTimeout(() => {
+        const idx = this.battleToasts.findIndex(t => t.id === id);
+        if (idx >= 0) this.battleToasts.splice(idx, 1);
       }, 2500);
     },
     /* バトルログ（一挙一動の履歴）に1件追加する。cardsの最初の1枚が今いる場所からサイド（自分/相手）を判定する
@@ -8680,13 +8691,14 @@ new Vue({
       if (payload.ts && payload.ts <= (n._lastNoticeAt || 0)) return; // 重複（同 ts 以下）は無視
       n._lastNoticeAt = payload.ts || Date.now();
       const cards = (payload.cardNos || []).map(no => this.cardByNo[String(no)]).filter(Boolean);
-      this.battleNotice = {
-        title: '【相手】' + (payload.title || ''),
-        message: payload.message || '',
-        cards,
-      };
+      const title = payload.title || '';
+      const message = payload.message || '';
       this._battleGlowNoticeCards(cards);
-      this._battleScheduleNoticeAutoDismiss();
+      if (this._battleNoticeIsBlocking(title, message)) {
+        this.battleNotice = { title: '【相手】' + title, message, cards };
+      } else {
+        this._battlePushToast('【相手】' + title, message);
+      }
     },
     battleCardRulesText(card) {
       if (!card) return '';
