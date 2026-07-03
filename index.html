@@ -3703,12 +3703,16 @@
         <span v-if="battleNet.lastPublishedAt" style="opacity:.6;margin-left:6px;">↑ {{ battleNetPublishedAgo }}</span>
         <span v-if="battleNet.lastReceivedAt" style="opacity:.6;margin-left:6px;">↓ {{ battleNetReceivedAgo }}</span>
       </span>
+      <span v-if="battleNet.on && battleNet.oppOnline === false" class="battle-sync-status error"
+            title="相手の接続が切断されています（自動検知）">
+        ⚠️ 相手が切断中{{ battleNetOppDisconnectedAgo ? '（' + battleNetOppDisconnectedAgo + '）' : '' }}
+      </span>
       <span class="spacer"></span>
       <button class="battle-undo-btn" @click="battleOpenLogModal('log')" title="バトルログを表示">
         📜 バトルログ
       </button>
-      <button class="battle-undo-btn" @click="battleUndo" :disabled="!battleUndoStack.length"
-              :title="battleUndoStack.length ? '直前の操作を取り消します' : '取り消す操作がありません'">
+      <button class="battle-undo-btn" @click="battleUndo" :disabled="!battleCanUndo"
+              :title="battleUndoDisabledReason">
         ↶ 一手戻る<span v-if="battleUndoStack.length" class="undo-count">({{ battleUndoStack.length }})</span>
       </button>
       <button class="battle-surrender-btn" @click="battleSurrender">降参</button>
@@ -5593,6 +5597,7 @@ new Vue({
       on: false, code: null, table: null, mySeat: null, oppSeat: null,
       statePath: null, oppReady: false, _unsub: null, _wasActive: false,
       lastPublishedAt: null, lastReceivedAt: null, lastError: null,
+      oppOnline: null, oppLastSeenAt: null, // 相手の在席状態（.info/connected + onDisconnect）
     },
     _battleSyncTickNow: Date.now(),  // 「○秒前」表示を再描画するためのトリガ
     _battleApplyingRemote: false,  // 鏡映適用中（watcherの再公開を抑止）
@@ -5645,7 +5650,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.112',
+    BUILD_VERSION: '1.14.113',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5775,6 +5780,25 @@ new Vue({
     battleNetReceivedAgo() {
       const t = this.battleNet && this.battleNet.lastReceivedAt;
       return t ? this._battleAgoText(this._battleSyncTickNow - t) : '';
+    },
+    /* 相手のプレゼンスが切断（onDisconnectで online:false）になってからの経過時間 */
+    battleNetOppDisconnectedAgo() {
+      const t = this.battleNet && this.battleNet.oppLastSeenAt;
+      return t ? this._battleAgoText(this._battleSyncTickNow - t) : '';
+    },
+    /* 一手戻るの可否：同期モード中は自分の手番でない限り押せない
+       （相手の手番中に古いUndoスタックで巻き戻すと、ローカル表示だけ一時的に混乱するため） */
+    battleCanUndo() {
+      if (!this.battleUndoStack.length) return false;
+      if (this.battleNet && this.battleNet.on && this.battleSample.activeSide !== 'self') return false;
+      return true;
+    },
+    battleUndoDisabledReason() {
+      if (!this.battleUndoStack.length) return '取り消す操作がありません';
+      if (this.battleNet && this.battleNet.on && this.battleSample.activeSide !== 'self') {
+        return '相手の手番中は一手戻せません';
+      }
+      return '直前の操作を取り消します';
     },
     battleFieldMenuTapLabel() {
       const m = this.battleFieldMenu;
@@ -6925,6 +6949,20 @@ new Vue({
         syncGame: true, code, table, mySeat, oppSeat,
       });
     },
+    /* ブラウザごとに永続する識別子（座席の二重参加防止・同一ブラウザでの再参加許可に使用） */
+    _battleClientId() {
+      const key = 'tsukuriyo_battleClientId';
+      try {
+        let id = window.localStorage.getItem(key);
+        if (!id) {
+          id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+          window.localStorage.setItem(key, id);
+        }
+        return id;
+      } catch (e) {
+        return `${Date.now()}_${Math.random().toString(36).slice(2)}`; // localStorage不可時のフォールバック
+      }
+    },
     // 対戦テスト（2人同期確認用）: コード発行/参加で同期1v1へ直行（デモデッキ）
     async startBattleTest(create) {
       if (!this.allCards.length) { alert('カード読み込み中です。少し待って再度お試しください。'); return; }
@@ -6938,6 +6976,22 @@ new Vue({
       const mySeat = create ? 1 : 2;
       const oppSeat = create ? 2 : 1;
       const table = 'test';
+      // 座席の二重参加防止：同一ブラウザでの再参加（リロード等）は許可しつつ、
+      // 既に別の参加者が座っている席には入れないようにする
+      try {
+        const clientId = this._battleClientId();
+        const seatRef = getDb().ref(`sessions/${code}/battle/${table}/seatClaims/${mySeat}`);
+        const res = await seatRef.transaction(cur => (cur == null || cur.clientId === clientId) ? { clientId, ts: Date.now() } : cur);
+        const claimed = res.snapshot.val();
+        if (!claimed || claimed.clientId !== clientId) {
+          alert(create
+            ? 'この部屋コードは既に使用されています。もう一度お試しください。'
+            : 'この部屋には既に2人目が参加済みです。コードを確認するか、作成側にコードを再発行してもらってください。');
+          return;
+        }
+      } catch (e) {
+        console.error('[sync] 座席確保に失敗:', e);
+      }
       let firstSeat = mySeat;
       try {
         const ref = getDb().ref(`sessions/${code}/battle/${table}/firstSeat`);
@@ -7225,16 +7279,28 @@ new Vue({
         return;
       }
       try {
-        getDb().ref(n.statePath).set(payload)
-          .then(() => {
-            this.$set(this.battleNet, 'lastPublishedAt', Date.now());
-            this._battleSyncTickNow = Date.now();
-            if (this.battleNet.lastError) this.$set(this.battleNet, 'lastError', null);
-          })
-          .catch(err => {
-            console.error('[sync] 送信失敗:', err);
-            this.$set(this.battleNet, 'lastError', '送信失敗：' + (err && err.message));
-          });
+        // .set() による無条件上書きではなく .transaction() を使う：手番受け渡しの瞬間に
+        // 双方がほぼ同時に書き込むと、片方の書き込みが古いローカル状態のまま相手の
+        // 最新の書き込みを消してしまう可能性があるため、相手の方が新しい書き込みを
+        // 持っている場合は中断し、再取得してから改めて反映する
+        getDb().ref(n.statePath).transaction(cur => {
+          if (cur && String(cur.writer) !== String(n.mySeat) && Number(cur.ts || 0) > Number(this._battleLastAppliedRemoteTs || 0)) {
+            return; // 中断：相手のより新しい書き込みを上書きしない
+          }
+          return payload;
+        }).then(res => {
+          if (!res.committed) {
+            console.warn('[sync] 公開を中断（相手の新しい書き込みを検知）。再取得して反映します。');
+            this._battleApplyRemoteState(res.snapshot.val());
+            return;
+          }
+          this.$set(this.battleNet, 'lastPublishedAt', Date.now());
+          this._battleSyncTickNow = Date.now();
+          if (this.battleNet.lastError) this.$set(this.battleNet, 'lastError', null);
+        }).catch(err => {
+          console.error('[sync] 送信失敗:', err);
+          this.$set(this.battleNet, 'lastError', '送信失敗：' + (err && err.message));
+        });
       } catch (e) {
         console.error('[sync] 送信例外:', e);
         this.$set(this.battleNet, 'lastError', '送信例外：' + (e && e.message));
@@ -7258,6 +7324,9 @@ new Vue({
         this.$set(this.battleNet, 'oppReady', true);
         this.$set(this.battleNet, 'lastReceivedAt', Date.now());
         this._battleSyncTickNow = Date.now();
+        // 自分が次に公開する際、この時刻より新しい（＝まだ自分が取り込めていない）相手の書き込みを
+        // 誤って上書きしないようにするための基準値
+        this._battleLastAppliedRemoteTs = Number(state.ts || 0);
         // 受信後に静的バフを再評価（DSL常在/進化中 効果が相手側にもある場合）
         if (typeof this.dslRefreshStaticAbilities === 'function') this.dslRefreshStaticAbilities();
       } catch (e) {
@@ -7275,7 +7344,9 @@ new Vue({
         oppReady: false, _unsub: null, _wasActive: this.battleSample.activeSide === 'self',
         lastPublishedAt: null, lastReceivedAt: null, lastError: null,
         mulliganReady: {}, waitingForOppMulligan: false,
+        oppOnline: null, oppLastSeenAt: null,
       };
+      this._battleLastAppliedRemoteTs = 0;
       this._battleStartSyncTick();
       // 接続時は無条件で初期公開（双方が「最後の writer」を見られるように）
       this._battlePublishState();
@@ -7293,10 +7364,32 @@ new Vue({
         const mulliganRef = getDb().ref(mulliganPath);
         const mulliganHandler = snap => this._battleApplyRemoteMulligan(snap.val());
         mulliganRef.on('value', mulliganHandler);
+        // 在席状態（プレゼンス）：.info/connected + onDisconnect で自分の切断を検知させ、
+        // 相手側の在席パスを購読することで「相手が切断した」ことを能動的に把握できるようにする
+        const presenceBase = path.replace(/\/state$/, '/presence');
+        const myPresenceRef = getDb().ref(`${presenceBase}/${mySeat}`);
+        const connectedRef = getDb().ref('.info/connected');
+        const connectedHandler = snap => {
+          if (snap.val() !== true) return;
+          myPresenceRef.onDisconnect().set({ online: false, ts: Date.now() });
+          myPresenceRef.set({ online: true, ts: Date.now() });
+        };
+        connectedRef.on('value', connectedHandler);
+        const oppPresenceRef = getDb().ref(`${presenceBase}/${oppSeat}`);
+        const presenceHandler = snap => {
+          const val = snap.val();
+          this.$set(this.battleNet, 'oppOnline', val ? !!val.online : null);
+          this.$set(this.battleNet, 'oppLastSeenAt', val ? (val.ts || null) : null);
+        };
+        oppPresenceRef.on('value', presenceHandler);
         this.battleNet._unsub = () => {
           ref.off('value', handler);
           try { noticeRef.off('value', noticeHandler); } catch (e) {}
           try { mulliganRef.off('value', mulliganHandler); } catch (e) {}
+          try { connectedRef.off('value', connectedHandler); } catch (e) {}
+          try { oppPresenceRef.off('value', presenceHandler); } catch (e) {}
+          try { myPresenceRef.onDisconnect().cancel(); } catch (e) {}
+          try { myPresenceRef.set({ online: false, ts: Date.now() }); } catch (e) {}
         };
       } catch (e) {
         console.error('[sync] 購読開始失敗:', e);
@@ -7310,6 +7403,7 @@ new Vue({
         on: false, code: null, table: null, mySeat: null, oppSeat: null,
         statePath: null, oppReady: false, _unsub: null, _wasActive: false,
         lastPublishedAt: null, lastReceivedAt: null, lastError: null,
+        oppOnline: null, oppLastSeenAt: null,
         _lastNoticeAt: 0,
       };
       this._battleStopSyncTick();
@@ -7360,7 +7454,7 @@ new Vue({
     },
     /* Undo: 直前のスナップショットを復元 */
     battleUndo() {
-      if (!this.battleUndoStack.length) return;
+      if (!this.battleCanUndo) return;
       this.battleSample = this.battleUndoStack.pop();
       this.battleSkillModal = null;
       this.battleNotice = null;
