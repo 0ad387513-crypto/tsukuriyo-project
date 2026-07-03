@@ -2757,13 +2757,6 @@
   .notice-toast-fade-enter-from, .notice-toast-fade-leave-to { opacity: 0; transform: translateY(-8px); }
   .notice-toast-fade-move { transition: transform .25s; }
   .notice-toast-fade-leave-active { position: absolute; }
-  /* 通知に紐づくカードの一時ハイライト（トーストで見落としても分かるように） */
-  @keyframes notice-glow-pulse {
-    0%   { box-shadow: 0 0 0 0 rgba(255, 216, 106, 0); }
-    30%  { box-shadow: 0 0 16px 4px rgba(255, 216, 106, .9); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 216, 106, 0); }
-  }
-  .notice-glow { animation: notice-glow-pulse 1.1s ease-out; }
   .battle-action-panel {
     width: min(540px, 94vw); max-height: 82vh; overflow-y: auto;
     background: #171e2d; border: 1px solid #55637a; border-radius: 8px; padding: 18px;
@@ -3840,7 +3833,7 @@
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.opp.relics" :key="'or'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'notice-glow': battleGlowCardNos.includes(String(card.no)) }"
+                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)"
@@ -3909,7 +3902,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('legacies', $event)">
               <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i, 'evolve-target': battleHandDragOverBaseIdx === i, 'notice-glow': battleGlowCardNos.includes(String(card.no)) }"
+                   :class="{ tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i, 'evolve-target': battleHandDragOverBaseIdx === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','legacies',i,$event)"
                    @click="battleFieldCardClick(card)"
@@ -3961,7 +3954,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('relics', $event)">
               <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i, 'notice-glow': battleGlowCardNos.includes(String(card.no)) }"
+                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','relics',i,$event)"
                    @click="battleFieldCardClick(card)"
@@ -5655,7 +5648,6 @@ new Vue({
     battleSkillModal: null,
     battleNotice: null, // ブロッキングモーダル用（クリックで確認が必要な通知のみ使う）
     battleToasts: [], // 自動消滅トースト（成功報告・状態変化）：[{ id, title, message }]、積み重ね表示・各々独立したタイマーで消える
-    battleGlowCardNos: [], // 直近の通知に紐づくカード（no配列）：一時的にハイライトする
     battleConfirmModal: null, // { action, title, message, confirmLabel, cards, payload }
     /* 手札ドラッグ・場出し */
     battleDragIndex: null,    // ドラッグ中の手札index（null=非ドラッグ中）
@@ -5695,7 +5687,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.118',
+    BUILD_VERSION: '1.14.119',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8595,20 +8587,10 @@ new Vue({
       ];
       return blockingKeywords.some(kw => t.includes(kw) || m.includes(kw));
     },
-    /* 通知に紐づくカードを一時的にハイライトする（トーストで見落としても「何かが起きた」ことが分かるように） */
-    _battleGlowNoticeCards(cards) {
-      const list = Array.isArray(cards) ? cards.filter(Boolean) : [];
-      if (!list.length) return;
-      const keys = list.map(c => String(c.no));
-      this.battleGlowCardNos = keys;
-      clearTimeout(this._battleGlowTimer);
-      this._battleGlowTimer = setTimeout(() => { this.battleGlowCardNos = []; }, 1100);
-    },
     battleShowNotice(title, message, cards = []) {
       this._battleAppendLogEntry(title, message, cards);
       // オンライン同期：相手にも通知を共有（writerガードと重複防止のため ts を付与）
       this._battlePublishNotice(title, message, cards);
-      this._battleGlowNoticeCards(cards);
       if (this._battleNoticeIsBlocking(title, message)) {
         // ブロッキングモーダル：同じ効果解決中（ユーザー確認を挟まず連続発火）の通知は、
         // 前の通知が表示される前に上書きされて消えてしまうため、1つにまとめて表示する。
@@ -8693,7 +8675,6 @@ new Vue({
       const cards = (payload.cardNos || []).map(no => this.cardByNo[String(no)]).filter(Boolean);
       const title = payload.title || '';
       const message = payload.message || '';
-      this._battleGlowNoticeCards(cards);
       if (this._battleNoticeIsBlocking(title, message)) {
         this.battleNotice = { title: '【相手】' + title, message, cards };
       } else {
