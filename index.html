@@ -2960,6 +2960,7 @@
       <button class="top-menu-btn" style="background:linear-gradient(135deg,#5a3030,#7a3050);border-color:#bb6a8a;" @click="goToBattle">⚔ 対戦画面(α)</button>
       <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(true)">🌐 対戦テスト：作成（2人同期確認）</button>
       <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(false)">🌐 対戦テスト：参加（コード入力）</button>
+      <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleSpectate">🔍 対戦テスト：観戦する（コード入力）</button>
     </div>
     <div class="top-menu-footer">v{{ BUILD_VERSION }}</div>
   </div>
@@ -3694,8 +3695,13 @@
       <span class="battle-matchup">{{ battleContext.selfName }} vs {{ battleContext.oppName }}</span>
       <span class="battle-phase">{{ battleContext.round ? 'ラウンド' + battleContext.round : battleContext.modeLabel }}</span>
       <span class="battle-setup-note">マリガン 自分{{ battleContext.selfMulligans }}回/相手{{ battleContext.oppMulligans }}回</span>
+      <!-- 観戦モード表示（書き込み不可・両者手札全公開） -->
+      <span v-if="battleNet.on && battleNet.spectating" class="battle-sync-status ready" title="観戦モード：操作はできません（両者の手札が全公開されています）">
+        🔍 観戦中 <span style="opacity:.7;margin-left:6px;">[コード: {{ battleNet.code }}]</span>
+        <span v-if="battleNet.lastReceivedAt" style="opacity:.6;margin-left:6px;">↓ {{ battleNetReceivedAgo }}</span>
+      </span>
       <!-- オンライン同期ステータス（対戦テストモードのみ表示） -->
-      <span v-if="battleNet.on" class="battle-sync-status"
+      <span v-if="battleNet.on && !battleNet.spectating" class="battle-sync-status"
             :class="{ ready: battleNet.oppReady && !battleNet.lastError, waiting: !battleNet.oppReady && !battleNet.lastError, error: battleNet.lastError }"
             :title="battleNet.lastError || ''">
         🌐 同期: {{ battleNet.lastError ? '⚠️ エラー' : (battleNet.oppReady ? '相手接続済' : '相手待機中') }}
@@ -3715,7 +3721,7 @@
               :title="battleUndoDisabledReason">
         ↶ 一手戻る<span v-if="battleUndoStack.length" class="undo-count">({{ battleUndoStack.length }})</span>
       </button>
-      <button class="battle-surrender-btn" @click="battleSurrender">降参</button>
+      <button v-if="!battleNet.spectating" class="battle-surrender-btn" @click="battleSurrender">降参</button>
     </div>
 
     <!-- ===== マリガン（引き直し）フェーズ ===== -->
@@ -5598,6 +5604,7 @@ new Vue({
       statePath: null, oppReady: false, _unsub: null, _wasActive: false,
       lastPublishedAt: null, lastReceivedAt: null, lastError: null,
       oppOnline: null, oppLastSeenAt: null, // 相手の在席状態（.info/connected + onDisconnect）
+      spectating: false, // 観戦モードか（観戦者は書き込み・操作を一切行わない）
     },
     _battleSyncTickNow: Date.now(),  // 「○秒前」表示を再描画するためのトリガ
     _battleApplyingRemote: false,  // 鏡映適用中（watcherの再公開を抑止）
@@ -5650,7 +5657,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.113',
+    BUILD_VERSION: '1.14.114',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7014,6 +7021,28 @@ new Vue({
         this.$nextTick(() => alert(`対戦テストのコード： ${code}\n\nもう一方のタブ（シークレットウィンドウ推奨）で「対戦テスト：参加」からこのコードを入力してください。\n（コードは対戦画面の上部にも表示されています）`));
       }
     },
+    // 観戦モード：既存の「対戦テスト」1v1の部屋を読み取り専用で覗き見る（両者の手札を含め全公開・デバッグ用）
+    async startBattleSpectate() {
+      if (!this.allCards.length) { alert('カード読み込み中です。少し待って再度お試しください。'); return; }
+      const code = (window.prompt('観戦したい対戦テストの部屋コードを入力してください（対戦者の画面上部に表示されているコード）') || '').trim().toUpperCase();
+      if (!code) return;
+      const table = 'test';
+      // 観戦は常に席1を自分視点（左）、席2を相手視点（右）として固定表示する
+      const mySeat = 1, oppSeat = 2;
+      const kami = this.allKamiCards[0] || null;
+      this._battleInitialize({
+        source: 'spectate', modeLabel: `観戦中 ｜ コード ${code}`, returnView: 'top', round: null,
+        selfName: 'プレイヤーA', oppName: 'プレイヤーB',
+        firstSide: 'self', life: 8,
+        selfDeck: [], oppDeck: [],
+        selfKami: kami, oppKami: kami,
+        selfMulligans: 0, oppMulligans: 0,
+        syncGame: false,
+      });
+      // 観戦モードはマリガン画面を経由せず、受信を待つのみ
+      this.battleMulligan = null;
+      this._battleSpectateStart(code, table, mySeat, oppSeat);
+    },
     _battleShuffle(cards) {
       const out = (cards || []).slice();
       for (let i = out.length - 1; i > 0; i--) {
@@ -7184,13 +7213,17 @@ new Vue({
       }
       return out;
     },
-    _battleSerializeSide(side) {
+    // includeHand=true の場合のみ手札/山札の中身も送る（観戦モード用。table==='test'のみで使用）
+    _battleSerializeSide(side, includeHand) {
       if (!side) return null;
       const clone = {};
       for (const k of Object.keys(side)) {
         const v = side[k];
         if (typeof v === 'function') continue;
-        if (k === 'hand' || k === 'deck') continue;       // 手札/山札は枚数のみ
+        if (k === 'hand' || k === 'deck') {
+          if (includeHand) clone[k] = (v || []).map(card => this._battleSerializeCard(card));
+          continue;       // 通常は手札/山札は枚数のみ
+        }
         if (Array.isArray(v) && ['legacies','relics','graveyard','crumbled'].includes(k)) {
           clone[k] = v.map(card => this._battleSerializeCard(card));
         } else if (k === 'kami') {
@@ -7205,7 +7238,8 @@ new Vue({
       return clone;
     },
     // 受信サイドを適用。preserveLocal=true なら自分の手札/山札はローカル保持。
-    _battleApplySide(targetKey, data, preserveLocal) {
+    // revealHand=true かつ preserveLocal=false のとき、受信データの手札/山札をそのまま採用（観戦モード用）。
+    _battleApplySide(targetKey, data, preserveLocal, revealHand) {
       if (!data) return;
       const cur = this.battleSample[targetKey] || {};
       const next = JSON.parse(JSON.stringify(data));
@@ -7234,6 +7268,11 @@ new Vue({
         }
       });
       if (preserveLocal) { next.hand = cur.hand || []; next.deck = cur.deck || []; }
+      else if (revealHand) {
+        // 観戦モード：受信データの手札/山札をそのまま復元して公開する
+        next.hand = (next.hand || []).map(fix);
+        next.deck = (next.deck || []).map(fix);
+      }
       else { next.hand = []; next.deck = []; }   // 相手の手札・山札は非公開（枚数のみ）
       this.$set(this.battleSample, targetKey, next);
     },
@@ -7265,9 +7304,11 @@ new Vue({
       const bs = this.battleSample;
       let payload;
       try {
+        // 観戦モード（両者フルオープン）用：対戦テスト1v1のみ手札/山札の中身も同期する
+        const includeHand = n.table === 'test';
         const sides = {};
-        sides[n.mySeat]  = this._battleSerializeSide(bs.self);
-        sides[n.oppSeat] = this._battleSerializeSide(bs.opp);
+        sides[n.mySeat]  = this._battleSerializeSide(bs.self, includeHand);
+        sides[n.oppSeat] = this._battleSerializeSide(bs.opp, includeHand);
         const activeSeat = bs.activeSide === 'self' ? n.mySeat : n.oppSeat;
         payload = {
           writer: n.mySeat, activeSeat, turn: bs.turn, result: bs.result || null,
@@ -7336,6 +7377,31 @@ new Vue({
         this.$nextTick(() => { this._battleApplyingRemote = false; });
       }
     },
+    // 観戦モード用の受信適用：観戦者は自分では書き込まないため「自分のエコー」は存在せず
+    // writerガードは不要。両サイドとも非ローカル・手札公開ありで適用する（全公開デバッグ用）。
+    _battleApplyRemoteStateSpectator(state) {
+      const n = this.battleNet;
+      if (!state || !n.on) return;
+      try {
+        this._battleApplyingRemote = true;
+        const sides = state.sides || {};
+        this._battleApplySide('self', sides[n.mySeat], false, true);
+        this._battleApplySide('opp',  sides[n.oppSeat], false, true);
+        const activeSide = String(state.activeSeat) === String(n.mySeat) ? 'self' : 'opp';
+        this.$set(this.battleSample, 'activeSide', activeSide);
+        this.$set(this.battleSample, 'turn', state.turn || this.battleSample.turn);
+        this.$set(this.battleSample, 'result', state.result || null);
+        this.$set(this.battleNet, 'oppReady', true);
+        this.$set(this.battleNet, 'lastReceivedAt', Date.now());
+        this._battleSyncTickNow = Date.now();
+        if (typeof this.dslRefreshStaticAbilities === 'function') this.dslRefreshStaticAbilities();
+      } catch (e) {
+        console.error('[spectate] 受信適用失敗:', e);
+        this.$set(this.battleNet, 'lastError', '受信適用失敗：' + (e && e.message));
+      } finally {
+        this.$nextTick(() => { this._battleApplyingRemote = false; });
+      }
+    },
     _battleSyncStart(code, table, mySeat, oppSeat) {
       this._battleSyncStop();
       const path = `sessions/${code}/battle/${table}/state`;
@@ -7344,7 +7410,7 @@ new Vue({
         oppReady: false, _unsub: null, _wasActive: this.battleSample.activeSide === 'self',
         lastPublishedAt: null, lastReceivedAt: null, lastError: null,
         mulliganReady: {}, waitingForOppMulligan: false,
-        oppOnline: null, oppLastSeenAt: null,
+        oppOnline: null, oppLastSeenAt: null, spectating: false,
       };
       this._battleLastAppliedRemoteTs = 0;
       this._battleStartSyncTick();
@@ -7403,10 +7469,38 @@ new Vue({
         on: false, code: null, table: null, mySeat: null, oppSeat: null,
         statePath: null, oppReady: false, _unsub: null, _wasActive: false,
         lastPublishedAt: null, lastReceivedAt: null, lastError: null,
-        oppOnline: null, oppLastSeenAt: null,
+        oppOnline: null, oppLastSeenAt: null, spectating: false,
         _lastNoticeAt: 0,
       };
       this._battleStopSyncTick();
+    },
+    // 観戦モード開始：書き込みは一切行わず、盤面状態を読み取り専用で購読・鏡映する
+    _battleSpectateStart(code, table, mySeat, oppSeat) {
+      this._battleSyncStop();
+      const path = `sessions/${code}/battle/${table}/state`;
+      this.battleNet = {
+        on: true, code, table, mySeat, oppSeat, statePath: path,
+        oppReady: false, _unsub: null, _wasActive: false,
+        lastPublishedAt: null, lastReceivedAt: null, lastError: null,
+        oppOnline: null, oppLastSeenAt: null, spectating: true,
+      };
+      this._battleStartSyncTick();
+      try {
+        const ref = getDb().ref(path);
+        const handler = snap => this._battleApplyRemoteStateSpectator(snap.val());
+        ref.on('value', handler);
+        const noticePath = path.replace(/\/state$/, '/notice');
+        const noticeRef = getDb().ref(noticePath);
+        const noticeHandler = snap => this._battleApplyRemoteNotice(snap.val());
+        noticeRef.on('value', noticeHandler);
+        this.battleNet._unsub = () => {
+          ref.off('value', handler);
+          try { noticeRef.off('value', noticeHandler); } catch (e) {}
+        };
+      } catch (e) {
+        console.error('[spectate] 購読開始失敗:', e);
+        this.$set(this.battleNet, 'lastError', '購読開始失敗：' + (e && e.message));
+      }
     },
     battleReturn() {
       const decided = !!this.battleSample.result;
@@ -7476,6 +7570,7 @@ new Vue({
     },
     /* 対戦画面：ステータス±処理（手動調整＋Undo対応） */
     async battleStat(side, key, delta) {
+      if (this.battleNet && this.battleNet.spectating) return;
       if (this.battleSample.result) return;
       if (side !== 'self') return;
       const target = this.battleSample[side];
@@ -7748,6 +7843,7 @@ new Vue({
       }
     },
     async battleEndTurn() {
+      if (this.battleNet && this.battleNet.spectating) return;
       if (this.battleSample.result) return;
       this.battleSaveUndo();
       const bs = this.battleSample;
@@ -12092,6 +12188,7 @@ new Vue({
     },
     /* 手札カード → 場/発動。マナ消費・昇華選択・オラクル演出を含む統合エントリ */
     battleEnsureSelfTurn(actionLabel = 'カードの使用') {
+      if (this.battleNet && this.battleNet.spectating) return false; // 観戦モードは操作不可
       if (this.battleSample.activeSide === 'self') return true;
       this.battleShowNotice(
         '相手ターン中は使用できません',
@@ -12888,6 +12985,7 @@ new Vue({
       destroyed.push({ side, card });
     },
     async battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex) {
+      if (this.battleNet && this.battleNet.spectating) return;
       if (this.battleSample.result || attackerSide !== 'self') return;
       const attackerPlayer = this.battleSample[attackerSide];
       const defenderPlayer = this.battleSample[defenderSide];
@@ -12973,6 +13071,7 @@ new Vue({
       }
     },
     async battleResolveDivineAttack(attackerSide, attackerIndex) {
+      if (this.battleNet && this.battleNet.spectating) return;
       if (this.battleSample.result || attackerSide !== 'self') return;
       const attacker = this.battleSample.self.legacies[attackerIndex];
       if (!attacker) return;
@@ -13696,6 +13795,7 @@ new Vue({
       this.battleSkillModal = { side: 'self' };
     },
     async battleUseKamiSkill(index) {
+      if (this.battleNet && this.battleNet.spectating) return;
       const skill = this.battleSkillOptions.find(item => item.index === index);
       if (!skill || !skill.enabled || this.battleSample.result) return;
       this.battleSaveUndo();
@@ -13851,6 +13951,7 @@ new Vue({
       }
     },
     battleSurrender() {
+      if (this.battleNet && this.battleNet.spectating) return;
       if (this.battleSample.result) return;
       this.battleAskConfirm({
         action: 'surrender',
@@ -16108,7 +16209,7 @@ new Vue({
     this.$watch('battleSample', () => {
       if (this._battleApplyingRemote) return;          // 鏡映適用中は再公開しない
       const n = this.battleNet;
-      if (!n.on) return;
+      if (!n.on || n.spectating) return;                // 観戦者は書き込みを一切行わない
       const active = this.battleSample.activeSide === 'self';
       if (active || n._wasActive) {                    // 自分の手番の変化＋手番引き渡しを公開
         clearTimeout(this._battlePubT);
