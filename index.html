@@ -5648,7 +5648,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.108',
+    BUILD_VERSION: '1.14.109',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -12040,6 +12040,43 @@ new Vue({
         this._battlePlayLegacyOrRelic(m.index, m.zone, payCost, m.evolveBase);
       }
     },
+    /* 【リロール】: 使用カードと同色（創属性は全属性として双方向にワイルドカード扱い）のカードを
+       手札から公開→デッキに戻してシャッフル→1枚ドロー。カード使用時、マナ支払い・カード確定の直後、
+       出現時/使用時効果（選定・昇華代替を含む）が発動する前に確認する。 */
+    _dslColorsMatchForReroll(colorA, colorB) {
+      if (!colorA || !colorB) return false;
+      return colorA === colorB || colorA === '創' || colorB === '創';
+    },
+    async battleOfferReroll(playedCard) {
+      const player = this.battleSample.self;
+      if (!playedCard || !player) return;
+      const candidates = (player.hand || []).filter(c => c && this._dslColorsMatchForReroll(c.color, playedCard.color));
+      if (!candidates.length) return;
+      const ok = await this.dslAskOptional(
+        playedCard,
+        'リロール',
+        `使用した「${this.fullName(playedCard)}」と同じ色のカードを手札から1枚公開し、デッキに戻してシャッフルした上で1枚ドローできます。`
+      );
+      if (!ok) return;
+      const picked = await this.dslAskCustomTargets('公開する同色カードを選択', candidates, 1, playedCard);
+      if (!picked.length) return;
+      const revealed = picked[0];
+      this.battleSaveUndo();
+      const idx = player.hand.indexOf(revealed);
+      if (idx >= 0) player.hand.splice(idx, 1);
+      player.deck = player.deck || [];
+      player.deck.push(revealed);
+      player.deck = this._battleShuffle(player.deck);
+      const drawn = player.deck.length ? player.deck.shift() : null;
+      if (drawn) player.hand.push(drawn);
+      player.handCount = player.hand.length;
+      player.deckCount = player.deck.length;
+      this.battleShowNotice(
+        'リロール',
+        `「${this.fullName(revealed)}」を公開してデッキに戻し、シャッフルした上で${drawn ? '1枚ドローしました。' : 'デッキが尽きていたためドローできませんでした。'}`,
+        [revealed]
+      );
+    },
     /* 内部：オラクルを実際に発動（マナ消費＋墓地＋演出＋キーワード処理） */
     async _battlePlayOracle(index, cost) {
       if (!this.battleEnsureSelfTurn('手札からカードを使う操作')) return;
@@ -12068,6 +12105,8 @@ new Vue({
       this.battleFireKamiEvent('self', 'playOracleOrRelic', { card, kind: 'オラクル' });
       const baseCost = Math.max(0, Number(card.cost) || 0);
       if (cost > baseCost) this.battleFireKamiEvent('self', 'evolveOrSublim', { card, paidCost: cost });
+      // 【リロール】：使用時効果（選定を含む）が発動する前に確認する
+      await this.battleOfferReroll(card);
       // オラクル本文のキーワード効果（【選定】等）も自動処理
       if (!(await this.battleRunEnterKeywordEffects(card, cost))) this.battleKeywordGuide(card, cost);
       // 使用後効果（例：ジェネシスオラクルの「使用後：自身崩壊」）
@@ -12175,6 +12214,8 @@ new Vue({
       if (evolveBase) {
         this.battleFireKamiEvent('self', 'evolveOrSublim', { card: fieldCard, evolved: true });
       }
+      // 【リロール】：出現時効果（選定を含む）が発動する前に確認する
+      await this.battleOfferReroll(fieldCard);
       // 通常の【出現時】効果（①）を await 完了させてから、進化中・出現時（②）へ進む
       if (!(await this.battleRunEnterKeywordEffects(fieldCard, cost))) this.battleKeywordGuide(fieldCard, cost);
       // 【進化中・出現時】効果：進化として配置した場合のみ
