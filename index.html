@@ -5695,7 +5695,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.117',
+    BUILD_VERSION: '1.14.118',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -12112,13 +12112,9 @@ new Vue({
       this.battleDeckModal = null;
       this.hideCardHover();
       this.dslRefreshStaticAbilities();
-      this.battleNotice = {
-        title: '招来',
-        message: sourceCard
+      this.battleShowNotice('招来', sourceCard
           ? `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果で「${this.fullName(card)}」を場に出しました。`
-          : `「${this.fullName(card)}」を場に出しました。`,
-        cards: [card],
-      };
+          : `「${this.fullName(card)}」を場に出しました。`, [card]);
       // 天力トリガー：トークン招来（K9）／守護持ち（K8）
       if (zone === 'legacies') {
         if (placedCard && placedCard.isToken) this.battleFireKamiEvent('self', 'tokenPlayed', { card: placedCard });
@@ -12198,13 +12194,9 @@ new Vue({
         const names = list.map(c => `「${this.fullName(c)}」`).join('、');
         const triggerLabel = modal.triggerLabel || '招来';
         this.battleDeckModal = null;
-        this.battleNotice = {
-          title: list.length > 1 ? `招来（${list.length}体）` : '招来',
-          message: modal.sourceCard
+        this.battleShowNotice(list.length > 1 ? `招来（${list.length}体）` : '招来', modal.sourceCard
             ? `「${this.fullName(modal.sourceCard)}」の【${triggerLabel}】効果で${names}を場に出しました。`
-            : `${names}を場に出しました。`,
-          cards: list,
-        };
+            : `${names}を場に出しました。`, list);
         if (modal.onComplete) modal.onComplete(list.slice());
         else this._battleProcessNextEffect();
       }
@@ -12231,25 +12223,17 @@ new Vue({
       this.battleDeckModal = null;
       if (list.length === 0) {
         // 何も出さなかった場合の通知
-        this.battleNotice = {
-          title: '招来：見送り',
-          message: modal.sourceCard
+        this.battleShowNotice('招来：見送り', modal.sourceCard
             ? `「${this.fullName(modal.sourceCard)}」の【${triggerLabel}】効果ですが、招来は行いませんでした。`
-            : '招来は行いませんでした。',
-          cards: modal.sourceCard ? [modal.sourceCard] : [],
-        };
+            : '招来は行いませんでした。', modal.sourceCard ? [modal.sourceCard] : []);
         if (modal.onComplete) modal.onComplete([]);
         else this._battleProcessNextEffect();
         return;
       }
       const names = list.map(c => `「${this.fullName(c)}」`).join('、');
-      this.battleNotice = {
-        title: list.length > 1 ? `招来（${list.length}体）` : '招来',
-        message: modal.sourceCard
+      this.battleShowNotice(list.length > 1 ? `招来（${list.length}体）` : '招来', modal.sourceCard
           ? `「${this.fullName(modal.sourceCard)}」の【${triggerLabel}】効果で${names}を場に出しました（${modal.count - list.length}枚を見送り）。`
-          : `${names}を場に出しました。`,
-        cards: list,
-      };
+          : `${names}を場に出しました。`, list);
       if (modal.onComplete) modal.onComplete(list.slice());
       else this._battleProcessNextEffect();
     },
@@ -12542,13 +12526,9 @@ new Vue({
       this.hideCardHover();
       this.dslRefreshStaticAbilities();
       const destLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
-      this.battleNotice = {
-        title: destinationZone === 'graveyard' ? '手札を捨てる' : `手札から${destLabel}へ`,
-        message: destinationZone === 'graveyard'
+      this.battleShowNotice(destinationZone === 'graveyard' ? '手札を捨てる' : `手札から${destLabel}へ`, destinationZone === 'graveyard'
           ? `自分の手札から「${this.fullName(card)}」を墓地へ送りました。`
-          : `自分の手札から「${this.fullName(card)}」を${destLabel}へ送りました。`,
-        cards: [card],
-      };
+          : `自分の手札から「${this.fullName(card)}」を${destLabel}へ送りました。`, [card]);
     },
     battleOpenHandMenu(index, e) {
       if (this.battleSample.result) return;
@@ -12634,11 +12614,7 @@ new Vue({
       }
       this._battleSyncSideCounts('self');
       this.hideCardHover();
-      this.battleNotice = {
-        title: mode === 'shuffle' ? '手札をデッキに混ぜました' : '手札をデッキボトムへ',
-        message: `「${this.fullName(card)}」を${mode === 'shuffle' ? 'デッキに混ぜてシャッフルしました' : 'デッキの一番下へ送りました'}。`,
-        cards: [card],
-      };
+      this.battleShowNotice(mode === 'shuffle' ? '手札をデッキに混ぜました' : '手札をデッキボトムへ', `「${this.fullName(card)}」を${mode === 'shuffle' ? 'デッキに混ぜてシャッフルしました' : 'デッキの一番下へ送りました'}。`, [card]);
     },
     battleCanDropHandTo(zone) {
       if (this.battleDragIndex === null) return false;
@@ -13345,11 +13321,7 @@ new Vue({
       // 死亡時トリガーを発動する（明示的に「崩壊へ送る」を選んだ場合は発動しない）
       if (destinationZone === 'graveyard' && this.battleRunDeathKeywordEffects(card)) return;
       const destLabel = moveZone === 'graveyard' ? '墓地' : '崩壊';
-      this.battleNotice = {
-        title: `${destLabel}へ移動`,
-        message: `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${destLabel}へ送りました。`,
-        cards: [card],
-      };
+      this.battleShowNotice(`${destLabel}へ移動`, `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${destLabel}へ送りました。`, [card]);
     },
     battleReturnFieldCardToHand(side, sourceZone, index) {
       if (this.battleSample.result) return;
@@ -13374,11 +13346,7 @@ new Vue({
       this.hideCardHover();
       this.battleHoverField = null;
       this.dslRefreshStaticAbilities();
-      this.battleNotice = {
-        title: '場から手札へ',
-        message: `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を場から手札へ戻しました。`,
-        cards: side === 'self' ? [card] : [],
-      };
+      this.battleShowNotice('場から手札へ', `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を場から手札へ戻しました。`, side === 'self' ? [card] : []);
     },
     battleMoveFieldCardToDeckTop(side, sourceZone, index) {
       if (this.battleSample.result) return;
@@ -13395,11 +13363,7 @@ new Vue({
       this._battleSyncSideCounts(side);
       this.hideCardHover();
       this.dslRefreshStaticAbilities();
-      this.battleNotice = {
-        title: '場からデッキ上へ',
-        message: `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を場からデッキ上へ戻しました。`,
-        cards: side === 'self' ? [card] : [],
-      };
+      this.battleShowNotice('場からデッキ上へ', `${side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を場からデッキ上へ戻しました。`, side === 'self' ? [card] : []);
     },
     battleFieldZoneForCard(card) {
       if (!card) return null;
@@ -13424,11 +13388,7 @@ new Vue({
       this.hideCardHover();
       this.dslRefreshStaticAbilities();
       const zoneLabel = zone === 'graveyard' ? '墓地' : '崩壊';
-      this.battleNotice = {
-        title: `${zoneLabel}から手札へ`,
-        message: `${modal.side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${zoneLabel}から手札へ戻しました。`,
-        cards: modal.side === 'self' ? [card] : [],
-      };
+      this.battleShowNotice(`${zoneLabel}から手札へ`, `${modal.side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${zoneLabel}から手札へ戻しました。`, modal.side === 'self' ? [card] : []);
     },
     battleReturnZoneCardToField(modalIndex) {
       if (this.battleSample.result) return;
@@ -13455,11 +13415,7 @@ new Vue({
       this.hideCardHover();
       this.dslRefreshStaticAbilities();
       const zoneLabel = zone === 'graveyard' ? '墓地' : '崩壊';
-      this.battleNotice = {
-        title: `${zoneLabel}から場へ`,
-        message: `${modal.side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${zoneLabel}から場へ戻しました。`,
-        cards: modal.side === 'self' ? [card] : [],
-      };
+      this.battleShowNotice(`${zoneLabel}から場へ`, `${modal.side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${zoneLabel}から場へ戻しました。`, modal.side === 'self' ? [card] : []);
     },
     battleReturnZoneCardToDeckTop(modalIndex) {
       if (this.battleSample.result) return;
@@ -13478,11 +13434,7 @@ new Vue({
       this.hideCardHover();
       this.dslRefreshStaticAbilities();
       const zoneLabel = zone === 'graveyard' ? '墓地' : '崩壊';
-      this.battleNotice = {
-        title: `${zoneLabel}からデッキ上へ`,
-        message: `${modal.side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${zoneLabel}からデッキ上へ戻しました。`,
-        cards: modal.side === 'self' ? [card] : [],
-      };
+      this.battleShowNotice(`${zoneLabel}からデッキ上へ`, `${modal.side === 'self' ? '自分' : '相手'}の「${this.fullName(card)}」を${zoneLabel}からデッキ上へ戻しました。`, modal.side === 'self' ? [card] : []);
     },
     battleOpenZoneCardMenu(modalIndex, e) {
       const modal = this.battleZoneModal;
@@ -13543,11 +13495,7 @@ new Vue({
         return;
       }
       this.battleZoneModal = null;  // 墓地一覧モーダルを閉じる
-      this.battleNotice = {
-        title: `墓地起動：${this.fullName(card)}`,
-        message: `コスト：${this._dslFormatActivationCost(ab.コスト || {}) || '無'} を支払い、効果を解決します。`,
-        cards: [card],
-      };
+      this.battleShowNotice(`墓地起動：${this.fullName(card)}`, `コスト：${this._dslFormatActivationCost(ab.コスト || {}) || '無'} を支払い、効果を解決します。`, [card]);
       try {
         await this.dslRunActions(ab.処理 || [], card);
       } catch (e) {
@@ -13571,11 +13519,7 @@ new Vue({
       this.dslRefreshStaticAbilities();
       const fromLabel = sourceZone === 'graveyard' ? '墓地' : '崩壊';
       const toLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
-      this.battleNotice = {
-        title: `${fromLabel}から${toLabel}へ`,
-        message: `「${this.fullName(card)}」を${fromLabel}から${toLabel}へ移動しました。`,
-        cards: [card],
-      };
+      this.battleShowNotice(`${fromLabel}から${toLabel}へ`, `「${this.fullName(card)}」を${fromLabel}から${toLabel}へ移動しました。`, [card]);
     },
     /* ===== 墓地・崩壊一覧モーダルからのドラッグ&ドロップ（手札/場/対のゾーンへ戻す） ===== */
     /* 墓地/崩壊モーダル：カテゴリボタンで絞り込んだ一覧を返す（{card, index}のindexは元配列での実インデックス） */
@@ -13892,10 +13836,7 @@ new Vue({
       this.battleSaveUndo();
       this.battleSample.self.tenryoku = Math.max(0, this.battleSample.self.tenryoku - skill.cost);
       this.battleSkillModal = null;
-      this.battleNotice = {
-        title: `${skill.name}を発動`,
-        message: `${this.battleContext.selfName}が神技「${skill.name}」を発動し、天力を${skill.cost}消費しました。`,
-      };
+      this.battleShowNotice(`${skill.name}を発動`, `${this.battleContext.selfName}が神技「${skill.name}」を発動し、天力を${skill.cost}消費しました。`, []);
       // DSL：神技spec を実行（index は 1/2 → spec 内の神技契機を順番で対応付け）
       const kami = this.battleSample.self.kami;
       if (!kami || !this.effectSpecsReady) return;
@@ -13965,13 +13906,9 @@ new Vue({
       player.handCount = player.hand.length;
       const owner = side === 'self' ? this.battleContext.selfName : this.battleContext.oppName;
       const cardName = card ? this.fullName(card) : `No.${cardNo}`;
-      this.battleNotice = {
-        title: `ヤマタノオロチの封印が${threshold}になりました`,
-        message: card
+      this.battleShowNotice(`ヤマタノオロチの封印が${threshold}になりました`, card
           ? `${owner}はヤマタノオロチの能力により「${cardName}」を手札に加えました。`
-          : `${owner}はヤマタノオロチの能力を処理しましたが、No.${cardNo}のカードデータを確認できませんでした。`,
-        cards: card ? [card] : [],
-      };
+          : `${owner}はヤマタノオロチの能力を処理しましたが、No.${cardNo}のカードデータを確認できませんでした。`, card ? [card] : []);
       // 封印4つの閾値では、自動で1枚ドロー→手札1枚を墓地に送る（旧「四岐龍胤」の神技を自動化）
       if (threshold === 4 && side === 'self') {
         if (Array.isArray(player.deck) && player.deck.length) {
@@ -14207,11 +14144,7 @@ new Vue({
         this.battleShowNotice('起動コスト：補足', `「${this.fullName(card)}」の起動コストには注釈があります：${cost.備考}。手動で内容を確認してください。`, [card]);
       }
       // 公開通知
-      this.battleNotice = {
-        title: `起動能力を発動：${this.fullName(card)}`,
-        message: `コスト：${this._dslFormatActivationCost(cost) || '無'} を支払い、効果を解決します。`,
-        cards: [card],
-      };
+      this.battleShowNotice(`起動能力を発動：${this.fullName(card)}`, `コスト：${this._dslFormatActivationCost(cost) || '無'} を支払い、効果を解決します。`, [card]);
       // spec処理を実行
       const prevSource = this._dslCurrentSource;
       this._dslCurrentSource = card;
@@ -14278,10 +14211,7 @@ new Vue({
       if (side !== 'self') return;
       const player = this.battleSample[side];
       if (!player || !player.deck.length) {
-        this.battleNotice = {
-          title: 'デッキがありません',
-          message: 'ドローできるカードがありません。',
-        };
+        this.battleShowNotice('デッキがありません', 'ドローできるカードがありません。', []);
         return;
       }
       this.battleAskConfirm({
@@ -14298,50 +14228,34 @@ new Vue({
       if (side !== 'self') return;
       const player = this.battleSample[side];
       if (!player || !player.deck.length) {
-        this.battleNotice = {
-          title: 'デッキがありません',
-          message: 'ドローできるカードがありません。',
-        };
+        this.battleShowNotice('デッキがありません', 'ドローできるカードがありません。', []);
         return;
       }
       this.battleSaveUndo();
       const card = player.deck.shift();
       player.hand.push(card);
       this._battleSyncSideCounts(side);
-      this.battleNotice = {
-        title: 'ドロー',
-        message: `${side === 'self' ? '自分' : '相手'}がデッキから1枚ドローしました。`,
-        cards: side === 'self' ? [card] : [],
-      };
+      this.battleShowNotice('ドロー', `${side === 'self' ? '自分' : '相手'}がデッキから1枚ドローしました。`, side === 'self' ? [card] : []);
     },
     battleShuffleDeck(side) {
       if (this.battleSample.result) return;
       if (side !== 'self') return;
       const player = this.battleSample[side];
       if (!player || !player.deck.length) {
-        this.battleNotice = {
-          title: 'デッキがありません',
-          message: 'シャッフルできるカードがありません。',
-        };
+        this.battleShowNotice('デッキがありません', 'シャッフルできるカードがありません。', []);
         return;
       }
       this.battleSaveUndo();
       player.deck = this._battleShuffle(player.deck);
       this._battleSyncSideCounts(side);
-      this.battleNotice = {
-        title: 'デッキをシャッフル',
-        message: `${side === 'self' ? '自分' : '相手'}のデッキをシャッフルしました。`,
-      };
+      this.battleShowNotice('デッキをシャッフル', `${side === 'self' ? '自分' : '相手'}のデッキをシャッフルしました。`, []);
     },
     battleMoveDeckTop(side, destinationZone) {
       if (this.battleSample.result) return;
       if (side !== 'self') return;
       const player = this.battleSample[side];
       if (!player || !player.deck.length || !Array.isArray(player[destinationZone])) {
-        this.battleNotice = {
-          title: 'デッキがありません',
-          message: '移動できるカードがありません。',
-        };
+        this.battleShowNotice('デッキがありません', '移動できるカードがありません。', []);
         return;
       }
       this.battleSaveUndo();
@@ -14349,11 +14263,7 @@ new Vue({
       player[destinationZone].push(card);
       this._battleSyncSideCounts(side);
       const destLabel = destinationZone === 'graveyard' ? '墓地' : '崩壊';
-      this.battleNotice = {
-        title: `デッキ上から${destLabel}へ`,
-        message: `${side === 'self' ? '自分' : '相手'}のデッキ上から1枚を${destLabel}へ送りました。`,
-        cards: side === 'self' ? [card] : [],
-      };
+      this.battleShowNotice(`デッキ上から${destLabel}へ`, `${side === 'self' ? '自分' : '相手'}のデッキ上から1枚を${destLabel}へ送りました。`, side === 'self' ? [card] : []);
     },
     battleDeckMoveVisible(modalIndex, destination) {
       const modal = this.battleDeckModal;
@@ -14374,11 +14284,7 @@ new Vue({
       const destLabel =
         destination === 'hand' ? '手札' :
         destination === 'graveyard' ? '墓地' : '崩壊';
-      this.battleNotice = {
-        title: `霊視から${destLabel}へ`,
-        message: `${modal.side === 'self' ? '自分' : '相手'}のデッキ上確認から「${this.fullName(card)}」を${destLabel}へ移動しました。`,
-        cards: modal.side === 'self' ? [card] : [],
-      };
+      this.battleShowNotice(`霊視から${destLabel}へ`, `${modal.side === 'self' ? '自分' : '相手'}のデッキ上確認から「${this.fullName(card)}」を${destLabel}へ移動しました。`, modal.side === 'self' ? [card] : []);
     },
     battleOpenDeckModal(side, action) {
       if (this.battleSample.result) return;
@@ -14598,13 +14504,9 @@ new Vue({
       player.deck.push(...remaining);
       this._battleSyncSideCounts('self');
       this.battleDeckModal = null;
-      this.battleNotice = {
-        title: selectedCard ? '誘：手札に加えました' : '誘：対象なし',
-        message: selectedCard
+      this.battleShowNotice(selectedCard ? '誘：手札に加えました' : '誘：対象なし', selectedCard
           ? `「${this.fullName(selectedCard)}」を手札に加え、残りの公開カードをデッキの一番下へ送りました。`
-          : '対象のカードはありませんでした。公開カードをデッキの一番下へ送りました。',
-        cards: selectedCard ? [selectedCard] : [],
-      };
+          : '対象のカードはありませんでした。公開カードをデッキの一番下へ送りました。', selectedCard ? [selectedCard] : []);
       this._dslLastInducedToHand = selectedCard ? [selectedCard] : [];
       if (onComplete) onComplete(selectedCard ? [selectedCard] : []);
       else this._battleProcessNextEffect();
@@ -14638,15 +14540,11 @@ new Vue({
       player.deck.unshift(...keepTop);
       this._battleSyncSideCounts('self');
       this.battleDeckModal = null;
-      this.battleNotice = {
-        title: selectedCards.length ? '霊視：墓地へ送りました' : '霊視：墓地へ送らず解決',
-        message: selectedCards.length
+      this.battleShowNotice(selectedCards.length ? '霊視：墓地へ送りました' : '霊視：墓地へ送らず解決', selectedCards.length
           ? (keepTop.length
               ? `${selectedCards.length}枚を墓地へ送り、残りをデッキの一番上に戻しました。`
               : `${selectedCards.length}枚を全て墓地へ送りました。`)
-          : '墓地へ送るカードを選ばず、確認したカードをデッキの一番上に戻しました。',
-        cards: selectedCards,
-      };
+          : '墓地へ送るカードを選ばず、確認したカードをデッキの一番上に戻しました。', selectedCards);
       this._battleProcessNextEffect();
     },
     battleDeckPick(modalIndex) {
@@ -14667,11 +14565,7 @@ new Vue({
       player.hand.push(card);
       this._battleSyncSideCounts(modal.side);
       this.battleDeckModal = null;
-      this.battleNotice = {
-        title: '誘',
-        message: `${modal.side === 'self' ? '自分' : '相手'}がデッキからカードを1枚手札に加えました。`,
-        cards: modal.side === 'self' ? [card] : [],
-      };
+      this.battleShowNotice('誘', `${modal.side === 'self' ? '自分' : '相手'}がデッキからカードを1枚手札に加えました。`, modal.side === 'self' ? [card] : []);
     },
     goToShield() {
       this.appView = 'shield';
