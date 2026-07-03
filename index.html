@@ -4577,7 +4577,7 @@
       </div>
     </div>
 
-    <div v-if="battleNotice && _battleNoticeIsBlocking(battleNotice.title.replace(/^【相手】/, ''))" class="battle-action-modal">
+    <div v-if="battleNotice && _battleNoticeIsBlocking(battleNotice.title.replace(/^【相手】/, ''), battleNotice.message)" class="battle-action-modal">
       <div class="battle-action-panel">
         <div class="public-process-badge">両プレイヤーへの公開処理</div>
         <h3>{{ battleNotice.title }}</h3>
@@ -4596,7 +4596,7 @@
 
     <!-- 成功報告・状態変化の通知：クリック不要の自動消滅トースト（右上） -->
     <transition name="notice-toast-fade">
-      <div v-if="battleNotice && !_battleNoticeIsBlocking(battleNotice.title.replace(/^【相手】/, ''))"
+      <div v-if="battleNotice && !_battleNoticeIsBlocking(battleNotice.title.replace(/^【相手】/, ''), battleNotice.message)"
            class="notice-toast" @click="battleNotice = null">
         <div class="notice-toast-title">{{ battleNotice.title }}</div>
         <div class="notice-toast-message">{{ battleNotice.message }}</div>
@@ -5686,7 +5686,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.115',
+    BUILD_VERSION: '1.14.116',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8562,18 +8562,19 @@ new Vue({
       this.battleShowNotice('コスト減少', `「${this.fullName(picked[0])}」をタップし、「${this.fullName(card)}」のコストを${delta}下げました。`, [picked[0]]);
       return delta;
     },
-    /* battleNotice のタイトルから「クリック待ちモーダルにすべきか」を判定する。
-       失敗/操作不可/エラー/条件未達/対象なし/手動対応が必要/非公開領域からの公開処理（誘・サーチ・霊視）
-       はプレイヤーが必ず読む必要があるためモーダルのまま。それ以外（成功報告・状態変化）は
-       盤面を見れば分かる／見逃しても実害が小さいため自動消滅トーストにする（テンポ優先）。 */
-    _battleNoticeIsBlocking(title) {
+    /* battleNotice のタイトル/メッセージから「クリック待ちモーダルにすべきか」を判定する。
+       失敗/操作不可/エラー/条件未達/対象なし/手動対応が必要 はプレイヤーが必ず読む必要があるため
+       モーダルのまま。誘・サーチ・霊視の成功報告（公開して手札に加えた内容）も含め、それ以外
+       （成功報告・状態変化）は盤面を見れば分かる／見逃しても実害が小さいため自動消滅トースト
+       にする（テンポ優先。誘/サーチ/霊視の対象は既に log 記録＋オンライン同期されるため、
+       トースト化しても相手に情報が伝わらなくなるわけではない）。 */
+    _battleNoticeIsBlocking(title, message) {
       const t = String(title || '');
+      const m = String(message || '');
       // 状態変化でも自動でよいものを明示的に除外（キーワードにひっかかっても toast 扱いにする）
       const toastOverride = ['上限超過で崩壊', '拘束', '拘束解除'];
       if (toastOverride.includes(t)) return false;
       if (t === '拘束中') return true; // 「〜のためアンタップできません」は操作不可の告知
-      // 非公開領域から公開して手札へ加える系（誘/サーチ/霊視）は必ず見せる
-      if (/^(誘|サーチ|霊視)/.test(t)) return true;
       // 稀少・重大なイベントは見せる
       if (t === '敗北置換' || t === '数字を宣言' || t === 'キーワード確認') return true;
       const blockingKeywords = [
@@ -8581,8 +8582,9 @@ new Vue({
         '上限です', '上限', '条件未達', '対象なし', '対象不明', '未検出',
         '対象にできません', '未登録', '選択肢なし', '参照対象不足', '補足',
         '置き場所が違います', '相手選択破棄', '相手選択保護',
+        '残っていません', 'デッキがありません', // サーチ等でデッキ切れの場合（タイトルは成功時と同じ「サーチ」等になる）
       ];
-      return blockingKeywords.some(kw => t.includes(kw));
+      return blockingKeywords.some(kw => t.includes(kw) || m.includes(kw));
     },
     /* 通知に紐づくカードを一時的にハイライトする（トーストで見落としても「何かが起きた」ことが分かるように） */
     _battleGlowNoticeCards(cards) {
@@ -8618,9 +8620,10 @@ new Vue({
     _battleScheduleNoticeAutoDismiss() {
       clearTimeout(this._battleNoticeAutoTimer);
       const notice = this.battleNotice;
-      if (!notice || this._battleNoticeIsBlocking(notice.title.replace(/^【相手】/, ''))) return;
+      if (!notice || this._battleNoticeIsBlocking(notice.title.replace(/^【相手】/, ''), notice.message)) return;
       this._battleNoticeAutoTimer = setTimeout(() => {
-        if (this.battleNotice && !this._battleNoticeIsBlocking(this.battleNotice.title.replace(/^【相手】/, ''))) {
+        const n = this.battleNotice;
+        if (n && !this._battleNoticeIsBlocking(n.title.replace(/^【相手】/, ''), n.message)) {
           this.battleNotice = null;
         }
       }, 2500);
