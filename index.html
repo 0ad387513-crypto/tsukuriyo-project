@@ -5704,7 +5704,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.122',
+    BUILD_VERSION: '1.14.123',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -12931,12 +12931,20 @@ new Vue({
       if (grants.includes(keyword)) return true;
       return this.battleCardInherentKeywords(card).has(keyword);
     },
+    /* 死角のみを見た対象妥当性判定。守護カード自身の対象可否判定（未タップ前提）等、
+       「タップ済みのみ」制約を適用してはいけない文脈で使う（下の battleCanDeclareAttackTarget と区別）。 */
     battleCanTargetLegacy(attacker, defender) {
       if (!defender) return false;
-      // 相手のタップ済みレガシーのみ戦闘対象にできる（アンタップ状態のレガシーは対象にできない）。
-      // 「アンタップされていないレガシーと戦闘できる」等の特殊能力を持つ攻撃側は例外として許可する。
-      if (!defender._tapped && !this.battleCardHasKeyword(attacker, 'アンタップされていないレガシーと戦闘できる')) return false;
       return !(this.battleCardHasKeyword(defender, '死角') && !this.battleCardHasKeyword(attacker, '死角'));
+    },
+    /* 通常の戦闘宣言時（プレイヤーが最初に攻撃対象を選ぶ時）専用の判定。
+       相手のタップ済みレガシーのみ戦闘対象にできる（アンタップ状態のレガシーは対象にできない）。
+       「アンタップされていないレガシーと戦闘できる」等の特殊能力を持つ攻撃側は例外として許可する。
+       守護による対象変更はこの制約の対象外（守護は未タップであることが前提のため）。 */
+    battleCanDeclareAttackTarget(attacker, defender) {
+      if (!defender) return false;
+      if (!defender._tapped && !this.battleCardHasKeyword(attacker, 'アンタップされていないレガシーと戦闘できる')) return false;
+      return this.battleCanTargetLegacy(attacker, defender);
     },
     /* フィールド表示用：このカードが【拘束】中かどうか（縄アイコン表示に使用） */
     battleCardIsBound(card, side) {
@@ -13314,7 +13322,7 @@ new Vue({
         this.battleShowNotice('戦闘対象なし', '戦闘時効果の処理により、対象レガシーが場を離れました。戦闘は不発となります。', [attacker]);
         return;
       }
-      if (!this.battleCanTargetLegacy(attacker, defender)) {
+      if (!this.battleCanDeclareAttackTarget(attacker, defender)) {
         if (!defender._tapped) {
           this.battleShowNotice('戦闘対象にできません', `「${this.fullName(defender)}」はタップされていないため、戦闘対象に選べません。`, [attacker, defender]);
         } else {
