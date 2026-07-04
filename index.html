@@ -2121,6 +2121,11 @@
   }
   .battle-end-turn-btn:hover { background: linear-gradient(135deg, #d8843a, #f8aa4a); }
   .battle-end-turn-btn:active { transform: translateY(1px); }
+  .battle-end-turn-btn:disabled {
+    background: #4a4f5a; border-color: #63697a; color: #9aa0ac;
+    cursor: not-allowed; box-shadow: none;
+  }
+  .battle-end-turn-btn:disabled:hover { background: #4a4f5a; }
 
   /* ===== デッキ右クリックメニュー ===== */
   .deck-context-menu {
@@ -2865,6 +2870,21 @@
   .hand-playable[draggable="true"] { cursor: grab; }
   .hand-playable[draggable="true"]:active { cursor: grabbing; }
   .hand-playable.hand-dragging { opacity: 0.4; }
+  .battle-turn-flash {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    z-index: 750; pointer-events: none;
+    font-size: clamp(28px, 5vw, 56px); font-weight: 900; letter-spacing: 0.06em;
+    color: #fff; text-shadow: 0 0 18px rgba(0,0,0,.9), 0 0 6px rgba(0,0,0,.9);
+    padding: 18px 40px; border-radius: 10px;
+    background: rgba(10, 12, 18, 0.55); border: 2px solid rgba(255,255,255,0.35);
+    white-space: nowrap;
+  }
+  .battle-turn-flash.self { border-color: rgba(90, 200, 255, 0.7); }
+  .battle-turn-flash.opp { border-color: rgba(255, 140, 90, 0.7); }
+  .battle-turn-flash-fade-enter-active { transition: opacity 0.25s ease, transform 0.25s ease; }
+  .battle-turn-flash-fade-leave-active { transition: opacity 0.4s ease; }
+  .battle-turn-flash-fade-enter { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+  .battle-turn-flash-fade-leave-to { opacity: 0; }
   .battle-result-overlay { z-index: 700; overflow: hidden; }
   .battle-result-panel {
     position: relative; width: min(720px, 94vw); padding: 56px 28px; text-align: center;
@@ -4096,7 +4116,7 @@
             ターン<span class="tn-big" :class="{ fatigue: battleSample.turn >= 11 }">{{ battleSample.turn }}</span>
             <div v-if="battleSample.turn >= 11" class="turn-fatigue-hint">疲労 -{{ battleSample.turn - 10 }}</div>
           </div>
-          <button class="battle-end-turn-btn" @click="battleEndTurn">ターン終了</button>
+          <button class="battle-end-turn-btn" :disabled="!battleCanEndTurn" @click="battleEndTurn">ターン終了</button>
         </div>
 
         <!-- 自分のターン表示（自分DGCの直上） -->
@@ -4672,6 +4692,13 @@
       </div>
     </div>
   </div>
+
+  <!-- ===== 手番切替演出（画面中央に一瞬表示） ===== -->
+  <transition name="battle-turn-flash-fade">
+    <div v-if="battleTurnFlash" :key="battleTurnFlash.id" class="battle-turn-flash" :class="battleTurnFlash.side">
+      {{ battleTurnFlash.text }}
+    </div>
+  </transition>
 
   <!-- ===== フィールド空き部 右クリックメニュー（トークン招来） ===== -->
   <div v-if="battleFieldZoneMenu" class="deck-context-menu"
@@ -5665,6 +5692,7 @@ new Vue({
     battleNotice: null, // ブロッキングモーダル用（クリックで確認が必要な通知のみ使う）
     battleToasts: [], // 自動消滅トースト（成功報告・状態変化）：[{ id, title, message }]、積み重ね表示・各々独立したタイマーで消える
     battleRemoteConfirm: null, // 相手クライアントから届いた確認依頼（守護 等）：{ id, kind, cardNo, prompt }
+    battleTurnFlash: null, // 手番切替時に画面中央へ一瞬表示する演出：{ text, side }
     battleConfirmModal: null, // { action, title, message, confirmLabel, cards, payload }
     /* 手札ドラッグ・場出し */
     battleDragIndex: null,    // ドラッグ中の手札index（null=非ドラッグ中）
@@ -5704,7 +5732,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.124',
+    BUILD_VERSION: '1.14.125',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5767,6 +5795,15 @@ new Vue({
       if (this.battleContext.returnView === 'shield') return 'シールド戦';
       if (this.battleContext.returnView === 'game') return '星戦';
       return 'トップ';
+    },
+    /* オンライン対戦テスト中は手番プレイヤーのみ「ターン終了」を押せる
+       （オフラインの単独シミュレーション時は従来通りどちらの手番でも押せる） */
+    battleCanEndTurn() {
+      if (this.battleSample.result) return false;
+      if (this.battleNet && this.battleNet.on && !this.battleNet.spectating) {
+        return this.battleSample.activeSide === 'self';
+      }
+      return true;
     },
     /* 墓地カード右クリックメニュー：墓地起動契機の能力リスト（コスト支払可否を含む） */
     battleZoneCardMenuGraveyardAbilities() {
@@ -7402,13 +7439,24 @@ new Vue({
       try {
         this._battleApplyingRemote = true;
         const wasActiveBefore = !!n._wasActive; // 直前まで自分の手番だったか（手番が今始まったかの判定に使う）
+        const previousActiveSide = this.battleSample.activeSide;
         const sides = state.sides || {};
         this._battleApplySide('self', sides[n.mySeat], true);   // 自分席（手札/山札はローカル保持）
         this._battleApplySide('opp',  sides[n.oppSeat], false); // 相手席
         const activeSide = String(state.activeSeat) === String(n.mySeat) ? 'self' : 'opp';
         this.$set(this.battleSample, 'activeSide', activeSide);
+        if (activeSide !== previousActiveSide && !state.result) this._battleFlashTurn(activeSide);
         this.$set(this.battleSample, 'turn', state.turn || this.battleSample.turn);
-        this.$set(this.battleSample, 'result', state.result || null);
+        // state.result は書き込んだ側（writer）自身の視点での勝敗（例：writerが負けたら'loss'）。
+        // 受信側の画面では勝敗が逆になるため、outcomeを反転させてから適用する
+        // （反転しないと、降参等で片方が負けた際に両者の画面に同じ「敗北」が表示されてしまう）。
+        if (state.result) {
+          const invertedOutcome = state.result.outcome === 'win' ? 'loss' : (state.result.outcome === 'loss' ? 'win' : state.result.outcome);
+          const invertedTitle = invertedOutcome === 'win' ? '星戦勝利！' : (invertedOutcome === 'loss' ? '星戦敗北…' : state.result.title);
+          this.$set(this.battleSample, 'result', { outcome: invertedOutcome, title: invertedTitle });
+        } else {
+          this.$set(this.battleSample, 'result', null);
+        }
         n._wasActive = (activeSide === 'self');
         this.$set(this.battleNet, 'oppReady', true);
         this.$set(this.battleNet, 'lastReceivedAt', Date.now());
@@ -7921,6 +7969,7 @@ new Vue({
     },
     async battleEndTurn() {
       if (this.battleNet && this.battleNet.spectating) return;
+      if (this.battleNet && this.battleNet.on && this.battleSample.activeSide !== 'self') return;
       if (this.battleSample.result) return;
       this.battleSaveUndo();
       const bs = this.battleSample;
@@ -7949,6 +7998,7 @@ new Vue({
       const nextSide = bs.activeSide === 'self' ? 'opp' : 'self';
       if (nextSide === this.battleContext.firstSide) bs.turn += 1;
       bs.activeSide = nextSide;
+      if (!bs.result) this._battleFlashTurn(nextSide);
       this._battleStartTurnFor(nextSide);
       this.dslRefreshStaticAbilities();
       this.battleLog.push({
@@ -8667,6 +8717,15 @@ new Vue({
         const idx = this.battleToasts.findIndex(t => t.id === id);
         if (idx >= 0) this.battleToasts.splice(idx, 1);
       }, 2500);
+    },
+    /* 手番切替時、画面中央に「〇〇のターン」を一瞬表示する演出 */
+    _battleFlashTurn(side) {
+      const text = side === 'self' ? `${this.battleContext.selfName}のターン` : `${this.battleContext.oppName}のターン`;
+      const id = (this._battleTurnFlashSeq = (this._battleTurnFlashSeq || 0) + 1);
+      this.battleTurnFlash = { id, text, side };
+      setTimeout(() => {
+        if (this.battleTurnFlash && this.battleTurnFlash.id === id) this.battleTurnFlash = null;
+      }, 1400);
     },
     /* バトルログ（一挙一動の履歴）に1件追加する。cardsの最初の1枚が今いる場所からサイド（自分/相手）を判定する
        （所有者ではなく「今その場にあるサイド」を見るのは、破壊/崩壊等で移動した後の表示にも対応するため） */
