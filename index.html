@@ -5735,7 +5735,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.128',
+    BUILD_VERSION: '1.14.129',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -10418,12 +10418,22 @@ new Vue({
       // （トークンは手札に置けないため崩壊へ変換：_battleLeaveZone）
       // カードごとの実際の所属側を記録（「自分レガシーを選んだ場合」等、後続の条件判定で使用）
       const returnedSides = [];
-      targets.forEach(c => {
+      const n = this.battleNet;
+      const isOnlineSync = !!(n && n.on && !n.spectating);
+      for (const c of targets) {
         const loc = this._dslFindCardLocation(c);
         const cardSide = (loc && loc.side) || defaultSide;
         returnedSides.push(cardSide);
-        this._dslMoveCardToZone(c, this._battleLeaveZone(c, 'hand'), cardSide);
-      });
+        const destZone = this._battleLeaveZone(c, 'hand');
+        if (destZone === 'hand' && cardSide === 'opp' && isOnlineSync) {
+          // オンライン対戦中：相手の手札は非公開のため、実際の移動処理は相手クライアント
+          // 自身に委任する（こちらのローカルな bs.opp.hand への追加は相手の実データに
+          // 反映されないため、委任せずに直接動かすとカードが消失してしまう）。
+          await this._battleDelegateReturnToOppHand(c);
+        } else {
+          this._dslMoveCardToZone(c, destZone, cardSide);
+        }
+      }
       this._dslLastReturnedCardSides = returnedSides;
       this.battleShowNotice('手札に戻す', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を手札に戻しました。`, targets);
       if (Array.isArray(act.後続) && act.後続.length) {
@@ -11501,6 +11511,7 @@ new Vue({
       if (String(data.forSeat) !== String(n.mySeat)) return;
       if (this._battleLastDelegateId === data.id) return;
       this._battleLastDelegateId = data.id;
+      if (data.kind === 'returnToHand') { await this._battleHandleRemoteReturnToHandRequest(data); return; }
       if (data.kind !== 'discard') return;
       const self = this.battleSample.self;
       const candidates = [...(self.hand || []), ...(self.legacies || [])].filter(Boolean);
@@ -11530,6 +11541,61 @@ new Vue({
       // 自分のターンでなくても、この単発の状態変化は明示的に公開する
       // （通常のウォッチャーはアクティブ側のみが公開する設計のため）
       this._battlePublishState();
+    },
+    /* 「相手の場のカードを相手の手札に戻す」効果（バウンス）の委譲実行。
+       手札は非公開情報のため、対象を選ぶのは発動側だが、実際の移動（場から取り除き手札へ加える）は
+       本当の持ち主である自分のクライアント側で自分の実データに対して行う。
+       同じNoのカードが場に複数ある場合は先頭から順に1件を対象にする（他委譲処理と同じ方式）。 */
+    async _battleHandleRemoteReturnToHandRequest(data) {
+      const n = this.battleNet;
+      const self = this.battleSample.self;
+      let card = null;
+      for (const zone of ['legacies', 'relics', 'graveyard', 'crumbled', 'deck']) {
+        const arr = self[zone] || [];
+        const idx = arr.findIndex(c => c && String(c.no) === String(data.cardNo));
+        if (idx >= 0) { card = arr[idx]; break; }
+      }
+      const ok = !!(card && this._dslMoveCardToZone(card, 'hand', 'self'));
+      if (ok) {
+        this._battleSyncSideCounts('self');
+        this.dslRefreshStaticAbilities();
+      }
+      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${data.id}`;
+      try {
+        await getDb().ref(ansPath).set({ ok, ts: Date.now() });
+      } catch (e) {
+        console.error('[sync] 委譲結果の送信失敗:', e);
+      }
+      this._battlePublishState();
+    },
+    /* バウンス効果で「相手の場のカードを相手の手札に戻す」場合の委譲依頼側。
+       対象の選択（どのカードを戻すか）は発動側が既に済ませており、ここでは実際の移動処理のみを
+       相手クライアントに委任し、完了report(ok)だけを受け取る。 */
+    async _battleDelegateReturnToOppHand(card) {
+      const n = this.battleNet;
+      const reqId = 'r' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+      const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
+      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
+      try {
+        await getDb().ref(reqPath).set({ id: reqId, forSeat: n.oppSeat, kind: 'returnToHand', cardNo: String(card.no), ts: Date.now() });
+      } catch (e) {
+        console.error('[sync] 委譲依頼の送信失敗:', e);
+        this.$set(this.battleNet, 'lastError', '委譲依頼の送信失敗：' + (e && e.message));
+        return false;
+      }
+      return new Promise((resolve) => {
+        const ansRef = getDb().ref(ansPath);
+        let settled = false;
+        const handler = (snap) => {
+          const val = snap.val();
+          if (val == null || settled) return;
+          settled = true;
+          ansRef.off('value', handler);
+          ansRef.remove().catch(() => {});
+          resolve(!!(val && val.ok));
+        };
+        ansRef.on('value', handler);
+      });
     },
     /* 選択肢A/Bを尋ねる */
     dslAskChoice(card, prompt, options) {
