@@ -2437,17 +2437,6 @@
     gap: 50px;
     padding: 28px 18px 16px;
   }
-  /* レリック：レガシーと同様に中央揃え＋タップ（90度回転）時に隣と被らないよう余白を広げる */
-  .relic-row {
-    justify-content: center;
-    align-items: center;
-    gap: 50px;
-  }
-  .relic-row .battle-card {
-    max-width: calc((100% - 100px) / 3);
-    height: 90%;
-    align-self: center;
-  }
   .legacy-row .battle-card {
     aspect-ratio: 744 / 1039;
     height: 88%;
@@ -3916,7 +3905,7 @@
           </div>
           <div class="battle-zone field">
             <span class="battle-zone-label">レリック(相手)</span>
-            <div class="battle-card-row relic-row">
+            <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.opp.relics" :key="'or'+i"
                    class="battle-card field-card"
                    :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled }"
@@ -4036,7 +4025,7 @@
                @dragover.prevent="battleUpdateDragOverZone($event)"
                @contextmenu.self.prevent="battleOpenFieldZoneMenu('relics', $event)">
             <span class="battle-zone-label">レリック</span>
-            <div class="battle-card-row relic-row"
+            <div class="battle-card-row"
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('relics', $event)">
               <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i"
                    class="battle-card field-card"
@@ -5802,7 +5791,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.131',
+    BUILD_VERSION: '1.14.132',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
