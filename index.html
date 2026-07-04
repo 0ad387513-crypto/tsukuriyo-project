@@ -5704,7 +5704,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.123',
+    BUILD_VERSION: '1.14.124',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -13298,7 +13298,7 @@ new Vue({
       this._battleCheckGraveyardActivationPrompt(side);
       destroyed.push({ side, card });
     },
-    async battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex) {
+    async battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex, opts = {}) {
       if (this.battleNet && this.battleNet.spectating) return;
       if (this.battleSample.result || attackerSide !== 'self') return;
       const attackerPlayer = this.battleSample[attackerSide];
@@ -13306,14 +13306,22 @@ new Vue({
       const attacker = attackerPlayer && attackerPlayer.legacies[attackerIndex];
       let defender = defenderPlayer && defenderPlayer.legacies[defenderIndex];
       if (!attacker || !defender) return;
-      const can = this.battleLegacyCanAct(attacker, 'battle');
-      if (!can.ok) { this.battleShowNotice('戦闘できません', can.reason, [attacker]); return; }
+      // 神攻が守護により戦闘へ差し替えられた場合、攻撃側は既に神攻宣言時点でタップ済み・
+      // 【神攻時】も発動済みのため、通常戦闘のタップ済みチェック／再タップ／【戦闘時】発動はスキップする
+      // （スキップしないと battleLegacyCanAct の「タップされています」判定に引っかかり、守護戦闘そのものが不発になる）
+      const viaDivineGuard = !!(opts && opts.viaDivineGuard);
+      if (!viaDivineGuard) {
+        const can = this.battleLegacyCanAct(attacker, 'battle');
+        if (!can.ok) { this.battleShowNotice('戦闘できません', can.reason, [attacker]); return; }
+      }
       // 戦闘を宣言した時点でタップする（【戦闘時】発動より前）。
       // タップが後回しだと、効果解決中は未タップのままのため、同じターンに何度も戦闘/神攻を宣言し直せてしまう。
       // （神攻から守護で差し替えられた場合の【神攻時】は battleResolveDivineAttack 側で宣言時点に発動済み）
       this.battleSaveUndo();
-      this.$set(attacker, '_tapped', true);
-      await this.battleRunActionTrigger(attacker, '戦闘時');
+      if (!viaDivineGuard) {
+        this.$set(attacker, '_tapped', true);
+        await this.battleRunActionTrigger(attacker, '戦闘時');
+      }
       if (this.battleSample.result) return;
       attackerIndex = attackerPlayer.legacies.indexOf(attacker);
       defenderIndex = defenderPlayer.legacies.indexOf(defender);
@@ -13418,7 +13426,7 @@ new Vue({
       const guard = await this._battleChooseGuard(attacker, 'opp', null);
       if (guard) {
         // 【神攻時】は宣言時点（上記）で既に発動済みのため、ここでは再発動させない。
-        this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index);
+        this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index, { viaDivineGuard: true });
         return;
       }
       // K10ヤマタノオロチ「封神・終極八岐」：全ての封印が解かれている間、神技の発動なしに自動で有効。
