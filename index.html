@@ -2887,6 +2887,47 @@
   .battle-turn-flash-fade-leave-active { transition: opacity 0.4s ease; }
   .battle-turn-flash-fade-enter { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
   .battle-turn-flash-fade-leave-to { opacity: 0; }
+  /* 先攻/後攻決めのコイン演出 */
+  .battle-coinflip-overlay {
+    position: fixed; inset: 0; z-index: 850; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(3, 5, 10, 0.78);
+  }
+  .battle-coinflip-panel {
+    display: flex; flex-direction: column; align-items: center; gap: 24px;
+    perspective: 900px;
+  }
+  .battle-coin {
+    width: min(200px, 50vw); height: min(200px, 50vw);
+    position: relative; transform-style: preserve-3d;
+  }
+  .battle-coin.spin.land-front { animation: coinSpinFront 1.8s cubic-bezier(.25,.05,.25,1) forwards; }
+  .battle-coin.spin.land-back  { animation: coinSpinBack  1.8s cubic-bezier(.25,.05,.25,1) forwards; }
+  .battle-coin.result.land-front { transform: rotateY(0deg); }
+  .battle-coin.result.land-back  { transform: rotateY(180deg); }
+  .battle-coin-face {
+    position: absolute; inset: 0; backface-visibility: hidden;
+    border-radius: 50%; overflow: hidden;
+    box-shadow: 0 16px 46px rgba(0,0,0,.65), 0 0 0 2px rgba(255,230,160,.5);
+  }
+  .battle-coin-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .battle-coin-back { transform: rotateY(180deg); }
+  @keyframes coinSpinFront {
+    0%   { transform: rotateY(0deg)    translateY(0); }
+    45%  { transform: rotateY(1600deg) translateY(-46px); }
+    100% { transform: rotateY(1800deg) translateY(0); }
+  }
+  @keyframes coinSpinBack {
+    0%   { transform: rotateY(0deg)    translateY(0); }
+    45%  { transform: rotateY(1600deg) translateY(-46px); }
+    100% { transform: rotateY(1980deg) translateY(0); }
+  }
+  .battle-coinflip-text {
+    font-size: clamp(22px, 4vw, 34px); font-weight: 900; letter-spacing: 0.05em;
+    color: #ffe9a8; text-shadow: 0 0 16px rgba(0,0,0,.85);
+    opacity: 0; animation: coinTextIn 0.4s ease forwards;
+  }
+  @keyframes coinTextIn { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: scale(1); } }
   .battle-result-overlay { z-index: 700; overflow: hidden; }
   .battle-result-panel {
     position: relative; width: min(720px, 94vw); padding: 56px 28px; text-align: center;
@@ -3773,6 +3814,18 @@
           あなたは準備完了しました。<br>
           相手プレイヤーのマリガン完了を待っています…<br>
           <span style="font-size:11px;color:#9aa;">両者準備完了でターン1が開始されます</span>
+        </div>
+      </div>
+    </div>
+    <!-- ===== 先攻/後攻決めのコイン演出 ===== -->
+    <div v-if="battleCoinFlip" class="battle-coinflip-overlay" @click="battleSkipCoinFlip">
+      <div class="battle-coinflip-panel">
+        <div class="battle-coin" :class="[battleCoinFlip.phase, battleCoinFlip.firstSide === 'self' ? 'land-front' : 'land-back']">
+          <div class="battle-coin-face battle-coin-front"><img :src="coinFrontUrl" alt="表"></div>
+          <div class="battle-coin-face battle-coin-back"><img :src="coinBackUrl" alt="裏"></div>
+        </div>
+        <div v-if="battleCoinFlip.phase === 'result'" class="battle-coinflip-text">
+          {{ battleCoinFlip.firstSide === 'self' ? '先攻（ON THE PLAY）' : '後攻（ON THE DRAW）' }}
         </div>
       </div>
     </div>
@@ -5696,6 +5749,9 @@ new Vue({
     battleToasts: [], // 自動消滅トースト（成功報告・状態変化）：[{ id, title, message }]、積み重ね表示・各々独立したタイマーで消える
     battleRemoteConfirm: null, // 相手クライアントから届いた確認依頼（守護 等）：{ id, kind, cardNo, prompt }
     battleTurnFlash: null, // 手番切替時に画面中央へ一瞬表示する演出：{ text, side }
+    battleCoinFlip: null, // 先攻/後攻決めのコイン演出：{ firstSide, phase: 'spin'|'result' }
+    coinFrontUrl: 'coin_front.png', // コイン表（彼岸花）
+    coinBackUrl: 'coin_back.png',   // コイン裏（女性）
     battleConfirmModal: null, // { action, title, message, confirmLabel, cards, payload }
     /* 手札ドラッグ・場出し */
     battleDragIndex: null,    // ドラッグ中の手札index（null=非ドラッグ中）
@@ -5735,7 +5791,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.129',
+    BUILD_VERSION: '1.14.130',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7203,8 +7259,43 @@ new Vue({
       // 4人対戦はオンライン同期、その他（シールド/プレビュー）はローカル
       if (config.syncGame) this._battleSyncStart(config.code, config.table, config.mySeat, config.oppSeat);
       else this._battleSyncStop();
-      // 対戦開始の最初の処理：マリガン（引き直し）フェーズへ。確定後にターン開始。
+      // 対戦開始の最初の処理：先攻/後攻決めのコイン演出 → マリガン（引き直し）フェーズへ。確定後にターン開始。
+      this._battleStartCoinFlip();
+    },
+    /* 先攻/後攻決めのコイン演出。firstSideは既にランダム（またはFirebaseの共有transaction）で
+       決定済みのため、ここではその結果を表/裏のコイン回転アニメーションで見せるだけ。
+       表＝自分が先攻、裏＝相手が先攻、という表示は各クライアントのローカル視点でのみ意味を持つ
+       （実際のコイン画像は両者の画面で逆の面が表示されることになるが、結果自体は
+       firstSeatの共有transactionで既に一致しているため問題ない）。 */
+    _battleStartCoinFlip() {
+      const firstSide = this.battleContext.firstSide;
+      this.battleCoinFlip = { firstSide, phase: 'spin' };
+      this._battleCoinFlipT1 = setTimeout(() => {
+        if (!this.battleCoinFlip) return;
+        this.battleCoinFlip = { firstSide, phase: 'result' };
+        this._battleCoinFlipT2 = setTimeout(() => {
+          this._battleFinishCoinFlip();
+        }, 1600);
+      }, 1800);
+    },
+    /* コイン演出を終えてマリガンフェーズへ進む（クリックでのスキップからも呼ばれる） */
+    _battleFinishCoinFlip() {
+      if (!this.battleCoinFlip) return;
+      clearTimeout(this._battleCoinFlipT1);
+      clearTimeout(this._battleCoinFlipT2);
+      this.battleCoinFlip = null;
       this.battleMulligan = { remaining: this.battleContext.selfMulligans || 1, selectedIdx: [] };
+    },
+    /* 演出をスキップして結果表示へ即座に進める（スピン中クリック時） */
+    battleSkipCoinFlip() {
+      if (!this.battleCoinFlip) return;
+      if (this.battleCoinFlip.phase === 'spin') {
+        clearTimeout(this._battleCoinFlipT1);
+        this.battleCoinFlip = { firstSide: this.battleCoinFlip.firstSide, phase: 'result' };
+        this._battleCoinFlipT2 = setTimeout(() => this._battleFinishCoinFlip(), 1600);
+      } else {
+        this._battleFinishCoinFlip();
+      }
     },
     /* マリガン：引き直したいカードの選択トグル */
     battleToggleMulliganCard(i) {
