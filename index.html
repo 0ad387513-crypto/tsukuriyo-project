@@ -5704,7 +5704,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.120',
+    BUILD_VERSION: '1.14.121',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7482,6 +7482,16 @@ new Vue({
         const confirmRef = getDb().ref(confirmPath);
         const confirmHandler = snap => this._battleHandleRemoteConfirmRequest(snap.val());
         confirmRef.on('value', confirmHandler);
+        // 相手依存の対象選択（相手選択保護・K2神技 等・候補は公開情報のみ）：選択依頼を購読
+        const pickPath = path.replace(/\/state$/, '/pendingPick');
+        const pickRef = getDb().ref(pickPath);
+        const pickHandler = snap => this._battleHandleRemotePickRequest(snap.val());
+        pickRef.on('value', pickHandler);
+        // 相手依存の選択＋実行の委譲（相手選択破棄 等・相手の手札を含む）：委譲依頼を購読
+        const delegatePath = path.replace(/\/state$/, '/pendingDelegate');
+        const delegateRef = getDb().ref(delegatePath);
+        const delegateHandler = snap => this._battleHandleRemoteDelegateRequest(snap.val());
+        delegateRef.on('value', delegateHandler);
         // 在席状態（プレゼンス）：.info/connected + onDisconnect で自分の切断を検知させ、
         // 相手側の在席パスを購読することで「相手が切断した」ことを能動的に把握できるようにする
         const presenceBase = path.replace(/\/state$/, '/presence');
@@ -7505,6 +7515,8 @@ new Vue({
           try { noticeRef.off('value', noticeHandler); } catch (e) {}
           try { mulliganRef.off('value', mulliganHandler); } catch (e) {}
           try { confirmRef.off('value', confirmHandler); } catch (e) {}
+          try { pickRef.off('value', pickHandler); } catch (e) {}
+          try { delegateRef.off('value', delegateHandler); } catch (e) {}
           try { connectedRef.off('value', connectedHandler); } catch (e) {}
           try { oppPresenceRef.off('value', presenceHandler); } catch (e) {}
           try { myPresenceRef.onDisconnect().cancel(); } catch (e) {}
@@ -10282,7 +10294,7 @@ new Vue({
         selfKeep = (picked && picked[0]) || null;
       }
       if (oppLegacies.length) {
-        const picked = await this.dslAskCustomTargets('相手が残すレガシーを1枚選択', oppLegacies, 1, sourceCard);
+        const picked = await this._battleAskCustomTargetsRemote('相手が残すレガシーを1枚選択', oppLegacies, 1, sourceCard);
         oppKeep = (picked && picked[0]) || null;
       }
       this.battleSaveUndo();
@@ -10789,6 +10801,16 @@ new Vue({
       const opp = this.battleSample && this.battleSample.opp;
       if (!opp) return;
       const need = Math.max(1, Number(act.数 || 1));
+      const n = this.battleNet;
+      if (n && n.on && !n.spectating) {
+        // オンライン対戦中：相手の手札は非公開のため、相手クライアント自身に選択・移動・
+        // 破壊処理まで実行してもらい、結果（動かしたカード）だけを受け取って通知する。
+        const moved = await this._battleDelegateOpponentDiscard(need);
+        if (moved.length) {
+          this.battleShowNotice('相手選択破棄', `${moved.map(c => `「${this.fullName(c)}」`).join('、')}を相手の墓地へ送りました。`, moved);
+        }
+        return;
+      }
       const candidates = [
         ...(opp.hand || []),
         ...(opp.legacies || [])
@@ -10838,7 +10860,7 @@ new Vue({
         this.battleShowNotice('相手選択保護', '相手フィールドに選択できるカードがありません。', sourceCard ? [sourceCard] : []);
         return;
       }
-      const picked = await this.dslAskCustomTargets('相手が破壊しないフィールドカードを1枚選択', fieldCards, Number(act.数 || 1), sourceCard);
+      const picked = await this._battleAskCustomTargetsRemote('相手が破壊しないフィールドカードを1枚選択', fieldCards, Number(act.数 || 1), sourceCard);
       if (!picked.length) return;
       const protectedCard = picked[0];
       const targets = fieldCards.filter(card => card !== protectedCard);
@@ -11297,6 +11319,137 @@ new Vue({
         console.error('[sync] 確認回答の送信失敗:', e);
         this.$set(this.battleNet, 'lastError', '確認回答の送信失敗：' + (e && e.message));
       }
+    },
+    /* 候補が公開情報（フィールドのカード）のみの「相手が選ぶ」効果（相手選択保護・K2神技 等）。
+       候補の実体はこちら側にもあるため、相手クライアントには選択だけを委ね、
+       結果（選んだNo）を受け取って、実際の移動/破壊処理はこちら側でこれまで通り行う。 */
+    async _battleAskCustomTargetsRemote(promptLabel, candidates, need = 1, sourceCard = null) {
+      const pool = (candidates || []).filter(Boolean);
+      if (!pool.length) return [];
+      const n = this.battleNet;
+      if (!n || !n.on || n.spectating) {
+        return this.dslAskCustomTargets(promptLabel, pool, need, sourceCard);
+      }
+      const reqId = 'p' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+      const reqPath = `sessions/${n.code}/battle/${n.table}/pendingPick`;
+      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingPickAnswer/${reqId}`;
+      try {
+        await getDb().ref(reqPath).set({
+          id: reqId, forSeat: n.oppSeat, prompt: promptLabel,
+          cardNos: pool.map(c => String(c.no)),
+          need: Math.min(Math.max(1, Number(need) || 1), pool.length),
+          ts: Date.now(),
+        });
+      } catch (e) {
+        console.error('[sync] 選択依頼の送信失敗:', e);
+        this.$set(this.battleNet, 'lastError', '選択依頼の送信失敗：' + (e && e.message));
+        return [];
+      }
+      const answerNos = await new Promise((resolve) => {
+        const ansRef = getDb().ref(ansPath);
+        let settled = false;
+        const handler = (snap) => {
+          const val = snap.val();
+          if (val == null || settled) return;
+          settled = true;
+          ansRef.off('value', handler);
+          ansRef.remove().catch(() => {});
+          resolve(Array.isArray(val.cardNos) ? val.cardNos : []);
+        };
+        ansRef.on('value', handler);
+      });
+      // 返ってきたNo配列を候補プールの実体にマッチさせる（同名重複は先頭から順に消費）
+      const used = new Set();
+      const picked = [];
+      answerNos.forEach(no => {
+        const idx = pool.findIndex((c, i) => !used.has(i) && String(c.no) === String(no));
+        if (idx >= 0) { used.add(idx); picked.push(pool[idx]); }
+      });
+      return picked;
+    },
+    /* 相手クライアントから届いた「選択依頼」を受け取り、自分の画面で選ばせて回答する */
+    _battleHandleRemotePickRequest(data) {
+      const n = this.battleNet;
+      if (!data || !n || !n.on || n.spectating) return;
+      if (String(data.forSeat) !== String(n.mySeat)) return;
+      if (this._battleLastPickId === data.id) return;
+      this._battleLastPickId = data.id;
+      const candidates = (data.cardNos || []).map(no => this.cardByNo[String(no)]).filter(Boolean);
+      this.dslAskCustomTargets(data.prompt, candidates, data.need, null).then(picked => {
+        const ansPath = `sessions/${n.code}/battle/${n.table}/pendingPickAnswer/${data.id}`;
+        getDb().ref(ansPath).set({ cardNos: picked.map(c => String(c.no)), ts: Date.now() }).catch(e => {
+          console.error('[sync] 選択回答の送信失敗:', e);
+        });
+      });
+    },
+    /* 候補に相手の手札（非公開情報）を含む「相手が選ぶ」効果（相手選択破棄 等）。
+       こちら側は相手の手札の実体を持たないため、相手クライアント自身に選択と
+       移動処理そのものを委ね、実行結果（動かしたカードのNo）だけを受け取る。 */
+    async _battleDelegateOpponentDiscard(need) {
+      const n = this.battleNet;
+      const reqId = 'g' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+      const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
+      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
+      try {
+        await getDb().ref(reqPath).set({ id: reqId, forSeat: n.oppSeat, kind: 'discard', need, ts: Date.now() });
+      } catch (e) {
+        console.error('[sync] 委譲依頼の送信失敗:', e);
+        this.$set(this.battleNet, 'lastError', '委譲依頼の送信失敗：' + (e && e.message));
+        return [];
+      }
+      const cardNos = await new Promise((resolve) => {
+        const ansRef = getDb().ref(ansPath);
+        let settled = false;
+        const handler = (snap) => {
+          const val = snap.val();
+          if (val == null || settled) return;
+          settled = true;
+          ansRef.off('value', handler);
+          ansRef.remove().catch(() => {});
+          resolve(Array.isArray(val.cardNos) ? val.cardNos : []);
+        };
+        ansRef.on('value', handler);
+      });
+      // 相手（本当の持ち主）が既に自分のデータを移動＆公開済み。通知表示用にカード参照だけ復元する。
+      return cardNos.map(no => this.cardByNo[String(no)]).filter(Boolean);
+    },
+    /* 相手クライアントから届いた「委譲依頼」を受け取り、自分の本当のデータに対して
+       選択・移動・破壊処理まで自分のクライアントで完結させ、結果を公開する。 */
+    async _battleHandleRemoteDelegateRequest(data) {
+      const n = this.battleNet;
+      if (!data || !n || !n.on || n.spectating) return;
+      if (String(data.forSeat) !== String(n.mySeat)) return;
+      if (this._battleLastDelegateId === data.id) return;
+      this._battleLastDelegateId = data.id;
+      if (data.kind !== 'discard') return;
+      const self = this.battleSample.self;
+      const candidates = [...(self.hand || []), ...(self.legacies || [])].filter(Boolean);
+      let picked = [];
+      if (candidates.length) {
+        const need = Math.min(Math.max(1, Number(data.need) || 1), candidates.length);
+        picked = await this.dslAskCustomTargets('相手の効果により、墓地へ送る手札/破壊するレガシーを選択してください', candidates, need, null);
+      }
+      const moved = [];
+      const destroyed = [];
+      self.graveyard = self.graveyard || [];
+      picked.forEach(card => {
+        const handIdx = (self.hand || []).indexOf(card);
+        if (handIdx >= 0) { self.hand.splice(handIdx, 1); self.graveyard.push(card); moved.push(card); return; }
+        const legacyIdx = (self.legacies || []).indexOf(card);
+        if (legacyIdx >= 0 && this._dslMoveFromField(card, 'graveyard', 'self')) { moved.push(card); destroyed.push(card); }
+      });
+      this._battleSyncSideCounts('self');
+      this.dslRefreshStaticAbilities();
+      destroyed.forEach(card => this.battleRunDeathKeywordEffects(card));
+      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${data.id}`;
+      try {
+        await getDb().ref(ansPath).set({ cardNos: moved.map(c => String(c.no)), ts: Date.now() });
+      } catch (e) {
+        console.error('[sync] 委譲結果の送信失敗:', e);
+      }
+      // 自分のターンでなくても、この単発の状態変化は明示的に公開する
+      // （通常のウォッチャーはアクティブ側のみが公開する設計のため）
+      this._battlePublishState();
     },
     /* 選択肢A/Bを尋ねる */
     dslAskChoice(card, prompt, options) {
