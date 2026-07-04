@@ -4725,6 +4725,22 @@
     </div>
   </div>
 
+  <!-- ===== 相手クライアントからの確認依頼（守護 等・自分が本当の持ち主として答える） ===== -->
+  <div v-if="battleRemoteConfirm" class="battle-zone-modal">
+    <div class="battle-zone-modal-panel" style="max-width:480px;">
+      <h3 class="battle-zone-modal-title">
+        相手の攻撃への対応
+        <span style="font-size:12px;color:#9aa;font-weight:400;">— 【{{ battleRemoteConfirm.kind }}】</span>
+      </h3>
+      <div class="public-process-badge">両プレイヤーへの公開処理</div>
+      <p class="battle-deck-modal-message" style="margin:8px 0;">{{ battleRemoteConfirm.prompt }}</p>
+      <div class="battle-zone-modal-actions">
+        <button class="battle-back-btn" style="background:#2e7d4f;border-color:#7cf0a8;color:#fff;" @click="battleAnswerRemoteConfirm(true)">引き受ける</button>
+        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="battleAnswerRemoteConfirm(false)">引き受けない</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== DSL 選択op専用モーダル ===== -->
   <div v-if="dslChoiceModal" class="battle-zone-modal" @click.self="dslCancelChoice">
     <div class="battle-zone-modal-panel" style="max-width:560px;">
@@ -5648,6 +5664,7 @@ new Vue({
     battleSkillModal: null,
     battleNotice: null, // ブロッキングモーダル用（クリックで確認が必要な通知のみ使う）
     battleToasts: [], // 自動消滅トースト（成功報告・状態変化）：[{ id, title, message }]、積み重ね表示・各々独立したタイマーで消える
+    battleRemoteConfirm: null, // 相手クライアントから届いた確認依頼（守護 等）：{ id, kind, cardNo, prompt }
     battleConfirmModal: null, // { action, title, message, confirmLabel, cards, payload }
     /* 手札ドラッグ・場出し */
     battleDragIndex: null,    // ドラッグ中の手札index（null=非ドラッグ中）
@@ -5687,7 +5704,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.119',
+    BUILD_VERSION: '1.14.120',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7460,6 +7477,11 @@ new Vue({
         const mulliganRef = getDb().ref(mulliganPath);
         const mulliganHandler = snap => this._battleApplyRemoteMulligan(snap.val());
         mulliganRef.on('value', mulliganHandler);
+        // 相手ターン中の相手依存の意思決定（守護 等）：相手からの確認依頼を購読
+        const confirmPath = path.replace(/\/state$/, '/pendingConfirm');
+        const confirmRef = getDb().ref(confirmPath);
+        const confirmHandler = snap => this._battleHandleRemoteConfirmRequest(snap.val());
+        confirmRef.on('value', confirmHandler);
         // 在席状態（プレゼンス）：.info/connected + onDisconnect で自分の切断を検知させ、
         // 相手側の在席パスを購読することで「相手が切断した」ことを能動的に把握できるようにする
         const presenceBase = path.replace(/\/state$/, '/presence');
@@ -7482,6 +7504,7 @@ new Vue({
           ref.off('value', handler);
           try { noticeRef.off('value', noticeHandler); } catch (e) {}
           try { mulliganRef.off('value', mulliganHandler); } catch (e) {}
+          try { confirmRef.off('value', confirmHandler); } catch (e) {}
           try { connectedRef.off('value', connectedHandler); } catch (e) {}
           try { oppPresenceRef.off('value', presenceHandler); } catch (e) {}
           try { myPresenceRef.onDisconnect().cancel(); } catch (e) {}
@@ -11217,6 +11240,64 @@ new Vue({
       this.dslOptionalModal = null;
       if (m && m.resolver) m.resolver(!!yes);
     },
+    /* 相手（本当の持ち主）に決定権がある任意確認（守護 等）。
+       オンライン対戦中は相手クライアントへ確認を委ね、回答が来るまで待つ。
+       同期していない（オフライン/観戦）場合は従来通りローカルで確認する。 */
+    async _battleAskOptionalRemote(card, kind, promptText) {
+      const n = this.battleNet;
+      if (!n || !n.on || n.spectating) {
+        return this.dslAskOptional(card, kind, promptText);
+      }
+      const reqId = 'q' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+      const reqPath = `sessions/${n.code}/battle/${n.table}/pendingConfirm`;
+      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingConfirmAnswer/${reqId}`;
+      try {
+        await getDb().ref(reqPath).set({
+          id: reqId, forSeat: n.oppSeat, kind, cardNo: card ? String(card.no) : null,
+          prompt: promptText, ts: Date.now(),
+        });
+      } catch (e) {
+        console.error('[sync] 確認依頼の送信失敗:', e);
+        this.$set(this.battleNet, 'lastError', '確認依頼の送信失敗：' + (e && e.message));
+        return false; // 送信できなければ安全側（発動しない）に倒す
+      }
+      return new Promise((resolve) => {
+        const ansRef = getDb().ref(ansPath);
+        let settled = false;
+        const handler = (snap) => {
+          const val = snap.val();
+          if (val == null || settled) return;
+          settled = true;
+          ansRef.off('value', handler);
+          ansRef.remove().catch(() => {});
+          resolve(!!val.answer);
+        };
+        ansRef.on('value', handler);
+      });
+    },
+    /* 相手クライアントから届いた確認依頼を受け取る（自分が本当の持ち主として答える側） */
+    _battleHandleRemoteConfirmRequest(data) {
+      const n = this.battleNet;
+      if (!data || !n || !n.on || n.spectating) return;
+      if (String(data.forSeat) !== String(n.mySeat)) return; // 自分宛てでなければ無視
+      if (this._battleLastConfirmId === data.id) return;      // 既に処理済み
+      this._battleLastConfirmId = data.id;
+      this.battleRemoteConfirm = { id: data.id, kind: data.kind, cardNo: data.cardNo, prompt: data.prompt };
+    },
+    async battleAnswerRemoteConfirm(answer) {
+      const rc = this.battleRemoteConfirm;
+      if (!rc) return;
+      this.battleRemoteConfirm = null;
+      const n = this.battleNet;
+      if (!n || !n.on) return;
+      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingConfirmAnswer/${rc.id}`;
+      try {
+        await getDb().ref(ansPath).set({ answer: !!answer, ts: Date.now() });
+      } catch (e) {
+        console.error('[sync] 確認回答の送信失敗:', e);
+        this.$set(this.battleNet, 'lastError', '確認回答の送信失敗：' + (e && e.message));
+      }
+    },
     /* 選択肢A/Bを尋ねる */
     dslAskChoice(card, prompt, options) {
       return new Promise((resolve) => {
@@ -13004,7 +13085,12 @@ new Vue({
         const guard = defender.legacies[i];
         if (!guard || guard._tapped) continue;
         if (!this.battleCardHasKeyword(guard, '守護') || !this.battleCanTargetLegacy(attacker, guard)) continue;
-        const ok = await this.dslAskOptional(guard, '守護', `「${this.fullName(guard)}」をタップして相手の攻撃を【守護】で引き受けますか？`);
+        // 守護カードの持ち主が相手（オンライン対戦中は本当の相手プレイヤー）の場合、
+        // 決定権は相手にあるため、同期中は相手クライアントへ確認を委ねる。
+        const prompt = `「${this.fullName(guard)}」をタップして相手の攻撃を【守護】で引き受けますか？`;
+        const ok = defenderSide === 'opp'
+          ? await this._battleAskOptionalRemote(guard, '守護', prompt)
+          : await this.dslAskOptional(guard, '守護', prompt);
         if (ok) {
           const idx = defender.legacies.indexOf(guard);
           if (idx < 0) continue;
