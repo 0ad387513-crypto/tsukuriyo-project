@@ -5704,7 +5704,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.121',
+    BUILD_VERSION: '1.14.122',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7401,6 +7401,7 @@ new Vue({
       if (String(state.writer) === String(n.mySeat)) return;  // 自分のエコーは無視
       try {
         this._battleApplyingRemote = true;
+        const wasActiveBefore = !!n._wasActive; // 直前まで自分の手番だったか（手番が今始まったかの判定に使う）
         const sides = state.sides || {};
         this._battleApplySide('self', sides[n.mySeat], true);   // 自分席（手札/山札はローカル保持）
         this._battleApplySide('opp',  sides[n.oppSeat], false); // 相手席
@@ -7415,6 +7416,17 @@ new Vue({
         // 自分が次に公開する際、この時刻より新しい（＝まだ自分が取り込めていない）相手の書き込みを
         // 誤って上書きしないようにするための基準値
         this._battleLastAppliedRemoteTs = Number(state.ts || 0);
+        // 自分の手番が今始まった場合のドロー：ターン終了処理（マナ増加/アンタップ等）は
+        // 相手クライアントのローカルシミュレーションで計算・公開されるため正しく同期されるが、
+        // 手札/山札は非公開情報として preserveLocal で常にこちら側のデータが優先される。
+        // そのため「ドローで山札の1枚が手札に加わる」という変化だけは、相手側の計算結果が
+        // 反映されず抜け落ちてしまう。自分の本当の山札を持つこちらのクライアント側で
+        // このターンにまだ引いていなければ改めてドローする。
+        if (activeSide === 'self' && !wasActiveBefore && this._battleLastDrawnTurn !== this.battleSample.turn) {
+          this._battleLastDrawnTurn = this.battleSample.turn;
+          const isFirstPlayerFirstTurn = (this.battleSample.turn === 1 && this.battleContext.firstSide === 'self');
+          if (!isFirstPlayerFirstTurn) this._battleDrawForTurn('self');
+        }
         // 受信後に静的バフを再評価（DSL常在/進化中 効果が相手側にもある場合）
         if (typeof this.dslRefreshStaticAbilities === 'function') this.dslRefreshStaticAbilities();
       } catch (e) {
@@ -8710,6 +8722,9 @@ new Vue({
       const cards = (payload.cardNos || []).map(no => this.cardByNo[String(no)]).filter(Boolean);
       const title = payload.title || '';
       const message = payload.message || '';
+      // 相手の行動もバトルログに記録する（従来は自分の battleShowNotice 経由のみ記録され、
+      // 相手からの受信通知はログに反映されていなかった）
+      this._battleAppendLogEntry(title, message, cards);
       if (this._battleNoticeIsBlocking(title, message)) {
         this.battleNotice = { title: '【相手】' + title, message, cards };
       } else {
@@ -12917,6 +12932,10 @@ new Vue({
       return this.battleCardInherentKeywords(card).has(keyword);
     },
     battleCanTargetLegacy(attacker, defender) {
+      if (!defender) return false;
+      // 相手のタップ済みレガシーのみ戦闘対象にできる（アンタップ状態のレガシーは対象にできない）。
+      // 「アンタップされていないレガシーと戦闘できる」等の特殊能力を持つ攻撃側は例外として許可する。
+      if (!defender._tapped && !this.battleCardHasKeyword(attacker, 'アンタップされていないレガシーと戦闘できる')) return false;
       return !(this.battleCardHasKeyword(defender, '死角') && !this.battleCardHasKeyword(attacker, '死角'));
     },
     /* フィールド表示用：このカードが【拘束】中かどうか（縄アイコン表示に使用） */
@@ -13296,7 +13315,11 @@ new Vue({
         return;
       }
       if (!this.battleCanTargetLegacy(attacker, defender)) {
-        this.battleShowNotice('死角により対象にできません', `「${this.fullName(attacker)}」は【死角】を持たないため、「${this.fullName(defender)}」を戦闘対象に選べません。`, [attacker, defender]);
+        if (!defender._tapped) {
+          this.battleShowNotice('戦闘対象にできません', `「${this.fullName(defender)}」はタップされていないため、戦闘対象に選べません。`, [attacker, defender]);
+        } else {
+          this.battleShowNotice('死角により対象にできません', `「${this.fullName(attacker)}」は【死角】を持たないため、「${this.fullName(defender)}」を戦闘対象に選べません。`, [attacker, defender]);
+        }
         return;
       }
       const guard = this.battleCardHasKeyword(defender, '守護') ? null : await this._battleChooseGuard(attacker, defenderSide, defenderIndex);
