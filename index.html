@@ -2758,6 +2758,8 @@
   }
   .notice-toast-title { font-size: 13px; font-weight: 800; color: #f2d58d; margin-bottom: 3px; }
   .notice-toast-message { font-size: 12px; color: #cbd3de; line-height: 1.5; white-space: pre-line; }
+  .notice-toast-error { background: rgba(45,18,20,.94); border-color: #c85a5a; }
+  .notice-toast-error .notice-toast-title { color: #ff9c9c; }
   .notice-toast-fade-enter-active, .notice-toast-fade-leave-active { transition: opacity .25s, transform .25s; }
   .notice-toast-fade-enter-from, .notice-toast-fade-leave-to { opacity: 0; transform: translateY(-8px); }
   .notice-toast-fade-move { transition: transform .25s; }
@@ -4617,7 +4619,8 @@
     <div class="notice-toast-stack">
       <transition-group name="notice-toast-fade">
         <div v-for="t in battleToasts" :key="t.id"
-             class="notice-toast" @click="battleToasts = battleToasts.filter(x => x.id !== t.id)">
+             class="notice-toast" :class="t.kind === 'error' ? 'notice-toast-error' : ''"
+             @click="battleToasts = battleToasts.filter(x => x.id !== t.id)">
           <div class="notice-toast-title">{{ t.title }}</div>
           <div class="notice-toast-message">{{ t.message }}</div>
         </div>
@@ -5732,7 +5735,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.125',
+    BUILD_VERSION: '1.14.126',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8661,28 +8664,31 @@ new Vue({
       return delta;
     },
     /* battleNotice のタイトル/メッセージから「クリック待ちモーダルにすべきか」を判定する。
-       失敗/操作不可/エラー/条件未達/対象なし/手動対応が必要 はプレイヤーが必ず読む必要があるため
-       モーダルのまま。誘・サーチ・霊視の成功報告（公開して手札に加えた内容）も含め、それ以外
-       （成功報告・状態変化）は盤面を見れば分かる／見逃しても実害が小さいため自動消滅トースト
-       にする（テンポ優先。誘/サーチ/霊視の対象は既に log 記録＋オンライン同期されるため、
-       トースト化しても相手に情報が伝わらなくなるわけではない）。 */
+       プレイヤーの手動対応が必須なもの（自動処理未対応・数字宣言・キーワード確認等）だけ
+       モーダルのまま残し、それ以外（成功報告・状態変化・単純な操作エラー/失敗）は
+       自動消滅トーストにする（テンポ優先）。エラー/失敗は _battleNoticeToastKind() で
+       'error' 判定し、トースト側の色を変えて区別する（見た目の重大度は保つが、
+       見逃しても実害が小さい＝バトルログにも残るため自動で消してよい）。 */
     _battleNoticeIsBlocking(title, message) {
       const t = String(title || '');
       const m = String(message || '');
-      // 状態変化でも自動でよいものを明示的に除外（キーワードにひっかかっても toast 扱いにする）
-      const toastOverride = ['上限超過で崩壊', '拘束', '拘束解除'];
-      if (toastOverride.includes(t)) return false;
       if (t === '拘束中') return true; // 「〜のためアンタップできません」は操作不可の告知
-      // 稀少・重大なイベントは見せる
-      if (t === '敗北置換' || t === '数字を宣言' || t === 'キーワード確認') return true;
-      const blockingKeywords = [
-        '手動確認', '未対応', 'エラー', '不可', '足りません', 'できません',
-        '上限です', '上限', '条件未達', '対象なし', '対象不明', '未検出',
-        '対象にできません', '未登録', '選択肢なし', '参照対象不足', '補足',
-        '置き場所が違います', '相手選択破棄', '相手選択保護',
-        '残っていません', 'デッキがありません', // サーチ等でデッキ切れの場合（タイトルは成功時と同じ「サーチ」等になる）
+      // 稀少・重大なイベント、または手動での追加対応が必須なものは見せる
+      if (['敗北置換', '数字を宣言', 'キーワード確認', '相手選択破棄', '相手選択保護'].includes(t)) return true;
+      const manualActionKeywords = ['手動確認', '未対応'];
+      return manualActionKeywords.some(kw => t.includes(kw) || m.includes(kw));
+    },
+    /* トーストの色分け用：失敗/操作不可/エラー系のメッセージかどうかを判定する */
+    _battleNoticeToastKind(title, message) {
+      const t = String(title || '');
+      const m = String(message || '');
+      const errorKeywords = [
+        'エラー', '不可', '足りません', 'できません', '上限です', '上限',
+        '条件未達', '対象なし', '対象不明', '未検出', '対象にできません',
+        '未登録', '選択肢なし', '参照対象不足', '補足', '置き場所が違います',
+        '残っていません', 'デッキがありません', '拘束中',
       ];
-      return blockingKeywords.some(kw => t.includes(kw) || m.includes(kw));
+      return errorKeywords.some(kw => t.includes(kw) || m.includes(kw)) ? 'error' : 'success';
     },
     battleShowNotice(title, message, cards = []) {
       this._battleAppendLogEntry(title, message, cards);
@@ -8705,18 +8711,18 @@ new Vue({
       } else {
         // 自動消滅トースト：積み重ね表示。それぞれ独立したタイマーで自分だけ消える
         // （連続発火しても他のトーストの表示時間が延びたり巻き込まれて消えたりしない）。
-        this._battlePushToast(title, message);
+        this._battlePushToast(title, message, this._battleNoticeToastKind(title, message));
       }
     },
-    _battlePushToast(title, message) {
+    _battlePushToast(title, message, kind = 'success') {
       const id = (this._battleToastSeq = (this._battleToastSeq || 0) + 1);
-      this.battleToasts.push({ id, title, message });
+      this.battleToasts.push({ id, title, message, kind });
       // 積みすぎ防止：古いものから最大6件まで
       if (this.battleToasts.length > 6) this.battleToasts.splice(0, this.battleToasts.length - 6);
       setTimeout(() => {
         const idx = this.battleToasts.findIndex(t => t.id === id);
         if (idx >= 0) this.battleToasts.splice(idx, 1);
-      }, 2500);
+      }, 5000);
     },
     /* 手番切替時、画面中央に「〇〇のターン」を一瞬表示する演出 */
     _battleFlashTurn(side) {
