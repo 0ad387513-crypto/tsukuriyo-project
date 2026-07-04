@@ -5735,7 +5735,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.127',
+    BUILD_VERSION: '1.14.128',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -14317,6 +14317,12 @@ new Vue({
       this.battleSaveUndo();
       this.battleSample.self.life = 0;
       this.battleSample.result = { outcome: 'loss', title: '星戦敗北…' };
+      // 降参は相手の手番中にも行えるが、自動公開のwatcherは「自分の手番中／手番受け渡し時」
+      // にしか発火しないため、相手ターン中の降参だと相手画面へ結果が届かない。
+      // ここで明示的に公開して確実に同期させる。
+      if (this.battleNet && this.battleNet.on && !this.battleNet.spectating) {
+        this.$nextTick(() => this._battlePublishState());
+      }
     },
     /* 墓地・崩壊ゾーンの内容を一覧表示（デッキはクリック不可） */
     battleOpenZone(side, zone) {
