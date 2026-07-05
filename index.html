@@ -5790,6 +5790,20 @@ const SHEET_URL =
   encodeURIComponent(SHEET_RANGE) + `?key=${API_KEY}`;
 
 // 属性ソート順（小さいほど先）
+// 効果音名 → sfx/ 配下のファイル名（_sfxPlay(name) が参照する）
+const SFX_FILES = {
+  cardPlay: 'cardPlay.mp3',
+  hit: 'hit.mp3',
+  destroy: 'destroy.mp3',
+  crumble: 'crumble.mp3',
+  skill: 'skill.mp3',
+  dragStart: 'drag_Start.mp3',
+  dragDrop: 'drag_Drop.mp3',
+  coin: 'coin.mp3',
+  draw: 'draw.mp3',
+  oracle: 'oracle.mp3',
+  sealRelease: 'seal_release.mp3',
+};
 const COLOR_ORDER = { '赤': 0, '青': 1, '緑': 2, '黄': 3, '紫': 4, '創': 5, '無': 6 };
 function colorRank(c) {
   return COLOR_ORDER[c] !== undefined ? COLOR_ORDER[c] : 99;
@@ -6089,7 +6103,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.138',
+    BUILD_VERSION: '1.14.139',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7570,6 +7584,7 @@ new Vue({
     _battleStartCoinFlip() {
       const firstSide = this.battleContext.firstSide;
       this.battleCoinFlip = { firstSide, phase: 'spin' };
+      this._sfxPlay('coin');
       this._battleCoinFlipT1 = setTimeout(() => {
         if (!this.battleCoinFlip) return;
         this.battleCoinFlip = { firstSide, phase: 'result' };
@@ -8077,112 +8092,20 @@ new Vue({
       }
     },
     /* ===================================================================
-       ジュース感（game feel）：SE合成・ヒットストップ・カメラシェイク・
+       ジュース感（game feel）：SE再生・ヒットストップ・カメラシェイク・
        数値カウントアップ・神技2クローズアップ
        =================================================================== */
-    /* 効果音は現状すべて Web Audio API によるその場合成音（外部音声ファイル無し）。
-       将来 mp3 等の音源ファイルに差し替える場合は _sfxPlay(name) の中身だけを
-       差し替えればよいよう、呼び出し側は名前だけを渡す設計にしてある。 */
-    _sfxCtx() {
-      if (!this._audioCtx) {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return null;
-        try { this._audioCtx = new AC(); } catch (e) { return null; }
-      }
-      if (this._audioCtx.state === 'suspended') { this._audioCtx.resume().catch(() => {}); }
-      return this._audioCtx;
-    },
-    _sfxTone(freq, dur, opts = {}) {
-      const ctx = this._sfxCtx();
-      if (!ctx) return;
-      const { type = 'sine', gain = 0.2, freqEnd = null, delay = 0 } = opts;
-      const t0 = ctx.currentTime + delay;
-      const osc = ctx.createOscillator();
-      osc.type = type;
-      osc.frequency.setValueAtTime(Math.max(1, freq), t0);
-      if (freqEnd !== null) osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqEnd), t0 + dur);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(gain, t0);
-      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-      osc.connect(g).connect(ctx.destination);
-      osc.start(t0);
-      osc.stop(t0 + dur + 0.03);
-    },
-    _sfxNoise(dur, opts = {}) {
-      const ctx = this._sfxCtx();
-      if (!ctx) return;
-      const { gain = 0.25, delay = 0, filterFreq = null, filterType = 'lowpass' } = opts;
-      const t0 = ctx.currentTime + delay;
-      const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * dur));
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-      const src = ctx.createBufferSource();
-      src.buffer = buffer;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(gain, t0);
-      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-      let node = src;
-      if (filterFreq) {
-        const filter = ctx.createBiquadFilter();
-        filter.type = filterType;
-        filter.frequency.value = filterFreq;
-        node.connect(filter);
-        node = filter;
-      }
-      node.connect(g).connect(ctx.destination);
-      src.start(t0);
-      src.stop(t0 + dur + 0.03);
-    },
-    /* 効果音の方向性：ツクリヨの世界観（シリアスな和風ダークファンタジー）に合わせ、
-       明るい/軽快なチープチューン調ではなく、和太鼓・鉦（鐘）・木/石の打音・砂や灰が
-       崩れる質感を意識した低め・くすんだ音色でまとめている（陽気な上昇音や電子的な
-       矩形波アルペジオは避け、下降または低く沈む音の動きを基本にする）。 */
+    /* 効果音：sfx/ 配下の音源ファイル（mp3、SFX_FILES参照）をその都度 Audio インスタンスを
+       作って再生する（同じ音が連続しても前の再生を止めずに重ねて鳴らせるよう、使い回さず毎回生成する）。
+       呼び出し側は名前だけを渡す設計なので、音源の追加・差し替えは SFX_FILES の変更だけで済む。 */
     _sfxPlay(name) {
       try {
-        switch (name) {
-          case 'cardPlay':
-            // 三味線/琴の弾き（プラック）：高音の弾く瞬間のノイズ＋低めに沈む余韻
-            this._sfxNoise(0.025, { gain: 0.12, filterFreq: 3200, filterType: 'highpass' });
-            this._sfxTone(210, 0.22, { type: 'triangle', gain: 0.15, freqEnd: 150 });
-            break;
-          case 'hit':
-            // 戦闘・神攻＝日本刀の剣戟：刃が触れ合う鋭いノイズ＋金属的な高い響き＋打ち合う力強さの低音
-            this._sfxNoise(0.05, { gain: 0.26, filterFreq: 3500, filterType: 'highpass' });
-            this._sfxTone(1800, 0.12, { type: 'sine', gain: 0.16, freqEnd: 2400 });
-            this._sfxTone(2600, 0.09, { type: 'sine', gain: 0.1, delay: 0.01 });
-            this._sfxTone(90, 0.15, { type: 'sine', gain: 0.24, freqEnd: 30 });
-            break;
-          case 'destroy':
-            // 骨/木が砕け割れるような、低く濁った破砕音
-            this._sfxNoise(0.22, { gain: 0.3, filterFreq: 650 });
-            this._sfxTone(160, 0.34, { type: 'triangle', gain: 0.22, freqEnd: 38 });
-            break;
-          case 'crumble':
-            // 灰/砂となって崩れ落ちる乾いた質感＋低いうなり
-            this._sfxNoise(0.5, { gain: 0.2, filterFreq: 2100, filterType: 'highpass' });
-            this._sfxTone(60, 0.5, { type: 'sine', gain: 0.14, freqEnd: 30, delay: 0.04 });
-            break;
-          case 'skill':
-            // 神技（必殺技）：華やかで神々しい輝き（鈴が連なるような煌めきの上昇アルペジオ）＋荘厳さを支える低音
-            this._sfxTone(300, 0.5, { type: 'sine', gain: 0.15, freqEnd: 700 }); // 立ち上がる光の兆し
-            this._sfxTone(90, 0.5, { type: 'sine', gain: 0.16, delay: 0.02 });   // 荘厳さを支える低音
-            this._sfxTone(1046, 0.35, { type: 'sine', gain: 0.11, delay: 0.05 }); // 鈴の煌めき（ド）
-            this._sfxTone(1318, 0.35, { type: 'sine', gain: 0.1, delay: 0.12 });  // （ミ）
-            this._sfxTone(1568, 0.4, { type: 'sine', gain: 0.1, delay: 0.19 });   // （ソ）
-            this._sfxTone(2093, 0.55, { type: 'sine', gain: 0.08, delay: 0.26 }); // （高いド）
-            break;
-          case 'dragStart':
-            // 衣擦れのような、ごく控えめな摩擦音のみ（音程は持たせない）
-            this._sfxNoise(0.06, { gain: 0.06, filterFreq: 2600, filterType: 'highpass' });
-            break;
-          case 'dragDrop':
-            // カードを配置した重量感：木/石が触れる質感の一瞬のノイズ＋どっしりと沈む低音
-            this._sfxNoise(0.035, { gain: 0.14, filterFreq: 2200, filterType: 'highpass' });
-            this._sfxTone(150, 0.17, { type: 'sine', gain: 0.28, freqEnd: 42 });
-            break;
-        }
-      } catch (e) { /* 音声再生失敗（自動再生制限等）は無視 */ }
+        const file = SFX_FILES[name];
+        if (!file) return;
+        const audio = new Audio(`sfx/${file}`);
+        audio.volume = 0.6;
+        audio.play().catch(() => {}); // 自動再生制限等で再生できなくても無視
+      } catch (e) { /* 音声再生失敗は無視 */ }
     },
     /* ヒットストップ：0.05秒だけ次の処理を遅延させ、衝撃の一瞬を演出する */
     _battleHitStop(ms = 50) {
@@ -9214,6 +9137,7 @@ new Vue({
       if (!Array.isArray(target.hand)) target.hand = [];
       target.hand.push(card);
       this._battleSyncSideCounts(side);
+      this._sfxPlay('draw');
       if (side === 'self') this._battleMarkJustDrawn(card);
     },
     /* ドロー演出：手札に加わった直後の一瞬だけスライド＋フェードインさせる（class名は hand-card-drawn） */
@@ -11864,6 +11788,7 @@ new Vue({
         drawnCount++;
       }
       if (p.deck) p.deckCount = p.deck.length;
+      if (drawnCount > 0) this._sfxPlay('draw');
       this.battleShowNotice('ドロー', `${side === 'opp' ? '相手' : '自分'}が ${drawnCount} 枚ドローしました。${drawnCount < n ? '（山札不足のため一部のみ）' : ''}`);
       // 後続備考「ドローした場合」の判定用：1枚以上ドローできていれば成功
       if (drawnCount === 0) this._dslLastActionSucceeded = false;
@@ -11975,6 +11900,8 @@ new Vue({
       if (p.mana > before || requestedN > 0) {
         this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: 'mana', n: Math.max(requestedN, p.mana - before) });
       }
+      // 社の施し（No.186）でマナが増えた時だけ専用SE（他カードの「マナ回復」効果では鳴らさない）
+      if (this._dslCurrentSource && String(this._dslCurrentSource.no) === '186') this._sfxPlay('coin');
     },
     async _dslOpAddType(act, sourceCard) {
       const typeName = String(act.値 || act.種族 || '').trim();
@@ -13495,7 +13422,7 @@ new Vue({
       }
       this.battleSaveUndo();
       player.mana = Math.max(0, player.mana - cost);
-      this._sfxPlay('cardPlay');
+      this._sfxPlay('oracle');
       this.battleConsumeTempCostMods('self', card);
       this.battleConsumeStaticCostChangeUsage('self', card);
       player.hand.splice(index, 1);
@@ -15092,6 +15019,7 @@ new Vue({
         player.sealRewards.zero = true;
         cardNo = '188';
         threshold = 0;
+        this._sfxPlay('sealRelease'); // ヤマタノオロチの封印が全て解けた（0になった）とき
       }
       if (!cardNo) return;
       const card = this.allCards.find(item => String(item.no) === cardNo);
@@ -15434,6 +15362,7 @@ new Vue({
       const card = player.deck.shift();
       player.hand.push(card);
       this._battleSyncSideCounts(side);
+      this._sfxPlay('draw');
       this.battleShowNotice('ドロー', `${side === 'self' ? '自分' : '相手'}がデッキから1枚ドローしました。`, side === 'self' ? [card] : []);
     },
     battleShuffleDeck(side) {
