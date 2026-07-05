@@ -3303,10 +3303,24 @@
   .battle-mulligan .bm-go { background: linear-gradient(135deg, #b23a5a, #d24a6a); border-color: #f06a8a; }
   .battle-mulligan .bm-go:hover:not(:disabled) { background: linear-gradient(135deg, #c24a6a, #e25a7a); transform: translateY(-1px); }
   .battle-mulligan .bm-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  /* Vueマウント完了までテンプレート構文({{ }})が生で見えてしまうのを防ぐ（FOUC対策） */
+  [v-cloak] { display: none; }
+  #app-loading {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; background: #0b0e14; color: #cbd3de; font-size: 16px; font-weight: 700;
+  }
+  #app-loading .app-loading-spinner {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 3px solid #344157; border-top-color: #dc9f50;
+    animation: appLoadingSpin 0.8s linear infinite;
+  }
+  @keyframes appLoadingSpin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
-<div id="app" class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek }">
+<div id="app-loading"><div class="app-loading-spinner"></div><div>読み込み中…</div></div>
+<div id="app" v-cloak class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek }">
 
   <!-- ===== SE/BGM音量設定（全画面共通のフローティングボタン。対戦画面は専用ヘッダーボタンと
        重なるため、対戦画面表示中はこちらを隠す） ===== -->
@@ -6216,7 +6230,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.146',
+    BUILD_VERSION: '1.14.147',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7480,17 +7494,32 @@ new Vue({
       if (source === 'shield') this._startShieldBattle(firstSide);
       else if (source === 'game') this._startGameBattle(firstSide);
     },
-    _startShieldBattle(firstSide) {
+    async _startShieldBattle(firstSideIgnored) {
       const room = this.sb.roomData || {};
       const oppRole = this.sb.role === 'host' ? 'guest' : 'host';
       const selfInfo = room[this.sb.role] || {};
       const oppInfo = room[oppRole] || {};
+      // シールド戦もオンライン同期させる：host/guestを座席1/2に固定し、部屋コードをそのままsessionコードに使う。
+      // 先攻は各クライアントでMath.randomをローカル計算すると食い違うため、4人対戦と同様に
+      // Firebaseのtransactionで1回だけ共有決定する。
+      const code = this.sb.roomCode;
+      const table = 'shield';
+      const mySeat = this.sb.role === 'host' ? 1 : 2;
+      const oppSeat = this.sb.role === 'host' ? 2 : 1;
+      let firstSeat = mySeat;
+      try {
+        const ref = getDb().ref(`sessions/${code}/battle/${table}/firstSeat`);
+        const res = await ref.transaction(cur => (cur != null ? cur : (Math.random() < 0.5 ? mySeat : oppSeat)));
+        firstSeat = res.snapshot.val();
+      } catch (e) {}
+      const firstSide = String(firstSeat) === String(mySeat) ? 'self' : 'opp';
       this._battleInitialize({
         source: 'shield', modeLabel: 'シールド戦', returnView: 'shield',
         selfName: selfInfo.name || this.sb.myName || '自分',
         oppName: oppInfo.name || '相手', firstSide, life: 10,
         selfDeck: this.sbMyFinalDeck, oppDeck: this.sbOpponentFinalDeck,
         selfKami: this.sbMySelectedKami, oppKami: this.sbOpponentSelectedKami,
+        syncGame: true, code, table, mySeat, oppSeat,
       });
     },
     async _startGameBattle(firstSideIgnored) {
@@ -8107,6 +8136,14 @@ new Vue({
         const mulliganRef = getDb().ref(mulliganPath);
         const mulliganHandler = snap => this._battleApplyRemoteMulligan(snap.val());
         mulliganRef.on('value', mulliganHandler);
+        // 部屋共通BGM：誰かが決定/選び直した曲に全員が追従する
+        const bgmPath = path.replace(/\/state$/, '/bgm');
+        const bgmRef = getDb().ref(bgmPath);
+        const bgmHandler = snap => {
+          const key = snap.val();
+          if (key && key !== this.bgmCurrentKey) this._bgmPlay(key);
+        };
+        bgmRef.on('value', bgmHandler);
         // 相手ターン中の相手依存の意思決定（守護 等）：相手からの確認依頼を購読
         const confirmPath = path.replace(/\/state$/, '/pendingConfirm');
         const confirmRef = getDb().ref(confirmPath);
@@ -8149,6 +8186,7 @@ new Vue({
           ref.off('value', handler);
           try { noticeRef.off('value', noticeHandler); } catch (e) {}
           try { mulliganRef.off('value', mulliganHandler); } catch (e) {}
+          try { bgmRef.off('value', bgmHandler); } catch (e) {}
           try { confirmRef.off('value', confirmHandler); } catch (e) {}
           try { pickRef.off('value', pickHandler); } catch (e) {}
           try { delegateRef.off('value', delegateHandler); } catch (e) {}
@@ -8257,26 +8295,63 @@ new Vue({
       audio.play().catch(err => console.warn(`[bgm] "${key}" (${src}) の再生に失敗:`, err && err.message));
       this.bgmCurrentKey = key;
     },
+    /* 指定カテゴリの候補からランダムに1曲選ぶ（キーのみ返す。再生はしない） */
+    _bgmPickRandomKey(category) {
+      const keys = Object.keys(BGM_FILES).filter(k => BGM_FILES[k].category === category);
+      if (!keys.length) return null;
+      return keys[Math.floor(Math.random() * keys.length)];
+    },
     /* 画面（appView）に応じたカテゴリの候補からランダムに1曲選ぶ。
-       既に同カテゴリの曲を再生中なら曲を切り替えない（画面遷移のたびに曲が変わらないように）。 */
+       既に同カテゴリの曲を再生中なら曲を切り替えない（画面遷移のたびに曲が変わらないように）。
+       オンライン対戦中（battleNet.on）は各自バラバラに選ぶと同じ部屋なのに違う曲が聞こえてしまうため、
+       Firebase上で部屋共通の1曲を決定・共有する（_bgmSyncPick）。 */
     _bgmAutoPickForView(view) {
       const category = view === 'battle' ? 'battle' : 'other';
       const current = this.bgmCurrentKey && BGM_FILES[this.bgmCurrentKey];
       if (current && current.category === category) return;
-      const keys = Object.keys(BGM_FILES).filter(k => BGM_FILES[k].category === category);
-      if (!keys.length) return;
-      this._bgmPlay(keys[Math.floor(Math.random() * keys.length)]);
+      if (category === 'battle' && this.battleNet && this.battleNet.on && this.battleNet.statePath) {
+        this._bgmSyncPick();
+        return;
+      }
+      const key = this._bgmPickRandomKey(category);
+      if (key) this._bgmPlay(key);
+    },
+    /* 部屋共通のBGMをFirebase transactionで1回だけ決定し、以後は皆その値に従う
+       （既に決まっていればそれをそのまま採用。firstSeatの決定と同じ考え方）。 */
+    _bgmSyncPick() {
+      const n = this.battleNet;
+      if (!n || !n.statePath) return;
+      const path = n.statePath.replace(/\/state$/, '/bgm');
+      getDb().ref(path).transaction(cur => (cur != null ? cur : this._bgmPickRandomKey('battle')))
+        .then(res => { const key = res.snapshot.val(); if (key) this._bgmPlay(key); })
+        .catch(() => {});
+    },
+    /* 手動でBGMを選び直した際、部屋の全員にも同じ曲を共有する */
+    _battlePublishBgm(key) {
+      const n = this.battleNet;
+      if (!n || !n.on || !n.statePath) return;
+      const path = n.statePath.replace(/\/state$/, '/bgm');
+      getDb().ref(path).set(key).catch(() => {});
     },
     /* BGM選択メニューからの操作：'auto'で自動選曲に戻す（強制的に再抽選）、
-       それ以外はそのキーの曲を手動固定で再生し、以後は画面遷移で自動的には変わらない。 */
+       それ以外はそのキーの曲を手動固定で再生し、以後は画面遷移で自動的には変わらない。
+       オンライン対戦中は選び直した曲を部屋の全員にも共有する。 */
     bgmSelectTrack(key) {
+      const n = this.battleNet;
+      const inSyncedBattle = !!(n && n.on && n.statePath && this.appView === 'battle');
       if (key === 'auto') {
         this.bgmAuto = true;
         this.bgmCurrentKey = null; // 同カテゴリ判定を無効化し、必ず再抽選させる
-        this._bgmAutoPickForView(this.appView);
+        if (inSyncedBattle) {
+          const newKey = this._bgmPickRandomKey('battle');
+          if (newKey) { this._bgmPlay(newKey); this._battlePublishBgm(newKey); }
+        } else {
+          this._bgmAutoPickForView(this.appView);
+        }
         return;
       }
       this.bgmAuto = false;
+      if (inSyncedBattle) this._battlePublishBgm(key);
       this._bgmPlay(key);
     },
     /* BGM音量を変更し、次回以降のために保存する（0〜1） */
@@ -17529,6 +17604,11 @@ new Vue({
   },  // /methods
 
   mounted() {
+    // Vueマウント完了：読み込み中プレースホルダーを消す（[v-cloak]でapp本体は既に表示済み）
+    this.$nextTick(() => {
+      const el = document.getElementById('app-loading');
+      if (el) el.remove();
+    });
     this.loadCards();
     this.loadDriveImages();
     this.loadKamiCards();
