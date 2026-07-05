@@ -3230,6 +3230,7 @@
   }
   .battle-result-panel.loss { border-color: #737983; filter: grayscale(.35); }
   .battle-result-panel.loss .battle-result-title { color: #989da5; text-shadow: 0 4px 0 #3e4249; }
+  .battle-result-subtext { margin-top: 10px; font-size: 16px; font-weight: 700; color: #cbd3de; }
   .victory-spark { position: absolute; color: #ffe883; font-size: 32px; animation: spark-spin 2.4s linear infinite; }
   .victory-spark.s1 { top: 16px; left: 8%; }
   .victory-spark.s2 { top: 24%; right: 8%; animation-delay: -.8s; }
@@ -4763,7 +4764,7 @@
         <template v-if="battleLogModal.tab === 'log'">
           <div v-if="!battleLog.length" class="battle-zone-modal-empty">ログがありません</div>
           <div v-else class="battle-log-entries">
-            <template v-for="(entry, i) in battleLog">
+            <template v-for="(entry, i) in battleLogReversed">
               <div v-if="entry.isTurnMarker" :key="'t'+i" class="battle-log-turn-marker" :class="entry.side">
                 {{ entry.message }}
               </div>
@@ -5134,6 +5135,9 @@
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s2">✦</span>
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s3">✦</span>
         <div class="battle-result-title">{{ battleSample.result.title }}</div>
+        <div v-if="battleSample.result.reason === 'surrender'" class="battle-result-subtext">
+          {{ battleSample.result.outcome === 'win' ? '相手が降参しました' : '降参しました' }}
+        </div>
         <div class="result-actions">
           <button v-if="battleUndoStack.length" @click="battleUndo">一手戻る</button>
           <button @click="battleReturn">{{ battleReturnLabel }}へ戻る</button>
@@ -6256,7 +6260,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.152',
+    BUILD_VERSION: '1.14.153',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6323,6 +6327,10 @@ new Vue({
       if (this.battleContext.returnView === 'shield') return 'シールド戦';
       if (this.battleContext.returnView === 'game') return '星戦';
       return 'トップ';
+    },
+    /* バトルログ：新しい出来事ほど上に来るよう逆順で表示する（都度スクロールしなくて済むように） */
+    battleLogReversed() {
+      return this.battleLog.slice().reverse();
     },
     /* オンライン対戦テスト中は手番プレイヤーのみ「ターン終了」を押せる
        （オフラインの単独シミュレーション時は従来通りどちらの手番でも押せる） */
@@ -7548,11 +7556,20 @@ new Vue({
         firstSeat = res.snapshot.val();
       } catch (e) {}
       const firstSide = String(firstSeat) === String(mySeat) ? 'self' : 'opp';
+      // 返還画面（this.deck/this.returned）で実際に確定した内容を使う。
+      // sbMyFinalDeckは48枚の生プールのままで、返還（除外）が一切反映されていなかったため、
+      // 返還したカードがそのまま対戦デッキに残ってしまうバグの原因になっていた。
+      const editedDeck = [];
+      for (const no in this.deck) {
+        const card = this.allCards.find(c => String(c.no) === String(no));
+        if (!card) continue;
+        for (let i = 0; i < this.deck[no]; i++) editedDeck.push(card);
+      }
       this._battleInitialize({
         source: 'shield', modeLabel: 'シールド戦', returnView: 'shield',
         selfName: selfInfo.name || this.sb.myName || '自分',
         oppName: oppInfo.name || '相手', firstSide, life: 10,
-        selfDeck: this.sbMyFinalDeck, oppDeck: this.sbOpponentFinalDeck,
+        selfDeck: editedDeck.length ? editedDeck : this.sbMyFinalDeck, oppDeck: this.sbOpponentFinalDeck,
         selfKami: this.sbMySelectedKami, oppKami: this.sbOpponentSelectedKami,
         syncGame: true, code, table, mySeat, oppSeat,
       });
@@ -7941,7 +7958,14 @@ new Vue({
           c._evolvedBase = lookupByNo(c._evolvedBaseNo);
         }
       });
-      if (preserveLocal) { next.hand = cur.hand || []; next.deck = cur.deck || []; }
+      // preserveLocal時：手札/山札の配列だけでなく枚数(handCount/deckCount)もローカルの実データで
+      // 上書きする。相手クライアント側では自分（=このクライアントの持ち主）の手札/山札の中身を
+      // 常に空配列として送ってくるため（非公開情報のため）、配列を実データに戻しても枚数を戻さないと
+      // 「相手の手番中は自分の手札/山札枚数が0表示になる」形で表示が壊れてしまう。
+      if (preserveLocal) {
+        next.hand = cur.hand || []; next.deck = cur.deck || [];
+        next.handCount = next.hand.length; next.deckCount = next.deck.length;
+      }
       else if (revealHand) {
         // 観戦モード：受信データの手札/山札をそのまま復元して公開する
         next.hand = (next.hand || []).map(fix);
@@ -8060,7 +8084,7 @@ new Vue({
         if (state.result) {
           const invertedOutcome = state.result.outcome === 'win' ? 'loss' : (state.result.outcome === 'loss' ? 'win' : state.result.outcome);
           const invertedTitle = invertedOutcome === 'win' ? '星戦勝利！' : (invertedOutcome === 'loss' ? '星戦敗北…' : state.result.title);
-          this.$set(this.battleSample, 'result', { outcome: invertedOutcome, title: invertedTitle });
+          this.$set(this.battleSample, 'result', { outcome: invertedOutcome, title: invertedTitle, reason: state.result.reason || null });
         } else {
           this.$set(this.battleSample, 'result', null);
         }
@@ -8128,7 +8152,7 @@ new Vue({
           const outcome = writerIsMySeat ? state.result.outcome
             : (state.result.outcome === 'win' ? 'loss' : (state.result.outcome === 'loss' ? 'win' : state.result.outcome));
           const title = outcome === 'win' ? '星戦勝利！' : (outcome === 'loss' ? '星戦敗北…' : state.result.title);
-          this.$set(this.battleSample, 'result', { outcome, title });
+          this.$set(this.battleSample, 'result', { outcome, title, reason: state.result.reason || null });
         } else {
           this.$set(this.battleSample, 'result', null);
         }
@@ -15420,7 +15444,7 @@ new Vue({
       if (this.battleSample.result) return;
       this.battleSaveUndo();
       this.battleSample.self.life = 0;
-      this.battleSample.result = { outcome: 'loss', title: '星戦敗北…' };
+      this.battleSample.result = { outcome: 'loss', title: '星戦敗北…', reason: 'surrender' };
       // 降参は相手の手番中にも行えるが、自動公開のwatcherは「自分の手番中／手番受け渡し時」
       // にしか発火しないため、相手ターン中の降参だと相手画面へ結果が届かない。
       // ここで明示的に公開して確実に同期させる。
