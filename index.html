@@ -6260,7 +6260,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.153',
+    BUILD_VERSION: '1.14.154',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -11840,13 +11840,16 @@ new Vue({
         sourceCard ? [sourceCard] : []
       );
     },
-    _dslEffectDisableCandidates(sel) {
+    // skipHandZone=true のとき、対象側の手札は候補から除外する（オンライン対戦中の相手手札は
+    // 非公開情報のためローカルには実データが無く、常に空配列＝実質何もしていないのに成功したかの
+    // ように見えてしまうため。実際の処理は _battleDelegateEffectDisableHand で本当の持ち主に委任する）
+    _dslEffectDisableCandidates(sel, skipHandZone) {
       const side = sel && sel.対象側 === 'opp' ? 'opp' : 'self';
       const p = this.battleSample && this.battleSample[side];
       if (!p) return { side, cards: [] };
       const zoneText = String((sel && sel.領域) || 'field');
       const zones = [];
-      if (/手札|hand/.test(zoneText)) zones.push('hand');
+      if (!skipHandZone && /手札|hand/.test(zoneText)) zones.push('hand');
       if (/墓地|graveyard/.test(zoneText)) zones.push('graveyard');
       if (/崩壊|crumbled/.test(zoneText)) zones.push('crumbled');
       if (/フィールド|field/.test(zoneText)) zones.push('legacies', 'relics');
@@ -11862,15 +11865,27 @@ new Vue({
       });
       return { side, cards };
     },
-    _dslOpEffectDisable(act, sourceCard) {
+    async _dslOpEffectDisable(act, sourceCard) {
       const sel = act.対象 || { 対象側: 'opp', 領域: 'field', 絞込: ['レガシー'], 枚数: 'all' };
-      const { side, cards } = this._dslEffectDisableCandidates(sel);
-      if (!cards.length) {
+      const side = sel && sel.対象側 === 'opp' ? 'opp' : 'self';
+      const zoneText = String(sel.領域 || '');
+      const includesOppHand = side === 'opp' && /手札|hand/.test(zoneText);
+      const n = this.battleNet;
+      const isOnlineSync = !!(n && n.on && !n.spectating);
+      const untilTurn = this._battleBindingTurnForSide(side);
+      // 相手の手札を含む場合、手札は非公開情報のため自分のクライアントには実データが無い。
+      // 本当の持ち主（相手クライアント）に委任し、相手自身の手札に対してフラグを立ててもらう
+      // （委任しないと対象がローカルの空配列のままで、無効化が一切効かなくなる）。
+      let delegatedHandCount = 0;
+      if (includesOppHand && isOnlineSync) {
+        delegatedHandCount = await this._battleDelegateEffectDisableHand(sel.絞込 || [], untilTurn);
+      }
+      const { cards } = this._dslEffectDisableCandidates(sel, includesOppHand && isOnlineSync);
+      if (!cards.length && !delegatedHandCount) {
         this.battleShowNotice('効果無効化：対象なし', `効果無効化の対象になるカードがありません。`, sourceCard ? [sourceCard] : []);
         return;
       }
       this.battleSaveUndo();
-      const untilTurn = this._battleBindingTurnForSide(side);
       cards.forEach(card => {
         this.$set(card, '_effectsDisabled', true);
         this.$set(card, '_effectDisableUntilSide', side);
@@ -11878,8 +11893,6 @@ new Vue({
       });
       // 相手の手札を含む場合、手札は非公開情報のためカード名・画像を公開せず、発動側視点の一般的な通知にする
       // （例：K9ツクヨミ神技2「凍刻・八尺瓊勾月」）
-      const zoneText = String(sel.領域 || '');
-      const includesOppHand = side === 'opp' && /手札|hand/.test(zoneText);
       if (includesOppHand) {
         this.battleShowNotice(
           '効果無効化',
@@ -11891,6 +11904,58 @@ new Vue({
           `${cards.map(c => `「${this.fullName(c)}」`).join('、')}の効果を${side === 'opp' ? '次の相手ターン終了時' : '次の自分ターン終了時'}まで無効化しました。`,
           cards
         );
+      }
+    },
+    /* 「相手の手札の効果を無効化」の委譲実行側。手札は非公開情報のため対象の特定自体を
+       相手クライアント自身に行ってもらう必要がある（こちら側は絞込条件しか渡せない）。
+       untilSideは常にこちらの視点での'opp'（＝相手自身の視点では'self'）で固定のため、
+       相手クライアント側では「自分のターン終了時に解除」として保存してもらう。 */
+    async _battleDelegateEffectDisableHand(criteria, untilTurn) {
+      const n = this.battleNet;
+      const reqId = 'd' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+      const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
+      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
+      try {
+        await getDb().ref(reqPath).set({
+          id: reqId, forSeat: n.oppSeat, kind: 'effectDisableHand',
+          criteria: criteria || [], untilTurn, ts: Date.now(),
+        });
+      } catch (e) {
+        console.error('[sync] 委譲依頼の送信失敗:', e);
+        this.$set(this.battleNet, 'lastError', '委譲依頼の送信失敗：' + (e && e.message));
+        return 0;
+      }
+      return new Promise((resolve) => {
+        const ansRef = getDb().ref(ansPath);
+        let settled = false;
+        const handler = (snap) => {
+          const val = snap.val();
+          if (val == null || settled) return;
+          settled = true;
+          ansRef.off('value', handler);
+          ansRef.remove().catch(() => {});
+          resolve(Number(val && val.count) || 0);
+        };
+        ansRef.on('value', handler);
+      });
+    },
+    /* 相手クライアントから届いた「手札の効果無効化」委譲依頼を受け取り、自分の実データ
+       （本当の手札）に対して絞込条件に合うカードを探してフラグを立てる。 */
+    async _battleHandleRemoteEffectDisableHandRequest(data) {
+      const n = this.battleNet;
+      const self = this.battleSample.self;
+      const criteria = Array.isArray(data.criteria) ? data.criteria : [];
+      const matches = (self.hand || []).filter(card => !criteria.length || this.battleCardMatchesInduceCriteria(card, criteria));
+      matches.forEach(card => {
+        this.$set(card, '_effectsDisabled', true);
+        this.$set(card, '_effectDisableUntilSide', 'self'); // 自分の視点：自分のターン終了時に解除
+        this.$set(card, '_effectDisableUntilTurn', data.untilTurn);
+      });
+      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${data.id}`;
+      try {
+        await getDb().ref(ansPath).set({ count: matches.length, ts: Date.now() });
+      } catch (e) {
+        console.error('[sync] 委譲結果の送信失敗:', e);
       }
     },
     async _dslOpOpponentChooseDiscard(act, sourceCard) {
@@ -12525,6 +12590,7 @@ new Vue({
       if (this._battleLastDelegateId === data.id) return;
       this._battleLastDelegateId = data.id;
       if (data.kind === 'returnToHand') { await this._battleHandleRemoteReturnToHandRequest(data); return; }
+      if (data.kind === 'effectDisableHand') { await this._battleHandleRemoteEffectDisableHandRequest(data); return; }
       if (data.kind !== 'discard') return;
       const self = this.battleSample.self;
       const candidates = [...(self.hand || []), ...(self.legacies || [])].filter(Boolean);
