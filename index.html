@@ -6260,7 +6260,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.154',
+    BUILD_VERSION: '1.14.155',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -11915,29 +11915,34 @@ new Vue({
       const reqId = 'd' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
       const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
       const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
+      this._battleDelegatePendingBegin();
       try {
-        await getDb().ref(reqPath).set({
-          id: reqId, forSeat: n.oppSeat, kind: 'effectDisableHand',
-          criteria: criteria || [], untilTurn, ts: Date.now(),
+        try {
+          await getDb().ref(reqPath).set({
+            id: reqId, forSeat: n.oppSeat, kind: 'effectDisableHand',
+            criteria: criteria || [], untilTurn, ts: Date.now(),
+          });
+        } catch (e) {
+          console.error('[sync] 委譲依頼の送信失敗:', e);
+          this.$set(this.battleNet, 'lastError', '委譲依頼の送信失敗：' + (e && e.message));
+          return 0;
+        }
+        return await new Promise((resolve) => {
+          const ansRef = getDb().ref(ansPath);
+          let settled = false;
+          const handler = (snap) => {
+            const val = snap.val();
+            if (val == null || settled) return;
+            settled = true;
+            ansRef.off('value', handler);
+            ansRef.remove().catch(() => {});
+            resolve(Number(val && val.count) || 0);
+          };
+          ansRef.on('value', handler);
         });
-      } catch (e) {
-        console.error('[sync] 委譲依頼の送信失敗:', e);
-        this.$set(this.battleNet, 'lastError', '委譲依頼の送信失敗：' + (e && e.message));
-        return 0;
+      } finally {
+        this._battleDelegatePendingEnd();
       }
-      return new Promise((resolve) => {
-        const ansRef = getDb().ref(ansPath);
-        let settled = false;
-        const handler = (snap) => {
-          const val = snap.val();
-          if (val == null || settled) return;
-          settled = true;
-          ansRef.off('value', handler);
-          ansRef.remove().catch(() => {});
-          resolve(Number(val && val.count) || 0);
-        };
-        ansRef.on('value', handler);
-      });
     },
     /* 相手クライアントから届いた「手札の効果無効化」委譲依頼を受け取り、自分の実データ
        （本当の手札）に対して絞込条件に合うカードを探してフラグを立てる。 */
@@ -12441,29 +12446,34 @@ new Vue({
       const reqId = 'q' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
       const reqPath = `sessions/${n.code}/battle/${n.table}/pendingConfirm`;
       const ansPath = `sessions/${n.code}/battle/${n.table}/pendingConfirmAnswer/${reqId}`;
+      this._battleDelegatePendingBegin();
       try {
-        await getDb().ref(reqPath).set({
-          id: reqId, forSeat: n.oppSeat, kind, cardNo: card ? String(card.no) : null,
-          prompt: promptText, ts: Date.now(),
+        try {
+          await getDb().ref(reqPath).set({
+            id: reqId, forSeat: n.oppSeat, kind, cardNo: card ? String(card.no) : null,
+            prompt: promptText, ts: Date.now(),
+          });
+        } catch (e) {
+          console.error('[sync] 確認依頼の送信失敗:', e);
+          this.$set(this.battleNet, 'lastError', '確認依頼の送信失敗：' + (e && e.message));
+          return false; // 送信できなければ安全側（発動しない）に倒す
+        }
+        return await new Promise((resolve) => {
+          const ansRef = getDb().ref(ansPath);
+          let settled = false;
+          const handler = (snap) => {
+            const val = snap.val();
+            if (val == null || settled) return;
+            settled = true;
+            ansRef.off('value', handler);
+            ansRef.remove().catch(() => {});
+            resolve(!!val.answer);
+          };
+          ansRef.on('value', handler);
         });
-      } catch (e) {
-        console.error('[sync] 確認依頼の送信失敗:', e);
-        this.$set(this.battleNet, 'lastError', '確認依頼の送信失敗：' + (e && e.message));
-        return false; // 送信できなければ安全側（発動しない）に倒す
+      } finally {
+        this._battleDelegatePendingEnd();
       }
-      return new Promise((resolve) => {
-        const ansRef = getDb().ref(ansPath);
-        let settled = false;
-        const handler = (snap) => {
-          const val = snap.val();
-          if (val == null || settled) return;
-          settled = true;
-          ansRef.off('value', handler);
-          ansRef.remove().catch(() => {});
-          resolve(!!val.answer);
-        };
-        ansRef.on('value', handler);
-      });
     },
     /* 相手クライアントから届いた確認依頼を受け取る（自分が本当の持ち主として答える側） */
     _battleHandleRemoteConfirmRequest(data) {
@@ -12501,39 +12511,44 @@ new Vue({
       const reqId = 'p' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
       const reqPath = `sessions/${n.code}/battle/${n.table}/pendingPick`;
       const ansPath = `sessions/${n.code}/battle/${n.table}/pendingPickAnswer/${reqId}`;
+      this._battleDelegatePendingBegin();
       try {
-        await getDb().ref(reqPath).set({
-          id: reqId, forSeat: n.oppSeat, prompt: promptLabel,
-          cardNos: pool.map(c => String(c.no)),
-          need: Math.min(Math.max(1, Number(need) || 1), pool.length),
-          ts: Date.now(),
+        try {
+          await getDb().ref(reqPath).set({
+            id: reqId, forSeat: n.oppSeat, prompt: promptLabel,
+            cardNos: pool.map(c => String(c.no)),
+            need: Math.min(Math.max(1, Number(need) || 1), pool.length),
+            ts: Date.now(),
+          });
+        } catch (e) {
+          console.error('[sync] 選択依頼の送信失敗:', e);
+          this.$set(this.battleNet, 'lastError', '選択依頼の送信失敗：' + (e && e.message));
+          return [];
+        }
+        const answerNos = await new Promise((resolve) => {
+          const ansRef = getDb().ref(ansPath);
+          let settled = false;
+          const handler = (snap) => {
+            const val = snap.val();
+            if (val == null || settled) return;
+            settled = true;
+            ansRef.off('value', handler);
+            ansRef.remove().catch(() => {});
+            resolve(Array.isArray(val.cardNos) ? val.cardNos : []);
+          };
+          ansRef.on('value', handler);
         });
-      } catch (e) {
-        console.error('[sync] 選択依頼の送信失敗:', e);
-        this.$set(this.battleNet, 'lastError', '選択依頼の送信失敗：' + (e && e.message));
-        return [];
+        // 返ってきたNo配列を候補プールの実体にマッチさせる（同名重複は先頭から順に消費）
+        const used = new Set();
+        const picked = [];
+        answerNos.forEach(no => {
+          const idx = pool.findIndex((c, i) => !used.has(i) && String(c.no) === String(no));
+          if (idx >= 0) { used.add(idx); picked.push(pool[idx]); }
+        });
+        return picked;
+      } finally {
+        this._battleDelegatePendingEnd();
       }
-      const answerNos = await new Promise((resolve) => {
-        const ansRef = getDb().ref(ansPath);
-        let settled = false;
-        const handler = (snap) => {
-          const val = snap.val();
-          if (val == null || settled) return;
-          settled = true;
-          ansRef.off('value', handler);
-          ansRef.remove().catch(() => {});
-          resolve(Array.isArray(val.cardNos) ? val.cardNos : []);
-        };
-        ansRef.on('value', handler);
-      });
-      // 返ってきたNo配列を候補プールの実体にマッチさせる（同名重複は先頭から順に消費）
-      const used = new Set();
-      const picked = [];
-      answerNos.forEach(no => {
-        const idx = pool.findIndex((c, i) => !used.has(i) && String(c.no) === String(no));
-        if (idx >= 0) { used.add(idx); picked.push(pool[idx]); }
-      });
-      return picked;
     },
     /* 相手クライアントから届いた「選択依頼」を受け取り、自分の画面で選ばせて回答する */
     _battleHandleRemotePickRequest(data) {
@@ -12558,28 +12573,33 @@ new Vue({
       const reqId = 'g' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
       const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
       const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
+      this._battleDelegatePendingBegin();
       try {
-        await getDb().ref(reqPath).set({ id: reqId, forSeat: n.oppSeat, kind: 'discard', need, ts: Date.now() });
-      } catch (e) {
-        console.error('[sync] 委譲依頼の送信失敗:', e);
-        this.$set(this.battleNet, 'lastError', '委譲依頼の送信失敗：' + (e && e.message));
-        return [];
+        try {
+          await getDb().ref(reqPath).set({ id: reqId, forSeat: n.oppSeat, kind: 'discard', need, ts: Date.now() });
+        } catch (e) {
+          console.error('[sync] 委譲依頼の送信失敗:', e);
+          this.$set(this.battleNet, 'lastError', '委譲依頼の送信失敗：' + (e && e.message));
+          return [];
+        }
+        const cardNos = await new Promise((resolve) => {
+          const ansRef = getDb().ref(ansPath);
+          let settled = false;
+          const handler = (snap) => {
+            const val = snap.val();
+            if (val == null || settled) return;
+            settled = true;
+            ansRef.off('value', handler);
+            ansRef.remove().catch(() => {});
+            resolve(Array.isArray(val.cardNos) ? val.cardNos : []);
+          };
+          ansRef.on('value', handler);
+        });
+        // 相手（本当の持ち主）が既に自分のデータを移動＆公開済み。通知表示用にカード参照だけ復元する。
+        return cardNos.map(no => this.cardByNo[String(no)]).filter(Boolean);
+      } finally {
+        this._battleDelegatePendingEnd();
       }
-      const cardNos = await new Promise((resolve) => {
-        const ansRef = getDb().ref(ansPath);
-        let settled = false;
-        const handler = (snap) => {
-          const val = snap.val();
-          if (val == null || settled) return;
-          settled = true;
-          ansRef.off('value', handler);
-          ansRef.remove().catch(() => {});
-          resolve(Array.isArray(val.cardNos) ? val.cardNos : []);
-        };
-        ansRef.on('value', handler);
-      });
-      // 相手（本当の持ち主）が既に自分のデータを移動＆公開済み。通知表示用にカード参照だけ復元する。
-      return cardNos.map(no => this.cardByNo[String(no)]).filter(Boolean);
     },
     /* 相手クライアントから届いた「委譲依頼」を受け取り、自分の本当のデータに対して
        選択・移動・破壊処理まで自分のクライアントで完結させ、結果を公開する。 */
@@ -12655,26 +12675,31 @@ new Vue({
       const reqId = 'r' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
       const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
       const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
+      this._battleDelegatePendingBegin();
       try {
-        await getDb().ref(reqPath).set({ id: reqId, forSeat: n.oppSeat, kind: 'returnToHand', cardNo: String(card.no), ts: Date.now() });
-      } catch (e) {
-        console.error('[sync] 委譲依頼の送信失敗:', e);
-        this.$set(this.battleNet, 'lastError', '委譲依頼の送信失敗：' + (e && e.message));
-        return false;
+        try {
+          await getDb().ref(reqPath).set({ id: reqId, forSeat: n.oppSeat, kind: 'returnToHand', cardNo: String(card.no), ts: Date.now() });
+        } catch (e) {
+          console.error('[sync] 委譲依頼の送信失敗:', e);
+          this.$set(this.battleNet, 'lastError', '委譲依頼の送信失敗：' + (e && e.message));
+          return false;
+        }
+        return await new Promise((resolve) => {
+          const ansRef = getDb().ref(ansPath);
+          let settled = false;
+          const handler = (snap) => {
+            const val = snap.val();
+            if (val == null || settled) return;
+            settled = true;
+            ansRef.off('value', handler);
+            ansRef.remove().catch(() => {});
+            resolve(!!(val && val.ok));
+          };
+          ansRef.on('value', handler);
+        });
+      } finally {
+        this._battleDelegatePendingEnd();
       }
-      return new Promise((resolve) => {
-        const ansRef = getDb().ref(ansPath);
-        let settled = false;
-        const handler = (snap) => {
-          const val = snap.val();
-          if (val == null || settled) return;
-          settled = true;
-          ansRef.off('value', handler);
-          ansRef.remove().catch(() => {});
-          resolve(!!(val && val.ok));
-        };
-        ansRef.on('value', handler);
-      });
     },
     /* 選択肢A/Bを尋ねる */
     dslAskChoice(card, prompt, options) {
@@ -15730,6 +15755,18 @@ new Vue({
       player.deckCount = player.deck.length;
       if (Array.isArray(player.hand)) player.handCount = player.hand.length;
     },
+    /* 相手クライアントへの委譲呼び出し（バウンス実行委任・手札効果無効化・相手選択破棄・守護確認 等）の
+       応答待ち件数。0より大きい間は自動公開(watcher)を保留し、0に戻った時点で改めて公開する
+       （保留しないと、応答待ち中のこちらの古いローカルミラーで相手の正しい変更を上書きしてしまう）。 */
+    _battleDelegatePendingBegin() {
+      this._battleDelegatePendingCount = (this._battleDelegatePendingCount || 0) + 1;
+    },
+    _battleDelegatePendingEnd() {
+      this._battleDelegatePendingCount = Math.max(0, (this._battleDelegatePendingCount || 0) - 1);
+      if (this._battleDelegatePendingCount === 0 && this.battleNet && this.battleNet.on && !this.battleNet.spectating) {
+        this._battlePublishState();
+      }
+    },
     battleAskDrawConfirm(side) {
       if (this.battleSample.result) return;
       if (side !== 'self') return;
@@ -17760,7 +17797,14 @@ new Vue({
       const active = this.battleSample.activeSide === 'self';
       if (active || n._wasActive) {                    // 自分の手番の変化＋手番引き渡しを公開
         clearTimeout(this._battlePubT);
-        this._battlePubT = setTimeout(() => this._battlePublishState(), 90);
+        // 相手クライアントへの委譲呼び出し（バウンス効果の実行委任 等）の応答待ち中は公開を保留する。
+        // 保留しないと、相手側が自分の実データに対して処理中／処理直後の状態を、こちら側が持つ
+        // 古いローカルミラー（例：まだ場に残っているように見える相手のカード）で上書きしてしまい、
+        // 相手側の正しい変更が一瞬で巻き戻る競合が起きる。委譲が全て完了した時点で改めて公開される。
+        this._battlePubT = setTimeout(() => {
+          if (this._battleDelegatePendingCount > 0) return;
+          this._battlePublishState();
+        }, 90);
         n._wasActive = active;
       }
     }, { deep: true });
