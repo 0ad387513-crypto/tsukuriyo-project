@@ -175,6 +175,7 @@
   }
   .mode-action-return { background: #8a6535; border-color: #c95; }
   .mode-action-return:hover { background: #b07840; }
+  .mode-action-return:disabled { background: #3a3f4a; border-color: #555c68; color: #8a92a0; cursor: not-allowed; }
   .mode-action-unreturn { background: #2a5a32; border-color: #5b8; }
   .mode-action-unreturn:hover { background: #3a7a42; }
 
@@ -190,6 +191,7 @@
   }
   .deck-grid-return-btn { background: rgba(138,101,53,0.92); border-color: #c95; }
   .deck-grid-return-btn:hover { background: rgba(176,120,64,1); }
+  .deck-grid-return-btn:disabled { background: rgba(58,63,74,0.92); border-color: #555c68; color: #8a92a0; cursor: not-allowed; }
   .deck-grid-unreturn-btn { background: rgba(42,90,50,0.92); border-color: #5b8; }
   .deck-grid-unreturn-btn:hover { background: rgba(58,122,66,1); }
 
@@ -499,6 +501,18 @@
     color: #fc8;
     border-bottom: 1px solid #2a2f3d;
   }
+  /* シールド戦：返還画面から対戦を開始するボタン（目立たせるため専用スタイル、
+     .sp-btn は .sp-lobby 配下限定のスタイルのためここでは使えない） */
+  .deck-shield-battle-btn {
+    display: block; width: 100%; margin: 10px 0 4px; padding: 12px 10px;
+    font-size: 15px; font-weight: 800; letter-spacing: 0.03em;
+    color: #fff; background: linear-gradient(135deg, #c8742a, #e89a3a);
+    border: 1px solid #f8b850; border-radius: 6px; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(220, 159, 80, 0.35);
+    transition: background 0.12s, transform 0.08s;
+  }
+  .deck-shield-battle-btn:hover { background: linear-gradient(135deg, #d8843a, #f8aa4a); }
+  .deck-shield-battle-btn:active { transform: translateY(1px); }
 
   /* 属性カウントは色つきドット付き */
   .deck-stats-colors {
@@ -3571,8 +3585,8 @@
         デッキを40枚まで削除（返還）することができます
       </div>
       <!-- シールド戦：デッキ構築完了後はここ（返還画面）を経由してのみ対戦を開始できる -->
-      <div v-if="sb.phase === 'complete' && appView === 'cardlist'" class="deck-controls" style="margin-top:6px;">
-        <button class="sp-btn sp-btn-create" style="width:100%;" @click="openBattleLaunch('shield')">
+      <div v-if="sb.phase === 'complete' && appView === 'cardlist'">
+        <button class="deck-shield-battle-btn" @click="openBattleLaunch('shield')">
           ⚔ 対戦画面へ
         </button>
       </div>
@@ -3649,7 +3663,7 @@
               <span class="n">{{ entry.count }}</span>
               <button @click="addCard(entry.card)" :disabled="!canAdd(entry.card)">＋</button>
             </div>
-            <button v-else class="mode-action-btn mode-action-return" @click.stop="returnCard(entry.card.no)">返還</button>
+            <button v-else class="mode-action-btn mode-action-return" :disabled="sbReturnLimitReached" @click.stop="returnCard(entry.card.no)">返還</button>
           </template>
           <!-- returned -->
           <template v-else>
@@ -3752,6 +3766,7 @@
                         @click.stop="addCard(entry.card)" :disabled="!canAdd(entry.card)" title="1枚増やす">＋</button>
               </template>
               <button v-else class="deck-grid-mode-btn deck-grid-return-btn"
+                      :disabled="sbReturnLimitReached"
                       @click.stop="returnCard(entry.card.no)">返還</button>
             </template>
             <!-- returned -->
@@ -6233,7 +6248,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.148',
+    BUILD_VERSION: '1.14.149',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6908,6 +6923,10 @@ new Vue({
     // ヤマタノオロチ選択中フラグ
     isOrochiLeader() {
       return !!(this.selectedKami && this.selectedKami.type === 'ヤマタノオロチ');
+    },
+    // シールド戦：デッキは40枚まで返還可能（それ以下には減らせない）。既に40枚以下なら返還ボタンを無効化する。
+    sbReturnLimitReached() {
+      return this.sb.phase === 'complete' && this.totalDeckCount <= 40;
     },
     // デッキの返還値合計（active + returned の合算 = 「全部返したら得られる総額」の指標）
     // ヤマタノオロチ選択時は龍レガシーの返還値+1
@@ -17012,6 +17031,7 @@ new Vue({
     // active から returned に1枚移す（カウントは変わらない）
     returnCard(no) {
       if (this.appView === 'shield' && this.sb.phase === 'complete') return;
+      if (this.sbReturnLimitReached) return; // シールド戦：40枚を下回る返還は不可
       no = String(no);
       const cur = this.deck[no] || 0;
       if (cur <= 0) return;
