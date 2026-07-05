@@ -1406,6 +1406,13 @@
     background: #13161f; display: flex; flex-direction: column;
     overflow: hidden;
   }
+  /* ロビー等のシンプルな画面：4人対戦のモーダル（.gm-modal）と統一感を持たせたコンパクト表示 */
+  .shield-overlay.shield-overlay-compact { align-items: center; padding: 20px; }
+  .shield-panel.shield-panel-compact {
+    width: min(880px, 96vw); max-height: 92vh;
+    border: 1px solid #2e3548; border-radius: 10px;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.6);
+  }
 
   /* ヘッダー */
   .sp-header {
@@ -3788,9 +3795,9 @@
   </div>
 
   <!-- ===== シールド戦モーダル ===== -->
-  <div v-if="shieldOpen" class="shield-overlay"
+  <div v-if="shieldOpen" class="shield-overlay" :class="{ 'shield-overlay-compact': sbCompactPhase }"
        :style="shieldPeek ? { display: 'none' } : {}">
-    <div class="shield-panel" @click.stop>
+    <div class="shield-panel" :class="{ 'shield-panel-compact': sbCompactPhase }" @click.stop>
 
       <!-- ヘッダー -->
       <div class="sp-header">
@@ -6249,7 +6256,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.150',
+    BUILD_VERSION: '1.14.151',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6996,6 +7003,11 @@ new Vue({
       return slices;
     },
     /* ===== シールド戦 computed ===== */
+    /* ロビー等のシンプルな画面は、4人対戦のモーダルと統一感を持たせるためコンパクト表示にする。
+       パックピック/カミ選択はカードを並べる都合上、引き続き画面いっぱいの表示のままにする。 */
+    sbCompactPhase() {
+      return ['lobby', 'waiting', 'coin_toss', 'complete'].includes(this.sb.phase);
+    },
     shieldPhaseLabel() {
       const labels = {
         lobby:       'ロビー',
