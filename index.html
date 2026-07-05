@@ -6089,7 +6089,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.137',
+    BUILD_VERSION: '1.14.138',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8147,9 +8147,11 @@ new Vue({
             this._sfxTone(210, 0.22, { type: 'triangle', gain: 0.15, freqEnd: 150 });
             break;
           case 'hit':
-            // 和太鼓のような低く重い衝撃
-            this._sfxNoise(0.09, { gain: 0.32, filterFreq: 800 });
-            this._sfxTone(100, 0.2, { type: 'sine', gain: 0.34, freqEnd: 32, delay: 0.01 });
+            // 戦闘・神攻＝日本刀の剣戟：刃が触れ合う鋭いノイズ＋金属的な高い響き＋打ち合う力強さの低音
+            this._sfxNoise(0.05, { gain: 0.26, filterFreq: 3500, filterType: 'highpass' });
+            this._sfxTone(1800, 0.12, { type: 'sine', gain: 0.16, freqEnd: 2400 });
+            this._sfxTone(2600, 0.09, { type: 'sine', gain: 0.1, delay: 0.01 });
+            this._sfxTone(90, 0.15, { type: 'sine', gain: 0.24, freqEnd: 30 });
             break;
           case 'destroy':
             // 骨/木が砕け割れるような、低く濁った破砕音
@@ -8162,20 +8164,22 @@ new Vue({
             this._sfxTone(60, 0.5, { type: 'sine', gain: 0.14, freqEnd: 30, delay: 0.04 });
             break;
           case 'skill':
-            // 神技（必殺技）：和太鼓の轟き＋鉦（鐘）の残響で神威を表現
-            this._sfxTone(70, 0.6, { type: 'sine', gain: 0.3, freqEnd: 45 });
-            this._sfxNoise(0.3, { gain: 0.22, filterFreq: 900, delay: 0.04 });
-            this._sfxTone(540, 0.9, { type: 'sine', gain: 0.13, delay: 0.12 });
-            this._sfxTone(1490, 0.7, { type: 'sine', gain: 0.05, delay: 0.12 }); // 鐘特有の不協和な高次倍音
+            // 神技（必殺技）：華やかで神々しい輝き（鈴が連なるような煌めきの上昇アルペジオ）＋荘厳さを支える低音
+            this._sfxTone(300, 0.5, { type: 'sine', gain: 0.15, freqEnd: 700 }); // 立ち上がる光の兆し
+            this._sfxTone(90, 0.5, { type: 'sine', gain: 0.16, delay: 0.02 });   // 荘厳さを支える低音
+            this._sfxTone(1046, 0.35, { type: 'sine', gain: 0.11, delay: 0.05 }); // 鈴の煌めき（ド）
+            this._sfxTone(1318, 0.35, { type: 'sine', gain: 0.1, delay: 0.12 });  // （ミ）
+            this._sfxTone(1568, 0.4, { type: 'sine', gain: 0.1, delay: 0.19 });   // （ソ）
+            this._sfxTone(2093, 0.55, { type: 'sine', gain: 0.08, delay: 0.26 }); // （高いド）
             break;
           case 'dragStart':
             // 衣擦れのような、ごく控えめな摩擦音のみ（音程は持たせない）
             this._sfxNoise(0.06, { gain: 0.06, filterFreq: 2600, filterType: 'highpass' });
             break;
           case 'dragDrop':
-            // 碁石/将棋の駒を置くような、乾いた木/石の音
-            this._sfxNoise(0.03, { gain: 0.16, filterFreq: 2600, filterType: 'highpass' });
-            this._sfxTone(210, 0.05, { type: 'triangle', gain: 0.12, freqEnd: 120 });
+            // カードを配置した重量感：木/石が触れる質感の一瞬のノイズ＋どっしりと沈む低音
+            this._sfxNoise(0.035, { gain: 0.14, filterFreq: 2200, filterType: 'highpass' });
+            this._sfxTone(150, 0.17, { type: 'sine', gain: 0.28, freqEnd: 42 });
             break;
         }
       } catch (e) { /* 音声再生失敗（自動再生制限等）は無視 */ }
