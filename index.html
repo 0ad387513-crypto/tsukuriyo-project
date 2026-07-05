@@ -6089,7 +6089,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.136',
+    BUILD_VERSION: '1.14.137',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8134,35 +8134,48 @@ new Vue({
       src.start(t0);
       src.stop(t0 + dur + 0.03);
     },
+    /* 効果音の方向性：ツクリヨの世界観（シリアスな和風ダークファンタジー）に合わせ、
+       明るい/軽快なチープチューン調ではなく、和太鼓・鉦（鐘）・木/石の打音・砂や灰が
+       崩れる質感を意識した低め・くすんだ音色でまとめている（陽気な上昇音や電子的な
+       矩形波アルペジオは避け、下降または低く沈む音の動きを基本にする）。 */
     _sfxPlay(name) {
       try {
         switch (name) {
           case 'cardPlay':
-            this._sfxTone(520, 0.12, { type: 'triangle', gain: 0.16, freqEnd: 880 });
+            // 三味線/琴の弾き（プラック）：高音の弾く瞬間のノイズ＋低めに沈む余韻
+            this._sfxNoise(0.025, { gain: 0.12, filterFreq: 3200, filterType: 'highpass' });
+            this._sfxTone(210, 0.22, { type: 'triangle', gain: 0.15, freqEnd: 150 });
             break;
           case 'hit':
-            this._sfxNoise(0.08, { gain: 0.3, filterFreq: 1200 });
-            this._sfxTone(150, 0.14, { type: 'sine', gain: 0.3, freqEnd: 45, delay: 0.01 });
+            // 和太鼓のような低く重い衝撃
+            this._sfxNoise(0.09, { gain: 0.32, filterFreq: 800 });
+            this._sfxTone(100, 0.2, { type: 'sine', gain: 0.34, freqEnd: 32, delay: 0.01 });
             break;
           case 'destroy':
-            this._sfxNoise(0.18, { gain: 0.26, filterFreq: 900 });
-            this._sfxTone(320, 0.3, { type: 'sawtooth', gain: 0.18, freqEnd: 55 });
+            // 骨/木が砕け割れるような、低く濁った破砕音
+            this._sfxNoise(0.22, { gain: 0.3, filterFreq: 650 });
+            this._sfxTone(160, 0.34, { type: 'triangle', gain: 0.22, freqEnd: 38 });
             break;
           case 'crumble':
-            this._sfxNoise(0.4, { gain: 0.2, filterFreq: 2400, filterType: 'highpass' });
-            this._sfxTone(720, 0.35, { type: 'sine', gain: 0.12, freqEnd: 110 });
+            // 灰/砂となって崩れ落ちる乾いた質感＋低いうなり
+            this._sfxNoise(0.5, { gain: 0.2, filterFreq: 2100, filterType: 'highpass' });
+            this._sfxTone(60, 0.5, { type: 'sine', gain: 0.14, freqEnd: 30, delay: 0.04 });
             break;
           case 'skill':
-            this._sfxTone(180, 0.55, { type: 'sawtooth', gain: 0.2, freqEnd: 420 });
-            this._sfxNoise(0.4, { gain: 0.18, filterFreq: 1500, delay: 0.08 });
-            this._sfxTone(920, 0.3, { type: 'sine', gain: 0.14, delay: 0.18 });
+            // 神技（必殺技）：和太鼓の轟き＋鉦（鐘）の残響で神威を表現
+            this._sfxTone(70, 0.6, { type: 'sine', gain: 0.3, freqEnd: 45 });
+            this._sfxNoise(0.3, { gain: 0.22, filterFreq: 900, delay: 0.04 });
+            this._sfxTone(540, 0.9, { type: 'sine', gain: 0.13, delay: 0.12 });
+            this._sfxTone(1490, 0.7, { type: 'sine', gain: 0.05, delay: 0.12 }); // 鐘特有の不協和な高次倍音
             break;
           case 'dragStart':
-            this._sfxTone(700, 0.05, { type: 'triangle', gain: 0.09, freqEnd: 900 });
+            // 衣擦れのような、ごく控えめな摩擦音のみ（音程は持たせない）
+            this._sfxNoise(0.06, { gain: 0.06, filterFreq: 2600, filterType: 'highpass' });
             break;
           case 'dragDrop':
-            this._sfxTone(260, 0.07, { type: 'square', gain: 0.12, freqEnd: 150 });
-            this._sfxNoise(0.04, { gain: 0.12, filterFreq: 2000 });
+            // 碁石/将棋の駒を置くような、乾いた木/石の音
+            this._sfxNoise(0.03, { gain: 0.16, filterFreq: 2600, filterType: 'highpass' });
+            this._sfxTone(210, 0.05, { type: 'triangle', gain: 0.12, freqEnd: 120 });
             break;
         }
       } catch (e) { /* 音声再生失敗（自動再生制限等）は無視 */ }
@@ -8292,7 +8305,7 @@ new Vue({
       const id = (this._battleStatPopSeq = (this._battleStatPopSeq || 0) + 1);
       // 変化量が大きいほどポップの文字を大きくして、一撃の重みを数字自体でも表現する
       const mag = Math.abs(delta);
-      const sizeCls = mag >= 5 ? ' pop-xl' : mag >= 3 ? ' pop-lg' : '';
+      const sizeCls = mag >= 3 ? ' pop-xl' : mag >= 2 ? ' pop-lg' : '';
       this.$set(this.battleStatPops, dispKey, { id, text: (delta > 0 ? '+' : '') + delta, cls: (delta > 0 ? 'plus' : 'minus') + sizeCls });
       setTimeout(() => {
         if (this.battleStatPops[dispKey] && this.battleStatPops[dispKey].id === id) this.$set(this.battleStatPops, dispKey, null);
