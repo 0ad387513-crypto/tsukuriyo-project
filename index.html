@@ -5791,7 +5791,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.132',
+    BUILD_VERSION: '1.14.133',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -5859,7 +5859,8 @@ new Vue({
        （オフラインの単独シミュレーション時は従来通りどちらの手番でも押せる） */
     battleCanEndTurn() {
       if (this.battleSample.result) return false;
-      if (this.battleNet && this.battleNet.on && !this.battleNet.spectating) {
+      if (this.battleNet && this.battleNet.spectating) return false;
+      if (this.battleNet && this.battleNet.on) {
         return this.battleSample.activeSide === 'self';
       }
       return true;
@@ -7591,7 +7592,19 @@ new Vue({
         const activeSide = String(state.activeSeat) === String(n.mySeat) ? 'self' : 'opp';
         this.$set(this.battleSample, 'activeSide', activeSide);
         this.$set(this.battleSample, 'turn', state.turn || this.battleSample.turn);
-        this.$set(this.battleSample, 'result', state.result || null);
+        // state.result は書き込んだ側（writer）自身の視点での勝敗。観戦者は固定視点（席1=self）のため、
+        // writerが自分の席（mySeat）と異なる場合のみ outcome を反転させて self/opp 視点に変換する
+        // （通常の2人対戦の _battleApplyRemoteState は writerガードで常に相手＝反転固定だが、
+        // 観戦者にはそのガードがなく writer が mySeat/oppSeat のどちらもあり得るため条件分岐が必要）。
+        if (state.result) {
+          const writerIsMySeat = String(state.writer) === String(n.mySeat);
+          const outcome = writerIsMySeat ? state.result.outcome
+            : (state.result.outcome === 'win' ? 'loss' : (state.result.outcome === 'loss' ? 'win' : state.result.outcome));
+          const title = outcome === 'win' ? '星戦勝利！' : (outcome === 'loss' ? '星戦敗北…' : state.result.title);
+          this.$set(this.battleSample, 'result', { outcome, title });
+        } else {
+          this.$set(this.battleSample, 'result', null);
+        }
         this.$set(this.battleNet, 'oppReady', true);
         this.$set(this.battleNet, 'lastReceivedAt', Date.now());
         this._battleSyncTickNow = Date.now();
