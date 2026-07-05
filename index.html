@@ -2192,6 +2192,29 @@
   .battle-undo-btn .undo-count {
     font-size: 10px; color: #d8c8ff; margin-left: 4px; font-weight: 600;
   }
+  /* ===== SE/BGM音量設定：全画面共通のフローティングボタン ===== */
+  .global-sound-settings { position: fixed; top: 8px; right: 8px; z-index: 9500; }
+  .global-sound-btn {
+    width: 36px; height: 36px; border-radius: 50%; font-size: 16px;
+    background: rgba(20,24,34,.85); border: 1px solid #4a4f5d; color: #e8e8f0;
+    cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.5);
+  }
+  .global-sound-btn:hover { background: rgba(40,46,64,.9); border-color: #7e94ba; }
+  .global-sound-popover {
+    position: absolute; top: calc(100% + 6px); right: 0;
+    background: #1a2030; border: 1px solid #4a4f5d; border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    padding: 10px 12px; min-width: 200px;
+  }
+  .global-sound-row { margin-bottom: 8px; }
+  .global-sound-row:last-child { margin-bottom: 0; }
+  .global-sound-label { display: block; font-size: 11px; color: #c9d2df; font-weight: 700; margin-bottom: 3px; }
+  .global-sound-row input[type="range"] { width: 100%; vertical-align: middle; }
+  .global-sound-value { font-size: 11px; color: #e8d4ff; }
+  .global-sound-select {
+    width: 100%; background: #232a3a; border: 1px solid #4a4f5d; color: #e8e8f0;
+    border-radius: 4px; padding: 4px 6px; font-size: 12px;
+  }
 
   /* フィールド確認中：選択系モーダルを一時的に非表示にして盤面を見えるようにする（状態は保持） */
   .modal-peeking .battle-zone-modal,
@@ -3276,6 +3299,30 @@
 </head>
 <body>
 <div id="app" class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek }">
+
+  <!-- ===== SE/BGM音量設定（全画面共通のフローティングボタン） ===== -->
+  <div class="global-sound-settings">
+    <button class="global-sound-btn" @click.stop="soundSettingsOpen = !soundSettingsOpen" title="音量設定">🎵</button>
+    <div v-if="soundSettingsOpen" class="global-sound-popover" @click.stop>
+      <div class="global-sound-row">
+        <span class="global-sound-label">SE音量</span>
+        <input type="range" min="0" max="1" step="0.05" :value="battleSfxVolume" @input="battleSetSfxVolume($event.target.value)">
+        <span class="global-sound-value">{{ Math.round(battleSfxVolume * 100) }}%</span>
+      </div>
+      <div class="global-sound-row">
+        <span class="global-sound-label">BGM音量</span>
+        <input type="range" min="0" max="1" step="0.05" :value="bgmVolume" @input="bgmSetVolume($event.target.value)">
+        <span class="global-sound-value">{{ Math.round(bgmVolume * 100) }}%</span>
+      </div>
+      <div class="global-sound-row">
+        <span class="global-sound-label">BGM選択</span>
+        <select class="global-sound-select" :value="bgmAuto ? 'auto' : bgmCurrentKey" @change="bgmSelectTrack($event.target.value)">
+          <option value="auto">自動（ランダム）</option>
+          <option v-for="opt in bgmTrackOptions" :key="opt.key" :value="opt.key">{{ opt.name }}</option>
+        </select>
+      </div>
+    </div>
+  </div>
 
   <!-- フィールド確認中：選択画面へ戻るボタン -->
   <button v-if="battleModalPeek" class="modal-peek-return-btn" @click="battleModalPeek = false">選択画面に戻る</button>
@@ -5804,6 +5851,25 @@ const SFX_FILES = {
   oracle: 'oracle.mp3',
   sealRelease: 'seal_release.mp3',
 };
+const SFX_VOLUME_STORAGE_KEY = 'tsukuriyo_sfxVolume';
+const BGM_VOLUME_STORAGE_KEY = 'tsukuriyo_bgmVolume';
+// 音量（0〜1）：localStorageに保存された値があれば復元し、無ければ既定の0.5（50%）
+function loadStoredVolume(storageKey) {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (raw !== null) {
+      const n = parseFloat(raw);
+      if (!isNaN(n)) return Math.min(1, Math.max(0, n));
+    }
+  } catch (e) { /* localStorage不可の環境は既定値を使う */ }
+  return 0.5;
+}
+// BGM：画面カテゴリごとの候補曲一覧（otherは対戦以外の全画面、battleは対戦画面用）
+const BGM_FILES = {
+  ryu:        { name: '龍の舞う和都', file: '龍の舞う和都_free.mp3', category: 'other' },
+  kazakiri:   { name: '風切',         file: '風切_loop_free.mp3',     category: 'battle' },
+  homuGarasu: { name: '焔烏ノ刻',     file: '焔烏ノ刻_free.mp3',      category: 'battle' },
+};
 const COLOR_ORDER = { '赤': 0, '青': 1, '緑': 2, '黄': 3, '紫': 4, '創': 5, '無': 6 };
 function colorRank(c) {
   return COLOR_ORDER[c] !== undefined ? COLOR_ORDER[c] : 99;
@@ -6063,6 +6129,11 @@ new Vue({
     battleStatPops: {},         // ライフ/マナ等の増減ポップ表示：{ dispKey: { id, text, cls } }
     battleDragTrail: [],        // ドラッグ中に追従する光の尾：[{ id, x, y, color }]
     battleAttackVisual: null,   // 神攻＝ビーム／戦闘＝クラッシュの一撃演出：{ id, kind, x, y, length, angle, midX, midY }
+    battleSfxVolume: loadStoredVolume(SFX_VOLUME_STORAGE_KEY), // SE音量（0〜1）。既定50%、localStorageに保存して次回以降も復元
+    soundSettingsOpen: false,   // SE/BGM音量設定ポップオーバーの開閉（全画面共通）
+    bgmVolume: loadStoredVolume(BGM_VOLUME_STORAGE_KEY), // BGM音量（0〜1）。既定50%
+    bgmCurrentKey: null, // 現在再生中のBGMキー（BGM_FILESのキー）。null=未再生
+    bgmAuto: true,       // true=画面カテゴリに応じて自動選曲、false=手動選択中
     battleDestroySucks: [],     // 撃破時に墓地/崩壊アイコンへ吸い込まれる演出：[{ id, x1, y1, x2, y2 }]
     battleConfirmModal: null, // { action, title, message, confirmLabel, cards, payload }
     /* 手札ドラッグ・場出し */
@@ -6103,7 +6174,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.141',
+    BUILD_VERSION: '1.14.142',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6151,6 +6222,10 @@ new Vue({
     gsDeepenAction: null,     // 深化の刻で選択中のアクション: null(=メニュー) | 'reflect' | 'fusion' | 'bloom'
   },
   computed: {
+    /* BGM選択メニュー用：{key, name} の配列（BGM_FILESそのものではなく整形して渡す） */
+    bgmTrackOptions() {
+      return Object.keys(BGM_FILES).map(key => ({ key, name: BGM_FILES[key].name }));
+    },
     /* デッキビルダー本体（pool/deck）の表示可否
        - カードリスト画面
        - シールド戦のピーク中
@@ -8104,7 +8179,7 @@ new Vue({
         if (!file) return;
         const src = `sfx/${file}`;
         const audio = new Audio(src);
-        audio.volume = 0.6;
+        audio.volume = this.battleSfxVolume;
         // play()のPromise rejectだけでは拾えない失敗（404が代替ページ等にフォールバックされて
         // デコードに失敗するケース等）もあるため、<audio>要素自体のerrorイベントも監視する。
         // MediaError.code: 1=中断 2=ネットワーク 3=デコード失敗 4=形式非対応/読み込み不可
@@ -8113,6 +8188,61 @@ new Vue({
         });
         audio.play().catch(err => console.warn(`[sfx] "${name}" (${src}) の再生に失敗:`, err && err.message));
       } catch (e) { console.warn('[sfx] 再生処理で例外:', e); }
+    },
+    /* SE音量を変更し、次回以降のために保存する（0〜1） */
+    battleSetSfxVolume(v) {
+      const n = Math.min(1, Math.max(0, Number(v)));
+      this.battleSfxVolume = isNaN(n) ? this.battleSfxVolume : n;
+      try { localStorage.setItem(SFX_VOLUME_STORAGE_KEY, String(this.battleSfxVolume)); } catch (e) { /* 保存できなくても続行 */ }
+    },
+    /* ===== BGM：画面カテゴリ（対戦画面／それ以外）ごとの自動選曲＋手動選択・ループ再生 ===== */
+    /* 使い回す単一のAudioインスタンス（SEと違い、同時に複数流す必要はなく、
+       切り替え時に前の曲をきちんと止められるよう1つを使い回す） */
+    _bgmAudioEl() {
+      if (!this._bgmAudio) this._bgmAudio = new Audio();
+      return this._bgmAudio;
+    },
+    /* 指定キーのBGMをループ再生に切り替える */
+    _bgmPlay(key) {
+      const entry = BGM_FILES[key];
+      if (!entry) return;
+      const audio = this._bgmAudioEl();
+      const src = `bgm/${encodeURIComponent(entry.file)}`;
+      audio.loop = true; // 「_loop」付きファイルに限らず、BGMは全て終端でシームレスに繰り返す想定
+      audio.volume = this.bgmVolume;
+      audio.src = src;
+      audio.currentTime = 0;
+      audio.play().catch(err => console.warn(`[bgm] "${key}" (${src}) の再生に失敗:`, err && err.message));
+      this.bgmCurrentKey = key;
+    },
+    /* 画面（appView）に応じたカテゴリの候補からランダムに1曲選ぶ。
+       既に同カテゴリの曲を再生中なら曲を切り替えない（画面遷移のたびに曲が変わらないように）。 */
+    _bgmAutoPickForView(view) {
+      const category = view === 'battle' ? 'battle' : 'other';
+      const current = this.bgmCurrentKey && BGM_FILES[this.bgmCurrentKey];
+      if (current && current.category === category) return;
+      const keys = Object.keys(BGM_FILES).filter(k => BGM_FILES[k].category === category);
+      if (!keys.length) return;
+      this._bgmPlay(keys[Math.floor(Math.random() * keys.length)]);
+    },
+    /* BGM選択メニューからの操作：'auto'で自動選曲に戻す（強制的に再抽選）、
+       それ以外はそのキーの曲を手動固定で再生し、以後は画面遷移で自動的には変わらない。 */
+    bgmSelectTrack(key) {
+      if (key === 'auto') {
+        this.bgmAuto = true;
+        this.bgmCurrentKey = null; // 同カテゴリ判定を無効化し、必ず再抽選させる
+        this._bgmAutoPickForView(this.appView);
+        return;
+      }
+      this.bgmAuto = false;
+      this._bgmPlay(key);
+    },
+    /* BGM音量を変更し、次回以降のために保存する（0〜1） */
+    bgmSetVolume(v) {
+      const n = Math.min(1, Math.max(0, Number(v)));
+      this.bgmVolume = isNaN(n) ? this.bgmVolume : n;
+      if (this._bgmAudio) this._bgmAudio.volume = this.bgmVolume;
+      try { localStorage.setItem(BGM_VOLUME_STORAGE_KEY, String(this.bgmVolume)); } catch (e) { /* 保存できなくても続行 */ }
     },
     /* ヒットストップ：0.05秒だけ次の処理を遅延させ、衝撃の一瞬を演出する */
     _battleHitStop(ms = 50) {
@@ -16722,6 +16852,7 @@ new Vue({
       this.battleFieldZoneMenu = null;
       this.battleHandMenu = null;
       this.battleZoneCardMenu = null;
+      this.soundSettingsOpen = false; // SE/BGM音量設定ポップオーバーを閉じる
     },
     addCard(card) {
       if (this.appView === 'shield' || this.appView === 'game') return; // モード中はガード
@@ -17368,6 +17499,18 @@ new Vue({
         this.$watch(`battleSample.${side}.${key}`, (val) => this._battleTweenStat(dispKey, val));
       });
     });
+    // BGM：画面カテゴリ（対戦画面／それ以外）に応じて自動選曲（起動直後にも一度実行）
+    this.$watch('appView', (v) => { if (this.bgmAuto) this._bgmAutoPickForView(v); }, { immediate: true });
+    // ブラウザの自動再生制限で起動直後の再生がブロックされた場合、
+    // 最初のクリック/キー入力を合図に一度だけ再試行する
+    const unlockBgm = () => {
+      const audio = this._bgmAudio;
+      if (audio && audio.paused && this.bgmCurrentKey) audio.play().catch(() => {});
+      window.removeEventListener('click', unlockBgm);
+      window.removeEventListener('keydown', unlockBgm);
+    };
+    window.addEventListener('click', unlockBgm);
+    window.addEventListener('keydown', unlockBgm);
   },
   beforeDestroy() {
     window.removeEventListener("keydown", this.onKeyDown);
