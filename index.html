@@ -3095,8 +3095,14 @@
     text-shadow: 0 0 14px rgba(255,190,90,.9), 0 2px 4px rgba(0,0,0,.9);
   }
   .battle-skill-closeup-face {
-    width: 100%; aspect-ratio: 1 / 1;
-    background-size: cover; background-position: center 18%;
+    display: block; width: 100%; aspect-ratio: 1 / 1;
+    object-fit: cover; object-position: center 18%;
+  }
+  /* kami_cutin/ の専用画像が無く、従来の全身/上半身イラストにフォールバックした場合だけ
+     ズームして顔付近に寄せる（専用画像が用意されていれば不要な処理） */
+  .battle-skill-closeup-face.fallback-zoom {
+    transform: scale(1.7);
+    transform-origin: center 15%;
   }
   .battle-skill-closeup-identity {
     position: relative; padding: 8px 14px 12px;
@@ -5110,7 +5116,9 @@
     <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay">
       <div class="battle-skill-closeup-card">
         <div class="battle-skill-closeup-skillname">{{ battleSkillCloseup.skillName }}</div>
-        <div class="battle-skill-closeup-face" :style="battleSkillCloseup.imgUrl ? { backgroundImage: 'url(' + battleSkillCloseup.imgUrl + ')' } : {}"></div>
+        <img v-if="battleSkillCloseup.imgUrl" class="battle-skill-closeup-face"
+             :class="{ 'fallback-zoom': battleSkillCloseup.fallbackStage === 2 }"
+             :src="battleSkillCloseup.imgUrl" alt="" @error="battleSkillCloseupImgError">
         <div class="battle-skill-closeup-identity">
           <div v-if="battleSkillCloseup.kamiNickname" class="battle-skill-closeup-nickname">{{ battleSkillCloseup.kamiNickname }}</div>
           <div class="battle-skill-closeup-name">{{ battleSkillCloseup.kamiName }}</div>
@@ -6208,7 +6216,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.144',
+    BUILD_VERSION: '1.14.145',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8426,8 +8434,12 @@ new Vue({
     },
     /* 神技2（必殺技）発動：カミの顔アップ＋技名アップを一定時間表示してから消える */
     async _battleShowSkill2Closeup(kami, skillName) {
+      // 顔だけアップの専用カットイン画像（kami_cutin/{No}.jpg|png）があればそれを最優先で使い、
+      // 用意されていなければ .jpg→.png→従来の対戦画面用イラストの順にフォールバックする
       this.battleSkillCloseup = {
-        imgUrl: kami ? this.kamiIllustrationUrl(kami) : null,
+        imgUrl: kami ? `kami_cutin/${kami.no}.jpg` : null,
+        fallbackStage: 0, // 0=カットイン(jpg)試行中 1=カットイン(png)試行中 2=従来イラストにフォールバック済み
+        kami,
         kamiNickname: kami ? (kami.nickname || '') : '',
         kamiName: kami ? kami.name : '',
         skillName: skillName || '',
@@ -8435,6 +8447,19 @@ new Vue({
       this._sfxPlay('skill');
       await new Promise(resolve => { this._battleSkillCloseupT = setTimeout(resolve, 1500); });
       this.battleSkillCloseup = null;
+    },
+    /* 神技2カットイン画像の読み込み失敗時：jpg→png→従来イラストの順に試す */
+    battleSkillCloseupImgError() {
+      const c = this.battleSkillCloseup;
+      if (!c || !c.kami) return;
+      if (c.fallbackStage === 0) {
+        c.fallbackStage = 1;
+        c.imgUrl = `kami_cutin/${c.kami.no}.png`;
+      } else if (c.fallbackStage === 1) {
+        c.fallbackStage = 2;
+        c.imgUrl = this.kamiIllustrationUrl(c.kami);
+      }
+      // fallbackStage 2（従来イラスト）自体が読み込めない場合はそのまま（画像なしで名前/技名のみ表示）
     },
     /* 神技2演出を相手クライアントにも同期（相手の必殺技も見られるように） */
     _battlePublishSkill2(kamiNo, skillName) {
