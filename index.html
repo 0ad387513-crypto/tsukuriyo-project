@@ -3570,6 +3570,12 @@
       <div v-if="returnModeActive" class="deck-return-hint">
         デッキを40枚まで削除（返還）することができます
       </div>
+      <!-- シールド戦：デッキ構築完了後はここ（返還画面）を経由してのみ対戦を開始できる -->
+      <div v-if="sb.phase === 'complete' && appView === 'cardlist'" class="deck-controls" style="margin-top:6px;">
+        <button class="sp-btn sp-btn-create" style="width:100%;" @click="openBattleLaunch('shield')">
+          ⚔ 対戦画面へ
+        </button>
+      </div>
 
       <!-- カミ表示（deck-info内最下部） -->
       <div class="kami-slot">
@@ -4053,13 +4059,10 @@
           <div style="text-align:center;padding:40px;">
             <div style="font-size:48px;margin-bottom:12px;">🎉</div>
             <div style="font-size:18px;font-weight:700;margin-bottom:8px;">デッキ構築完了！</div>
-            <div style="font-size:14px;color:#9aa;margin-bottom:22px;">対戦を始めるか、デッキ内容を確認してください</div>
+            <div style="font-size:14px;color:#9aa;margin-bottom:22px;">デッキ内容・返還を確認してから対戦を始めてください</div>
             <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
-              <button class="sp-btn sp-btn-create" style="max-width:220px;" @click="openBattleLaunch('shield')">
-                ⚔ 対戦画面へ
-              </button>
-              <button class="sp-btn sp-btn-join" style="max-width:220px;" @click="onLoadShieldDeckToBuilder">
-                デッキビルダーで確認
+              <button class="sp-btn sp-btn-create" style="max-width:260px;" @click="onLoadShieldDeckToBuilder">
+                デッキ確認・返還へ進む
               </button>
             </div>
           </div>
@@ -6230,7 +6233,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.147',
+    BUILD_VERSION: '1.14.148',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -17387,6 +17390,8 @@ new Vue({
     _sbSubscribe(roomCode) {
       const unsub = subscribeRoom(roomCode, (data) => {
         if (!data) return;
+        // 相手のピック完了→自分の番になったことの通知音用：更新前の「自分の番か」を控えておく
+        const wasMyPickTurn = this.sb.phase === 'picking' ? this.sbIsMyPickTurn : null;
         this.sb.roomData = data;
 
         // Firebase の phase を sb.phase に反映
@@ -17408,6 +17413,12 @@ new Vue({
           this.sb.phase = 'kami_select';
         } else if (fp === 'complete' && this.sb.phase !== 'complete') {
           this.sb.phase = 'complete';
+        }
+
+        // 相手がパックを選び終えて自分の番になった時に通知音（連投防止のため、相手番→自分番の
+        // 変化を検知した時だけ鳴らす。ピック中でない/初回購読時（wasMyPickTurn===null）は鳴らさない）
+        if (fp === 'picking' && wasMyPickTurn === false && this.sbIsMyPickTurn) {
+          this._sfxPlay('draw');
         }
 
         // ソロテスト：CPU（guest）を自動操作（自分は host のみ）
