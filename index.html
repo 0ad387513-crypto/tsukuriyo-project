@@ -3337,8 +3337,9 @@
 <div id="app" v-cloak class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek }">
 
   <!-- ===== SE/BGM音量設定（全画面共通のフローティングボタン。対戦画面は専用ヘッダーボタンと
-       重なるため、対戦画面表示中はこちらを隠す） ===== -->
-  <div v-if="appView !== 'battle'" class="global-sound-settings">
+       重なるため、対戦画面表示中はこちらを隠す。カードリスト画面ではBGM不要かつ他の
+       ボタン群と重なるため非表示にする） ===== -->
+  <div v-if="appView !== 'battle' && appView !== 'cardlist'" class="global-sound-settings">
     <button class="global-sound-btn" @click.stop="soundSettingsOpen = !soundSettingsOpen" title="音量設定">🎵</button>
     <div v-if="soundSettingsOpen" class="global-sound-popover" @click.stop>
       <div class="global-sound-row">
@@ -6248,7 +6249,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.149',
+    BUILD_VERSION: '1.14.150',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
