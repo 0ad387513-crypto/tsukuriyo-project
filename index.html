@@ -6103,7 +6103,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.139',
+    BUILD_VERSION: '1.14.140',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8104,8 +8104,10 @@ new Vue({
         if (!file) return;
         const audio = new Audio(`sfx/${file}`);
         audio.volume = 0.6;
-        audio.play().catch(() => {}); // 自動再生制限等で再生できなくても無視
-      } catch (e) { /* 音声再生失敗は無視 */ }
+        // 再生に失敗しても対戦自体は継続させるが、原因調査用にコンソールへは残す
+        // （自動再生制限／MIMEタイプ不正／404等、ブラウザのDevToolsコンソールで確認できる）
+        audio.play().catch(err => console.warn(`[sfx] "${name}" (sfx/${file}) の再生に失敗:`, err && err.message));
+      } catch (e) { console.warn('[sfx] 再生処理で例外:', e); }
     },
     /* ヒットストップ：0.05秒だけ次の処理を遅延させ、衝撃の一瞬を演出する */
     _battleHitStop(ms = 50) {
