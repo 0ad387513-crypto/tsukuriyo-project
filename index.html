@@ -1861,6 +1861,7 @@
   .battle-main {
     display: grid; gap: 4px; min-width: 0;
     grid-template-rows: auto 1fr 1fr auto;
+    position: relative;
   }
   .battle-side {
     display: flex; flex-direction: column;
@@ -2928,6 +2929,84 @@
     opacity: 0; animation: coinTextIn 0.4s ease forwards;
   }
   @keyframes coinTextIn { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: scale(1); } }
+
+  /* ===== ジュース感（game feel）演出 ===== */
+  /* ボタン押下時の沈み込み（既に個別の:active演出を持つボタンは除外） */
+  .battle-overlay button:not(.battle-end-turn-btn):not(.oracle-effect-detail):not(.oracle-effect-close):not(:disabled) {
+    transition: transform .08s ease, filter .08s ease;
+  }
+  .battle-overlay button:not(.battle-end-turn-btn):not(.oracle-effect-detail):not(.oracle-effect-close):not(:disabled):active {
+    transform: translateY(2px) scale(0.96);
+    filter: brightness(0.9);
+  }
+  /* ヒット時のカメラシェイク（.battle-main に一時的に付与） */
+  .battle-main.battle-shake { animation: battleShakeKf 0.32s cubic-bezier(.36,.07,.19,.97); }
+  @keyframes battleShakeKf {
+    10% { transform: translate(-6px, 2px) rotate(-0.4deg); }
+    20% { transform: translate(5px, -3px) rotate(0.3deg); }
+    30% { transform: translate(-5px, 3px) rotate(-0.3deg); }
+    40% { transform: translate(4px, -2px) rotate(0.2deg); }
+    50% { transform: translate(-3px, 2px); }
+    60% { transform: translate(3px, -2px); }
+    70% { transform: translate(-2px, 1px); }
+    80% { transform: translate(2px, -1px); }
+    90% { transform: translate(-1px, 1px); }
+    100% { transform: translate(0,0); }
+  }
+  /* ヒット時のフラッシュ（画面端に赤い衝撃波） */
+  .battle-hit-flash {
+    position: absolute; inset: 0; z-index: 400; pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(255,60,60,0) 55%, rgba(255,40,40,.45) 100%);
+    animation: battleHitFlashKf 0.3s ease-out forwards;
+  }
+  @keyframes battleHitFlashKf { 0% { opacity: 1; } 100% { opacity: 0; } }
+  /* 神技2（必殺技）発動：カミの顔アップ＋技名アップ */
+  .battle-skill-closeup-overlay {
+    position: fixed; inset: 0; z-index: 900; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(2, 3, 6, 0.55);
+    overflow: hidden;
+  }
+  .battle-skill-closeup-face {
+    position: absolute; inset: -10%;
+    background-size: cover; background-position: center 20%;
+    filter: saturate(1.2) contrast(1.1) brightness(0.85);
+    transform: scale(1.3);
+    animation: skillCloseupFaceKf 1.4s ease-out forwards;
+  }
+  @keyframes skillCloseupFaceKf {
+    0%   { transform: scale(1.55); filter: saturate(1.4) contrast(1.2) brightness(1.1) blur(2px); }
+    15%  { transform: scale(1.3); filter: saturate(1.2) contrast(1.1) brightness(0.85) blur(0); }
+    80%  { transform: scale(1.3); opacity: 1; }
+    100% { transform: scale(1.36); opacity: 0; }
+  }
+  .battle-skill-closeup-face::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.55) 100%);
+  }
+  .battle-skill-closeup-textwrap {
+    position: relative; text-align: center; padding: 0 24px;
+    animation: skillCloseupTextKf 1.4s ease-out forwards;
+  }
+  .battle-skill-closeup-kami {
+    font-size: clamp(14px, 2.4vw, 20px); color: #ffd9a0; letter-spacing: 0.2em; font-weight: 700;
+    text-shadow: 0 0 10px rgba(0,0,0,.9);
+  }
+  .battle-skill-closeup-name {
+    font-size: clamp(34px, 7vw, 78px); font-weight: 1000; letter-spacing: 0.08em; color: #fff;
+    text-shadow: 0 0 22px rgba(255,190,90,.85), 0 0 8px rgba(0,0,0,.9), 0 4px 0 rgba(0,0,0,.6);
+    white-space: nowrap;
+  }
+  @keyframes skillCloseupTextKf {
+    0%   { opacity: 0; transform: scale(0.7); }
+    18%  { opacity: 1; transform: scale(1.08); }
+    26%  { transform: scale(1); }
+    85%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.05); }
+  }
+  .battle-skill-closeup-fade-leave-active { transition: opacity 0.3s ease; }
+  .battle-skill-closeup-fade-leave-to { opacity: 0; }
+
   .battle-result-overlay { z-index: 700; overflow: hidden; }
   .battle-result-panel {
     position: relative; width: min(720px, 94vw); padding: 56px 28px; text-align: center;
@@ -3863,7 +3942,8 @@
 
     <div class="battle-board">
       <!-- ========== Main エリア（4行） ========== -->
-      <div class="battle-main">
+      <div class="battle-main" :class="{ 'battle-shake': battleShakeActive }">
+        <div v-if="battleHitFlashActive" class="battle-hit-flash"></div>
 
         <!-- 相手 上段：手札 | カミ(中央)+ステータス | レリック -->
         <div class="battle-row-opp-top">
@@ -3880,7 +3960,7 @@
               <div class="hud-orb">
                 <span class="orb-label">{{ battleIsOrochi('opp') ? '封印' : '天力' }}</span>
                 <div class="orb-disc" :class="battleIsOrochi('opp') ? 'seal' : 'tenryoku'">
-                  {{ battleIsOrochi('opp') ? battleSample.opp.seal : battleSample.opp.tenryoku }}
+                  {{ battleIsOrochi('opp') ? battleStatNum('opp','seal') : battleStatNum('opp','tenryoku') }}
                 </div>
               </div>
               <!-- 中央：カミ（X軸基準） -->
@@ -3898,7 +3978,7 @@
               <!-- 右：ライフ（赤丸 / 上：ライフラベル） -->
               <div class="hud-orb">
                 <span class="orb-label">ライフ</span>
-                <div class="orb-disc life">{{ battleSample.opp.life }}<small>/ {{ battleSample.opp.lifeMax }}</small></div>
+                <div class="orb-disc life">{{ battleStatNum('opp','life') }}<small>/ {{ battleSample.opp.lifeMax }}</small></div>
               </div>
             </div>
             <div class="kami-name">{{ battleSample.opp.kami ? fullName(battleSample.opp.kami) : 'カミ未設定' }}</div>
@@ -4046,7 +4126,7 @@
               <div class="hud-orb">
                 <span class="orb-label">{{ battleIsOrochi('self') ? '封印' : '天力' }}</span>
                 <div class="orb-disc" :class="battleIsOrochi('self') ? 'seal' : 'tenryoku'">
-                  {{ battleIsOrochi('self') ? battleSample.self.seal : battleSample.self.tenryoku }}
+                  {{ battleIsOrochi('self') ? battleStatNum('self','seal') : battleStatNum('self','tenryoku') }}
                 </div>
                 <div class="orb-value-controls">
                   <button @click="battleStat('self', battleIsOrochi('self') ? 'seal' : 'tenryoku', -1)">−</button>
@@ -4067,7 +4147,7 @@
               <div class="hud-orb">
                 <span class="orb-label">ライフ</span>
                 <div class="life-row">
-                  <div class="orb-disc life">{{ battleSample.self.life }}<small>/ {{ battleSample.self.lifeMax }}</small></div>
+                  <div class="orb-disc life">{{ battleStatNum('self','life') }}<small>/ {{ battleSample.self.lifeMax }}</small></div>
                   <div class="orb-max-controls">
                     <button title="最大ライフを増やす（上限10）" @click="battleStat('self','lifeMax',1)">△</button>
                     <button title="最大ライフを減らす" @click="battleStat('self','lifeMax',-1)">▽</button>
@@ -4112,7 +4192,7 @@
       <div class="battle-side">
 
         <div class="mana-panel">
-          <div class="mana-head"><span>相手マナ</span><span class="mana-value">{{ battleSample.opp.mana }}/{{ battleSample.opp.manaMax }}</span></div>
+          <div class="mana-head"><span>相手マナ</span><span class="mana-value">{{ battleStatNum('opp','mana') }}/{{ battleSample.opp.manaMax }}</span></div>
           <div class="mana-orbs">
             <span v-for="n in Math.max(battleSample.opp.manaMax, battleSample.opp.mana)" :key="'om'+n" class="mana-orb" :class="{ available: n <= battleSample.opp.mana, bonus: n > battleSample.opp.manaMax && n <= battleSample.opp.mana }"></span>
             <span v-if="battleSample.opp.manaMax === 0 && battleSample.opp.mana === 0" class="mana-empty">0</span>
@@ -4178,7 +4258,7 @@
         <div class="turn-ind" :class="{ active: battleSample.activeSide === 'self' }">{{ battleContext.selfName }}のターン</div>
 
         <div class="mana-panel">
-          <div class="mana-head"><span>自分マナ</span><span class="mana-value">{{ battleSample.self.mana }}/{{ battleSample.self.manaMax }}</span></div>
+          <div class="mana-head"><span>自分マナ</span><span class="mana-value">{{ battleStatNum('self','mana') }}/{{ battleSample.self.manaMax }}</span></div>
           <div class="mana-orbs">
             <span v-for="n in Math.max(battleSample.self.manaMax, battleSample.self.mana)" :key="'sm'+n" class="mana-orb" :class="{ available: n <= battleSample.self.mana, bonus: n > battleSample.self.manaMax && n <= battleSample.self.mana }"></span>
             <span v-if="battleSample.self.manaMax === 0 && battleSample.self.mana === 0" class="mana-empty">0</span>
@@ -4753,6 +4833,17 @@
   <transition name="battle-turn-flash-fade">
     <div v-if="battleTurnFlash" :key="battleTurnFlash.id" class="battle-turn-flash" :class="battleTurnFlash.side">
       {{ battleTurnFlash.text }}
+    </div>
+  </transition>
+
+  <!-- ===== 神技2（必殺技）発動時：カミの顔アップ＋技名アップ演出 ===== -->
+  <transition name="battle-skill-closeup-fade">
+    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay">
+      <div class="battle-skill-closeup-face" :style="battleSkillCloseup.imgUrl ? { backgroundImage: 'url(' + battleSkillCloseup.imgUrl + ')' } : {}"></div>
+      <div class="battle-skill-closeup-textwrap">
+        <div class="battle-skill-closeup-kami">{{ battleSkillCloseup.kamiName }}</div>
+        <div class="battle-skill-closeup-name">{{ battleSkillCloseup.skillName }}</div>
+      </div>
     </div>
   </transition>
 
@@ -5752,6 +5843,11 @@ new Vue({
     battleCoinFlip: null, // 先攻/後攻決めのコイン演出：{ firstSide, phase: 'spin'|'result' }
     coinFrontUrl: 'coin_front.png', // コイン表（彼岸花）
     coinBackUrl: 'coin_back.png',   // コイン裏（女性）
+    /* ===== ジュース感（game feel） ===== */
+    battleShakeActive: false,   // ヒット時のカメラシェイク中か
+    battleHitFlashActive: false, // ヒット時の画面フラッシュ中か
+    battleSkillCloseup: null,   // 神技2発動時の顔アップ演出：{ imgUrl, kamiName, skillName }
+    battleStatDisplay: {},      // ライフ/マナ/天力/封印のカウントアップ表示用（実データとは別に保持）
     battleConfirmModal: null, // { action, title, message, confirmLabel, cards, payload }
     /* 手札ドラッグ・場出し */
     battleDragIndex: null,    // ドラッグ中の手札index（null=非ドラッグ中）
@@ -5791,7 +5887,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.133',
+    BUILD_VERSION: '1.14.134',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7224,6 +7320,7 @@ new Vue({
         self.mana = 10; self.manaMax = 10;
       }
       this.battleSample = { turn: 1, activeSide: firstSide, result: null, self, opp };
+      this._battleInitStatDisplay();
       this.battleContext = {
         source: config.source || 'preview', modeLabel: config.modeLabel || '対戦',
         returnView: config.returnView || 'top', round: config.round || null,
@@ -7535,9 +7632,23 @@ new Vue({
         this._battleApplyingRemote = true;
         const wasActiveBefore = !!n._wasActive; // 直前まで自分の手番だったか（手番が今始まったかの判定に使う）
         const previousActiveSide = this.battleSample.activeSide;
+        // 打撃感：相手の手番の操作結果（戦闘/神攻）はこちらのクライアントでは実行されないため、
+        // ライフ減少・レガシー消失を受信データとの差分で検知し、受信側でもシェイク＋効果音を鳴らす
+        const beforeSelfLife = Number(this.battleSample.self.life) || 0;
+        const beforeOppLife = Number(this.battleSample.opp.life) || 0;
+        const beforeSelfLegacies = (this.battleSample.self.legacies || []).length;
+        const beforeOppLegacies = (this.battleSample.opp.legacies || []).length;
         const sides = state.sides || {};
         this._battleApplySide('self', sides[n.mySeat], true);   // 自分席（手札/山札はローカル保持）
         this._battleApplySide('opp',  sides[n.oppSeat], false); // 相手席
+        const selfLegaciesLost = beforeSelfLegacies - (this.battleSample.self.legacies || []).length;
+        const oppLegaciesLost = beforeOppLegacies - (this.battleSample.opp.legacies || []).length;
+        const lifeLost = (Number(this.battleSample.self.life) || 0) < beforeSelfLife
+          || (Number(this.battleSample.opp.life) || 0) < beforeOppLife;
+        if (lifeLost || selfLegaciesLost > 0 || oppLegaciesLost > 0) {
+          this._battleShake();
+          this._sfxPlay((selfLegaciesLost > 0 || oppLegaciesLost > 0) ? 'destroy' : 'hit');
+        }
         const activeSide = String(state.activeSeat) === String(n.mySeat) ? 'self' : 'opp';
         this.$set(this.battleSample, 'activeSide', activeSide);
         if (activeSide !== previousActiveSide && !state.result) this._battleFlashTurn(activeSide);
@@ -7586,9 +7697,21 @@ new Vue({
       if (!state || !n.on) return;
       try {
         this._battleApplyingRemote = true;
+        const beforeSelfLife = Number(this.battleSample.self.life) || 0;
+        const beforeOppLife = Number(this.battleSample.opp.life) || 0;
+        const beforeSelfLegacies = (this.battleSample.self.legacies || []).length;
+        const beforeOppLegacies = (this.battleSample.opp.legacies || []).length;
         const sides = state.sides || {};
         this._battleApplySide('self', sides[n.mySeat], false, true);
         this._battleApplySide('opp',  sides[n.oppSeat], false, true);
+        const selfLegaciesLost = beforeSelfLegacies - (this.battleSample.self.legacies || []).length;
+        const oppLegaciesLost = beforeOppLegacies - (this.battleSample.opp.legacies || []).length;
+        const lifeLost = (Number(this.battleSample.self.life) || 0) < beforeSelfLife
+          || (Number(this.battleSample.opp.life) || 0) < beforeOppLife;
+        if (lifeLost || selfLegaciesLost > 0 || oppLegaciesLost > 0) {
+          this._battleShake();
+          this._sfxPlay((selfLegaciesLost > 0 || oppLegaciesLost > 0) ? 'destroy' : 'hit');
+        }
         const activeSide = String(state.activeSeat) === String(n.mySeat) ? 'self' : 'opp';
         this.$set(this.battleSample, 'activeSide', activeSide);
         this.$set(this.battleSample, 'turn', state.turn || this.battleSample.turn);
@@ -7659,6 +7782,11 @@ new Vue({
         const delegateRef = getDb().ref(delegatePath);
         const delegateHandler = snap => this._battleHandleRemoteDelegateRequest(snap.val());
         delegateRef.on('value', delegateHandler);
+        // 神技2（必殺技）の顔アップ演出も同期：相手の必殺技発動も自分の画面で見られるようにする
+        const skill2Path = path.replace(/\/state$/, '/skill2');
+        const skill2Ref = getDb().ref(skill2Path);
+        const skill2Handler = snap => this._battleApplyRemoteSkill2(snap.val());
+        skill2Ref.on('value', skill2Handler);
         // 在席状態（プレゼンス）：.info/connected + onDisconnect で自分の切断を検知させ、
         // 相手側の在席パスを購読することで「相手が切断した」ことを能動的に把握できるようにする
         const presenceBase = path.replace(/\/state$/, '/presence');
@@ -7684,6 +7812,7 @@ new Vue({
           try { confirmRef.off('value', confirmHandler); } catch (e) {}
           try { pickRef.off('value', pickHandler); } catch (e) {}
           try { delegateRef.off('value', delegateHandler); } catch (e) {}
+          try { skill2Ref.off('value', skill2Handler); } catch (e) {}
           try { connectedRef.off('value', connectedHandler); } catch (e) {}
           try { oppPresenceRef.off('value', presenceHandler); } catch (e) {}
           try { myPresenceRef.onDisconnect().cancel(); } catch (e) {}
@@ -7725,14 +7854,204 @@ new Vue({
         const noticeRef = getDb().ref(noticePath);
         const noticeHandler = snap => this._battleApplyRemoteNotice(snap.val());
         noticeRef.on('value', noticeHandler);
+        const skill2Path = path.replace(/\/state$/, '/skill2');
+        const skill2Ref = getDb().ref(skill2Path);
+        const skill2Handler = snap => this._battleApplyRemoteSkill2(snap.val());
+        skill2Ref.on('value', skill2Handler);
         this.battleNet._unsub = () => {
           ref.off('value', handler);
           try { noticeRef.off('value', noticeHandler); } catch (e) {}
+          try { skill2Ref.off('value', skill2Handler); } catch (e) {}
         };
       } catch (e) {
         console.error('[spectate] 購読開始失敗:', e);
         this.$set(this.battleNet, 'lastError', '購読開始失敗：' + (e && e.message));
       }
+    },
+    /* ===================================================================
+       ジュース感（game feel）：SE合成・ヒットストップ・カメラシェイク・
+       数値カウントアップ・神技2クローズアップ
+       =================================================================== */
+    /* 効果音は現状すべて Web Audio API によるその場合成音（外部音声ファイル無し）。
+       将来 mp3 等の音源ファイルに差し替える場合は _sfxPlay(name) の中身だけを
+       差し替えればよいよう、呼び出し側は名前だけを渡す設計にしてある。 */
+    _sfxCtx() {
+      if (!this._audioCtx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        try { this._audioCtx = new AC(); } catch (e) { return null; }
+      }
+      if (this._audioCtx.state === 'suspended') { this._audioCtx.resume().catch(() => {}); }
+      return this._audioCtx;
+    },
+    _sfxTone(freq, dur, opts = {}) {
+      const ctx = this._sfxCtx();
+      if (!ctx) return;
+      const { type = 'sine', gain = 0.2, freqEnd = null, delay = 0 } = opts;
+      const t0 = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      osc.type = type;
+      osc.frequency.setValueAtTime(Math.max(1, freq), t0);
+      if (freqEnd !== null) osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqEnd), t0 + dur);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(gain, t0);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      osc.connect(g).connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.03);
+    },
+    _sfxNoise(dur, opts = {}) {
+      const ctx = this._sfxCtx();
+      if (!ctx) return;
+      const { gain = 0.25, delay = 0, filterFreq = null, filterType = 'lowpass' } = opts;
+      const t0 = ctx.currentTime + delay;
+      const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * dur));
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(gain, t0);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      let node = src;
+      if (filterFreq) {
+        const filter = ctx.createBiquadFilter();
+        filter.type = filterType;
+        filter.frequency.value = filterFreq;
+        node.connect(filter);
+        node = filter;
+      }
+      node.connect(g).connect(ctx.destination);
+      src.start(t0);
+      src.stop(t0 + dur + 0.03);
+    },
+    _sfxPlay(name) {
+      try {
+        switch (name) {
+          case 'cardPlay':
+            this._sfxTone(520, 0.12, { type: 'triangle', gain: 0.16, freqEnd: 880 });
+            break;
+          case 'hit':
+            this._sfxNoise(0.08, { gain: 0.3, filterFreq: 1200 });
+            this._sfxTone(150, 0.14, { type: 'sine', gain: 0.3, freqEnd: 45, delay: 0.01 });
+            break;
+          case 'destroy':
+            this._sfxNoise(0.18, { gain: 0.26, filterFreq: 900 });
+            this._sfxTone(320, 0.3, { type: 'sawtooth', gain: 0.18, freqEnd: 55 });
+            break;
+          case 'crumble':
+            this._sfxNoise(0.4, { gain: 0.2, filterFreq: 2400, filterType: 'highpass' });
+            this._sfxTone(720, 0.35, { type: 'sine', gain: 0.12, freqEnd: 110 });
+            break;
+          case 'skill':
+            this._sfxTone(180, 0.55, { type: 'sawtooth', gain: 0.2, freqEnd: 420 });
+            this._sfxNoise(0.4, { gain: 0.18, filterFreq: 1500, delay: 0.08 });
+            this._sfxTone(920, 0.3, { type: 'sine', gain: 0.14, delay: 0.18 });
+            break;
+        }
+      } catch (e) { /* 音声再生失敗（自動再生制限等）は無視 */ }
+    },
+    /* ヒットストップ：0.05秒だけ次の処理を遅延させ、衝撃の一瞬を演出する */
+    _battleHitStop(ms = 50) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    },
+    /* カメラシェイク＋画面フラッシュ（連続ヒット時も毎回アニメーションが再生されるよう
+       一度falseに戻してnextTickでtrueにする） */
+    _battleShake() {
+      this.battleShakeActive = false;
+      this.$nextTick(() => {
+        this.battleShakeActive = true;
+        clearTimeout(this._battleShakeT);
+        this._battleShakeT = setTimeout(() => { this.battleShakeActive = false; }, 320);
+      });
+      this.battleHitFlashActive = false;
+      this.$nextTick(() => {
+        this.battleHitFlashActive = true;
+        clearTimeout(this._battleHitFlashT);
+        this._battleHitFlashT = setTimeout(() => { this.battleHitFlashActive = false; }, 300);
+      });
+    },
+    /* ヒット演出一式：効果音＋カメラシェイク＋ヒットストップを同時に行う */
+    async _battleImpact() {
+      this._sfxPlay('hit');
+      this._battleShake();
+      await this._battleHitStop();
+    },
+    /* ライフ/マナ/天力/封印のカウントアップ表示：テンプレートからは battleStatNum(side,key) で参照する */
+    battleStatNum(side, key) {
+      const dispKey = side + key.charAt(0).toUpperCase() + key.slice(1);
+      const disp = this.battleStatDisplay[dispKey];
+      if (disp === undefined) {
+        const p = this.battleSample && this.battleSample[side];
+        return (p ? p[key] : 0) || 0;
+      }
+      return disp;
+    },
+    _battleTweenStat(dispKey, to) {
+      if (to === null || to === undefined) { this.$set(this.battleStatDisplay, dispKey, to); return; }
+      const cur = this.battleStatDisplay[dispKey];
+      if (cur === undefined || cur === null || cur === to) { this.$set(this.battleStatDisplay, dispKey, to); return; }
+      const from = cur;
+      const start = performance.now();
+      const duration = 400;
+      const seq = (this._battleStatTweenSeq = this._battleStatTweenSeq || {});
+      const myTweenId = (seq[dispKey] = (seq[dispKey] || 0) + 1);
+      const step = (now) => {
+        if (seq[dispKey] !== myTweenId) return; // 途中で新しい変化が来たら古いtweenは中断
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        this.$set(this.battleStatDisplay, dispKey, Math.round(from + (to - from) * eased));
+        if (t < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    },
+    /* 新しい対戦開始時：カウントアップ用の表示値を実データに即時同期（アニメーションさせない） */
+    _battleInitStatDisplay() {
+      const bs = this.battleSample;
+      const vals = {};
+      ['self', 'opp'].forEach(side => {
+        const p = bs && bs[side];
+        if (!p) return;
+        vals[side + 'Life'] = p.life;
+        vals[side + 'Mana'] = p.mana;
+        vals[side + 'Tenryoku'] = p.tenryoku;
+        vals[side + 'Seal'] = p.seal;
+      });
+      this.battleStatDisplay = vals;
+    },
+    /* 神技2（必殺技）発動：カミの顔アップ＋技名アップを一定時間表示してから消える */
+    async _battleShowSkill2Closeup(kami, skillName) {
+      this.battleSkillCloseup = {
+        imgUrl: kami ? this.kamiIllustrationUrl(kami) : null,
+        kamiName: kami ? this.fullName(kami) : '',
+        skillName: skillName || '',
+      };
+      this._sfxPlay('skill');
+      await new Promise(resolve => { this._battleSkillCloseupT = setTimeout(resolve, 1500); });
+      this.battleSkillCloseup = null;
+    },
+    /* 神技2演出を相手クライアントにも同期（相手の必殺技も見られるように） */
+    _battlePublishSkill2(kamiNo, skillName) {
+      const n = this.battleNet;
+      if (!n || !n.on || !n.statePath || n.spectating) return;
+      try {
+        const path = n.statePath.replace(/\/state$/, '/skill2');
+        getDb().ref(path).set({
+          writer: n.mySeat, kamiNo: kamiNo != null ? String(kamiNo) : null,
+          skillName: String(skillName || ''), ts: Date.now(),
+        }).catch(() => {});
+      } catch (e) { /* silent */ }
+    },
+    _battleApplyRemoteSkill2(payload) {
+      const n = this.battleNet;
+      if (!payload || !n || !n.on) return;
+      // 観戦者は自分で書き込むことがないため「自分のエコー」は存在せず、writerガードは不要
+      if (!n.spectating && String(payload.writer) === String(n.mySeat)) return; // 自分のは無視
+      if (payload.ts && payload.ts <= (this._battleLastSkill2At || 0)) return;
+      this._battleLastSkill2At = payload.ts || Date.now();
+      const kami = this.cardByNo[String(payload.kamiNo)] || null;
+      this._battleShowSkill2Closeup(kami, payload.skillName);
     },
     battleReturn() {
       const decided = !!this.battleSample.result;
@@ -11178,8 +11497,10 @@ new Vue({
               p.hand = p.hand || []; p.hand.push(card); p.handCount = p.hand.length;
             } else if (lz === 'graveyard') {
               p.graveyard = p.graveyard || []; p.graveyard.push(card);
+              this._sfxPlay('destroy');
             } else if (lz === 'crumbled') {
               p.crumbled = p.crumbled || []; p.crumbled.push(card);
+              this._sfxPlay('crumble');
             }
             // 天力トリガー：レガシー破壊（K7 ヒノカグツチ）— 墓地行きのみ・レガシーのみ
             if (destZone === 'graveyard' && zone === 'legacies') {
@@ -12844,6 +13165,7 @@ new Vue({
       }
       this.battleSaveUndo();
       player.mana = Math.max(0, player.mana - cost);
+      this._sfxPlay('cardPlay');
       this.battleConsumeTempCostMods('self', card);
       this.battleConsumeStaticCostChangeUsage('self', card);
       player.hand.splice(index, 1);
@@ -12901,6 +13223,7 @@ new Vue({
       }
       this.battleSaveUndo();
       player.mana = Math.max(0, player.mana - cost);
+      this._sfxPlay('cardPlay');
       this.battleConsumeTempCostMods('self', card);
       this.battleConsumeStaticCostChangeUsage('self', card);
       player.hand.splice(index, 1);
@@ -13526,6 +13849,7 @@ new Vue({
       const destZone = this._battleLeaveZone(card, 'graveyard');
       player[destZone] = player[destZone] || [];
       player[destZone].push(card);
+      this._sfxPlay(destZone === 'crumbled' ? 'crumble' : 'destroy');
       this.battleRecordLegacyDestroyed(side, card);
       // 天力トリガー（K7ヒノカグツチ）：戦闘でレガシーが破壊された場合も発火
       this.battleFireKamiEvent('self', 'legacyDestroyed', { card });
@@ -13587,6 +13911,8 @@ new Vue({
       // K4タケミカヅチ神技2：戦闘でレガシー破壊時に一度だけアンタップ（このターン中、未消費の場合のみ）
       const attackerUntapsOnKill = this.battleCardHasKeyword(attacker, 'このターン:戦闘でレガシー破壊時に一度だけアンタップ')
         && !attacker._onceUntapConsumed;
+      // 打撃感：ヒットストップ＋カメラシェイク＋効果音を戦闘解決の瞬間に発生させる
+      await this._battleImpact();
       const destroyed = [];
       if (ap > dp) this.battleDestroyLegacy(defenderSide, defenderIndex, destroyed);
       else if (ap < dp) this.battleDestroyLegacy(attackerSide, attackerIndex, destroyed);
@@ -13680,6 +14006,8 @@ new Vue({
       }
       const damage = Math.max(0, Number(attacker.attack || 0));
       this.battleSaveUndo();
+      // 打撃感：ダメージが実際に発生する神攻のみヒットストップ＋カメラシェイク＋効果音を発生させる
+      if (damage > 0) await this._battleImpact();
       const beforeLife = Number(this.battleSample.opp.life) || 0;
       this.battleSample.opp.life = Math.max(0, this.battleSample.opp.life - damage);
       const actualDamage = Math.max(0, beforeLife - this.battleSample.opp.life);
@@ -14330,6 +14658,12 @@ new Vue({
       this.battleSaveUndo();
       this.battleSample.self.tenryoku = Math.max(0, this.battleSample.self.tenryoku - skill.cost);
       this.battleSkillModal = null;
+      // 神技2（必殺技）：カミの顔アップ＋技名アップの演出を挟んでから通常の通知・効果解決へ進む
+      if (index === 2) {
+        const closeupKami = this.battleSample.self.kami;
+        this._battlePublishSkill2(closeupKami ? closeupKami.no : null, skill.name);
+        await this._battleShowSkill2Closeup(closeupKami, skill.name);
+      }
       this.battleShowNotice(`${skill.name}を発動`, `${this.battleContext.selfName}が神技「${skill.name}」を発動し、天力を${skill.cost}消費しました。`, []);
       // DSL：神技spec を実行（index は 1/2 → spec 内の神技契機を順番で対応付け）
       const kami = this.battleSample.self.kami;
@@ -16704,6 +17038,13 @@ new Vue({
     }, { deep: true });
     // 対戦画面を離れたら同期停止
     this.$watch('appView', (v) => { if (v !== 'battle' && this.battleNet.on) this._battleSyncStop(); });
+    // ライフ/マナ/天力/封印：実データの変化を検知してカウントアップ表示用の値をアニメーションさせる
+    ['self', 'opp'].forEach(side => {
+      ['life', 'mana', 'tenryoku', 'seal'].forEach(key => {
+        const dispKey = side + key.charAt(0).toUpperCase() + key.slice(1);
+        this.$watch(`battleSample.${side}.${key}`, (val) => this._battleTweenStat(dispKey, val));
+      });
+    });
   },
   beforeDestroy() {
     window.removeEventListener("keydown", this.onKeyDown);
