@@ -5111,9 +5111,10 @@
       </div>
     </div>
 
-    <!-- オラクル発動 中央演出（閉じるボタンを押すまで残る／詳細プレビュー可） -->
+    <!-- オラクル発動 中央演出（閉じるボタンを押すまで残る／詳細プレビュー可。
+         相手が発動した場合は同期表示され、一定時間で自動的に消える） -->
     <div v-if="battleOracleEffect" class="oracle-effect-overlay">
-      <div class="oracle-effect-label">オラクル発動</div>
+      <div class="oracle-effect-label">{{ battleOracleEffect.remote ? '相手のオラクル発動' : 'オラクル発動' }}</div>
       <div class="oracle-effect-card"
            :style="cardImageUrl(battleOracleEffect.card) ? { backgroundImage: 'url(' + cardImageUrl(battleOracleEffect.card) + ')' } : {}"
            @click="openPreview(battleOracleEffect.card)"
@@ -6260,7 +6261,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.155',
+    BUILD_VERSION: '1.14.160',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8223,6 +8224,11 @@ new Vue({
         const skill2Ref = getDb().ref(skill2Path);
         const skill2Handler = snap => this._battleApplyRemoteSkill2(snap.val());
         skill2Ref.on('value', skill2Handler);
+        // オラクル発動の中央演出も同期：相手のオラクル発動も自分の画面で見られるようにする
+        const oracleEffectPath = path.replace(/\/state$/, '/oracleEffect');
+        const oracleEffectRef = getDb().ref(oracleEffectPath);
+        const oracleEffectHandler = snap => this._battleApplyRemoteOracleEffect(snap.val());
+        oracleEffectRef.on('value', oracleEffectHandler);
         // 在席状態（プレゼンス）：.info/connected + onDisconnect で自分の切断を検知させ、
         // 相手側の在席パスを購読することで「相手が切断した」ことを能動的に把握できるようにする
         const presenceBase = path.replace(/\/state$/, '/presence');
@@ -8250,6 +8256,7 @@ new Vue({
           try { pickRef.off('value', pickHandler); } catch (e) {}
           try { delegateRef.off('value', delegateHandler); } catch (e) {}
           try { skill2Ref.off('value', skill2Handler); } catch (e) {}
+          try { oracleEffectRef.off('value', oracleEffectHandler); } catch (e) {}
           try { connectedRef.off('value', connectedHandler); } catch (e) {}
           try { oppPresenceRef.off('value', presenceHandler); } catch (e) {}
           try { myPresenceRef.onDisconnect().cancel(); } catch (e) {}
@@ -8295,10 +8302,15 @@ new Vue({
         const skill2Ref = getDb().ref(skill2Path);
         const skill2Handler = snap => this._battleApplyRemoteSkill2(snap.val());
         skill2Ref.on('value', skill2Handler);
+        const oracleEffectPath = path.replace(/\/state$/, '/oracleEffect');
+        const oracleEffectRef = getDb().ref(oracleEffectPath);
+        const oracleEffectHandler = snap => this._battleApplyRemoteOracleEffect(snap.val());
+        oracleEffectRef.on('value', oracleEffectHandler);
         this.battleNet._unsub = () => {
           ref.off('value', handler);
           try { noticeRef.off('value', noticeHandler); } catch (e) {}
           try { skill2Ref.off('value', skill2Handler); } catch (e) {}
+          try { oracleEffectRef.off('value', oracleEffectHandler); } catch (e) {}
         };
       } catch (e) {
         console.error('[spectate] 購読開始失敗:', e);
@@ -8617,6 +8629,36 @@ new Vue({
       const kami = this.cardByNo[String(payload.kamiNo)] || null;
       this._battleShowSkill2Closeup(kami, payload.skillName);
     },
+    /* オラクル発動の中央演出を相手クライアントにも同期する（呼び出し側でbattleOracleEffectを
+       セットした直後に、そのカードのNoを渡して呼ぶ） */
+    _battlePublishOracleEffect(cardNo) {
+      const n = this.battleNet;
+      if (!n || !n.on || !n.statePath || n.spectating) return;
+      try {
+        const path = n.statePath.replace(/\/state$/, '/oracleEffect');
+        getDb().ref(path).set({
+          writer: n.mySeat, cardNo: cardNo != null ? String(cardNo) : null, ts: Date.now(),
+        }).catch(() => {});
+      } catch (e) { /* silent */ }
+    },
+    /* 相手クライアントから届いたオラクル発動演出を受け取り、一定時間だけ表示する。
+       発動した本人（相手）は「閉じる」ボタンで手動で消すまで表示され続ける仕様のままだが、
+       受信側（見ているだけの自分）はいつまでも残ると邪魔なので自動的に消す。 */
+    _battleApplyRemoteOracleEffect(payload) {
+      const n = this.battleNet;
+      if (!payload || !n || !n.on) return;
+      if (!n.spectating && String(payload.writer) === String(n.mySeat)) return; // 自分のは無視
+      if (payload.ts && payload.ts <= (this._battleLastOracleEffectAt || 0)) return;
+      this._battleLastOracleEffectAt = payload.ts || Date.now();
+      const card = this.cardByNo[String(payload.cardNo)] || null;
+      if (!card) return;
+      const id = (this._battleOracleEffectSeq = (this._battleOracleEffectSeq || 0) + 1);
+      this.battleOracleEffect = { card, remote: true, id };
+      clearTimeout(this._battleOracleEffectRemoteT);
+      this._battleOracleEffectRemoteT = setTimeout(() => {
+        if (this.battleOracleEffect && this.battleOracleEffect.id === id) this.battleOracleEffect = null;
+      }, 2500);
+    },
     battleReturn() {
       const decided = !!this.battleSample.result;
       const message = decided
@@ -8870,14 +8912,21 @@ new Vue({
       const list = this.battlePlayLog[side] || (this.battlePlayLog[side] = []);
       const alreadyPlayed = list.some(e => e.card === card);
       if (!alreadyPlayed) list.push({ turn: this.battleSample.turn, card });
+      // 「相手が」等の側の接頭辞は付けない：ログ側の自分/相手バッジで区別するため。
+      // こうしておけば、この通知が相手クライアントへ同期された際も文言が破綻しない
+      // （以前は常に自分視点の文言のまま battleLog へ直接pushするだけで、Firebaseへも
+      // 一切公開されなかったため、相手の画面のログには「プレイした」という行自体が
+      // 一切現れなかった＝オラクル等の使用がバトルログに反映されない不具合の原因だった）。
+      const message = `「${this.fullName(card)}」をプレイした`;
       this.battleLog.push({
         turn: this.battleSample.turn,
         side,
         title: 'プレイ',
-        message: `「${this.fullName(card)}」を${side === 'self' ? '' : '相手が'}プレイした`,
+        message,
         cards: [card],
         icon: 'play',
       });
+      this._battlePublishNotice('プレイ', message, [card]);
     },
     _battleFireKamiEventKamiEffects(side, eventType, payload) {
       const kno = this._battleKamiNo(side);
@@ -9724,7 +9773,7 @@ new Vue({
       setTimeout(() => {
         const idx = this.battleToasts.findIndex(t => t.id === id);
         if (idx >= 0) this.battleToasts.splice(idx, 1);
-      }, 5000);
+      }, 12000);
     },
     /* 手番切替時、画面中央に「〇〇のターン」を一瞬表示する演出 */
     _battleFlashTurn(side) {
@@ -9772,8 +9821,11 @@ new Vue({
     _battlePublishNotice(title, message, cards) {
       const n = this.battleNet;
       if (!n || !n.on || !n.statePath || this._battleApplyingRemote) return;
-      // 自分のターンでない場合は publish しない（相手の操作で出した notice は相手側が publish する）
-      if (this.battleSample && this.battleSample.activeSide !== 'self') return;
+      // 自分のターンでない場合は publish しない（相手の操作で出した notice は相手側が publish する）。
+      // ただし、相手ターン中に自分の死亡時効果等が委譲実行されている間（_battleExecutingDelegatedAbility）
+      // は例外的に許可する。委譲実行中の通知は本当の持ち主である自分の画面でしか生成されないため、
+      // ここで公開しないと相手（手番側）の画面にその結果が一切伝わらなくなってしまう。
+      if (this.battleSample && this.battleSample.activeSide !== 'self' && !this._battleExecutingDelegatedAbility) return;
       try {
         const cardNos = (cards || []).map(c => c && c.no != null ? String(c.no) : null).filter(Boolean);
         const payload = {
@@ -9796,6 +9848,9 @@ new Vue({
       // 相手の行動もバトルログに記録する（従来は自分の battleShowNotice 経由のみ記録され、
       // 相手からの受信通知はログに反映されていなかった）
       this._battleAppendLogEntry(title, message, cards);
+      // 「プレイ」ログ（_battleTrackPlayedCard由来）はカードを出す度に毎回発生する背景ログのため、
+      // モーダル/トーストは出さずログへの記録のみ行う（元々ローカルでも通知はしていなかった）。
+      if (title === 'プレイ') return;
       if (this._battleNoticeIsBlocking(title, message)) {
         this.battleNotice = { title: '【相手】' + title, message, cards };
       } else {
@@ -11250,23 +11305,46 @@ new Vue({
         this.dslFieldCards().forEach(({ side, card }) => {
           const spec = this._dslGetSpec(card);
           if (!spec || !Array.isArray(spec.能力)) return;
-          spec.能力.forEach(ab => {
-            const matchStatic = this._dslAbilityMatchesTrigger(ab, '常在');
-            // 進化中：このカードが進化済(_evolved)の間だけ静的能力として効く
-            const matchEvolved = !!card._evolved && this._dslAbilityMatchesTrigger(ab, '進化中');
-            if (!matchStatic && !matchEvolved) return;
-            // 静的エンジンの各opは確認ダイアログを出さない（常時有効な受動効果のため）ので、
-            // 「任意」は素通りさせる。常時使える能力を単に持っているだけの表現として扱う
-            // （例：#60ハクレン③昇華値変更-1。従来はここで丸ごとスキップされ機能していなかった）
-            this._dslCurrentSource = card;
-            if (ab.条件 && !this.dslEvalCond(ab.条件)) return;
-            this.dslApplyStaticActions(ab.処理 || [], card, side, Number(ab.各ターン) || 0, String(ab.備考 || ''));
-          });
+          // 相手所有のカード（このクライアントの視点で'opp'）の常在能力を評価する間だけ、
+          // battleSample.self/oppとactiveSideを一時的に入れ替える。
+          // dslEvalCond/_dslEligible等は「対象側:self」を常にbattleSample.selfとして解決するため、
+          // 入れ替えないと相手のカードの条件（例：#109昏き紫の眷属「自分の墓地に紫/龍が3枚以上」）が
+          // 常にこちら側の墓地を見てしまい、相手のカードのキーワード付与判定がこちらの画面だけ
+          // 食い違う（同期していないように見える）不具合になっていた。
+          const needsSwap = side === 'opp';
+          if (needsSwap) this._dslSwapSelfOpp();
+          try {
+            spec.能力.forEach(ab => {
+              const matchStatic = this._dslAbilityMatchesTrigger(ab, '常在');
+              // 進化中：このカードが進化済(_evolved)の間だけ静的能力として効く
+              const matchEvolved = !!card._evolved && this._dslAbilityMatchesTrigger(ab, '進化中');
+              if (!matchStatic && !matchEvolved) return;
+              // 静的エンジンの各opは確認ダイアログを出さない（常時有効な受動効果のため）ので、
+              // 「任意」は素通りさせる。常時使える能力を単に持っているだけの表現として扱う
+              // （例：#60ハクレン③昇華値変更-1。従来はここで丸ごとスキップされ機能していなかった）
+              this._dslCurrentSource = card;
+              if (ab.条件 && !this.dslEvalCond(ab.条件)) return;
+              // 入れ替え済みの視点では、このカードは常に'self'側になる
+              this.dslApplyStaticActions(ab.処理 || [], card, 'self', Number(ab.各ターン) || 0, String(ab.備考 || ''));
+            });
+          } finally {
+            if (needsSwap) this._dslSwapSelfOpp();
+          }
         });
       } finally {
         this._dslCurrentSource = prevSource;
         this._dslRefreshingStatic = false;
       }
+    },
+    /* battleSample.self/opp（と手番視点のactiveSide）を一時的に入れ替える。
+       相手所有カードの常在能力評価を「そのカードの持ち主から見た自分/相手」で行うために使う。
+       このメソッドは対称なので、同じ処理を評価前後で2回呼べば必ず元に戻る。 */
+    _dslSwapSelfOpp() {
+      const bs = this.battleSample;
+      const tmp = bs.self;
+      this.$set(bs, 'self', bs.opp);
+      this.$set(bs, 'opp', tmp);
+      this.$set(bs, 'activeSide', bs.activeSide === 'self' ? 'opp' : 'self');
     },
     async _dslOpGrant(act, sourceCard, permanent) {
       const targets = await this.dslChooseTargets(this._dslMergeActNumRef(act.対象, act), `【${(act.付与 || []).join('・')}】を付与`);
@@ -11662,6 +11740,7 @@ new Vue({
           p[zpZone] = p[zpZone] || [];
           p[zpZone].push(card);
           this.battleOracleEffect = { card };
+          this._battlePublishOracleEffect(card.no);
           used.push(card);
           // 「オラクルを使用したとき」条件用（例：#84お節介な陰陽師③は自身①の無償使用でも発動する）
           this.battleFireKamiEvent(side, 'playOracleOrRelic', { card, kind: 'オラクル' });
@@ -12611,6 +12690,7 @@ new Vue({
       this._battleLastDelegateId = data.id;
       if (data.kind === 'returnToHand') { await this._battleHandleRemoteReturnToHandRequest(data); return; }
       if (data.kind === 'effectDisableHand') { await this._battleHandleRemoteEffectDisableHandRequest(data); return; }
+      if (data.kind === 'deathTrigger') { await this._battleHandleRemoteDeathTriggerRequest(data); return; }
       if (data.kind !== 'discard') return;
       const self = this.battleSample.self;
       const candidates = [...(self.hand || []), ...(self.legacies || [])].filter(Boolean);
@@ -13237,6 +13317,16 @@ new Vue({
       return this._battleQueueAndRunEffects(card, paidCost, '出現時');
     },
     battleRunDeathKeywordEffects(card) {
+      // このカードの本当の持ち主が実行中クライアント(手番側)と異なる場合（例：相手ターン中に
+      // 自分のカードが戦闘で破壊された時の【死亡時】）、DSLの「自分」は常に実行側自身を指すため、
+      // このままここで処理すると手番側（相手）の手札/デッキ等を誤って操作してしまう。
+      // 本当の持ち主のクライアントに実行そのものを委譲する（守護や相手選択破棄と同じ考え方）。
+      const cardOwnerSide = (card && (card._lastFieldSide || this._battleFieldCardSide(card))) || 'self';
+      const n = this.battleNet;
+      if (cardOwnerSide === 'opp' && n && n.on && !n.spectating) {
+        this._battleDelegateDeathTrigger(card);
+        return true;
+      }
       if (this._battleIsEffectDisabled(card)) {
         this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、死亡時効果は発動しません。`, [card]);
         return true;
@@ -13250,6 +13340,81 @@ new Vue({
       // フォールバックを試みない（出現時側と同じ理由。例：#39シジマは死亡時効果を持たない）
       if (this.effectSpecsReady && this._dslGetSpec(card)) return true;
       return this._battleQueueAndRunEffects(card, null, '死亡時');
+    },
+    /* 死亡時トリガーの委譲依頼側。カードの完全なデータをそのまま送る（相手クライアント側で
+       自分の墓地配列からNoで探そうとすると、通常の状態同期がまだ追いついておらず見つからない
+       ケースがあり、その場合に見つからない/古いデータのまま処理・公開してしまう競合があったため、
+       検索に頼らずこの時点の正しいカードデータをそのまま渡す方式にした）。
+       処理完了の合図が来るまで待つ（結果内容は不要）。 */
+    async _battleDelegateDeathTrigger(card) {
+      const n = this.battleNet;
+      const reqId = 't' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+      const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
+      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
+      this._battleDelegatePendingBegin();
+      try {
+        try {
+          await getDb().ref(reqPath).set({
+            id: reqId, forSeat: n.oppSeat, kind: 'deathTrigger',
+            cardNo: String(card.no), cardData: this._battleSerializeCard(card), ts: Date.now(),
+          });
+        } catch (e) {
+          console.error('[sync] 委譲依頼の送信失敗:', e);
+          this.$set(this.battleNet, 'lastError', '委譲依頼の送信失敗：' + (e && e.message));
+          return;
+        }
+        await new Promise((resolve) => {
+          const ansRef = getDb().ref(ansPath);
+          let settled = false;
+          const handler = (snap) => {
+            const val = snap.val();
+            if (val == null || settled) return;
+            settled = true;
+            ansRef.off('value', handler);
+            ansRef.remove().catch(() => {});
+            resolve();
+          };
+          ansRef.on('value', handler);
+        });
+      } finally {
+        this._battleDelegatePendingEnd();
+      }
+    },
+    /* 相手クライアントから届いた「死亡時トリガー実行」委譲依頼を受け取り、送られてきたカード
+       データ（死亡時点のもの）を使って自分自身のクライアントで死亡時効果を実行する（自分の手札/
+       デッキを対象にする処理も、ここでは正しく「自分」として解決される）。
+       自分の墓地配列から改めて探さない：通常の状態同期がまだ届いていない場合に見つからず、
+       誤った空振り公開をしてしまう競合を避けるため。 */
+    async _battleHandleRemoteDeathTriggerRequest(data) {
+      const n = this.battleNet;
+      const fix = (c) => (c && c.no != null) ? Object.assign({}, this.cardByNo[String(c.no)] || {}, c) : null;
+      const card = data.cardData ? fix(JSON.parse(JSON.stringify(data.cardData))) : (this.cardByNo[String(data.cardNo)] || null);
+      // 送られてきたデータの_lastFieldSideは委譲元（相手）視点の値なので、自分視点では常に'self'に
+      // 補正する（battleRunDoubledDeathEffect 等が _lastFieldSide を参照するため）。
+      if (card) card._lastFieldSide = 'self';
+      this._battleExecutingDelegatedAbility = true;
+      try {
+        if (card) {
+          if (this._battleIsEffectDisabled(card)) {
+            this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、死亡時効果は発動しません。`, [card]);
+          } else if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '死亡時')) {
+            await this.dslRunSpec(card, '死亡時', null);
+            this.battleRunDoubledDeathEffect(card);
+          } else if (!(this.effectSpecsReady && this._dslGetSpec(card))) {
+            this._battleQueueAndRunEffects(card, null, '死亡時');
+          }
+          this.dslRefreshStaticAbilities();
+        }
+      } finally {
+        this._battleExecutingDelegatedAbility = false;
+      }
+      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${data.id}`;
+      try {
+        await getDb().ref(ansPath).set({ ok: !!card, ts: Date.now() });
+      } catch (e) {
+        console.error('[sync] 委譲結果の送信失敗:', e);
+      }
+      this._battlePublishState();
     },
     /* カード上のキーワード効果を全列挙してキューへ。1つずつ順に処理する */
     _battleQueueAndRunEffects(card, paidCost, triggerLabel) {
@@ -13856,6 +14021,7 @@ new Vue({
       // このターンのカード使用枚数を加算（「2枚目以降」条件用）
       player.cardPlaysThisTurn = (Number(player.cardPlaysThisTurn) || 0) + 1;
       this.battleOracleEffect = { card };
+      this._battlePublishOracleEffect(card.no);
       this.hideCardHover();
       // 天力トリガー：オラクル使用（K5 オモイカネ）／昇華支払い（K1 スサノオ）
       this.battleFireKamiEvent('self', 'playOracleOrRelic', { card, kind: 'オラクル' });
@@ -14044,6 +14210,7 @@ new Vue({
         player[oracleZone].push(card);
         player.handCount = player.hand.length;
         this.battleOracleEffect = { card };
+        this._battlePublishOracleEffect(card.no);
         this.hideCardHover();
         if (!(await this.battleRunEnterKeywordEffects(card, 0))) this.battleKeywordGuide(card, 0);
         return;
