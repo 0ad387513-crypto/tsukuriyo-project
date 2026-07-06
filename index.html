@@ -5111,9 +5111,10 @@
       </div>
     </div>
 
-    <!-- オラクル発動 中央演出（閉じるボタンを押すまで残る／詳細プレビュー可） -->
+    <!-- オラクル発動 中央演出（閉じるボタンを押すまで残る／詳細プレビュー可。
+         相手が発動した場合は同期表示され、一定時間で自動的に消える） -->
     <div v-if="battleOracleEffect" class="oracle-effect-overlay">
-      <div class="oracle-effect-label">オラクル発動</div>
+      <div class="oracle-effect-label">{{ battleOracleEffect.remote ? '相手のオラクル発動' : 'オラクル発動' }}</div>
       <div class="oracle-effect-card"
            :style="cardImageUrl(battleOracleEffect.card) ? { backgroundImage: 'url(' + cardImageUrl(battleOracleEffect.card) + ')' } : {}"
            @click="openPreview(battleOracleEffect.card)"
@@ -6260,7 +6261,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.158',
+    BUILD_VERSION: '1.14.159',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8223,6 +8224,11 @@ new Vue({
         const skill2Ref = getDb().ref(skill2Path);
         const skill2Handler = snap => this._battleApplyRemoteSkill2(snap.val());
         skill2Ref.on('value', skill2Handler);
+        // オラクル発動の中央演出も同期：相手のオラクル発動も自分の画面で見られるようにする
+        const oracleEffectPath = path.replace(/\/state$/, '/oracleEffect');
+        const oracleEffectRef = getDb().ref(oracleEffectPath);
+        const oracleEffectHandler = snap => this._battleApplyRemoteOracleEffect(snap.val());
+        oracleEffectRef.on('value', oracleEffectHandler);
         // 在席状態（プレゼンス）：.info/connected + onDisconnect で自分の切断を検知させ、
         // 相手側の在席パスを購読することで「相手が切断した」ことを能動的に把握できるようにする
         const presenceBase = path.replace(/\/state$/, '/presence');
@@ -8250,6 +8256,7 @@ new Vue({
           try { pickRef.off('value', pickHandler); } catch (e) {}
           try { delegateRef.off('value', delegateHandler); } catch (e) {}
           try { skill2Ref.off('value', skill2Handler); } catch (e) {}
+          try { oracleEffectRef.off('value', oracleEffectHandler); } catch (e) {}
           try { connectedRef.off('value', connectedHandler); } catch (e) {}
           try { oppPresenceRef.off('value', presenceHandler); } catch (e) {}
           try { myPresenceRef.onDisconnect().cancel(); } catch (e) {}
@@ -8295,10 +8302,15 @@ new Vue({
         const skill2Ref = getDb().ref(skill2Path);
         const skill2Handler = snap => this._battleApplyRemoteSkill2(snap.val());
         skill2Ref.on('value', skill2Handler);
+        const oracleEffectPath = path.replace(/\/state$/, '/oracleEffect');
+        const oracleEffectRef = getDb().ref(oracleEffectPath);
+        const oracleEffectHandler = snap => this._battleApplyRemoteOracleEffect(snap.val());
+        oracleEffectRef.on('value', oracleEffectHandler);
         this.battleNet._unsub = () => {
           ref.off('value', handler);
           try { noticeRef.off('value', noticeHandler); } catch (e) {}
           try { skill2Ref.off('value', skill2Handler); } catch (e) {}
+          try { oracleEffectRef.off('value', oracleEffectHandler); } catch (e) {}
         };
       } catch (e) {
         console.error('[spectate] 購読開始失敗:', e);
@@ -8616,6 +8628,36 @@ new Vue({
       this._battleLastSkill2At = payload.ts || Date.now();
       const kami = this.cardByNo[String(payload.kamiNo)] || null;
       this._battleShowSkill2Closeup(kami, payload.skillName);
+    },
+    /* オラクル発動の中央演出を相手クライアントにも同期する（呼び出し側でbattleOracleEffectを
+       セットした直後に、そのカードのNoを渡して呼ぶ） */
+    _battlePublishOracleEffect(cardNo) {
+      const n = this.battleNet;
+      if (!n || !n.on || !n.statePath || n.spectating) return;
+      try {
+        const path = n.statePath.replace(/\/state$/, '/oracleEffect');
+        getDb().ref(path).set({
+          writer: n.mySeat, cardNo: cardNo != null ? String(cardNo) : null, ts: Date.now(),
+        }).catch(() => {});
+      } catch (e) { /* silent */ }
+    },
+    /* 相手クライアントから届いたオラクル発動演出を受け取り、一定時間だけ表示する。
+       発動した本人（相手）は「閉じる」ボタンで手動で消すまで表示され続ける仕様のままだが、
+       受信側（見ているだけの自分）はいつまでも残ると邪魔なので自動的に消す。 */
+    _battleApplyRemoteOracleEffect(payload) {
+      const n = this.battleNet;
+      if (!payload || !n || !n.on) return;
+      if (!n.spectating && String(payload.writer) === String(n.mySeat)) return; // 自分のは無視
+      if (payload.ts && payload.ts <= (this._battleLastOracleEffectAt || 0)) return;
+      this._battleLastOracleEffectAt = payload.ts || Date.now();
+      const card = this.cardByNo[String(payload.cardNo)] || null;
+      if (!card) return;
+      const id = (this._battleOracleEffectSeq = (this._battleOracleEffectSeq || 0) + 1);
+      this.battleOracleEffect = { card, remote: true, id };
+      clearTimeout(this._battleOracleEffectRemoteT);
+      this._battleOracleEffectRemoteT = setTimeout(() => {
+        if (this.battleOracleEffect && this.battleOracleEffect.id === id) this.battleOracleEffect = null;
+      }, 2500);
     },
     battleReturn() {
       const decided = !!this.battleSample.result;
@@ -11698,6 +11740,7 @@ new Vue({
           p[zpZone] = p[zpZone] || [];
           p[zpZone].push(card);
           this.battleOracleEffect = { card };
+          this._battlePublishOracleEffect(card.no);
           used.push(card);
           // 「オラクルを使用したとき」条件用（例：#84お節介な陰陽師③は自身①の無償使用でも発動する）
           this.battleFireKamiEvent(side, 'playOracleOrRelic', { card, kind: 'オラクル' });
@@ -13978,6 +14021,7 @@ new Vue({
       // このターンのカード使用枚数を加算（「2枚目以降」条件用）
       player.cardPlaysThisTurn = (Number(player.cardPlaysThisTurn) || 0) + 1;
       this.battleOracleEffect = { card };
+      this._battlePublishOracleEffect(card.no);
       this.hideCardHover();
       // 天力トリガー：オラクル使用（K5 オモイカネ）／昇華支払い（K1 スサノオ）
       this.battleFireKamiEvent('self', 'playOracleOrRelic', { card, kind: 'オラクル' });
@@ -14166,6 +14210,7 @@ new Vue({
         player[oracleZone].push(card);
         player.handCount = player.hand.length;
         this.battleOracleEffect = { card };
+        this._battlePublishOracleEffect(card.no);
         this.hideCardHover();
         if (!(await this.battleRunEnterKeywordEffects(card, 0))) this.battleKeywordGuide(card, 0);
         return;
