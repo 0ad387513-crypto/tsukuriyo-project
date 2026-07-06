@@ -6261,7 +6261,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.160',
+    BUILD_VERSION: '1.14.161',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -13345,40 +13345,43 @@ new Vue({
        自分の墓地配列からNoで探そうとすると、通常の状態同期がまだ追いついておらず見つからない
        ケースがあり、その場合に見つからない/古いデータのまま処理・公開してしまう競合があったため、
        検索に頼らずこの時点の正しいカードデータをそのまま渡す方式にした）。
-       処理完了の合図が来るまで待つ（結果内容は不要）。 */
+       処理完了の合図が来るまで待つ（結果内容は不要）。
+       注意：他の委譲（バウンス等）と異なり、ここでは_battleDelegatePendingBegin/Endで
+       自動公開を保留しない。カードを場から取り除く処理(battleDestroyLegacy)は既にこの
+       委譲呼び出しより前、こちらのクライアント側で正しく完了しており、相手の委譲実行
+       （手札/デッキのみ操作、場のデータには触れない）と競合しないため。保留してしまうと、
+       応答待ちの間ずっとこの正しい破壊結果の公開が遅れ、相手の画面では「死亡時効果は発動した
+       のにレガシーは場に残ったまま」に見えてしまう不具合になっていた。 */
     async _battleDelegateDeathTrigger(card) {
       const n = this.battleNet;
       const reqId = 't' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
       const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
       const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
-      this._battleDelegatePendingBegin();
+      // 破壊による場からの除去は既に完了しているので、応答を待たずにまず今の状態を公開する
+      this._battlePublishState();
       try {
-        try {
-          await getDb().ref(reqPath).set({
-            id: reqId, forSeat: n.oppSeat, kind: 'deathTrigger',
-            cardNo: String(card.no), cardData: this._battleSerializeCard(card), ts: Date.now(),
-          });
-        } catch (e) {
-          console.error('[sync] 委譲依頼の送信失敗:', e);
-          this.$set(this.battleNet, 'lastError', '委譲依頼の送信失敗：' + (e && e.message));
-          return;
-        }
-        await new Promise((resolve) => {
-          const ansRef = getDb().ref(ansPath);
-          let settled = false;
-          const handler = (snap) => {
-            const val = snap.val();
-            if (val == null || settled) return;
-            settled = true;
-            ansRef.off('value', handler);
-            ansRef.remove().catch(() => {});
-            resolve();
-          };
-          ansRef.on('value', handler);
+        await getDb().ref(reqPath).set({
+          id: reqId, forSeat: n.oppSeat, kind: 'deathTrigger',
+          cardNo: String(card.no), cardData: this._battleSerializeCard(card), ts: Date.now(),
         });
-      } finally {
-        this._battleDelegatePendingEnd();
+      } catch (e) {
+        console.error('[sync] 委譲依頼の送信失敗:', e);
+        this.$set(this.battleNet, 'lastError', '委譲依頼の送信失敗：' + (e && e.message));
+        return;
       }
+      await new Promise((resolve) => {
+        const ansRef = getDb().ref(ansPath);
+        let settled = false;
+        const handler = (snap) => {
+          const val = snap.val();
+          if (val == null || settled) return;
+          settled = true;
+          ansRef.off('value', handler);
+          ansRef.remove().catch(() => {});
+          resolve();
+        };
+        ansRef.on('value', handler);
+      });
     },
     /* 相手クライアントから届いた「死亡時トリガー実行」委譲依頼を受け取り、送られてきたカード
        データ（死亡時点のもの）を使って自分自身のクライアントで死亡時効果を実行する（自分の手札/
