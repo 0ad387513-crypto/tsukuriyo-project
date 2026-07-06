@@ -6260,7 +6260,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.155',
+    BUILD_VERSION: '1.14.156',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -9772,8 +9772,11 @@ new Vue({
     _battlePublishNotice(title, message, cards) {
       const n = this.battleNet;
       if (!n || !n.on || !n.statePath || this._battleApplyingRemote) return;
-      // 自分のターンでない場合は publish しない（相手の操作で出した notice は相手側が publish する）
-      if (this.battleSample && this.battleSample.activeSide !== 'self') return;
+      // 自分のターンでない場合は publish しない（相手の操作で出した notice は相手側が publish する）。
+      // ただし、相手ターン中に自分の死亡時効果等が委譲実行されている間（_battleExecutingDelegatedAbility）
+      // は例外的に許可する。委譲実行中の通知は本当の持ち主である自分の画面でしか生成されないため、
+      // ここで公開しないと相手（手番側）の画面にその結果が一切伝わらなくなってしまう。
+      if (this.battleSample && this.battleSample.activeSide !== 'self' && !this._battleExecutingDelegatedAbility) return;
       try {
         const cardNos = (cards || []).map(c => c && c.no != null ? String(c.no) : null).filter(Boolean);
         const payload = {
@@ -12611,6 +12614,7 @@ new Vue({
       this._battleLastDelegateId = data.id;
       if (data.kind === 'returnToHand') { await this._battleHandleRemoteReturnToHandRequest(data); return; }
       if (data.kind === 'effectDisableHand') { await this._battleHandleRemoteEffectDisableHandRequest(data); return; }
+      if (data.kind === 'deathTrigger') { await this._battleHandleRemoteDeathTriggerRequest(data); return; }
       if (data.kind !== 'discard') return;
       const self = this.battleSample.self;
       const candidates = [...(self.hand || []), ...(self.legacies || [])].filter(Boolean);
@@ -13237,6 +13241,16 @@ new Vue({
       return this._battleQueueAndRunEffects(card, paidCost, '出現時');
     },
     battleRunDeathKeywordEffects(card) {
+      // このカードの本当の持ち主が実行中クライアント(手番側)と異なる場合（例：相手ターン中に
+      // 自分のカードが戦闘で破壊された時の【死亡時】）、DSLの「自分」は常に実行側自身を指すため、
+      // このままここで処理すると手番側（相手）の手札/デッキ等を誤って操作してしまう。
+      // 本当の持ち主のクライアントに実行そのものを委譲する（守護や相手選択破棄と同じ考え方）。
+      const cardOwnerSide = (card && (card._lastFieldSide || this._battleFieldCardSide(card))) || 'self';
+      const n = this.battleNet;
+      if (cardOwnerSide === 'opp' && n && n.on && !n.spectating) {
+        this._battleDelegateDeathTrigger(card);
+        return true;
+      }
       if (this._battleIsEffectDisabled(card)) {
         this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、死亡時効果は発動しません。`, [card]);
         return true;
@@ -13250,6 +13264,81 @@ new Vue({
       // フォールバックを試みない（出現時側と同じ理由。例：#39シジマは死亡時効果を持たない）
       if (this.effectSpecsReady && this._dslGetSpec(card)) return true;
       return this._battleQueueAndRunEffects(card, null, '死亡時');
+    },
+    /* 死亡時トリガーの委譲依頼側。カードの完全なデータをそのまま送る（相手クライアント側で
+       自分の墓地配列からNoで探そうとすると、通常の状態同期がまだ追いついておらず見つからない
+       ケースがあり、その場合に見つからない/古いデータのまま処理・公開してしまう競合があったため、
+       検索に頼らずこの時点の正しいカードデータをそのまま渡す方式にした）。
+       処理完了の合図が来るまで待つ（結果内容は不要）。 */
+    async _battleDelegateDeathTrigger(card) {
+      const n = this.battleNet;
+      const reqId = 't' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+      const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
+      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
+      this._battleDelegatePendingBegin();
+      try {
+        try {
+          await getDb().ref(reqPath).set({
+            id: reqId, forSeat: n.oppSeat, kind: 'deathTrigger',
+            cardNo: String(card.no), cardData: this._battleSerializeCard(card), ts: Date.now(),
+          });
+        } catch (e) {
+          console.error('[sync] 委譲依頼の送信失敗:', e);
+          this.$set(this.battleNet, 'lastError', '委譲依頼の送信失敗：' + (e && e.message));
+          return;
+        }
+        await new Promise((resolve) => {
+          const ansRef = getDb().ref(ansPath);
+          let settled = false;
+          const handler = (snap) => {
+            const val = snap.val();
+            if (val == null || settled) return;
+            settled = true;
+            ansRef.off('value', handler);
+            ansRef.remove().catch(() => {});
+            resolve();
+          };
+          ansRef.on('value', handler);
+        });
+      } finally {
+        this._battleDelegatePendingEnd();
+      }
+    },
+    /* 相手クライアントから届いた「死亡時トリガー実行」委譲依頼を受け取り、送られてきたカード
+       データ（死亡時点のもの）を使って自分自身のクライアントで死亡時効果を実行する（自分の手札/
+       デッキを対象にする処理も、ここでは正しく「自分」として解決される）。
+       自分の墓地配列から改めて探さない：通常の状態同期がまだ届いていない場合に見つからず、
+       誤った空振り公開をしてしまう競合を避けるため。 */
+    async _battleHandleRemoteDeathTriggerRequest(data) {
+      const n = this.battleNet;
+      const fix = (c) => (c && c.no != null) ? Object.assign({}, this.cardByNo[String(c.no)] || {}, c) : null;
+      const card = data.cardData ? fix(JSON.parse(JSON.stringify(data.cardData))) : (this.cardByNo[String(data.cardNo)] || null);
+      // 送られてきたデータの_lastFieldSideは委譲元（相手）視点の値なので、自分視点では常に'self'に
+      // 補正する（battleRunDoubledDeathEffect 等が _lastFieldSide を参照するため）。
+      if (card) card._lastFieldSide = 'self';
+      this._battleExecutingDelegatedAbility = true;
+      try {
+        if (card) {
+          if (this._battleIsEffectDisabled(card)) {
+            this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、死亡時効果は発動しません。`, [card]);
+          } else if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '死亡時')) {
+            await this.dslRunSpec(card, '死亡時', null);
+            this.battleRunDoubledDeathEffect(card);
+          } else if (!(this.effectSpecsReady && this._dslGetSpec(card))) {
+            this._battleQueueAndRunEffects(card, null, '死亡時');
+          }
+          this.dslRefreshStaticAbilities();
+        }
+      } finally {
+        this._battleExecutingDelegatedAbility = false;
+      }
+      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${data.id}`;
+      try {
+        await getDb().ref(ansPath).set({ ok: !!card, ts: Date.now() });
+      } catch (e) {
+        console.error('[sync] 委譲結果の送信失敗:', e);
+      }
+      this._battlePublishState();
     },
     /* カード上のキーワード効果を全列挙してキューへ。1つずつ順に処理する */
     _battleQueueAndRunEffects(card, paidCost, triggerLabel) {
