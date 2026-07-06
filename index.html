@@ -6261,7 +6261,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.161',
+    BUILD_VERSION: '1.14.162',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -11513,6 +11513,12 @@ new Vue({
           // オンライン対戦中：相手の手札は非公開のため、実際の移動処理は相手クライアント
           // 自身に委任する（こちらのローカルな bs.opp.hand への追加は相手の実データに
           // 反映されないため、委任せずに直接動かすとカードが消失してしまう）。
+          // ただし、場からの除去だけはこちら側のローカルミラーでも直ちに反映しておく必要がある。
+          // これをしないと、委譲完了後にこちらが行う公開が「まだ場に残っている」という
+          // 古いミラーのままの状態を送ってしまい、相手の正しい除去結果を上書きして場に
+          // カードが復活してしまう（手札には既に追加済みのため、見た目上カードが
+          // 増殖したように見えるバグになっていた）。
+          this._battleRemoveCardFromLocalFieldMirror(c, 'opp');
           await this._battleDelegateReturnToOppHand(c);
         } else {
           this._dslMoveCardToZone(c, destZone, cardSide);
@@ -12675,7 +12681,13 @@ new Vue({
           ansRef.on('value', handler);
         });
         // 相手（本当の持ち主）が既に自分のデータを移動＆公開済み。通知表示用にカード参照だけ復元する。
-        return cardNos.map(no => this.cardByNo[String(no)]).filter(Boolean);
+        // 選択肢にはレガシー破壊（場のカード＝公開情報）も含まれるため、こちら側のローカルミラー
+        // （bs.opp.legacies）にまだ残っている場合は直ちに除去しておく。除去しないと、委譲完了後に
+        // こちらが行う公開が「まだ場に残っている」という古いミラーのままの状態を送ってしまい、
+        // 相手の正しい破壊結果を上書きしてカードが場に復活してしまう（バウンス委譲と同じ問題）。
+        const movedCards = cardNos.map(no => this.cardByNo[String(no)]).filter(Boolean);
+        movedCards.forEach(c => this._battleRemoveCardFromLocalFieldMirror(c, 'opp'));
+        return movedCards;
       } finally {
         this._battleDelegatePendingEnd();
       }
@@ -12746,6 +12758,24 @@ new Vue({
         console.error('[sync] 委譲結果の送信失敗:', e);
       }
       this._battlePublishState();
+    },
+    /* 指定サイドのローカルミラー（legacies/relics）からカードを除去するだけの処理。
+       移動先は決めない（＝どこにも積み直さない）：バウンス委譲・相手選択破棄委譲のように、
+       実際の移動先（相手の実手札/実墓地）がこちらのローカルデータには存在しない場合に、
+       場からの除去だけを先に反映しておくために使う。
+       まず参照一致（バウンスのように選択時点の実インスタンスがある場合）を試し、
+       見つからなければNo一致（相手選択破棄の委譲結果のようにcardByNoの汎用オブジェクトしか
+       手元に無い場合）にフォールバックする。 */
+    _battleRemoveCardFromLocalFieldMirror(card, side) {
+      const p = this.battleSample[side];
+      if (!p || !card) return;
+      ['legacies', 'relics'].forEach(zone => {
+        const arr = p[zone];
+        if (!Array.isArray(arr)) return;
+        let idx = arr.indexOf(card);
+        if (idx < 0 && card.no != null) idx = arr.findIndex(c => c && String(c.no) === String(card.no));
+        if (idx >= 0) arr.splice(idx, 1);
+      });
     },
     /* バウンス効果で「相手の場のカードを相手の手札に戻す」場合の委譲依頼側。
        対象の選択（どのカードを戻すか）は発動側が既に済ませており、ここでは実際の移動処理のみを
