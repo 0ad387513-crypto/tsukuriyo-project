@@ -6403,7 +6403,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.170',
+    BUILD_VERSION: '1.14.171',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8561,7 +8561,11 @@ new Vue({
     /* ===== BGM：画面カテゴリ（対戦画面／それ以外）ごとの自動選曲＋手動選択・ループ再生 =====
        <audio loop>だとループ境界でブラウザの再シーク待ちが発生し「プチッ」と途切れて聞こえるため、
        Web Audio API（AudioBufferSourceNode）で全体を事前デコードし、サンプル単位でギャップレスに
-       ループさせる。デコード済みバッファはキーごとにキャッシュし、2回目以降は再デコードしない。 */
+       ループさせる。さらに曲全体を通しで再生してから頭に戻るだけでは不自然なので、波形のエネルギー
+       相関から曲中の似た区間（＝自然に繋がりそうな場所）を探し、その境界に短いクロスフェードを
+       焼き込んだ専用ループバッファを作って使う。初回はイントロ込みで頭から再生し、検出したループ
+       終了点に達したタイミングでクロスフェード済みループバッファへ引き継ぐ。
+       デコード・解析結果はキーごとにキャッシュし、2回目以降は再計算しない。 */
     _bgmAudioCtx() {
       if (!this._bgmCtx) {
         const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -8573,11 +8577,11 @@ new Vue({
       return this._bgmCtx;
     },
     _bgmStopCurrentSource() {
-      if (this._bgmSourceNode) {
-        try { this._bgmSourceNode.stop(); } catch (e) { /* 既に停止済みでも無視 */ }
-        try { this._bgmSourceNode.disconnect(); } catch (e) { /* noop */ }
-        this._bgmSourceNode = null;
-      }
+      (this._bgmSourceNodes || []).forEach(node => {
+        try { node.stop(); } catch (e) { /* 既に停止済みでも無視 */ }
+        try { node.disconnect(); } catch (e) { /* noop */ }
+      });
+      this._bgmSourceNodes = [];
     },
     async _bgmLoadBuffer(key) {
       this._bgmBufferCache = this._bgmBufferCache || {};
@@ -8589,17 +8593,29 @@ new Vue({
       const resp = await fetch(src);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const arrayBuf = await resp.arrayBuffer();
-      const audioBuf = await ctx.decodeAudioData(arrayBuf);
-      audioBuf._loopBounds = this._bgmDetectLoopBounds(audioBuf);
-      this._bgmBufferCache[key] = audioBuf;
-      return audioBuf;
+      const buffer = await ctx.decodeAudioData(arrayBuf);
+      const silenceBounds = this._bgmDetectSilenceTrim(buffer);
+      let loopBuffer = null;
+      let loopEndSec = silenceBounds.loopEnd;
+      if (entry.loop !== false) {
+        const point = this._bgmDetectLoopPoint(buffer, silenceBounds.loopStart, silenceBounds.loopEnd);
+        const loopStartSec = point ? point.loopStartSec : silenceBounds.loopStart;
+        loopEndSec = point ? point.loopEndSec : silenceBounds.loopEnd;
+        try {
+          loopBuffer = this._bgmBuildLoopBuffer(ctx, buffer, loopStartSec, loopEndSec, 0.12);
+        } catch (e) {
+          console.warn(`[bgm] "${key}" のループバッファ生成に失敗:`, e && e.message);
+          loopBuffer = null;
+        }
+      }
+      const media = { buffer, loopBuffer, loopEndSec, silenceBounds };
+      this._bgmBufferCache[key] = media;
+      return media;
     },
-    /* MP3はエンコーダの仕様上、ファイルの先頭・末尾にほぼ無音のパディングが数十ms程度入ることが多く、
-       これがループ境界の「間」に聞こえる主原因になる。生PCMを走査して実際に音が始まる/終わる位置を
-       検出し、ループの巻き戻し先（loopStart）と巻き戻すタイミング（loopEnd）をそこに合わせることで、
-       無音パディングを読み飛ばしてループさせる（曲が意図的に無音のイントロを持つ場合は誤検出を避けるため、
-       閾値は「ほぼ完全な無音（エンコーダの0埋め）」だけに反応するごく小さい値にしてある）。 */
-    _bgmDetectLoopBounds(buffer) {
+    /* MP3はエンコーダの仕様上、ファイルの先頭・末尾にほぼ無音のパディングが数十ms程度入ることが多いため、
+       生PCMを走査して実際に音が始まる/終わる位置を検出する（曲が意図的に無音のイントロを持つ場合の
+       誤検出を避けるため、閾値は「ほぼ完全な無音（エンコーダの0埋め）」だけに反応するごく小さい値）。 */
+    _bgmDetectSilenceTrim(buffer) {
       const SILENCE_THRESHOLD = 0.0015;
       const data = buffer.getChannelData(0);
       const len = data.length;
@@ -8608,19 +8624,109 @@ new Vue({
       let end = len - 1;
       while (end > start && Math.abs(data[end]) < SILENCE_THRESHOLD) end--;
       const sr = buffer.sampleRate;
-      // 検出に失敗した（曲全体が無音扱いになった等）場合はトリムせず全体を使う
       if (end <= start) return { loopStart: 0, loopEnd: buffer.duration };
       return { loopStart: start / sr, loopEnd: (end + 1) / sr };
     },
-    /* 指定キーのBGMをループ再生に切り替える（非同期：デコード完了後に再生開始） */
+    /* 曲中で「自然に繋がりそうな場所」を自動探索する。トリム済み区間を約50ms単位のブロックに分け、
+       各ブロックのRMSエネルギーの推移（音量の起伏パターン）を比較し、終盤のある地点から続く波形が
+       それより前のある地点から続く波形と最もよく似ている(s, e)のペアを探す。見つかった(s, e)を
+       loopStart/loopEndの候補とする。似ている区間が見つからない場合はnullを返し、呼び出し元は
+       トリム区間全体をそのままループに使う（無音カットのみのフォールバック）。 */
+    _bgmDetectLoopPoint(buffer, trimStartSec, trimEndSec) {
+      const sr = buffer.sampleRate;
+      const data = buffer.getChannelData(0);
+      const trimStart = Math.max(0, Math.round(trimStartSec * sr));
+      const trimEnd = Math.min(data.length, Math.round(trimEndSec * sr));
+      const regionLen = trimEnd - trimStart;
+      const blockSize = Math.round(sr * 0.05); // 約50ms
+      const numBlocks = Math.floor(regionLen / blockSize);
+      if (numBlocks < 60 || blockSize <= 0) return null; // 短すぎる曲は対象外
+      const energy = new Float32Array(numBlocks);
+      for (let b = 0; b < numBlocks; b++) {
+        let sum = 0;
+        const off = trimStart + b * blockSize;
+        for (let i = 0; i < blockSize; i++) { const v = data[off + i] || 0; sum += v * v; }
+        energy[b] = Math.sqrt(sum / blockSize);
+      }
+      const winBlocks = Math.max(6, Math.round(1 / 0.05)); // 比較窓 約1秒分
+      const startMin = Math.floor(numBlocks * 0.05);
+      const startMax = Math.floor(numBlocks * 0.75) - winBlocks;
+      const endMin = Math.floor(numBlocks * 0.55);
+      const endMax = numBlocks - winBlocks - Math.floor(numBlocks * 0.02) - 1;
+      if (startMax <= startMin || endMax <= endMin) return null;
+      const stride = Math.max(1, Math.round(numBlocks / 300)); // 候補数を抑えて計算量を制限
+      let best = null;
+      for (let e = endMin; e <= endMax; e += stride) {
+        for (let s = startMin; s <= startMax; s += stride) {
+          if (e - s < winBlocks * 2) continue;
+          const score = this._bgmWindowCorrelation(energy, s, e, winBlocks);
+          if (!best || score > best.score) best = { s, e, score };
+        }
+      }
+      if (!best || best.score < 0.6) return null; // 十分似た区間が無ければ諦める
+      let refined = best;
+      for (let e = Math.max(endMin, best.e - stride); e <= Math.min(endMax, best.e + stride); e++) {
+        for (let s = Math.max(startMin, best.s - stride); s <= Math.min(startMax, best.s + stride); s++) {
+          if (e - s < winBlocks * 2) continue;
+          const score = this._bgmWindowCorrelation(energy, s, e, winBlocks);
+          if (score > refined.score) refined = { s, e, score };
+        }
+      }
+      return {
+        loopStartSec: (trimStart + refined.s * blockSize) / sr,
+        loopEndSec: (trimStart + refined.e * blockSize) / sr,
+        score: refined.score,
+      };
+    },
+    /* 2つのエネルギー系列の窓（長さwinBlocks）がどれだけ似ているか（コサイン類似度、1に近いほど類似） */
+    _bgmWindowCorrelation(energy, s, e, winBlocks) {
+      let dot = 0, na = 0, nb = 0;
+      for (let k = 0; k < winBlocks; k++) {
+        const a = energy[s + k] || 0;
+        const b = energy[e + k] || 0;
+        dot += a * b; na += a * a; nb += b * b;
+      }
+      if (na <= 0 || nb <= 0) return -1;
+      return dot / Math.sqrt(na * nb);
+    },
+    /* [loopStartSec, loopEndSec) を切り出し、先頭crossfadeSec秒を「ループ末尾直前の波形」と
+       イコールパワーでクロスフェードした専用バッファを作る（ループ境界の繋ぎ目を滑らかにする定番の手法）。 */
+    _bgmBuildLoopBuffer(ctx, buffer, loopStartSec, loopEndSec, crossfadeSec) {
+      const sr = buffer.sampleRate;
+      const startSample = Math.max(0, Math.round(loopStartSec * sr));
+      const endSample = Math.min(buffer.length, Math.round(loopEndSec * sr));
+      const regionLen = endSample - startSample;
+      if (regionLen <= 0) throw new Error('invalid loop region');
+      const fadeLen = Math.max(0, Math.min(Math.round(crossfadeSec * sr), Math.floor(regionLen / 2), endSample));
+      const nCh = buffer.numberOfChannels;
+      const outBuf = ctx.createBuffer(nCh, regionLen, sr);
+      for (let c = 0; c < nCh; c++) {
+        const src = buffer.getChannelData(c);
+        const out = outBuf.getChannelData(c);
+        for (let i = 0; i < regionLen; i++) out[i] = src[startSample + i];
+        for (let i = 0; i < fadeLen; i++) {
+          const t = i / fadeLen;
+          const fadeIn = Math.sin(t * Math.PI / 2);
+          const fadeOut = Math.cos(t * Math.PI / 2);
+          const head = src[startSample + i];
+          const tailIdx = endSample - fadeLen + i;
+          const tail = (tailIdx >= 0 && tailIdx < src.length) ? src[tailIdx] : 0;
+          out[i] = head * fadeIn + tail * fadeOut;
+        }
+      }
+      return outBuf;
+    },
+    /* 指定キーのBGMをループ再生に切り替える（非同期：デコード・解析完了後に再生開始）。
+       ループ対象の曲は「頭からloopEndSecまでを1回だけ再生（イントロ含む）」→
+       「loopEndSecに達した瞬間にクロスフェード済みループバッファへ引き継いで無限ループ」の2段構成。 */
     async _bgmPlay(key) {
       const entry = BGM_FILES[key];
       if (!entry) return;
       const loadToken = (this._bgmLoadSeq = (this._bgmLoadSeq || 0) + 1);
       this.bgmCurrentKey = key; // 同カテゴリ判定等が即座に効くよう先に確定（従来のfire-and-forgetと同等の挙動）
-      let buffer;
+      let media;
       try {
-        buffer = await this._bgmLoadBuffer(key);
+        media = await this._bgmLoadBuffer(key);
       } catch (err) {
         console.warn(`[bgm] "${key}" の読み込みに失敗:`, err && err.message);
         return;
@@ -8630,17 +8736,34 @@ new Vue({
       if (ctx.state === 'suspended') { try { await ctx.resume(); } catch (e) { /* 次のユーザー操作で再試行される */ } }
       if (loadToken !== this._bgmLoadSeq) return;
       this._bgmStopCurrentSource();
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.loop = entry.loop !== false; // 結果BGMなどは1回再生を許可
-      if (source.loop && buffer._loopBounds) {
-        // ループ2周目以降の巻き戻し先だけをトリムする。初回再生は0（曲頭）から通しで流す。
-        source.loopStart = buffer._loopBounds.loopStart;
-        source.loopEnd = buffer._loopBounds.loopEnd;
+      const shouldLoop = entry.loop !== false;
+      const nodes = [];
+      const startAt = ctx.currentTime;
+      if (shouldLoop && media.loopBuffer) {
+        const introSource = ctx.createBufferSource();
+        introSource.buffer = media.buffer;
+        introSource.connect(this._bgmGain);
+        introSource.start(startAt, 0, media.loopEndSec);
+        nodes.push(introSource);
+        const loopSource = ctx.createBufferSource();
+        loopSource.buffer = media.loopBuffer;
+        loopSource.loop = true;
+        loopSource.connect(this._bgmGain);
+        loopSource.start(startAt + media.loopEndSec);
+        nodes.push(loopSource);
+      } else {
+        const source = ctx.createBufferSource();
+        source.buffer = media.buffer;
+        source.loop = shouldLoop;
+        if (shouldLoop && media.silenceBounds) {
+          source.loopStart = media.silenceBounds.loopStart;
+          source.loopEnd = media.silenceBounds.loopEnd;
+        }
+        source.connect(this._bgmGain);
+        source.start(startAt);
+        nodes.push(source);
       }
-      source.connect(this._bgmGain);
-      source.start(0);
-      this._bgmSourceNode = source;
+      this._bgmSourceNodes = nodes;
     },
     _battlePlayResultSound(result) {
       if (!result || !result.outcome) return;
