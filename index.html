@@ -1099,8 +1099,11 @@
   /* トップ画面：主要モードカード（4枚グリッド） */
   .top-mode-grid {
     position: relative; z-index: 1;
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 16px; width: min(760px, 92vw); margin-bottom: 28px;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px; width: min(640px, 92vw); margin-bottom: 28px;
+  }
+  @media (max-width: 560px) {
+    .top-mode-grid { grid-template-columns: 1fr; }
   }
   .top-mode-card {
     display: flex; flex-direction: column; align-items: center; gap: 6px;
@@ -1122,8 +1125,6 @@
   .top-mode-card.shield:hover { border-color: #b090e0; }
   .top-mode-card.game { background: linear-gradient(160deg, #2a5a4a, #1e4438); }
   .top-mode-card.game:hover { border-color: #7ad0a8; }
-  .top-mode-card.howto { background: linear-gradient(160deg, #5a4a2a, #443620); }
-  .top-mode-card.howto:hover { border-color: #e0c07a; }
   /* トップ画面：開発者・動作確認用ツール（折りたたみ） */
   .top-devtools { position: relative; z-index: 1; width: min(420px, 92vw); }
   .top-devtools-toggle {
@@ -1147,6 +1148,12 @@
     transition: background 0.12s;
   }
   .back-to-top-btn:hover { background: #3a3f4d; color: #ffd; }
+  .glossary-open-btn {
+    background: #3a3120; border: 1px solid #6a5a3a; color: #e0c07a; cursor: pointer;
+    padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600;
+    transition: background 0.12s; margin-left: 8px;
+  }
+  .glossary-open-btn:hover { background: #4a3f28; color: #ffd88a; }
 
   /* ===== シールド戦ボタン（ヘッダー右上） ===== */
   .shield-open-btn {
@@ -3573,7 +3580,7 @@
   <!-- ===== ツクリヨオンライン トップメニュー ===== -->
   <div v-if="appView === 'top'" class="top-menu">
     <span v-for="i in 12" :key="'topPetal'+i" class="top-menu-petal"
-          :style="{ left: ((i*83)%100) + '%', animationDelay: ((i%6)*1.1) + 's', animationDuration: (9 + (i%5)*1.6) + 's' }"></span>
+          :style="{ left: (i % 2 === 0 ? (i*7)%15 : 85 + (i*7)%15) + '%', animationDelay: ((i%6)*1.1) + 's', animationDuration: (9 + (i%5)*1.6) + 's' }"></span>
     <div class="top-menu-hero">
       <div class="top-menu-title">ツクリヨオンライン</div>
       <div class="top-menu-subtitle">— TSUKURIYO ONLINE —</div>
@@ -3597,11 +3604,6 @@
         <span class="top-mode-icon">⚔</span>
         <span class="top-mode-label">シールド戦</span>
         <span class="top-mode-desc">2人・パックからデッキ構築</span>
-      </button>
-      <button class="top-mode-card howto" @click="glossaryModalOpen = true">
-        <span class="top-mode-icon">📚</span>
-        <span class="top-mode-label">キーワード集</span>
-        <span class="top-mode-desc">能力・用語のリファレンス</span>
       </button>
     </div>
     <div class="top-devtools">
@@ -3640,6 +3642,7 @@
       <div class="title-row">
         <button v-if="appView === 'cardlist'" class="back-to-top-btn" @click="goToTop">◀ トップ</button>
         <h1>ツクリヨ デッキビルダー</h1>
+        <button class="glossary-open-btn" @click="glossaryModalOpen = true" title="キーワード集を開く">📚 キーワード集</button>
         <span class="total">全 {{ filteredCards.length }} 枚<span v-if="driveError" style="color:#fb7"> / Drive読込失敗</span></span>
         <div class="spacer"></div>
         <!-- カードプール ソート（右端） -->
@@ -4629,8 +4632,9 @@
                     <path fill="currentColor" d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
                   </svg>
                   <svg v-if="battleCardIsBound(card, 'opp')" class="status-icon bind-icon" viewBox="0 0 24 24">
-                    <rect x="2" y="5" width="12" height="6" rx="3" transform="rotate(-45 8 8)" fill="none" stroke="currentColor" stroke-width="2"/>
-                    <rect x="10" y="13" width="12" height="6" rx="3" transform="rotate(-45 16 16)" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <rect x="3" y="6.5" width="10" height="5" rx="2.5" transform="rotate(-15 8 9)" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                    <rect x="9.5" y="10" width="10" height="5" rx="2.5" transform="rotate(50 14.5 12.5)" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                    <rect x="4" y="13.5" width="9" height="4.6" rx="2.3" transform="rotate(-65 8.5 15.8)" fill="none" stroke="currentColor" stroke-width="1.7"/>
                   </svg>
                 </div>
               </div>
@@ -4681,8 +4685,9 @@
                     <path fill="currentColor" d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
                   </svg>
                   <svg v-if="battleCardIsBound(card, 'self')" class="status-icon bind-icon" viewBox="0 0 24 24">
-                    <rect x="2" y="5" width="12" height="6" rx="3" transform="rotate(-45 8 8)" fill="none" stroke="currentColor" stroke-width="2"/>
-                    <rect x="10" y="13" width="12" height="6" rx="3" transform="rotate(-45 16 16)" fill="none" stroke="currentColor" stroke-width="2"/>
+                    <rect x="3" y="6.5" width="10" height="5" rx="2.5" transform="rotate(-15 8 9)" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                    <rect x="9.5" y="10" width="10" height="5" rx="2.5" transform="rotate(50 14.5 12.5)" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                    <rect x="4" y="13.5" width="9" height="4.6" rx="2.3" transform="rotate(-65 8.5 15.8)" fill="none" stroke="currentColor" stroke-width="1.7"/>
                   </svg>
                 </div>
               </div>
@@ -6289,7 +6294,8 @@ const SFX_FILES = {
   hit: 'hit.mp3',
   destroy: 'destroy.mp3',
   crumble: 'crumble.mp3',
-  skill: 'skill.mp3',
+  skill: 'skill.mp3',       // 神技1
+  skill2: 'skill2.mp3',     // 神技2（必殺技クローズアップ演出）
   dragStart: 'drag_Start.mp3',
   dragDrop: 'drag_Drop.mp3',
   dragDropHeavy: 'drag_Drop_Heavy.mp3',
@@ -6299,10 +6305,24 @@ const SFX_FILES = {
   sealRelease: 'seal_release.mp3',
   decision: 'decision.mp3',
   cancel: 'cansel.mp3',
+  myTurn: 'my_turn.mp3',
+  enemyTurn: 'enemy_turn.mp3',
+  // 種族別の召喚音（レガシー限定・コスト1〜4=light、5以上=heavy）
+  ninjaLight: 'ninja_light.mp3', ninjaHeavy: 'ninja_heavy.mp3',
+  samuraiLight: 'samurai_light.mp3', samuraiHeavy: 'samurai_heavy.mp3',
+  manbeastLight: 'manbeast_light.mp3', manbeastHeavy: 'manbeast_heavy.mp3',
+  divinemessengerLight: 'divinemessenger_light.mp3', divinemessengerHeavy: 'divinemessenger_heavy.mp3',
+  specterLight: 'specter_light.mp3', specterHeavy: 'specter_heavy.mp3',
+  dragonLight: 'dragon_light.mp3', dragonHeavy: 'dragon_heavy.mp3',
+};
+// レガシーの種族（type）→ SFX_FILESキーの接頭辞
+const TRIBE_SFX_PREFIX = {
+  '忍者': 'ninja', '侍': 'samurai', '人獣': 'manbeast',
+  '神使': 'divinemessenger', '妖怪': 'specter', '龍': 'dragon',
 };
 const SFX_VOLUME_STORAGE_KEY = 'tsukuriyo_sfxVolume';
 const BGM_VOLUME_STORAGE_KEY = 'tsukuriyo_bgmVolume';
-// 音量（0〜1）：localStorageに保存された値があれば復元し、無ければ既定の0.5（50%）
+// 音量（0〜1）：localStorageに保存された値があれば復元し、無ければ既定の0.1（10%）
 function loadStoredVolume(storageKey) {
   try {
     const raw = localStorage.getItem(storageKey);
@@ -6311,7 +6331,7 @@ function loadStoredVolume(storageKey) {
       if (!isNaN(n)) return Math.min(1, Math.max(0, n));
     }
   } catch (e) { /* localStorage不可の環境は既定値を使う */ }
-  return 0.5;
+  return 0.1;
 }
 function loadStoredBool(storageKey, defaultValue) {
   try {
@@ -6644,7 +6664,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.177',
+    BUILD_VERSION: '1.14.178',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8414,6 +8434,9 @@ new Vue({
       // 4人対戦はオンライン同期、その他（シールド/プレビュー）はローカル
       if (config.syncGame) this._battleSyncStart(config.code, config.table, config.mySeat, config.oppSeat);
       else this._battleSyncStop();
+      // 手番交代SE：コイン演出〜マリガン中に「ターン開始」扱いされて誤発火しないよう、
+      // この期間だけ抑制する（実際のマリガン所要時間には個人差があるため、ある程度余裕を持たせた固定時間）
+      this._battleTurnSfxSuppressUntil = Date.now() + 6000;
       // 対戦開始の最初の処理：先攻/後攻決めのコイン演出 → マリガン（引き直し）フェーズへ。確定後にターン開始。
       this._battleStartCoinFlip();
     },
@@ -9466,7 +9489,7 @@ new Vue({
         kamiName: kami ? kami.name : '',
         skillName: skillName || '',
       };
-      this._sfxPlay('skill');
+      this._sfxPlay('skill2');
       await new Promise(resolve => { this._battleSkillCloseupT = setTimeout(resolve, 1500); });
       this.battleSkillCloseup = null;
     },
@@ -15283,7 +15306,15 @@ new Vue({
       const n = paidCost === null || paidCost === undefined
         ? Number(card && card.cost) || 0
         : Number(paidCost) || 0;
-      this._sfxPlay(n >= 5 ? 'dragDropHeavy' : 'dragDrop');
+      const heavy = n >= 5;
+      // レガシーは種族専用の召喚音があればそちらを優先（コスト1〜4=light、5以上=heavy）。
+      // 種族が無い/該当しないレガシー・レリック等は共通のdrag_Drop系にフォールバックする。
+      const prefix = card && card.category === 'レガシー' ? TRIBE_SFX_PREFIX[card.type] : null;
+      if (prefix) {
+        this._sfxPlay(prefix + (heavy ? 'Heavy' : 'Light'));
+        return;
+      }
+      this._sfxPlay(heavy ? 'dragDropHeavy' : 'dragDrop');
     },
     _battleCheckBattleEndDestroy() {
       const bs = this.battleSample;
@@ -16546,7 +16577,7 @@ new Vue({
       if (this.battleNet && this.battleNet.spectating) return;
       const skill = this.battleSkillOptions.find(item => item.index === index);
       if (!skill || !skill.enabled || this.battleSample.result) return;
-      this._sfxPlay('decision');
+      if (index === 1) this._sfxPlay('skill'); // 神技2はこの後のクローズアップ演出内でskill2を鳴らす
       this.battleSaveUndo();
       this.battleSample.self.tenryoku = Math.max(0, this.battleSample.self.tenryoku - skill.cost);
       this.battleSkillModal = null;
@@ -19404,8 +19435,14 @@ new Vue({
       else if (this.appView === 'battle' && this.bgmAuto) this._bgmAutoPickForView('battle');
     });
     // ターン経過時間タイマー：手番の交代のたびにリセットして再カウント。対戦画面を離れたら止める。
-    this.$watch('battleSample.activeSide', () => {
-      if (this.appView === 'battle' && !this.battleSample.result) this._battleStartTurnTimer();
+    this.$watch('battleSample.activeSide', (side) => {
+      if (this.appView !== 'battle' || this.battleSample.result) return;
+      this._battleStartTurnTimer();
+      // 手番交代SE：対戦開始直後（コイン演出〜マリガン中）の誤発火を避けるため、
+      // _battleInitializeで設定した抑制期間が過ぎてから鳴らす
+      if (Date.now() > (this._battleTurnSfxSuppressUntil || 0)) {
+        this._sfxPlay(side === 'self' ? 'myTurn' : 'enemyTurn');
+      }
     });
     this.$watch('appView', (v) => {
       if (v === 'battle') this._battleStartTurnTimer();
