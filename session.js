@@ -137,6 +137,59 @@ async function joinSession(code, playerName) {
 }
 
 /* ================================================================== */
+/* CPU席（席3・4限定）                                                  */
+/* ================================================================== */
+/* 「プレイヤー2人＋CPU2人」構成用。CPUは席3・4のみを占有し、ドラフトの
+ * 数合わせとして参加する（星戦は人間2人同士でのみ行う）。
+ * CPU席は ready:true 固定・isCpu:true でマークし、既存の
+ * allSeatsFilled / allSeatsReady 判定をそのまま通す。 */
+
+/** セッション内のCPU席番号一覧（isCpu:true の席） */
+function cpuSeatsOf(s) {
+  const out = [];
+  for (let n = 1; n <= 4; n++) {
+    if (s && s.seats && s.seats[n] && s.seats[n].isCpu) out.push(n);
+  }
+  return out;
+}
+
+/** CPU席が1つでもあるか */
+function sessionHasCpu(s) {
+  return cpuSeatsOf(s).length > 0;
+}
+
+/** ロビーでCPUを1体追加（席3→席4の順で空席に着席。ホスト操作想定） */
+async function addCpuSeat(code) {
+  const ref = getDb().ref(`sessions/${code}`);
+  const res = await ref.transaction(s => {
+    if (!s || s.phase !== "lobby") return;      // ロビー以外 → 中止
+    s.seats = s.seats || {};
+    let seat = null;
+    for (const n of [3, 4]) {                    // CPUは席3・4のみ
+      if (!s.seats[n] || !s.seats[n].id) { seat = n; break; }
+    }
+    if (seat === null) return;                   // 空きなし → 中止
+    s.seats[seat] = {
+      id: "cpu-" + seat, name: "CPU" + seat, ready: true, isCpu: true, kamiNo: null,
+    };
+    return s;
+  });
+  if (!res.committed) throw new Error("CPUを追加できません（席3・4が埋まっているか、開始済みです）");
+}
+
+/** ロビーでCPU席を1つ外す（席4→席3の順。ホスト操作想定） */
+async function removeCpuSeat(code) {
+  const ref = getDb().ref(`sessions/${code}`);
+  await ref.transaction(s => {
+    if (!s || s.phase !== "lobby") return s;
+    for (const n of [4, 3]) {
+      if (s.seats && s.seats[n] && s.seats[n].isCpu) { s.seats[n] = null; break; }
+    }
+    return s;
+  });
+}
+
+/* ================================================================== */
 /* 準備完了（全4席が ready になったら神託の儀へ自動遷移）                */
 /* ================================================================== */
 async function setSeatReady(code, seat) {
@@ -316,6 +369,7 @@ async function startDraft(code, round, roundCardNos) {
       done:      false,
     };
     s.round = round;        // 現在のラウンド
+    s.draftReturnDone = {};
     s.phase = 'draft';
     return s;
   });
@@ -396,6 +450,17 @@ const PAIRINGS = {
   3: [[1, 4], [2, 3]],
 };
 
+/** そのラウンドの実際のペアリングを返す。
+ *  CPUあり構成（プレイヤー2人＋CPU2人）では総当たりにせず、
+ *  常に「人間2人＝卓1／CPU2人＝卓2」に固定する（星戦は人間同士でのみ行うため）。 */
+function pairingsFor(s, round) {
+  if (!sessionHasCpu(s)) return PAIRINGS[round];
+  const cpus = cpuSeatsOf(s);
+  const humans = [1, 2, 3, 4].filter(n => !cpus.includes(n));
+  // 想定は 人間[1,2]/CPU[3,4]。想定外の席構成でも人間卓を先頭に安定して組む
+  return [humans.slice(0, 2), cpus.slice(0, 2)];
+}
+
 /** あるラウンドの星戦で seat が勝ったか（battle={t1Winner,t2Winner}） */
 function battleWonBySeat(battle, pairs, seat) {
   if (!battle || !pairs) return false;
@@ -414,6 +479,10 @@ async function startDeepen(code) {
   const ref = getDb().ref(`sessions/${code}`);
   await ref.transaction(s => {
     if (!s) return s;
+    if (s.phase === 'draft_done') {
+      const done = s.draftReturnDone || {};
+      if (![1, 2, 3, 4].every(n => done[n])) return s;
+    }
     const round = s.round || 1;
     s.insight = s.insight || {};
     if (round === 1) {
@@ -425,7 +494,7 @@ async function startDeepen(code) {
       const flag = `deepenInsight_r${round}`;
       if (!s[flag]) {
         const battle = s.battles && s.battles[round - 1];
-        const pairs  = PAIRINGS[round - 1];
+        const pairs  = pairingsFor(s, round - 1);
         for (let n = 1; n <= 4; n++) {
           const won = battleWonBySeat(battle, pairs, n);
           s.insight[n] = (s.insight[n] || 0) + (won ? 1 : 3);
@@ -510,6 +579,46 @@ async function deepenBloomPick(code, seat, cardNo) {
   });
 }
 
+function draftFreeReturnLimit(round) {
+  return round === 1 ? 1 : (round === 2 || round === 3 ? 2 : 0);
+}
+
+/** 選別の儀終了後の無料返還（見識を消費せず、デッキから星魂へ送る） */
+async function draftFreeReturn(code, seat, cardNo) {
+  const ref = getDb().ref(`sessions/${code}`);
+  await ref.transaction(s => {
+    if (!s || s.phase !== 'draft_done') return s;
+    const round = (s.draft && s.draft.completedRound) || s.round || 1;
+    const limit = draftFreeReturnLimit(round);
+    if (limit <= 0) return s;
+    s.draftFreeReturned = s.draftFreeReturned || {};
+    s.draftFreeReturned[round] = s.draftFreeReturned[round] || {};
+    const already = fbArr(s.draftFreeReturned[round][seat]);
+    if (already.length >= limit) return s;
+    const deck = fbArr(s.decks && s.decks[seat]);
+    const i = deck.findIndex(c => String(c) === String(cardNo));
+    if (i < 0) return s;
+    deck.splice(i, 1);
+    s.decks = s.decks || {};
+    s.decks[seat] = deck;
+    s.converted = s.converted || {};
+    s.converted[seat] = [...fbArr(s.converted[seat]), cardNo];
+    s.draftFreeReturned[round][seat] = [...already, cardNo];
+    return s;
+  });
+}
+
+/** 無料返還を終了。全員が済むまで深化の刻には進めない */
+async function draftFreeReturnDone(code, seat, done) {
+  const ref = getDb().ref(`sessions/${code}`);
+  await ref.transaction(s => {
+    if (!s || s.phase !== 'draft_done') return s;
+    s.draftReturnDone = s.draftReturnDone || {};
+    s.draftReturnDone[seat] = !!done;
+    return s;
+  });
+}
+
 /** 深化完了フラグの設定（全員完了で 星戦フェーズへ） */
 async function deepenSetDone(code, seat, done) {
   const ref = getDb().ref(`sessions/${code}`);
@@ -539,7 +648,7 @@ async function recordBattleResult(code, table, winnerSeat) {
     s.battles = s.battles || {};
     s.battles[r] = s.battles[r] || { t1Winner: null, t2Winner: null };
     // 勝者がその卓のペアに含まれるか検証
-    const pairs = PAIRINGS[r];
+    const pairs = pairingsFor(s, r);
     const pair  = table === 1 ? pairs[0] : pairs[1];
     if (!pair.map(String).includes(String(winnerSeat))) return s;
     if (table === 1) s.battles[r].t1Winner = winnerSeat;
@@ -590,7 +699,9 @@ if (typeof module !== "undefined") {
     startDraft, draftPick, dealDraftSets, rotatePacks, draftRoundTarget,
     DRAFT_ROUND_CONFIG,
     startDeepen, deepenReflect, deepenFusion, deepenBloomDraw, deepenBloomPick,
+    draftFreeReturn, draftFreeReturnDone, draftFreeReturnLimit,
     deepenSetDone, packCards,
     PAIRINGS, battleWonBySeat, recordBattleResult, advanceAfterBattle,
+    cpuSeatsOf, sessionHasCpu, addCpuSeat, removeCpuSeat, pairingsFor,
   };
 }

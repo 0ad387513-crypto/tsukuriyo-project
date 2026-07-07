@@ -589,6 +589,11 @@
   .deck-sort-item:hover { background: #2e3550; color: #fff; }
   .deck-sort-item.selected { color: #fff; font-weight: 600; }
   .deck-sort-item .check { width: 14px; color: #5b8; font-size: 13px; flex-shrink: 0; }
+  .deck-visible-count {
+    color: #b8c2d8; font-size: 12px; font-weight: 700;
+    padding: 4px 8px; border: 1px solid #3a4055; border-radius: 4px;
+    background: #151923; white-space: nowrap;
+  }
   .deck-item {
     display: flex; align-items: center; gap: 8px;
     padding: 10px 12px; border-bottom: 1px solid #232838;
@@ -1176,6 +1181,12 @@
   }
   .gm-seat-name { flex: 1; color: #eee; font-size: 14px; min-width: 0; }
   .gm-you { color: #6c9; font-size: 11px; }
+  .gm-seat.cpu { border-color: #7a6aa8; }
+  .gm-cpu-badge {
+    display: inline-block; margin-left: 4px; padding: 1px 7px;
+    background: rgba(122,106,168,.25); border: 1px solid #7a6aa8; border-radius: 9px;
+    color: #cbb8f0; font-size: 10px; font-weight: 700;
+  }
   .gm-seat-status { font-size: 12px; color: #9aa; }
   .gm-seat-status.ready { color: #6c9; font-weight: 700; }
   .gm-lobby-actions { display: flex; gap: 10px; justify-content: center; }
@@ -1278,6 +1289,14 @@
   }
   .gm-deck-card { border-radius: 4px; overflow: hidden; border: 1px solid #2a2f3d; background: #11141c; }
   .gm-deck-img { width: 100%; aspect-ratio: 744 / 1039; background: #0a0c12 center / cover no-repeat; }
+  /* 終戦画面：CPUデッキ確認 */
+  .gm-cpu-deck-section { margin: 14px 0; }
+  .gm-cpu-deck-buttons { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .gm-cpu-deck-panel {
+    border: 1px solid #3a3f55; border-radius: 8px; padding: 12px;
+    background: rgba(20, 24, 36, 0.6); margin-bottom: 8px;
+  }
+  .gm-cpu-kami-card { border: 2px solid #dc9f50; }
   @media (max-width: 760px) {
     .gm-pack-grid { grid-template-columns: repeat(4, 1fr); }
     .gm-deck-grid { grid-template-columns: repeat(6, 1fr); }
@@ -1369,6 +1388,23 @@
     background: #161a24; border: 1px solid #2a2f3d; border-radius: 8px; padding: 16px; text-align: center;
   }
   .gm-battle-table.mine { border-color: #5abb8a; box-shadow: 0 0 0 1px #5abb8a55 inset; }
+  .gm-battle-table.cpu-table { opacity: 0.65; border-style: dashed; }
+  .gm-draft-kami-strip {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px; margin: 10px 0 12px;
+  }
+  .gm-draft-kami-mini {
+    display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 8px;
+    padding: 6px; border: 1px solid #32394a; background: #171c27; border-radius: 6px;
+  }
+  .gm-draft-kami-mini.me { border-color: #5abb8a; }
+  .gm-draft-kami-mini.cpu { border-color: #7a6aa8; }
+  .gm-draft-kami-thumb {
+    width: 36px; aspect-ratio: 744/1039; border-radius: 4px; background: #0c1018 center/cover no-repeat;
+    border: 1px solid #444c5d;
+  }
+  .gm-draft-kami-name { min-width: 0; font-size: 12px; color: #d8dfec; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gm-deck-card.locked { opacity: .55; cursor: default; filter: grayscale(.35); }
   .gm-battle-table-title { font-size: 14px; font-weight: 700; color: #cde; margin-bottom: 12px; }
   .gm-battle-vs { display: flex; align-items: center; justify-content: center; gap: 10px; }
   .gm-battle-player {
@@ -2423,6 +2459,8 @@
   }
   .sentei-option:hover { background: #263252; border-color: #5a7caa; }
   .sentei-option.selected { background: #1e3c6a; border-color: #6090e0; box-shadow: 0 0 0 2px rgba(96,144,224,.35); }
+  .sentei-option.disabled { opacity: .42; cursor: not-allowed; filter: grayscale(.35); }
+  .sentei-option.disabled:hover { background: #182033; border-color: #333b4c; }
   .sentei-option-check {
     width: 20px; min-width: 20px; height: 20px; border-radius: 4px;
     background: #293044; border: 1.5px solid #5a6b80;
@@ -3182,6 +3220,27 @@
     0%   { opacity: .9; transform: scale(0.4) translateY(0); }
     100% { opacity: 0; transform: scale(1.5) translateY(-20px); }
   }
+  /* コスト5以上の重量カード召喚演出：画面/盤面を揺らすと画面酔いするため、
+     カードそのものへの発光フラッシュ＋衝撃波リング＋足元の砂埃のみに留める（位置移動は行わない） */
+  .field-card-heavy {
+    animation: heavyImpactGlowKf .6s ease-out;
+  }
+  .field-card-heavy::before, .field-card-heavy::after {
+    content: ''; position: absolute; bottom: -5px; width: 24px; height: 15px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,169,116,.65), rgba(120,92,55,0) 72%);
+    pointer-events: none; z-index: 4; animation: heavyDustKf .8s ease-out forwards;
+  }
+  .field-card-heavy::before { left: 8%; }
+  .field-card-heavy::after { right: 8%; animation-delay: .08s; }
+  @keyframes heavyImpactGlowKf {
+    0% { box-shadow: 0 0 0 0 rgba(255,199,120,.9); filter: brightness(1.7) saturate(1.3); }
+    55% { box-shadow: 0 0 22px 12px rgba(255,199,120,.3); filter: brightness(1.05); }
+    100% { box-shadow: 0 0 0 0 rgba(255,199,120,0); filter: brightness(1); }
+  }
+  @keyframes heavyDustKf {
+    0% { opacity: .95; transform: translateY(0) scale(.6); filter: blur(0); }
+    100% { opacity: 0; transform: translateY(-24px) scale(2.1); filter: blur(2px); }
+  }
   /* ライフが少ない時の警告演出：ライフ表示の脈動＋自陣が危険域なら画面端をうっすら赤く点滅 */
   .orb-disc.life.life-warning { animation: lifeWarningPulseKf 1s ease-in-out infinite; }
   @keyframes lifeWarningPulseKf {
@@ -3243,12 +3302,17 @@
     opacity: 0; pointer-events: none;
     animation-name: victoryPetalFallKf; animation-timing-function: linear; animation-iteration-count: infinite;
   }
+  .battle-result-title .result-char {
+    display: inline-block; opacity: 0; transform: translateY(12px) scale(.96);
+    animation: resultCharInKf .24s ease-out forwards;
+  }
   @keyframes victoryPetalFallKf {
     0%   { transform: translateY(-20px) rotate(0deg); opacity: 0; }
     8%   { opacity: .9; }
     100% { transform: translateY(100vh) rotate(340deg); opacity: 0; }
   }
   @keyframes victory-flash { 0%,100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+  @keyframes resultCharInKf { to { opacity: 1; transform: translateY(0) scale(1); } }
   @keyframes spark-spin { to { transform: rotate(360deg) scale(1.15); } }
   .result-actions { display: flex; justify-content: center; gap: 10px; margin-top: 30px; }
   .result-actions button { padding: 9px 16px; border-radius: 5px; border: 1px solid #737c89; background: #252d39; color: #fff; font-weight: 800; cursor: pointer; }
@@ -3522,7 +3586,7 @@
               <line x1="14" y1="10" x2="21" y2="3"></line>
               <line x1="3" y1="21" x2="10" y2="14"></line>
             </svg>
-            <span class="dt-label">{{ deckExpanded ? '元に戻す' : 'デッキ詳細' }}</span>
+            <span class="dt-label">{{ deckExpanded ? 'カードリストへ' : 'デッキ詳細' }}</span>
           </button>
         </div>
         <div class="deck-controls">
@@ -3632,6 +3696,7 @@
       <div class="deck-section-label">
         <span class="deck-section-title">カード</span>
         <input class="deck-search" type="text" v-model="deckSearchText" placeholder="カード名 / No / 効果テキストで検索">
+        <span class="deck-visible-count">{{ deckVisibleCountLabel }}</span>
         <div class="deck-sort-wrap">
           <button class="deck-sort-btn" @click.stop="deckSortOpen = !deckSortOpen"
                   :class="{ active: deckSortOpen }">
@@ -3683,7 +3748,7 @@
       </div>
     </div>
     <!-- 展開時：カード画像をプールと同じグリッドで大きく表示（同名カードはグループ化） -->
-    <div class="deck-grid-area" v-else>
+      <div class="deck-grid-area" v-else>
       <!-- 検索・フィルター・ソートバー（カードリスト画面と統一UI） -->
       <div class="deck-grid-toolbar">
         <input class="deck-search" type="text" v-model="deckSearchText" placeholder="No / カード名 / 効果テキストで検索">
@@ -3734,6 +3799,7 @@
           <option v-for="p in deckAvailablePacks" :key="p" :value="String(p)">P{{ p }}</option>
         </select>
         <button class="clear-btn" @click="clearDeckFilters">フィルタをクリア</button>
+        <span class="deck-visible-count">{{ deckVisibleCountLabel }}</span>
         <div class="deck-sort-wrap">
           <button class="deck-sort-btn" @click.stop="deckSortOpen = !deckSortOpen"
                   :class="{ active: deckSortOpen }">
@@ -4293,7 +4359,7 @@
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.opp.relics" :key="'or'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced }"
+                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)"
@@ -4311,7 +4377,7 @@
             <div class="battle-card-row legacy-row">
               <div v-for="(card, i) in battleSample.opp.legacies" :key="'ol'+i"
                    class="battle-card field-card opp-legacy-target"
-                   :class="{ 'battle-target-legacy': battleCanFieldDragToAttackTargets, tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced }"
+                   :class="{ 'battle-target-legacy': battleCanFieldDragToAttackTargets, tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @dragover.prevent="battleUpdateFieldAttackTarget($event)"
@@ -4362,7 +4428,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('legacies', $event)">
               <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i, 'evolve-target': battleHandDragOverBaseIdx === i, 'field-card-landed': card._justPlaced }"
+                   :class="{ tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i, 'evolve-target': battleHandDragOverBaseIdx === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','legacies',i,$event)"
                    @click="battleFieldCardClick(card)"
@@ -4414,7 +4480,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('relics', $event)">
               <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i, 'field-card-landed': card._justPlaced }"
+                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','relics',i,$event)"
                    @click="battleFieldCardClick(card)"
@@ -5008,7 +5074,7 @@
         <div class="sentei-options">
           <div v-for="(opt, i) in battleSenteiModal.options" :key="'so'+i"
                class="sentei-option"
-               :class="{ selected: battleSenteiModal.selected.includes(i) }"
+               :class="{ selected: battleSenteiModal.selected.includes(i), disabled: battleSenteiOptionDisabled(i) }"
                @click="battleToggleSenteiOption(i)">
             <div class="sentei-option-check">{{ battleSenteiModal.selected.includes(i) ? '✓' : '' }}</div>
             <div class="sentei-option-text">・{{ opt }}</div>
@@ -5105,7 +5171,7 @@
           </button>
         </div>
         <div class="battle-action-buttons">
-          <button @click="battleSublimModal = null">キャンセル</button>
+          <button @click="battleSublimModal = null; _sfxPlay('cancel')">キャンセル</button>
           <button class="modal-peek-btn" @click="battleModalPeek = true">フィールドを確認</button>
         </div>
       </div>
@@ -5129,13 +5195,16 @@
     <div v-if="battleSample.result" class="battle-result-overlay">
       <template v-if="battleSample.result.outcome === 'win'">
         <span v-for="i in 16" :key="'petal'+i" class="victory-petal"
-              :style="{ left: ((i*61)%100) + '%', animationDelay: ((i%7)*0.35) + 's', animationDuration: (3.2 + (i%5)*0.4) + 's' }"></span>
+              :style="{ left: ((i*61)%100) + '%', animationDelay: (battleResultPetalDelay + (i%7)*0.35) + 's', animationDuration: (3.2 + (i%5)*0.4) + 's' }"></span>
       </template>
       <div class="battle-result-panel" :class="battleSample.result.outcome">
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s1">✦</span>
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s2">✦</span>
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s3">✦</span>
-        <div class="battle-result-title">{{ battleSample.result.title }}</div>
+        <div class="battle-result-title">
+          <span v-for="(ch, i) in battleResultTitleChars" :key="'rch'+i" class="result-char"
+                :style="{ animationDelay: (i * 0.15) + 's' }">{{ ch }}</span>
+        </div>
         <div v-if="battleSample.result.reason === 'surrender'" class="battle-result-subtext">
           {{ battleSample.result.outcome === 'win' ? '相手が降参しました' : '降参しました' }}
         </div>
@@ -5199,7 +5268,7 @@
         </div>
       </div>
       <div class="battle-zone-modal-actions">
-        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="battleTokenPickModal = null">キャンセル</button>
+        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="battleTokenPickModal = null; _sfxPlay('cancel')">キャンセル</button>
       </div>
     </div>
   </div>
@@ -5251,7 +5320,9 @@
       <div style="display:flex;flex-direction:column;gap:8px;padding:6px 0;">
         <button v-for="(opt, i) in dslChoiceModal.options" :key="'choice'+i"
                 class="battle-back-btn"
-                style="text-align:left;padding:10px 14px;background:#202840;border-color:#3a4256;color:#d4e0f0;"
+                :disabled="dslChoiceOptionDisabled(i)"
+                :title="dslChoiceOptionDisabled(i) ? '条件を満たしていません' : ''"
+                :style="{ textAlign:'left', padding:'10px 14px', background:'#202840', borderColor:'#3a4256', color:'#d4e0f0', opacity: dslChoiceOptionDisabled(i) ? .42 : 1, cursor: dslChoiceOptionDisabled(i) ? 'not-allowed' : 'pointer' }"
                 @click="dslAnswerChoice(i)">
           {{ i + 1 }}. {{ opt }}
         </button>
@@ -5356,11 +5427,12 @@
         </div>
         <p class="gm-lead">このコードを他のプレイヤーに伝えてください。4人全員が「準備完了」になると神託の儀が始まります。（{{ gsFilledCount }}/4人）</p>
         <div class="gm-seats">
-          <div v-for="s in gsSeats" :key="s.seat" class="gm-seat" :class="{ me: s.isMe, empty: !s.info }">
+          <div v-for="s in gsSeats" :key="s.seat" class="gm-seat" :class="{ me: s.isMe, empty: !s.info, cpu: s.info && s.info.isCpu }">
             <div class="gm-seat-no">P{{ s.seat }}</div>
             <div class="gm-seat-name">
               {{ s.info ? s.info.name : '空席…' }}
               <span v-if="s.isMe" class="gm-you">(あなた)</span>
+              <span v-if="s.info && s.info.isCpu" class="gm-cpu-badge">🤖 CPU</span>
             </div>
             <div class="gm-seat-status" :class="{ ready: s.info && s.info.ready }">
               {{ s.info ? (s.info.ready ? '✓ 準備完了' : '準備中…') : '—' }}
@@ -5372,7 +5444,16 @@
                   class="gm-btn gm-btn-primary" @click="gsToggleReady">
             {{ gsSeats[gs.seat-1].info.ready ? '準備完了を取り消す' : '準備完了にする' }}
           </button>
+          <button v-if="gs.seat === 1 && gsCpuAddable" class="gm-btn" @click="gsAddCpu">
+            🤖 CPUを追加（席3・4）
+          </button>
+          <button v-if="gs.seat === 1 && gsCpuSeats.length" class="gm-btn gm-btn-ghost" @click="gsRemoveCpu">
+            CPUを外す
+          </button>
           <button class="gm-btn gm-btn-ghost" @click="gsLeave">退出</button>
+        </div>
+        <div v-if="gs.seat === 1 && gsCpuSeats.length" class="gm-deepen-hint">
+          CPUあり構成：星戦（対戦）は人間プレイヤー2人同士でのみ行い、CPUはドラフトにだけ参加します。
         </div>
       </div>
 
@@ -5448,6 +5529,15 @@
           <template v-if="!gsIPickedThisStep">★ パックから1枚選んでデッキに加えてください（残りは隣へ回ります）</template>
           <template v-else>選択しました。他のプレイヤーを待っています…（{{ gsDraftPickedCount }}/4）</template>
         </div>
+        <div class="gm-draft-kami-strip">
+          <div v-for="s in gsSeats" :key="'draftkami'+s.seat" class="gm-draft-kami-mini"
+               :class="{ me: s.isMe, cpu: s.info && s.info.isCpu }">
+            <div class="gm-draft-kami-thumb"
+                 @mouseenter="s.kamiCard && showCardHover(s.kamiCard, $event)" @mouseleave="hideCardHover"
+                 :style="(s.kamiCard && cardImageUrl(s.kamiCard)) ? { backgroundImage: 'url(' + cardImageUrl(s.kamiCard) + ')' } : {}"></div>
+            <div class="gm-draft-kami-name">P{{ s.seat }} {{ s.kamiCard ? fullName(s.kamiCard) : '—' }}</div>
+          </div>
+        </div>
         <div class="gm-pack-grid" :class="{ locked: gsIPickedThisStep }">
           <div v-for="(card, i) in gsMyPackCards" :key="i" class="gm-pack-card"
                @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
@@ -5470,18 +5560,35 @@
       <div v-else-if="gs.view === 'draft_done'" class="gm-body gm-draft-done">
         <div class="gm-done-title">弐 選別の儀（ラウンド{{ gsDraft ? gsDraft.completedRound : 1 }}） 完了</div>
         <p class="gm-lead">
-          あなたのデッキ（{{ gsMyDraftDeckCards.length }}枚）が完成しました。「デッキビルダーに反映」で内容を確認できます。<br>
-          ※ 深化の刻・星戦は未実装のため、現状はラウンド1のドラフトまでです。
+          このラウンドの終了時、見識を使わずにデッキからカードを星魂へ返還できます。
+          返還しない場合はそのまま完了してください。
         </p>
+        <div class="gm-converted" style="margin-bottom:10px;">
+          無料返還: <b>{{ gsMyDraftFreeReturnedCount }}</b> / {{ gsDraftFreeReturnLimit }} 枚
+          <span v-if="gsMyDraftReturnDone">（完了済み）</span>
+        </div>
         <div class="gm-deck-grid">
           <div v-for="(card, i) in gsMyDraftDeckCards" :key="i" class="gm-deck-card"
-               @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
+               :class="{ locked: gsMyDraftReturnDone || gsMyDraftFreeReturnedCount >= gsDraftFreeReturnLimit }"
+               @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
+               @click="gsDraftFreeReturn(card)">
             <div class="gm-deck-img"
                  :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
           </div>
         </div>
+        <div class="gm-pick-status" style="margin-top:12px;">
+          <div v-for="st in gsDraftReturnSeatStatus" :key="'ret'+st.seat" class="gm-pick-seat"
+               :class="{ me: st.isMe, done: st.done }">
+            <div class="gm-pick-no">P{{ st.seat }} {{ st.name }}<span v-if="st.isMe"> (あなた)</span></div>
+            <div class="gm-pick-kami">{{ st.done ? '返還選択完了 ✓' : '返還選択中…' }}</div>
+          </div>
+        </div>
         <div class="gm-lobby-actions">
-          <button v-if="gs.seat === 1" class="gm-btn gm-btn-primary" @click="gsStartDeepen">▶ 深化の刻へ進む</button>
+          <button class="gm-btn gm-btn-primary" :disabled="gsMyDraftReturnDone" @click="gsDraftReturnDone">
+            返還選択を完了する
+          </button>
+          <button v-if="gs.seat === 1" class="gm-btn gm-btn-primary"
+                  :disabled="!gsAllDraftReturnsDone" @click="gsStartDeepen">▶ 深化の刻へ進む</button>
           <div v-else class="gm-wait-host">ホストが深化の刻を開始するのを待っています…</div>
           <button class="gm-btn" @click="gsPeekDeck">デッキビルダーで確認</button>
           <button class="gm-btn gm-btn-ghost" @click="gsLeave">退出</button>
@@ -5622,22 +5729,23 @@
           </span>
         </div>
         <div class="gm-battle-tables">
-          <div v-for="t in gsBattleTables" :key="t.table" class="gm-battle-table" :class="{ mine: t.hasMe }">
-            <div class="gm-battle-table-title">卓{{ t.table }}<span v-if="t.hasMe"> (あなたの卓)</span></div>
+          <div v-for="t in gsBattleTables" :key="t.table" class="gm-battle-table" :class="{ mine: t.hasMe, 'cpu-table': t.isCpuTable }">
+            <div class="gm-battle-table-title">卓{{ t.table }}<span v-if="t.hasMe"> (あなたの卓)</span><span v-if="t.isCpuTable"> 🤖 CPU卓</span></div>
             <div class="gm-battle-vs">
               <template v-for="(p, pi) in t.players">
                 <span v-if="pi === 1" :key="'vs'+t.table" class="gm-battle-vs-label">VS</span>
                 <button :key="p.seat"
                         class="gm-battle-player"
                         :class="{ winner: String(t.winner) === String(p.seat), me: p.isMe }"
-                        :disabled="gs.seat !== 1"
+                        :disabled="gs.seat !== 1 || t.isCpuTable"
                         @click="gsRecordBattle(t.table, p.seat)">
                   <span v-if="String(t.winner) === String(p.seat)">👑 </span>P{{ p.seat }} {{ p.name }}
                 </button>
               </template>
             </div>
             <div class="gm-battle-hint">
-              {{ gs.seat === 1 ? '勝った方をクリックして記録' : (t.winner ? '記録済み' : 'ホストが記録します') }}
+              <template v-if="t.isCpuTable">CPU同士のため星戦は行わず、自動処理されます</template>
+              <template v-else>{{ gs.seat === 1 ? '勝った方をクリックして記録' : (t.winner ? '記録済み' : 'ホストが記録します') }}</template>
             </div>
           </div>
         </div>
@@ -5677,6 +5785,34 @@
             </tr>
           </tbody>
         </table>
+        <!-- CPUデッキの確認（順位には含めないが、ドラフトで何を取っていたかを見られる） -->
+        <div v-if="gsCpuSeats.length" class="gm-cpu-deck-section">
+          <div class="gm-cpu-deck-buttons">
+            <button v-for="seat in gsCpuSeats" :key="'cpudeck'+seat" class="gm-btn"
+                    :class="{ 'gm-btn-primary': gsCpuDeckViewSeat === seat }"
+                    @click="gsCpuDeckViewSeat = (gsCpuDeckViewSeat === seat ? null : seat)">
+              🤖 CPU{{ seat }}のデッキを{{ gsCpuDeckViewSeat === seat ? '閉じる' : '見る' }}
+            </button>
+          </div>
+          <div v-if="gsCpuDeckViewSeat != null" class="gm-cpu-deck-panel">
+            <div class="gm-done-title" style="font-size:15px;">
+              CPU{{ gsCpuDeckViewSeat }}のデッキ（{{ gsCpuDeckViewCards.length }}枚）
+              — カミ：{{ gsCpuDeckViewKami ? fullName(gsCpuDeckViewKami) : '—' }}
+            </div>
+            <div class="gm-deck-grid">
+              <div v-if="gsCpuDeckViewKami" class="gm-deck-card gm-cpu-kami-card"
+                   @mouseenter="showCardHover(gsCpuDeckViewKami, $event)" @mouseleave="hideCardHover">
+                <div class="gm-deck-img"
+                     :style="cardImageUrl(gsCpuDeckViewKami) ? { backgroundImage: 'url(' + cardImageUrl(gsCpuDeckViewKami) + ')' } : {}"></div>
+              </div>
+              <div v-for="(card, i) in gsCpuDeckViewCards" :key="'cpuc'+i" class="gm-deck-card"
+                   @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
+                <div class="gm-deck-img"
+                     :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="gm-lobby-actions">
           <button class="gm-btn gm-btn-primary" @click="gsPeekDeck">自分のデッキをビルダーで確認</button>
           <button class="gm-btn gm-btn-ghost" @click="gsLeave">終了</button>
@@ -5928,10 +6064,13 @@ const SFX_FILES = {
   skill: 'skill.mp3',
   dragStart: 'drag_Start.mp3',
   dragDrop: 'drag_Drop.mp3',
+  dragDropHeavy: 'drag_Drop_Heavy.mp3',
   coin: 'coin.mp3',
   draw: 'draw.mp3',
   oracle: 'oracle.mp3',
   sealRelease: 'seal_release.mp3',
+  decision: 'decision.mp3',
+  cancel: 'cansel.mp3',
 };
 const SFX_VOLUME_STORAGE_KEY = 'tsukuriyo_sfxVolume';
 const BGM_VOLUME_STORAGE_KEY = 'tsukuriyo_bgmVolume';
@@ -5956,6 +6095,9 @@ const BGM_FILES = {
   byakko:       { name: '白虎',         file: '白虎_free.mp3',          category: 'battle' },
   kageNoFuin:   { name: '陰の封印',     file: '陰の封印_free.mp3',      category: 'battle' },
   ryuNoKiba:    { name: '龍の牙',       file: '龍の牙_free.mp3',        category: 'battle' },
+  kakeraSaki:   { name: 'カケラ咲キ乱レテ', file: 'カケラ咲キ乱レテ.mp3', category: 'battle' },
+  victory:      { name: '勝利',         file: 'victory.mp3',           category: 'result', loop: false },
+  defeat:       { name: '敗北',         file: 'defeat.mp3',            category: 'result', loop: false },
 };
 const COLOR_ORDER = { '赤': 0, '青': 1, '緑': 2, '黄': 3, '紫': 4, '創': 5, '無': 6 };
 function colorRank(c) {
@@ -6261,7 +6403,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.162',
+    BUILD_VERSION: '1.14.171',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6307,11 +6449,12 @@ new Vue({
     _gsPeekSaved: null,       // プレビュー前のデッキビルダー状態退避
     gsSolo:      false,       // ソロテスト（CPU3体を自動操作）モード
     gsDeepenAction: null,     // 深化の刻で選択中のアクション: null(=メニュー) | 'reflect' | 'fusion' | 'bloom'
+    gsCpuDeckViewSeat: null,  // 終戦画面で表示中のCPUデッキの席番号（null=非表示）
   },
   computed: {
     /* BGM選択メニュー用：{key, name} の配列（BGM_FILESそのものではなく整形して渡す） */
     bgmTrackOptions() {
-      return Object.keys(BGM_FILES).map(key => ({ key, name: BGM_FILES[key].name }));
+      return Object.keys(BGM_FILES).filter(key => BGM_FILES[key].category !== 'result').map(key => ({ key, name: BGM_FILES[key].name }));
     },
     /* デッキビルダー本体（pool/deck）の表示可否
        - カードリスト画面
@@ -6801,6 +6944,9 @@ new Vue({
       });
       return entries;
     },
+    deckVisibleCountLabel() {
+      return `表示 ${this.deckExpanded ? this.deckEntriesFlatDisplay.length : this.deckEntriesDisplay.reduce((n, e) => n + (Number(e.count) || 0), 0)} / ${this.deckEntriesFlat.length} 枚`;
+    },
     // 展開ビュー専用：同名カードを1枚ずつ個別に展開したリスト
     // count=2 のカードは2スロットに分けて表示
     deckEntriesFlat() {
@@ -7238,6 +7384,30 @@ new Vue({
       const seats = (this.gs.data && this.gs.data.seats) || {};
       return [1, 2, 3, 4].filter(n => seats[n] && seats[n].id).length;
     },
+    /* ===== CPU席（プレイヤー2人＋CPU2人構成） ===== */
+    gsCpuSeats() {
+      return (typeof cpuSeatsOf !== 'undefined') ? cpuSeatsOf(this.gs.data || {}) : [];
+    },
+    /* CPUを追加できるか（席3・4のどちらかが空席） */
+    gsCpuAddable() {
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      return [3, 4].some(n => !seats[n] || !seats[n].id);
+    },
+    /* CPUあり構成の実効ペアリング（人間卓＝卓1／CPU卓＝卓2）。通常構成は総当たり */
+    gsPairings() {
+      const r = this.gsRound;
+      if (typeof pairingsFor !== 'undefined' && this.gs.data) return pairingsFor(this.gs.data, r);
+      return (typeof PAIRINGS !== 'undefined' && PAIRINGS[r]) ? PAIRINGS[r] : [[1, 2], [3, 4]];
+    },
+    /* 終戦画面：表示中のCPUデッキ（カード一覧とカミ）。ピック内容はFirebase上のdecksに残っている */
+    gsCpuDeckViewCards() {
+      if (this.gsCpuDeckViewSeat == null) return [];
+      return this.gsCpuPickedCards(this.gsCpuDeckViewSeat);
+    },
+    gsCpuDeckViewKami() {
+      if (this.gsCpuDeckViewSeat == null) return null;
+      return this.seatKamiCard(this.gsCpuDeckViewSeat);
+    },
     gsAllReady() {
       const seats = (this.gs.data && this.gs.data.seats) || {};
       return [1, 2, 3, 4].every(n => seats[n] && seats[n].id && seats[n].ready);
@@ -7326,6 +7496,31 @@ new Vue({
         : (raw ? Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k]) : []);
       return nos.map(no => this.cardByNo[String(no)]).filter(Boolean);
     },
+    gsDraftFreeReturnLimit() {
+      const r = (this.gsDraft && this.gsDraft.completedRound) || this.gsRound || 1;
+      return r === 1 ? 1 : (r === 2 || r === 3 ? 2 : 0);
+    },
+    gsMyDraftFreeReturnedCount() {
+      const r = (this.gsDraft && this.gsDraft.completedRound) || this.gsRound || 1;
+      const fr = (this.gs.data && this.gs.data.draftFreeReturned && this.gs.data.draftFreeReturned[r]) || {};
+      return this.gsNorm(fr[this.gs.seat]).length;
+    },
+    gsMyDraftReturnDone() {
+      const done = (this.gs.data && this.gs.data.draftReturnDone) || {};
+      return !!done[this.gs.seat];
+    },
+    gsAllDraftReturnsDone() {
+      const done = (this.gs.data && this.gs.data.draftReturnDone) || {};
+      return [1, 2, 3, 4].every(n => !!done[n]);
+    },
+    gsDraftReturnSeatStatus() {
+      const done = (this.gs.data && this.gs.data.draftReturnDone) || {};
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      return [1, 2, 3, 4].map(n => ({
+        seat: n, name: seats[n] ? seats[n].name : ('P' + n),
+        done: !!done[n], isMe: this.gs.seat === n,
+      }));
+    },
 
     /* ===== 深化の刻 / 終戦集計 ===== */
     gsMyInsight() {
@@ -7375,7 +7570,9 @@ new Vue({
     },
     gsScoreRows() {
       const seats = (this.gs.data && this.gs.data.seats) || {};
-      const rows = [1, 2, 3, 4].map(n => {
+      // CPUは順位計算に含めない（ドラフト成立のための参加者であり、星魂は集計しない）
+      const targetSeats = [1, 2, 3, 4].filter(n => !(seats[n] && seats[n].isCpu));
+      const rows = targetSeats.map(n => {
         const ret = this.seatReturn(n);
         const wins = this.seatWinCount(n);   // 記録した星戦結果から自動集計
         const kamiCard = this.seatKamiCard(n);
@@ -7404,16 +7601,17 @@ new Vue({
       return (this.gs.data && this.gs.data.battles && this.gs.data.battles[r]) || { t1Winner: null, t2Winner: null };
     },
     gsBattleTables() {
-      const r = this.gsRound;
-      const pairs = (typeof PAIRINGS !== 'undefined' && PAIRINGS[r]) ? PAIRINGS[r] : [[1, 2], [3, 4]];
+      const pairs = this.gsPairings;   // CPUあり構成では常に人間卓＝卓1／CPU卓＝卓2
       const seats = (this.gs.data && this.gs.data.seats) || {};
       const b = this.gsBattle;
       const nm = (seat) => seats[seat] ? seats[seat].name : ('P' + seat);
+      const cpu = (seat) => !!(seats[seat] && seats[seat].isCpu);
       return [0, 1].map(i => ({
         table: i + 1,
         players: pairs[i].map(seat => ({ seat, name: nm(seat), isMe: this.gs.seat === seat })),
         winner: i === 0 ? b.t1Winner : b.t2Winner,
         hasMe: pairs[i].map(String).includes(String(this.gs.seat)),
+        isCpuTable: pairs[i].every(cpu),   // 両者CPU＝星戦を行わず自動処理される卓
       }));
     },
     gsMyBattleOpponent() {
@@ -7425,20 +7623,33 @@ new Vue({
       const b = this.gsBattle;
       return b.t1Winner != null && b.t2Winner != null;
     },
+    battleResultTitleChars() {
+      const title = this.battleSample && this.battleSample.result ? this.battleSample.result.title || '' : '';
+      return Array.from(title);
+    },
+    /* 花びらの舞い始めタイミング：文字が全部表示し終わった直後になるよう、文字数から動的に算出する
+       （BATTLE_RESULT_CHAR_STEP・BATTLE_RESULT_CHAR_DURATIONはCSSの.result-charアニメーションと合わせること） */
+    battleResultPetalDelay() {
+      const n = this.battleResultTitleChars.length;
+      return n * 0.15 + 0.24 + 0.3;
+    },
   },
   methods: {
-    /* ある席の星戦勝利数（記録済みの全ラウンドから集計） */
+    /* ある席の星戦勝利数（記録済みの全ラウンドから集計。CPUあり構成はCPU対応ペアリングで判定） */
     seatWinCount(seat) {
       const battles = (this.gs.data && this.gs.data.battles) || {};
       if (typeof PAIRINGS === 'undefined') return 0;
       let w = 0;
       for (let r = 1; r <= 3; r++) {
-        if (battles[r] && battleWonBySeat(battles[r], PAIRINGS[r], seat)) w++;
+        const pairs = (typeof pairingsFor !== 'undefined' && this.gs.data)
+          ? pairingsFor(this.gs.data, r) : PAIRINGS[r];
+        if (battles[r] && battleWonBySeat(battles[r], pairs, seat)) w++;
       }
       return w;
     },
     /* ===== トップメニュー遷移 ===== */
     goToTop() {
+      this._sfxPlay('cancel');
       // シールド戦のピーク中なら閉じる
       if (this.shieldPeek) this.closePeekDeckDetail();
       // 4人対戦のピーク中なら閉じる
@@ -7530,6 +7741,7 @@ new Vue({
     },
     battleCancelAlphaSetup() {
       this.battleAlphaSetup = null;
+      this._sfxPlay('cancel');
     },
     openBattleLaunch(source) {
       if (source === 'shield' && this.sb.phase !== 'complete') return;
@@ -7585,8 +7797,8 @@ new Vue({
       const round = this.gsRound;
       const mySeat = this.gs.seat, oppSeat = opponent.seat;
       const code = this.gs.sessionCode;
-      // 卓を特定（ラウンドのペアリングから）
-      const pairs = (typeof PAIRINGS !== 'undefined' && PAIRINGS[round]) ? PAIRINGS[round] : [[1, 2], [3, 4]];
+      // 卓を特定（ラウンドのペアリングから。CPUあり構成では人間卓＝卓1に固定される）
+      const pairs = this.gsPairings;
       const table = pairs[0].map(String).includes(String(mySeat)) ? 1 : 2;
       // 先攻をトランザクションで1回だけ決定して両者で共有
       let firstSeat = mySeat;
@@ -8346,25 +8558,217 @@ new Vue({
       this.battleSfxVolume = isNaN(n) ? this.battleSfxVolume : n;
       try { localStorage.setItem(SFX_VOLUME_STORAGE_KEY, String(this.battleSfxVolume)); } catch (e) { /* 保存できなくても続行 */ }
     },
-    /* ===== BGM：画面カテゴリ（対戦画面／それ以外）ごとの自動選曲＋手動選択・ループ再生 ===== */
-    /* 使い回す単一のAudioインスタンス（SEと違い、同時に複数流す必要はなく、
-       切り替え時に前の曲をきちんと止められるよう1つを使い回す） */
-    _bgmAudioEl() {
-      if (!this._bgmAudio) this._bgmAudio = new Audio();
-      return this._bgmAudio;
+    /* ===== BGM：画面カテゴリ（対戦画面／それ以外）ごとの自動選曲＋手動選択・ループ再生 =====
+       <audio loop>だとループ境界でブラウザの再シーク待ちが発生し「プチッ」と途切れて聞こえるため、
+       Web Audio API（AudioBufferSourceNode）で全体を事前デコードし、サンプル単位でギャップレスに
+       ループさせる。さらに曲全体を通しで再生してから頭に戻るだけでは不自然なので、波形のエネルギー
+       相関から曲中の似た区間（＝自然に繋がりそうな場所）を探し、その境界に短いクロスフェードを
+       焼き込んだ専用ループバッファを作って使う。初回はイントロ込みで頭から再生し、検出したループ
+       終了点に達したタイミングでクロスフェード済みループバッファへ引き継ぐ。
+       デコード・解析結果はキーごとにキャッシュし、2回目以降は再計算しない。 */
+    _bgmAudioCtx() {
+      if (!this._bgmCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        this._bgmCtx = new Ctx();
+        this._bgmGain = this._bgmCtx.createGain();
+        this._bgmGain.gain.value = this.bgmVolume;
+        this._bgmGain.connect(this._bgmCtx.destination);
+      }
+      return this._bgmCtx;
     },
-    /* 指定キーのBGMをループ再生に切り替える */
-    _bgmPlay(key) {
+    _bgmStopCurrentSource() {
+      (this._bgmSourceNodes || []).forEach(node => {
+        try { node.stop(); } catch (e) { /* 既に停止済みでも無視 */ }
+        try { node.disconnect(); } catch (e) { /* noop */ }
+      });
+      this._bgmSourceNodes = [];
+    },
+    async _bgmLoadBuffer(key) {
+      this._bgmBufferCache = this._bgmBufferCache || {};
+      if (this._bgmBufferCache[key]) return this._bgmBufferCache[key];
+      const entry = BGM_FILES[key];
+      if (!entry) return null;
+      const ctx = this._bgmAudioCtx();
+      const src = `bgm/${encodeURIComponent(entry.file)}`;
+      const resp = await fetch(src);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const arrayBuf = await resp.arrayBuffer();
+      const buffer = await ctx.decodeAudioData(arrayBuf);
+      const silenceBounds = this._bgmDetectSilenceTrim(buffer);
+      let loopBuffer = null;
+      let loopEndSec = silenceBounds.loopEnd;
+      if (entry.loop !== false) {
+        const point = this._bgmDetectLoopPoint(buffer, silenceBounds.loopStart, silenceBounds.loopEnd);
+        const loopStartSec = point ? point.loopStartSec : silenceBounds.loopStart;
+        loopEndSec = point ? point.loopEndSec : silenceBounds.loopEnd;
+        try {
+          loopBuffer = this._bgmBuildLoopBuffer(ctx, buffer, loopStartSec, loopEndSec, 0.12);
+        } catch (e) {
+          console.warn(`[bgm] "${key}" のループバッファ生成に失敗:`, e && e.message);
+          loopBuffer = null;
+        }
+      }
+      const media = { buffer, loopBuffer, loopEndSec, silenceBounds };
+      this._bgmBufferCache[key] = media;
+      return media;
+    },
+    /* MP3はエンコーダの仕様上、ファイルの先頭・末尾にほぼ無音のパディングが数十ms程度入ることが多いため、
+       生PCMを走査して実際に音が始まる/終わる位置を検出する（曲が意図的に無音のイントロを持つ場合の
+       誤検出を避けるため、閾値は「ほぼ完全な無音（エンコーダの0埋め）」だけに反応するごく小さい値）。 */
+    _bgmDetectSilenceTrim(buffer) {
+      const SILENCE_THRESHOLD = 0.0015;
+      const data = buffer.getChannelData(0);
+      const len = data.length;
+      let start = 0;
+      while (start < len && Math.abs(data[start]) < SILENCE_THRESHOLD) start++;
+      let end = len - 1;
+      while (end > start && Math.abs(data[end]) < SILENCE_THRESHOLD) end--;
+      const sr = buffer.sampleRate;
+      if (end <= start) return { loopStart: 0, loopEnd: buffer.duration };
+      return { loopStart: start / sr, loopEnd: (end + 1) / sr };
+    },
+    /* 曲中で「自然に繋がりそうな場所」を自動探索する。トリム済み区間を約50ms単位のブロックに分け、
+       各ブロックのRMSエネルギーの推移（音量の起伏パターン）を比較し、終盤のある地点から続く波形が
+       それより前のある地点から続く波形と最もよく似ている(s, e)のペアを探す。見つかった(s, e)を
+       loopStart/loopEndの候補とする。似ている区間が見つからない場合はnullを返し、呼び出し元は
+       トリム区間全体をそのままループに使う（無音カットのみのフォールバック）。 */
+    _bgmDetectLoopPoint(buffer, trimStartSec, trimEndSec) {
+      const sr = buffer.sampleRate;
+      const data = buffer.getChannelData(0);
+      const trimStart = Math.max(0, Math.round(trimStartSec * sr));
+      const trimEnd = Math.min(data.length, Math.round(trimEndSec * sr));
+      const regionLen = trimEnd - trimStart;
+      const blockSize = Math.round(sr * 0.05); // 約50ms
+      const numBlocks = Math.floor(regionLen / blockSize);
+      if (numBlocks < 60 || blockSize <= 0) return null; // 短すぎる曲は対象外
+      const energy = new Float32Array(numBlocks);
+      for (let b = 0; b < numBlocks; b++) {
+        let sum = 0;
+        const off = trimStart + b * blockSize;
+        for (let i = 0; i < blockSize; i++) { const v = data[off + i] || 0; sum += v * v; }
+        energy[b] = Math.sqrt(sum / blockSize);
+      }
+      const winBlocks = Math.max(6, Math.round(1 / 0.05)); // 比較窓 約1秒分
+      const startMin = Math.floor(numBlocks * 0.05);
+      const startMax = Math.floor(numBlocks * 0.75) - winBlocks;
+      const endMin = Math.floor(numBlocks * 0.55);
+      const endMax = numBlocks - winBlocks - Math.floor(numBlocks * 0.02) - 1;
+      if (startMax <= startMin || endMax <= endMin) return null;
+      const stride = Math.max(1, Math.round(numBlocks / 300)); // 候補数を抑えて計算量を制限
+      let best = null;
+      for (let e = endMin; e <= endMax; e += stride) {
+        for (let s = startMin; s <= startMax; s += stride) {
+          if (e - s < winBlocks * 2) continue;
+          const score = this._bgmWindowCorrelation(energy, s, e, winBlocks);
+          if (!best || score > best.score) best = { s, e, score };
+        }
+      }
+      if (!best || best.score < 0.6) return null; // 十分似た区間が無ければ諦める
+      let refined = best;
+      for (let e = Math.max(endMin, best.e - stride); e <= Math.min(endMax, best.e + stride); e++) {
+        for (let s = Math.max(startMin, best.s - stride); s <= Math.min(startMax, best.s + stride); s++) {
+          if (e - s < winBlocks * 2) continue;
+          const score = this._bgmWindowCorrelation(energy, s, e, winBlocks);
+          if (score > refined.score) refined = { s, e, score };
+        }
+      }
+      return {
+        loopStartSec: (trimStart + refined.s * blockSize) / sr,
+        loopEndSec: (trimStart + refined.e * blockSize) / sr,
+        score: refined.score,
+      };
+    },
+    /* 2つのエネルギー系列の窓（長さwinBlocks）がどれだけ似ているか（コサイン類似度、1に近いほど類似） */
+    _bgmWindowCorrelation(energy, s, e, winBlocks) {
+      let dot = 0, na = 0, nb = 0;
+      for (let k = 0; k < winBlocks; k++) {
+        const a = energy[s + k] || 0;
+        const b = energy[e + k] || 0;
+        dot += a * b; na += a * a; nb += b * b;
+      }
+      if (na <= 0 || nb <= 0) return -1;
+      return dot / Math.sqrt(na * nb);
+    },
+    /* [loopStartSec, loopEndSec) を切り出し、先頭crossfadeSec秒を「ループ末尾直前の波形」と
+       イコールパワーでクロスフェードした専用バッファを作る（ループ境界の繋ぎ目を滑らかにする定番の手法）。 */
+    _bgmBuildLoopBuffer(ctx, buffer, loopStartSec, loopEndSec, crossfadeSec) {
+      const sr = buffer.sampleRate;
+      const startSample = Math.max(0, Math.round(loopStartSec * sr));
+      const endSample = Math.min(buffer.length, Math.round(loopEndSec * sr));
+      const regionLen = endSample - startSample;
+      if (regionLen <= 0) throw new Error('invalid loop region');
+      const fadeLen = Math.max(0, Math.min(Math.round(crossfadeSec * sr), Math.floor(regionLen / 2), endSample));
+      const nCh = buffer.numberOfChannels;
+      const outBuf = ctx.createBuffer(nCh, regionLen, sr);
+      for (let c = 0; c < nCh; c++) {
+        const src = buffer.getChannelData(c);
+        const out = outBuf.getChannelData(c);
+        for (let i = 0; i < regionLen; i++) out[i] = src[startSample + i];
+        for (let i = 0; i < fadeLen; i++) {
+          const t = i / fadeLen;
+          const fadeIn = Math.sin(t * Math.PI / 2);
+          const fadeOut = Math.cos(t * Math.PI / 2);
+          const head = src[startSample + i];
+          const tailIdx = endSample - fadeLen + i;
+          const tail = (tailIdx >= 0 && tailIdx < src.length) ? src[tailIdx] : 0;
+          out[i] = head * fadeIn + tail * fadeOut;
+        }
+      }
+      return outBuf;
+    },
+    /* 指定キーのBGMをループ再生に切り替える（非同期：デコード・解析完了後に再生開始）。
+       ループ対象の曲は「頭からloopEndSecまでを1回だけ再生（イントロ含む）」→
+       「loopEndSecに達した瞬間にクロスフェード済みループバッファへ引き継いで無限ループ」の2段構成。 */
+    async _bgmPlay(key) {
       const entry = BGM_FILES[key];
       if (!entry) return;
-      const audio = this._bgmAudioEl();
-      const src = `bgm/${encodeURIComponent(entry.file)}`;
-      audio.loop = true; // 「_loop」付きファイルに限らず、BGMは全て終端でシームレスに繰り返す想定
-      audio.volume = this.bgmVolume;
-      audio.src = src;
-      audio.currentTime = 0;
-      audio.play().catch(err => console.warn(`[bgm] "${key}" (${src}) の再生に失敗:`, err && err.message));
-      this.bgmCurrentKey = key;
+      const loadToken = (this._bgmLoadSeq = (this._bgmLoadSeq || 0) + 1);
+      this.bgmCurrentKey = key; // 同カテゴリ判定等が即座に効くよう先に確定（従来のfire-and-forgetと同等の挙動）
+      let media;
+      try {
+        media = await this._bgmLoadBuffer(key);
+      } catch (err) {
+        console.warn(`[bgm] "${key}" の読み込みに失敗:`, err && err.message);
+        return;
+      }
+      if (loadToken !== this._bgmLoadSeq) return; // 読み込み中に別の曲へ切り替わっていたら破棄
+      const ctx = this._bgmAudioCtx();
+      if (ctx.state === 'suspended') { try { await ctx.resume(); } catch (e) { /* 次のユーザー操作で再試行される */ } }
+      if (loadToken !== this._bgmLoadSeq) return;
+      this._bgmStopCurrentSource();
+      const shouldLoop = entry.loop !== false;
+      const nodes = [];
+      const startAt = ctx.currentTime;
+      if (shouldLoop && media.loopBuffer) {
+        const introSource = ctx.createBufferSource();
+        introSource.buffer = media.buffer;
+        introSource.connect(this._bgmGain);
+        introSource.start(startAt, 0, media.loopEndSec);
+        nodes.push(introSource);
+        const loopSource = ctx.createBufferSource();
+        loopSource.buffer = media.loopBuffer;
+        loopSource.loop = true;
+        loopSource.connect(this._bgmGain);
+        loopSource.start(startAt + media.loopEndSec);
+        nodes.push(loopSource);
+      } else {
+        const source = ctx.createBufferSource();
+        source.buffer = media.buffer;
+        source.loop = shouldLoop;
+        if (shouldLoop && media.silenceBounds) {
+          source.loopStart = media.silenceBounds.loopStart;
+          source.loopEnd = media.silenceBounds.loopEnd;
+        }
+        source.connect(this._bgmGain);
+        source.start(startAt);
+        nodes.push(source);
+      }
+      this._bgmSourceNodes = nodes;
+    },
+    _battlePlayResultSound(result) {
+      if (!result || !result.outcome) return;
+      const key = result.outcome === 'win' ? 'victory' : result.outcome === 'loss' ? 'defeat' : null;
+      if (key) this._bgmPlay(key);
     },
     /* 指定カテゴリの候補からランダムに1曲選ぶ（キーのみ返す。再生はしない） */
     _bgmPickRandomKey(category) {
@@ -8429,7 +8833,7 @@ new Vue({
     bgmSetVolume(v) {
       const n = Math.min(1, Math.max(0, Number(v)));
       this.bgmVolume = isNaN(n) ? this.bgmVolume : n;
-      if (this._bgmAudio) this._bgmAudio.volume = this.bgmVolume;
+      if (this._bgmGain) this._bgmGain.gain.value = this.bgmVolume;
       try { localStorage.setItem(BGM_VOLUME_STORAGE_KEY, String(this.bgmVolume)); } catch (e) { /* 保存できなくても続行 */ }
     },
     /* ヒットストップ：0.05秒だけ次の処理を遅延させ、衝撃の一瞬を演出する */
@@ -8697,6 +9101,9 @@ new Vue({
       } else {
         this.appView = 'top';
       }
+      // 勝敗bgm（victory/defeat）が鳴っていた場合、対戦画面を離れた時点で通常bgmに戻す
+      // （appViewのwatcherにも同等の処理はあるが、確実性のためここでも明示的に呼ぶ）
+      if (this.bgmAuto) this._bgmAutoPickForView(this.appView);
     },
     /* Undo: battleSample の現状をスナップショット（最新50件まで保持） */
     battleSaveUndo() {
@@ -10152,7 +10559,7 @@ new Vue({
       this._dslCurrentSource = card;
       this._dslCurrentTriggerLabel = triggerLabel;
       const baseCost = this.battleEffectiveCost(card);
-      const sublimPaid = paidCost !== null ? Math.max(0, paidCost - baseCost - this.battleSublimDeltaForCard(card)) : 0;
+      const sublimPaid = paidCost !== null ? Math.max(0, Number(paidCost) - baseCost - this.battleSublimDeltaForCard(card)) : 0;
       this._dslSublimPaid = sublimPaid;
       let ran = false;
       try {
@@ -10519,7 +10926,7 @@ new Vue({
         if (src && c === src) return false;
         if (excludeReturned.includes(c)) return false;
         if (excludeChosen.includes(c)) return false;
-        if (/ジェネシス以外/.test(remarks) && /ジェネシス/.test(this.fullName(c))) return false;
+        if (/ジェネシス以外/.test(remarks) && (/ジェネシス/.test(this.fullName(c)) || c.category === 'ジェネシス' || c.color === '創')) return false;
         if (!this.battleCardMatchesInduceCriteria(c, crit)) return false;
         if (!this._dslPassCompare(c, sel.比較)) return false;
         return true;
@@ -11731,13 +12138,13 @@ new Vue({
       if (!p || !Array.isArray(p[fromZone])) return;
       this.battleSaveUndo();
       const used = [];
-      targets.forEach(card => {
+      for (const card of targets) {
         const arr = p[fromZone];
         const idx = arr.indexOf(card);
-        if (idx < 0) return;
+        if (idx < 0) continue;
         if (fromZone !== 'hand' && this.battleHasHandOnlyPlacementRestriction(card)) {
           this.battleCanPlaceFromSource(card, fromZone);
-          return;
+          continue;
         }
         arr.splice(idx, 1);
         if (card.category === 'オラクル') {
@@ -11750,15 +12157,15 @@ new Vue({
           used.push(card);
           // 「オラクルを使用したとき」条件用（例：#84お節介な陰陽師③は自身①の無償使用でも発動する）
           this.battleFireKamiEvent(side, 'playOracleOrRelic', { card, kind: 'オラクル' });
-          if (!this.battleRunEnterKeywordEffects(card, 0)) this.battleKeywordGuide(card, 0);
-          return;
+          if (!(await this.battleRunEnterKeywordEffects(card, 0))) this.battleKeywordGuide(card, 0);
+          continue;
         }
         const zone = this.battleFieldZoneForCard(card);
         if (!zone || !Array.isArray(p[zone]) || p[zone].length >= 7) {
           p.hand = p.hand || [];
           p.hand.push(card);
           this.battleShowNotice('無償使用：配置不可', `「${this.fullName(card)}」を場に出せませんでした。手札に戻しました。`, [card]);
-          return;
+          continue;
         }
         const fieldCard = this._battlePrepareFieldCard(card);
         p[zone].push(fieldCard);
@@ -11776,8 +12183,8 @@ new Vue({
           this.battleFireKamiEvent(side, 'playOracleOrRelic', { card: fieldCard, kind: 'レリック' });
           if (fieldCard.isToken) this.battleFireKamiEvent(side, 'tokenPlayed', { card: fieldCard });
         }
-        if (!this.battleRunEnterKeywordEffects(fieldCard, 0)) this.battleKeywordGuide(fieldCard, 0);
-      });
+        if (!(await this.battleRunEnterKeywordEffects(fieldCard, 0))) this.battleKeywordGuide(fieldCard, 0);
+      }
       if (/シャッフル/.test(String(sel.備考 || '')) && Array.isArray(p.deck)) p.deck = this._battleShuffle(p.deck);
       this._battleSyncSideCounts(side);
       this.hideCardHover();
@@ -12324,14 +12731,19 @@ new Vue({
     },
     _dslOpLifeMax(act) {
       const n = Number(act.数 || 0);
+      let amount = n;
+      if (!amount && act.数参照) {
+        const dyn = this._dslResolveNumericReference(act.数参照);
+        if (dyn !== null) amount = -Math.abs(Number(dyn) || 0);
+      }
       const side = act.側 === 'opp' ? 'opp' : 'self';
       const p = this.battleSample[side];
-      if (!p) return;
+      if (!p || !amount) return;
       this.battleSaveUndo();
-      const nextMax = Math.max(1, Math.min(10, (Number(p.lifeMax) || 10) + n));
+      const nextMax = Math.max(1, Math.min(10, (Number(p.lifeMax) || 10) + amount));
       p.lifeMax = nextMax;
       p.life = Math.max(0, Math.min(nextMax, Number(p.life) || 0));
-      this.battleShowNotice('ライフ最大値変化', `${side === 'opp' ? '相手' : '自分'}ライフ最大値 ${n >= 0 ? '+' : ''}${n}（現在 ${p.life}/${p.lifeMax}）`);
+      this.battleShowNotice('ライフ最大値変化', `${side === 'opp' ? '相手' : '自分'}ライフ最大値 ${amount >= 0 ? '+' : ''}${amount}（現在 ${p.life}/${p.lifeMax}）`);
       if (typeof this._battleCheckResult === 'function') this._battleCheckResult();
     },
     _dslOpManaMax(act) {
@@ -12498,9 +12910,13 @@ new Vue({
       const opts = (act.選択肢 || []).filter(Boolean);
       if (!opts.length) return;
       const labels = opts.map((o, i) => o.説明 || `選択肢${i + 1}`);
-      const picked = await this.dslAskChoice(sourceCard, '効果を選んでください', labels);
+      const picked = await this.dslAskChoice(sourceCard, '効果を選んでください', labels, { optionData: opts });
       if (picked < 0) return;
       const chosen = opts[picked];
+      if (chosen && chosen.条件 && !this._dslChoiceOptionConditionMet(chosen, sourceCard)) {
+        this.battleShowNotice('選択：条件未達', `「${chosen.説明 || labels[picked]}」は条件を満たしていないため実行できません。`, sourceCard ? [sourceCard] : []);
+        return;
+      }
       await this.dslRunActions(chosen.処理 || [], sourceCard);
     },
     /* 任意能力の発動可否を尋ねる。kind='reroll' の場合はカード効果ではなくシステムルールとして文言を出し分ける */
@@ -12812,24 +13228,40 @@ new Vue({
       }
     },
     /* 選択肢A/Bを尋ねる */
-    dslAskChoice(card, prompt, options) {
+    dslAskChoice(card, prompt, options, meta = {}) {
       return new Promise((resolve) => {
         this.dslChoiceModal = {
           sourceCard: card,
           prompt,
           options,
+          optionData: meta.optionData || null,
           resolver: resolve,
         };
       });
     },
+    _dslChoiceOptionConditionMet(opt, sourceCard) {
+      if (!opt || !opt.条件) return true;
+      const prevSource = this._dslCurrentSource;
+      this._dslCurrentSource = sourceCard || prevSource;
+      try { return !!this.dslEvalCond(opt.条件); }
+      finally { this._dslCurrentSource = prevSource; }
+    },
+    dslChoiceOptionDisabled(index) {
+      const m = this.dslChoiceModal;
+      if (!m) return true;
+      const opt = m.optionData && m.optionData[index];
+      return !!(opt && opt.条件 && !this._dslChoiceOptionConditionMet(opt, m.sourceCard));
+    },
     dslAnswerChoice(index) {
       const m = this.dslChoiceModal;
+      if (!m || this.dslChoiceOptionDisabled(index)) return;
       this.dslChoiceModal = null;
       if (m && m.resolver) m.resolver(index);
     },
     dslCancelChoice() {
       const m = this.dslChoiceModal;
       this.dslChoiceModal = null;
+      this._sfxPlay('cancel');
       if (m && m.resolver) m.resolver(-1);
     },
     /* 処理リストを人間可読のサマリに変換（任意確認の表示用） */
@@ -13612,6 +14044,7 @@ new Vue({
     battleCancelSentei() {
       const m = this.battleSenteiModal;
       this.battleSenteiModal = null;
+      this._sfxPlay('cancel');
       if (m && m.onComplete) m.onComplete([]); // 待機中の_dslOpSenteiを解放
       this._battleProcessNextEffect();
     },
@@ -13637,9 +14070,20 @@ new Vue({
         modal.sourceCard ? [modal.sourceCard] : []
       );
     },
+    battleSenteiOptionDisabled(index) {
+      const modal = this.battleSenteiModal;
+      if (!modal) return true;
+      const opt = modal.optionData && modal.optionData[index];
+      if (!opt || !opt.条件) return false;
+      const prevSource = this._dslCurrentSource;
+      this._dslCurrentSource = modal.sourceCard;
+      try { return !this.dslEvalCond(opt.条件); }
+      finally { this._dslCurrentSource = prevSource; }
+    },
     battleToggleSenteiOption(index) {
       const modal = this.battleSenteiModal;
       if (!modal) return;
+      if (this.battleSenteiOptionDisabled(index)) return;
       const pos = modal.selected.indexOf(index);
       if (pos >= 0) {
         modal.selected.splice(pos, 1);
@@ -13650,6 +14094,8 @@ new Vue({
     async battleResolveSentei() {
       const modal = this.battleSenteiModal;
       if (!modal || modal.selected.length !== modal.count) return;
+      if (modal.selected.some(i => this.battleSenteiOptionDisabled(i))) return;
+      this._sfxPlay('decision');
       const chosenIdx = modal.selected.slice();
       const optionData = modal.optionData || [];
       const onComplete = modal.onComplete;
@@ -13904,11 +14350,13 @@ new Vue({
       this.battleConfirmModal = { action, title, message, confirmLabel, cards, payload };
     },
     battleCancelConfirm() {
+      this._sfxPlay('cancel');
       this.battleConfirmModal = null;
     },
     battleConfirmApply() {
       const modal = this.battleConfirmModal;
       if (!modal) return;
+      this._sfxPlay('decision');
       this.battleConfirmModal = null;
       if (modal.action === 'discardHand') {
         this.battleMoveHandCard(modal.payload.index, 'graveyard');
@@ -13963,7 +14411,8 @@ new Vue({
         this.battleShowNotice('置き場所が違います', `「${this.fullName(card)}」は${zoneLabel}フィールドには置けません。`, [card]);
         return;
       }
-      if (player[zone].length >= 7) {
+      const canEvolveWhileFull = zone === 'legacies' && this._dslEvolutionBaseCandidates(card).length > 0;
+      if (player[zone].length >= 7 && !canEvolveWhileFull) {
         this.battleShowNotice('フィールド上限です', `${card.category}フィールドには7枚まで配置できます。`, [card]);
         return;
       }
@@ -14082,6 +14531,7 @@ new Vue({
       // 進化判定：レガシーかつ進化条件あり＋自分フィールドに該当カードがあれば、進化として配置できる
       let evolveBase = null;
       if (zone === 'legacies') {
+        const fieldFull = player.legacies.length >= 7;
         if (evolveBaseOverride !== undefined) {
           // ドラッグ配置で配置先が確定済み：レガシー上に落とした(=有効な進化元)なら進化、空きなら通常配置
           evolveBase = (evolveBaseOverride && this._dslEvolutionBaseCandidates(card).includes(evolveBaseOverride)) ? evolveBaseOverride : null;
@@ -14089,7 +14539,9 @@ new Vue({
           // 非ドラッグ経路（旧フロー）：選択モーダルで確認
           const candidates = this._dslEvolutionBaseCandidates(card);
           if (candidates.length) {
-            const choice = await this.dslAskChoice(card, '進化として配置しますか？', ['通常配置（新規カードとして場に出す）', '進化として配置（既存のレガシーに重ねる）']);
+            const choice = fieldFull
+              ? 1
+              : await this.dslAskChoice(card, '進化として配置しますか？', ['通常配置（新規カードとして場に出す）', '進化として配置（既存のレガシーに重ねる）']);
             if (choice < 0) return; // キャンセル
             if (choice === 1) {
               const picked = await this.dslAskCustomTargets('進化元となるレガシーを選択', candidates, 1, card);
@@ -14099,9 +14551,13 @@ new Vue({
           }
         }
       }
+      if (zone === 'legacies' && player.legacies.length >= 7 && !evolveBase) {
+        this.battleShowNotice('フィールド上限です', 'レガシーフィールドが7枚のため、通常配置はできません。進化として配置してください。', [card]);
+        return;
+      }
       this.battleSaveUndo();
       player.mana = Math.max(0, player.mana - cost);
-      this._sfxPlay('cardPlay');
+      this._battlePlayPlacementSfx(card, cost);
       this.battleConsumeTempCostMods('self', card);
       this.battleConsumeStaticCostChangeUsage('self', card);
       player.hand.splice(index, 1);
@@ -14259,6 +14715,7 @@ new Vue({
       }
       this.battleSaveUndo();
       player.hand.splice(index, 1);
+      this._battlePlayPlacementSfx(card);
       const fieldCard = this._battlePrepareFieldCard(card);
       player[zone].push(fieldCard);
       player.handCount = player.hand.length;
@@ -14341,7 +14798,44 @@ new Vue({
       // 着地演出：場に出た直後の一瞬だけバウンドさせる（class名は field-card-landed）
       this.$set(fieldCard, '_justPlaced', true);
       setTimeout(() => { fieldCard._justPlaced = false; }, 500);
+      if ((Number(fieldCard.cost) || 0) >= 5) {
+        this.$set(fieldCard, '_justHeavyPlaced', true);
+        setTimeout(() => { fieldCard._justHeavyPlaced = false; }, 900);
+      }
       return fieldCard;
+    },
+    _battlePlayPlacementSfx(card, paidCost = null) {
+      const n = paidCost === null || paidCost === undefined
+        ? Number(card && card.cost) || 0
+        : Number(paidCost) || 0;
+      this._sfxPlay(n >= 5 ? 'dragDropHeavy' : 'dragDrop');
+    },
+    _battleCheckBattleEndDestroy() {
+      const bs = this.battleSample;
+      if (!bs) return;
+      const destroyed = [];
+      ['self', 'opp'].forEach(s => {
+        const p = bs[s];
+        if (!p) return;
+        ['legacies', 'relics'].forEach(zone => {
+          const arr = Array.isArray(p[zone]) ? p[zone].slice() : [];
+          arr.forEach(card => {
+            if (!card) return;
+            const grants = []
+              .concat(Array.isArray(card._kwGrant) ? card._kwGrant : [])
+              .concat(Array.isArray(card._staticKwGrant) ? card._staticKwGrant : []);
+            if (!grants.some(g => /^戦闘\/神攻終了時破壊/.test(String(g)))) return;
+            if (this._dslMoveFromField(card, 'graveyard', s)) {
+              destroyed.push({ side: s, name: this.fullName(card), card });
+            }
+          });
+        });
+      });
+      if (destroyed.length) {
+        const lines = destroyed.map(d => `${d.side === 'self' ? '自分' : '相手'}の「${d.name}」`).join('、');
+        this.battleShowNotice('戦闘/神攻終了時破壊', `${lines}は戦闘/神攻終了時の効果で破壊されました。`, destroyed.map(d => d.card));
+        destroyed.forEach(d => this.battleRunDeathKeywordEffects(d.card));
+      }
     },
     /* カード本文から「固有キーワード」を抽出する。
        単独のキーワード能力（例: 「①【守護】」「【死角】」）のみを固有として扱い、
@@ -14770,6 +15264,7 @@ new Vue({
       this.battleSaveUndo();
       if (!viaDivineGuard) {
         this.$set(attacker, '_tapped', true);
+        this.dslRefreshStaticAbilities();
         await this.battleRunActionTrigger(attacker, '戦闘時');
       }
       if (this.battleSample.result) return;
@@ -14794,7 +15289,10 @@ new Vue({
         defenderIndex = guard.index;
         defender = guard.card;
       }
-      if (guarded) this.$set(defender, '_tapped', true);
+      if (guarded) {
+        this.$set(defender, '_tapped', true);
+        this.dslRefreshStaticAbilities();
+      }
       const ap = Number(attacker.power || 0);
       const dp = Number(defender.power || 0);
       // 破壊で場を離れると付与キーワードが失われるため、破壊前に判定しておく（例：#172忠義の一刀）
@@ -14849,6 +15347,7 @@ new Vue({
         this.$set(attacker, '_onceUntapConsumed', true);
         this.battleShowNotice('戦闘破壊アンタップ', `「${this.fullName(attacker)}」の効果でアンタップしました。`, [attacker]);
       }
+      this._battleCheckBattleEndDestroy();
     },
     async battleResolveDivineAttack(attackerSide, attackerIndex, attackVisual) {
       if (this.battleNet && this.battleNet.spectating) return;
@@ -14870,6 +15369,7 @@ new Vue({
       //     #65ライカ＆コマの相手タップも、守護が選ばれる前にここで発動する。
       this.battleSaveUndo();
       this.$set(attacker, '_tapped', true);
+      this.dslRefreshStaticAbilities();
       this._dslCurrentEvent = { side: attackerSide, type: 'divineAttackDeclared', payload: { source: attacker } };
       await this.battleFireKamiEventAwaited(attackerSide, 'divineAttackDeclared', { source: attacker });
       await this.battleRunActionTrigger(attacker, '神攻時', ab => !this._dslIsDamageOutcomeAbility(ab));
@@ -14935,6 +15435,7 @@ new Vue({
         `「${this.fullName(attacker)}」が神攻し、相手カミに ${damage} ダメージを与えました。${sealBonusApplied ? '\n（「封神・終極八岐」の効果でこのターン最初の神攻に【神威：+2】を得ました）' : ''}`,
         [attacker]
       );
+      this._battleCheckBattleEndDestroy();
     },
     battleUpdateDragOverZone(e) {
       if (this.battleDragIndex === null) return;
@@ -15474,8 +15975,8 @@ new Vue({
     },
     battleResolveHandDrop(idx, target) {
       if (idx === null || idx === undefined || target === 'hand' || !target) return;
-      this._sfxPlay('dragDrop');
       if (target === 'graveyard') {
+        this._sfxPlay('dragDrop');
         const card = this.battleSample.self.hand[idx];
         if (!card) return;
         this.battleAskConfirm({
@@ -15489,6 +15990,7 @@ new Vue({
         return;
       }
       if (target === 'crumbled') {
+        this._sfxPlay('dragDrop');
         this.battleMoveHandCard(idx, 'crumbled');
         return;
       }
@@ -15569,6 +16071,7 @@ new Vue({
       if (this.battleNet && this.battleNet.spectating) return;
       const skill = this.battleSkillOptions.find(item => item.index === index);
       if (!skill || !skill.enabled || this.battleSample.result) return;
+      this._sfxPlay('decision');
       this.battleSaveUndo();
       this.battleSample.self.tenryoku = Math.max(0, this.battleSample.self.tenryoku - skill.cost);
       this.battleSkillModal = null;
@@ -15642,6 +16145,10 @@ new Vue({
         cardNo = '188';
         threshold = 0;
         this._sfxPlay('sealRelease'); // ヤマタノオロチの封印が全て解けた（0になった）とき
+        const kami = player.kami;
+        const skillName = (kami && kami.skill2name) || '封神・終極八岐';
+        if (side === 'self') this._battlePublishSkill2(kami ? kami.no : '10', skillName);
+        await this._battleShowSkill2Closeup(kami || { no: '10', name: 'ヤマタノオロチ' }, skillName);
       }
       if (!cardNo) return;
       const card = this.allCards.find(item => String(item.no) === cardNo);
@@ -16353,6 +16860,8 @@ new Vue({
       this.gsPeeking = false;
       this._gsPeekSaved = null;
       this.gsSolo = false;
+      this.gsCpuClearTimers();   // CPU自動操作の予約を破棄
+      this.gsCpuDeckViewSeat = null;
       if (this.gs._unsubscribe) { try { this.gs._unsubscribe(); } catch (e) {} }
       this.gs._unsubscribe = null;
       this.gs.view        = 'menu';
@@ -16387,8 +16896,9 @@ new Vue({
             if (list.length) dealKamiOffer(this.gs.sessionCode, this.gs.seat, list);
           }
         }
-        // ソロテスト：CPU席（2〜4）を自動操作
-        if (this.gsSolo && this.gs.seat === 1) this.gsDriveBots(data);
+        // CPU席の自動操作（ソロテスト＝席2〜4／CPUあり構成＝isCpuの席）。
+        // 実行はホスト（席1）のクライアントが代行する
+        if (this.gs.seat === 1) this.gsDriveBots(data);
       });
     },
     async gsCreate() {
@@ -16436,6 +16946,22 @@ new Vue({
       if (me.ready) await unsetSeatReady(this.gs.sessionCode, this.gs.seat);
       else          await setSeatReady(this.gs.sessionCode, this.gs.seat);
     },
+    /* ===== CPU席の追加/削除（ホスト操作。席3・4限定） ===== */
+    async gsAddCpu() {
+      try {
+        await addCpuSeat(this.gs.sessionCode);
+        // CPU席はready:trueで入るため、既に全員readyなら次のready変化を待たず遷移判定を促す
+        // （setSeatReadyの遷移transactionを流用：自分のready値を再設定するだけで冪等）
+        const me = (this.gs.data && this.gs.data.seats && this.gs.data.seats[this.gs.seat]) || null;
+        if (me && me.ready) await setSeatReady(this.gs.sessionCode, this.gs.seat);
+      } catch (e) {
+        alert(e.message || e);
+      }
+    },
+    async gsRemoveCpu() {
+      try { await removeCpuSeat(this.gs.sessionCode); }
+      catch (e) { alert(e.message || e); }
+    },
     // ソロテスト：CPU3体と即開始（自分は席1。CPUは自動で進行）
     async gsSoloTest() {
       if (this.gs.connecting) return;
@@ -16464,36 +16990,314 @@ new Vue({
         this.gs.connecting = false;
       }
     },
-    // CPU席（2〜4）の自動操作（購読のたびに呼ばれる。各処理はトランザクションで冪等）
+    /* ===================================================================
+       CPUドラフト思考エンジン
+       すべての要素を点数化して合算する「重み付きスコアリング」方式。
+       方針は最初のパックで決め打ちせず、自分が実際にピックしたカードの
+       蓄積（種族・属性・効果・マナカーブ）から動的に定まる。
+       =================================================================== */
+    /* カミの「好み」をアフィニティタグとして抽出する。
+       effect_spec.json のカミspec（天力トリガー契機の能力）と、カミシートの
+       トリガーテキストを結合し、パターンマッチでタグ化する（カミ個別のハードコード無し）。 */
+    gsCpuKamiAffinityTags(kamiNo) {
+      if (kamiNo == null || kamiNo === '') return [];
+      this._gsCpuTagCache = this._gsCpuTagCache || {};
+      const key = String(kamiNo);
+      if (this._gsCpuTagCache[key]) return this._gsCpuTagCache[key];
+      const kami = this.allKamiCards.find(k => String(k.no) === key);
+      const spec = this.effectSpecs && (this.effectSpecs['K' + key] || this.effectSpecs[key]);
+      let text = '';
+      if (spec && Array.isArray(spec.能力)) {
+        // 天力トリガー（＝ドラフト方針に直結する発動条件）の記述だけを対象にする
+        const trigAbilities = spec.能力.filter(ab => ab && ab.契機 === '天力トリガー');
+        try { text += JSON.stringify(trigAbilities); } catch (e) { /* skip */ }
+      }
+      if (kami && kami.trigger) text += ' ' + kami.trigger;
+      const tags = [];
+      if (/進化|昇華/.test(text)) tags.push('evolveSublim');       // K1 スサノオ
+      if (/同名/.test(text)) tags.push('unique');                   // K2 ヤマトタケル
+      if (/異なる種族/.test(text)) tags.push('tribeDiversity');     // K3 オオクニヌシ
+      if (/戦闘力が.{0,3}最も高い/.test(text)) tags.push('highPower'); // K4 タケミカヅチ
+      if (/オラクル.{0,8}レリック/.test(text)) tags.push('oracleRelic'); // K5 オモイカネ
+      if (/マナ最大値|ライフが増え|マナ、ライフ/.test(text)) tags.push('manaLife'); // K6 アメノウズメ
+      if (/破壊されたとき/.test(text)) tags.push('destroy');        // K7 ヒノカグツチ
+      if (/守護/.test(text)) tags.push('guard');                    // K8 アマテラス
+      if (/トークンが.{0,6}出たとき/.test(text)) tags.push('token'); // K9 ツクヨミ
+      if (/龍レガシー/.test(text)) tags.push('dragon');             // K10 ヤマタノオロチ
+      this._gsCpuTagCache[key] = tags;
+      return tags;
+    },
+    /* 優先度1：カミトリガーとの相性点 */
+    gsCpuCardTagScore(card, tags, pickedCards) {
+      let s = 0;
+      const text = String(card.text || '');
+      for (const tag of tags) {
+        switch (tag) {
+          case 'evolveSublim':
+            if (/【昇華|【進化/.test(text)) s += 22;
+            break;
+          case 'unique':
+            break; // 同名重複ペナルティ側（gsCpuScoreCard）で処理
+          case 'tribeDiversity': {
+            // 異なる種族を並べたい：未所持の種族のレガシーほど嬉しい
+            if (card.category === 'レガシー' && card.type) {
+              const types = new Set(pickedCards.filter(c => c.category === 'レガシー').map(c => c.type).filter(Boolean));
+              s += types.has(card.type) ? 4 : 14;
+            }
+            break;
+          }
+          case 'highPower':
+            s += Math.min(20, (Number(card.power) || 0) / 150);
+            break;
+          case 'oracleRelic':
+            if (card.category === 'オラクル' || card.category === 'レリック') s += 18;
+            break;
+          case 'manaLife':
+            if (/マナ.{0,8}(回復|増|＋|\+)|ライフ.{0,8}(回復|増|＋|\+)|マナ最大値/.test(text)) s += 20;
+            break;
+          case 'destroy':
+            if (/破壊|崩壊/.test(text)) s += 16;
+            s += Math.min(8, (Number(card.power) || 0) / 400); // 戦闘での相打ちも破壊トリガーになる
+            break;
+          case 'guard':
+            if (/【守護】/.test(text)) s += 22;
+            break;
+          case 'token':
+            if (/トークン|【招来/.test(text)) s += 20;
+            break;
+          case 'dragon':
+            if (card.type === '龍') s += 20;
+            break;
+        }
+      }
+      return s;
+    },
+    /* 優先度2：単体性能・汎用性の基礎点（軸が刺さらないカードでも最低限評価される） */
+    gsCpuBaseScore(card) {
+      let s = 10;
+      const cost = Number(card.cost) || 0;
+      const text = String(card.text || '');
+      if (card.category === 'レガシー') {
+        // コスト効率（1コスト≒900戦闘力を基準に上下）
+        s += Math.max(-8, Math.min(14, ((Number(card.power) || 0) - cost * 900) / 250));
+        s += Math.min(6, (Number(card.attack) || 0) / 500);
+      } else if (card.category === 'オラクル' || card.category === 'レリック') {
+        s += 4; // 盤面以外の仕事を持つカードの下駄
+      }
+      // 汎用的に強い効果語
+      if (/破壊する|崩壊させる/.test(text)) s += 6;   // 除去
+      if (/ドロー|引く/.test(text)) s += 5;           // 手札補充
+      if (/【誘|手札に加える/.test(text)) s += 4;     // サーチ
+      if (/【招来|場に出す/.test(text)) s += 4;       // 展開補助
+      if (/【守護】/.test(text)) s += 3;
+      if (/【疾駆】|【奇襲】/.test(text)) s += 3;
+      // 返還値（星魂に直結する資産価値）
+      s += (parseInt(card.return, 10) || 0) * 2;
+      return s;
+    },
+    /* 優先度3：ピック済みカードから見た種族シナジー（決め打ちせず蓄積から自然に寄る） */
+    gsCpuTribeSynergy(card, pickedCards) {
+      let s = 0;
+      const tribes = ['忍者', '侍', '人獣', '神使', '妖怪', '龍'];
+      if (card.category === 'レガシー' && card.type) {
+        const same = pickedCards.filter(c => c.type === card.type).length;
+        s += same >= 5 ? 16 : same >= 3 ? 12 : same >= 2 ? 7 : same >= 1 ? 3 : 0;
+      }
+      // 候補カードが特定種族を参照する効果を持つ場合、その種族の所持数に応じて加点
+      const text = String(card.text || '');
+      for (const tribe of tribes) {
+        if (text.includes(tribe)) {
+          s += Math.min(10, pickedCards.filter(c => c.type === tribe).length * 2.5);
+          break;
+        }
+      }
+      return s;
+    },
+    /* 優先度4：ピック済みカードから見た属性シナジー（創＝全属性ワイルドカード） */
+    gsCpuColorSynergy(card, pickedCards) {
+      if (!card.color || card.color === '無') return 0;
+      if (card.color === '創') return 6; // どの軸でも使えるため常に少し嬉しい
+      const counts = {};
+      for (const c of pickedCards) {
+        if (!c.color || c.color === '無' || c.color === '創') continue;
+        counts[c.color] = (counts[c.color] || 0) + 1;
+      }
+      const mine  = counts[card.color] || 0;
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+      if (total < 3) return mine * 2; // 序盤は縛らない
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      const rank = sorted.findIndex(e => e[0] === card.color);
+      if (rank === 0) return 10;
+      if (rank === 1) return 6;
+      return mine > 0 ? 0 : -6; // 3色目以降の新規色はやや減点
+    },
+    /* 優先度5：カード同士の効果・キーワード相性 */
+    gsCpuEffectSynergy(card, pickedCards) {
+      const text = String(card.text || '');
+      let s = 0;
+      // 破壊テーマが濃いなら、死亡時・墓地・破壊時参照カードを評価
+      const destroyCount = pickedCards.filter(c => /破壊|崩壊/.test(String(c.text || ''))).length;
+      if (destroyCount >= 3 && /死亡時|墓地|破壊されたとき/.test(text)) s += 8;
+      // 低コスト横並びが多いなら、全体強化・横並び活用を評価
+      const cheapCount = pickedCards.filter(c => c.category === 'レガシー' && (Number(c.cost) || 0) <= 2).length;
+      if (cheapCount >= 4 && /(すべて|全て)の?自分レガシー|自分レガシー(すべて|全て)/.test(text)) s += 8;
+      // 高コストが多いなら、マナ補助・守護・除去（時間稼ぎ）を評価
+      const heavyCount = pickedCards.filter(c => (Number(c.cost) || 0) >= 5).length;
+      if (heavyCount >= 3 && /マナ|【守護】|破壊する/.test(text)) s += 6;
+      // 昇華持ちが多いなら、マナを伸ばすカードを評価
+      const sublimCount = pickedCards.filter(c => /【昇華/.test(String(c.text || ''))).length;
+      if (sublimCount >= 2 && /マナ/.test(text)) s += 4;
+      return s;
+    },
+    /* 優先度6：マナカーブ（不足コスト帯を加点・過剰帯を減点） */
+    gsCpuCurveScore(card, pickedCards) {
+      const cost = Math.min(6, Number(card.cost) || 0);
+      const bins = [0, 0, 0, 0, 0, 0, 0];
+      for (const c of pickedCards) bins[Math.min(6, Number(c.cost) || 0)]++;
+      const total = pickedCards.length;
+      if (total < 5) return 0; // 序盤はカーブより質を優先
+      const ideal = [0.08, 0.18, 0.22, 0.20, 0.14, 0.10, 0.08]; // ざっくり理想の分布
+      const diff = ideal[cost] - bins[cost] / total;             // 不足なら正
+      return Math.max(-8, Math.min(10, diff * 45));
+    },
+    /* 総合スコア：全要素の重み付き合算。CPUごとに性格差をつける */
+    gsCpuScoreCard(card, ctx) {
+      // CPU3＝シナジー重視／CPU4＝単体性能・マナカーブ重視
+      const persona = ctx.seat === 4
+        ? { base: 1.3, kami: 1.0, tribe: 0.85, color: 0.9,  effect: 0.85, curve: 1.3 }
+        : { base: 1.0, kami: 1.15, tribe: 1.35, color: 1.25, effect: 1.3,  curve: 0.85 };
+      const picked = ctx.pickedCards;
+      let s = 0;
+      s += this.gsCpuBaseScore(card) * persona.base;
+      s += this.gsCpuCardTagScore(card, ctx.kamiTags, picked) * persona.kami;
+      s += this.gsCpuTribeSynergy(card, picked) * persona.tribe;
+      s += this.gsCpuColorSynergy(card, picked) * persona.color;
+      s += this.gsCpuEffectSynergy(card, picked) * persona.effect;
+      s += this.gsCpuCurveScore(card, picked) * persona.curve;
+      // 同名重複：軽い減点（K2ヤマトタケル＝uniqueタグ持ちは重い減点）
+      const dup = picked.filter(c => this.fullName(c) === this.fullName(card)).length;
+      s -= dup * (ctx.kamiTags.includes('unique') ? 12 : 3);
+      return s;
+    },
+    /* パックから1枚選ぶ：上位2〜3枚から確率的に選択（スコア差が大きいほど1位を選びやすい） */
+    gsCpuChoosePick(cards, ctx) {
+      const scored = cards.map(c => ({ c, s: this.gsCpuScoreCard(c, ctx) }))
+                          .sort((a, b) => b.s - a.s);
+      if (scored.length === 1) return scored[0].c;
+      const gap = scored[0].s - scored[1].s;
+      const p0 = Math.min(0.92, 0.55 + gap * 0.04);
+      const r = Math.random();
+      if (r < p0) return scored[0].c;
+      if (scored.length < 3 || r < p0 + (1 - p0) * 0.7) return scored[1].c;
+      return scored[2].c;
+    },
+    /* カミ選択：候補3枚それぞれのアフィニティがラウンド1のカードプールに
+       どれだけ刺さるかを合計し、最も戦いやすいカミを選ぶ */
+    gsCpuChooseKami(offerNos) {
+      const pool = this.draftPoolNos(1).map(no => this.cardByNo[String(no)]).filter(Boolean);
+      let best = offerNos[0], bestScore = -Infinity;
+      for (const no of offerNos) {
+        const tags = this.gsCpuKamiAffinityTags(no);
+        let s = 0;
+        for (const card of pool) s += this.gsCpuCardTagScore(card, tags, []);
+        s *= (0.9 + Math.random() * 0.2); // 揺らぎ（毎回同じカミにならないように）
+        if (s > bestScore) { bestScore = s; best = no; }
+      }
+      return best;
+    },
+    /* CPU席のピック済みカード（Firebase上のdecks由来） */
+    gsCpuPickedCards(seat) {
+      const decks = (this.gs.data && this.gs.data.decks) || {};
+      return this.gsNorm(decks[seat]).map(no => this.cardByNo[String(no)]).filter(Boolean);
+    },
+    /* 1〜3秒のランダム遅延つきで1回だけ実行を予約する（CPUの「考えている間」の演出＋
+       購読コールバックが連続で来ても二重予約しない） */
+    gsCpuSchedule(key, fn) {
+      this._gsCpuTimers = this._gsCpuTimers || {};
+      if (this._gsCpuTimers[key]) return;
+      this._gsCpuTimers[key] = setTimeout(() => {
+        delete this._gsCpuTimers[key];   // 実行後は解放（transactionが不発でも次の購読で再予約できる）
+        try { fn(); } catch (e) { console.warn('[cpu] 自動操作に失敗:', e); }
+      }, 1000 + Math.random() * 2000);
+    },
+    /* 予約済みタイマーを全消去（退出時） */
+    gsCpuClearTimers() {
+      for (const k of Object.keys(this._gsCpuTimers || {})) clearTimeout(this._gsCpuTimers[k]);
+      this._gsCpuTimers = {};
+    },
+    /* CPU席の自動操作（購読のたびに呼ばれる。各処理はトランザクションで冪等）。
+       ソロテスト時は席2〜4、CPUあり通常構成では isCpu の席が対象。
+       既存の dealKamiOffer / pickKami / draftPick / deepenSetDone /
+       recordBattleResult のみを使う（CPU専用ルートは作らない）。 */
     gsDriveBots(data) {
       if (!data) return;
       const code = this.gs.sessionCode;
       const norm = (raw) => this.gsNorm(raw);
-      const bots = [2, 3, 4];
+      const bots = this.gsSolo ? [2, 3, 4]
+        : (typeof cpuSeatsOf !== 'undefined' ? cpuSeatsOf(data) : []);
+      if (!bots.length) return;
       if (data.phase === 'kami_select' && data.kami) {
         const t = data.kami.turn;
         if (bots.includes(t)) {
           const offer = data.kami.offer && data.kami.offer[t];
           if (!offer) {
             const list = this.allKamiCards.map(k => String(k.no));
-            dealKamiOffer(code, t, list);
+            if (list.length) dealKamiOffer(code, t, list);
           } else {
-            pickKami(code, t, String(norm(offer)[0]));
+            const curOffer = norm(offer).map(String);
+            if (curOffer.length) pickKami(code, t, String(this.gsCpuChooseKami(curOffer)));
           }
         }
       } else if (data.phase === 'draft' && data.draft) {
         const d = data.draft;
         for (const seat of bots) {
-          if (!(d.picks && d.picks[seat] != null)) {
-            const pack = this.gsPackCardNos(d.packs && d.packs[seat]);
-            if (pack.length) draftPick(code, seat, String(pack[0]));
-          }
+          if (d.picks && d.picks[seat] != null) continue;
+          const key = `draft:${d.round}:${d.setIndex || 0}:${d.step || 0}:${seat}`;
+          this.gsCpuSchedule(key, () => {
+            const cur = this.gs.data || {};
+            if (cur.phase !== 'draft' || !cur.draft) return;
+            const cd = cur.draft;
+            if (cd.picks && cd.picks[seat] != null) return;
+            const packNos = this.gsPackCardNos(cd.packs && cd.packs[seat]);
+            if (!packNos.length) return;
+            const cards = packNos.map(no => this.cardByNo[String(no)]).filter(Boolean);
+            if (!cards.length) { draftPick(code, seat, String(packNos[0])); return; } // カードデータ未取得時の保険
+            const seats  = cur.seats || {};
+            const kamiNo = seats[seat] ? seats[seat].kamiNo : null;
+            const chosen = this.gsCpuChoosePick(cards, {
+              seat,
+              pickedCards: this.gsCpuPickedCards(seat),
+              kamiTags: this.gsCpuKamiAffinityTags(kamiNo),
+            });
+            draftPick(code, seat, String(chosen.no));
+          });
+        }
+      } else if (data.phase === 'draft_done') {
+        const done = data.draftReturnDone || {};
+        for (const seat of bots) {
+          if (!done[seat]) draftFreeReturnDone(code, seat, true);
         }
       } else if (data.phase === 'deepen') {
         const dd = data.deepenDone || {};
         for (const seat of bots) {
-          if (!dd[seat]) deepenSetDone(code, seat, true);   // CPUは即完了
+          if (!dd[seat]) deepenSetDone(code, seat, true);   // CPUは即完了（見識は使わない）
         }
+      } else if (data.phase === 'battle') {
+        // 両者CPUの卓は星戦を行わないため、勝敗を自動記録して進行を止めない
+        // （人間が参加する卓には一切関与しない）
+        const r = data.round || 1;
+        const pairs = (typeof pairingsFor !== 'undefined') ? pairingsFor(data, r)
+          : ((typeof PAIRINGS !== 'undefined' && PAIRINGS[r]) || [[1, 2], [3, 4]]);
+        const b = (data.battles && data.battles[r]) || {};
+        [0, 1].forEach(i => {
+          const pair = pairs[i];
+          const winnerField = i === 0 ? 't1Winner' : 't2Winner';
+          if (!pair || !pair.every(n => bots.includes(n))) return;
+          if (b[winnerField] != null) return;
+          // seed＋ラウンドから決定論的に勝者を選ぶ（購読が何度来ても同じ結果＝冪等）
+          const winner = pair[((Number(data.seed) || 0) + r) % 2];
+          recordBattleResult(code, i + 1, winner);
+        });
       }
     },
     async gsConfirmKami(card) {
@@ -16512,6 +17316,7 @@ new Vue({
     },
     gsLeave() {
       if (!confirm('セッションから退出しますか？')) return;
+      this._sfxPlay('cancel');
       this.gsResetState();
     },
     // 自分の選んだカミをデッキビルダーに反映して閉じる
@@ -16644,8 +17449,24 @@ new Vue({
         .map(c => String(c.no));
     },
     async gsStartDeepen() {
+      if (!this.gsAllDraftReturnsDone) {
+        alert('全員の返還選択が完了してから深化の刻へ進んでください。');
+        return;
+      }
       try { await startDeepen(this.gs.sessionCode); }
       catch (e) { alert('深化の刻の開始に失敗しました: ' + (e.message || e)); }
+    },
+    async gsDraftFreeReturn(card) {
+      if (!card || this.gsMyDraftReturnDone) return;
+      if (this.gsMyDraftFreeReturnedCount >= this.gsDraftFreeReturnLimit) return;
+      if (!confirm(`「${this.fullName(card)}」を星魂に返還します（見識は消費しません）。よろしいですか？`)) return;
+      this.hideCardHover();
+      try { await draftFreeReturn(this.gs.sessionCode, this.gs.seat, String(card.no)); }
+      catch (e) { alert('返還に失敗しました: ' + (e.message || e)); }
+    },
+    async gsDraftReturnDone() {
+      try { await draftFreeReturnDone(this.gs.sessionCode, this.gs.seat, true); }
+      catch (e) { alert('返還選択の完了に失敗しました: ' + (e.message || e)); }
     },
     async gsReflect(card) {
       if (this.gsMyInsight < 1 || this.gsMyDeepenDone) return;
@@ -18019,11 +18840,14 @@ new Vue({
     });
     // BGM：画面カテゴリ（対戦画面／それ以外）に応じて自動選曲（起動直後にも一度実行）
     this.$watch('appView', (v) => { if (this.bgmAuto) this._bgmAutoPickForView(v); }, { immediate: true });
+    this.$watch('battleSample.result', (v) => {
+      if (v) this._battlePlayResultSound(v);
+      else if (this.appView === 'battle' && this.bgmAuto) this._bgmAutoPickForView('battle');
+    });
     // ブラウザの自動再生制限で起動直後の再生がブロックされた場合、
     // 最初のクリック/キー入力を合図に一度だけ再試行する
     const unlockBgm = () => {
-      const audio = this._bgmAudio;
-      if (audio && audio.paused && this.bgmCurrentKey) audio.play().catch(() => {});
+      if (this._bgmCtx && this._bgmCtx.state === 'suspended') this._bgmCtx.resume().catch(() => {});
       window.removeEventListener('click', unlockBgm);
       window.removeEventListener('keydown', unlockBgm);
     };
