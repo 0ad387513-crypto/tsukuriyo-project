@@ -2422,6 +2422,22 @@
     width: 100%; background: #232a3a; border: 1px solid #4a4f5d; color: #e8e8f0;
     border-radius: 4px; padding: 4px 6px; font-size: 12px;
   }
+  .bgm-looptest-open-btn {
+    width: 100%; background: #2a2f3d; border: 1px solid #4a4f5d; color: #cdd6e6;
+    padding: 6px 10px; border-radius: 4px; font-size: 12px; font-weight: 700; cursor: pointer;
+  }
+  .bgm-looptest-open-btn:hover { background: #3a3f4d; }
+  .bgm-looptest-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bgm-looptest-row .global-sound-label { margin-bottom: 0; flex-shrink: 0; width: 120px; }
+  .bgm-looptest-input {
+    flex: 1; background: #11141c; border: 1px solid #444; color: #eee;
+    padding: 5px 8px; border-radius: 4px; font-size: 13px;
+  }
+  .bgm-looptest-copy {
+    font-family: monospace; font-size: 13px; color: #ffd86a;
+    background: #10141d; border: 1px solid #3a4055; border-radius: 5px;
+    padding: 8px 10px; margin: 6px 0 4px; user-select: all;
+  }
 
   /* フィールド確認中：選択系モーダルを一時的に非表示にして盤面を見えるようにする（状態は保持） */
   .modal-peeking .battle-zone-modal,
@@ -3585,6 +3601,44 @@
           <option value="auto">自動（ランダム）</option>
           <option v-for="opt in bgmTrackOptions" :key="opt.key" :value="opt.key">{{ opt.name }}</option>
         </select>
+      </div>
+      <div class="global-sound-row">
+        <button class="bgm-looptest-open-btn" @click="openBgmLoopTester">🔁 BGMループ調整ツール</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BGMループ調整ツール（開発用：ループ境界を耳で確認しながら秒数を探すための簡易ツール） ===== -->
+  <div v-if="bgmLoopTesterOpen" class="battle-zone-modal" @click.self="closeBgmLoopTester">
+    <div class="battle-zone-modal-panel">
+      <h3 class="battle-zone-modal-title">🔁 BGMループ調整ツール</h3>
+      <p class="battle-deck-modal-message">
+        境界の前後だけを試聴できます。しっくりくる秒数が見つかったら、下の欄の値を教えてください。
+      </p>
+      <div class="bgm-looptest-row">
+        <span class="global-sound-label">曲</span>
+        <select class="global-sound-select" :value="bgmLoopTesterKey" @change="bgmLoopTesterSelectTrack($event.target.value)">
+          <option v-for="opt in bgmTrackOptions" :key="opt.key" :value="opt.key">{{ opt.name }}</option>
+        </select>
+      </div>
+      <div class="bgm-looptest-row">
+        <span class="global-sound-label">ループ開始（秒）</span>
+        <input type="number" step="0.05" min="0" :max="bgmLoopTesterDuration" v-model.number="bgmLoopTesterStart" class="bgm-looptest-input">
+      </div>
+      <div class="bgm-looptest-row">
+        <span class="global-sound-label">ループ終了（秒）</span>
+        <input type="number" step="0.05" min="0" :max="bgmLoopTesterDuration" v-model.number="bgmLoopTesterEnd" class="bgm-looptest-input">
+      </div>
+      <div class="bgm-looptest-row">
+        <span class="global-sound-label">曲の長さ</span>
+        <span>{{ bgmLoopTesterDuration.toFixed(2) }} 秒</span>
+      </div>
+      <div class="bgm-looptest-row">
+        <button class="battle-back-btn" style="background:#2a5cb8;border-color:#6090e0;color:#fff;" @click="bgmLoopTesterPreview">▶ 境界を試聴（終了1.5秒前→開始1.5秒後）</button>
+      </div>
+      <div class="bgm-looptest-copy">{{ bgmLoopTesterCopyText() }}</div>
+      <div class="battle-zone-modal-actions">
+        <button class="battle-back-btn" @click="closeBgmLoopTester">閉じる</button>
       </div>
     </div>
   </div>
@@ -6689,7 +6743,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.179',
+    BUILD_VERSION: '1.14.180',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6735,6 +6789,11 @@ new Vue({
     resumeSession: null,      // TOP画面用：直近の進行中セッション記録（{kind, code, ts} or null）
     showMobileNotice: false,  // 画面が狭い環境向けのPC推奨案内（一度閉じたら次回以降は表示しない）
     glossaryModalOpen: false, // TOP画面のキーワード集モーダル
+    bgmLoopTesterOpen: false, // BGMループ調整ツール（開発用）の開閉
+    bgmLoopTesterKey: null,   // 調整中のBGMキー
+    bgmLoopTesterStart: 0,    // 調整中のループ開始秒
+    bgmLoopTesterEnd: 0,      // 調整中のループ終了秒
+    bgmLoopTesterDuration: 0, // 選択中の曲の全体の長さ（秒）
     topDevToolsOpen: false,   // TOP画面：動作確認用ツール（対戦テスト等）の折りたたみ開閉状態
     gsPeeking:   false,       // ドラフト中にデッキ詳細をプレビュー表示中か
     gsGlobalCardStats: {},    // {[cardNo]: {picked, won}} 人間プレイヤーの実績統計（CPUドラフトの参考にする。CPU自身の対局結果は含めない）
@@ -9108,7 +9167,12 @@ new Vue({
       let loopBuffer = null;
       let loopEndSec = silenceBounds.loopEnd;
       if (entry.loop !== false) {
-        const point = this._bgmDetectLoopPoint(buffer, silenceBounds.loopStart, silenceBounds.loopEnd);
+        // 手動でloopStartSec/loopEndSecが指定されていれば自動検出より優先する
+        // （耳で確認しながらBGMループ調整ツールで見つけた値をBGM_FILESに書き足す想定）
+        const manual = (entry.loopStartSec != null && entry.loopEndSec != null)
+          ? { loopStartSec: entry.loopStartSec, loopEndSec: entry.loopEndSec }
+          : null;
+        const point = manual || this._bgmDetectLoopPoint(buffer, silenceBounds.loopStart, silenceBounds.loopEnd);
         const loopStartSec = point ? point.loopStartSec : silenceBounds.loopStart;
         loopEndSec = point ? point.loopEndSec : silenceBounds.loopEnd;
         try {
@@ -9345,6 +9409,66 @@ new Vue({
       this.bgmVolume = isNaN(n) ? this.bgmVolume : n;
       if (this._bgmGain) this._bgmGain.gain.value = this.bgmVolume;
       try { localStorage.setItem(BGM_VOLUME_STORAGE_KEY, String(this.bgmVolume)); } catch (e) { /* 保存できなくても続行 */ }
+    },
+    /* ===== BGMループ調整ツール（開発用） =====
+       自動検出のループ点が気に入らない曲について、境界の前後だけを試聴しながら
+       秒数を探すための簡易ツール。見つけた値はBGM_FILESのloopStartSec/loopEndSecに
+       手動で書き足すことで、次回以降その曲だけ自動検出の代わりに使われる。 */
+    async openBgmLoopTester() {
+      this.bgmLoopTesterOpen = true;
+      await this.bgmLoopTesterSelectTrack(this.bgmLoopTesterKey || this.bgmCurrentKey || Object.keys(BGM_FILES)[0]);
+    },
+    async bgmLoopTesterSelectTrack(key) {
+      this.bgmLoopTesterKey = key;
+      try {
+        const media = await this._bgmLoadBuffer(key);
+        this.bgmLoopTesterDuration = media.buffer.duration;
+        const entry = BGM_FILES[key];
+        if (entry.loopStartSec != null && entry.loopEndSec != null) {
+          this.bgmLoopTesterStart = entry.loopStartSec;
+          this.bgmLoopTesterEnd = entry.loopEndSec;
+        } else {
+          const sb = this._bgmDetectSilenceTrim(media.buffer);
+          const point = this._bgmDetectLoopPoint(media.buffer, sb.loopStart, sb.loopEnd);
+          this.bgmLoopTesterStart = Number((point ? point.loopStartSec : sb.loopStart).toFixed(2));
+          this.bgmLoopTesterEnd = Number((point ? point.loopEndSec : sb.loopEnd).toFixed(2));
+        }
+      } catch (e) { console.warn('[bgm] ループ調整ツール：読み込みに失敗:', e && e.message); }
+    },
+    /* ループ終了の1.5秒前から再生し、そのままループ開始位置へ飛んで1.5秒再生する。
+       境界の繋がり方だけを短時間で確認できる（曲全体を待つ必要がない）。 */
+    async bgmLoopTesterPreview() {
+      try {
+        const media = await this._bgmLoadBuffer(this.bgmLoopTesterKey);
+        const ctx = this._bgmAudioCtx();
+        if (ctx.state === 'suspended') await ctx.resume();
+        this._bgmLoopTesterStopPreview();
+        const preRoll = 1.5, postRoll = 1.5;
+        const startPos = Math.max(0, this.bgmLoopTesterEnd - preRoll);
+        const now = ctx.currentTime;
+        const before = ctx.createBufferSource();
+        before.buffer = media.buffer;
+        before.connect(this._bgmGain);
+        before.start(now, startPos, preRoll);
+        const after = ctx.createBufferSource();
+        after.buffer = media.buffer;
+        after.connect(this._bgmGain);
+        after.start(now + preRoll, this.bgmLoopTesterStart, postRoll);
+        this._bgmLoopTesterNodes = [before, after];
+      } catch (e) { console.warn('[bgm] 試聴に失敗:', e && e.message); }
+    },
+    _bgmLoopTesterStopPreview() {
+      (this._bgmLoopTesterNodes || []).forEach(node => { try { node.stop(); } catch (e) { /* noop */ } });
+      this._bgmLoopTesterNodes = [];
+    },
+    closeBgmLoopTester() {
+      this._bgmLoopTesterStopPreview();
+      this.bgmLoopTesterOpen = false;
+    },
+    bgmLoopTesterCopyText() {
+      const s = Number(this.bgmLoopTesterStart) || 0;
+      const e = Number(this.bgmLoopTesterEnd) || 0;
+      return `loopStartSec: ${s.toFixed(2)}, loopEndSec: ${e.toFixed(2)},`;
     },
     /* ===== ターン経過時間の警告表示（任意設定・強制効果なし） =====
        長考対策として、自分/相手どちらのターンかに関わらず経過秒数を数え、一定時間を超えたら
