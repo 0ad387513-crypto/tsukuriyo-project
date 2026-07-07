@@ -6403,7 +6403,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.168',
+    BUILD_VERSION: '1.14.169',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8558,25 +8558,65 @@ new Vue({
       this.battleSfxVolume = isNaN(n) ? this.battleSfxVolume : n;
       try { localStorage.setItem(SFX_VOLUME_STORAGE_KEY, String(this.battleSfxVolume)); } catch (e) { /* 保存できなくても続行 */ }
     },
-    /* ===== BGM：画面カテゴリ（対戦画面／それ以外）ごとの自動選曲＋手動選択・ループ再生 ===== */
-    /* 使い回す単一のAudioインスタンス（SEと違い、同時に複数流す必要はなく、
-       切り替え時に前の曲をきちんと止められるよう1つを使い回す） */
-    _bgmAudioEl() {
-      if (!this._bgmAudio) this._bgmAudio = new Audio();
-      return this._bgmAudio;
+    /* ===== BGM：画面カテゴリ（対戦画面／それ以外）ごとの自動選曲＋手動選択・ループ再生 =====
+       <audio loop>だとループ境界でブラウザの再シーク待ちが発生し「プチッ」と途切れて聞こえるため、
+       Web Audio API（AudioBufferSourceNode）で全体を事前デコードし、サンプル単位でギャップレスに
+       ループさせる。デコード済みバッファはキーごとにキャッシュし、2回目以降は再デコードしない。 */
+    _bgmAudioCtx() {
+      if (!this._bgmCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        this._bgmCtx = new Ctx();
+        this._bgmGain = this._bgmCtx.createGain();
+        this._bgmGain.gain.value = this.bgmVolume;
+        this._bgmGain.connect(this._bgmCtx.destination);
+      }
+      return this._bgmCtx;
     },
-    /* 指定キーのBGMをループ再生に切り替える */
-    _bgmPlay(key) {
+    _bgmStopCurrentSource() {
+      if (this._bgmSourceNode) {
+        try { this._bgmSourceNode.stop(); } catch (e) { /* 既に停止済みでも無視 */ }
+        try { this._bgmSourceNode.disconnect(); } catch (e) { /* noop */ }
+        this._bgmSourceNode = null;
+      }
+    },
+    async _bgmLoadBuffer(key) {
+      this._bgmBufferCache = this._bgmBufferCache || {};
+      if (this._bgmBufferCache[key]) return this._bgmBufferCache[key];
+      const entry = BGM_FILES[key];
+      if (!entry) return null;
+      const ctx = this._bgmAudioCtx();
+      const src = `bgm/${encodeURIComponent(entry.file)}`;
+      const resp = await fetch(src);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const arrayBuf = await resp.arrayBuffer();
+      const audioBuf = await ctx.decodeAudioData(arrayBuf);
+      this._bgmBufferCache[key] = audioBuf;
+      return audioBuf;
+    },
+    /* 指定キーのBGMをループ再生に切り替える（非同期：デコード完了後に再生開始） */
+    async _bgmPlay(key) {
       const entry = BGM_FILES[key];
       if (!entry) return;
-      const audio = this._bgmAudioEl();
-      const src = `bgm/${encodeURIComponent(entry.file)}`;
-      audio.loop = entry.loop !== false; // 結果BGMなどは1回再生を許可
-      audio.volume = this.bgmVolume;
-      audio.src = src;
-      audio.currentTime = 0;
-      audio.play().catch(err => console.warn(`[bgm] "${key}" (${src}) の再生に失敗:`, err && err.message));
-      this.bgmCurrentKey = key;
+      const loadToken = (this._bgmLoadSeq = (this._bgmLoadSeq || 0) + 1);
+      this.bgmCurrentKey = key; // 同カテゴリ判定等が即座に効くよう先に確定（従来のfire-and-forgetと同等の挙動）
+      let buffer;
+      try {
+        buffer = await this._bgmLoadBuffer(key);
+      } catch (err) {
+        console.warn(`[bgm] "${key}" の読み込みに失敗:`, err && err.message);
+        return;
+      }
+      if (loadToken !== this._bgmLoadSeq) return; // 読み込み中に別の曲へ切り替わっていたら破棄
+      const ctx = this._bgmAudioCtx();
+      if (ctx.state === 'suspended') { try { await ctx.resume(); } catch (e) { /* 次のユーザー操作で再試行される */ } }
+      if (loadToken !== this._bgmLoadSeq) return;
+      this._bgmStopCurrentSource();
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = entry.loop !== false; // 結果BGMなどは1回再生を許可
+      source.connect(this._bgmGain);
+      source.start(0);
+      this._bgmSourceNode = source;
     },
     _battlePlayResultSound(result) {
       if (!result || !result.outcome) return;
@@ -8646,7 +8686,7 @@ new Vue({
     bgmSetVolume(v) {
       const n = Math.min(1, Math.max(0, Number(v)));
       this.bgmVolume = isNaN(n) ? this.bgmVolume : n;
-      if (this._bgmAudio) this._bgmAudio.volume = this.bgmVolume;
+      if (this._bgmGain) this._bgmGain.gain.value = this.bgmVolume;
       try { localStorage.setItem(BGM_VOLUME_STORAGE_KEY, String(this.bgmVolume)); } catch (e) { /* 保存できなくても続行 */ }
     },
     /* ヒットストップ：0.05秒だけ次の処理を遅延させ、衝撃の一瞬を演出する */
@@ -18660,8 +18700,7 @@ new Vue({
     // ブラウザの自動再生制限で起動直後の再生がブロックされた場合、
     // 最初のクリック/キー入力を合図に一度だけ再試行する
     const unlockBgm = () => {
-      const audio = this._bgmAudio;
-      if (audio && audio.paused && this.bgmCurrentKey) audio.play().catch(() => {});
+      if (this._bgmCtx && this._bgmCtx.state === 'suspended') this._bgmCtx.resume().catch(() => {});
       window.removeEventListener('click', unlockBgm);
       window.removeEventListener('keydown', unlockBgm);
     };
