@@ -5431,7 +5431,7 @@
         </div>
         <div class="result-actions">
           <button v-if="battleUndoStack.length" @click="battleUndo">一手戻る</button>
-          <button v-if="battleNet.on && !battleNet.spectating && battleContext.returnView === 'top'"
+          <button v-if="battleNet.on && !battleNet.spectating && (battleContext.returnView === 'top' || battleContext.returnView === 'shield')"
                   :disabled="battleWaitingForRematch" @click="battleRequestRematch">
             {{ battleWaitingForRematch ? '相手の応答を待っています…' : '🔁 もう一度対戦' }}
           </button>
@@ -6644,7 +6644,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.175',
+    BUILD_VERSION: '1.14.176',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8222,9 +8222,14 @@ new Vue({
     /* 再戦（対戦テストのみ対応）：結果画面から同じ相手とすぐ再戦できるようにする。
        双方のクライアントが同じFirebaseパスへ「再戦したい」を書き込み、両者揃った時点で
        各クライアントが自分側でstartBattleTest相当の再初期化を行う（部屋コード・座席は使い回す）。 */
+    /* 再戦対応モード：対戦テスト（1v1同期確認）とシールド戦（単発の1本勝負なので、
+       ラウンド記録と衝突しない）。4人対戦は星戦の各ラウンドが勝敗記録される真剣勝負のため対象外。 */
+    _battleRematchEligible() {
+      return this.battleContext.returnView === 'top' || this.battleContext.returnView === 'shield';
+    },
     async battleRequestRematch() {
       const n = this.battleNet;
-      if (!n || !n.on || n.spectating || this.battleContext.returnView !== 'top') return;
+      if (!n || !n.on || n.spectating || !this._battleRematchEligible()) return;
       this.battleWaitingForRematch = true;
       try {
         await getDb().ref(`${n.statePath.replace(/\/state$/, '/rematch')}/${n.mySeat}`).set(true);
@@ -8236,10 +8241,19 @@ new Vue({
     _battleHandleRematchSignal(val) {
       if (!val || this._battleRematchTriggered) return;
       const n = this.battleNet;
-      if (!n || this.battleContext.returnView !== 'top') return;
+      if (!n || !this._battleRematchEligible()) return;
       if (!val[n.mySeat] || !val[n.oppSeat]) return;
       this._battleRematchTriggered = true;
-      this._battleRestartTestBattle();
+      if (this.battleContext.returnView === 'shield') this._battleRestartShieldBattle();
+      else this._battleRestartTestBattle();
+    },
+    /* rematchノードの片付け（firstSeatトランザクション用の共有ノード）は席1側だけが担当し、
+       少し遅らせて実行する（双方のトランザクションが完了する前に消えると再抽選がずれて食い違う恐れがあるため） */
+    _battleScheduleRematchCleanup(code, table, mySeat) {
+      if (mySeat !== 1) return;
+      setTimeout(() => {
+        getDb().ref(`sessions/${code}/battle/${table}/rematch`).remove().catch(() => {});
+      }, 3000);
     },
     async _battleRestartTestBattle() {
       const n = this.battleNet;
@@ -8264,13 +8278,42 @@ new Vue({
         selfMulligans: 1, oppMulligans: 1,
         syncGame: true, code, table, mySeat, oppSeat,
       });
-      // rematchノードの片付けは席1側だけが担当し、少し遅らせて実行する
-      // （双方のfirstSeatトランザクションが完了する前に消えると、再抽選がずれて食い違う恐れがあるため）
-      if (mySeat === 1) {
-        setTimeout(() => {
-          getDb().ref(`sessions/${code}/battle/${table}/rematch`).remove().catch(() => {});
-        }, 3000);
+      this._battleScheduleRematchCleanup(code, table, mySeat);
+      this._battleRematchTriggered = false;
+      this.battleWaitingForRematch = false;
+    },
+    /* シールド戦の再戦：ドラフトで確定した同じデッキ・カミをそのまま使い、先攻/後攻だけ再抽選する
+       （単発の1本勝負なので、星戦のようなラウンド記録の仕組みとは衝突しない）。 */
+    async _battleRestartShieldBattle() {
+      const n = this.battleNet;
+      if (!n) return;
+      const { mySeat, oppSeat, code, table } = n;
+      let firstSeat = mySeat;
+      try {
+        const ref = getDb().ref(`sessions/${code}/battle/${table}/rematch/firstSeat`);
+        const res = await ref.transaction(cur => (cur != null ? cur : (Math.random() < 0.5 ? mySeat : oppSeat)));
+        firstSeat = res.snapshot.val();
+      } catch (e) { /* 失敗しても自分視点で続行 */ }
+      const firstSide = String(firstSeat) === String(mySeat) ? 'self' : 'opp';
+      const room = this.sb.roomData || {};
+      const oppRole = this.sb.role === 'host' ? 'guest' : 'host';
+      const selfInfo = room[this.sb.role] || {};
+      const oppInfo = room[oppRole] || {};
+      const editedDeck = [];
+      for (const no in this.deck) {
+        const card = this.allCards.find(c => String(c.no) === String(no));
+        if (!card) continue;
+        for (let i = 0; i < this.deck[no]; i++) editedDeck.push(card);
       }
+      this._battleInitialize({
+        source: 'shield', modeLabel: 'シールド戦', returnView: 'shield',
+        selfName: selfInfo.name || this.sb.myName || '自分',
+        oppName: oppInfo.name || '相手', firstSide, life: 10,
+        selfDeck: editedDeck.length ? editedDeck : this.sbMyFinalDeck, oppDeck: this.sbOpponentFinalDeck,
+        selfKami: this.sbMySelectedKami, oppKami: this.sbOpponentSelectedKami,
+        syncGame: true, code, table, mySeat, oppSeat,
+      });
+      this._battleScheduleRematchCleanup(code, table, mySeat);
       this._battleRematchTriggered = false;
       this.battleWaitingForRematch = false;
     },
