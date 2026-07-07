@@ -6403,7 +6403,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.169',
+    BUILD_VERSION: '1.14.170',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8590,8 +8590,27 @@ new Vue({
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const arrayBuf = await resp.arrayBuffer();
       const audioBuf = await ctx.decodeAudioData(arrayBuf);
+      audioBuf._loopBounds = this._bgmDetectLoopBounds(audioBuf);
       this._bgmBufferCache[key] = audioBuf;
       return audioBuf;
+    },
+    /* MP3はエンコーダの仕様上、ファイルの先頭・末尾にほぼ無音のパディングが数十ms程度入ることが多く、
+       これがループ境界の「間」に聞こえる主原因になる。生PCMを走査して実際に音が始まる/終わる位置を
+       検出し、ループの巻き戻し先（loopStart）と巻き戻すタイミング（loopEnd）をそこに合わせることで、
+       無音パディングを読み飛ばしてループさせる（曲が意図的に無音のイントロを持つ場合は誤検出を避けるため、
+       閾値は「ほぼ完全な無音（エンコーダの0埋め）」だけに反応するごく小さい値にしてある）。 */
+    _bgmDetectLoopBounds(buffer) {
+      const SILENCE_THRESHOLD = 0.0015;
+      const data = buffer.getChannelData(0);
+      const len = data.length;
+      let start = 0;
+      while (start < len && Math.abs(data[start]) < SILENCE_THRESHOLD) start++;
+      let end = len - 1;
+      while (end > start && Math.abs(data[end]) < SILENCE_THRESHOLD) end--;
+      const sr = buffer.sampleRate;
+      // 検出に失敗した（曲全体が無音扱いになった等）場合はトリムせず全体を使う
+      if (end <= start) return { loopStart: 0, loopEnd: buffer.duration };
+      return { loopStart: start / sr, loopEnd: (end + 1) / sr };
     },
     /* 指定キーのBGMをループ再生に切り替える（非同期：デコード完了後に再生開始） */
     async _bgmPlay(key) {
@@ -8614,6 +8633,11 @@ new Vue({
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.loop = entry.loop !== false; // 結果BGMなどは1回再生を許可
+      if (source.loop && buffer._loopBounds) {
+        // ループ2周目以降の巻き戻し先だけをトリムする。初回再生は0（曲頭）から通しで流す。
+        source.loopStart = buffer._loopBounds.loopStart;
+        source.loopEnd = buffer._loopBounds.loopEnd;
+      }
       source.connect(this._bgmGain);
       source.start(0);
       this._bgmSourceNode = source;
