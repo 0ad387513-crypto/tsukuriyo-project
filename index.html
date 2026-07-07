@@ -560,6 +560,30 @@
     font-size: 11px; color: #9aa; font-weight: 600;
     letter-spacing: 0.08em; flex-shrink: 0;
   }
+  /* デッキ詳細：マナカーブ＋属性分布の簡易グラフ */
+  .deck-stats-panel {
+    padding: 10px 12px 12px; border-bottom: 1px solid #2a2f3d; background: #14171f;
+  }
+  .deck-curve-chart {
+    display: flex; align-items: flex-end; gap: 4px; height: 66px; margin-bottom: 8px;
+  }
+  .deck-curve-col {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; height: 100%;
+  }
+  .deck-curve-bar {
+    width: 100%; max-width: 22px; background: linear-gradient(180deg, #6a8ee0, #3a5aa0);
+    border-radius: 3px 3px 0 0; transition: height .2s ease;
+  }
+  .deck-curve-count { font-size: 10px; color: #cdd6e6; font-weight: 700; line-height: 1; }
+  .deck-curve-label { font-size: 10px; color: #778; line-height: 1; }
+  .deck-color-bar {
+    display: flex; width: 100%; height: 10px; border-radius: 5px; overflow: hidden;
+    background: #22262f; margin-bottom: 6px;
+  }
+  .deck-color-seg { height: 100%; }
+  .deck-color-legend { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+  .deck-color-legend-item { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #b8c2d8; }
+  .deck-color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .deck-search {
     flex: 1; min-width: 0; height: 24px;
     background: #11141c; border: 1px solid #444; color: #eee;
@@ -2280,6 +2304,17 @@
   .battle-waiting-fade-enter-active, .battle-waiting-fade-leave-active { transition: opacity .2s ease; }
   .battle-waiting-fade-enter, .battle-waiting-fade-leave-to { opacity: 0; }
   /* ===== SE/BGM音量設定：全画面共通のフローティングボタン ===== */
+  /* 狭い画面向けのPC推奨案内バナー */
+  .mobile-notice-banner {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9800;
+    display: flex; align-items: center; gap: 10px;
+    background: #4a3010; border-bottom: 1px solid #f0b86c; color: #ffe2a8;
+    padding: 8px 12px; font-size: 12px; line-height: 1.4;
+  }
+  .mobile-notice-close {
+    margin-left: auto; flex-shrink: 0; background: transparent; border: 1px solid #f0b86c;
+    color: #ffe2a8; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-size: 12px;
+  }
   .global-sound-settings { position: fixed; top: 8px; right: 8px; z-index: 9500; }
   /* 対戦画面ヘッダー内版：降参ボタン等と重ならないよう、ヘッダーの通常のflow内に配置する */
   .battle-header-sound-wrap { position: relative; }
@@ -2626,9 +2661,10 @@
   .battle-card.field-card.tapped {
     transform: rotate(90deg) scale(.88);
     transform-origin: center;
-    transition: transform .2s ease;
+    transition: transform .2s ease, filter .2s ease;
     z-index: 3;
     box-shadow: 0 0 12px rgba(245, 202, 88, .55);
+    filter: brightness(.82); /* タップ中＝行動不可を一瞥で分かるよう明度を落とす */
   }
   .battle-card.field-card.evolved {
     box-shadow: 0 0 0 2px #c98aff, 0 0 14px rgba(180,120,255,.55);
@@ -3448,6 +3484,12 @@
 <div id="app-loading"><div class="app-loading-spinner"></div><div>読み込み中…</div></div>
 <div id="app" v-cloak class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek }">
 
+  <!-- ===== 狭い画面（スマホ等）向けのPC推奨案内：ドラッグ操作中心のため操作しづらいことを伝える ===== -->
+  <div v-if="showMobileNotice" class="mobile-notice-banner">
+    <span>このゲームはカードのドラッグ操作が中心のため、PC・タブレットでのプレイを推奨します。</span>
+    <button class="mobile-notice-close" @click="dismissMobileNotice">✕</button>
+  </div>
+
   <!-- ===== SE/BGM音量設定（全画面共通のフローティングボタン。対戦画面は専用ヘッダーボタンと
        重なるため、対戦画面表示中はこちらを隠す。カードリスト画面ではBGM不要かつ他の
        ボタン群と重なるため非表示にする） ===== -->
@@ -3755,6 +3797,25 @@
               {{ opt.label }}
             </div>
           </div>
+        </div>
+      </div>
+      <div v-if="deckEntries.length > 0" class="deck-stats-panel">
+        <div class="deck-curve-chart">
+          <div v-for="b in deckManaCurveBuckets" :key="'curve'+b.label" class="deck-curve-col" :title="'コスト' + b.label + ': ' + b.count + '枚'">
+            <div class="deck-curve-bar" :style="{ height: (b.count ? Math.max(6, b.count / deckManaCurveMax * 44) : 0) + 'px' }"></div>
+            <span v-if="b.count" class="deck-curve-count">{{ b.count }}</span>
+            <span class="deck-curve-label">{{ b.label }}</span>
+          </div>
+        </div>
+        <div class="deck-color-bar">
+          <div v-for="cb in deckColorBuckets" :key="'colorbar'+cb.color"
+               class="deck-color-seg" :style="{ width: cb.pct + '%', background: cb.hex }"
+               :title="cb.color + ': ' + cb.count + '枚'"></div>
+        </div>
+        <div class="deck-color-legend">
+          <span v-for="cb in deckColorBuckets" :key="'colorleg'+cb.color" class="deck-color-legend-item">
+            <span class="deck-color-dot" :style="{ background: cb.hex }"></span>{{ cb.color }} {{ cb.count }}
+          </span>
         </div>
       </div>
       <div class="empty" v-if="deckEntriesDisplay.length === 0 && deckEntriesGrouped.length > 0">検索結果なし</div>
@@ -4264,6 +4325,10 @@
       <span v-if="battleNet.on && battleNet.oppOnline === false" class="battle-sync-status error"
             title="相手の接続が切断されています（自動検知）">
         ⚠️ 相手が切断中{{ battleNetOppDisconnectedAgo ? '（' + battleNetOppDisconnectedAgo + '）' : '' }}
+      </span>
+      <span v-if="battleNet.on && !battleNet.spectating && battleNet.spectatorCount > 0" class="battle-sync-status"
+            title="この対戦を観戦しているユーザーの人数">
+        👁 観戦者 {{ battleNet.spectatorCount }}人
       </span>
       <span class="spacer"></span>
       <!-- SE/BGM音量設定：フローティング版だと降参ボタン等と重なるため、対戦画面ではヘッダー内に配置する -->
@@ -6484,7 +6549,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.173',
+    BUILD_VERSION: '1.14.174',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6528,6 +6593,7 @@ new Vue({
     },
     gsInviteCopied: false,    // 招待リンクコピー直後のフィードバック表示用
     resumeSession: null,      // TOP画面用：直近の進行中セッション記録（{kind, code, ts} or null）
+    showMobileNotice: false,  // 画面が狭い環境向けのPC推奨案内（一度閉じたら次回以降は表示しない）
     gsPeeking:   false,       // ドラフト中にデッキ詳細をプレビュー表示中か
     _gsPeekSaved: null,       // プレビュー前のデッキビルダー状態退避
     gsSolo:      false,       // ソロテスト（CPU3体を自動操作）モード
@@ -6944,6 +7010,32 @@ new Vue({
         return cardSortCompare(a.card, b.card);
       });
       return all;
+    },
+    /* デッキ詳細画面用：マナカーブ（コスト0〜6・7以上の8区分の枚数分布）。返還済みは含めない。 */
+    deckManaCurveBuckets() {
+      const buckets = Array.from({ length: 8 }, (_, i) => ({ label: i < 7 ? String(i) : '7+', count: 0 }));
+      this.deckEntries.forEach(e => {
+        const cost = Math.max(0, Number(e.card.cost) || 0);
+        buckets[Math.min(cost, 7)].count += e.count;
+      });
+      return buckets;
+    },
+    deckManaCurveMax() {
+      return Math.max(1, ...this.deckManaCurveBuckets.map(b => b.count));
+    },
+    /* デッキ詳細画面用：属性（色）分布。COLOR_ORDERの並び順で、デッキに含まれる色のみ返す。 */
+    deckColorBuckets() {
+      const counts = {};
+      let total = 0;
+      this.deckEntries.forEach(e => {
+        const c = e.card.color || '無';
+        counts[c] = (counts[c] || 0) + e.count;
+        total += e.count;
+      });
+      const colorHex = { '赤':'#e05a5a', '青':'#5a8ee0', '緑':'#5ac97a', '黄':'#e0c85a', '紫':'#a05ae0', '創':'#e0955a', '無':'#8a8f9a' };
+      return Object.keys(counts)
+        .sort((a, b) => colorRank(a) - colorRank(b))
+        .map(c => ({ color: c, count: counts[c], pct: total ? (counts[c] / total * 100) : 0, hex: colorHex[c] || '#8a8f9a' }));
     },
     // 展開ビュー専用：deckEntriesFlat に検索＋ソートを適用した表示リスト
     deckEntriesFlatDisplay() {
@@ -7744,6 +7836,10 @@ new Vue({
       return w;
     },
     /* ===== トップメニュー遷移 ===== */
+    dismissMobileNotice() {
+      this.showMobileNotice = false;
+      try { window.localStorage.setItem('tsukuriyo_mobileNoticeDismissed', '1'); } catch (e) { /* noop */ }
+    },
     goToTop() {
       this._sfxPlay('cancel');
       this._loadActiveSessionForResume();
@@ -8582,6 +8678,7 @@ new Vue({
         lastPublishedAt: null, lastReceivedAt: null, lastError: null,
         mulliganReady: {}, waitingForOppMulligan: false,
         oppOnline: null, oppLastSeenAt: null, spectating: false,
+        spectatorCount: 0,
       };
       this._battleLastAppliedRemoteTs = 0;
       this._battleStartSyncTick();
@@ -8657,6 +8754,14 @@ new Vue({
         const rematchRef = getDb().ref(rematchPath);
         const rematchHandler = snap => this._battleHandleRematchSignal(snap.val());
         rematchRef.on('value', rematchHandler);
+        // 観戦者数：観戦者が在席登録したキー数をそのまま件数として表示する
+        const spectatorsPath = path.replace(/\/state$/, '/spectators');
+        const spectatorsRef = getDb().ref(spectatorsPath);
+        const spectatorsHandler = snap => {
+          const val = snap.val();
+          this.$set(this.battleNet, 'spectatorCount', val ? Object.keys(val).length : 0);
+        };
+        spectatorsRef.on('value', spectatorsHandler);
         this.battleNet._unsub = () => {
           ref.off('value', handler);
           try { noticeRef.off('value', noticeHandler); } catch (e) {}
@@ -8670,6 +8775,7 @@ new Vue({
           try { connectedRef.off('value', connectedHandler); } catch (e) {}
           try { oppPresenceRef.off('value', presenceHandler); } catch (e) {}
           try { rematchRef.off('value', rematchHandler); } catch (e) {}
+          try { spectatorsRef.off('value', spectatorsHandler); } catch (e) {}
           try { myPresenceRef.onDisconnect().cancel(); } catch (e) {}
           try { myPresenceRef.set({ online: false, ts: Date.now() }); } catch (e) {}
         };
@@ -8717,11 +8823,18 @@ new Vue({
         const oracleEffectRef = getDb().ref(oracleEffectPath);
         const oracleEffectHandler = snap => this._battleApplyRemoteOracleEffect(snap.val());
         oracleEffectRef.on('value', oracleEffectHandler);
+        // 観戦者数を対戦者側に見せるための在席登録（自分がこの部屋を観戦中であることを記録するだけ）
+        const spectatorsPath = path.replace(/\/state$/, '/spectators');
+        const mySpectatorRef = getDb().ref(`${spectatorsPath}/${this._battleClientId()}`);
+        mySpectatorRef.onDisconnect().remove();
+        mySpectatorRef.set(true);
         this.battleNet._unsub = () => {
           ref.off('value', handler);
           try { noticeRef.off('value', noticeHandler); } catch (e) {}
           try { skill2Ref.off('value', skill2Handler); } catch (e) {}
           try { oracleEffectRef.off('value', oracleEffectHandler); } catch (e) {}
+          try { mySpectatorRef.onDisconnect().cancel(); } catch (e) {}
+          try { mySpectatorRef.remove(); } catch (e) {}
         };
       } catch (e) {
         console.error('[spectate] 購読開始失敗:', e);
@@ -19067,6 +19180,11 @@ new Vue({
       }
     } catch (e) { /* URL API非対応環境では無視 */ }
     this._loadActiveSessionForResume();
+    // カード操作がドラッグ中心のため、狭い画面（スマホ等）ではPC推奨の案内を出す（一度閉じたら次回以降は出さない）
+    try {
+      const dismissed = window.localStorage.getItem('tsukuriyo_mobileNoticeDismissed') === '1';
+      if (!dismissed && window.innerWidth < 900) this.showMobileNotice = true;
+    } catch (e) { /* 判定できない環境では出さない */ }
     // 対戦オンライン同期：自分が手番中（＋手番を渡す瞬間）の盤面変化をFirebaseへ公開
     this.$watch('battleSample', () => {
       if (this._battleApplyingRemote) return;          // 鏡映適用中は再公開しない
