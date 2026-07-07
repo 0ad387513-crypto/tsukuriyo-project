@@ -369,6 +369,7 @@ async function startDraft(code, round, roundCardNos) {
       done:      false,
     };
     s.round = round;        // 現在のラウンド
+    s.draftReturnDone = {};
     s.phase = 'draft';
     return s;
   });
@@ -478,6 +479,10 @@ async function startDeepen(code) {
   const ref = getDb().ref(`sessions/${code}`);
   await ref.transaction(s => {
     if (!s) return s;
+    if (s.phase === 'draft_done') {
+      const done = s.draftReturnDone || {};
+      if (![1, 2, 3, 4].every(n => done[n])) return s;
+    }
     const round = s.round || 1;
     s.insight = s.insight || {};
     if (round === 1) {
@@ -574,6 +579,46 @@ async function deepenBloomPick(code, seat, cardNo) {
   });
 }
 
+function draftFreeReturnLimit(round) {
+  return round === 1 ? 1 : (round === 2 || round === 3 ? 2 : 0);
+}
+
+/** 選別の儀終了後の無料返還（見識を消費せず、デッキから星魂へ送る） */
+async function draftFreeReturn(code, seat, cardNo) {
+  const ref = getDb().ref(`sessions/${code}`);
+  await ref.transaction(s => {
+    if (!s || s.phase !== 'draft_done') return s;
+    const round = (s.draft && s.draft.completedRound) || s.round || 1;
+    const limit = draftFreeReturnLimit(round);
+    if (limit <= 0) return s;
+    s.draftFreeReturned = s.draftFreeReturned || {};
+    s.draftFreeReturned[round] = s.draftFreeReturned[round] || {};
+    const already = fbArr(s.draftFreeReturned[round][seat]);
+    if (already.length >= limit) return s;
+    const deck = fbArr(s.decks && s.decks[seat]);
+    const i = deck.findIndex(c => String(c) === String(cardNo));
+    if (i < 0) return s;
+    deck.splice(i, 1);
+    s.decks = s.decks || {};
+    s.decks[seat] = deck;
+    s.converted = s.converted || {};
+    s.converted[seat] = [...fbArr(s.converted[seat]), cardNo];
+    s.draftFreeReturned[round][seat] = [...already, cardNo];
+    return s;
+  });
+}
+
+/** 無料返還を終了。全員が済むまで深化の刻には進めない */
+async function draftFreeReturnDone(code, seat, done) {
+  const ref = getDb().ref(`sessions/${code}`);
+  await ref.transaction(s => {
+    if (!s || s.phase !== 'draft_done') return s;
+    s.draftReturnDone = s.draftReturnDone || {};
+    s.draftReturnDone[seat] = !!done;
+    return s;
+  });
+}
+
 /** 深化完了フラグの設定（全員完了で 星戦フェーズへ） */
 async function deepenSetDone(code, seat, done) {
   const ref = getDb().ref(`sessions/${code}`);
@@ -654,6 +699,7 @@ if (typeof module !== "undefined") {
     startDraft, draftPick, dealDraftSets, rotatePacks, draftRoundTarget,
     DRAFT_ROUND_CONFIG,
     startDeepen, deepenReflect, deepenFusion, deepenBloomDraw, deepenBloomPick,
+    draftFreeReturn, draftFreeReturnDone, draftFreeReturnLimit,
     deepenSetDone, packCards,
     PAIRINGS, battleWonBySeat, recordBattleResult, advanceAfterBattle,
     cpuSeatsOf, sessionHasCpu, addCpuSeat, removeCpuSeat, pairingsFor,

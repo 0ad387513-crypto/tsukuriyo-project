@@ -589,6 +589,11 @@
   .deck-sort-item:hover { background: #2e3550; color: #fff; }
   .deck-sort-item.selected { color: #fff; font-weight: 600; }
   .deck-sort-item .check { width: 14px; color: #5b8; font-size: 13px; flex-shrink: 0; }
+  .deck-visible-count {
+    color: #b8c2d8; font-size: 12px; font-weight: 700;
+    padding: 4px 8px; border: 1px solid #3a4055; border-radius: 4px;
+    background: #151923; white-space: nowrap;
+  }
   .deck-item {
     display: flex; align-items: center; gap: 8px;
     padding: 10px 12px; border-bottom: 1px solid #232838;
@@ -1384,6 +1389,22 @@
   }
   .gm-battle-table.mine { border-color: #5abb8a; box-shadow: 0 0 0 1px #5abb8a55 inset; }
   .gm-battle-table.cpu-table { opacity: 0.65; border-style: dashed; }
+  .gm-draft-kami-strip {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px; margin: 10px 0 12px;
+  }
+  .gm-draft-kami-mini {
+    display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 8px;
+    padding: 6px; border: 1px solid #32394a; background: #171c27; border-radius: 6px;
+  }
+  .gm-draft-kami-mini.me { border-color: #5abb8a; }
+  .gm-draft-kami-mini.cpu { border-color: #7a6aa8; }
+  .gm-draft-kami-thumb {
+    width: 36px; aspect-ratio: 744/1039; border-radius: 4px; background: #0c1018 center/cover no-repeat;
+    border: 1px solid #444c5d;
+  }
+  .gm-draft-kami-name { min-width: 0; font-size: 12px; color: #d8dfec; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gm-deck-card.locked { opacity: .55; cursor: default; filter: grayscale(.35); }
   .gm-battle-table-title { font-size: 14px; font-weight: 700; color: #cde; margin-bottom: 12px; }
   .gm-battle-vs { display: flex; align-items: center; justify-content: center; gap: 10px; }
   .gm-battle-player {
@@ -2438,6 +2459,8 @@
   }
   .sentei-option:hover { background: #263252; border-color: #5a7caa; }
   .sentei-option.selected { background: #1e3c6a; border-color: #6090e0; box-shadow: 0 0 0 2px rgba(96,144,224,.35); }
+  .sentei-option.disabled { opacity: .42; cursor: not-allowed; filter: grayscale(.35); }
+  .sentei-option.disabled:hover { background: #182033; border-color: #333b4c; }
   .sentei-option-check {
     width: 20px; min-width: 20px; height: 20px; border-radius: 4px;
     background: #293044; border: 1.5px solid #5a6b80;
@@ -3197,6 +3220,28 @@
     0%   { opacity: .9; transform: scale(0.4) translateY(0); }
     100% { opacity: 0; transform: scale(1.5) translateY(-20px); }
   }
+  .heavy-summon-shake .battle-main,
+  .heavy-summon-shake .battle-overlay .battle-card {
+    animation: heavySummonShakeKf .42s ease-in-out;
+  }
+  .field-card-heavy::before, .field-card-heavy::after {
+    content: ''; position: absolute; bottom: -5px; width: 24px; height: 15px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,169,116,.65), rgba(120,92,55,0) 72%);
+    pointer-events: none; z-index: 4; animation: heavyDustKf .8s ease-out forwards;
+  }
+  .field-card-heavy::before { left: 8%; }
+  .field-card-heavy::after { right: 8%; animation-delay: .08s; }
+  @keyframes heavySummonShakeKf {
+    0%, 100% { transform: translate(0,0); }
+    18% { transform: translate(-3px, 2px); }
+    36% { transform: translate(3px, -2px); }
+    54% { transform: translate(-2px, -1px); }
+    72% { transform: translate(2px, 1px); }
+  }
+  @keyframes heavyDustKf {
+    0% { opacity: .95; transform: translateY(0) scale(.6); filter: blur(0); }
+    100% { opacity: 0; transform: translateY(-24px) scale(2.1); filter: blur(2px); }
+  }
   /* ライフが少ない時の警告演出：ライフ表示の脈動＋自陣が危険域なら画面端をうっすら赤く点滅 */
   .orb-disc.life.life-warning { animation: lifeWarningPulseKf 1s ease-in-out infinite; }
   @keyframes lifeWarningPulseKf {
@@ -3258,12 +3303,17 @@
     opacity: 0; pointer-events: none;
     animation-name: victoryPetalFallKf; animation-timing-function: linear; animation-iteration-count: infinite;
   }
+  .battle-result-title .result-char {
+    display: inline-block; opacity: 0; transform: translateY(12px) scale(.96);
+    animation: resultCharInKf .11s ease-out forwards;
+  }
   @keyframes victoryPetalFallKf {
     0%   { transform: translateY(-20px) rotate(0deg); opacity: 0; }
     8%   { opacity: .9; }
     100% { transform: translateY(100vh) rotate(340deg); opacity: 0; }
   }
   @keyframes victory-flash { 0%,100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+  @keyframes resultCharInKf { to { opacity: 1; transform: translateY(0) scale(1); } }
   @keyframes spark-spin { to { transform: rotate(360deg) scale(1.15); } }
   .result-actions { display: flex; justify-content: center; gap: 10px; margin-top: 30px; }
   .result-actions button { padding: 9px 16px; border-radius: 5px; border: 1px solid #737c89; background: #252d39; color: #fff; font-weight: 800; cursor: pointer; }
@@ -3357,7 +3407,7 @@
 </head>
 <body>
 <div id="app-loading"><div class="app-loading-spinner"></div><div>読み込み中…</div></div>
-<div id="app" v-cloak class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek }">
+<div id="app" v-cloak class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek, 'heavy-summon-shake': battleHeavyShake }">
 
   <!-- ===== SE/BGM音量設定（全画面共通のフローティングボタン。対戦画面は専用ヘッダーボタンと
        重なるため、対戦画面表示中はこちらを隠す。カードリスト画面ではBGM不要かつ他の
@@ -3537,7 +3587,7 @@
               <line x1="14" y1="10" x2="21" y2="3"></line>
               <line x1="3" y1="21" x2="10" y2="14"></line>
             </svg>
-            <span class="dt-label">{{ deckExpanded ? '元に戻す' : 'デッキ詳細' }}</span>
+            <span class="dt-label">{{ deckExpanded ? 'カードリストへ' : 'デッキ詳細' }}</span>
           </button>
         </div>
         <div class="deck-controls">
@@ -3647,6 +3697,7 @@
       <div class="deck-section-label">
         <span class="deck-section-title">カード</span>
         <input class="deck-search" type="text" v-model="deckSearchText" placeholder="カード名 / No / 効果テキストで検索">
+        <span class="deck-visible-count">{{ deckVisibleCountLabel }}</span>
         <div class="deck-sort-wrap">
           <button class="deck-sort-btn" @click.stop="deckSortOpen = !deckSortOpen"
                   :class="{ active: deckSortOpen }">
@@ -3698,7 +3749,7 @@
       </div>
     </div>
     <!-- 展開時：カード画像をプールと同じグリッドで大きく表示（同名カードはグループ化） -->
-    <div class="deck-grid-area" v-else>
+      <div class="deck-grid-area" v-else>
       <!-- 検索・フィルター・ソートバー（カードリスト画面と統一UI） -->
       <div class="deck-grid-toolbar">
         <input class="deck-search" type="text" v-model="deckSearchText" placeholder="No / カード名 / 効果テキストで検索">
@@ -3749,6 +3800,7 @@
           <option v-for="p in deckAvailablePacks" :key="p" :value="String(p)">P{{ p }}</option>
         </select>
         <button class="clear-btn" @click="clearDeckFilters">フィルタをクリア</button>
+        <span class="deck-visible-count">{{ deckVisibleCountLabel }}</span>
         <div class="deck-sort-wrap">
           <button class="deck-sort-btn" @click.stop="deckSortOpen = !deckSortOpen"
                   :class="{ active: deckSortOpen }">
@@ -4308,7 +4360,7 @@
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.opp.relics" :key="'or'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced }"
+                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)"
@@ -4326,7 +4378,7 @@
             <div class="battle-card-row legacy-row">
               <div v-for="(card, i) in battleSample.opp.legacies" :key="'ol'+i"
                    class="battle-card field-card opp-legacy-target"
-                   :class="{ 'battle-target-legacy': battleCanFieldDragToAttackTargets, tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced }"
+                   :class="{ 'battle-target-legacy': battleCanFieldDragToAttackTargets, tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @dragover.prevent="battleUpdateFieldAttackTarget($event)"
@@ -4377,7 +4429,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('legacies', $event)">
               <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i, 'evolve-target': battleHandDragOverBaseIdx === i, 'field-card-landed': card._justPlaced }"
+                   :class="{ tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i, 'evolve-target': battleHandDragOverBaseIdx === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','legacies',i,$event)"
                    @click="battleFieldCardClick(card)"
@@ -4429,7 +4481,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('relics', $event)">
               <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i, 'field-card-landed': card._justPlaced }"
+                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','relics',i,$event)"
                    @click="battleFieldCardClick(card)"
@@ -5023,7 +5075,7 @@
         <div class="sentei-options">
           <div v-for="(opt, i) in battleSenteiModal.options" :key="'so'+i"
                class="sentei-option"
-               :class="{ selected: battleSenteiModal.selected.includes(i) }"
+               :class="{ selected: battleSenteiModal.selected.includes(i), disabled: battleSenteiOptionDisabled(i) }"
                @click="battleToggleSenteiOption(i)">
             <div class="sentei-option-check">{{ battleSenteiModal.selected.includes(i) ? '✓' : '' }}</div>
             <div class="sentei-option-text">・{{ opt }}</div>
@@ -5120,7 +5172,7 @@
           </button>
         </div>
         <div class="battle-action-buttons">
-          <button @click="battleSublimModal = null">キャンセル</button>
+          <button @click="battleSublimModal = null; _sfxPlay('cancel')">キャンセル</button>
           <button class="modal-peek-btn" @click="battleModalPeek = true">フィールドを確認</button>
         </div>
       </div>
@@ -5144,13 +5196,16 @@
     <div v-if="battleSample.result" class="battle-result-overlay">
       <template v-if="battleSample.result.outcome === 'win'">
         <span v-for="i in 16" :key="'petal'+i" class="victory-petal"
-              :style="{ left: ((i*61)%100) + '%', animationDelay: ((i%7)*0.35) + 's', animationDuration: (3.2 + (i%5)*0.4) + 's' }"></span>
+              :style="{ left: ((i*61)%100) + '%', animationDelay: (1.1 + (i%7)*0.35) + 's', animationDuration: (3.2 + (i%5)*0.4) + 's' }"></span>
       </template>
       <div class="battle-result-panel" :class="battleSample.result.outcome">
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s1">✦</span>
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s2">✦</span>
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s3">✦</span>
-        <div class="battle-result-title">{{ battleSample.result.title }}</div>
+        <div class="battle-result-title">
+          <span v-for="(ch, i) in battleResultTitleChars" :key="'rch'+i" class="result-char"
+                :style="{ animationDelay: (i * 0.08) + 's' }">{{ ch }}</span>
+        </div>
         <div v-if="battleSample.result.reason === 'surrender'" class="battle-result-subtext">
           {{ battleSample.result.outcome === 'win' ? '相手が降参しました' : '降参しました' }}
         </div>
@@ -5214,7 +5269,7 @@
         </div>
       </div>
       <div class="battle-zone-modal-actions">
-        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="battleTokenPickModal = null">キャンセル</button>
+        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="battleTokenPickModal = null; _sfxPlay('cancel')">キャンセル</button>
       </div>
     </div>
   </div>
@@ -5266,7 +5321,9 @@
       <div style="display:flex;flex-direction:column;gap:8px;padding:6px 0;">
         <button v-for="(opt, i) in dslChoiceModal.options" :key="'choice'+i"
                 class="battle-back-btn"
-                style="text-align:left;padding:10px 14px;background:#202840;border-color:#3a4256;color:#d4e0f0;"
+                :disabled="dslChoiceOptionDisabled(i)"
+                :title="dslChoiceOptionDisabled(i) ? '条件を満たしていません' : ''"
+                :style="{ textAlign:'left', padding:'10px 14px', background:'#202840', borderColor:'#3a4256', color:'#d4e0f0', opacity: dslChoiceOptionDisabled(i) ? .42 : 1, cursor: dslChoiceOptionDisabled(i) ? 'not-allowed' : 'pointer' }"
                 @click="dslAnswerChoice(i)">
           {{ i + 1 }}. {{ opt }}
         </button>
@@ -5473,6 +5530,15 @@
           <template v-if="!gsIPickedThisStep">★ パックから1枚選んでデッキに加えてください（残りは隣へ回ります）</template>
           <template v-else>選択しました。他のプレイヤーを待っています…（{{ gsDraftPickedCount }}/4）</template>
         </div>
+        <div class="gm-draft-kami-strip">
+          <div v-for="s in gsSeats" :key="'draftkami'+s.seat" class="gm-draft-kami-mini"
+               :class="{ me: s.isMe, cpu: s.info && s.info.isCpu }">
+            <div class="gm-draft-kami-thumb"
+                 @mouseenter="s.kamiCard && showCardHover(s.kamiCard, $event)" @mouseleave="hideCardHover"
+                 :style="(s.kamiCard && cardImageUrl(s.kamiCard)) ? { backgroundImage: 'url(' + cardImageUrl(s.kamiCard) + ')' } : {}"></div>
+            <div class="gm-draft-kami-name">P{{ s.seat }} {{ s.kamiCard ? fullName(s.kamiCard) : '—' }}</div>
+          </div>
+        </div>
         <div class="gm-pack-grid" :class="{ locked: gsIPickedThisStep }">
           <div v-for="(card, i) in gsMyPackCards" :key="i" class="gm-pack-card"
                @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
@@ -5495,18 +5561,35 @@
       <div v-else-if="gs.view === 'draft_done'" class="gm-body gm-draft-done">
         <div class="gm-done-title">弐 選別の儀（ラウンド{{ gsDraft ? gsDraft.completedRound : 1 }}） 完了</div>
         <p class="gm-lead">
-          あなたのデッキ（{{ gsMyDraftDeckCards.length }}枚）が完成しました。「デッキビルダーに反映」で内容を確認できます。<br>
-          ※ 深化の刻・星戦は未実装のため、現状はラウンド1のドラフトまでです。
+          このラウンドの終了時、見識を使わずにデッキからカードを星魂へ返還できます。
+          返還しない場合はそのまま完了してください。
         </p>
+        <div class="gm-converted" style="margin-bottom:10px;">
+          無料返還: <b>{{ gsMyDraftFreeReturnedCount }}</b> / {{ gsDraftFreeReturnLimit }} 枚
+          <span v-if="gsMyDraftReturnDone">（完了済み）</span>
+        </div>
         <div class="gm-deck-grid">
           <div v-for="(card, i) in gsMyDraftDeckCards" :key="i" class="gm-deck-card"
-               @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
+               :class="{ locked: gsMyDraftReturnDone || gsMyDraftFreeReturnedCount >= gsDraftFreeReturnLimit }"
+               @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
+               @click="gsDraftFreeReturn(card)">
             <div class="gm-deck-img"
                  :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
           </div>
         </div>
+        <div class="gm-pick-status" style="margin-top:12px;">
+          <div v-for="st in gsDraftReturnSeatStatus" :key="'ret'+st.seat" class="gm-pick-seat"
+               :class="{ me: st.isMe, done: st.done }">
+            <div class="gm-pick-no">P{{ st.seat }} {{ st.name }}<span v-if="st.isMe"> (あなた)</span></div>
+            <div class="gm-pick-kami">{{ st.done ? '返還選択完了 ✓' : '返還選択中…' }}</div>
+          </div>
+        </div>
         <div class="gm-lobby-actions">
-          <button v-if="gs.seat === 1" class="gm-btn gm-btn-primary" @click="gsStartDeepen">▶ 深化の刻へ進む</button>
+          <button class="gm-btn gm-btn-primary" :disabled="gsMyDraftReturnDone" @click="gsDraftReturnDone">
+            返還選択を完了する
+          </button>
+          <button v-if="gs.seat === 1" class="gm-btn gm-btn-primary"
+                  :disabled="!gsAllDraftReturnsDone" @click="gsStartDeepen">▶ 深化の刻へ進む</button>
           <div v-else class="gm-wait-host">ホストが深化の刻を開始するのを待っています…</div>
           <button class="gm-btn" @click="gsPeekDeck">デッキビルダーで確認</button>
           <button class="gm-btn gm-btn-ghost" @click="gsLeave">退出</button>
@@ -5982,10 +6065,13 @@ const SFX_FILES = {
   skill: 'skill.mp3',
   dragStart: 'drag_Start.mp3',
   dragDrop: 'drag_Drop.mp3',
+  dragDropHeavy: 'drag_Drop_Heavy.mp3',
   coin: 'coin.mp3',
   draw: 'draw.mp3',
   oracle: 'oracle.mp3',
   sealRelease: 'seal_release.mp3',
+  decision: 'decision.mp3',
+  cancel: 'cansel.mp3',
 };
 const SFX_VOLUME_STORAGE_KEY = 'tsukuriyo_sfxVolume';
 const BGM_VOLUME_STORAGE_KEY = 'tsukuriyo_bgmVolume';
@@ -6010,6 +6096,9 @@ const BGM_FILES = {
   byakko:       { name: '白虎',         file: '白虎_free.mp3',          category: 'battle' },
   kageNoFuin:   { name: '陰の封印',     file: '陰の封印_free.mp3',      category: 'battle' },
   ryuNoKiba:    { name: '龍の牙',       file: '龍の牙_free.mp3',        category: 'battle' },
+  kakeraSaki:   { name: 'カケラ咲キ乱レテ', file: 'カケラ咲キ乱レテ.mp3', category: 'battle' },
+  victory:      { name: '勝利',         file: 'victory.mp3',           category: 'result', loop: false },
+  defeat:       { name: '敗北',         file: 'defeat.mp3',            category: 'result', loop: false },
 };
 const COLOR_ORDER = { '赤': 0, '青': 1, '緑': 2, '黄': 3, '紫': 4, '創': 5, '無': 6 };
 function colorRank(c) {
@@ -6275,6 +6364,7 @@ new Vue({
     bgmVolume: loadStoredVolume(BGM_VOLUME_STORAGE_KEY), // BGM音量（0〜1）。既定50%
     bgmCurrentKey: null, // 現在再生中のBGMキー（BGM_FILESのキー）。null=未再生
     bgmAuto: true,       // true=画面カテゴリに応じて自動選曲、false=手動選択中
+    battleHeavyShake: false,
     battleDestroySucks: [],     // 撃破時に墓地/崩壊アイコンへ吸い込まれる演出：[{ id, x1, y1, x2, y2 }]
     battleConfirmModal: null, // { action, title, message, confirmLabel, cards, payload }
     /* 手札ドラッグ・場出し */
@@ -6315,7 +6405,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.163',
+    BUILD_VERSION: '1.14.167',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6366,7 +6456,7 @@ new Vue({
   computed: {
     /* BGM選択メニュー用：{key, name} の配列（BGM_FILESそのものではなく整形して渡す） */
     bgmTrackOptions() {
-      return Object.keys(BGM_FILES).map(key => ({ key, name: BGM_FILES[key].name }));
+      return Object.keys(BGM_FILES).filter(key => BGM_FILES[key].category !== 'result').map(key => ({ key, name: BGM_FILES[key].name }));
     },
     /* デッキビルダー本体（pool/deck）の表示可否
        - カードリスト画面
@@ -6855,6 +6945,9 @@ new Vue({
         return 0;
       });
       return entries;
+    },
+    deckVisibleCountLabel() {
+      return `表示 ${this.deckExpanded ? this.deckEntriesFlatDisplay.length : this.deckEntriesDisplay.reduce((n, e) => n + (Number(e.count) || 0), 0)} / ${this.deckEntriesFlat.length} 枚`;
     },
     // 展開ビュー専用：同名カードを1枚ずつ個別に展開したリスト
     // count=2 のカードは2スロットに分けて表示
@@ -7405,6 +7498,31 @@ new Vue({
         : (raw ? Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k]) : []);
       return nos.map(no => this.cardByNo[String(no)]).filter(Boolean);
     },
+    gsDraftFreeReturnLimit() {
+      const r = (this.gsDraft && this.gsDraft.completedRound) || this.gsRound || 1;
+      return r === 1 ? 1 : (r === 2 || r === 3 ? 2 : 0);
+    },
+    gsMyDraftFreeReturnedCount() {
+      const r = (this.gsDraft && this.gsDraft.completedRound) || this.gsRound || 1;
+      const fr = (this.gs.data && this.gs.data.draftFreeReturned && this.gs.data.draftFreeReturned[r]) || {};
+      return this.gsNorm(fr[this.gs.seat]).length;
+    },
+    gsMyDraftReturnDone() {
+      const done = (this.gs.data && this.gs.data.draftReturnDone) || {};
+      return !!done[this.gs.seat];
+    },
+    gsAllDraftReturnsDone() {
+      const done = (this.gs.data && this.gs.data.draftReturnDone) || {};
+      return [1, 2, 3, 4].every(n => !!done[n]);
+    },
+    gsDraftReturnSeatStatus() {
+      const done = (this.gs.data && this.gs.data.draftReturnDone) || {};
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      return [1, 2, 3, 4].map(n => ({
+        seat: n, name: seats[n] ? seats[n].name : ('P' + n),
+        done: !!done[n], isMe: this.gs.seat === n,
+      }));
+    },
 
     /* ===== 深化の刻 / 終戦集計 ===== */
     gsMyInsight() {
@@ -7507,6 +7625,10 @@ new Vue({
       const b = this.gsBattle;
       return b.t1Winner != null && b.t2Winner != null;
     },
+    battleResultTitleChars() {
+      const title = this.battleSample && this.battleSample.result ? this.battleSample.result.title || '' : '';
+      return Array.from(title);
+    },
   },
   methods: {
     /* ある席の星戦勝利数（記録済みの全ラウンドから集計。CPUあり構成はCPU対応ペアリングで判定） */
@@ -7523,6 +7645,7 @@ new Vue({
     },
     /* ===== トップメニュー遷移 ===== */
     goToTop() {
+      this._sfxPlay('cancel');
       // シールド戦のピーク中なら閉じる
       if (this.shieldPeek) this.closePeekDeckDetail();
       // 4人対戦のピーク中なら閉じる
@@ -7614,6 +7737,7 @@ new Vue({
     },
     battleCancelAlphaSetup() {
       this.battleAlphaSetup = null;
+      this._sfxPlay('cancel');
     },
     openBattleLaunch(source) {
       if (source === 'shield' && this.sb.phase !== 'complete') return;
@@ -8443,12 +8567,17 @@ new Vue({
       if (!entry) return;
       const audio = this._bgmAudioEl();
       const src = `bgm/${encodeURIComponent(entry.file)}`;
-      audio.loop = true; // 「_loop」付きファイルに限らず、BGMは全て終端でシームレスに繰り返す想定
+      audio.loop = entry.loop !== false; // 結果BGMなどは1回再生を許可
       audio.volume = this.bgmVolume;
       audio.src = src;
       audio.currentTime = 0;
       audio.play().catch(err => console.warn(`[bgm] "${key}" (${src}) の再生に失敗:`, err && err.message));
       this.bgmCurrentKey = key;
+    },
+    _battlePlayResultSound(result) {
+      if (!result || !result.outcome) return;
+      const key = result.outcome === 'win' ? 'victory' : result.outcome === 'loss' ? 'defeat' : null;
+      if (key) this._bgmPlay(key);
     },
     /* 指定カテゴリの候補からランダムに1曲選ぶ（キーのみ返す。再生はしない） */
     _bgmPickRandomKey(category) {
@@ -10236,7 +10365,7 @@ new Vue({
       this._dslCurrentSource = card;
       this._dslCurrentTriggerLabel = triggerLabel;
       const baseCost = this.battleEffectiveCost(card);
-      const sublimPaid = paidCost !== null ? Math.max(0, paidCost - baseCost - this.battleSublimDeltaForCard(card)) : 0;
+      const sublimPaid = paidCost !== null ? Math.max(0, Number(paidCost) - baseCost - this.battleSublimDeltaForCard(card)) : 0;
       this._dslSublimPaid = sublimPaid;
       let ran = false;
       try {
@@ -10603,7 +10732,7 @@ new Vue({
         if (src && c === src) return false;
         if (excludeReturned.includes(c)) return false;
         if (excludeChosen.includes(c)) return false;
-        if (/ジェネシス以外/.test(remarks) && /ジェネシス/.test(this.fullName(c))) return false;
+        if (/ジェネシス以外/.test(remarks) && (/ジェネシス/.test(this.fullName(c)) || c.category === 'ジェネシス' || c.color === '創')) return false;
         if (!this.battleCardMatchesInduceCriteria(c, crit)) return false;
         if (!this._dslPassCompare(c, sel.比較)) return false;
         return true;
@@ -11815,13 +11944,13 @@ new Vue({
       if (!p || !Array.isArray(p[fromZone])) return;
       this.battleSaveUndo();
       const used = [];
-      targets.forEach(card => {
+      for (const card of targets) {
         const arr = p[fromZone];
         const idx = arr.indexOf(card);
-        if (idx < 0) return;
+        if (idx < 0) continue;
         if (fromZone !== 'hand' && this.battleHasHandOnlyPlacementRestriction(card)) {
           this.battleCanPlaceFromSource(card, fromZone);
-          return;
+          continue;
         }
         arr.splice(idx, 1);
         if (card.category === 'オラクル') {
@@ -11834,15 +11963,15 @@ new Vue({
           used.push(card);
           // 「オラクルを使用したとき」条件用（例：#84お節介な陰陽師③は自身①の無償使用でも発動する）
           this.battleFireKamiEvent(side, 'playOracleOrRelic', { card, kind: 'オラクル' });
-          if (!this.battleRunEnterKeywordEffects(card, 0)) this.battleKeywordGuide(card, 0);
-          return;
+          if (!(await this.battleRunEnterKeywordEffects(card, 0))) this.battleKeywordGuide(card, 0);
+          continue;
         }
         const zone = this.battleFieldZoneForCard(card);
         if (!zone || !Array.isArray(p[zone]) || p[zone].length >= 7) {
           p.hand = p.hand || [];
           p.hand.push(card);
           this.battleShowNotice('無償使用：配置不可', `「${this.fullName(card)}」を場に出せませんでした。手札に戻しました。`, [card]);
-          return;
+          continue;
         }
         const fieldCard = this._battlePrepareFieldCard(card);
         p[zone].push(fieldCard);
@@ -11860,8 +11989,8 @@ new Vue({
           this.battleFireKamiEvent(side, 'playOracleOrRelic', { card: fieldCard, kind: 'レリック' });
           if (fieldCard.isToken) this.battleFireKamiEvent(side, 'tokenPlayed', { card: fieldCard });
         }
-        if (!this.battleRunEnterKeywordEffects(fieldCard, 0)) this.battleKeywordGuide(fieldCard, 0);
-      });
+        if (!(await this.battleRunEnterKeywordEffects(fieldCard, 0))) this.battleKeywordGuide(fieldCard, 0);
+      }
       if (/シャッフル/.test(String(sel.備考 || '')) && Array.isArray(p.deck)) p.deck = this._battleShuffle(p.deck);
       this._battleSyncSideCounts(side);
       this.hideCardHover();
@@ -12408,14 +12537,19 @@ new Vue({
     },
     _dslOpLifeMax(act) {
       const n = Number(act.数 || 0);
+      let amount = n;
+      if (!amount && act.数参照) {
+        const dyn = this._dslResolveNumericReference(act.数参照);
+        if (dyn !== null) amount = -Math.abs(Number(dyn) || 0);
+      }
       const side = act.側 === 'opp' ? 'opp' : 'self';
       const p = this.battleSample[side];
-      if (!p) return;
+      if (!p || !amount) return;
       this.battleSaveUndo();
-      const nextMax = Math.max(1, Math.min(10, (Number(p.lifeMax) || 10) + n));
+      const nextMax = Math.max(1, Math.min(10, (Number(p.lifeMax) || 10) + amount));
       p.lifeMax = nextMax;
       p.life = Math.max(0, Math.min(nextMax, Number(p.life) || 0));
-      this.battleShowNotice('ライフ最大値変化', `${side === 'opp' ? '相手' : '自分'}ライフ最大値 ${n >= 0 ? '+' : ''}${n}（現在 ${p.life}/${p.lifeMax}）`);
+      this.battleShowNotice('ライフ最大値変化', `${side === 'opp' ? '相手' : '自分'}ライフ最大値 ${amount >= 0 ? '+' : ''}${amount}（現在 ${p.life}/${p.lifeMax}）`);
       if (typeof this._battleCheckResult === 'function') this._battleCheckResult();
     },
     _dslOpManaMax(act) {
@@ -12582,9 +12716,13 @@ new Vue({
       const opts = (act.選択肢 || []).filter(Boolean);
       if (!opts.length) return;
       const labels = opts.map((o, i) => o.説明 || `選択肢${i + 1}`);
-      const picked = await this.dslAskChoice(sourceCard, '効果を選んでください', labels);
+      const picked = await this.dslAskChoice(sourceCard, '効果を選んでください', labels, { optionData: opts });
       if (picked < 0) return;
       const chosen = opts[picked];
+      if (chosen && chosen.条件 && !this._dslChoiceOptionConditionMet(chosen, sourceCard)) {
+        this.battleShowNotice('選択：条件未達', `「${chosen.説明 || labels[picked]}」は条件を満たしていないため実行できません。`, sourceCard ? [sourceCard] : []);
+        return;
+      }
       await this.dslRunActions(chosen.処理 || [], sourceCard);
     },
     /* 任意能力の発動可否を尋ねる。kind='reroll' の場合はカード効果ではなくシステムルールとして文言を出し分ける */
@@ -12896,24 +13034,40 @@ new Vue({
       }
     },
     /* 選択肢A/Bを尋ねる */
-    dslAskChoice(card, prompt, options) {
+    dslAskChoice(card, prompt, options, meta = {}) {
       return new Promise((resolve) => {
         this.dslChoiceModal = {
           sourceCard: card,
           prompt,
           options,
+          optionData: meta.optionData || null,
           resolver: resolve,
         };
       });
     },
+    _dslChoiceOptionConditionMet(opt, sourceCard) {
+      if (!opt || !opt.条件) return true;
+      const prevSource = this._dslCurrentSource;
+      this._dslCurrentSource = sourceCard || prevSource;
+      try { return !!this.dslEvalCond(opt.条件); }
+      finally { this._dslCurrentSource = prevSource; }
+    },
+    dslChoiceOptionDisabled(index) {
+      const m = this.dslChoiceModal;
+      if (!m) return true;
+      const opt = m.optionData && m.optionData[index];
+      return !!(opt && opt.条件 && !this._dslChoiceOptionConditionMet(opt, m.sourceCard));
+    },
     dslAnswerChoice(index) {
       const m = this.dslChoiceModal;
+      if (!m || this.dslChoiceOptionDisabled(index)) return;
       this.dslChoiceModal = null;
       if (m && m.resolver) m.resolver(index);
     },
     dslCancelChoice() {
       const m = this.dslChoiceModal;
       this.dslChoiceModal = null;
+      this._sfxPlay('cancel');
       if (m && m.resolver) m.resolver(-1);
     },
     /* 処理リストを人間可読のサマリに変換（任意確認の表示用） */
@@ -13696,6 +13850,7 @@ new Vue({
     battleCancelSentei() {
       const m = this.battleSenteiModal;
       this.battleSenteiModal = null;
+      this._sfxPlay('cancel');
       if (m && m.onComplete) m.onComplete([]); // 待機中の_dslOpSenteiを解放
       this._battleProcessNextEffect();
     },
@@ -13721,9 +13876,20 @@ new Vue({
         modal.sourceCard ? [modal.sourceCard] : []
       );
     },
+    battleSenteiOptionDisabled(index) {
+      const modal = this.battleSenteiModal;
+      if (!modal) return true;
+      const opt = modal.optionData && modal.optionData[index];
+      if (!opt || !opt.条件) return false;
+      const prevSource = this._dslCurrentSource;
+      this._dslCurrentSource = modal.sourceCard;
+      try { return !this.dslEvalCond(opt.条件); }
+      finally { this._dslCurrentSource = prevSource; }
+    },
     battleToggleSenteiOption(index) {
       const modal = this.battleSenteiModal;
       if (!modal) return;
+      if (this.battleSenteiOptionDisabled(index)) return;
       const pos = modal.selected.indexOf(index);
       if (pos >= 0) {
         modal.selected.splice(pos, 1);
@@ -13734,6 +13900,8 @@ new Vue({
     async battleResolveSentei() {
       const modal = this.battleSenteiModal;
       if (!modal || modal.selected.length !== modal.count) return;
+      if (modal.selected.some(i => this.battleSenteiOptionDisabled(i))) return;
+      this._sfxPlay('decision');
       const chosenIdx = modal.selected.slice();
       const optionData = modal.optionData || [];
       const onComplete = modal.onComplete;
@@ -13988,11 +14156,13 @@ new Vue({
       this.battleConfirmModal = { action, title, message, confirmLabel, cards, payload };
     },
     battleCancelConfirm() {
+      this._sfxPlay('cancel');
       this.battleConfirmModal = null;
     },
     battleConfirmApply() {
       const modal = this.battleConfirmModal;
       if (!modal) return;
+      this._sfxPlay('decision');
       this.battleConfirmModal = null;
       if (modal.action === 'discardHand') {
         this.battleMoveHandCard(modal.payload.index, 'graveyard');
@@ -14047,7 +14217,8 @@ new Vue({
         this.battleShowNotice('置き場所が違います', `「${this.fullName(card)}」は${zoneLabel}フィールドには置けません。`, [card]);
         return;
       }
-      if (player[zone].length >= 7) {
+      const canEvolveWhileFull = zone === 'legacies' && this._dslEvolutionBaseCandidates(card).length > 0;
+      if (player[zone].length >= 7 && !canEvolveWhileFull) {
         this.battleShowNotice('フィールド上限です', `${card.category}フィールドには7枚まで配置できます。`, [card]);
         return;
       }
@@ -14166,6 +14337,7 @@ new Vue({
       // 進化判定：レガシーかつ進化条件あり＋自分フィールドに該当カードがあれば、進化として配置できる
       let evolveBase = null;
       if (zone === 'legacies') {
+        const fieldFull = player.legacies.length >= 7;
         if (evolveBaseOverride !== undefined) {
           // ドラッグ配置で配置先が確定済み：レガシー上に落とした(=有効な進化元)なら進化、空きなら通常配置
           evolveBase = (evolveBaseOverride && this._dslEvolutionBaseCandidates(card).includes(evolveBaseOverride)) ? evolveBaseOverride : null;
@@ -14173,7 +14345,9 @@ new Vue({
           // 非ドラッグ経路（旧フロー）：選択モーダルで確認
           const candidates = this._dslEvolutionBaseCandidates(card);
           if (candidates.length) {
-            const choice = await this.dslAskChoice(card, '進化として配置しますか？', ['通常配置（新規カードとして場に出す）', '進化として配置（既存のレガシーに重ねる）']);
+            const choice = fieldFull
+              ? 1
+              : await this.dslAskChoice(card, '進化として配置しますか？', ['通常配置（新規カードとして場に出す）', '進化として配置（既存のレガシーに重ねる）']);
             if (choice < 0) return; // キャンセル
             if (choice === 1) {
               const picked = await this.dslAskCustomTargets('進化元となるレガシーを選択', candidates, 1, card);
@@ -14183,9 +14357,13 @@ new Vue({
           }
         }
       }
+      if (zone === 'legacies' && player.legacies.length >= 7 && !evolveBase) {
+        this.battleShowNotice('フィールド上限です', 'レガシーフィールドが7枚のため、通常配置はできません。進化として配置してください。', [card]);
+        return;
+      }
       this.battleSaveUndo();
       player.mana = Math.max(0, player.mana - cost);
-      this._sfxPlay('cardPlay');
+      this._battlePlayPlacementSfx(card, cost);
       this.battleConsumeTempCostMods('self', card);
       this.battleConsumeStaticCostChangeUsage('self', card);
       player.hand.splice(index, 1);
@@ -14343,6 +14521,7 @@ new Vue({
       }
       this.battleSaveUndo();
       player.hand.splice(index, 1);
+      this._battlePlayPlacementSfx(card);
       const fieldCard = this._battlePrepareFieldCard(card);
       player[zone].push(fieldCard);
       player.handCount = player.hand.length;
@@ -14425,7 +14604,46 @@ new Vue({
       // 着地演出：場に出た直後の一瞬だけバウンドさせる（class名は field-card-landed）
       this.$set(fieldCard, '_justPlaced', true);
       setTimeout(() => { fieldCard._justPlaced = false; }, 500);
+      if ((Number(fieldCard.cost) || 0) >= 5) {
+        this.$set(fieldCard, '_justHeavyPlaced', true);
+        this.battleHeavyShake = true;
+        setTimeout(() => { fieldCard._justHeavyPlaced = false; }, 900);
+        setTimeout(() => { this.battleHeavyShake = false; }, 450);
+      }
       return fieldCard;
+    },
+    _battlePlayPlacementSfx(card, paidCost = null) {
+      const n = paidCost === null || paidCost === undefined
+        ? Number(card && card.cost) || 0
+        : Number(paidCost) || 0;
+      this._sfxPlay(n >= 5 ? 'dragDropHeavy' : 'dragDrop');
+    },
+    _battleCheckBattleEndDestroy() {
+      const bs = this.battleSample;
+      if (!bs) return;
+      const destroyed = [];
+      ['self', 'opp'].forEach(s => {
+        const p = bs[s];
+        if (!p) return;
+        ['legacies', 'relics'].forEach(zone => {
+          const arr = Array.isArray(p[zone]) ? p[zone].slice() : [];
+          arr.forEach(card => {
+            if (!card) return;
+            const grants = []
+              .concat(Array.isArray(card._kwGrant) ? card._kwGrant : [])
+              .concat(Array.isArray(card._staticKwGrant) ? card._staticKwGrant : []);
+            if (!grants.some(g => /^戦闘\/神攻終了時破壊/.test(String(g)))) return;
+            if (this._dslMoveFromField(card, 'graveyard', s)) {
+              destroyed.push({ side: s, name: this.fullName(card), card });
+            }
+          });
+        });
+      });
+      if (destroyed.length) {
+        const lines = destroyed.map(d => `${d.side === 'self' ? '自分' : '相手'}の「${d.name}」`).join('、');
+        this.battleShowNotice('戦闘/神攻終了時破壊', `${lines}は戦闘/神攻終了時の効果で破壊されました。`, destroyed.map(d => d.card));
+        destroyed.forEach(d => this.battleRunDeathKeywordEffects(d.card));
+      }
     },
     /* カード本文から「固有キーワード」を抽出する。
        単独のキーワード能力（例: 「①【守護】」「【死角】」）のみを固有として扱い、
@@ -14854,6 +15072,7 @@ new Vue({
       this.battleSaveUndo();
       if (!viaDivineGuard) {
         this.$set(attacker, '_tapped', true);
+        this.dslRefreshStaticAbilities();
         await this.battleRunActionTrigger(attacker, '戦闘時');
       }
       if (this.battleSample.result) return;
@@ -14878,7 +15097,10 @@ new Vue({
         defenderIndex = guard.index;
         defender = guard.card;
       }
-      if (guarded) this.$set(defender, '_tapped', true);
+      if (guarded) {
+        this.$set(defender, '_tapped', true);
+        this.dslRefreshStaticAbilities();
+      }
       const ap = Number(attacker.power || 0);
       const dp = Number(defender.power || 0);
       // 破壊で場を離れると付与キーワードが失われるため、破壊前に判定しておく（例：#172忠義の一刀）
@@ -14933,6 +15155,7 @@ new Vue({
         this.$set(attacker, '_onceUntapConsumed', true);
         this.battleShowNotice('戦闘破壊アンタップ', `「${this.fullName(attacker)}」の効果でアンタップしました。`, [attacker]);
       }
+      this._battleCheckBattleEndDestroy();
     },
     async battleResolveDivineAttack(attackerSide, attackerIndex, attackVisual) {
       if (this.battleNet && this.battleNet.spectating) return;
@@ -14954,6 +15177,7 @@ new Vue({
       //     #65ライカ＆コマの相手タップも、守護が選ばれる前にここで発動する。
       this.battleSaveUndo();
       this.$set(attacker, '_tapped', true);
+      this.dslRefreshStaticAbilities();
       this._dslCurrentEvent = { side: attackerSide, type: 'divineAttackDeclared', payload: { source: attacker } };
       await this.battleFireKamiEventAwaited(attackerSide, 'divineAttackDeclared', { source: attacker });
       await this.battleRunActionTrigger(attacker, '神攻時', ab => !this._dslIsDamageOutcomeAbility(ab));
@@ -15019,6 +15243,7 @@ new Vue({
         `「${this.fullName(attacker)}」が神攻し、相手カミに ${damage} ダメージを与えました。${sealBonusApplied ? '\n（「封神・終極八岐」の効果でこのターン最初の神攻に【神威：+2】を得ました）' : ''}`,
         [attacker]
       );
+      this._battleCheckBattleEndDestroy();
     },
     battleUpdateDragOverZone(e) {
       if (this.battleDragIndex === null) return;
@@ -15558,8 +15783,8 @@ new Vue({
     },
     battleResolveHandDrop(idx, target) {
       if (idx === null || idx === undefined || target === 'hand' || !target) return;
-      this._sfxPlay('dragDrop');
       if (target === 'graveyard') {
+        this._sfxPlay('dragDrop');
         const card = this.battleSample.self.hand[idx];
         if (!card) return;
         this.battleAskConfirm({
@@ -15573,6 +15798,7 @@ new Vue({
         return;
       }
       if (target === 'crumbled') {
+        this._sfxPlay('dragDrop');
         this.battleMoveHandCard(idx, 'crumbled');
         return;
       }
@@ -15653,6 +15879,7 @@ new Vue({
       if (this.battleNet && this.battleNet.spectating) return;
       const skill = this.battleSkillOptions.find(item => item.index === index);
       if (!skill || !skill.enabled || this.battleSample.result) return;
+      this._sfxPlay('decision');
       this.battleSaveUndo();
       this.battleSample.self.tenryoku = Math.max(0, this.battleSample.self.tenryoku - skill.cost);
       this.battleSkillModal = null;
@@ -15726,6 +15953,10 @@ new Vue({
         cardNo = '188';
         threshold = 0;
         this._sfxPlay('sealRelease'); // ヤマタノオロチの封印が全て解けた（0になった）とき
+        const kami = player.kami;
+        const skillName = (kami && kami.skill2name) || '封神・終極八岐';
+        if (side === 'self') this._battlePublishSkill2(kami ? kami.no : '10', skillName);
+        await this._battleShowSkill2Closeup(kami || { no: '10', name: 'ヤマタノオロチ' }, skillName);
       }
       if (!cardNo) return;
       const card = this.allCards.find(item => String(item.no) === cardNo);
@@ -16821,13 +17052,8 @@ new Vue({
             const list = this.allKamiCards.map(k => String(k.no));
             if (list.length) dealKamiOffer(code, t, list);
           } else {
-            this.gsCpuSchedule(`kami:${t}`, () => {
-              const cur = this.gs.data || {};
-              if (cur.phase !== 'kami_select' || !cur.kami || cur.kami.turn !== t) return;
-              const curOffer = norm(cur.kami.offer && cur.kami.offer[t]).map(String);
-              if (!curOffer.length) return;
-              pickKami(code, t, String(this.gsCpuChooseKami(curOffer)));
-            });
+            const curOffer = norm(offer).map(String);
+            if (curOffer.length) pickKami(code, t, String(this.gsCpuChooseKami(curOffer)));
           }
         }
       } else if (data.phase === 'draft' && data.draft) {
@@ -16853,6 +17079,11 @@ new Vue({
             });
             draftPick(code, seat, String(chosen.no));
           });
+        }
+      } else if (data.phase === 'draft_done') {
+        const done = data.draftReturnDone || {};
+        for (const seat of bots) {
+          if (!done[seat]) draftFreeReturnDone(code, seat, true);
         }
       } else if (data.phase === 'deepen') {
         const dd = data.deepenDone || {};
@@ -16893,6 +17124,7 @@ new Vue({
     },
     gsLeave() {
       if (!confirm('セッションから退出しますか？')) return;
+      this._sfxPlay('cancel');
       this.gsResetState();
     },
     // 自分の選んだカミをデッキビルダーに反映して閉じる
@@ -17025,8 +17257,24 @@ new Vue({
         .map(c => String(c.no));
     },
     async gsStartDeepen() {
+      if (!this.gsAllDraftReturnsDone) {
+        alert('全員の返還選択が完了してから深化の刻へ進んでください。');
+        return;
+      }
       try { await startDeepen(this.gs.sessionCode); }
       catch (e) { alert('深化の刻の開始に失敗しました: ' + (e.message || e)); }
+    },
+    async gsDraftFreeReturn(card) {
+      if (!card || this.gsMyDraftReturnDone) return;
+      if (this.gsMyDraftFreeReturnedCount >= this.gsDraftFreeReturnLimit) return;
+      if (!confirm(`「${this.fullName(card)}」を星魂に返還します（見識は消費しません）。よろしいですか？`)) return;
+      this.hideCardHover();
+      try { await draftFreeReturn(this.gs.sessionCode, this.gs.seat, String(card.no)); }
+      catch (e) { alert('返還に失敗しました: ' + (e.message || e)); }
+    },
+    async gsDraftReturnDone() {
+      try { await draftFreeReturnDone(this.gs.sessionCode, this.gs.seat, true); }
+      catch (e) { alert('返還選択の完了に失敗しました: ' + (e.message || e)); }
     },
     async gsReflect(card) {
       if (this.gsMyInsight < 1 || this.gsMyDeepenDone) return;
@@ -18400,6 +18648,10 @@ new Vue({
     });
     // BGM：画面カテゴリ（対戦画面／それ以外）に応じて自動選曲（起動直後にも一度実行）
     this.$watch('appView', (v) => { if (this.bgmAuto) this._bgmAutoPickForView(v); }, { immediate: true });
+    this.$watch('battleSample.result', (v) => {
+      if (v) this._battlePlayResultSound(v);
+      else if (this.appView === 'battle' && this.bgmAuto) this._bgmAutoPickForView('battle');
+    });
     // ブラウザの自動再生制限で起動直後の再生がブロックされた場合、
     // 最初のクリック/キー入力を合図に一度だけ再試行する
     const unlockBgm = () => {
