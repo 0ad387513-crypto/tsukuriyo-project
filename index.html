@@ -1046,19 +1046,28 @@
   .top-menu {
     position: fixed; inset: 0;
     background: radial-gradient(circle at 50% 30%, #1a1f2e 0%, #0a0c14 70%);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 40px 20px; z-index: 50; overflow-y: auto;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    padding: 56px 20px 40px; z-index: 50; overflow-y: auto; overflow-x: hidden;
   }
+  /* トップ画面の背景演出：勝利演出の彼岸花の花びらを、ゆっくり静かに舞わせる（控えめな密度・速度） */
+  .top-menu-petal {
+    position: fixed; top: -20px; width: 9px; height: 14px;
+    background: linear-gradient(160deg, #ff6b81, #b3193a);
+    border-radius: 0 100% 0 100%; opacity: 0; pointer-events: none; z-index: 0;
+    animation-name: victoryPetalFallKf; animation-timing-function: linear; animation-iteration-count: infinite;
+  }
+  .top-menu-hero { position: relative; z-index: 1; margin-bottom: 20px; }
   .top-menu-title {
     font-size: 42px; font-weight: 800; letter-spacing: 0.08em;
     color: #e0d4a0; margin-bottom: 12px; text-align: center;
     text-shadow: 0 4px 24px rgba(220, 159, 80, 0.3);
   }
   .top-menu-subtitle {
-    font-size: 14px; color: #9aa; margin-bottom: 48px; letter-spacing: 0.06em;
+    font-size: 14px; color: #9aa; text-align: center; letter-spacing: 0.06em;
   }
   .top-resume-banner {
-    display: flex; align-items: center; gap: 12px; width: min(360px, 90vw);
+    position: relative; z-index: 1;
+    display: flex; align-items: center; gap: 12px; width: min(420px, 90vw);
     background: rgba(200,120,40,.15); border: 1px solid #f0b86c; border-radius: 8px;
     padding: 10px 14px; margin-bottom: 24px; font-size: 12px; color: #ffe2a8;
   }
@@ -1087,9 +1096,51 @@
   .top-menu-btn.shield:hover { background: linear-gradient(135deg, #5a4a7a, #7a4a9a); }
   .top-menu-btn.game { background: linear-gradient(135deg, #2a5a4a, #2a7a5a); border-color: #5abb8a; }
   .top-menu-btn.game:hover { background: linear-gradient(135deg, #3a6a5a, #3a8a6a); }
+  /* トップ画面：主要モードカード（4枚グリッド） */
+  .top-mode-grid {
+    position: relative; z-index: 1;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px; width: min(760px, 92vw); margin-bottom: 28px;
+  }
+  .top-mode-card {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 24px 14px; border-radius: 12px; cursor: pointer; text-align: center;
+    color: #fff; border: 1px solid #2e3548;
+    background: linear-gradient(160deg, #2a3550, #1a2540);
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  }
+  .top-mode-card:hover {
+    transform: translateY(-3px); box-shadow: 0 8px 28px rgba(220, 159, 80, 0.22);
+    border-color: #8a95b5;
+  }
+  .top-mode-icon { font-size: 30px; line-height: 1; }
+  .top-mode-label { font-size: 16px; font-weight: 800; letter-spacing: 0.03em; }
+  .top-mode-desc { font-size: 11px; color: #aab; }
+  .top-mode-card.deck { background: linear-gradient(160deg, #2a3a5a, #1a2a4a); }
+  .top-mode-card.deck:hover { border-color: #7a9ad0; }
+  .top-mode-card.shield { background: linear-gradient(160deg, #4a3a6a, #362854); }
+  .top-mode-card.shield:hover { border-color: #b090e0; }
+  .top-mode-card.game { background: linear-gradient(160deg, #2a5a4a, #1e4438); }
+  .top-mode-card.game:hover { border-color: #7ad0a8; }
+  .top-mode-card.howto { background: linear-gradient(160deg, #5a4a2a, #443620); }
+  .top-mode-card.howto:hover { border-color: #e0c07a; }
+  /* トップ画面：開発者・動作確認用ツール（折りたたみ） */
+  .top-devtools { position: relative; z-index: 1; width: min(420px, 92vw); }
+  .top-devtools-toggle {
+    width: 100%; background: transparent; border: 1px dashed #3a4055; color: #8a94ac;
+    padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
+  }
+  .top-devtools-toggle:hover { color: #cdd6e6; border-color: #5a6580; }
+  .top-devtools-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
   .top-menu-footer {
+    position: relative; z-index: 1;
     margin-top: 32px; font-size: 11px; color: #677; letter-spacing: 0.04em;
   }
+  /* キーワード集モーダル */
+  .glossary-list { max-height: 60vh; overflow-y: auto; margin: 10px 0; }
+  .glossary-item { padding: 10px 0; border-bottom: 1px solid #262b38; }
+  .glossary-term { font-size: 13px; font-weight: 800; color: #ffd86a; margin-bottom: 4px; }
+  .glossary-def { font-size: 12px; color: #c8d0e0; line-height: 1.6; white-space: pre-wrap; }
   .back-to-top-btn {
     background: #2a2f3d; border: 1px solid #4a4f5d; color: #cbd; cursor: pointer;
     padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600;
@@ -3521,22 +3572,66 @@
 
   <!-- ===== ツクリヨオンライン トップメニュー ===== -->
   <div v-if="appView === 'top'" class="top-menu">
-    <div class="top-menu-title">ツクリヨオンライン</div>
-    <div class="top-menu-subtitle">— TSUKURIYO ONLINE —</div>
+    <span v-for="i in 12" :key="'topPetal'+i" class="top-menu-petal"
+          :style="{ left: ((i*83)%100) + '%', animationDelay: ((i%6)*1.1) + 's', animationDuration: (9 + (i%5)*1.6) + 's' }"></span>
+    <div class="top-menu-hero">
+      <div class="top-menu-title">ツクリヨオンライン</div>
+      <div class="top-menu-subtitle">— TSUKURIYO ONLINE —</div>
+    </div>
     <div v-if="resumeSession" class="top-resume-banner">
       <span>進行中のセッションがあります（{{ resumeSession.kind === 'game' ? '4人対戦' : resumeSession.kind === 'shield' ? 'シールド戦' : '対戦テスト' }} / コード: {{ resumeSession.code }}）</span>
       <button class="top-resume-btn" @click="resumeActiveSession">↩ 戻る</button>
     </div>
-    <div class="top-menu-buttons">
-      <button class="top-menu-btn deck" @click="goToCardlist">📖 カードリスト</button>
-      <button class="top-menu-btn game" @click="goToGame">🎴 4人対戦(β)</button>
-      <button class="top-menu-btn shield" @click="goToShield">⚔ シールド戦</button>
-      <button class="top-menu-btn" style="background:linear-gradient(135deg,#5a3030,#7a3050);border-color:#bb6a8a;" @click="goToBattle">⚔ 対戦画面(α)</button>
-      <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(true)">🌐 対戦テスト：作成（2人同期確認）</button>
-      <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(false)">🌐 対戦テスト：参加（コード入力）</button>
-      <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleSpectate">🔍 対戦テスト：観戦する（コード入力）</button>
+    <div class="top-mode-grid">
+      <button class="top-mode-card deck" @click="goToCardlist">
+        <span class="top-mode-icon">📖</span>
+        <span class="top-mode-label">カードリスト</span>
+        <span class="top-mode-desc">デッキ構築・カード検索</span>
+      </button>
+      <button class="top-mode-card game" @click="goToGame">
+        <span class="top-mode-icon">🎴</span>
+        <span class="top-mode-label">4人対戦 <em class="gm-beta">β</em></span>
+        <span class="top-mode-desc">4人でドラフト〜星戦</span>
+      </button>
+      <button class="top-mode-card shield" @click="goToShield">
+        <span class="top-mode-icon">⚔</span>
+        <span class="top-mode-label">シールド戦</span>
+        <span class="top-mode-desc">2人・パックからデッキ構築</span>
+      </button>
+      <button class="top-mode-card howto" @click="glossaryModalOpen = true">
+        <span class="top-mode-icon">📚</span>
+        <span class="top-mode-label">キーワード集</span>
+        <span class="top-mode-desc">能力・用語のリファレンス</span>
+      </button>
+    </div>
+    <div class="top-devtools">
+      <button class="top-devtools-toggle" @click="topDevToolsOpen = !topDevToolsOpen">
+        🔧 動作確認用ツール（対戦テスト・α版） {{ topDevToolsOpen ? '▲' : '▼' }}
+      </button>
+      <div v-if="topDevToolsOpen" class="top-devtools-buttons">
+        <button class="top-menu-btn" style="background:linear-gradient(135deg,#5a3030,#7a3050);border-color:#bb6a8a;" @click="goToBattle">⚔ 対戦画面(α)</button>
+        <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(true)">🌐 対戦テスト：作成（2人同期確認）</button>
+        <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(false)">🌐 対戦テスト：参加（コード入力）</button>
+        <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleSpectate">🔍 対戦テスト：観戦する（コード入力）</button>
+      </div>
     </div>
     <div class="top-menu-footer">v{{ BUILD_VERSION }}</div>
+  </div>
+
+  <!-- ===== キーワード集モーダル（TOP画面「キーワード集」から。既存のKEYWORD_GLOSSARYをそのまま一覧表示） ===== -->
+  <div v-if="glossaryModalOpen" class="battle-zone-modal" @click.self="glossaryModalOpen = false">
+    <div class="battle-zone-modal-panel">
+      <h3 class="battle-zone-modal-title">📚 キーワード集</h3>
+      <div class="glossary-list">
+        <div v-for="kw in Object.keys(keywordGlossary)" :key="'gloss'+kw" class="glossary-item">
+          <div class="glossary-term">{{ kw }}</div>
+          <div class="glossary-def">{{ keywordGlossary[kw] }}</div>
+        </div>
+      </div>
+      <div class="battle-zone-modal-actions">
+        <button class="battle-back-btn" @click="glossaryModalOpen = false">閉じる</button>
+      </div>
+    </div>
   </div>
 
   <!-- ===== 左：カードプール ===== -->
@@ -6549,7 +6644,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.174',
+    BUILD_VERSION: '1.14.175',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6594,6 +6689,8 @@ new Vue({
     gsInviteCopied: false,    // 招待リンクコピー直後のフィードバック表示用
     resumeSession: null,      // TOP画面用：直近の進行中セッション記録（{kind, code, ts} or null）
     showMobileNotice: false,  // 画面が狭い環境向けのPC推奨案内（一度閉じたら次回以降は表示しない）
+    glossaryModalOpen: false, // TOP画面のキーワード集モーダル
+    topDevToolsOpen: false,   // TOP画面：動作確認用ツール（対戦テスト等）の折りたたみ開閉状態
     gsPeeking:   false,       // ドラフト中にデッキ詳細をプレビュー表示中か
     _gsPeekSaved: null,       // プレビュー前のデッキビルダー状態退避
     gsSolo:      false,       // ソロテスト（CPU3体を自動操作）モード
