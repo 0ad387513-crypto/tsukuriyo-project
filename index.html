@@ -3220,9 +3220,10 @@
     0%   { opacity: .9; transform: scale(0.4) translateY(0); }
     100% { opacity: 0; transform: scale(1.5) translateY(-20px); }
   }
-  .heavy-summon-shake .battle-main,
-  .heavy-summon-shake .battle-overlay .battle-card {
-    animation: heavySummonShakeKf .42s ease-in-out;
+  /* コスト5以上の重量カード召喚演出：画面/盤面を揺らすと画面酔いするため、
+     カードそのものへの発光フラッシュ＋衝撃波リング＋足元の砂埃のみに留める（位置移動は行わない） */
+  .field-card-heavy {
+    animation: heavyImpactGlowKf .6s ease-out;
   }
   .field-card-heavy::before, .field-card-heavy::after {
     content: ''; position: absolute; bottom: -5px; width: 24px; height: 15px; border-radius: 50%;
@@ -3231,12 +3232,10 @@
   }
   .field-card-heavy::before { left: 8%; }
   .field-card-heavy::after { right: 8%; animation-delay: .08s; }
-  @keyframes heavySummonShakeKf {
-    0%, 100% { transform: translate(0,0); }
-    18% { transform: translate(-3px, 2px); }
-    36% { transform: translate(3px, -2px); }
-    54% { transform: translate(-2px, -1px); }
-    72% { transform: translate(2px, 1px); }
+  @keyframes heavyImpactGlowKf {
+    0% { box-shadow: 0 0 0 0 rgba(255,199,120,.9); filter: brightness(1.7) saturate(1.3); }
+    55% { box-shadow: 0 0 22px 12px rgba(255,199,120,.3); filter: brightness(1.05); }
+    100% { box-shadow: 0 0 0 0 rgba(255,199,120,0); filter: brightness(1); }
   }
   @keyframes heavyDustKf {
     0% { opacity: .95; transform: translateY(0) scale(.6); filter: blur(0); }
@@ -3305,7 +3304,7 @@
   }
   .battle-result-title .result-char {
     display: inline-block; opacity: 0; transform: translateY(12px) scale(.96);
-    animation: resultCharInKf .11s ease-out forwards;
+    animation: resultCharInKf .24s ease-out forwards;
   }
   @keyframes victoryPetalFallKf {
     0%   { transform: translateY(-20px) rotate(0deg); opacity: 0; }
@@ -3407,7 +3406,7 @@
 </head>
 <body>
 <div id="app-loading"><div class="app-loading-spinner"></div><div>読み込み中…</div></div>
-<div id="app" v-cloak class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek, 'heavy-summon-shake': battleHeavyShake }">
+<div id="app" v-cloak class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek }">
 
   <!-- ===== SE/BGM音量設定（全画面共通のフローティングボタン。対戦画面は専用ヘッダーボタンと
        重なるため、対戦画面表示中はこちらを隠す。カードリスト画面ではBGM不要かつ他の
@@ -5196,7 +5195,7 @@
     <div v-if="battleSample.result" class="battle-result-overlay">
       <template v-if="battleSample.result.outcome === 'win'">
         <span v-for="i in 16" :key="'petal'+i" class="victory-petal"
-              :style="{ left: ((i*61)%100) + '%', animationDelay: (1.1 + (i%7)*0.35) + 's', animationDuration: (3.2 + (i%5)*0.4) + 's' }"></span>
+              :style="{ left: ((i*61)%100) + '%', animationDelay: (battleResultPetalDelay + (i%7)*0.35) + 's', animationDuration: (3.2 + (i%5)*0.4) + 's' }"></span>
       </template>
       <div class="battle-result-panel" :class="battleSample.result.outcome">
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s1">✦</span>
@@ -5204,7 +5203,7 @@
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s3">✦</span>
         <div class="battle-result-title">
           <span v-for="(ch, i) in battleResultTitleChars" :key="'rch'+i" class="result-char"
-                :style="{ animationDelay: (i * 0.08) + 's' }">{{ ch }}</span>
+                :style="{ animationDelay: (i * 0.15) + 's' }">{{ ch }}</span>
         </div>
         <div v-if="battleSample.result.reason === 'surrender'" class="battle-result-subtext">
           {{ battleSample.result.outcome === 'win' ? '相手が降参しました' : '降参しました' }}
@@ -6364,7 +6363,6 @@ new Vue({
     bgmVolume: loadStoredVolume(BGM_VOLUME_STORAGE_KEY), // BGM音量（0〜1）。既定50%
     bgmCurrentKey: null, // 現在再生中のBGMキー（BGM_FILESのキー）。null=未再生
     bgmAuto: true,       // true=画面カテゴリに応じて自動選曲、false=手動選択中
-    battleHeavyShake: false,
     battleDestroySucks: [],     // 撃破時に墓地/崩壊アイコンへ吸い込まれる演出：[{ id, x1, y1, x2, y2 }]
     battleConfirmModal: null, // { action, title, message, confirmLabel, cards, payload }
     /* 手札ドラッグ・場出し */
@@ -6405,7 +6403,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.167',
+    BUILD_VERSION: '1.14.168',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7628,6 +7626,12 @@ new Vue({
     battleResultTitleChars() {
       const title = this.battleSample && this.battleSample.result ? this.battleSample.result.title || '' : '';
       return Array.from(title);
+    },
+    /* 花びらの舞い始めタイミング：文字が全部表示し終わった直後になるよう、文字数から動的に算出する
+       （BATTLE_RESULT_CHAR_STEP・BATTLE_RESULT_CHAR_DURATIONはCSSの.result-charアニメーションと合わせること） */
+    battleResultPetalDelay() {
+      const n = this.battleResultTitleChars.length;
+      return n * 0.15 + 0.24 + 0.3;
     },
   },
   methods: {
@@ -8910,6 +8914,9 @@ new Vue({
       } else {
         this.appView = 'top';
       }
+      // 勝敗bgm（victory/defeat）が鳴っていた場合、対戦画面を離れた時点で通常bgmに戻す
+      // （appViewのwatcherにも同等の処理はあるが、確実性のためここでも明示的に呼ぶ）
+      if (this.bgmAuto) this._bgmAutoPickForView(this.appView);
     },
     /* Undo: battleSample の現状をスナップショット（最新50件まで保持） */
     battleSaveUndo() {
@@ -14606,9 +14613,7 @@ new Vue({
       setTimeout(() => { fieldCard._justPlaced = false; }, 500);
       if ((Number(fieldCard.cost) || 0) >= 5) {
         this.$set(fieldCard, '_justHeavyPlaced', true);
-        this.battleHeavyShake = true;
         setTimeout(() => { fieldCard._justHeavyPlaced = false; }, 900);
-        setTimeout(() => { this.battleHeavyShake = false; }, 450);
       }
       return fieldCard;
     },
