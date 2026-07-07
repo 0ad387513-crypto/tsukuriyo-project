@@ -6644,7 +6644,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.176',
+    BUILD_VERSION: '1.14.177',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6692,6 +6692,7 @@ new Vue({
     glossaryModalOpen: false, // TOP画面のキーワード集モーダル
     topDevToolsOpen: false,   // TOP画面：動作確認用ツール（対戦テスト等）の折りたたみ開閉状態
     gsPeeking:   false,       // ドラフト中にデッキ詳細をプレビュー表示中か
+    gsGlobalCardStats: {},    // {[cardNo]: {picked, won}} 人間プレイヤーの実績統計（CPUドラフトの参考にする。CPU自身の対局結果は含めない）
     _gsPeekSaved: null,       // プレビュー前のデッキビルダー状態退避
     gsSolo:      false,       // ソロテスト（CPU3体を自動操作）モード
     gsDeepenAction: null,     // 深化の刻で選択中のアクション: null(=メニュー) | 'reflect' | 'fusion' | 'bloom'
@@ -17640,6 +17641,17 @@ new Vue({
       const diff = ideal[cost] - bins[cost] / total;             // 不足なら正
       return Math.max(-8, Math.min(10, diff * 45));
     },
+    /* 優先度7：人間プレイヤーの実績データに基づく補正（CPU自身の対局結果は使わず、常に人間の
+       piced/won統計だけを参照する）。サンプルが少ない（5件未満）カードは無視してノイズを避ける。 */
+    gsCpuHumanStatScore(card) {
+      const stats = this.gsGlobalCardStats && this.gsGlobalCardStats[String(card.no)];
+      if (!stats) return 0;
+      const picked = Number(stats.picked) || 0;
+      const won = Number(stats.won) || 0;
+      if (picked < 5) return 0;
+      const winRate = won / picked; // 0〜1（人間プレイヤーがこのカードを採用した際の勝率）
+      return Math.max(-10, Math.min(10, (winRate - 0.5) * 40));
+    },
     /* 総合スコア：全要素の重み付き合算。CPUごとに性格差をつける */
     gsCpuScoreCard(card, ctx) {
       // CPU3＝シナジー重視／CPU4＝単体性能・マナカーブ重視
@@ -17654,6 +17666,7 @@ new Vue({
       s += this.gsCpuColorSynergy(card, picked) * persona.color;
       s += this.gsCpuEffectSynergy(card, picked) * persona.effect;
       s += this.gsCpuCurveScore(card, picked) * persona.curve;
+      s += this.gsCpuHumanStatScore(card); // 人間の実績データに基づく補正（重み付けはせず素点のまま加算）
       // 同名重複：軽い減点（K2ヤマトタケル＝uniqueタグ持ちは重い減点）
       const dup = picked.filter(c => this.fullName(c) === this.fullName(card)).length;
       s -= dup * (ctx.kamiTags.includes('unique') ? 12 : 3);
@@ -18020,8 +18033,38 @@ new Vue({
     },
     /* 星戦：卓の勝者を記録（ホスト操作） */
     async gsRecordBattle(table, winnerSeat) {
+      try { await this._gsRecordCardStatsForTable(table, winnerSeat); }
+      catch (e) { console.warn('[stats] カード統計の記録に失敗:', e); } // 統計記録の失敗は結果記録自体を止めない
       try { await recordBattleResult(this.gs.sessionCode, table, winnerSeat); }
       catch (e) { alert(e.message || e); }
+    },
+    /* CPU学習用データの記録：人間プレイヤーの最終デッキに含まれるカードについてのみ
+       picked（採用回数）とwon（勝利時の採用回数）をFirebaseへ蓄積する。
+       CPU自身の対局結果は一切参照・記録しない（CPUの学習は常に人間の実績データのみを見る）。 */
+    async _gsRecordCardStatsForTable(table, winnerSeat) {
+      const pair = (this.gsPairings || [])[table - 1];
+      if (!pair) return;
+      const seatsInfo = (this.gs.data && this.gs.data.seats) || {};
+      const decks = (this.gs.data && this.gs.data.decks) || {};
+      const humanSeats = pair.filter(seat => !(seatsInfo[seat] && seatsInfo[seat].isCpu));
+      if (!humanSeats.length) return;
+      const updates = {};
+      humanSeats.forEach(seat => {
+        const cardNos = this.gsNorm(decks[seat]).map(String);
+        const won = String(seat) === String(winnerSeat);
+        cardNos.forEach(no => {
+          updates[`globalStats/cardPick/${no}/picked`] = firebase.database.ServerValue.increment(1);
+          if (won) updates[`globalStats/cardPick/${no}/won`] = firebase.database.ServerValue.increment(1);
+        });
+      });
+      if (Object.keys(updates).length) await getDb().ref().update(updates);
+    },
+    /* CPU学習用データの読み込み：起動時に一度だけ取得してキャッシュする */
+    async gsLoadGlobalCardStats() {
+      try {
+        const snap = await getDb().ref('globalStats/cardPick').once('value');
+        this.gsGlobalCardStats = snap.val() || {};
+      } catch (e) { console.warn('[stats] カード統計の読み込みに失敗:', e); }
     },
     /* 星戦：結果記録後に次へ進む（ホスト操作） */
     async gsAdvanceAfterBattle() {
@@ -19305,6 +19348,7 @@ new Vue({
     this.loadKamiIllustrations();
     this.loadCardBack();
     this.loadEffectSpecs();
+    this.gsLoadGlobalCardStats(); // CPUドラフトAIが参照する人間プレイヤーの実績統計（起動時に一度だけ取得）
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("click", this.onWindowClick);
     // 招待リンク（?room=XXXX）で開かれた場合：4人対戦のセッションコード欄に自動入力してメニューを開く
