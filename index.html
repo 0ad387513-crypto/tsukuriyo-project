@@ -1176,6 +1176,12 @@
   }
   .gm-seat-name { flex: 1; color: #eee; font-size: 14px; min-width: 0; }
   .gm-you { color: #6c9; font-size: 11px; }
+  .gm-seat.cpu { border-color: #7a6aa8; }
+  .gm-cpu-badge {
+    display: inline-block; margin-left: 4px; padding: 1px 7px;
+    background: rgba(122,106,168,.25); border: 1px solid #7a6aa8; border-radius: 9px;
+    color: #cbb8f0; font-size: 10px; font-weight: 700;
+  }
   .gm-seat-status { font-size: 12px; color: #9aa; }
   .gm-seat-status.ready { color: #6c9; font-weight: 700; }
   .gm-lobby-actions { display: flex; gap: 10px; justify-content: center; }
@@ -1278,6 +1284,14 @@
   }
   .gm-deck-card { border-radius: 4px; overflow: hidden; border: 1px solid #2a2f3d; background: #11141c; }
   .gm-deck-img { width: 100%; aspect-ratio: 744 / 1039; background: #0a0c12 center / cover no-repeat; }
+  /* 終戦画面：CPUデッキ確認 */
+  .gm-cpu-deck-section { margin: 14px 0; }
+  .gm-cpu-deck-buttons { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .gm-cpu-deck-panel {
+    border: 1px solid #3a3f55; border-radius: 8px; padding: 12px;
+    background: rgba(20, 24, 36, 0.6); margin-bottom: 8px;
+  }
+  .gm-cpu-kami-card { border: 2px solid #dc9f50; }
   @media (max-width: 760px) {
     .gm-pack-grid { grid-template-columns: repeat(4, 1fr); }
     .gm-deck-grid { grid-template-columns: repeat(6, 1fr); }
@@ -1369,6 +1383,7 @@
     background: #161a24; border: 1px solid #2a2f3d; border-radius: 8px; padding: 16px; text-align: center;
   }
   .gm-battle-table.mine { border-color: #5abb8a; box-shadow: 0 0 0 1px #5abb8a55 inset; }
+  .gm-battle-table.cpu-table { opacity: 0.65; border-style: dashed; }
   .gm-battle-table-title { font-size: 14px; font-weight: 700; color: #cde; margin-bottom: 12px; }
   .gm-battle-vs { display: flex; align-items: center; justify-content: center; gap: 10px; }
   .gm-battle-player {
@@ -5356,11 +5371,12 @@
         </div>
         <p class="gm-lead">このコードを他のプレイヤーに伝えてください。4人全員が「準備完了」になると神託の儀が始まります。（{{ gsFilledCount }}/4人）</p>
         <div class="gm-seats">
-          <div v-for="s in gsSeats" :key="s.seat" class="gm-seat" :class="{ me: s.isMe, empty: !s.info }">
+          <div v-for="s in gsSeats" :key="s.seat" class="gm-seat" :class="{ me: s.isMe, empty: !s.info, cpu: s.info && s.info.isCpu }">
             <div class="gm-seat-no">P{{ s.seat }}</div>
             <div class="gm-seat-name">
               {{ s.info ? s.info.name : '空席…' }}
               <span v-if="s.isMe" class="gm-you">(あなた)</span>
+              <span v-if="s.info && s.info.isCpu" class="gm-cpu-badge">🤖 CPU</span>
             </div>
             <div class="gm-seat-status" :class="{ ready: s.info && s.info.ready }">
               {{ s.info ? (s.info.ready ? '✓ 準備完了' : '準備中…') : '—' }}
@@ -5372,7 +5388,16 @@
                   class="gm-btn gm-btn-primary" @click="gsToggleReady">
             {{ gsSeats[gs.seat-1].info.ready ? '準備完了を取り消す' : '準備完了にする' }}
           </button>
+          <button v-if="gs.seat === 1 && gsCpuAddable" class="gm-btn" @click="gsAddCpu">
+            🤖 CPUを追加（席3・4）
+          </button>
+          <button v-if="gs.seat === 1 && gsCpuSeats.length" class="gm-btn gm-btn-ghost" @click="gsRemoveCpu">
+            CPUを外す
+          </button>
           <button class="gm-btn gm-btn-ghost" @click="gsLeave">退出</button>
+        </div>
+        <div v-if="gs.seat === 1 && gsCpuSeats.length" class="gm-deepen-hint">
+          CPUあり構成：星戦（対戦）は人間プレイヤー2人同士でのみ行い、CPUはドラフトにだけ参加します。
         </div>
       </div>
 
@@ -5622,22 +5647,23 @@
           </span>
         </div>
         <div class="gm-battle-tables">
-          <div v-for="t in gsBattleTables" :key="t.table" class="gm-battle-table" :class="{ mine: t.hasMe }">
-            <div class="gm-battle-table-title">卓{{ t.table }}<span v-if="t.hasMe"> (あなたの卓)</span></div>
+          <div v-for="t in gsBattleTables" :key="t.table" class="gm-battle-table" :class="{ mine: t.hasMe, 'cpu-table': t.isCpuTable }">
+            <div class="gm-battle-table-title">卓{{ t.table }}<span v-if="t.hasMe"> (あなたの卓)</span><span v-if="t.isCpuTable"> 🤖 CPU卓</span></div>
             <div class="gm-battle-vs">
               <template v-for="(p, pi) in t.players">
                 <span v-if="pi === 1" :key="'vs'+t.table" class="gm-battle-vs-label">VS</span>
                 <button :key="p.seat"
                         class="gm-battle-player"
                         :class="{ winner: String(t.winner) === String(p.seat), me: p.isMe }"
-                        :disabled="gs.seat !== 1"
+                        :disabled="gs.seat !== 1 || t.isCpuTable"
                         @click="gsRecordBattle(t.table, p.seat)">
                   <span v-if="String(t.winner) === String(p.seat)">👑 </span>P{{ p.seat }} {{ p.name }}
                 </button>
               </template>
             </div>
             <div class="gm-battle-hint">
-              {{ gs.seat === 1 ? '勝った方をクリックして記録' : (t.winner ? '記録済み' : 'ホストが記録します') }}
+              <template v-if="t.isCpuTable">CPU同士のため星戦は行わず、自動処理されます</template>
+              <template v-else>{{ gs.seat === 1 ? '勝った方をクリックして記録' : (t.winner ? '記録済み' : 'ホストが記録します') }}</template>
             </div>
           </div>
         </div>
@@ -5677,6 +5703,34 @@
             </tr>
           </tbody>
         </table>
+        <!-- CPUデッキの確認（順位には含めないが、ドラフトで何を取っていたかを見られる） -->
+        <div v-if="gsCpuSeats.length" class="gm-cpu-deck-section">
+          <div class="gm-cpu-deck-buttons">
+            <button v-for="seat in gsCpuSeats" :key="'cpudeck'+seat" class="gm-btn"
+                    :class="{ 'gm-btn-primary': gsCpuDeckViewSeat === seat }"
+                    @click="gsCpuDeckViewSeat = (gsCpuDeckViewSeat === seat ? null : seat)">
+              🤖 CPU{{ seat }}のデッキを{{ gsCpuDeckViewSeat === seat ? '閉じる' : '見る' }}
+            </button>
+          </div>
+          <div v-if="gsCpuDeckViewSeat != null" class="gm-cpu-deck-panel">
+            <div class="gm-done-title" style="font-size:15px;">
+              CPU{{ gsCpuDeckViewSeat }}のデッキ（{{ gsCpuDeckViewCards.length }}枚）
+              — カミ：{{ gsCpuDeckViewKami ? fullName(gsCpuDeckViewKami) : '—' }}
+            </div>
+            <div class="gm-deck-grid">
+              <div v-if="gsCpuDeckViewKami" class="gm-deck-card gm-cpu-kami-card"
+                   @mouseenter="showCardHover(gsCpuDeckViewKami, $event)" @mouseleave="hideCardHover">
+                <div class="gm-deck-img"
+                     :style="cardImageUrl(gsCpuDeckViewKami) ? { backgroundImage: 'url(' + cardImageUrl(gsCpuDeckViewKami) + ')' } : {}"></div>
+              </div>
+              <div v-for="(card, i) in gsCpuDeckViewCards" :key="'cpuc'+i" class="gm-deck-card"
+                   @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
+                <div class="gm-deck-img"
+                     :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="gm-lobby-actions">
           <button class="gm-btn gm-btn-primary" @click="gsPeekDeck">自分のデッキをビルダーで確認</button>
           <button class="gm-btn gm-btn-ghost" @click="gsLeave">終了</button>
@@ -6261,7 +6315,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.162',
+    BUILD_VERSION: '1.14.163',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6307,6 +6361,7 @@ new Vue({
     _gsPeekSaved: null,       // プレビュー前のデッキビルダー状態退避
     gsSolo:      false,       // ソロテスト（CPU3体を自動操作）モード
     gsDeepenAction: null,     // 深化の刻で選択中のアクション: null(=メニュー) | 'reflect' | 'fusion' | 'bloom'
+    gsCpuDeckViewSeat: null,  // 終戦画面で表示中のCPUデッキの席番号（null=非表示）
   },
   computed: {
     /* BGM選択メニュー用：{key, name} の配列（BGM_FILESそのものではなく整形して渡す） */
@@ -7238,6 +7293,30 @@ new Vue({
       const seats = (this.gs.data && this.gs.data.seats) || {};
       return [1, 2, 3, 4].filter(n => seats[n] && seats[n].id).length;
     },
+    /* ===== CPU席（プレイヤー2人＋CPU2人構成） ===== */
+    gsCpuSeats() {
+      return (typeof cpuSeatsOf !== 'undefined') ? cpuSeatsOf(this.gs.data || {}) : [];
+    },
+    /* CPUを追加できるか（席3・4のどちらかが空席） */
+    gsCpuAddable() {
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      return [3, 4].some(n => !seats[n] || !seats[n].id);
+    },
+    /* CPUあり構成の実効ペアリング（人間卓＝卓1／CPU卓＝卓2）。通常構成は総当たり */
+    gsPairings() {
+      const r = this.gsRound;
+      if (typeof pairingsFor !== 'undefined' && this.gs.data) return pairingsFor(this.gs.data, r);
+      return (typeof PAIRINGS !== 'undefined' && PAIRINGS[r]) ? PAIRINGS[r] : [[1, 2], [3, 4]];
+    },
+    /* 終戦画面：表示中のCPUデッキ（カード一覧とカミ）。ピック内容はFirebase上のdecksに残っている */
+    gsCpuDeckViewCards() {
+      if (this.gsCpuDeckViewSeat == null) return [];
+      return this.gsCpuPickedCards(this.gsCpuDeckViewSeat);
+    },
+    gsCpuDeckViewKami() {
+      if (this.gsCpuDeckViewSeat == null) return null;
+      return this.seatKamiCard(this.gsCpuDeckViewSeat);
+    },
     gsAllReady() {
       const seats = (this.gs.data && this.gs.data.seats) || {};
       return [1, 2, 3, 4].every(n => seats[n] && seats[n].id && seats[n].ready);
@@ -7375,7 +7454,9 @@ new Vue({
     },
     gsScoreRows() {
       const seats = (this.gs.data && this.gs.data.seats) || {};
-      const rows = [1, 2, 3, 4].map(n => {
+      // CPUは順位計算に含めない（ドラフト成立のための参加者であり、星魂は集計しない）
+      const targetSeats = [1, 2, 3, 4].filter(n => !(seats[n] && seats[n].isCpu));
+      const rows = targetSeats.map(n => {
         const ret = this.seatReturn(n);
         const wins = this.seatWinCount(n);   // 記録した星戦結果から自動集計
         const kamiCard = this.seatKamiCard(n);
@@ -7404,16 +7485,17 @@ new Vue({
       return (this.gs.data && this.gs.data.battles && this.gs.data.battles[r]) || { t1Winner: null, t2Winner: null };
     },
     gsBattleTables() {
-      const r = this.gsRound;
-      const pairs = (typeof PAIRINGS !== 'undefined' && PAIRINGS[r]) ? PAIRINGS[r] : [[1, 2], [3, 4]];
+      const pairs = this.gsPairings;   // CPUあり構成では常に人間卓＝卓1／CPU卓＝卓2
       const seats = (this.gs.data && this.gs.data.seats) || {};
       const b = this.gsBattle;
       const nm = (seat) => seats[seat] ? seats[seat].name : ('P' + seat);
+      const cpu = (seat) => !!(seats[seat] && seats[seat].isCpu);
       return [0, 1].map(i => ({
         table: i + 1,
         players: pairs[i].map(seat => ({ seat, name: nm(seat), isMe: this.gs.seat === seat })),
         winner: i === 0 ? b.t1Winner : b.t2Winner,
         hasMe: pairs[i].map(String).includes(String(this.gs.seat)),
+        isCpuTable: pairs[i].every(cpu),   // 両者CPU＝星戦を行わず自動処理される卓
       }));
     },
     gsMyBattleOpponent() {
@@ -7427,13 +7509,15 @@ new Vue({
     },
   },
   methods: {
-    /* ある席の星戦勝利数（記録済みの全ラウンドから集計） */
+    /* ある席の星戦勝利数（記録済みの全ラウンドから集計。CPUあり構成はCPU対応ペアリングで判定） */
     seatWinCount(seat) {
       const battles = (this.gs.data && this.gs.data.battles) || {};
       if (typeof PAIRINGS === 'undefined') return 0;
       let w = 0;
       for (let r = 1; r <= 3; r++) {
-        if (battles[r] && battleWonBySeat(battles[r], PAIRINGS[r], seat)) w++;
+        const pairs = (typeof pairingsFor !== 'undefined' && this.gs.data)
+          ? pairingsFor(this.gs.data, r) : PAIRINGS[r];
+        if (battles[r] && battleWonBySeat(battles[r], pairs, seat)) w++;
       }
       return w;
     },
@@ -7585,8 +7669,8 @@ new Vue({
       const round = this.gsRound;
       const mySeat = this.gs.seat, oppSeat = opponent.seat;
       const code = this.gs.sessionCode;
-      // 卓を特定（ラウンドのペアリングから）
-      const pairs = (typeof PAIRINGS !== 'undefined' && PAIRINGS[round]) ? PAIRINGS[round] : [[1, 2], [3, 4]];
+      // 卓を特定（ラウンドのペアリングから。CPUあり構成では人間卓＝卓1に固定される）
+      const pairs = this.gsPairings;
       const table = pairs[0].map(String).includes(String(mySeat)) ? 1 : 2;
       // 先攻をトランザクションで1回だけ決定して両者で共有
       let firstSeat = mySeat;
@@ -16353,6 +16437,8 @@ new Vue({
       this.gsPeeking = false;
       this._gsPeekSaved = null;
       this.gsSolo = false;
+      this.gsCpuClearTimers();   // CPU自動操作の予約を破棄
+      this.gsCpuDeckViewSeat = null;
       if (this.gs._unsubscribe) { try { this.gs._unsubscribe(); } catch (e) {} }
       this.gs._unsubscribe = null;
       this.gs.view        = 'menu';
@@ -16387,8 +16473,9 @@ new Vue({
             if (list.length) dealKamiOffer(this.gs.sessionCode, this.gs.seat, list);
           }
         }
-        // ソロテスト：CPU席（2〜4）を自動操作
-        if (this.gsSolo && this.gs.seat === 1) this.gsDriveBots(data);
+        // CPU席の自動操作（ソロテスト＝席2〜4／CPUあり構成＝isCpuの席）。
+        // 実行はホスト（席1）のクライアントが代行する
+        if (this.gs.seat === 1) this.gsDriveBots(data);
       });
     },
     async gsCreate() {
@@ -16436,6 +16523,22 @@ new Vue({
       if (me.ready) await unsetSeatReady(this.gs.sessionCode, this.gs.seat);
       else          await setSeatReady(this.gs.sessionCode, this.gs.seat);
     },
+    /* ===== CPU席の追加/削除（ホスト操作。席3・4限定） ===== */
+    async gsAddCpu() {
+      try {
+        await addCpuSeat(this.gs.sessionCode);
+        // CPU席はready:trueで入るため、既に全員readyなら次のready変化を待たず遷移判定を促す
+        // （setSeatReadyの遷移transactionを流用：自分のready値を再設定するだけで冪等）
+        const me = (this.gs.data && this.gs.data.seats && this.gs.data.seats[this.gs.seat]) || null;
+        if (me && me.ready) await setSeatReady(this.gs.sessionCode, this.gs.seat);
+      } catch (e) {
+        alert(e.message || e);
+      }
+    },
+    async gsRemoveCpu() {
+      try { await removeCpuSeat(this.gs.sessionCode); }
+      catch (e) { alert(e.message || e); }
+    },
     // ソロテスト：CPU3体と即開始（自分は席1。CPUは自動で進行）
     async gsSoloTest() {
       if (this.gs.connecting) return;
@@ -16464,36 +16567,314 @@ new Vue({
         this.gs.connecting = false;
       }
     },
-    // CPU席（2〜4）の自動操作（購読のたびに呼ばれる。各処理はトランザクションで冪等）
+    /* ===================================================================
+       CPUドラフト思考エンジン
+       すべての要素を点数化して合算する「重み付きスコアリング」方式。
+       方針は最初のパックで決め打ちせず、自分が実際にピックしたカードの
+       蓄積（種族・属性・効果・マナカーブ）から動的に定まる。
+       =================================================================== */
+    /* カミの「好み」をアフィニティタグとして抽出する。
+       effect_spec.json のカミspec（天力トリガー契機の能力）と、カミシートの
+       トリガーテキストを結合し、パターンマッチでタグ化する（カミ個別のハードコード無し）。 */
+    gsCpuKamiAffinityTags(kamiNo) {
+      if (kamiNo == null || kamiNo === '') return [];
+      this._gsCpuTagCache = this._gsCpuTagCache || {};
+      const key = String(kamiNo);
+      if (this._gsCpuTagCache[key]) return this._gsCpuTagCache[key];
+      const kami = this.allKamiCards.find(k => String(k.no) === key);
+      const spec = this.effectSpecs && (this.effectSpecs['K' + key] || this.effectSpecs[key]);
+      let text = '';
+      if (spec && Array.isArray(spec.能力)) {
+        // 天力トリガー（＝ドラフト方針に直結する発動条件）の記述だけを対象にする
+        const trigAbilities = spec.能力.filter(ab => ab && ab.契機 === '天力トリガー');
+        try { text += JSON.stringify(trigAbilities); } catch (e) { /* skip */ }
+      }
+      if (kami && kami.trigger) text += ' ' + kami.trigger;
+      const tags = [];
+      if (/進化|昇華/.test(text)) tags.push('evolveSublim');       // K1 スサノオ
+      if (/同名/.test(text)) tags.push('unique');                   // K2 ヤマトタケル
+      if (/異なる種族/.test(text)) tags.push('tribeDiversity');     // K3 オオクニヌシ
+      if (/戦闘力が.{0,3}最も高い/.test(text)) tags.push('highPower'); // K4 タケミカヅチ
+      if (/オラクル.{0,8}レリック/.test(text)) tags.push('oracleRelic'); // K5 オモイカネ
+      if (/マナ最大値|ライフが増え|マナ、ライフ/.test(text)) tags.push('manaLife'); // K6 アメノウズメ
+      if (/破壊されたとき/.test(text)) tags.push('destroy');        // K7 ヒノカグツチ
+      if (/守護/.test(text)) tags.push('guard');                    // K8 アマテラス
+      if (/トークンが.{0,6}出たとき/.test(text)) tags.push('token'); // K9 ツクヨミ
+      if (/龍レガシー/.test(text)) tags.push('dragon');             // K10 ヤマタノオロチ
+      this._gsCpuTagCache[key] = tags;
+      return tags;
+    },
+    /* 優先度1：カミトリガーとの相性点 */
+    gsCpuCardTagScore(card, tags, pickedCards) {
+      let s = 0;
+      const text = String(card.text || '');
+      for (const tag of tags) {
+        switch (tag) {
+          case 'evolveSublim':
+            if (/【昇華|【進化/.test(text)) s += 22;
+            break;
+          case 'unique':
+            break; // 同名重複ペナルティ側（gsCpuScoreCard）で処理
+          case 'tribeDiversity': {
+            // 異なる種族を並べたい：未所持の種族のレガシーほど嬉しい
+            if (card.category === 'レガシー' && card.type) {
+              const types = new Set(pickedCards.filter(c => c.category === 'レガシー').map(c => c.type).filter(Boolean));
+              s += types.has(card.type) ? 4 : 14;
+            }
+            break;
+          }
+          case 'highPower':
+            s += Math.min(20, (Number(card.power) || 0) / 150);
+            break;
+          case 'oracleRelic':
+            if (card.category === 'オラクル' || card.category === 'レリック') s += 18;
+            break;
+          case 'manaLife':
+            if (/マナ.{0,8}(回復|増|＋|\+)|ライフ.{0,8}(回復|増|＋|\+)|マナ最大値/.test(text)) s += 20;
+            break;
+          case 'destroy':
+            if (/破壊|崩壊/.test(text)) s += 16;
+            s += Math.min(8, (Number(card.power) || 0) / 400); // 戦闘での相打ちも破壊トリガーになる
+            break;
+          case 'guard':
+            if (/【守護】/.test(text)) s += 22;
+            break;
+          case 'token':
+            if (/トークン|【招来/.test(text)) s += 20;
+            break;
+          case 'dragon':
+            if (card.type === '龍') s += 20;
+            break;
+        }
+      }
+      return s;
+    },
+    /* 優先度2：単体性能・汎用性の基礎点（軸が刺さらないカードでも最低限評価される） */
+    gsCpuBaseScore(card) {
+      let s = 10;
+      const cost = Number(card.cost) || 0;
+      const text = String(card.text || '');
+      if (card.category === 'レガシー') {
+        // コスト効率（1コスト≒900戦闘力を基準に上下）
+        s += Math.max(-8, Math.min(14, ((Number(card.power) || 0) - cost * 900) / 250));
+        s += Math.min(6, (Number(card.attack) || 0) / 500);
+      } else if (card.category === 'オラクル' || card.category === 'レリック') {
+        s += 4; // 盤面以外の仕事を持つカードの下駄
+      }
+      // 汎用的に強い効果語
+      if (/破壊する|崩壊させる/.test(text)) s += 6;   // 除去
+      if (/ドロー|引く/.test(text)) s += 5;           // 手札補充
+      if (/【誘|手札に加える/.test(text)) s += 4;     // サーチ
+      if (/【招来|場に出す/.test(text)) s += 4;       // 展開補助
+      if (/【守護】/.test(text)) s += 3;
+      if (/【疾駆】|【奇襲】/.test(text)) s += 3;
+      // 返還値（星魂に直結する資産価値）
+      s += (parseInt(card.return, 10) || 0) * 2;
+      return s;
+    },
+    /* 優先度3：ピック済みカードから見た種族シナジー（決め打ちせず蓄積から自然に寄る） */
+    gsCpuTribeSynergy(card, pickedCards) {
+      let s = 0;
+      const tribes = ['忍者', '侍', '人獣', '神使', '妖怪', '龍'];
+      if (card.category === 'レガシー' && card.type) {
+        const same = pickedCards.filter(c => c.type === card.type).length;
+        s += same >= 5 ? 16 : same >= 3 ? 12 : same >= 2 ? 7 : same >= 1 ? 3 : 0;
+      }
+      // 候補カードが特定種族を参照する効果を持つ場合、その種族の所持数に応じて加点
+      const text = String(card.text || '');
+      for (const tribe of tribes) {
+        if (text.includes(tribe)) {
+          s += Math.min(10, pickedCards.filter(c => c.type === tribe).length * 2.5);
+          break;
+        }
+      }
+      return s;
+    },
+    /* 優先度4：ピック済みカードから見た属性シナジー（創＝全属性ワイルドカード） */
+    gsCpuColorSynergy(card, pickedCards) {
+      if (!card.color || card.color === '無') return 0;
+      if (card.color === '創') return 6; // どの軸でも使えるため常に少し嬉しい
+      const counts = {};
+      for (const c of pickedCards) {
+        if (!c.color || c.color === '無' || c.color === '創') continue;
+        counts[c.color] = (counts[c.color] || 0) + 1;
+      }
+      const mine  = counts[card.color] || 0;
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+      if (total < 3) return mine * 2; // 序盤は縛らない
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      const rank = sorted.findIndex(e => e[0] === card.color);
+      if (rank === 0) return 10;
+      if (rank === 1) return 6;
+      return mine > 0 ? 0 : -6; // 3色目以降の新規色はやや減点
+    },
+    /* 優先度5：カード同士の効果・キーワード相性 */
+    gsCpuEffectSynergy(card, pickedCards) {
+      const text = String(card.text || '');
+      let s = 0;
+      // 破壊テーマが濃いなら、死亡時・墓地・破壊時参照カードを評価
+      const destroyCount = pickedCards.filter(c => /破壊|崩壊/.test(String(c.text || ''))).length;
+      if (destroyCount >= 3 && /死亡時|墓地|破壊されたとき/.test(text)) s += 8;
+      // 低コスト横並びが多いなら、全体強化・横並び活用を評価
+      const cheapCount = pickedCards.filter(c => c.category === 'レガシー' && (Number(c.cost) || 0) <= 2).length;
+      if (cheapCount >= 4 && /(すべて|全て)の?自分レガシー|自分レガシー(すべて|全て)/.test(text)) s += 8;
+      // 高コストが多いなら、マナ補助・守護・除去（時間稼ぎ）を評価
+      const heavyCount = pickedCards.filter(c => (Number(c.cost) || 0) >= 5).length;
+      if (heavyCount >= 3 && /マナ|【守護】|破壊する/.test(text)) s += 6;
+      // 昇華持ちが多いなら、マナを伸ばすカードを評価
+      const sublimCount = pickedCards.filter(c => /【昇華/.test(String(c.text || ''))).length;
+      if (sublimCount >= 2 && /マナ/.test(text)) s += 4;
+      return s;
+    },
+    /* 優先度6：マナカーブ（不足コスト帯を加点・過剰帯を減点） */
+    gsCpuCurveScore(card, pickedCards) {
+      const cost = Math.min(6, Number(card.cost) || 0);
+      const bins = [0, 0, 0, 0, 0, 0, 0];
+      for (const c of pickedCards) bins[Math.min(6, Number(c.cost) || 0)]++;
+      const total = pickedCards.length;
+      if (total < 5) return 0; // 序盤はカーブより質を優先
+      const ideal = [0.08, 0.18, 0.22, 0.20, 0.14, 0.10, 0.08]; // ざっくり理想の分布
+      const diff = ideal[cost] - bins[cost] / total;             // 不足なら正
+      return Math.max(-8, Math.min(10, diff * 45));
+    },
+    /* 総合スコア：全要素の重み付き合算。CPUごとに性格差をつける */
+    gsCpuScoreCard(card, ctx) {
+      // CPU3＝シナジー重視／CPU4＝単体性能・マナカーブ重視
+      const persona = ctx.seat === 4
+        ? { base: 1.3, kami: 1.0, tribe: 0.85, color: 0.9,  effect: 0.85, curve: 1.3 }
+        : { base: 1.0, kami: 1.15, tribe: 1.35, color: 1.25, effect: 1.3,  curve: 0.85 };
+      const picked = ctx.pickedCards;
+      let s = 0;
+      s += this.gsCpuBaseScore(card) * persona.base;
+      s += this.gsCpuCardTagScore(card, ctx.kamiTags, picked) * persona.kami;
+      s += this.gsCpuTribeSynergy(card, picked) * persona.tribe;
+      s += this.gsCpuColorSynergy(card, picked) * persona.color;
+      s += this.gsCpuEffectSynergy(card, picked) * persona.effect;
+      s += this.gsCpuCurveScore(card, picked) * persona.curve;
+      // 同名重複：軽い減点（K2ヤマトタケル＝uniqueタグ持ちは重い減点）
+      const dup = picked.filter(c => this.fullName(c) === this.fullName(card)).length;
+      s -= dup * (ctx.kamiTags.includes('unique') ? 12 : 3);
+      return s;
+    },
+    /* パックから1枚選ぶ：上位2〜3枚から確率的に選択（スコア差が大きいほど1位を選びやすい） */
+    gsCpuChoosePick(cards, ctx) {
+      const scored = cards.map(c => ({ c, s: this.gsCpuScoreCard(c, ctx) }))
+                          .sort((a, b) => b.s - a.s);
+      if (scored.length === 1) return scored[0].c;
+      const gap = scored[0].s - scored[1].s;
+      const p0 = Math.min(0.92, 0.55 + gap * 0.04);
+      const r = Math.random();
+      if (r < p0) return scored[0].c;
+      if (scored.length < 3 || r < p0 + (1 - p0) * 0.7) return scored[1].c;
+      return scored[2].c;
+    },
+    /* カミ選択：候補3枚それぞれのアフィニティがラウンド1のカードプールに
+       どれだけ刺さるかを合計し、最も戦いやすいカミを選ぶ */
+    gsCpuChooseKami(offerNos) {
+      const pool = this.draftPoolNos(1).map(no => this.cardByNo[String(no)]).filter(Boolean);
+      let best = offerNos[0], bestScore = -Infinity;
+      for (const no of offerNos) {
+        const tags = this.gsCpuKamiAffinityTags(no);
+        let s = 0;
+        for (const card of pool) s += this.gsCpuCardTagScore(card, tags, []);
+        s *= (0.9 + Math.random() * 0.2); // 揺らぎ（毎回同じカミにならないように）
+        if (s > bestScore) { bestScore = s; best = no; }
+      }
+      return best;
+    },
+    /* CPU席のピック済みカード（Firebase上のdecks由来） */
+    gsCpuPickedCards(seat) {
+      const decks = (this.gs.data && this.gs.data.decks) || {};
+      return this.gsNorm(decks[seat]).map(no => this.cardByNo[String(no)]).filter(Boolean);
+    },
+    /* 1〜3秒のランダム遅延つきで1回だけ実行を予約する（CPUの「考えている間」の演出＋
+       購読コールバックが連続で来ても二重予約しない） */
+    gsCpuSchedule(key, fn) {
+      this._gsCpuTimers = this._gsCpuTimers || {};
+      if (this._gsCpuTimers[key]) return;
+      this._gsCpuTimers[key] = setTimeout(() => {
+        delete this._gsCpuTimers[key];   // 実行後は解放（transactionが不発でも次の購読で再予約できる）
+        try { fn(); } catch (e) { console.warn('[cpu] 自動操作に失敗:', e); }
+      }, 1000 + Math.random() * 2000);
+    },
+    /* 予約済みタイマーを全消去（退出時） */
+    gsCpuClearTimers() {
+      for (const k of Object.keys(this._gsCpuTimers || {})) clearTimeout(this._gsCpuTimers[k]);
+      this._gsCpuTimers = {};
+    },
+    /* CPU席の自動操作（購読のたびに呼ばれる。各処理はトランザクションで冪等）。
+       ソロテスト時は席2〜4、CPUあり通常構成では isCpu の席が対象。
+       既存の dealKamiOffer / pickKami / draftPick / deepenSetDone /
+       recordBattleResult のみを使う（CPU専用ルートは作らない）。 */
     gsDriveBots(data) {
       if (!data) return;
       const code = this.gs.sessionCode;
       const norm = (raw) => this.gsNorm(raw);
-      const bots = [2, 3, 4];
+      const bots = this.gsSolo ? [2, 3, 4]
+        : (typeof cpuSeatsOf !== 'undefined' ? cpuSeatsOf(data) : []);
+      if (!bots.length) return;
       if (data.phase === 'kami_select' && data.kami) {
         const t = data.kami.turn;
         if (bots.includes(t)) {
           const offer = data.kami.offer && data.kami.offer[t];
           if (!offer) {
             const list = this.allKamiCards.map(k => String(k.no));
-            dealKamiOffer(code, t, list);
+            if (list.length) dealKamiOffer(code, t, list);
           } else {
-            pickKami(code, t, String(norm(offer)[0]));
+            this.gsCpuSchedule(`kami:${t}`, () => {
+              const cur = this.gs.data || {};
+              if (cur.phase !== 'kami_select' || !cur.kami || cur.kami.turn !== t) return;
+              const curOffer = norm(cur.kami.offer && cur.kami.offer[t]).map(String);
+              if (!curOffer.length) return;
+              pickKami(code, t, String(this.gsCpuChooseKami(curOffer)));
+            });
           }
         }
       } else if (data.phase === 'draft' && data.draft) {
         const d = data.draft;
         for (const seat of bots) {
-          if (!(d.picks && d.picks[seat] != null)) {
-            const pack = this.gsPackCardNos(d.packs && d.packs[seat]);
-            if (pack.length) draftPick(code, seat, String(pack[0]));
-          }
+          if (d.picks && d.picks[seat] != null) continue;
+          const key = `draft:${d.round}:${d.setIndex || 0}:${d.step || 0}:${seat}`;
+          this.gsCpuSchedule(key, () => {
+            const cur = this.gs.data || {};
+            if (cur.phase !== 'draft' || !cur.draft) return;
+            const cd = cur.draft;
+            if (cd.picks && cd.picks[seat] != null) return;
+            const packNos = this.gsPackCardNos(cd.packs && cd.packs[seat]);
+            if (!packNos.length) return;
+            const cards = packNos.map(no => this.cardByNo[String(no)]).filter(Boolean);
+            if (!cards.length) { draftPick(code, seat, String(packNos[0])); return; } // カードデータ未取得時の保険
+            const seats  = cur.seats || {};
+            const kamiNo = seats[seat] ? seats[seat].kamiNo : null;
+            const chosen = this.gsCpuChoosePick(cards, {
+              seat,
+              pickedCards: this.gsCpuPickedCards(seat),
+              kamiTags: this.gsCpuKamiAffinityTags(kamiNo),
+            });
+            draftPick(code, seat, String(chosen.no));
+          });
         }
       } else if (data.phase === 'deepen') {
         const dd = data.deepenDone || {};
         for (const seat of bots) {
-          if (!dd[seat]) deepenSetDone(code, seat, true);   // CPUは即完了
+          if (!dd[seat]) deepenSetDone(code, seat, true);   // CPUは即完了（見識は使わない）
         }
+      } else if (data.phase === 'battle') {
+        // 両者CPUの卓は星戦を行わないため、勝敗を自動記録して進行を止めない
+        // （人間が参加する卓には一切関与しない）
+        const r = data.round || 1;
+        const pairs = (typeof pairingsFor !== 'undefined') ? pairingsFor(data, r)
+          : ((typeof PAIRINGS !== 'undefined' && PAIRINGS[r]) || [[1, 2], [3, 4]]);
+        const b = (data.battles && data.battles[r]) || {};
+        [0, 1].forEach(i => {
+          const pair = pairs[i];
+          const winnerField = i === 0 ? 't1Winner' : 't2Winner';
+          if (!pair || !pair.every(n => bots.includes(n))) return;
+          if (b[winnerField] != null) return;
+          // seed＋ラウンドから決定論的に勝者を選ぶ（購読が何度来ても同じ結果＝冪等）
+          const winner = pair[((Number(data.seed) || 0) + r) % 2];
+          recordBattleResult(code, i + 1, winner);
+        });
       }
     },
     async gsConfirmKami(card) {
