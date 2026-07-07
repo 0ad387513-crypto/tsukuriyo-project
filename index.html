@@ -1033,6 +1033,16 @@
   .top-menu-subtitle {
     font-size: 14px; color: #9aa; margin-bottom: 48px; letter-spacing: 0.06em;
   }
+  .top-resume-banner {
+    display: flex; align-items: center; gap: 12px; width: min(360px, 90vw);
+    background: rgba(200,120,40,.15); border: 1px solid #f0b86c; border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 24px; font-size: 12px; color: #ffe2a8;
+  }
+  .top-resume-btn {
+    margin-left: auto; flex-shrink: 0; background: #f0b86c; border: none; color: #2a1c0a;
+    padding: 6px 12px; border-radius: 5px; font-weight: 800; font-size: 12px; cursor: pointer;
+  }
+  .top-resume-btn:hover { background: #ffd08a; }
   .top-menu-buttons {
     display: flex; flex-direction: column; gap: 16px; width: min(360px, 90vw);
   }
@@ -1165,6 +1175,10 @@
     width: 34px; height: 34px; border-radius: 5px; cursor: pointer; font-size: 16px;
   }
   .gm-copy:hover { background: #3a4055; color: #fff; }
+  .gm-invite-link-btn {
+    margin-left: 8px; width: auto; height: auto; padding: 8px 12px;
+    font-size: 12px; font-weight: 700; white-space: nowrap;
+  }
   .gm-seats {
     display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px;
   }
@@ -2249,6 +2263,22 @@
   .battle-undo-btn .undo-count {
     font-size: 10px; color: #d8c8ff; margin-left: 4px; font-weight: 600;
   }
+  /* 相手クライアントへ判断を委ねて応答待ち中のインジケーター（守護確認・相手選択効果 等） */
+  .battle-waiting-banner {
+    position: absolute; top: 52px; left: 50%; transform: translateX(-50%);
+    z-index: 560; display: flex; align-items: center; gap: 8px;
+    padding: 7px 16px; border-radius: 20px; font-size: 13px; font-weight: 700;
+    background: rgba(30, 24, 12, .92); border: 1px solid #f0b86c; color: #ffe2a8;
+    box-shadow: 0 4px 16px rgba(0,0,0,.5); pointer-events: none; white-space: nowrap;
+  }
+  .battle-waiting-spinner {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 2px solid rgba(255,226,168,.35); border-top-color: #ffe2a8;
+    animation: battleWaitingSpinKf .8s linear infinite;
+  }
+  @keyframes battleWaitingSpinKf { to { transform: rotate(360deg); } }
+  .battle-waiting-fade-enter-active, .battle-waiting-fade-leave-active { transition: opacity .2s ease; }
+  .battle-waiting-fade-enter, .battle-waiting-fade-leave-to { opacity: 0; }
   /* ===== SE/BGM音量設定：全画面共通のフローティングボタン ===== */
   .global-sound-settings { position: fixed; top: 8px; right: 8px; z-index: 9500; }
   /* 対戦画面ヘッダー内版：降参ボタン等と重ならないよう、ヘッダーの通常のflow内に配置する */
@@ -3441,6 +3471,10 @@
   <div v-if="appView === 'top'" class="top-menu">
     <div class="top-menu-title">ツクリヨオンライン</div>
     <div class="top-menu-subtitle">— TSUKURIYO ONLINE —</div>
+    <div v-if="resumeSession" class="top-resume-banner">
+      <span>進行中のセッションがあります（{{ resumeSession.kind === 'game' ? '4人対戦' : resumeSession.kind === 'shield' ? 'シールド戦' : '対戦テスト' }} / コード: {{ resumeSession.code }}）</span>
+      <button class="top-resume-btn" @click="resumeActiveSession">↩ 戻る</button>
+    </div>
     <div class="top-menu-buttons">
       <button class="top-menu-btn deck" @click="goToCardlist">📖 カードリスト</button>
       <button class="top-menu-btn game" @click="goToGame">🎴 4人対戦(β)</button>
@@ -4250,6 +4284,12 @@
       </button>
       <button v-if="!battleNet.spectating" class="battle-surrender-btn" @click="battleSurrender">降参</button>
     </div>
+    <!-- 相手クライアントへ判断を委ねて応答待ち中のインジケーター（守護確認・相手選択効果 等） -->
+    <transition name="battle-waiting-fade">
+      <div v-if="battleWaitingLabel" class="battle-waiting-banner">
+        <span class="battle-waiting-spinner"></span>{{ battleWaitingLabel }}
+      </div>
+    </transition>
 
     <!-- ===== マリガン（引き直し）フェーズ ===== -->
     <!-- マリガン後の相手待ちオーバーレイ -->
@@ -5210,6 +5250,10 @@
         </div>
         <div class="result-actions">
           <button v-if="battleUndoStack.length" @click="battleUndo">一手戻る</button>
+          <button v-if="battleNet.on && !battleNet.spectating && battleContext.returnView === 'top'"
+                  :disabled="battleWaitingForRematch" @click="battleRequestRematch">
+            {{ battleWaitingForRematch ? '相手の応答を待っています…' : '🔁 もう一度対戦' }}
+          </button>
           <button @click="battleReturn">{{ battleReturnLabel }}へ戻る</button>
         </div>
       </div>
@@ -5424,6 +5468,9 @@
           <span class="gm-code-label">セッションコード</span>
           <span class="gm-code-value">{{ gs.sessionCode }}</span>
           <button class="gm-copy" @click="gsCopyCode" title="コピー">⧉</button>
+          <button class="gm-copy gm-invite-link-btn" @click="gsCopyInviteLink" title="招待リンクをコピー">
+            {{ gsInviteCopied ? '✓ コピーしました' : '🔗 招待リンクをコピー' }}
+          </button>
         </div>
         <p class="gm-lead">このコードを他のプレイヤーに伝えてください。4人全員が「準備完了」になると神託の儀が始まります。（{{ gsFilledCount }}/4人）</p>
         <div class="gm-seats">
@@ -6344,6 +6391,8 @@ new Vue({
     battleNotice: null, // ブロッキングモーダル用（クリックで確認が必要な通知のみ使う）
     battleToasts: [], // 自動消滅トースト（成功報告・状態変化）：[{ id, title, message }]、積み重ね表示・各々独立したタイマーで消える
     battleRemoteConfirm: null, // 相手クライアントから届いた確認依頼（守護 等）：{ id, kind, cardNo, prompt }
+    battleWaitingLabel: null, // 相手クライアントへの委譲応答待ち中に表示するラベル（null=待ちなし）
+    battleWaitingForRematch: false, // 再戦をリクエスト済みで相手の応答を待っている間true（対戦テストのみ）
     battleTurnFlash: null, // 手番切替時に画面中央へ一瞬表示する演出：{ text, side }
     battleTurnWipe: null,  // 手番切替時の画面ワイプ演出：{ id, side }
     battleCoinFlip: null, // 先攻/後攻決めのコイン演出：{ firstSide, phase: 'spin'|'result' }
@@ -6403,7 +6452,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.171',
+    BUILD_VERSION: '1.14.172',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6445,6 +6494,8 @@ new Vue({
       data:        {},        // Firebase から同期されるセッションデータ
       _unsubscribe: null,
     },
+    gsInviteCopied: false,    // 招待リンクコピー直後のフィードバック表示用
+    resumeSession: null,      // TOP画面用：直近の進行中セッション記録（{kind, code, ts} or null）
     gsPeeking:   false,       // ドラフト中にデッキ詳細をプレビュー表示中か
     _gsPeekSaved: null,       // プレビュー前のデッキビルダー状態退避
     gsSolo:      false,       // ソロテスト（CPU3体を自動操作）モード
@@ -7650,6 +7701,7 @@ new Vue({
     /* ===== トップメニュー遷移 ===== */
     goToTop() {
       this._sfxPlay('cancel');
+      this._loadActiveSessionForResume();
       // シールド戦のピーク中なら閉じる
       if (this.shieldPeek) this.closePeekDeckDetail();
       // 4人対戦のピーク中なら閉じる
@@ -7837,14 +7889,54 @@ new Vue({
         return `${Date.now()}_${Math.random().toString(36).slice(2)}`; // localStorage不可時のフォールバック
       }
     },
+    /* 進行中セッションの記録：誤ってタブを閉じた/リロードした場合に、TOP画面から
+       部屋コードを覚え直す手間なく戻れるようにする（座席そのものの自動復帰はできないため、
+       あくまで「コードを覚えておいて入力欄まで案内する」までの補助）。 */
+    _saveActiveSession(kind, code) {
+      if (!code) return;
+      try {
+        window.localStorage.setItem('tsukuriyo_activeSession', JSON.stringify({ kind, code, ts: Date.now() }));
+      } catch (e) { /* 保存できなくても致命的ではない */ }
+    },
+    _clearActiveSession() {
+      try { window.localStorage.removeItem('tsukuriyo_activeSession'); } catch (e) { /* noop */ }
+    },
+    /* TOP画面表示時に、まだ有効そうな（12時間以内の）進行中セッション記録があれば読み込む */
+    _loadActiveSessionForResume() {
+      try {
+        const raw = window.localStorage.getItem('tsukuriyo_activeSession');
+        if (!raw) { this.resumeSession = null; return; }
+        const data = JSON.parse(raw);
+        if (!data || !data.code || !data.ts || Date.now() - data.ts > 12 * 60 * 60 * 1000) {
+          this.resumeSession = null;
+          return;
+        }
+        this.resumeSession = data;
+      } catch (e) { this.resumeSession = null; }
+    },
+    /* 「対戦に戻る」ボタン：座席そのものは復元できないため、該当画面のコード入力欄まで
+       案内するに留める（そこから改めて参加操作をしてもらう）。 */
+    resumeActiveSession() {
+      const r = this.resumeSession;
+      if (!r) return;
+      if (r.kind === 'game') {
+        this.gs.joinCode = r.code;
+        this.openGame();
+      } else if (r.kind === 'shield') {
+        this.sb.joinCode = r.code;
+        this.openShield();
+      } else if (r.kind === 'test') {
+        this.startBattleTest(false, r.code);
+      }
+    },
     // 対戦テスト（2人同期確認用）: コード発行/参加で同期1v1へ直行（デモデッキ）
-    async startBattleTest(create) {
+    async startBattleTest(create, presetCode) {
       if (!this.allCards.length) { alert('カード読み込み中です。少し待って再度お試しください。'); return; }
       let code;
       if (create) {
         code = generateRoomCode();
       } else {
-        code = (window.prompt('対戦テストのコードを入力してください（作成側の対戦画面に表示されています）') || '').trim().toUpperCase();
+        code = (presetCode || window.prompt('対戦テストのコードを入力してください（作成側の対戦画面に表示されています）') || '').trim().toUpperCase();
         if (!code) return;
       }
       const mySeat = create ? 1 : 2;
@@ -7884,9 +7976,65 @@ new Vue({
         selfMulligans: 1, oppMulligans: 1,
         syncGame: true, code, table, mySeat, oppSeat,
       });
+      this._saveActiveSession('test', code);
       if (create) {
         this.$nextTick(() => alert(`対戦テストのコード： ${code}\n\nもう一方のタブ（シークレットウィンドウ推奨）で「対戦テスト：参加」からこのコードを入力してください。\n（コードは対戦画面の上部にも表示されています）`));
       }
+    },
+    /* 再戦（対戦テストのみ対応）：結果画面から同じ相手とすぐ再戦できるようにする。
+       双方のクライアントが同じFirebaseパスへ「再戦したい」を書き込み、両者揃った時点で
+       各クライアントが自分側でstartBattleTest相当の再初期化を行う（部屋コード・座席は使い回す）。 */
+    async battleRequestRematch() {
+      const n = this.battleNet;
+      if (!n || !n.on || n.spectating || this.battleContext.returnView !== 'top') return;
+      this.battleWaitingForRematch = true;
+      try {
+        await getDb().ref(`${n.statePath.replace(/\/state$/, '/rematch')}/${n.mySeat}`).set(true);
+      } catch (e) {
+        console.warn('[sync] 再戦リクエスト送信失敗:', e);
+        this.battleWaitingForRematch = false;
+      }
+    },
+    _battleHandleRematchSignal(val) {
+      if (!val || this._battleRematchTriggered) return;
+      const n = this.battleNet;
+      if (!n || this.battleContext.returnView !== 'top') return;
+      if (!val[n.mySeat] || !val[n.oppSeat]) return;
+      this._battleRematchTriggered = true;
+      this._battleRestartTestBattle();
+    },
+    async _battleRestartTestBattle() {
+      const n = this.battleNet;
+      if (!n) return;
+      const { mySeat, oppSeat, code, table } = n;
+      let firstSeat = mySeat;
+      try {
+        const ref = getDb().ref(`sessions/${code}/battle/${table}/rematch/firstSeat`);
+        const res = await ref.transaction(cur => (cur != null ? cur : (Math.random() < 0.5 ? mySeat : oppSeat)));
+        firstSeat = res.snapshot.val();
+      } catch (e) { /* 失敗しても自分視点で続行 */ }
+      const firstSide = String(firstSeat) === String(mySeat) ? 'self' : 'opp';
+      const create = mySeat === 1;
+      const demo = this.allCards.filter(c => !c.isToken && c.color !== '創').slice(0, 40);
+      const kamiA = this.allKamiCards[0] || null, kamiB = this.allKamiCards[1] || this.allKamiCards[0] || null;
+      this._battleInitialize({
+        source: 'game', modeLabel: `対戦テスト ｜ コード ${code}`, returnView: 'top', round: null,
+        selfName: create ? 'プレイヤーA' : 'プレイヤーB', oppName: create ? 'プレイヤーB' : 'プレイヤーA',
+        firstSide, life: 8,
+        selfDeck: demo.slice(), oppDeck: demo.slice(),
+        selfKami: create ? kamiA : kamiB, oppKami: create ? kamiB : kamiA,
+        selfMulligans: 1, oppMulligans: 1,
+        syncGame: true, code, table, mySeat, oppSeat,
+      });
+      // rematchノードの片付けは席1側だけが担当し、少し遅らせて実行する
+      // （双方のfirstSeatトランザクションが完了する前に消えると、再抽選がずれて食い違う恐れがあるため）
+      if (mySeat === 1) {
+        setTimeout(() => {
+          getDb().ref(`sessions/${code}/battle/${table}/rematch`).remove().catch(() => {});
+        }, 3000);
+      }
+      this._battleRematchTriggered = false;
+      this.battleWaitingForRematch = false;
     },
     // 観戦モード：既存の「対戦テスト」1v1の部屋を読み取り専用で覗き見る（両者の手札を含め全公開・デバッグ用）
     async startBattleSpectate() {
@@ -8459,6 +8607,11 @@ new Vue({
           this.$set(this.battleNet, 'oppLastSeenAt', val ? (val.ts || null) : null);
         };
         oppPresenceRef.on('value', presenceHandler);
+        // 再戦（対戦テストのみ）：双方が「もう一度対戦」を押したら再戦開始
+        const rematchPath = path.replace(/\/state$/, '/rematch');
+        const rematchRef = getDb().ref(rematchPath);
+        const rematchHandler = snap => this._battleHandleRematchSignal(snap.val());
+        rematchRef.on('value', rematchHandler);
         this.battleNet._unsub = () => {
           ref.off('value', handler);
           try { noticeRef.off('value', noticeHandler); } catch (e) {}
@@ -8471,6 +8624,7 @@ new Vue({
           try { oracleEffectRef.off('value', oracleEffectHandler); } catch (e) {}
           try { connectedRef.off('value', connectedHandler); } catch (e) {}
           try { oppPresenceRef.off('value', presenceHandler); } catch (e) {}
+          try { rematchRef.off('value', rematchHandler); } catch (e) {}
           try { myPresenceRef.onDisconnect().cancel(); } catch (e) {}
           try { myPresenceRef.set({ online: false, ts: Date.now() }); } catch (e) {}
         };
@@ -12407,7 +12561,7 @@ new Vue({
       const reqId = 'd' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
       const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
       const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
-      this._battleDelegatePendingBegin();
+      this._battleDelegatePendingBegin('相手の手札への効果適用を処理中…');
       try {
         try {
           await getDb().ref(reqPath).set({
@@ -12947,7 +13101,7 @@ new Vue({
       const reqId = 'q' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
       const reqPath = `sessions/${n.code}/battle/${n.table}/pendingConfirm`;
       const ansPath = `sessions/${n.code}/battle/${n.table}/pendingConfirmAnswer/${reqId}`;
-      this._battleDelegatePendingBegin();
+      this._battleDelegatePendingBegin(`相手が「${kind || '判断'}」を検討中…`);
       try {
         try {
           await getDb().ref(reqPath).set({
@@ -13012,7 +13166,7 @@ new Vue({
       const reqId = 'p' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
       const reqPath = `sessions/${n.code}/battle/${n.table}/pendingPick`;
       const ansPath = `sessions/${n.code}/battle/${n.table}/pendingPickAnswer/${reqId}`;
-      this._battleDelegatePendingBegin();
+      this._battleDelegatePendingBegin(`相手が「${promptLabel || '選択'}」を選択中…`);
       try {
         try {
           await getDb().ref(reqPath).set({
@@ -13074,7 +13228,7 @@ new Vue({
       const reqId = 'g' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
       const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
       const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
-      this._battleDelegatePendingBegin();
+      this._battleDelegatePendingBegin('相手が手札から選択中…');
       try {
         try {
           await getDb().ref(reqPath).set({ id: reqId, forSeat: n.oppSeat, kind: 'discard', need, ts: Date.now() });
@@ -13201,7 +13355,7 @@ new Vue({
       const reqId = 'r' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
       const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
       const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
-      this._battleDelegatePendingBegin();
+      this._battleDelegatePendingBegin('相手の手札に戻す処理を実行中…');
       try {
         try {
           await getDb().ref(reqPath).set({ id: reqId, forSeat: n.oppSeat, kind: 'returnToHand', cardNo: String(card.no), ts: Date.now() });
@@ -16465,13 +16619,17 @@ new Vue({
     /* 相手クライアントへの委譲呼び出し（バウンス実行委任・手札効果無効化・相手選択破棄・守護確認 等）の
        応答待ち件数。0より大きい間は自動公開(watcher)を保留し、0に戻った時点で改めて公開する
        （保留しないと、応答待ち中のこちらの古いローカルミラーで相手の正しい変更を上書きしてしまう）。 */
-    _battleDelegatePendingBegin() {
+    _battleDelegatePendingBegin(label) {
       this._battleDelegatePendingCount = (this._battleDelegatePendingCount || 0) + 1;
+      this.battleWaitingLabel = label || '相手の判断';
     },
     _battleDelegatePendingEnd() {
       this._battleDelegatePendingCount = Math.max(0, (this._battleDelegatePendingCount || 0) - 1);
-      if (this._battleDelegatePendingCount === 0 && this.battleNet && this.battleNet.on && !this.battleNet.spectating) {
-        this._battlePublishState();
+      if (this._battleDelegatePendingCount === 0) {
+        this.battleWaitingLabel = null;
+        if (this.battleNet && this.battleNet.on && !this.battleNet.spectating) {
+          this._battlePublishState();
+        }
       }
     },
     battleAskDrawConfirm(side) {
@@ -16913,6 +17071,7 @@ new Vue({
         this.gs.seat        = seat;
         this.gs.view        = 'lobby';
         this.gsSubscribe(sessionCode);
+        this._saveActiveSession('game', sessionCode);
       } catch (e) {
         this.gs.error = e.message || 'セッション作成に失敗しました';
       } finally {
@@ -16933,6 +17092,7 @@ new Vue({
         this.gs.seat        = seat;
         this.gs.view        = 'lobby';
         this.gsSubscribe(code);
+        this._saveActiveSession('game', code);
       } catch (e) {
         this.gs.error = e.message || '参加に失敗しました';
       } finally {
@@ -17314,9 +17474,23 @@ new Vue({
       if (!this.gs.sessionCode) return;
       try { navigator.clipboard.writeText(this.gs.sessionCode); } catch (e) {}
     },
+    /* 部屋コード付きの招待URLをクリップボードにコピーする（?room=XXXX）。
+       参加側はこのURLを開くと自動でセッションコード欄に入力された状態でメニューが開く（自動参加はしない）。 */
+    gsCopyInviteLink() {
+      if (!this.gs.sessionCode) return;
+      const url = new URL(window.location.href);
+      url.search = '';
+      url.hash = '';
+      url.searchParams.set('room', this.gs.sessionCode);
+      const link = url.toString();
+      try { navigator.clipboard.writeText(link); } catch (e) { /* クリップボード不可の環境では何もしない */ }
+      this.gsInviteCopied = true;
+      setTimeout(() => { this.gsInviteCopied = false; }, 1800);
+    },
     gsLeave() {
       if (!confirm('セッションから退出しますか？')) return;
       this._sfxPlay('cancel');
+      this._clearActiveSession();
       this.gsResetState();
     },
     // 自分の選んだカミをデッキビルダーに反映して閉じる
@@ -18547,6 +18721,7 @@ new Vue({
       this._sbCleanup();
       this.shieldOpen = false;
       this.appView = 'top';
+      this._clearActiveSession();
       this._sbReset();
     },
     _sbReset() {
@@ -18661,6 +18836,7 @@ new Vue({
         this.sb.role      = 'host';
         this.sb.phase     = 'waiting';
         this._sbSubscribe(roomCode);
+        this._saveActiveSession('shield', roomCode);
       } catch (e) {
         this.sb.error = e.message;
       } finally {
@@ -18705,6 +18881,7 @@ new Vue({
         this.sb.role      = 'guest';
         this.sb.phase     = 'waiting';
         this._sbSubscribe(code);
+        this._saveActiveSession('shield', code);
       } catch (e) {
         this.sb.error = e.message;
       } finally {
@@ -18810,6 +18987,19 @@ new Vue({
     this.loadEffectSpecs();
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("click", this.onWindowClick);
+    // 招待リンク（?room=XXXX）で開かれた場合：4人対戦のセッションコード欄に自動入力してメニューを開く
+    // （自動参加はせず、内容を確認してから「コードで参加」を押してもらう）
+    try {
+      const roomParam = new URLSearchParams(window.location.search).get('room');
+      if (roomParam) {
+        this.gs.joinCode = roomParam.trim().toUpperCase().slice(0, 6);
+        this.openGame();
+        const url = new URL(window.location.href);
+        url.searchParams.delete('room');
+        window.history.replaceState({}, '', url.toString());
+      }
+    } catch (e) { /* URL API非対応環境では無視 */ }
+    this._loadActiveSessionForResume();
     // 対戦オンライン同期：自分が手番中（＋手番を渡す瞬間）の盤面変化をFirebaseへ公開
     this.$watch('battleSample', () => {
       if (this._battleApplyingRemote) return;          // 鏡映適用中は再公開しない
