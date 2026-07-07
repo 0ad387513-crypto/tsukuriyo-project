@@ -2515,6 +2515,16 @@
   .battle-sync-status.ready   { background: rgba(46,125,79,.35); border-color: #6cf09a; color: #d8ffd8; }
   .battle-sync-status.waiting { background: rgba(200,120,40,.25); border-color: #f0b86c; color: #ffe2a8; }
   .battle-sync-status.error   { background: rgba(180,40,40,.35); border-color: #f06c6c; color: #ffd8d8; }
+  /* ターン経過時間表示（強制効果なしの目安バッジ）：60秒でwarn、120秒でdanger */
+  .battle-turn-timer {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 3px 9px; border-radius: 10px; font-size: 11px; font-weight: 700;
+    background: rgba(60,66,80,.4); border: 1px solid #4a5673; color: #cdd6e6;
+    font-variant-numeric: tabular-nums;
+  }
+  .battle-turn-timer.warn   { background: rgba(200,120,40,.25); border-color: #f0b86c; color: #ffe2a8; }
+  .battle-turn-timer.danger { background: rgba(180,40,40,.3); border-color: #f06c6c; color: #ffd8d8; animation: lifeWarningPulseKf 1s ease-in-out infinite; }
+  .battle-turn-timer-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #cdd6e6; cursor: pointer; }
   .battle-surrender-btn {
     background: #8e2430; border: 1px solid #df6672; color: #fff;
     padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 800;
@@ -4232,6 +4242,10 @@
       <h2>⚔ 対戦画面</h2>
       <span class="battle-matchup">{{ battleContext.selfName }} vs {{ battleContext.oppName }}</span>
       <span class="battle-phase">{{ battleContext.round ? 'ラウンド' + battleContext.round : battleContext.modeLabel }}</span>
+      <span v-if="battleTurnTimerEnabled && !battleSample.result" class="battle-turn-timer" :class="battleTurnTimerTier"
+            :title="(battleSample.activeSide === 'self' ? '自分' : '相手') + 'のターン経過時間（強制効果はありません）'">
+        ⏱ {{ battleTurnTimerLabel }}
+      </span>
       <span class="battle-setup-note">マリガン 自分{{ battleContext.selfMulligans }}回/相手{{ battleContext.oppMulligans }}回</span>
       <!-- 観戦モード表示（書き込み不可・両者手札全公開） -->
       <span v-if="battleNet.on && battleNet.spectating" class="battle-sync-status ready" title="観戦モード：操作はできません（両者の手札が全公開されています）">
@@ -4272,6 +4286,13 @@
               <option value="auto">自動（ランダム）</option>
               <option v-for="opt in bgmTrackOptions" :key="opt.key" :value="opt.key">{{ opt.name }}</option>
             </select>
+          </div>
+          <div class="global-sound-row">
+            <span class="global-sound-label">経過時間表示</span>
+            <label class="battle-turn-timer-toggle">
+              <input type="checkbox" :checked="battleTurnTimerEnabled" @change="battleToggleTurnTimer">
+              ターンの経過時間を表示（強制効果なし）
+            </label>
           </div>
         </div>
       </div>
@@ -6132,6 +6153,14 @@ function loadStoredVolume(storageKey) {
   } catch (e) { /* localStorage不可の環境は既定値を使う */ }
   return 0.5;
 }
+function loadStoredBool(storageKey, defaultValue) {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (raw === 'true') return true;
+    if (raw === 'false') return false;
+  } catch (e) { /* localStorage不可の環境は既定値を使う */ }
+  return defaultValue;
+}
 // BGM：画面カテゴリごとの候補曲一覧（otherは対戦以外の全画面、battleは対戦画面用）
 const BGM_FILES = {
   ryu:          { name: '龍の舞う和都', file: '龍の舞う和都_free.mp3', category: 'other' },
@@ -6393,6 +6422,9 @@ new Vue({
     battleRemoteConfirm: null, // 相手クライアントから届いた確認依頼（守護 等）：{ id, kind, cardNo, prompt }
     battleWaitingLabel: null, // 相手クライアントへの委譲応答待ち中に表示するラベル（null=待ちなし）
     battleWaitingForRematch: false, // 再戦をリクエスト済みで相手の応答を待っている間true（対戦テストのみ）
+    battleActiveEffectCard: null, // 現在解決中の効果の持ち主カード（多段階の選択が続いても見失わないためのUI用）
+    battleTurnTimerEnabled: loadStoredBool('tsukuriyo_turnTimerEnabled', true), // ターン経過時間の警告表示（強制的な時間切れ処理は行わない）
+    battleTurnElapsedSec: 0,      // 現在のターンの経過秒数
     battleTurnFlash: null, // 手番切替時に画面中央へ一瞬表示する演出：{ text, side }
     battleTurnWipe: null,  // 手番切替時の画面ワイプ演出：{ id, side }
     battleCoinFlip: null, // 先攻/後攻決めのコイン演出：{ firstSide, phase: 'spin'|'result' }
@@ -6452,7 +6484,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.172',
+    BUILD_VERSION: '1.14.173',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -6706,19 +6738,21 @@ new Vue({
     },
     battleDeckModalTitle() {
       if (!this.battleDeckModal) return '';
-      if (this.battleDeckModal.action === 'induce') return '誘 — デッキから手札に加えるカードを選択';
-      if (this.battleDeckModal.action === 'autoInduce') return `誘${this.battleDeckModal.count || ''} — ${this.battleDeckModal.criteriaText || '対象カード'}を選択`;
-      if (this.battleDeckModal.action === 'autoReishi') return `霊視${this.battleDeckModal.count || ''} — 墓地へ送るカードを選択`;
+      const src = this.battleDeckModal.sourceCard;
+      const prefix = src ? `「${this.fullName(src)}」の ` : '';
+      if (this.battleDeckModal.action === 'induce') return prefix + '誘 — デッキから手札に加えるカードを選択';
+      if (this.battleDeckModal.action === 'autoInduce') return prefix + `誘${this.battleDeckModal.count || ''} — ${this.battleDeckModal.criteriaText || '対象カード'}を選択`;
+      if (this.battleDeckModal.action === 'autoReishi') return prefix + `霊視${this.battleDeckModal.count || ''} — 墓地へ送るカードを選択`;
       if (this.battleDeckModal.action === 'autoSummon') {
         const total = this.battleDeckModal.count || 1;
         const remaining = this.battleDeckModal.remaining ?? total;
         return total > 1
-          ? `招来×${total} — ${this.battleDeckModal.targetText || 'トークン'}（残り${remaining}枚）`
-          : `招来 — ${this.battleDeckModal.targetText || 'トークン'}を選択`;
+          ? prefix + `招来×${total} — ${this.battleDeckModal.targetText || 'トークン'}（残り${remaining}枚）`
+          : prefix + `招来 — ${this.battleDeckModal.targetText || 'トークン'}を選択`;
       }
-      if (this.battleDeckModal.action === 'reishi') return '霊視 — デッキ上から5枚を確認';
-      if (this.battleDeckModal.action === 'gokugoPick') return `デッキ上から${(this.battleDeckModal.cards || []).length}枚を公開`;
-      if (this.battleDeckModal.action === 'gokugoPlaceDistinct') return `デッキ上から${(this.battleDeckModal.cards || []).length}枚を公開`;
+      if (this.battleDeckModal.action === 'reishi') return prefix + '霊視 — デッキ上から5枚を確認';
+      if (this.battleDeckModal.action === 'gokugoPick') return prefix + `デッキ上から${(this.battleDeckModal.cards || []).length}枚を公開`;
+      if (this.battleDeckModal.action === 'gokugoPlaceDistinct') return prefix + `デッキ上から${(this.battleDeckModal.cards || []).length}枚を公開`;
       return 'デッキ';
     },
     battleSkillOptions() {
@@ -7683,6 +7717,17 @@ new Vue({
     battleResultPetalDelay() {
       const n = this.battleResultTitleChars.length;
       return n * 0.15 + 0.24 + 0.3;
+    },
+    battleTurnTimerLabel() {
+      const s = this.battleTurnElapsedSec;
+      const m = Math.floor(s / 60);
+      return `${m}:${String(s % 60).padStart(2, '0')}`;
+    },
+    /* 60秒でwarn、120秒でdangerの色に変える（強制効果は一切なし、あくまで目安表示） */
+    battleTurnTimerTier() {
+      if (this.battleTurnElapsedSec >= 120) return 'danger';
+      if (this.battleTurnElapsedSec >= 60) return 'warn';
+      return 'normal';
     },
   },
   methods: {
@@ -8989,6 +9034,25 @@ new Vue({
       this.bgmVolume = isNaN(n) ? this.bgmVolume : n;
       if (this._bgmGain) this._bgmGain.gain.value = this.bgmVolume;
       try { localStorage.setItem(BGM_VOLUME_STORAGE_KEY, String(this.bgmVolume)); } catch (e) { /* 保存できなくても続行 */ }
+    },
+    /* ===== ターン経過時間の警告表示（任意設定・強制効果なし） =====
+       長考対策として、自分/相手どちらのターンかに関わらず経過秒数を数え、一定時間を超えたら
+       色で知らせるだけ。強制的なターン切り上げや切断は一切行わない。 */
+    battleToggleTurnTimer() {
+      this.battleTurnTimerEnabled = !this.battleTurnTimerEnabled;
+      try { localStorage.setItem('tsukuriyo_turnTimerEnabled', String(this.battleTurnTimerEnabled)); } catch (e) { /* 保存できなくても続行 */ }
+      if (this.battleTurnTimerEnabled) this._battleStartTurnTimer();
+      else this._battleStopTurnTimer();
+    },
+    _battleStartTurnTimer() {
+      this._battleStopTurnTimer();
+      this.battleTurnElapsedSec = 0;
+      if (!this.battleTurnTimerEnabled) return;
+      this._battleTurnTimerHandle = setInterval(() => { this.battleTurnElapsedSec++; }, 1000);
+    },
+    _battleStopTurnTimer() {
+      if (this._battleTurnTimerHandle) { clearInterval(this._battleTurnTimerHandle); this._battleTurnTimerHandle = null; }
+      this.battleTurnElapsedSec = 0;
     },
     /* ヒットストップ：0.05秒だけ次の処理を遅延させ、衝撃の一瞬を演出する */
     _battleHitStop(ms = 50) {
@@ -10710,8 +10774,10 @@ new Vue({
       const prevSource = this._dslCurrentSource;
       const prevSublimPaid = this._dslSublimPaid;
       const prevTriggerLabel = this._dslCurrentTriggerLabel;
+      const prevActiveEffectCard = this.battleActiveEffectCard;
       this._dslCurrentSource = card;
       this._dslCurrentTriggerLabel = triggerLabel;
+      this.battleActiveEffectCard = card; // UI用：現在解決中の効果の持ち主カード（多段階の選択が続いても見失わないように）
       const baseCost = this.battleEffectiveCost(card);
       const sublimPaid = paidCost !== null ? Math.max(0, Number(paidCost) - baseCost - this.battleSublimDeltaForCard(card)) : 0;
       this._dslSublimPaid = sublimPaid;
@@ -10764,6 +10830,7 @@ new Vue({
         this._dslCurrentSource = prevSource;
         this._dslSublimPaid = prevSublimPaid;
         this._dslCurrentTriggerLabel = prevTriggerLabel;
+        this.battleActiveEffectCard = prevActiveEffectCard;
       }
       return ran;
     },
@@ -19034,6 +19101,15 @@ new Vue({
       if (v) this._battlePlayResultSound(v);
       else if (this.appView === 'battle' && this.bgmAuto) this._bgmAutoPickForView('battle');
     });
+    // ターン経過時間タイマー：手番の交代のたびにリセットして再カウント。対戦画面を離れたら止める。
+    this.$watch('battleSample.activeSide', () => {
+      if (this.appView === 'battle' && !this.battleSample.result) this._battleStartTurnTimer();
+    });
+    this.$watch('appView', (v) => {
+      if (v === 'battle') this._battleStartTurnTimer();
+      else this._battleStopTurnTimer();
+    });
+    this.$watch('battleSample.result', (v) => { if (v) this._battleStopTurnTimer(); });
     // ブラウザの自動再生制限で起動直後の再生がブロックされた場合、
     // 最初のクリック/キー入力を合図に一度だけ再試行する
     const unlockBgm = () => {
@@ -19047,6 +19123,7 @@ new Vue({
   beforeDestroy() {
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("click", this.onWindowClick);
+    this._battleStopTurnTimer();
   },
 });
 </script>
