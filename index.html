@@ -6998,7 +6998,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.185',
+    BUILD_VERSION: '1.14.186',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -9451,26 +9451,67 @@ new Vue({
     /* 効果音：sfx/ 配下の音源ファイル（mp3、SFX_FILES参照）をその都度 Audio インスタンスを
        作って再生する（同じ音が連続しても前の再生を止めずに重ねて鳴らせるよう、使い回さず毎回生成する）。
        呼び出し側は名前だけを渡す設計なので、音源の追加・差し替えは SFX_FILES の変更だけで済む。 */
-    _sfxPlay(name) {
-      try {
-        const file = SFX_FILES[name];
-        if (!file) return;
+    /* SEはBGMと共有のAudioContextを使い、専用のGainNodeを経由して鳴らす。
+       毎回 new Audio(src) でHTTP取得からやり直すと、本番環境（CDN経由）ではローカルサーバーに
+       比べてネットワーク往復が乗る分だけ再生が遅れて聞こえるため、デコード済みAudioBufferを
+       名前ごとにキャッシュし、2回目以降はネットワークアクセス無しで即座に鳴らす。
+       起動直後に _sfxPreloadAll() で全SEを先読みしておくことで、初回の再生も遅れにくくする。 */
+    _sfxGainNode() {
+      if (!this._sfxGain) {
+        const ctx = this._bgmAudioCtx();
+        this._sfxGain = ctx.createGain();
+        this._sfxGain.gain.value = this.battleSfxVolume;
+        this._sfxGain.connect(ctx.destination);
+      }
+      return this._sfxGain;
+    },
+    async _sfxLoadBuffer(name) {
+      this._sfxBufferCache = this._sfxBufferCache || {};
+      if (this._sfxBufferCache[name]) return this._sfxBufferCache[name];
+      const file = SFX_FILES[name];
+      if (!file) return null;
+      this._sfxLoadingPromises = this._sfxLoadingPromises || {};
+      if (this._sfxLoadingPromises[name]) return this._sfxLoadingPromises[name];
+      const promise = (async () => {
         const src = `sfx/${file}`;
-        const audio = new Audio(src);
-        audio.volume = this.battleSfxVolume;
-        // play()のPromise rejectだけでは拾えない失敗（404が代替ページ等にフォールバックされて
-        // デコードに失敗するケース等）もあるため、<audio>要素自体のerrorイベントも監視する。
-        // MediaError.code: 1=中断 2=ネットワーク 3=デコード失敗 4=形式非対応/読み込み不可
-        audio.addEventListener('error', () => {
-          console.warn(`[sfx] "${name}" (${src}) の読み込みに失敗（MediaError code=${audio.error && audio.error.code}）`);
-        });
-        audio.play().catch(err => console.warn(`[sfx] "${name}" (${src}) の再生に失敗:`, err && err.message));
-      } catch (e) { console.warn('[sfx] 再生処理で例外:', e); }
+        const resp = await fetch(src);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const arrayBuf = await resp.arrayBuffer();
+        const buffer = await this._bgmAudioCtx().decodeAudioData(arrayBuf);
+        this._sfxBufferCache[name] = buffer;
+        return buffer;
+      })();
+      this._sfxLoadingPromises[name] = promise;
+      try {
+        return await promise;
+      } finally {
+        delete this._sfxLoadingPromises[name];
+      }
+    },
+    // 起動直後に全SEをバックグラウンドで先読みしておく（総容量は数MB程度なので一括で問題ない）
+    _sfxPreloadAll() {
+      Object.keys(SFX_FILES).forEach(name => {
+        this._sfxLoadBuffer(name).catch(e => console.warn(`[sfx] "${name}" の先読みに失敗:`, e && e.message));
+      });
+    },
+    async _sfxPlay(name) {
+      try {
+        if (!SFX_FILES[name]) return;
+        const buffer = await this._sfxLoadBuffer(name);
+        if (!buffer) return;
+        const ctx = this._bgmAudioCtx();
+        if (ctx.state === 'suspended') { try { await ctx.resume(); } catch (e) { /* 次のユーザー操作で再試行される */ } }
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(this._sfxGainNode());
+        source.start();
+      } catch (e) { console.warn(`[sfx] "${name}" の再生に失敗:`, e && e.message); }
     },
     /* SE音量を変更し、次回以降のために保存する（0〜1） */
     battleSetSfxVolume(v) {
       const n = Math.min(1, Math.max(0, Number(v)));
       this.battleSfxVolume = isNaN(n) ? this.battleSfxVolume : n;
+      if (this._sfxGain) this._sfxGain.gain.value = this.battleSfxVolume;
       try { localStorage.setItem(SFX_VOLUME_STORAGE_KEY, String(this.battleSfxVolume)); } catch (e) { /* 保存できなくても続行 */ }
     },
     /* ===== BGM：画面カテゴリ（対戦画面／それ以外）ごとの自動選曲＋手動選択・ループ再生 =====
@@ -9535,6 +9576,15 @@ new Vue({
       const media = { buffer, loopBuffer, loopStartSec, loopEndSec, silenceBounds };
       this._bgmBufferCache[key] = media;
       return media;
+    },
+    // 起動直後にBGMを1曲ずつ順番にバックグラウンド先読みする（画面遷移時の初回再生ラグ対策）。
+    // 総容量が大きい（数十MB）ため、カード画像等の読み込みと帯域を奪い合わないよう並列にはしない。
+    async _bgmPreloadAll() {
+      const keys = Object.keys(BGM_FILES);
+      for (const key of keys) {
+        try { await this._bgmLoadBuffer(key); }
+        catch (e) { console.warn(`[bgm] "${key}" の先読みに失敗:`, e && e.message); }
+      }
     },
     /* MP3はエンコーダの仕様上、ファイルの先頭・末尾にほぼ無音のパディングが数十ms程度入ることが多いため、
        生PCMを走査して実際に音が始まる/終わる位置を検出する（曲が意図的に無音のイントロを持つ場合の
@@ -20199,6 +20249,11 @@ new Vue({
     this.loadCardBack();
     this.loadEffectSpecs();
     this.gsLoadGlobalCardStats(); // CPUドラフトAIが参照する人間プレイヤーの実績統計（起動時に一度だけ取得）
+    // SE/BGMの先読み：本番環境（CDN経由）ではローカルサーバーよりネットワーク往復が乗る分だけ
+    // 初回再生が遅れて聞こえるため、起動直後にバックグラウンドで先読みしておく
+    // （SEは総容量が数MB程度なので一括、BGMは帯域を奪い合わないよう1曲ずつ順に読み込む）
+    this._sfxPreloadAll();
+    this._bgmPreloadAll();
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("click", this.onWindowClick);
     // 招待リンク（?room=XXXX）で開かれた場合：4人対戦のセッションコード欄に自動入力してメニューを開く
