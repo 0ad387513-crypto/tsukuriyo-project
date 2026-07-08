@@ -3924,7 +3924,7 @@
         <button class="top-menu-btn" style="background:linear-gradient(135deg,#5a3030,#7a3050);border-color:#bb6a8a;" @click="goToBattle">⚔ 対戦画面(α)</button>
         <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(true)">🌐 対戦テスト：作成（2人同期確認）</button>
         <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(false)">🌐 対戦テスト：参加（コード入力）</button>
-        <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleSpectate">🔍 対戦テスト：観戦する（コード入力）</button>
+        <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleSpectate">🔍 対戦を観戦する（対戦テスト/星紡ぎ戦/創世決戦・コード入力）</button>
       </div>
     </div>
     <div class="top-menu-footer">v{{ BUILD_VERSION }}</div>
@@ -7211,7 +7211,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.191',
+    BUILD_VERSION: '1.14.192',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -9021,15 +9021,24 @@ new Vue({
     // 観戦モード：既存の「対戦テスト」1v1の部屋を読み取り専用で覗き見る（両者の手札を含め全公開・デバッグ用）
     async startBattleSpectate() {
       if (!this.allCards.length) { alert('カード読み込み中です。少し待って再度お試しください。'); return; }
-      const code = (window.prompt('観戦したい対戦テストの部屋コードを入力してください（対戦者の画面上部に表示されているコード）') || '').trim().toUpperCase();
+      const code = (window.prompt('観戦したい部屋のコードを入力してください（対戦者の画面上部に表示されているコード）') || '').trim().toUpperCase();
       if (!code) return;
+      // 対戦テスト/シールド戦/創世決戦のいずれも sessions/{code}/battle/{table}/state を
+      // 共通の同期経路として使っているため、モードに応じてtableだけを切り替えれば観戦できる。
+      const modeInput = (window.prompt(
+        '観戦するモードを番号で選んでください：\n1 = 対戦テスト\n2 = 星紡ぎ戦（シールド戦）\n3 = 創世決戦・卓1\n4 = 創世決戦・卓2',
+        '1'
+      ) || '').trim();
+      const tableMap = { '1': 'test', '2': 'shield', '3': 1, '4': 2 };
+      const table = tableMap[modeInput];
+      if (table === undefined) { alert('1〜4のいずれかの番号を入力してください'); return; }
       this._sfxPlay('decision');
-      const table = 'test';
       // 観戦は常に席1を自分視点（左）、席2を相手視点（右）として固定表示する
       const mySeat = 1, oppSeat = 2;
       const kami = this.allKamiCards[0] || null;
+      const modeLabelMap = { test: '対戦テスト', shield: '星紡ぎ戦', 1: '創世決戦・卓1', 2: '創世決戦・卓2' };
       this._battleInitialize({
-        source: 'spectate', modeLabel: `観戦中 ｜ コード ${code}`, returnView: 'top', round: null,
+        source: 'spectate', modeLabel: `観戦中：${modeLabelMap[table]} ｜ コード ${code}`, returnView: 'top', round: null,
         selfName: 'プレイヤーA', oppName: 'プレイヤーB',
         firstSide: 'self', life: 8,
         selfDeck: [], oppDeck: [],
