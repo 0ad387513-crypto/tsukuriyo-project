@@ -7231,7 +7231,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.195',
+    BUILD_VERSION: '1.14.196',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8850,12 +8850,15 @@ new Vue({
       }
     },
     /* 進行中セッションの記録：誤ってタブを閉じた/リロードした場合に、TOP画面から
-       部屋コードを覚え直す手間なく戻れるようにする（座席そのものの自動復帰はできないため、
-       あくまで「コードを覚えておいて入力欄まで案内する」までの補助）。 */
-    _saveActiveSession(kind, code) {
+       部屋コードを覚え直す手間なく戻れるようにする。座席番号/playerId/role（シールド戦の
+       host・guest）も一緒に保存しておくことで、ロビーを過ぎた後（神託の儀・選別の儀・
+       深化・パック選択・カミ選択等）でも「参加」をやり直すことなく自分の席に再購読できる
+       （joinSession/joinRoomはロビー以降の参加を拒否する仕様のため、通常の参加フローでは
+       ロビーより先には戻れない）。 */
+    _saveActiveSession(kind, code, extra = {}) {
       if (!code) return;
       try {
-        window.localStorage.setItem('tsukuriyo_activeSession', JSON.stringify({ kind, code, ts: Date.now() }));
+        window.localStorage.setItem('tsukuriyo_activeSession', JSON.stringify({ kind, code, ts: Date.now(), ...extra }));
       } catch (e) { /* 保存できなくても致命的ではない */ }
     },
     _clearActiveSession() {
@@ -8874,15 +8877,32 @@ new Vue({
         this.resumeSession = data;
       } catch (e) { this.resumeSession = null; }
     },
-    /* 「対戦に戻る」ボタン：座席そのものは復元できないため、該当画面のコード入力欄まで
-       案内するに留める（そこから改めて参加操作をしてもらう）。 */
+    /* 「対戦に戻る」ボタン：座席番号/playerId/roleが記録されていれば、参加操作を経由せず
+       直接その席として購読し直す（ロビー以降でも復帰できる）。対戦本編（実際のカード対戦
+       画面）そのものの続きへは戻せないため、その場合は星戦の卓一覧/パック選択画面など
+       Firebase上の進行状況に応じた画面に着地し、そこから改めて「対戦画面へ」を押してもらう。
+       古い保存形式（座席情報なし）の場合は従来通りコード入力欄まで案内するに留める。 */
     resumeActiveSession() {
       const r = this.resumeSession;
       if (!r) return;
       this._sfxPlay('decision');
-      if (r.kind === 'game') {
+      if (r.kind === 'game' && r.seat && r.playerId) {
+        this.gs.sessionCode = r.code;
+        this.gs.playerId    = r.playerId;
+        this.gs.seat        = r.seat;
+        this.gs.view        = 'lobby';
+        this.gsSubscribe(r.code);
+        this.openGame();
+      } else if (r.kind === 'game') {
         this.gs.joinCode = r.code;
         this.openGame();
+      } else if (r.kind === 'shield' && r.playerId && r.role) {
+        this.sb.roomCode = r.code;
+        this.sb.playerId = r.playerId;
+        this.sb.role     = r.role;
+        this.sb.phase    = 'waiting';
+        this._sbSubscribe(r.code);
+        this.openShield();
       } else if (r.kind === 'shield') {
         this.sb.joinCode = r.code;
         this.openShield();
@@ -18644,7 +18664,7 @@ new Vue({
         this.gs.seat        = seat;
         this.gs.view        = 'lobby';
         this.gsSubscribe(sessionCode);
-        this._saveActiveSession('game', sessionCode);
+        this._saveActiveSession('game', sessionCode, { seat, playerId });
         this._sfxPlay('decision');
       } catch (e) {
         this.gs.error = e.message || 'セッション作成に失敗しました';
@@ -18666,7 +18686,7 @@ new Vue({
         this.gs.seat        = seat;
         this.gs.view        = 'lobby';
         this.gsSubscribe(code);
-        this._saveActiveSession('game', code);
+        this._saveActiveSession('game', code, { seat, playerId });
         this._sfxPlay('decision');
       } catch (e) {
         this.gs.error = e.message || '参加に失敗しました';
@@ -20771,7 +20791,7 @@ new Vue({
         this.sb.role      = 'host';
         this.sb.phase     = 'waiting';
         this._sbSubscribe(roomCode);
-        this._saveActiveSession('shield', roomCode);
+        this._saveActiveSession('shield', roomCode, { playerId, role: 'host' });
         this._sfxPlay('decision');
       } catch (e) {
         this.sb.error = e.message;
@@ -20818,7 +20838,7 @@ new Vue({
         this.sb.role      = 'guest';
         this.sb.phase     = 'waiting';
         this._sbSubscribe(code);
-        this._saveActiveSession('shield', code);
+        this._saveActiveSession('shield', code, { playerId, role: 'guest' });
         this._sfxPlay('decision');
       } catch (e) {
         this.sb.error = e.message;
