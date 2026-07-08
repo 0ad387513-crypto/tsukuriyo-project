@@ -717,6 +717,18 @@ async function advanceAfterBattle(code, nextRoundCardNos) {
   }
 }
 
+/** ホストが4人対戦セッションを途中で中断する。フェーズを問わず実行可能で、
+ *  全クライアントが phase:'aborted' を検知して中断画面へ遷移する。 */
+async function abortSession(code, seat) {
+  if (Number(seat) !== 1) throw new Error('セッションの中断はホストのみ行えます');
+  const ref = getDb().ref(`sessions/${code}`);
+  await ref.transaction(s => {
+    if (!s) return s;
+    s.phase = 'aborted';
+    return s;
+  });
+}
+
 /** ロビーでホストがピック警告表示の目安秒数を設定する（強制的な時間切れ処理は行わない） */
 async function setPickTimeLimits(code, seat, firstSec, laterSec) {
   if (seat !== 1) return;
@@ -752,6 +764,6 @@ if (typeof module !== "undefined") {
     deepenSetDone, packCards,
     PAIRINGS, battleWonBySeat, recordBattleResult, advanceAfterBattle,
     cpuSeatsOf, sessionHasCpu, addCpuSeat, removeCpuSeat, pairingsFor,
-    setPickTimeLimits,
+    setPickTimeLimits, abortSession,
   };
 }

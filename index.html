@@ -1267,6 +1267,12 @@
     font-size: 24px; cursor: pointer; line-height: 1; padding: 0 4px;
   }
   .gm-close:hover { color: #fff; }
+  .gm-abort-btn {
+    margin-left: auto; font-size: 12px; padding: 5px 10px;
+    border-color: #a04040; color: #f0a0a0;
+  }
+  .gm-abort-btn:hover { background: rgba(160,40,40,.25); color: #fff; }
+  .gm-abort-btn + .gm-close { margin-left: 0; }
   .gm-body { padding: 18px; }
   .gm-lead { color: #bcd; font-size: 13px; line-height: 1.7; margin: 0 0 16px; }
 
@@ -1365,15 +1371,25 @@
     width: 100%; aspect-ratio: 744 / 1039;
     background: #0a0c12 center / contain no-repeat;
   }
-  /* 神託の儀：カミ候補に神々しい薄い光を、ヤマタノオロチには禍々しい赤黒いオーラを付ける（プレビューには適用しない） */
-  .gm-kami-img.kami-divine-glow { position: relative; box-shadow: inset 0 0 22px rgba(255,244,200,.32); }
-  .gm-kami-img.kami-divine-glow::after {
-    content: ''; position: absolute; inset: 0; pointer-events: none;
-    background: radial-gradient(ellipse at center, rgba(255,250,220,.16) 0%, rgba(255,250,220,0) 70%);
-    animation: kamiDivinePulseKf 3.2s ease-in-out infinite;
+  /* 神託の儀：カミ候補に神々しい光を、ヤマタノオロチには禍々しい赤黒いオーラを付ける（プレビューには適用しない）。
+     box-shadowはカード外周にはっきり広がるように置き、内側にも薄く光を重ねて視認性を上げる。 */
+  .gm-kami-card.kami-divine-glow {
+    border-color: #e8d9a0;
+    box-shadow: 0 0 18px 4px rgba(255, 244, 200, .55), 0 0 36px 8px rgba(255, 230, 150, .3);
+    animation: kamiDivinePulseKf 2.6s ease-in-out infinite;
   }
-  .gm-kami-img.kami-orochi-aura { position: relative; box-shadow: inset 0 0 26px rgba(150,0,20,.5); }
-  .gm-kami-img.kami-orochi-aura::after {
+  .gm-kami-card.kami-divine-glow .gm-kami-img { position: relative; }
+  .gm-kami-card.kami-divine-glow .gm-kami-img::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(255,250,220,.28) 0%, rgba(255,250,220,0) 72%);
+  }
+  .gm-kami-card.kami-orochi-aura {
+    border-color: #d43a3a;
+    box-shadow: 0 0 20px 5px rgba(200, 10, 20, .65), 0 0 42px 10px rgba(120, 0, 15, .4);
+    animation: kamiOrochiPulseKf 1.8s ease-in-out infinite;
+  }
+  .gm-kami-card.kami-orochi-aura .gm-kami-img { position: relative; }
+  .gm-kami-card.kami-orochi-aura .gm-kami-img::after {
     content: ''; position: absolute; inset: 0; pointer-events: none;
     background: radial-gradient(ellipse at center, rgba(120,0,10,.32) 0%, rgba(20,0,0,.12) 55%, rgba(0,0,0,0) 75%);
     mix-blend-mode: multiply;
@@ -5912,6 +5928,10 @@
           創世決戦
         </h2>
         <div class="gm-phase" v-if="gs.sessionCode">{{ gsPhaseLabel }}</div>
+        <button v-if="gs.seat === 1 && gs.sessionCode && gs.view !== 'menu' && gs.view !== 'aborted'"
+                class="gm-btn gm-btn-ghost gm-abort-btn" @click="gsAbortSession" title="この対戦を中断してセッションを終了します">
+          対戦を中断する
+        </button>
         <button class="gm-close" @click="closeGame">×</button>
       </div>
 
@@ -6004,10 +6024,10 @@
         <div v-if="gsIsMyKamiTurn" class="gm-offer">
           <div v-for="card in gsMyOfferCards" :key="card.no"
                class="gm-kami-card"
+               :class="card.type === 'ヤマタノオロチ' ? 'kami-orochi-aura' : 'kami-divine-glow'"
                @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
                @click="gsConfirmKami(card)">
             <div class="gm-kami-img"
-                 :class="card.type === 'ヤマタノオロチ' ? 'kami-orochi-aura' : 'kami-divine-glow'"
                  :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
             <div class="gm-kami-name">{{ fullName(card) }}</div>
             <div class="gm-kami-pick">このカミを選ぶ</div>
@@ -6372,6 +6392,17 @@
         <div class="gm-lobby-actions">
           <button class="gm-btn gm-btn-primary" @click="gsPeekDeck">自分のデッキをビルダーで確認</button>
           <button class="gm-btn gm-btn-ghost" @click="gsLeave">終了</button>
+        </div>
+      </div>
+
+      <!-- ===== ホストによる中断 ===== -->
+      <div v-else-if="gs.view === 'aborted'" class="gm-body gm-aborted">
+        <div class="gm-done-title">対戦は中断されました</div>
+        <p class="gm-lead" style="text-align:center;">
+          ホストがこの創世決戦を中断しました。この対戦は再開できません。
+        </p>
+        <div class="gm-lobby-actions">
+          <button class="gm-btn gm-btn-primary" @click="gsLeaveAborted">トップへ戻る</button>
         </div>
       </div>
     </div>
@@ -6998,7 +7029,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.186',
+    BUILD_VERSION: '1.14.187',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -18091,6 +18122,7 @@ new Vue({
         }
         else if (data.phase === 'battle')      this.gs.view = 'battle';
         else if (data.phase === 'scoring')     this.gs.view = 'scoring';
+        else if (data.phase === 'aborted')     this.gs.view = 'aborted';
         // 自分の番が来てカミ候補が未配布なら配布する
         if (data.phase === 'kami_select' && data.kami && data.kami.turn === this.gs.seat) {
           const offer = data.kami.offer && data.kami.offer[this.gs.seat];
@@ -18217,7 +18249,9 @@ new Vue({
         await setSeatReady(sessionCode, 2);
         await setSeatReady(sessionCode, 3);
         await setSeatReady(sessionCode, 4);
-        await setSeatReady(sessionCode, 1);            // 自分がreadyで神託の儀へ
+        // 自分の準備完了は自動化しない：ロビーに留まり、ピック制限時間などの設定を
+        // 確認・調整してから「準備完了にする」を押してもらう（即座に神託の儀へ進むと
+        // 設定をいじる間もなく対戦が始まってしまうため）
       } catch (e) {
         this.gs.error = e.message || 'ソロテスト開始に失敗しました';
         this.gsSolo = false;
@@ -18593,6 +18627,14 @@ new Vue({
       this._clearActiveSession();
       this.gsResetState();
     },
+    // 中断済みセッションから抜けてトップへ戻る（既に終了しているため確認ダイアログは不要）
+    gsLeaveAborted() {
+      this._sfxPlay('cancel');
+      this._clearActiveSession();
+      this.gsResetState();
+      this.gameOpen = false;
+      this.appView = 'top';
+    },
     // 自分の選んだカミをデッキビルダーに反映して閉じる
     gsApplyMyKami() {
       const card = this.gsMyKamiCard;
@@ -18892,6 +18934,14 @@ new Vue({
       const r = this.gsRound;
       const nextPool = r < 3 ? this.draftPoolNos(r + 1) : [];
       try { await advanceAfterBattle(this.gs.sessionCode, nextPool); }
+      catch (e) { alert(e.message || e); }
+    },
+    // ホスト限定：進行中の4人対戦セッションを途中で中断する（全員が中断画面へ遷移する）
+    async gsAbortSession() {
+      if (this.gs.seat !== 1) return;
+      if (!confirm('この創世決戦を中断しますか？\n他の3人も強制的に終了され、この対戦はやり直せません。')) return;
+      this._sfxPlay('cancel');
+      try { await abortSession(this.gs.sessionCode, this.gs.seat); }
       catch (e) { alert(e.message || e); }
     },
 
