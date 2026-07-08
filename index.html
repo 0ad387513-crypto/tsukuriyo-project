@@ -3687,8 +3687,8 @@
   }
   .battle-result-title { font-size: clamp(42px, 8vw, 92px); font-weight: 1000; line-height: 1.05; }
   .battle-result-kami {
-    width: clamp(120px, 22vw, 180px); height: clamp(120px, 22vw, 180px);
-    margin: 0 auto 18px; border-radius: 50%; background: #1a1d28 center/cover no-repeat;
+    display: block; width: min(560px, 92%); aspect-ratio: 16 / 9; object-fit: cover; object-position: center 22%;
+    margin: 0 auto 18px; border-radius: 10px; background: #1a1d28;
     border: 4px solid #ffe06a; box-shadow: 0 0 28px rgba(255, 224, 106, .55), 0 0 60px rgba(255, 200, 60, .3);
     animation: victory-flash 1.15s ease-in-out infinite;
   }
@@ -3849,12 +3849,6 @@
           <option value="none">なし（停止）</option>
           <option v-for="opt in bgmTrackOptions" :key="opt.key" :value="opt.key">{{ opt.name }}</option>
         </select>
-      </div>
-      <div class="global-sound-row">
-        <label class="global-sound-label" style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-          <input type="checkbox" :checked="pickAssistEnabled" @change="togglePickAssist">
-          ピック補助（⭐おすすめ表示）
-        </label>
       </div>
       <div class="global-sound-row">
         <button class="bgm-looptest-open-btn" @click="openBgmLoopTester">🔁 BGMループ調整ツール</button>
@@ -4675,6 +4669,10 @@
             <div class="sp-pick-counter">
               自分: {{ sbMyPickedPacks.length }} / {{ PACKS_PER_SIDE }}パック取得
             </div>
+            <label class="cpu-auto-play-toggle">
+              <input type="checkbox" :checked="pickAssistEnabled" @change="togglePickAssist">
+              ピック補助
+            </label>
             <div class="ph-turn" :class="sbIsMyPickTurn ? 'my-turn' : 'wait-turn'">
               {{ sbIsMyPickTurn ? 'あなたの番 — パックを選んでください' : '相手が選んでいます…' }}
             </div>
@@ -5936,8 +5934,9 @@
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s1">✦</span>
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s2">✦</span>
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s3">✦</span>
-        <div v-if="battleSample.result.outcome === 'win' && battleSample.self.kami" class="battle-result-kami"
-             :style="cardImageUrl(battleSample.self.kami) ? { backgroundImage: 'url(' + cardImageUrl(battleSample.self.kami) + ')' } : {}"></div>
+        <img v-if="battleSample.result.outcome === 'win' && battleSample.self.kami" class="battle-result-kami"
+             :src="'kami_cutin/' + battleSample.self.kami.no + '.jpg'"
+             @error="battleResultKamiImgError" alt="">
         <div class="battle-result-title">
           <span v-for="(ch, i) in battleResultTitleChars" :key="'rch'+i" class="result-char"
                 :style="{ animationDelay: (i * 0.15) + 's' }">{{ ch }}</span>
@@ -6248,6 +6247,13 @@
             <label>自分の束が戻ってから<input type="number" min="10" step="10"
                    :value="gsPickTimeLimits.later" @change="gsUpdatePickTimeLimits($event, 'later')">秒</label>
           </div>
+        </div>
+        <div class="gm-pick-timer-settings">
+          <div class="gm-pick-timer-title">選別の儀のオプション（自分のみに適用される個人設定）</div>
+          <label class="cpu-auto-play-toggle">
+            <input type="checkbox" :checked="pickAssistEnabled" @change="togglePickAssist">
+            ピック補助（⭐おすすめ表示）
+          </label>
         </div>
       </div>
 
@@ -7275,7 +7281,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.197',
+    BUILD_VERSION: '1.14.198',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -10583,6 +10589,20 @@ new Vue({
         c.imgUrl = this.kamiIllustrationUrl(c.kami);
       }
       // fallbackStage 2（従来イラスト）自体が読み込めない場合はそのまま（画像なしで名前/技名のみ表示）
+    },
+    /* 星戦勝利画面のカミ画像：カットイン(jpg)→カットイン(png)→従来イラストの順にフォールバック */
+    battleResultKamiImgError(e) {
+      const kami = this.battleSample.self && this.battleSample.self.kami;
+      const img = e && e.target;
+      if (!kami || !img) return;
+      if (img.dataset.fallback !== 'png') {
+        img.dataset.fallback = 'png';
+        img.src = `kami_cutin/${kami.no}.png`;
+      } else if (img.dataset.fallback !== 'illustration') {
+        img.dataset.fallback = 'illustration';
+        img.onerror = null;
+        img.src = this.kamiIllustrationUrl(kami) || '';
+      }
     },
     /* 神技2演出を相手クライアントにも同期（相手の必殺技も見られるように） */
     _battlePublishSkill2(kamiNo, skillName) {
