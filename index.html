@@ -1357,6 +1357,10 @@
   }
   .gm-btn-solo { background: #3a3052; border-color: #6a5a8a; color: #d8c8f8; }
   .gm-btn-solo:hover:not(:disabled) { background: #4a4068; color: #fff; }
+  .cpu-auto-play-toggle {
+    display: flex; align-items: center; gap: 6px; cursor: pointer;
+    font-size: 11px; color: #c9d2df;
+  }
 
   /* ロビー */
   .gm-code-box {
@@ -3538,9 +3542,20 @@
     position: absolute; top: 0; left: 0; right: 0; z-index: 2;
     padding: 10px 14px 26px;
     background: linear-gradient(180deg, rgba(0,0,0,.75) 0%, rgba(0,0,0,0) 100%);
-    color: #ffe9a8; font-size: clamp(16px, 3.4vw, 22px); font-weight: 900;
+    color: #ffe9a8; font-weight: 900;
     letter-spacing: 0.06em; text-align: center;
     text-shadow: 0 0 14px rgba(255,190,90,.9), 0 2px 4px rgba(0,0,0,.9);
+  }
+  /* 技名・ふりがなは長さに応じてフォントサイズを縮めて必ず1行に収める
+     （数文字だけ折り返して見た目が崩れるのを防ぐ。--fit-len はJS側で文字数を渡す） */
+  .battle-skill-closeup-skillname-main {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: clamp(15px, calc(430px / max(var(--fit-len, 1), 1)), 22px);
+  }
+  .battle-skill-closeup-skillname-furigana {
+    margin-top: 3px; font-weight: 700; color: #ffd9a0; letter-spacing: 0.02em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: clamp(9px, calc(400px / max(var(--fit-len, 1), 1)), 14px);
   }
   .battle-skill-closeup-face {
     display: block; width: 100%; aspect-ratio: 16 / 9;
@@ -3671,6 +3686,12 @@
     border: 3px solid; background: #11151d; box-shadow: 0 22px 70px rgba(0,0,0,.85);
   }
   .battle-result-title { font-size: clamp(42px, 8vw, 92px); font-weight: 1000; line-height: 1.05; }
+  .battle-result-kami {
+    width: clamp(120px, 22vw, 180px); height: clamp(120px, 22vw, 180px);
+    margin: 0 auto 18px; border-radius: 50%; background: #1a1d28 center/cover no-repeat;
+    border: 4px solid #ffe06a; box-shadow: 0 0 28px rgba(255, 224, 106, .55), 0 0 60px rgba(255, 200, 60, .3);
+    animation: victory-flash 1.15s ease-in-out infinite;
+  }
   .battle-result-panel.win { border-color: #ffe06a; }
   .battle-result-panel.win .battle-result-title {
     color: #ffd43b; text-shadow: 0 0 8px #fff1a6, 0 0 24px #d99400, 0 5px 0 #7d4c00;
@@ -3828,6 +3849,12 @@
           <option value="none">なし（停止）</option>
           <option v-for="opt in bgmTrackOptions" :key="opt.key" :value="opt.key">{{ opt.name }}</option>
         </select>
+      </div>
+      <div class="global-sound-row">
+        <label class="global-sound-label" style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" :checked="pickAssistEnabled" @change="togglePickAssist">
+          ピック補助（⭐おすすめ表示）
+        </label>
       </div>
       <div class="global-sound-row">
         <button class="bgm-looptest-open-btn" @click="openBgmLoopTester">🔁 BGMループ調整ツール</button>
@@ -4574,6 +4601,10 @@
           <!-- ソロテスト -->
           <div>
             <h3>ソロテスト</h3>
+            <label class="cpu-auto-play-toggle">
+              <input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay">
+              CPUが自律して行動する（OFF＝従来通り待機のみ）
+            </label>
             <button class="sp-btn sp-btn-solo" @click="sbSoloStart"
                     :disabled="sb.connecting">
               🤖 CPUと開始（ソロテスト）
@@ -5905,6 +5936,8 @@
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s1">✦</span>
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s2">✦</span>
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s3">✦</span>
+        <div v-if="battleSample.result.outcome === 'win' && battleSample.self.kami" class="battle-result-kami"
+             :style="cardImageUrl(battleSample.self.kami) ? { backgroundImage: 'url(' + cardImageUrl(battleSample.self.kami) + ')' } : {}"></div>
         <div class="battle-result-title">
           <span v-for="(ch, i) in battleResultTitleChars" :key="'rch'+i" class="result-char"
                 :style="{ animationDelay: (i * 0.15) + 's' }">{{ ch }}</span>
@@ -5943,7 +5976,12 @@
   <transition name="battle-skill-closeup-fade">
     <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay">
       <div class="battle-skill-closeup-card">
-        <div class="battle-skill-closeup-skillname">{{ battleSkillCloseup.skillName }}</div>
+        <div class="battle-skill-closeup-skillname">
+          <div class="battle-skill-closeup-skillname-main"
+               :style="{ '--fit-len': battleSkillCloseupNameParts.main.length }">{{ battleSkillCloseupNameParts.main }}</div>
+          <div v-if="battleSkillCloseupNameParts.furigana" class="battle-skill-closeup-skillname-furigana"
+               :style="{ '--fit-len': battleSkillCloseupNameParts.furigana.length }">（{{ battleSkillCloseupNameParts.furigana }}）</div>
+        </div>
         <img v-if="battleSkillCloseup.imgUrl" class="battle-skill-closeup-face"
              :class="{ 'fallback-zoom': battleSkillCloseup.fallbackStage === 2 }"
              :src="battleSkillCloseup.imgUrl" alt="" @error="battleSkillCloseupImgError">
@@ -6151,6 +6189,10 @@
         </div>
         <div v-if="gs.error" class="gm-error">{{ gs.error }}</div>
         <div class="gm-solo-row">
+          <label class="cpu-auto-play-toggle">
+            <input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay">
+            CPUが自律して行動する（OFF＝従来通り待機のみ）
+          </label>
           <button class="gm-btn gm-btn-solo" :disabled="gs.connecting" @click="gsSoloTest">
             🤖 ソロテスト（CPU3体と開始）
           </button>
@@ -7169,6 +7211,8 @@ new Vue({
     battleCpuThinking: false, // CPU対戦AIが自分のターンを自動実行中（内部的にself/oppを入れ替えて処理するため、その間は画面を覆い隠す）
     battleActiveEffectCard: null, // 現在解決中の効果の持ち主カード（多段階の選択が続いても見失わないためのUI用）
     battleTurnTimerEnabled: loadStoredBool('tsukuriyo_turnTimerEnabled', true), // ターン経過時間の警告表示（強制的な時間切れ処理は行わない）
+    pickAssistEnabled: loadStoredBool('tsukuriyo_pickAssistEnabled', true), // 選別の儀/パック選択の「⭐おすすめ」ピック補助表示（初心者向け、OFF可）
+    cpuAutoPlayEnabled: loadStoredBool('tsukuriyo_cpuAutoPlayEnabled', true), // ソロテスト時：CPUが自律してカードプレイ・攻撃を行うか（OFF＝従来通り待機のみ）
     battleTurnElapsedSec: 0,      // 現在のターンの経過秒数
     battleResultRevealReady: false, // false の間はひび割れ→破壊演出を表示し、勝敗オーバーレイ自体は隠す
     battleTurnFlash: null, // 手番切替時に画面中央へ一瞬表示する演出：{ text, side }
@@ -7231,7 +7275,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.196',
+    BUILD_VERSION: '1.14.197',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7553,6 +7597,14 @@ new Vue({
       if (skill2 && skill2.affordable) return 'gold';
       const skill1 = skills.find(skill => skill.index === 1);
       return skill1 && skill1.affordable ? 'silver' : 'disabled';
+    },
+    /* 神技2クローズアップ：技名（例：「封神・終極八岐（ほうしん・しゅうきょくやまた）」）を
+       本文とふりがなに分割する。ふりがなが長く1行に収まらず数文字だけ折り返ると見た目が
+       崩れるため、本文とは別行にした上でCSS側で長さに応じてフォントサイズを縮める。 */
+    battleSkillCloseupNameParts() {
+      const raw = String((this.battleSkillCloseup && this.battleSkillCloseup.skillName) || '');
+      const m = raw.match(/^(.*?)[（(]([^）)]*)[）)]\s*$/);
+      return m ? { main: m[1].trim(), furigana: m[2].trim() } : { main: raw, furigana: '' };
     },
     filteredCards() {
       const q = this.searchText.trim().toLowerCase();
@@ -8105,7 +8157,7 @@ new Vue({
     /* ピック補助：カミ未確定のパック選択中はCPUドラフトAIと同じ評価軸（kamiTagsは空扱い）で
        可視3枚の平均スコアを算出し、最もおすすめのパックを示す（目安表示のみ、強制ではない）。 */
     sbRecommendedPackIndex() {
-      if (!this.sbIsMyPickTurn || !this.sb.packs || !this.sb.packs.length) return -1;
+      if (!this.pickAssistEnabled || !this.sbIsMyPickTurn || !this.sb.packs || !this.sb.packs.length) return -1;
       const ctx = { seat: 1, kamiTags: [], pickedCards: this.sbMy48Cards };
       let best = -1, bestScore = -Infinity;
       this.sb.packs.forEach((pack, i) => {
@@ -8396,6 +8448,7 @@ new Vue({
     /* ピック補助：CPUドラフトAI（gsCpuScoreCard）と同じ評価軸で、今の束の中で最もおすすめの1枚を示す。
        強制ではなく目安の表示のみ（クリックしてもよいし、無視して別のカードを選んでもよい）。 */
     gsDraftRecommendedCardNo() {
+      if (!this.pickAssistEnabled) return null;
       const cards = this.gsMyPackCards;
       if (!cards.length) return null;
       const kamiNo = this.gsMyKamiCard ? String(this.gsMyKamiCard.no) : null;
@@ -9164,6 +9217,7 @@ new Vue({
         selfName: self.name, oppName: opp.name, firstSide,
         selfMulligans: config.selfMulligans || 1, oppMulligans: config.oppMulligans || 1,
         oppIsCpu: !!config.oppIsCpu, // 相手席がCPU（駆動する2人目のクライアントが実在しない）場合、マリガン/ターンをこちらの1クライアントで自動進行する
+        oppCpuAutoPlay: this.cpuAutoPlayEnabled, // CPUが自律してカードプレイ・攻撃を行うか（開始時点の設定を対戦中固定で使う。OFF＝従来通り待機のみ）
       };
       this.battleUndoStack = [];
       this.battlePendingEffects = [];
@@ -10321,6 +10375,14 @@ new Vue({
       try { localStorage.setItem('tsukuriyo_turnTimerEnabled', String(this.battleTurnTimerEnabled)); } catch (e) { /* 保存できなくても続行 */ }
       if (this.battleTurnTimerEnabled) this._battleStartTurnTimer();
       else this._battleStopTurnTimer();
+    },
+    togglePickAssist() {
+      this.pickAssistEnabled = !this.pickAssistEnabled;
+      try { localStorage.setItem('tsukuriyo_pickAssistEnabled', String(this.pickAssistEnabled)); } catch (e) { /* 保存できなくても続行 */ }
+    },
+    toggleCpuAutoPlay() {
+      this.cpuAutoPlayEnabled = !this.cpuAutoPlayEnabled;
+      try { localStorage.setItem('tsukuriyo_cpuAutoPlayEnabled', String(this.cpuAutoPlayEnabled)); } catch (e) { /* 保存できなくても続行 */ }
     },
     _battleStartTurnTimer() {
       this._battleStopTurnTimer();
@@ -12673,14 +12735,29 @@ new Vue({
         const shuf = pool.slice().sort(() => Math.random() - 0.5);
         return Promise.resolve(shuf.slice(0, need));
       }
+      // 選択者:opp（例：#静かなる謀殺「相手は手札からカード2枚墓地」）は本来その持ち主（相手）が
+      // 選ぶべきもの。相手がCPUの場合、人間に見せて選ばせてしまうと相手の手札が漏れてしまうため、
+      // モーダルを開かずCPU自身が判断する（保持したいカードを残せるよう、コストが低い＝価値が低い
+      // ものから優先的に選ぶ）。
+      if (sel.選択者 === 'opp' && this.battleContext && this.battleContext.oppIsCpu) {
+        const picks = pool.slice().sort((a, b) => (Number(a.cost) || 0) - (Number(b.cost) || 0)).slice(0, need);
+        return Promise.resolve(picks);
+      }
       // 動的枚数などが0に解決した場合、対象候補が場にあってもモーダルを開かず自動的に0枚選択とする。
       // （例：#87ヤマブキ「自分の忍者レガシー1枚につき〜」で忍者が0枚の場合、
       // 　従来は候補（相手フィールド）が1枚でもあると「決定」ボタンが無効化されたまま選択を強制されていた）
       if (need <= 0) return Promise.resolve([]);
-      // CPU自動対戦中：人間の選択を待てないため、先頭からnеed枚を機械的に選ぶ（任意効果は見送る）
+      // CPU自動対戦中：人間の選択を待てないため機械的に選ぶ（任意効果は見送る）。
+      // 相手フィールドのレガシーが対象の場合は、最も戦闘力が高いものを優先する
+      // （傀儡化＝コントロール奪取や破壊等は最強のレガシーを狙うのが定石のため）。
       if (this._battleCpuAutoResolving) {
         const canSkip = !!sel.任意 || /任意/.test(remarks);
-        return Promise.resolve(canSkip ? [] : pool.slice(0, Math.min(need, pool.length)));
+        if (canSkip) return Promise.resolve([]);
+        let ranked = pool;
+        if (sel.対象側 === 'opp' && pool.every(c => c && c.category === 'レガシー')) {
+          ranked = pool.slice().sort((a, b) => (Number(b.power) || 0) - (Number(a.power) || 0));
+        }
+        return Promise.resolve(ranked.slice(0, Math.min(need, ranked.length)));
       }
       // プレイヤー手動：モーダル
       return new Promise((resolve) => {
@@ -14418,6 +14495,9 @@ new Vue({
       }
       // 天力トリガー（K6アメノウズメ）：既に上限で実際の値が変わらなくても、増加を試みたこと自体で発火する
       if (n > 0) this.battleFireKamiEvent(side, 'manaOrLifeIncreased', { kind: 'manaMax', n: Math.max(n, p.manaMax - before) });
+      // マナ最大値を条件にした常在能力（例：#58コマ「マナ最大値が9以上」）がこの変化で
+      // 満たされる/満たされなくなる可能性があるため、即座に再評価する
+      this.dslRefreshStaticAbilities();
     },
     _dslOpManaRefill(act) {
       // 効果の発動源（このカード）を所有するプレイヤーがマナを得る（破壊した側ではない）
@@ -15443,28 +15523,48 @@ new Vue({
     },
     battleRunDeathKeywordEffects(card) {
       // このカードの本当の持ち主が実行中クライアント(手番側)と異なる場合（例：相手ターン中に
-      // 自分のカードが戦闘で破壊された時の【死亡時】）、DSLの「自分」は常に実行側自身を指すため、
-      // このままここで処理すると手番側（相手）の手札/デッキ等を誤って操作してしまう。
-      // 本当の持ち主のクライアントに実行そのものを委譲する（守護や相手選択破棄と同じ考え方）。
+      // 自分のカードが戦闘で破壊された時の【死亡時】、または傀儡化等で持ち主が変わったカードの
+      // 【死亡時】）、DSLの「自分」は常に実行側自身を指すため、このままここで処理すると
+      // 手番側（相手）の手札/デッキ等を誤って操作してしまう。
+      // オンライン対戦中で相手が本当の別クライアントの場合は、本当の持ち主のクライアントに
+      // 実行そのものを委譲する（守護や相手選択破棄と同じ考え方）。
       const cardOwnerSide = (card && (card._lastFieldSide || this._battleFieldCardSide(card))) || 'self';
       const n = this.battleNet;
       if (cardOwnerSide === 'opp' && n && n.on && !n.spectating) {
         this._battleDelegateDeathTrigger(card);
         return true;
       }
+      // 委譲できない場合（CPU戦・ソロプレイ等、相手クライアントが実在しない）で持ち主が相手側なら、
+      // 「自分」がその持ち主を指すよう一時的に視点を入れ替えてから実行する。判断が必要な場面
+      // （対象選択等）も人間に委ねずCPU的に自動解決する。
+      const needsSwap = cardOwnerSide === 'opp';
+      const prevAutoResolving = this._battleCpuAutoResolving;
+      const restore = () => {
+        if (!needsSwap) return;
+        this._dslSwapSelfOpp();
+        this._battleCpuAutoResolving = prevAutoResolving;
+      };
+      if (needsSwap) {
+        this._dslSwapSelfOpp();
+        this._battleCpuAutoResolving = true;
+      }
       if (this._battleIsEffectDisabled(card)) {
         this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、死亡時効果は発動しません。`, [card]);
+        restore();
         return true;
       }
       if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '死亡時')) {
-        this.dslRunSpec(card, '死亡時', null);
+        const p = this.dslRunSpec(card, '死亡時', null);
         this.battleRunDoubledDeathEffect(card);
+        if (needsSwap) Promise.resolve(p).finally(restore); else restore();
         return true;
       }
       // レビュー済みカードでは、Layer1（本文正規表現）の文脈を区別できない誤検出を避けるため
       // フォールバックを試みない（出現時側と同じ理由。例：#39シジマは死亡時効果を持たない）
-      if (this.effectSpecsReady && this._dslGetSpec(card)) return true;
-      return this._battleQueueAndRunEffects(card, null, '死亡時');
+      if (this.effectSpecsReady && this._dslGetSpec(card)) { restore(); return true; }
+      const result = this._battleQueueAndRunEffects(card, null, '死亡時');
+      restore();
+      return result;
     },
     /* 死亡時トリガーの委譲依頼側。カードの完全なデータをそのまま送る（相手クライアント側で
        自分の墓地配列からNoで探そうとすると、通常の状態同期がまだ追いついておらず見つからない
@@ -16919,11 +17019,15 @@ new Vue({
         const guard = defender.legacies[i];
         if (!guard || guard._tapped) continue;
         if (!this.battleCardHasKeyword(guard, '守護') || !this.battleCanTargetLegacy(attacker, guard)) continue;
-        // 守護カードの持ち主が相手（オンライン対戦中は本当の相手プレイヤー）の場合、
-        // 決定権は相手にあるため、同期中は相手クライアントへ確認を委ねる。
+        // 守護カードの持ち主が相手の場合、決定権は相手にある。
+        // オンライン対戦中は本当の相手プレイヤーのクライアントへ確認を委ねるが、
+        // 相手がCPUの場合は確認する相手クライアントが実在しないため、人間に委ねず
+        // CPU自身が判断する（攻撃を受けても生き残れる、または神攻でライフを守れるなら守護する）。
         const prompt = `「${this.fullName(guard)}」をタップして相手の攻撃を【守護】で引き受けますか？`;
         const ok = defenderSide === 'opp'
-          ? await this._battleAskOptionalRemote(guard, '守護', prompt)
+          ? (this.battleContext && this.battleContext.oppIsCpu
+              ? this._battleCpuDecideGuard(guard, attacker, originalIndex === null)
+              : await this._battleAskOptionalRemote(guard, '守護', prompt))
           : await this.dslAskOptional(guard, '守護', prompt);
         if (ok) {
           const idx = defender.legacies.indexOf(guard);
@@ -16933,6 +17037,16 @@ new Vue({
         }
       }
       return null;
+    },
+    /* CPU戦限定：守護するかどうかをCPU自身に判断させる（人間には委ねない）。
+       神攻（ライフへの直接ダメージ）を守護で肩代わりできる場合は基本的に守護する
+       （ライフはそのまま勝敗に直結するため）。通常戦闘の場合は、守護カードが
+       その一撃を耐えられる（戦闘力で上回るか互角）場合のみ守護する。 */
+    _battleCpuDecideGuard(guard, attacker, isDivine) {
+      if (isDivine) return true;
+      const guardPower = Number(guard.power || 0);
+      const attackerPower = Number(attacker.power || 0);
+      return guardPower >= attackerPower;
     },
     battleDestroyLegacy(side, index, destroyed) {
       const player = this.battleSample[side];
@@ -21078,7 +21192,8 @@ new Vue({
         const turnAtSchedule = this.battleSample.turn;
         setTimeout(() => {
           if (this.battleSample.activeSide === 'opp' && this.battleSample.turn === turnAtSchedule && !this.battleSample.result) {
-            this._battleCpuTakeTurn();
+            if (this.battleContext.oppCpuAutoPlay) this._battleCpuTakeTurn();
+            else this.battleEndTurn();
           }
         }, 900);
       }
