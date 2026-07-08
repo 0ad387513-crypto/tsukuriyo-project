@@ -1203,6 +1203,12 @@
   .glossary-item { padding: 10px 0; border-bottom: 1px solid #262b38; }
   .glossary-term { font-size: 13px; font-weight: 800; color: #ffd86a; margin-bottom: 4px; }
   .glossary-def { font-size: 12px; color: #c8d0e0; line-height: 1.6; white-space: pre-wrap; }
+  .howto-list { max-height: 65vh; overflow-y: auto; margin: 10px 0; }
+  .howto-section { padding: 12px 0; border-bottom: 1px solid #262b38; }
+  .howto-section:last-child { border-bottom: none; }
+  .howto-heading { font-size: 14px; font-weight: 800; color: #ffd86a; margin-bottom: 6px; }
+  .howto-body { font-size: 12.5px; color: #c8d0e0; line-height: 1.75; white-space: pre-wrap; }
+  .howto-open-btn { font-size: 15px; }
   .back-to-top-btn {
     background: #2a2f3d; border: 1px solid #4a4f5d; color: #cbd; cursor: pointer;
     padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600;
@@ -2555,7 +2561,7 @@
     margin-left: auto; flex-shrink: 0; background: transparent; border: 1px solid #f0b86c;
     color: #ffe2a8; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-size: 12px;
   }
-  .global-sound-settings { position: fixed; top: 8px; right: 8px; z-index: 9500; }
+  .global-sound-settings { position: fixed; top: 8px; right: 8px; z-index: 9500; display: flex; align-items: center; gap: 8px; }
   /* 対戦画面ヘッダー内版：降参ボタン等と重ならないよう、ヘッダーの通常のflow内に配置する */
   .battle-header-sound-wrap { position: relative; }
   .battle-header-sound-popover { z-index: 520; }
@@ -3752,6 +3758,7 @@
        重なるため、対戦画面表示中はこちらを隠す。カードリスト画面ではBGM不要かつ他の
        ボタン群と重なるため非表示にする） ===== -->
   <div v-if="appView !== 'battle' && appView !== 'cardlist'" class="global-sound-settings">
+    <button class="global-sound-btn howto-open-btn" @click.stop="_sfxPlay('decision'); howToPlayModalOpen = true" title="遊び方ガイド">📖</button>
     <button class="global-sound-btn" @click.stop="_sfxPlay('cancel'); soundSettingsOpen = !soundSettingsOpen" title="音量設定">🎵</button>
     <div v-if="soundSettingsOpen" class="global-sound-popover" @click.stop>
       <div class="global-sound-row">
@@ -3894,6 +3901,44 @@
       </div>
       <div class="battle-zone-modal-actions">
         <button class="battle-back-btn" @click="_sfxPlay('cancel'); glossaryModalOpen = false">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 遊び方ガイドモーダル（TOP画面「📖」から。初見ユーザー向けの流れの説明） ===== -->
+  <div v-if="howToPlayModalOpen" class="battle-zone-modal" @click.self="howToPlayModalOpen = false">
+    <div class="battle-zone-modal-panel">
+      <h3 class="battle-zone-modal-title">📖 遊び方ガイド</h3>
+      <div class="howto-list">
+        <div class="howto-section">
+          <div class="howto-heading">ツクリヨとは</div>
+          <div class="howto-body">オリジナルカードゲーム「ツクリヨ」を、声を繋ぎながら対戦できるオンラインツールです。デッキを組んで、リーダーである「カミ」を選び、相手のカミの体力（ライフ）を0にすれば勝利です。</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">カードの種類</div>
+          <div class="howto-body">・カミ ― 各プレイヤーのリーダー。対戦開始時に1体選び、神技を使って戦況を左右します。
+・レガシー ― 場に出して戦うクリーチャー。戦闘力で殴り合い、神攻力でカミへ直接攻撃できます。
+・オラクル ― 使い切りの効果。手札から使うと効果を発動して墓地へ送られます。
+・レリック ― 場に置いて使う道具。多くは常在効果や起動効果を持ちます。
+・ジェネシス ― 特別な演出を持つ強力なカード群。
+・トークン ― カードの効果で生み出される、デッキに入っていない補助的なカード。
+キーワード能力（【疾駆】【守護】など）の詳しい意味は、カードリスト画面の「📚 キーワード集」から確認できます。</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">対戦の基本ルール</div>
+          <div class="howto-body">自分の手番では「ドロー→マナが増える→手札からカードを使う→レガシーで攻撃する→ターン終了」の順に進みます。カードを使うにはコスト分のマナが必要です。レガシーは戦闘力で相手のレガシー（タップ済みのもの）と戦うか、神攻力で相手のカミへ直接攻撃できます。相手のカミのライフを0にすれば勝利です。</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">創世決戦（4人対戦）の流れ</div>
+          <div class="howto-body">4人（CPUを交えれば2人からでも可）でロビーに集まり、①神託の儀でカミを選び、②選別の儀でパックを取り合ってデッキ候補を集め、③深化の刻で必要な分だけデッキに残し、④星戦（人間同士の対戦）を3回行い、⑤終戦で星魂を集計して順位を決めます。</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">星紡ぎ戦（シールド戦）の流れ</div>
+          <div class="howto-body">2人で部屋を作り、①パックを交互に選んで48枚集め、②その中から8枚を除外して40枚のデッキを確定し、③カミを選び、④その場で対戦します。対戦後は「同じデッキで再戦する」か「パック選択からやり直す」かを選べます。</div>
+        </div>
+      </div>
+      <div class="battle-zone-modal-actions">
+        <button class="battle-back-btn" @click="_sfxPlay('cancel'); howToPlayModalOpen = false">閉じる</button>
       </div>
     </div>
   </div>
@@ -7047,7 +7092,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.188',
+    BUILD_VERSION: '1.14.189',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7098,6 +7143,7 @@ new Vue({
     showMobileNotice: false,  // 画面が狭い環境向けのPC推奨案内（一度閉じたら次回以降は表示しない）
     poolDragCard: null,       // カードリストからドラッグ中のカード（デッキ欄へドロップで追加）
     glossaryModalOpen: false, // TOP画面のキーワード集モーダル
+    howToPlayModalOpen: false, // TOP画面の遊び方ガイドモーダル
     bgmLoopTesterOpen: false, // BGMループ調整ツール（開発用）の開閉
     bgmLoopTesterKey: null,   // 調整中のBGMキー
     bgmLoopTesterStart: 0,    // 調整中のループ開始秒
