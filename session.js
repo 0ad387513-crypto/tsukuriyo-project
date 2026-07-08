@@ -81,6 +81,7 @@ async function createSession(playerName) {
       1: { id: playerId, name: playerName || "プレイヤー1", ready: false, kamiNo: null },
     },
     kami: null,
+    pickTimeLimits: { first: 120, later: 60 }, // ピック警告表示の目安秒数（強制効果なし。ホストがロビーで変更可）
   };
 
   await db.ref(`sessions/${code}`).set(session);
@@ -452,13 +453,22 @@ const PAIRINGS = {
 
 /** そのラウンドの実際のペアリングを返す。
  *  CPUあり構成（プレイヤー2人＋CPU2人）では総当たりにせず、
- *  常に「人間2人＝卓1／CPU2人＝卓2」に固定する（星戦は人間同士でのみ行うため）。 */
+ *  常に「人間2人＝卓1／CPU2人＝卓2」に固定する（星戦は人間同士でのみ行うため）。
+ *  人間が1人しかいない場合（ソロテスト＝人間1人+CPU3人）は、人間が実際に対戦の
+ *  動作を確認できるよう、CPUを1体だけ人間卓に組み込んで1v1対戦させ、
+ *  残りのCPU同士をもう一方の卓にする。 */
 function pairingsFor(s, round) {
   if (!sessionHasCpu(s)) return PAIRINGS[round];
   const cpus = cpuSeatsOf(s);
   const humans = [1, 2, 3, 4].filter(n => !cpus.includes(n));
-  // 想定は 人間[1,2]/CPU[3,4]。想定外の席構成でも人間卓を先頭に安定して組む
-  return [humans.slice(0, 2), cpus.slice(0, 2)];
+  if (humans.length >= 2) {
+    // 想定は 人間[1,2]/CPU[3,4]。想定外の席構成でも人間卓を先頭に安定して組む
+    return [humans.slice(0, 2), cpus.slice(0, 2)];
+  }
+  const human = humans[0];
+  const table1 = human != null ? [human, cpus[0]] : cpus.slice(0, 2);
+  const table2 = human != null ? cpus.slice(1) : cpus.slice(2);
+  return [table1, table2];
 }
 
 /** あるラウンドの星戦で seat が勝ったか（battle={t1Winner,t2Winner}） */
@@ -681,6 +691,19 @@ async function advanceAfterBattle(code, nextRoundCardNos) {
   }
 }
 
+/** ロビーでホストがピック警告表示の目安秒数を設定する（強制的な時間切れ処理は行わない） */
+async function setPickTimeLimits(code, seat, firstSec, laterSec) {
+  if (seat !== 1) return;
+  const ref = getDb().ref(`sessions/${code}`);
+  await ref.transaction(s => {
+    if (!s || s.phase !== 'lobby') return s;
+    const first = Math.max(10, Math.round(Number(firstSec) || 120));
+    const later = Math.max(10, Math.round(Number(laterSec) || 60));
+    s.pickTimeLimits = { first, later };
+    return s;
+  });
+}
+
 /* ================================================================== */
 /* 購読                                                                 */
 /* ================================================================== */
@@ -703,5 +726,6 @@ if (typeof module !== "undefined") {
     deepenSetDone, packCards,
     PAIRINGS, battleWonBySeat, recordBattleResult, advanceAfterBattle,
     cpuSeatsOf, sessionHasCpu, addCpuSeat, removeCpuSeat, pairingsFor,
+    setPickTimeLimits,
   };
 }
