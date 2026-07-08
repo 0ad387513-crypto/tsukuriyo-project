@@ -7211,7 +7211,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.192',
+    BUILD_VERSION: '1.14.193',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -10261,6 +10261,21 @@ new Vue({
     _battleStopTurnTimer() {
       if (this._battleTurnTimerHandle) { clearInterval(this._battleTurnTimerHandle); this._battleTurnTimerHandle = null; }
       this.battleTurnElapsedSec = 0;
+    },
+    /* 手番通知：タブがバックグラウンドの間に自分の手番が来たら、タブのタイトルを点滅させて知らせる。
+       通知権限のポップアップは煩わしいため、Notification APIは使わずdocument.titleの点滅のみで知らせる。 */
+    _battleStartTurnTitleFlash() {
+      if (this._battleTurnFlashHandle || !document.hidden) return;
+      if (!this._battleTurnFlashOriginalTitle) this._battleTurnFlashOriginalTitle = document.title;
+      let on = false;
+      this._battleTurnFlashHandle = setInterval(() => {
+        on = !on;
+        document.title = on ? '🔴 あなたの番です！' : this._battleTurnFlashOriginalTitle;
+      }, 1000);
+    },
+    _battleStopTurnTitleFlash() {
+      if (this._battleTurnFlashHandle) { clearInterval(this._battleTurnFlashHandle); this._battleTurnFlashHandle = null; }
+      if (this._battleTurnFlashOriginalTitle) { document.title = this._battleTurnFlashOriginalTitle; }
     },
     /* ヒットストップ：0.05秒だけ次の処理を遅延させ、衝撃の一瞬を演出する */
     _battleHitStop(ms = 50) {
@@ -20929,6 +20944,7 @@ new Vue({
       if (v) {
         this.battleResultRevealReady = false;
         this._battleStopTurnTimer();
+        this._battleStopTurnTitleFlash();
         this._battleRecordHistoryEntry(v);
         clearTimeout(this._battleResultRevealT);
         this._battleResultRevealT = setTimeout(() => {
@@ -20945,6 +20961,9 @@ new Vue({
     this.$watch('battleSample.activeSide', (side) => {
       if (this.appView !== 'battle' || this.battleSample.result) return;
       this._battleStartTurnTimer();
+      // 手番通知：自分の番になったらタブが非表示の間だけタイトルを点滅、相手の番に戻ったら止める
+      if (side === 'self') this._battleStartTurnTitleFlash();
+      else this._battleStopTurnTitleFlash();
       // 手番交代SE：対戦開始直後（コイン演出〜マリガン中）の誤発火を避けるため、
       // _battleInitializeで設定した抑制期間が過ぎてから鳴らす
       if (Date.now() > (this._battleTurnSfxSuppressUntil || 0)) {
@@ -20963,7 +20982,7 @@ new Vue({
     });
     this.$watch('appView', (v) => {
       if (v === 'battle') this._battleStartTurnTimer();
-      else this._battleStopTurnTimer();
+      else { this._battleStopTurnTimer(); this._battleStopTurnTitleFlash(); }
     });
     // ブラウザの自動再生制限で起動直後の再生がブロックされた場合、
     // 最初のクリック/キー入力を合図に一度だけ再試行する
@@ -20974,11 +20993,24 @@ new Vue({
     };
     window.addEventListener('click', unlockBgm);
     window.addEventListener('keydown', unlockBgm);
+    // 手番通知：タブに戻ってきたら点滅を止め、まだ自分の番のままタブを離れたら点滅を再開する
+    this._onVisibilityChangeForTurnFlash = () => {
+      if (document.hidden) {
+        if (this.appView === 'battle' && this.battleSample.activeSide === 'self' && !this.battleSample.result) {
+          this._battleStartTurnTitleFlash();
+        }
+      } else {
+        this._battleStopTurnTitleFlash();
+      }
+    };
+    document.addEventListener('visibilitychange', this._onVisibilityChangeForTurnFlash);
   },
   beforeDestroy() {
+    document.removeEventListener('visibilitychange', this._onVisibilityChangeForTurnFlash);
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("click", this.onWindowClick);
     this._battleStopTurnTimer();
+    this._battleStopTurnTitleFlash();
   },
 });
 </script>
