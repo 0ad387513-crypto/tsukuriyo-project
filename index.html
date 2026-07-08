@@ -3321,6 +3321,17 @@
     0%   { transform: skewX(-18deg) translateX(-140%); }
     100% { transform: skewX(-18deg) translateX(240%); }
   }
+  /* CPU対戦AI実行中の目隠し：内部的にself/oppを入れ替えて処理する間、盤面の一時的な入れ替わりを隠す */
+  .battle-cpu-thinking-overlay {
+    position: fixed; inset: 0; z-index: 9999; pointer-events: auto;
+    background: rgba(10, 10, 16, .82);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .battle-cpu-thinking-label {
+    color: #f0e6d2; font-size: 18px; letter-spacing: .04em;
+    padding: 14px 28px; border: 1px solid rgba(240, 230, 210, .3); border-radius: 8px;
+    background: rgba(30, 26, 20, .6);
+  }
   /* 神攻：カミへ直接届く光のビーム */
   .battle-attack-beam {
     position: fixed; height: 6px; z-index: 9996; pointer-events: none;
@@ -5727,9 +5738,10 @@
           <button v-if="battleUndoStack.length" @click="battleUndo">一手戻る</button>
           <button v-if="(battleContext.oppIsCpu || (battleNet.on && !battleNet.spectating)) && (battleContext.returnView === 'top' || battleContext.returnView === 'shield')"
                   :disabled="battleWaitingForRematch" @click="battleRequestRematch">
-            {{ battleWaitingForRematch ? '相手の応答を待っています…' : '🔁 もう一度対戦する' }}
+            {{ battleWaitingForRematch ? '相手の応答を待っています…' : (battleContext.returnView === 'shield' ? '🔁 同じデッキで再戦する' : '🔁 もう一度対戦する') }}
           </button>
-          <button @click="battleReturn">{{ battleContext.returnView === 'top' ? 'トップへ戻る' : '対戦を終える（' + battleReturnLabel + 'のトップへ）' }}</button>
+          <button v-if="battleContext.returnView === 'shield'" @click="battleReturn">🎴 パック選択からやり直す（シールド戦のトップへ）</button>
+          <button v-else @click="battleReturn">{{ battleContext.returnView === 'top' ? 'トップへ戻る' : '対戦を終える（' + battleReturnLabel + 'のトップへ）' }}</button>
         </div>
       </div>
     </div>
@@ -5743,6 +5755,11 @@
   </transition>
   <!-- ===== 手番切替時の画面ワイプ ===== -->
   <div v-if="battleTurnWipe" :key="'wipe'+battleTurnWipe.id" class="battle-turn-wipe" :class="battleTurnWipe.side"></div>
+
+  <!-- ===== CPU対戦AI実行中の目隠し（内部的にself/oppを入れ替えて処理するため、その間は盤面を隠す） ===== -->
+  <div v-if="battleCpuThinking" class="battle-cpu-thinking-overlay">
+    <div class="battle-cpu-thinking-label">🤖 相手が考えています…</div>
+  </div>
 
   <!-- ===== 神技2（必殺技）発動時：デッキビルダーのカミ選択画面を踏まえた顔アップカードのカットイン ===== -->
   <transition name="battle-skill-closeup-fade">
@@ -6360,21 +6377,21 @@
             </tr>
           </tbody>
         </table>
-        <!-- CPUデッキの確認（順位には含めないが、ドラフトで何を取っていたかを見られる） -->
-        <div v-if="gsCpuSeats.length" class="gm-cpu-deck-section">
+        <!-- 他プレイヤーのデッキ確認（CPU・人間問わず。順位には含めないが、何を取っていたかを見られる） -->
+        <div v-if="gsOtherDeckViewSeats.length" class="gm-cpu-deck-section">
           <div class="gm-cpu-deck-buttons">
-            <button v-for="seat in gsCpuSeats" :key="'cpudeck'+seat" class="gm-btn"
-                    :class="{ 'gm-btn-primary': gsCpuDeckViewSeat === seat }"
-                    @click="_sfxPlay('decision'); gsCpuDeckViewSeat = (gsCpuDeckViewSeat === seat ? null : seat)">
-              🤖 CPU{{ seat }}のデッキを{{ gsCpuDeckViewSeat === seat ? '閉じる' : '見る' }}
+            <button v-for="s in gsOtherDeckViewSeats" :key="'deckview'+s.seat" class="gm-btn"
+                    :class="{ 'gm-btn-primary': gsCpuDeckViewSeat === s.seat }"
+                    @click="_sfxPlay('decision'); gsCpuDeckViewSeat = (gsCpuDeckViewSeat === s.seat ? null : s.seat)">
+              {{ s.isCpu ? '🤖 ' : '' }}{{ s.name }}のデッキを{{ gsCpuDeckViewSeat === s.seat ? '閉じる' : '見る' }}
             </button>
           </div>
           <div v-if="gsCpuDeckViewSeat != null" class="gm-cpu-deck-panel">
             <div class="gm-done-title" style="font-size:15px;">
-              CPU{{ gsCpuDeckViewSeat }}のデッキ（{{ gsCpuDeckViewCards.length }}枚）
+              {{ gsCpuDeckViewName }}のデッキ（{{ gsCpuDeckViewCards.length }}枚）
               — カミ：{{ gsCpuDeckViewKami ? fullName(gsCpuDeckViewKami) : '—' }}
             </div>
-            <button class="gm-btn" style="margin-bottom:10px;" @click="gsPeekCpuDeck(gsCpuDeckViewSeat)">デッキビルダーで確認</button>
+            <button class="gm-btn" style="margin-bottom:10px;" @click="gsPeekCpuDeck(gsCpuDeckViewSeat)">「{{ gsCpuDeckViewName }}」のデッキをデッキビルダーで確認</button>
             <div class="gm-deck-grid">
               <div v-if="gsCpuDeckViewKami" class="gm-deck-card gm-cpu-kami-card"
                    @mouseenter="showCardHover(gsCpuDeckViewKami, $event)" @mouseleave="hideCardHover">
@@ -6965,6 +6982,7 @@ new Vue({
     battleRemoteConfirm: null, // 相手クライアントから届いた確認依頼（守護 等）：{ id, kind, cardNo, prompt }
     battleWaitingLabel: null, // 相手クライアントへの委譲応答待ち中に表示するラベル（null=待ちなし）
     battleWaitingForRematch: false, // 再戦をリクエスト済みで相手の応答を待っている間true（対戦テストのみ）
+    battleCpuThinking: false, // CPU対戦AIが自分のターンを自動実行中（内部的にself/oppを入れ替えて処理するため、その間は画面を覆い隠す）
     battleActiveEffectCard: null, // 現在解決中の効果の持ち主カード（多段階の選択が続いても見失わないためのUI用）
     battleTurnTimerEnabled: loadStoredBool('tsukuriyo_turnTimerEnabled', true), // ターン経過時間の警告表示（強制的な時間切れ処理は行わない）
     battleTurnElapsedSec: 0,      // 現在のターンの経過秒数
@@ -7029,7 +7047,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.187',
+    BUILD_VERSION: '1.14.188',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7092,7 +7110,7 @@ new Vue({
     _gsPeekSaved: null,       // プレビュー前のデッキビルダー状態退避
     gsSolo:      false,       // ソロテスト（CPU3体を自動操作）モード
     gsDeepenAction: null,     // 深化の刻で選択中のアクション: null(=メニュー) | 'reflect' | 'fusion' | 'bloom'
-    gsCpuDeckViewSeat: null,  // 終戦画面で表示中のCPUデッキの席番号（null=非表示）
+    gsCpuDeckViewSeat: null,  // 終戦画面で表示中の他プレイヤー（CPU・人間問わず）デッキの席番号（null=非表示）
   },
   computed: {
     /* BGM選択メニュー用：{key, name} の配列（BGM_FILESそのものではなく整形して渡す） */
@@ -8067,6 +8085,17 @@ new Vue({
     gsCpuSeats() {
       return (typeof cpuSeatsOf !== 'undefined') ? cpuSeatsOf(this.gs.data || {}) : [];
     },
+    /* 終戦画面：自分以外の全プレイヤー（CPU・人間問わず）のデッキ確認ボタン用一覧 */
+    gsOtherDeckViewSeats() {
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      const out = [];
+      for (let n = 1; n <= 4; n++) {
+        const info = seats[n];
+        if (!info || !info.id || n === this.gs.seat) continue;
+        out.push({ seat: n, name: info.name || ('P' + n), isCpu: !!info.isCpu });
+      }
+      return out;
+    },
     /* CPUを追加できるか（席3・4のどちらかが空席） */
     gsCpuAddable() {
       const seats = (this.gs.data && this.gs.data.seats) || {};
@@ -8078,7 +8107,7 @@ new Vue({
       if (typeof pairingsFor !== 'undefined' && this.gs.data) return pairingsFor(this.gs.data, r);
       return (typeof PAIRINGS !== 'undefined' && PAIRINGS[r]) ? PAIRINGS[r] : [[1, 2], [3, 4]];
     },
-    /* 終戦画面：表示中のCPUデッキ（カード一覧とカミ）。ピック内容はFirebase上のdecksに残っている */
+    /* 終戦画面：表示中の他プレイヤーのデッキ（カード一覧とカミ）。ピック内容はFirebase上のdecksに残っている */
     gsCpuDeckViewCards() {
       if (this.gsCpuDeckViewSeat == null) return [];
       return this.gsCpuPickedCards(this.gsCpuDeckViewSeat);
@@ -8086,6 +8115,12 @@ new Vue({
     gsCpuDeckViewKami() {
       if (this.gsCpuDeckViewSeat == null) return null;
       return this.seatKamiCard(this.gsCpuDeckViewSeat);
+    },
+    gsCpuDeckViewName() {
+      if (this.gsCpuDeckViewSeat == null) return '';
+      const seats = (this.gs.data && this.gs.data.seats) || {};
+      const info = seats[this.gsCpuDeckViewSeat];
+      return info ? (info.name || ('P' + this.gsCpuDeckViewSeat)) : ('P' + this.gsCpuDeckViewSeat);
     },
     gsAllReady() {
       const seats = (this.gs.data && this.gs.data.seats) || {};
@@ -10581,6 +10616,111 @@ new Vue({
         this._dslCurrentTurnEndSide = prev;
       }
     },
+    /* ===== CPU対戦AI（グリーディ戦略） =====
+       相手（opp）がCPUの場合、こちらのクライアントがCPUの手番を代行する。
+       内部的にはbattleSample.self/oppを一時的に入れ替え（_dslSwapSelfOpp、常在能力の
+       相手視点評価と同じ手法）、人間自身の手番と全く同じ経路（battlePlayFromHand・
+       battleResolveDivineAttack・battleResolveLegacyBattle等）を再利用することで、
+       静的能力・出現時効果・キーワード処理を極力正しく反映させる。入れ替え中は
+       本来の自分の手札等が一時的に画面に表れてしまうため、battleCpuThinkingで盤面を隠す。
+       出現時効果等が対象選択・任意確認を要求する場合は_battleCpuAutoResolvingを見て
+       機械的に即決する（dslChooseTargets/dslAskCustomTargets/dslAskOptional/dslAskChoice、
+       および誘・霊視・選定・招来の各モーダルopen関数に短絡ルートを追加済み）。 */
+    async _battleCpuTakeTurn() {
+      if (this.battleSample.result || this.battleSample.activeSide !== 'opp' || !this.battleContext.oppIsCpu) return;
+      const turnAtStart = this.battleSample.turn;
+      const stillMyTurn = () => !this.battleSample.result && this.battleSample.turn === turnAtStart && this.battleSample.activeSide === 'self';
+      // 入れ替え中に保存されるUndoスナップショットはself/oppが逆転した状態のため、
+      // 後で人間が「一手戻る」を押した際に盤面が反転してしまわないよう、
+      // CPUの手番中に積まれた分は終了後にまとめて破棄する（自分の手番のUndoにのみ使わせる）
+      const undoDepthBefore = this.battleUndoStack.length;
+      this.battleCpuThinking = true;
+      this._dslSwapSelfOpp();
+      this._battleCpuAutoResolving = true;
+      try {
+        await this._battleCpuSummonAndUsePhase(stillMyTurn);
+        if (stillMyTurn()) await this._battleCpuAttackPhase(stillMyTurn);
+      } catch (e) {
+        console.warn('[cpu-battle] CPU対戦AIでエラーが発生しました:', e);
+      } finally {
+        this._battleCpuAutoResolving = false;
+        this._dslSwapSelfOpp();
+        this.battleCpuThinking = false;
+        if (this.battleUndoStack.length > undoDepthBefore) this.battleUndoStack.length = undoDepthBefore;
+      }
+      if (!this.battleSample.result && this.battleSample.activeSide === 'opp' && this.battleSample.turn === turnAtStart) {
+        this.battleEndTurn();
+      }
+    },
+    /* 召喚フェーズ：出せる中で最大コストのレガシーを最優先、次点でレリック/オラクルを
+       コストが余っている限り出し続ける。昇華等の追加コスト選択・進化が絡むカードは
+       （選択モーダルの人間確認が必要なため）v1では対象外とし、通常コストでの配置のみ扱う。 */
+    async _battleCpuSummonAndUsePhase(stillMyTurn) {
+      for (let i = 0; i < 20 && stillMyTurn(); i++) {
+        const player = this.battleSample.self;
+        const hand = player.hand || [];
+        const candidates = [];
+        for (const card of hand) {
+          if (!card || !['レガシー', 'レリック', 'オラクル'].includes(card.category)) continue;
+          const options = this.battleSublimCostOptions(card);
+          if (options.length !== 1) continue; // 昇華等の追加コスト選択が絡むカードは見送る
+          const cost = options[0];
+          if (cost > player.mana) continue;
+          if (card.category !== 'オラクル') {
+            const zone = card.category === 'レガシー' ? 'legacies' : 'relics';
+            if ((player[zone] || []).length >= 7) continue;
+          }
+          candidates.push({ card, cost, isLegacy: card.category === 'レガシー' });
+        }
+        if (!candidates.length) break;
+        candidates.sort((a, b) => (b.isLegacy - a.isLegacy) || (b.cost - a.cost));
+        const pick = candidates[0];
+        const zone = pick.card.category === 'レガシー' ? 'legacies' : pick.card.category === 'レリック' ? 'relics' : null;
+        const handIdx = player.hand.indexOf(pick.card);
+        if (handIdx < 0) continue;
+        const wasOracle = pick.card.category === 'オラクル';
+        await this.battlePlayFromHand(handIdx, zone, zone ? null : undefined);
+        if (wasOracle && this.battleOracleEffect) {
+          // オラクル発動演出は本来手動で閉じるまで残るが、CPU自身のプレイでは短時間で自動的に閉じる
+          const effRef = this.battleOracleEffect;
+          setTimeout(() => { if (this.battleOracleEffect === effRef) this.battleOracleEffect = null; }, 1800);
+        }
+        if (!stillMyTurn()) break;
+      }
+    },
+    /* 攻撃フェーズ：戦闘対象にできる（タップ済みの）相手レガシーの中に倒せるものがあれば
+       戦闘力が最も高いものを狙って戦闘、なければ神攻でカミへ直接攻撃する。 */
+    async _battleCpuAttackPhase(stillMyTurn) {
+      let guard = 0;
+      while (stillMyTurn() && guard++ < 20) {
+        const me = this.battleSample.self;
+        const attackers = (me.legacies || []).filter(c => this.battleLegacyCanAct(c, 'battle').ok || this.battleLegacyCanAct(c, 'divine').ok);
+        if (!attackers.length) break;
+        let acted = false;
+        for (const attacker of attackers) {
+          if (!stillMyTurn()) break;
+          const idx = this.battleSample.self.legacies.indexOf(attacker);
+          if (idx < 0 || attacker._tapped) continue;
+          const foe = this.battleSample.opp;
+          const ap = Number(attacker.power || 0);
+          let bestTargetIdx = -1, bestDp = -1;
+          (foe.legacies || []).forEach((d, dIdx) => {
+            if (!this.battleCanDeclareAttackTarget(attacker, d)) return;
+            const dp = Number(d.power || 0);
+            if (ap >= dp && dp > bestDp) { bestTargetIdx = dIdx; bestDp = dp; }
+          });
+          if (bestTargetIdx >= 0 && this.battleLegacyCanAct(attacker, 'battle').ok) {
+            await this.battleResolveLegacyBattle('self', idx, 'opp', bestTargetIdx);
+            acted = true;
+          } else if (this.battleLegacyCanAct(attacker, 'divine').ok) {
+            await this.battleResolveDivineAttack('self', idx);
+            acted = true;
+          }
+          if (this.battleSample.result) return;
+        }
+        if (!acted) break;
+      }
+    },
     async battleEndTurn() {
       if (this.battleNet && this.battleNet.spectating) return;
       if (this.battleNet && this.battleNet.on && this.battleSample.activeSide !== 'self') return;
@@ -12210,6 +12350,11 @@ new Vue({
       // （例：#87ヤマブキ「自分の忍者レガシー1枚につき〜」で忍者が0枚の場合、
       // 　従来は候補（相手フィールド）が1枚でもあると「決定」ボタンが無効化されたまま選択を強制されていた）
       if (need <= 0) return Promise.resolve([]);
+      // CPU自動対戦中：人間の選択を待てないため、先頭からnеed枚を機械的に選ぶ（任意効果は見送る）
+      if (this._battleCpuAutoResolving) {
+        const canSkip = !!sel.任意 || /任意/.test(remarks);
+        return Promise.resolve(canSkip ? [] : pool.slice(0, Math.min(need, pool.length)));
+      }
       // プレイヤー手動：モーダル
       return new Promise((resolve) => {
         this.dslTargetModal = {
@@ -12228,6 +12373,9 @@ new Vue({
     dslAskCustomTargets(promptLabel, candidates, need = 1, sourceCard = null, canSkip = false) {
       const pool = (candidates || []).filter(Boolean);
       if (!pool.length) return Promise.resolve([]);
+      if (this._battleCpuAutoResolving) {
+        return Promise.resolve(canSkip ? [] : pool.slice(0, Math.min(Math.max(1, Number(need) || 1), pool.length)));
+      }
       return new Promise((resolve) => {
         this.dslTargetModal = {
           sourceCard: sourceCard || this._dslCurrentSource,
@@ -14096,6 +14244,8 @@ new Vue({
     },
     /* 任意能力の発動可否を尋ねる。kind='reroll' の場合はカード効果ではなくシステムルールとして文言を出し分ける */
     dslAskOptional(card, triggerLabel, summary, kind = 'ability') {
+      // CPU自動対戦中：人間の確認を待てないため、任意効果は安全側（発動しない）に倒す
+      if (this._battleCpuAutoResolving) return Promise.resolve(false);
       return new Promise((resolve) => {
         this.dslOptionalModal = {
           sourceCard: card,
@@ -14406,6 +14556,15 @@ new Vue({
     },
     /* 選択肢A/Bを尋ねる */
     dslAskChoice(card, prompt, options, meta = {}) {
+      // CPU自動対戦中：人間の選択を待てないため、条件を満たす最初の選択肢を機械的に選ぶ
+      if (this._battleCpuAutoResolving) {
+        let idx = 0;
+        if (Array.isArray(meta.optionData)) {
+          const found = meta.optionData.findIndex(opt => this._dslChoiceOptionConditionMet(opt, card));
+          if (found >= 0) idx = found;
+        }
+        return Promise.resolve(idx);
+      }
       return new Promise((resolve) => {
         this.dslChoiceModal = {
           sourceCard: card,
@@ -15111,6 +15270,8 @@ new Vue({
         eligibleCount: eligibleIndexes.length,
         message: `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\nデッキ上から${cards.length}枚を公開し、${induce.criteriaText || '対象カード'}を1枚まで手札に加えます。\n選ばなかったカードはデッキの一番下へ送ります。`,
       };
+      // CPU自動対戦中：モーダルを見せず、条件を満たす先頭の1枚を機械的に選ぶ
+      if (this._battleCpuAutoResolving) this.battleResolveAutoInduce(eligibleIndexes.length ? eligibleIndexes[0] : null);
     },
     battleOpenAutoReishi(sourceCard, reishi, triggerLabel = '出現時') {
       const player = this.battleSample.self;
@@ -15127,6 +15288,8 @@ new Vue({
         selectedIndexes: [],
         message: `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\nデッキ上から${cards.length}枚を確認し、墓地へ送るカードを選んでください。\n選ばなかったカードはデッキの一番上に残ります。`,
       };
+      // CPU自動対戦中：モーダルを見せず、何も墓地へ送らずに解決する（安全側のデフォルト）
+      if (this._battleCpuAutoResolving) this.battleResolveAutoReishi();
     },
     battleParseSentei(card, paidCost = null, triggerLabel = '出現時') {
       const rawText = this.battleCardRulesText(card).replace(/​/g, '');
@@ -15217,6 +15380,24 @@ new Vue({
         boostApplied: false,
         noRepeat: !!sentei.noRepeat,
       };
+      // CPU自動対戦中：モーダルを見せず、条件を満たす先頭の選択肢を機械的に必要数だけ選ぶ
+      if (this._battleCpuAutoResolving) {
+        const modal = this.battleSenteiModal;
+        const total = (modal.options || []).length;
+        const picks = [];
+        for (let i = 0; i < total && picks.length < modal.count; i++) {
+          if (!this.battleSenteiOptionDisabled(i)) picks.push(i);
+        }
+        modal.selected = picks;
+        if (picks.length === modal.count) {
+          this.battleResolveSentei();
+        } else {
+          // 条件を満たす選択肢が必要数に届かない場合は発動を見送る（安全側）
+          this.battleSenteiModal = null;
+          if (modal.onComplete) modal.onComplete([]);
+          else this._battleProcessNextEffect();
+        }
+      }
     },
     battleCancelSentei() {
       const m = this.battleSenteiModal;
@@ -15370,6 +15551,14 @@ new Vue({
           ? `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\n「${summon.targetText}」を最大${total}枚まで場に出せます。${summon.distinct ? '同じ種類は選べません。' : ''}出さずに終了することもできます。`
           : `「${this.fullName(sourceCard)}」の【${triggerLabel}】効果です。\n招来するトークンを選んでください。`,
       };
+      // CPU自動対戦中：モーダルを見せず、選べるだけ自動で場に出す
+      // （フィールド上限等で進行不能になっても battleSummonAllRemaining はモーダルを
+      //   開いたままにするため、その場合は残りを見送って強制的に完了させる）
+      if (this._battleCpuAutoResolving) {
+        const modalRef = this.battleDeckModal;
+        this.battleSummonAllRemaining();
+        if (this.battleDeckModal === modalRef) this.battleFinishAutoSummon();
+      }
     },
     /* 通常の招来（モーダル無し、即時1体配置） */
     battleResolveSummonCard(card, sourceCard = null, triggerLabel = '招来', skipQueueProcess = false) {
@@ -18716,7 +18905,7 @@ new Vue({
       this.gsPeekingCpuSeat = null;
       this.gsPeeking = true;
     },
-    // CPUのデッキをデッキビルダーで確認（閲覧専用：返還等の操作はしない）
+    // 他プレイヤー（CPU・人間問わず）のデッキをデッキビルダーで確認（閲覧専用：返還等の操作はしない）
     gsPeekCpuDeck(seat) {
       this._sfxPlay('decision');
       this._gsPeekSaved = {
@@ -20221,7 +20410,7 @@ new Vue({
 
     async onConfirmKami() {
       if (!this.sb.tempKami || !this.sbIsMyKamiTurn) return;
-      this._sfxPlay('decision');
+      this._sfxPlay(this.sb.tempKami.type === 'ヤマタノオロチ' ? 'evilgod' : 'genesis');
       await selectKami(this.sb.roomCode, this.sb.role, String(this.sb.tempKami.no));
     },
 
@@ -20415,13 +20604,13 @@ new Vue({
       if (Date.now() > (this._battleTurnSfxSuppressUntil || 0)) {
         this._sfxPlay(side === 'self' ? 'myTurn' : 'enemyTurn');
       }
-      // 相手がCPU（駆動する2人目のクライアントが実在しない）場合、何もせずにターンを渡してしまうと
-      // 進行が止まるため、こちらのクライアントが代わりに相手のターンを自動で終了させる。
+      // 相手がCPU（駆動する2人目のクライアントが実在しない）場合、こちらのクライアントが
+      // 代わりにCPUの手番（召喚・攻撃・ターン終了）を自動で実行する。
       if (side === 'opp' && this.battleContext.oppIsCpu) {
         const turnAtSchedule = this.battleSample.turn;
         setTimeout(() => {
           if (this.battleSample.activeSide === 'opp' && this.battleSample.turn === turnAtSchedule && !this.battleSample.result) {
-            this.battleEndTurn();
+            this._battleCpuTakeTurn();
           }
         }, 900);
       }
