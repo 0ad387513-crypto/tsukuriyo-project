@@ -1236,6 +1236,20 @@
   .deck-manager-slot-name { font-size: 13px; font-weight: 700; color: #e8d4a0; }
   .deck-manager-slot-meta { font-size: 11px; color: #9aa0b0; margin-top: 2px; }
   .deck-manager-slot-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .battle-history-list { max-height: 55vh; overflow-y: auto; margin: 4px 0; }
+  .battle-history-row {
+    display: flex; align-items: center; gap: 12px; padding: 9px 4px;
+    border-bottom: 1px solid #262b38;
+  }
+  .battle-history-row:last-child { border-bottom: none; }
+  .battle-history-outcome {
+    flex-shrink: 0; width: 46px; text-align: center; font-size: 12px; font-weight: 800;
+    padding: 3px 0; border-radius: 4px;
+  }
+  .battle-history-row.win .battle-history-outcome { background: rgba(80,160,255,.2); color: #8ac0ff; }
+  .battle-history-row.loss .battle-history-outcome { background: rgba(200,60,60,.2); color: #ff9a9a; }
+  .battle-history-main { font-size: 12.5px; color: #d8dee8; }
+  .battle-history-date { font-size: 11px; color: #8a90a0; margin-top: 2px; }
   .back-to-top-btn {
     background: #2a2f3d; border: 1px solid #4a4f5d; color: #cbd; cursor: pointer;
     padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600;
@@ -3786,6 +3800,7 @@
        ボタン群と重なるため非表示にする） ===== -->
   <div v-if="appView !== 'battle' && appView !== 'cardlist'" class="global-sound-settings">
     <button class="global-sound-btn howto-open-btn" @click.stop="_sfxPlay('decision'); howToPlayModalOpen = true" title="遊び方ガイド">📖</button>
+    <button class="global-sound-btn howto-open-btn" @click.stop="openBattleHistory" title="戦績・対戦履歴">📜</button>
     <button class="global-sound-btn" @click.stop="_sfxPlay('cancel'); soundSettingsOpen = !soundSettingsOpen" title="音量設定">🎵</button>
     <div v-if="soundSettingsOpen" class="global-sound-popover" @click.stop>
       <div class="global-sound-row">
@@ -4012,6 +4027,32 @@
       </div>
       <div class="battle-zone-modal-actions">
         <button class="battle-back-btn" @click="closeDeckManager">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 戦績・対戦履歴モーダル ===== -->
+  <div v-if="battleHistoryModalOpen" class="battle-zone-modal" @click.self="closeBattleHistory">
+    <div class="battle-zone-modal-panel">
+      <h3 class="battle-zone-modal-title">📜 戦績・対戦履歴</h3>
+      <p class="howto-body" style="margin:0 0 10px;">この端末に保存された、対戦（星戦・星紡ぎ戦・対戦テスト）の勝敗記録です（最新200件まで）。</p>
+      <div v-if="!battleHistoryList.length" class="deck-manager-empty">まだ対戦記録がありません</div>
+      <div v-else class="battle-history-list">
+        <div v-for="entry in battleHistoryList" :key="entry.id" class="battle-history-row" :class="entry.outcome">
+          <div class="battle-history-outcome">{{ entry.outcome === 'win' ? '勝利' : '敗北' }}</div>
+          <div class="battle-history-info">
+            <div class="battle-history-main">
+              {{ entry.mode }}｜{{ entry.selfName }}（{{ entry.selfKamiName || 'カミ未選択' }}） vs
+              {{ entry.oppName }}{{ entry.oppIsCpu ? '🤖' : '' }}（{{ entry.oppKamiName || 'カミ未選択' }}）
+              <span v-if="entry.reason === 'surrender'">（降参）</span>
+            </div>
+            <div class="battle-history-date">{{ battleHistoryDateText(entry) }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="battle-zone-modal-actions">
+        <button v-if="battleHistoryList.length" class="battle-back-btn" style="background:#5a2a2a;border-color:#a06060;" @click="clearBattleHistory">履歴を消去</button>
+        <button class="battle-back-btn" @click="closeBattleHistory">閉じる</button>
       </div>
     </div>
   </div>
@@ -7170,7 +7211,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.190',
+    BUILD_VERSION: '1.14.191',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7222,6 +7263,8 @@ new Vue({
     poolDragCard: null,       // カードリストからドラッグ中のカード（デッキ欄へドロップで追加）
     glossaryModalOpen: false, // TOP画面のキーワード集モーダル
     howToPlayModalOpen: false, // TOP画面の遊び方ガイドモーダル
+    battleHistoryModalOpen: false, // TOP画面の戦績・対戦履歴モーダル
+    battleHistoryList: [],          // 表示中の対戦履歴一覧（localStorageから読み込み）
     bgmLoopTesterOpen: false, // BGMループ調整ツール（開発用）の開閉
     bgmLoopTesterKey: null,   // 調整中のBGMキー
     bgmLoopTesterStart: 0,    // 調整中のループ開始秒
@@ -9951,6 +9994,59 @@ new Vue({
       if (!result || !result.outcome) return;
       const key = result.outcome === 'win' ? 'victory' : result.outcome === 'loss' ? 'defeat' : null;
       if (key) this._bgmPlay(key);
+    },
+    /* 戦績・対戦履歴：対戦（創世決戦の星戦・星紡ぎ戦・対戦テスト）の勝敗を
+       この端末のlocalStorageに記録する。観戦中は記録しない。 */
+    _battleRecordHistoryEntry(result) {
+      if (!result || !result.outcome || (this.battleNet && this.battleNet.spectating)) return;
+      try {
+        const ctx = this.battleContext || {};
+        const bs = this.battleSample || {};
+        const selfKami = bs.self && bs.self.kami;
+        const oppKami = bs.opp && bs.opp.kami;
+        const entry = {
+          id: Date.now() + '_' + Math.floor(Math.random() * 1e6),
+          ts: Date.now(),
+          mode: ctx.modeLabel || '対戦',
+          source: ctx.source || null,
+          round: ctx.round || null,
+          selfName: ctx.selfName || '自分',
+          oppName: ctx.oppName || '相手',
+          selfKamiName: selfKami ? this.fullName(selfKami) : null,
+          oppKamiName: oppKami ? this.fullName(oppKami) : null,
+          outcome: result.outcome,
+          reason: result.reason || null,
+          oppIsCpu: !!ctx.oppIsCpu,
+        };
+        const raw = localStorage.getItem('tsukuriyo_battleHistory');
+        const list = raw ? JSON.parse(raw) : [];
+        list.unshift(entry);
+        if (list.length > 200) list.length = 200;
+        localStorage.setItem('tsukuriyo_battleHistory', JSON.stringify(list));
+      } catch (e) { /* 保存できなくても対戦の進行には影響させない */ }
+    },
+    openBattleHistory() {
+      this._sfxPlay('decision');
+      try {
+        const raw = localStorage.getItem('tsukuriyo_battleHistory');
+        this.battleHistoryList = raw ? JSON.parse(raw) : [];
+      } catch (e) { this.battleHistoryList = []; }
+      this.battleHistoryModalOpen = true;
+    },
+    closeBattleHistory() {
+      this._sfxPlay('cancel');
+      this.battleHistoryModalOpen = false;
+    },
+    clearBattleHistory() {
+      if (!confirm('戦績・対戦履歴をすべて削除しますか？')) return;
+      this._sfxPlay('cancel');
+      this.battleHistoryList = [];
+      try { localStorage.removeItem('tsukuriyo_battleHistory'); } catch (e) { /* noop */ }
+    },
+    battleHistoryDateText(entry) {
+      const d = new Date(entry.ts || 0);
+      if (isNaN(d.getTime())) return '';
+      return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     },
     /* 指定カテゴリの候補からランダムに1曲選ぶ（キーのみ返す。再生はしない） */
     _bgmPickRandomKey(category) {
@@ -20824,6 +20920,7 @@ new Vue({
       if (v) {
         this.battleResultRevealReady = false;
         this._battleStopTurnTimer();
+        this._battleRecordHistoryEntry(v);
         clearTimeout(this._battleResultRevealT);
         this._battleResultRevealT = setTimeout(() => {
           this.battleResultRevealReady = true;
