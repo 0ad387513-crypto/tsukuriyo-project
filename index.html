@@ -1209,6 +1209,33 @@
   .howto-heading { font-size: 14px; font-weight: 800; color: #ffd86a; margin-bottom: 6px; }
   .howto-body { font-size: 12.5px; color: #c8d0e0; line-height: 1.75; white-space: pre-wrap; }
   .howto-open-btn { font-size: 15px; }
+  .deck-manager-save-row { display: flex; gap: 8px; align-items: flex-start; }
+  .deck-manager-name-input {
+    flex: 1; background: #12151f; border: 1px solid #3a4256; color: #e8e8f0;
+    border-radius: 5px; padding: 7px 10px; font-size: 13px;
+  }
+  .deck-manager-code-box {
+    flex: 1; background: #12151f; border: 1px solid #3a4256; color: #c8d0e0;
+    border-radius: 5px; padding: 7px 10px; font-size: 11px; font-family: monospace;
+    resize: vertical; word-break: break-all;
+  }
+  .deck-manager-action-btn {
+    background: #3a3f5a; border: 1px solid #6a7595; color: #e8e8f0;
+    padding: 7px 16px; border-radius: 5px; font-size: 12px; font-weight: 700;
+    cursor: pointer; flex-shrink: 0; transition: background 0.12s;
+  }
+  .deck-manager-action-btn:hover { background: #4a4f6a; }
+  .deck-manager-action-btn.ghost { background: transparent; border-color: #6a4a4a; color: #e0a0a0; }
+  .deck-manager-action-btn.ghost:hover { background: rgba(160,60,60,.2); }
+  .deck-manager-empty { font-size: 12px; color: #8a90a0; padding: 6px 0; }
+  .deck-manager-slot {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid #262b38;
+  }
+  .deck-manager-slot:last-child { border-bottom: none; }
+  .deck-manager-slot-name { font-size: 13px; font-weight: 700; color: #e8d4a0; }
+  .deck-manager-slot-meta { font-size: 11px; color: #9aa0b0; margin-top: 2px; }
+  .deck-manager-slot-actions { display: flex; gap: 6px; flex-shrink: 0; }
   .back-to-top-btn {
     background: #2a2f3d; border: 1px solid #4a4f5d; color: #cbd; cursor: pointer;
     padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600;
@@ -3943,6 +3970,52 @@
     </div>
   </div>
 
+  <!-- ===== デッキ管理モーダル（保存スロット・デッキコード共有） ===== -->
+  <div v-if="deckManagerOpen" class="battle-zone-modal" @click.self="closeDeckManager">
+    <div class="battle-zone-modal-panel">
+      <h3 class="battle-zone-modal-title">💾 デッキ管理</h3>
+      <div class="howto-list">
+        <div class="howto-section">
+          <div class="howto-heading">現在のデッキを保存</div>
+          <div class="deck-manager-save-row">
+            <input type="text" class="deck-manager-name-input" v-model="deckManagerNameInput"
+                   placeholder="デッキの名前" maxlength="30" @keyup.enter="deckSaveNewSlot">
+            <button class="deck-manager-action-btn" @click="deckSaveNewSlot">保存</button>
+          </div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">保存済みデッキ（{{ deckSlots.length }}件・この端末にのみ保存されます）</div>
+          <div v-if="!deckSlots.length" class="deck-manager-empty">まだ保存されたデッキはありません</div>
+          <div v-for="slot in deckSlots" :key="slot.id" class="deck-manager-slot">
+            <div class="deck-manager-slot-info">
+              <div class="deck-manager-slot-name">{{ slot.name }}</div>
+              <div class="deck-manager-slot-meta">{{ deckSlotCardCount(slot) }}枚 / カミ：{{ deckSlotKamiName(slot) }} / {{ deckSlotSavedAtText(slot) }}</div>
+            </div>
+            <div class="deck-manager-slot-actions">
+              <button class="deck-manager-action-btn" @click="deckLoadSlot(slot)">読込</button>
+              <button class="deck-manager-action-btn ghost" @click="deckDeleteSlot(slot)">削除</button>
+            </div>
+          </div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">デッキコードで共有</div>
+          <div class="howto-body">現在のデッキ（カードとカミ）を短い文字列に変換します。他の人にこのコードを送れば、同じデッキを読み込んでもらえます。</div>
+          <div class="deck-manager-save-row">
+            <textarea class="deck-manager-code-box" readonly rows="2" :value="deckCurrentCode || '（保存するカードがありません）'" @click="$event.target.select()"></textarea>
+            <button class="deck-manager-action-btn" @click="deckCopyCode">コピー</button>
+          </div>
+          <div class="deck-manager-save-row" style="margin-top:10px;">
+            <textarea class="deck-manager-code-box" rows="2" v-model="deckManagerCodeInput" placeholder="デッキコードを貼り付け"></textarea>
+            <button class="deck-manager-action-btn" @click="deckImportFromCode">読込</button>
+          </div>
+        </div>
+      </div>
+      <div class="battle-zone-modal-actions">
+        <button class="battle-back-btn" @click="closeDeckManager">閉じる</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== 左：カードプール ===== -->
   <div class="pool" v-show="deckBuilderVisible">
     <div class="header">
@@ -4098,6 +4171,7 @@
         <div class="deck-controls">
           <button @click="saveDeckImage" :disabled="capturing">{{ capturing ? '保存中…' : 'デッキを画像で保存' }}</button>
           <button @click="clearDeck">デッキをクリア</button>
+          <button v-if="!gsPeeking && !shieldPeek" @click="openDeckManager">💾 デッキ管理</button>
         </div>
         <div class="deck-controls" style="margin-top:6px;">
           <button class="udon-import-btn"
@@ -6939,6 +7013,10 @@ new Vue({
     },
     deck: {},      // active deck { no: count }
     returned: {},  // 返還済み { no: count } — グレーアウト表示＋返還値計上
+    deckManagerOpen: false,     // デッキ管理モーダル（保存スロット・デッキコード）の開閉
+    deckSlots: [],              // 保存済みデッキ一覧（localStorage永続化）：[{ id, name, deck, kamiNo, savedAt }]
+    deckManagerNameInput: '',   // 新規保存時の名前入力欄
+    deckManagerCodeInput: '',   // デッキコード読込欄の入力値
     driveFileMap: {}, // cardNo -> Drive fileId（公開フォルダから取得）
     driveError: false,
     imageMap: {}, // ローカルフォルダ用 cardNo -> object URL（任意フォールバック）
@@ -7092,7 +7170,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.189',
+    BUILD_VERSION: '1.14.190',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7512,6 +7590,19 @@ new Vue({
     },
     totalDeckCount() {
       return Object.values(this.deck).reduce((a,b) => a + b, 0);
+    },
+    /* デッキコード：現在のデッキ内容（カードNo×枚数＋カミNo）を短い文字列にエンコードしたもの。
+       実データではなくカードNoのみを保持するため、読込側で現在のcardByNoに解決して復元する
+       （存在しないNoは読込時にスキップする＝カード改廃に強い）。 */
+    deckCurrentCode() {
+      const parts = Object.keys(this.deck)
+        .filter(no => Number(this.deck[no]) > 0)
+        .sort((a, b) => Number(a) - Number(b))
+        .map(no => `${no}x${this.deck[no]}`);
+      const kamiPart = this.selectedKami ? `K${this.selectedKami.no}` : '';
+      const raw = [kamiPart, ...parts].filter(Boolean).join(',');
+      if (!raw) return '';
+      try { return btoa(unescape(encodeURIComponent(raw))); } catch (e) { return ''; }
     },
     deckCountClass() {
       if (this.totalDeckCount === this.deckSize) return 'ok';
@@ -19927,6 +20018,109 @@ new Vue({
       this.deck = {};
       this.returned = {};
       this.selectedKami = null;
+    },
+    /* ===== デッキの保存スロット・デッキコード共有 ===== */
+    _deckSlotsLoad() {
+      try {
+        const raw = localStorage.getItem('tsukuriyo_deckSlots');
+        this.deckSlots = raw ? JSON.parse(raw) : [];
+      } catch (e) { this.deckSlots = []; }
+    },
+    _deckSlotsPersist() {
+      try { localStorage.setItem('tsukuriyo_deckSlots', JSON.stringify(this.deckSlots)); } catch (e) { /* 保存できなくても続行 */ }
+    },
+    openDeckManager() {
+      this._sfxPlay('decision');
+      this._deckSlotsLoad();
+      this.deckManagerCodeInput = '';
+      this.deckManagerNameInput = '';
+      this.deckManagerOpen = true;
+    },
+    closeDeckManager() {
+      this._sfxPlay('cancel');
+      this.deckManagerOpen = false;
+    },
+    deckSaveNewSlot() {
+      const name = (this.deckManagerNameInput || '').trim();
+      if (!name) { alert('デッキの名前を入力してください'); return; }
+      if (!this.totalDeckCount) { alert('保存するカードがありません'); return; }
+      this._sfxPlay('decision');
+      this.deckSlots.push({
+        id: Date.now() + '_' + Math.floor(Math.random() * 1e6),
+        name,
+        deck: Object.assign({}, this.deck),
+        kamiNo: this.selectedKami ? String(this.selectedKami.no) : null,
+        savedAt: Date.now(),
+      });
+      this._deckSlotsPersist();
+      this.deckManagerNameInput = '';
+    },
+    deckLoadSlot(slot) {
+      if (this.totalDeckCount > 0 && !confirm(`「${slot.name}」を読み込みますか？（現在編集中のデッキは上書きされます）`)) return;
+      this._sfxPlay('decision');
+      this.deck = Object.assign({}, slot.deck);
+      this.returned = {};
+      this.selectedKami = slot.kamiNo ? (this.allKamiCards.find(k => String(k.no) === String(slot.kamiNo)) || null) : null;
+      this.deckManagerOpen = false;
+    },
+    deckDeleteSlot(slot) {
+      if (!confirm(`「${slot.name}」を削除しますか？`)) return;
+      this._sfxPlay('cancel');
+      this.deckSlots = this.deckSlots.filter(s => s.id !== slot.id);
+      this._deckSlotsPersist();
+    },
+    deckSlotCardCount(slot) {
+      return Object.values(slot.deck || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+    },
+    deckSlotKamiName(slot) {
+      if (!slot.kamiNo) return '—';
+      const k = this.allKamiCards.find(kk => String(kk.no) === String(slot.kamiNo));
+      return k ? this.fullName(k) : '—';
+    },
+    deckSlotSavedAtText(slot) {
+      const d = new Date(slot.savedAt || 0);
+      if (isNaN(d.getTime())) return '';
+      return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    },
+    async deckCopyCode() {
+      const code = this.deckCurrentCode;
+      if (!code) { alert('コピーするカードがありません'); return; }
+      try {
+        await navigator.clipboard.writeText(code);
+        this._sfxPlay('decision');
+        alert('デッキコードをコピーしました');
+      } catch (e) {
+        this._sfxPlay('cancel');
+        alert('コピーに失敗しました。表示されたコードを手動で選択してコピーしてください。');
+      }
+    },
+    // デッキコード読込：カードNoのみで表現されているため、現在のcardByNoで解決できたものだけ反映する
+    deckImportFromCode() {
+      const code = (this.deckManagerCodeInput || '').trim();
+      if (!code) return;
+      let raw;
+      try { raw = decodeURIComponent(escape(atob(code))); } catch (e) { alert('デッキコードの形式が正しくありません'); return; }
+      const tokens = raw.split(',').filter(Boolean);
+      let kamiNo = null;
+      const newDeck = {};
+      let unresolved = 0;
+      for (const t of tokens) {
+        if (/^K\d+$/.test(t)) { kamiNo = t.slice(1); continue; }
+        const m = t.match(/^(\d+)x(\d+)$/);
+        if (!m) continue;
+        const no = m[1], count = Number(m[2]) || 0;
+        if (!this.cardByNo[no]) { unresolved++; continue; }
+        if (count > 0) newDeck[no] = count;
+      }
+      if (!Object.keys(newDeck).length && !kamiNo) { alert('デッキコードを読み取れませんでした'); return; }
+      if (this.totalDeckCount > 0 && !confirm('現在編集中のデッキを上書きして読み込みますか？')) return;
+      this._sfxPlay('decision');
+      this.deck = newDeck;
+      this.returned = {};
+      this.selectedKami = kamiNo ? (this.allKamiCards.find(k => String(k.no) === String(kamiNo)) || null) : null;
+      this.deckManagerCodeInput = '';
+      this.deckManagerOpen = false;
+      if (unresolved) alert(`${unresolved}件のカードは現在のカードデータに見つからなかったため読み込みから除外しました`);
     },
     // ユドナリウムのエクスポート（zip/xml）からデッキを読み込む
     async onUdonImport(ev) {
