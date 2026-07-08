@@ -618,6 +618,32 @@ async function draftFreeReturn(code, seat, cardNo) {
   });
 }
 
+/** 無料返還の取消（このラウンド中のみ・ラウンドをまたいでは不可）。
+ *  draft_doneフェーズを抜けた（=深化の刻へ進んだ）時点でこのラウンドの返還は確定し、取消不可になる。 */
+async function draftFreeReturnUndo(code, seat, cardNo) {
+  const ref = getDb().ref(`sessions/${code}`);
+  await ref.transaction(s => {
+    if (!s || s.phase !== 'draft_done') return s;
+    const round = (s.draft && s.draft.completedRound) || s.round || 1;
+    s.draftFreeReturned = s.draftFreeReturned || {};
+    const returnedThisRound = fbArr(s.draftFreeReturned[round] && s.draftFreeReturned[round][seat]);
+    const i = returnedThisRound.findIndex(no => String(no) === String(cardNo));
+    if (i < 0) return s;
+    returnedThisRound.splice(i, 1);
+    s.draftFreeReturned[round] = s.draftFreeReturned[round] || {};
+    s.draftFreeReturned[round][seat] = returnedThisRound;
+    const converted = fbArr(s.converted && s.converted[seat]);
+    const ci = converted.findIndex(no => String(no) === String(cardNo));
+    if (ci < 0) return s; // 星魂側に見当たらない（不整合）→ 変更なし
+    converted.splice(ci, 1);
+    s.converted = s.converted || {};
+    s.converted[seat] = converted;
+    s.decks = s.decks || {};
+    s.decks[seat] = [...fbArr(s.decks[seat]), cardNo];
+    return s;
+  });
+}
+
 /** 無料返還を終了。全員が済むまで深化の刻には進めない */
 async function draftFreeReturnDone(code, seat, done) {
   const ref = getDb().ref(`sessions/${code}`);
@@ -722,7 +748,7 @@ if (typeof module !== "undefined") {
     startDraft, draftPick, dealDraftSets, rotatePacks, draftRoundTarget,
     DRAFT_ROUND_CONFIG,
     startDeepen, deepenReflect, deepenFusion, deepenBloomDraw, deepenBloomPick,
-    draftFreeReturn, draftFreeReturnDone, draftFreeReturnLimit,
+    draftFreeReturn, draftFreeReturnUndo, draftFreeReturnDone, draftFreeReturnLimit,
     deepenSetDone, packCards,
     PAIRINGS, battleWonBySeat, recordBattleResult, advanceAfterBattle,
     cpuSeatsOf, sessionHasCpu, addCpuSeat, removeCpuSeat, pairingsFor,
