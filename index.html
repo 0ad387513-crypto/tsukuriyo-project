@@ -3986,6 +3986,14 @@
           <div class="howto-heading">星紡ぎ戦（シールド戦）の流れ</div>
           <div class="howto-body">2人で部屋を作り、①パックを交互に選んで48枚集め、②その中から8枚を除外して40枚のデッキを確定し、③カミを選び、④その場で対戦します。対戦後は「同じデッキで再戦する」か「パック選択からやり直す」かを選べます。</div>
         </div>
+        <div class="howto-section">
+          <div class="howto-heading">対戦画面のキーボードショートカット</div>
+          <div class="howto-body">・Space または Enter：ターン終了
+・Z：一手戻る（Undo）
+・L：バトルログを表示
+・Q / E：カーソルを当てているフィールドカードのタップ状態を切り替え
+・Esc：開いているメニュー/モーダルを閉じる</div>
+        </div>
       </div>
       <div class="battle-zone-modal-actions">
         <button class="battle-back-btn" @click="_sfxPlay('cancel'); howToPlayModalOpen = false">閉じる</button>
@@ -7223,7 +7231,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.194',
+    BUILD_VERSION: '1.14.195',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -20072,6 +20080,27 @@ new Vue({
         e.preventDefault();
         return;
       }
+      // 対戦画面のキーボードショートカット：Space/Enter=ターン終了、Z=一手戻る、L=バトルログ
+      // （CPUの手番実行中や各種モーダル表示中は誤操作を避けるため無効化する）
+      if (this.appView === 'battle' && !this.battleCpuThinking) {
+        if (key === 'l') {
+          e.preventDefault();
+          this.battleOpenLogModal('log');
+          return;
+        }
+        if (!this._battleHasBlockingModal()) {
+          if ((e.key === ' ' || e.key === 'Enter') && this.battleCanEndTurn && this.battleSample.activeSide === 'self') {
+            e.preventDefault();
+            this.battleEndTurn();
+            return;
+          }
+          if (key === 'z' && this.battleCanUndo) {
+            e.preventDefault();
+            this.battleUndo();
+            return;
+          }
+        }
+      }
       if (e.key === "Escape") {
         // 上に重なっているものから順に閉じる
         if (this.battleFieldMenu)     this.battleFieldMenu = null;
@@ -20093,6 +20122,18 @@ new Vue({
         else if (this.previewCard)     this.closePreview();
         this.deckSortOpen = false;
       }
+    },
+    /* 対戦画面のキーボードショートカット用：何らかのモーダル/メニューが開いていて
+       ターン終了・一手戻るを誤操作させたくない状態かどうか */
+    _battleHasBlockingModal() {
+      return !!(
+        this.battleFieldMenu || this.battleFieldZoneMenu || this.battleTokenPickModal ||
+        this.battleHandMenu || this.battleZoneCardMenu || this.deckMenuOpen ||
+        this.battleConfirmModal || this.battleNotice || this.battleOracleEffect ||
+        this.battleSublimModal || this.battleSkillModal || this.battleDeckModal ||
+        this.battleZoneModal || this.dslTargetModal || this.dslChoiceModal ||
+        this.dslOptionalModal || this.battleSenteiModal || this.battleLogModal
+      );
     },
     onWindowClick() {
       this.deckSortOpen = false;
