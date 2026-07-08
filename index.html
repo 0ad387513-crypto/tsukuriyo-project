@@ -1510,11 +1510,18 @@
   }
   .gm-pack-grid.locked { opacity: 0.55; pointer-events: none; }
   .gm-pack-card {
-    cursor: pointer; border-radius: 6px; overflow: hidden;
+    position: relative; cursor: pointer; border-radius: 6px; overflow: hidden;
     border: 2px solid #3a3f55; background: #11141c;
     transition: transform 0.1s, border-color 0.1s;
   }
   .gm-pack-card:hover { transform: translateY(-3px); border-color: #6c9; }
+  .gm-pack-card.pick-assist-recommended { border-color: #ffd86a; box-shadow: 0 0 10px rgba(255, 216, 106, .4); }
+  .pick-assist-badge {
+    background: rgba(255, 216, 106, .95); color: #2a1c0a;
+    font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 10px;
+    white-space: nowrap;
+  }
+  .pick-assist-badge-overlay { position: absolute; top: 4px; left: 4px; z-index: 2; pointer-events: none; }
   .gm-pack-img { width: 100%; aspect-ratio: 744 / 1039; background: #0a0c12 center / cover no-repeat; }
   .gm-pack-name {
     padding: 4px 6px; font-size: 10px; color: #ddd; text-align: center;
@@ -1849,6 +1856,7 @@
   .sp-pack-card.taken { opacity: 0.4; cursor: default; }
   .sp-pack-card.taken-by-me { border-color: #4a7a4a; opacity: 0.85; }
   .sp-pack-card.disabled { cursor: not-allowed; }
+  .sp-pack-card.pick-assist-recommended { border-color: #ffd86a; box-shadow: 0 0 10px rgba(255, 216, 106, .3); }
 
   /* 選択ボタン */
   .sp-pick-btn {
@@ -4640,9 +4648,11 @@
                    'taken-by-me': sbMyPickedPacks.includes(i),
                    'taken': sbAllPickedPacks.includes(i) && !sbMyPickedPacks.includes(i),
                    'disabled': !sbIsMyPickTurn || sbAllPickedPacks.includes(i),
+                   'pick-assist-recommended': i === sbRecommendedPackIndex,
                  }">
               <div class="sp-pack-header">
                 <span class="ph-no">Pack {{ i + 1 }}</span>
+                <span v-if="i === sbRecommendedPackIndex" class="pick-assist-badge" title="可視3枚の評価が最も高いパックです（あくまで目安）">⭐ おすすめ</span>
                 <span class="ph-status"
                       :class="sbMyPickedPacks.includes(i) ? 'mine'
                              : sbEnemyPickedPacks.includes(i) ? 'enemy' : 'available'">
@@ -6278,8 +6288,10 @@
         </div>
         <div class="gm-pack-grid" :class="{ locked: gsIPickedThisStep }">
           <div v-for="(card, i) in gsMyPackCards" :key="i" class="gm-pack-card"
+               :class="{ 'pick-assist-recommended': String(card.no) === gsDraftRecommendedCardNo }"
                @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
                @click="gsDraftPick(card)">
+            <span v-if="String(card.no) === gsDraftRecommendedCardNo" class="pick-assist-badge pick-assist-badge-overlay" title="今のカミ・手持ちとの相性を踏まえたおすすめです（あくまで目安）">⭐ おすすめ</span>
             <div class="gm-pack-img" :class="genesisEffectClass(card)"
                  :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
             <div class="gm-pack-name">{{ fullName(card) }}</div>
@@ -7211,7 +7223,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.193',
+    BUILD_VERSION: '1.14.194',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8082,6 +8094,21 @@ new Vue({
       if (!this.sb.packs.length) return [];
       return this.sbMyPickedPacks.flatMap(id => this.sb.packs[id].all);
     },
+    /* ピック補助：カミ未確定のパック選択中はCPUドラフトAIと同じ評価軸（kamiTagsは空扱い）で
+       可視3枚の平均スコアを算出し、最もおすすめのパックを示す（目安表示のみ、強制ではない）。 */
+    sbRecommendedPackIndex() {
+      if (!this.sbIsMyPickTurn || !this.sb.packs || !this.sb.packs.length) return -1;
+      const ctx = { seat: 1, kamiTags: [], pickedCards: this.sbMy48Cards };
+      let best = -1, bestScore = -Infinity;
+      this.sb.packs.forEach((pack, i) => {
+        if (this.sbAllPickedPacks.includes(i)) return;
+        const visible = (pack && pack.visible) || [];
+        if (!visible.length) return;
+        const s = visible.reduce((sum, c) => sum + this.gsCpuScoreCard(c, ctx), 0) / visible.length;
+        if (s > bestScore) { bestScore = s; best = i; }
+      });
+      return best;
+    },
     // パックピック中の右サイド用：取得済みカードを同名でまとめ属性→コスト→No順に整列
     sbMyDeckEntries() {
       const groups = new Map();
@@ -8357,6 +8384,21 @@ new Vue({
       if (!d || !d.packs) return [];
       const nos = this.gsPackCardNos(d.packs[this.gs.seat]);
       return nos.map(no => this.cardByNo[String(no)]).filter(Boolean);
+    },
+    /* ピック補助：CPUドラフトAI（gsCpuScoreCard）と同じ評価軸で、今の束の中で最もおすすめの1枚を示す。
+       強制ではなく目安の表示のみ（クリックしてもよいし、無視して別のカードを選んでもよい）。 */
+    gsDraftRecommendedCardNo() {
+      const cards = this.gsMyPackCards;
+      if (!cards.length) return null;
+      const kamiNo = this.gsMyKamiCard ? String(this.gsMyKamiCard.no) : null;
+      const tags = kamiNo ? this.gsCpuKamiAffinityTags(kamiNo) : [];
+      const ctx = { seat: this.gs.seat, kamiTags: tags, pickedCards: this.gsMyDraftDeckCards };
+      let best = null, bestScore = -Infinity;
+      for (const c of cards) {
+        const s = this.gsCpuScoreCard(c, ctx);
+        if (s > bestScore) { bestScore = s; best = c; }
+      }
+      return best ? String(best.no) : null;
     },
     /* 現在自分の手元にある束のラベル（例：「ラウンド1・P2の1束目」） */
     gsMyBundleLabel() {
