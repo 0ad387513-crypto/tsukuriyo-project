@@ -1061,18 +1061,6 @@
     border-radius: 0 100% 0 100%; opacity: 0; pointer-events: none; z-index: 0;
     animation-name: victoryPetalFallKf; animation-timing-function: linear; animation-iteration-count: infinite;
   }
-  /* 彼岸花（花本体+茎）：左下・右下にまとめて配置する静的な装飾 */
-  .top-menu-higanbana {
-    position: fixed; bottom: 0; width: 70px; height: 116px; z-index: 0; pointer-events: none;
-    transform-origin: bottom center; opacity: .92;
-  }
-  .higanbana-stem { fill: none; stroke: #3a6b3a; stroke-width: 3; stroke-linecap: round; }
-  .higanbana-leaf { fill: none; stroke: #3a6b3a; stroke-width: 2.2; stroke-linecap: round; opacity: .85; }
-  .higanbana-petal {
-    fill: none; stroke: #d8405a; stroke-width: 2.6; stroke-linecap: round;
-  }
-  .higanbana-stamen { stroke: #e0607a; stroke-width: 1; stroke-linecap: round; opacity: .8; }
-  .higanbana-center { fill: #ffcf6a; }
   .top-menu-hero { position: relative; z-index: 1; margin-bottom: 20px; }
   .top-menu-title {
     font-size: 42px; font-weight: 800; letter-spacing: 0.08em;
@@ -1116,11 +1104,12 @@
   /* トップ画面：主要モードカード（4枚グリッド） */
   .top-mode-grid {
     position: relative; z-index: 1;
-    display: grid; grid-template-columns: repeat(3, 1fr);
+    display: grid; grid-template-columns: 1fr 1fr;
+    grid-template-areas: "game game" "deck shield";
     gap: 16px; width: min(640px, 92vw); margin-bottom: 28px;
   }
   @media (max-width: 560px) {
-    .top-mode-grid { grid-template-columns: 1fr; }
+    .top-mode-grid { grid-template-columns: 1fr; grid-template-areas: "game" "deck" "shield"; }
   }
   .top-mode-card {
     display: flex; flex-direction: column; align-items: center; gap: 6px;
@@ -1136,12 +1125,23 @@
   .top-mode-icon { font-size: 30px; line-height: 1; }
   .top-mode-label { font-size: 16px; font-weight: 800; letter-spacing: 0.03em; }
   .top-mode-desc { font-size: 11px; color: #aab; }
-  .top-mode-card.deck { background: linear-gradient(160deg, #2a3a5a, #1a2a4a); }
+  .top-mode-card.deck { grid-area: deck; background: linear-gradient(160deg, #2a3a5a, #1a2a4a); padding: 16px 12px; }
   .top-mode-card.deck:hover { border-color: #7a9ad0; }
-  .top-mode-card.shield { background: linear-gradient(160deg, #4a3a6a, #362854); }
+  .top-mode-card.deck .top-mode-icon { font-size: 22px; }
+  .top-mode-card.deck .top-mode-label { font-size: 13px; }
+  .top-mode-card.shield { grid-area: shield; background: linear-gradient(160deg, #4a3a6a, #362854); padding: 16px 12px; }
   .top-mode-card.shield:hover { border-color: #b090e0; }
-  .top-mode-card.game { background: linear-gradient(160deg, #2a5a4a, #1e4438); }
-  .top-mode-card.game:hover { border-color: #7ad0a8; }
+  .top-mode-card.shield .top-mode-icon { font-size: 22px; }
+  .top-mode-card.shield .top-mode-label { font-size: 13px; }
+  .top-mode-card.game {
+    grid-area: game; background: linear-gradient(160deg, #2a5a4a, #1e4438);
+    padding: 34px 20px; border-width: 2px; border-color: #4a9a72;
+    box-shadow: 0 0 24px rgba(90, 187, 138, 0.18);
+  }
+  .top-mode-card.game:hover { border-color: #7ad0a8; box-shadow: 0 10px 34px rgba(90, 187, 138, 0.32); }
+  .top-mode-card.game .top-mode-icon { font-size: 42px; }
+  .top-mode-card.game .top-mode-label { font-size: 21px; }
+  .top-mode-card.game .top-mode-desc { font-size: 13px; }
   /* トップ画面：開発者・動作確認用ツール（折りたたみ） */
   .top-devtools { position: relative; z-index: 1; width: min(420px, 92vw); }
   .top-devtools-toggle {
@@ -3691,21 +3691,6 @@
   <div v-if="appView === 'top'" class="top-menu">
     <span v-for="i in 16" :key="'topPetal'+i" class="top-menu-petal"
           :style="{ left: ((i*61)%100) + '%', animationDelay: ((i%7)*0.9) + 's', animationDuration: (9 + (i%5)*1.6) + 's' }"></span>
-    <!-- 彼岸花（花本体+茎）：左下・右下にまとまって咲かせる装飾 -->
-    <svg v-for="f in topMenuHiganbanaLayout" :key="'higan'+f.id" class="top-menu-higanbana"
-         :style="{ left: f.left + '%', bottom: f.bottom + '%', transform: 'scale(' + f.scale + ') rotate(' + f.rotate + 'deg)' }"
-         viewBox="0 0 60 100">
-      <path d="M30 98 Q26 62 30 40" class="higanbana-stem"/>
-      <path d="M30 78 Q20 74 14 66" class="higanbana-leaf"/>
-      <path d="M30 84 Q40 80 46 72" class="higanbana-leaf"/>
-      <path v-for="a in [0,60,120,180,240,300]" :key="a"
-            :d="'M30 36 Q' + (30+16*Math.cos((a-90)*Math.PI/180)).toFixed(1) + ' ' + (36+16*Math.sin((a-90)*Math.PI/180)).toFixed(1) + ' ' + (30+29*Math.cos((a-90)*Math.PI/180)).toFixed(1) + ' ' + (36+29*Math.sin((a-90)*Math.PI/180)).toFixed(1)"
-            class="higanbana-petal"/>
-      <path v-for="a in [30,90,150,210,270,330]" :key="'s'+a"
-            :d="'M30 36 L' + (30+34*Math.cos((a-90)*Math.PI/180)).toFixed(1) + ' ' + (36+34*Math.sin((a-90)*Math.PI/180)).toFixed(1)"
-            class="higanbana-stamen"/>
-      <circle cx="30" cy="36" r="2.6" class="higanbana-center"/>
-    </svg>
     <div class="top-menu-hero">
       <div class="top-menu-title">ツクリヨオンライン</div>
       <div class="top-menu-subtitle">— TSUKURIYO ONLINE —</div>
@@ -4689,7 +4674,7 @@
               </div>
               <!-- 中央：カミ（X軸基準） -->
               <div class="kami-portrait"
-                   :class="{ 'orochi-awakened': battleIsOrochi('opp') && battleSample.opp.seal === 0, 'battle-target-kami': battleCanFieldDragToAttackTargets, 'kami-shattering': battleSample.result && !battleResultRevealReady }"
+                   :class="{ 'orochi-awakened': battleIsOrochi('opp') && battleSample.opp.seal === 0, 'battle-target-kami': battleCanFieldDragToAttackTargets, 'kami-shattering': battleSample.result && battleSample.result.outcome === 'win' && !battleResultRevealReady }"
                    :style="battleSample.opp.kami && kamiIllustrationUrl(battleSample.opp.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.opp.kami) + ')' } : {}"
                    @click="battleOpponentKamiClick"
                    @dragover.prevent="battleUpdateFieldAttackTarget($event)"
@@ -4698,7 +4683,7 @@
                    @mouseleave="hideCardHover">
                 <div v-if="!battleSample.opp.kami" class="kami-placeholder">カミ(相手)</div>
                 <div v-else-if="!hasKamiIllustration(battleSample.opp.kami)" class="kami-illust-missing">イラスト未登録</div>
-                <svg v-if="battleSample.result && !battleResultRevealReady" class="kami-crack-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <svg v-if="battleSample.result && battleSample.result.outcome === 'win' && !battleResultRevealReady" class="kami-crack-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <path class="kami-crack-line" d="M50 0 L46 22 L58 34 L40 50 L54 66 L44 82 L50 100"/>
                   <path class="kami-crack-line" d="M50 30 L20 20 M50 30 L78 24 M58 55 L84 60 M40 50 L14 46 M44 82 L18 90 M54 66 L82 74"/>
                 </svg>
@@ -4868,14 +4853,14 @@
               </div>
               <!-- 中央：カミ（X軸基準、神技段階で枠色変化） -->
               <div class="kami-portrait"
-                   :class="['kami-tier-' + battleSkillTone, { 'orochi-awakened': battleIsOrochi('self') && battleSample.self.seal === 0, 'kami-shattering': battleSample.result && !battleResultRevealReady }]"
+                   :class="['kami-tier-' + battleSkillTone, { 'orochi-awakened': battleIsOrochi('self') && battleSample.self.seal === 0, 'kami-shattering': battleSample.result && battleSample.result.outcome === 'loss' && !battleResultRevealReady }]"
                    :style="battleSample.self.kami && kamiIllustrationUrl(battleSample.self.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.self.kami) + ')' } : {}"
                    @click="battleSample.self.kami && openPreview(battleSample.self.kami)"
                    @mouseenter="battleSample.self.kami && showCardHover(battleSample.self.kami, $event)"
                    @mouseleave="hideCardHover">
                 <div v-if="!battleSample.self.kami" class="kami-placeholder">カミ</div>
                 <div v-else-if="!hasKamiIllustration(battleSample.self.kami)" class="kami-illust-missing">イラスト未登録</div>
-                <svg v-if="battleSample.result && !battleResultRevealReady" class="kami-crack-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <svg v-if="battleSample.result && battleSample.result.outcome === 'loss' && !battleResultRevealReady" class="kami-crack-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <path class="kami-crack-line" d="M50 0 L46 22 L58 34 L40 50 L54 66 L44 82 L50 100"/>
                   <path class="kami-crack-line" d="M50 30 L20 20 M50 30 L78 24 M58 55 L84 60 M40 50 L14 46 M44 82 L18 90 M54 66 L82 74"/>
                 </svg>
@@ -6485,16 +6470,19 @@ function loadStoredBool(storageKey, defaultValue) {
   return defaultValue;
 }
 // BGM：画面カテゴリごとの候補曲一覧（otherは対戦以外の全画面、battleは対戦画面用）
+// roundは4人対戦の星戦（1〜3回目）専用のBGM群を分けるためのタグ（4人対戦以外ではbattleカテゴリとして通常通り扱う）
 const BGM_FILES = {
-  ryu:          { name: '龍の舞う和都', file: '龍の舞う和都_free.mp3', category: 'other' },
-  kazakiri:     { name: '風切',         file: '風切_loop_free.mp3',     category: 'battle' },
-  homuGarasu:   { name: '焔烏ノ刻',     file: '焔烏ノ刻_free.mp3',      category: 'battle' },
-  gekkouKenkaku:{ name: '月光の剣客',   file: '月光の剣客_free.mp3',    category: 'battle' },
-  moyuruSetsuna:{ name: '燃ゆる刹那',   file: '燃ゆる刹那_free.mp3',    category: 'battle' },
-  byakko:       { name: '白虎',         file: '白虎_free.mp3',          category: 'battle' },
-  kageNoFuin:   { name: '陰の封印',     file: '陰の封印_free.mp3',      category: 'battle' },
-  ryuNoKiba:    { name: '龍の牙',       file: '龍の牙_free.mp3',        category: 'battle' },
-  kakeraSaki:   { name: 'カケラ咲キ乱レテ', file: 'カケラ咲キ乱レテ.mp3', category: 'battle' },
+  ryu:          { name: '龍の舞う和都', file: '龍の舞う和都.mp3', category: 'other', loopStartSec: 101.00, loopEndSec: 169.50 },
+  kazakiri:     { name: '風切',         file: '風切.mp3',         category: 'battle', round: 1 },
+  kakeraSaki:   { name: 'カケラ咲キ乱レテ', file: 'カケラ咲キ乱レテ.mp3', category: 'battle', round: 1, loopStartSec: 6.40, loopEndSec: 208.00 },
+  moyuruSetsuna:{ name: '燃ゆる刹那',   file: '燃ゆる刹那.mp3',   category: 'battle', round: 1 },
+  byakko:       { name: '白虎',         file: '白虎.mp3',         category: 'battle', round: 2, loopStartSec: 63.80, loopEndSec: 143.40 },
+  kijinNoKihaku:{ name: '鬼人の気迫',   file: '鬼人の気迫.mp3',   category: 'battle', round: 2 },
+  gekkouKenkaku:{ name: '月光の剣客',   file: '月光の剣客.mp3',   category: 'battle', round: 2, loopStartSec: 20.00, loopEndSec: 185.60 },
+  homuGarasu:   { name: '焔烏ノ刻',     file: '焔烏ノ刻.mp3',     category: 'battle', round: 3, loopStartSec: 13.00, loopEndSec: 157.00 },
+  ryuNoKiba:    { name: '龍の牙',       file: '龍の牙.mp3',       category: 'battle', round: 3, loopStartSec: 15.00, loopEndSec: 99.00 },
+  soukanNaruTatakai: { name: '荘厳なる闘い', file: '荘厳なる闘い.mp3', category: 'battle', round: 3 }, // ループ調整は後日
+  senjouNoMai:  { name: '戦場の舞',     file: '戦場の舞.mp3',     category: 'sentei', fullLoop: true }, // 選定の儀・シールド戦パック選択用。曲全体を1ループとして繋ぐ
   victory:      { name: '勝利',         file: 'victory.mp3',           category: 'result', loop: false },
   defeat:       { name: '敗北',         file: 'defeat.mp3',            category: 'result', loop: false },
 };
@@ -6810,7 +6798,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.181',
+    BUILD_VERSION: '1.14.182',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8079,22 +8067,6 @@ new Vue({
       const n = this.battleResultTitleChars.length;
       return n * 0.15 + 0.24 + 0.3;
     },
-    /* TOP画面：左下・右下にまとめて咲かせる彼岸花（花本体+茎）の配置一覧 */
-    topMenuHiganbanaLayout() {
-      const layout = [];
-      [{ side: 'left', base: 2 }, { side: 'right', base: 84 }].forEach(group => {
-        for (let i = 0; i < 3; i++) {
-          layout.push({
-            id: group.side + i,
-            left: group.base + i * 5,
-            bottom: i % 2 === 0 ? 0 : 4,
-            scale: 0.8 + i * 0.18,
-            rotate: group.side === 'left' ? (i * 7 - 6) : (-(i * 7 - 6)),
-          });
-        }
-      });
-      return layout;
-    },
     battleTurnTimerLabel() {
       const s = this.battleTurnElapsedSec;
       const m = Math.floor(s / 60);
@@ -9258,7 +9230,10 @@ new Vue({
         const manual = (entry.loopStartSec != null && entry.loopEndSec != null)
           ? { loopStartSec: entry.loopStartSec, loopEndSec: entry.loopEndSec }
           : null;
-        const point = manual || this._bgmDetectLoopPoint(buffer, silenceBounds.loopStart, silenceBounds.loopEnd);
+        // fullLoop：曲全体（無音トリム後の全域）を1ループとして扱う。曲中の内部一致を探させない
+        // （最初から通しでループするよう作られている曲向け。継ぎ目だけクロスフェードで滑らかにする）
+        const full = entry.fullLoop ? { loopStartSec: silenceBounds.loopStart, loopEndSec: silenceBounds.loopEnd } : null;
+        const point = manual || full || this._bgmDetectLoopPoint(buffer, silenceBounds.loopStart, silenceBounds.loopEnd);
         const loopStartSec = point ? point.loopStartSec : silenceBounds.loopStart;
         loopEndSec = point ? point.loopEndSec : silenceBounds.loopEnd;
         try {
@@ -9441,23 +9416,52 @@ new Vue({
        オンライン対戦中（battleNet.on）は各自バラバラに選ぶと同じ部屋なのに違う曲が聞こえてしまうため、
        Firebase上で部屋共通の1曲を決定・共有する（_bgmSyncPick）。 */
     _bgmAutoPickForView(view) {
+      // 4人対戦の対戦画面（星戦）は、通常のbattleカテゴリではなくラウンド専用のBGM群を使う
+      if (view === 'battle' && this.battleContext && this.battleContext.source === 'game' && this.battleContext.round) {
+        this._bgmAutoPickRoundBattle(this.battleContext.round);
+        return;
+      }
       const category = view === 'battle' ? 'battle' : 'other';
       const current = this.bgmCurrentKey && BGM_FILES[this.bgmCurrentKey];
       if (current && current.category === category) return;
       if (category === 'battle' && this.battleNet && this.battleNet.on && this.battleNet.statePath) {
-        this._bgmSyncPick();
+        this._bgmSyncPick('battle');
         return;
       }
       const key = this._bgmPickRandomKey(category);
       if (key) this._bgmPlay(key);
     },
-    /* 部屋共通のBGMをFirebase transactionで1回だけ決定し、以後は皆その値に従う
-       （既に決まっていればそれをそのまま採用。firstSeatの決定と同じ考え方）。 */
-    _bgmSyncPick() {
+    /* 4人対戦の星戦：ラウンド(1〜3)専用のBGM群からランダムに1曲を選ぶ。
+       既にそのラウンドの曲を再生中なら変えない。同期対戦中は両者が同じ曲になるよう共有する。 */
+    _bgmAutoPickRoundBattle(round) {
+      const keys = Object.keys(BGM_FILES).filter(k => BGM_FILES[k].round === round);
+      if (!keys.length) return;
+      if (this.bgmCurrentKey && keys.includes(this.bgmCurrentKey)) return;
+      if (this.battleNet && this.battleNet.on && this.battleNet.statePath) {
+        this._bgmSyncPickRound(round, keys);
+        return;
+      }
+      const key = keys[Math.floor(Math.random() * keys.length)];
+      if (key) this._bgmPlay(key);
+    },
+    /* 部屋共通のラウンド別BGMをFirebase transactionで1回だけ決定し、以後は皆その値に従う。
+       既に決まっている値が今のラウンドの候補に含まれていればそれを採用し、
+       含まれていなければ（前ラウンドの値が残っている等）このラウンドの候補から新たに選び直す。 */
+    _bgmSyncPickRound(round, keys) {
       const n = this.battleNet;
       if (!n || !n.statePath) return;
       const path = n.statePath.replace(/\/state$/, '/bgm');
-      getDb().ref(path).transaction(cur => (cur != null ? cur : this._bgmPickRandomKey('battle')))
+      getDb().ref(path).transaction(cur => (cur != null && keys.includes(cur)) ? cur : keys[Math.floor(Math.random() * keys.length)])
+        .then(res => { const key = res.snapshot.val(); if (key) this._bgmPlay(key); })
+        .catch(() => {});
+    },
+    /* 部屋共通のBGMをFirebase transactionで1回だけ決定し、以後は皆その値に従う
+       （既に決まっていればそれをそのまま採用。firstSeatの決定と同じ考え方）。 */
+    _bgmSyncPick(category = 'battle') {
+      const n = this.battleNet;
+      if (!n || !n.statePath) return;
+      const path = n.statePath.replace(/\/state$/, '/bgm');
+      getDb().ref(path).transaction(cur => (cur != null ? cur : this._bgmPickRandomKey(category)))
         .then(res => { const key = res.snapshot.val(); if (key) this._bgmPlay(key); })
         .catch(() => {});
     },
@@ -9478,7 +9482,9 @@ new Vue({
         this.bgmAuto = true;
         this.bgmCurrentKey = null; // 同カテゴリ判定を無効化し、必ず再抽選させる
         if (inSyncedBattle) {
-          const newKey = this._bgmPickRandomKey('battle');
+          const isRoundGame = this.battleContext && this.battleContext.source === 'game' && this.battleContext.round;
+          const roundKeys = isRoundGame ? Object.keys(BGM_FILES).filter(k => BGM_FILES[k].round === this.battleContext.round) : null;
+          const newKey = roundKeys ? roundKeys[Math.floor(Math.random() * roundKeys.length)] : this._bgmPickRandomKey('battle');
           if (newKey) { this._bgmPlay(newKey); this._battlePublishBgm(newKey); }
         } else {
           this._bgmAutoPickForView(this.appView);
@@ -9516,15 +9522,13 @@ new Vue({
       try {
         const media = await this._bgmLoadBuffer(key);
         this.bgmLoopTesterDuration = media.buffer.duration;
-        const entry = BGM_FILES[key];
-        if (entry.loopStartSec != null && entry.loopEndSec != null) {
-          this.bgmLoopTesterStart = entry.loopStartSec;
-          this.bgmLoopTesterEnd = entry.loopEndSec;
+        // media側が既に手動指定/fullLoop/自動検出のどれを使うか解決済みなので、その結果をそのまま読み戻す
+        if (media.loopBuffer) {
+          this.bgmLoopTesterEnd = Number(media.loopEndSec.toFixed(2));
+          this.bgmLoopTesterStart = Number((media.loopEndSec - media.loopBuffer.duration).toFixed(2));
         } else {
-          const sb = this._bgmDetectSilenceTrim(media.buffer);
-          const point = this._bgmDetectLoopPoint(media.buffer, sb.loopStart, sb.loopEnd);
-          this.bgmLoopTesterStart = Number((point ? point.loopStartSec : sb.loopStart).toFixed(2));
-          this.bgmLoopTesterEnd = Number((point ? point.loopEndSec : sb.loopEnd).toFixed(2));
+          this.bgmLoopTesterStart = 0;
+          this.bgmLoopTesterEnd = Number(media.buffer.duration.toFixed(2));
         }
       } catch (e) { console.warn('[bgm] ループ調整ツール：読み込みに失敗:', e && e.message); }
     },
@@ -19697,6 +19701,26 @@ new Vue({
     });
     // BGM：画面カテゴリ（対戦画面／それ以外）に応じて自動選曲（起動直後にも一度実行）
     this.$watch('appView', (v) => { if (this.bgmAuto) this._bgmAutoPickForView(v); }, { immediate: true });
+    // 選定の儀（4人対戦のドラフト画面）・シールド戦のパック選択画面：専用BGM「戦場の舞」に切り替える。
+    // 候補が1曲だけのカテゴリなので同期の仕組みは不要（全員が同じ曲を選ぶ）。
+    this.$watch('gs.view', (v) => {
+      if (this.appView !== 'game' || !this.bgmAuto) return;
+      if (v === 'draft') {
+        const key = this._bgmPickRandomKey('sentei');
+        if (key) this._bgmPlay(key);
+      } else if (v !== 'battle') {
+        this._bgmAutoPickForView('game');
+      }
+    });
+    this.$watch('sb.phase', (v) => {
+      if (this.appView !== 'shield' || !this.bgmAuto) return;
+      if (v === 'picking') {
+        const key = this._bgmPickRandomKey('sentei');
+        if (key) this._bgmPlay(key);
+      } else {
+        this._bgmAutoPickForView('shield');
+      }
+    });
     // 勝敗確定：すぐに結果オーバーレイを出さず、カミがひび割れて破壊される演出を挟んでから
     // （battleResultRevealReadyがtrueになった時点で）結果オーバーレイと勝敗bgmを出す
     this.$watch('battleSample.result', (v) => {
