@@ -1188,6 +1188,7 @@
     color: #fff; border: 1px solid #2e3548;
     background: linear-gradient(160deg, #2a3550, #1a2540);
     transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    min-width: 0; /* グリッド内で内容（説明文の折り返し不可幅）に押されて列幅が不揃いになるのを防ぐ */
   }
   .top-mode-card:hover {
     transform: translateY(-3px); box-shadow: 0 8px 28px rgba(220, 159, 80, 0.22);
@@ -1196,7 +1197,7 @@
   .top-mode-icon { font-size: 30px; line-height: 1; }
   .genesis-globe-icon { display: inline-block; vertical-align: -0.15em; }
   .top-mode-label { font-size: 16px; font-weight: 800; letter-spacing: 0.03em; }
-  .top-mode-desc { font-size: 11px; color: #aab; word-break: keep-all; }
+  .top-mode-desc { font-size: 11px; color: #aab; word-break: keep-all; overflow-wrap: break-word; }
   .top-mode-card.deck { grid-area: deck; background: linear-gradient(160deg, #2a3a5a, #1a2a4a); padding: 16px 12px; }
   .top-mode-card.deck:hover { border-color: #7a9ad0; }
   .top-mode-card.deck .top-mode-icon { font-size: 22px; }
@@ -1569,7 +1570,7 @@
     white-space: nowrap; line-height: 1;
   }
   .pick-assist-badge-down { background: rgba(120, 120, 130, .95); color: #fff; }
-  .pick-assist-badge-overlay { position: absolute; top: 4px; left: 4px; z-index: 2; pointer-events: none; }
+  .pick-assist-badge-overlay { position: absolute; top: 4px; right: 4px; z-index: 2; pointer-events: none; }
   .gm-pack-img { width: 100%; aspect-ratio: 744 / 1039; background: #0a0c12 center / cover no-repeat; }
   .gm-pack-name {
     padding: 4px 6px; font-size: 10px; color: #ddd; text-align: center;
@@ -7647,7 +7648,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.3',
+    BUILD_VERSION: '1.15.4',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8930,8 +8931,8 @@ new Vue({
         .filter(r => (r.s - avg) >= QUALITY_MARGIN);
       return ranked.map(r => String(r.c.no));
     },
-    /* ピック補助：非おすすめ（👎）。束の平均より著しくスコアが低いカードにだけ付ける
-       （枚数の上限は設けず、閾値を明確に下回るものだけを対象にする）。選択肢が少ない
+    /* ピック補助：非おすすめ（👎）。束の平均より著しくスコアが低いカードのうち、
+       最もスコアが低い1枚にだけ付ける（表示するとしても常に最大1枚）。選択肢が少ない
        （2枚以下）束では「どれも最後の1枚」になるため表示しない。 */
     gsDraftNotRecommendedCardNos() {
       if (!this.pickAssistEnabled) return [];
@@ -8939,7 +8940,9 @@ new Vue({
       if (scored.length <= 2) return [];
       const LOW_QUALITY_MARGIN = 8; // 平均よりこれだけ劣っていたら「おすすめしない」を表示する
       const bad = scored.filter(r => (avg - r.s) >= LOW_QUALITY_MARGIN);
-      return bad.map(r => String(r.c.no));
+      if (!bad.length) return [];
+      const worst = bad.reduce((min, r) => (r.s < min.s ? r : min), bad[0]);
+      return [String(worst.c.no)];
     },
     /* 現在自分の手元にある束のラベル（例：「ラウンド1・P2の1束目」） */
     gsMyBundleLabel() {
