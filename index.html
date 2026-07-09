@@ -1562,11 +1562,13 @@
   }
   .gm-pack-card:hover { transform: translateY(-3px); border-color: #6c9; }
   .gm-pack-card.pick-assist-recommended { border-color: #ffd86a; box-shadow: 0 0 10px rgba(255, 216, 106, .4); }
+  .gm-pack-card.pick-assist-not-recommended { border-color: #6a6a72; filter: grayscale(35%) brightness(0.82); }
   .pick-assist-badge {
     background: rgba(255, 216, 106, .95); color: #2a1c0a;
-    font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 10px;
-    white-space: nowrap;
+    font-size: 14px; font-weight: 800; padding: 2px 6px; border-radius: 10px;
+    white-space: nowrap; line-height: 1;
   }
+  .pick-assist-badge-down { background: rgba(120, 120, 130, .95); color: #fff; }
   .pick-assist-badge-overlay { position: absolute; top: 4px; left: 4px; z-index: 2; pointer-events: none; }
   .gm-pack-img { width: 100%; aspect-ratio: 744 / 1039; background: #0a0c12 center / cover no-repeat; }
   .gm-pack-name {
@@ -6655,10 +6657,11 @@
         </div>
         <div class="gm-pack-grid" :class="{ locked: gsIPickedThisStep }">
           <div v-for="(card, i) in gsMyPackCards" :key="i" class="gm-pack-card"
-               :class="{ 'pick-assist-recommended': gsDraftRecommendedCardNos.includes(String(card.no)) }"
+               :class="{ 'pick-assist-recommended': gsDraftRecommendedCardNos.includes(String(card.no)), 'pick-assist-not-recommended': gsDraftNotRecommendedCardNos.includes(String(card.no)) }"
                @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
                @click="gsDraftPick(card)">
-            <span v-if="gsDraftRecommendedCardNos.includes(String(card.no))" class="pick-assist-badge pick-assist-badge-overlay" title="今のカミ・手持ちとの相性を踏まえたおすすめです（あくまで目安）">⭐ おすすめ</span>
+            <span v-if="gsDraftRecommendedCardNos.includes(String(card.no))" class="pick-assist-badge pick-assist-badge-overlay" title="今のカミ・手持ちとの相性を踏まえたおすすめです（あくまで目安）">👍</span>
+            <span v-else-if="gsDraftNotRecommendedCardNos.includes(String(card.no))" class="pick-assist-badge pick-assist-badge-down pick-assist-badge-overlay" title="今のカミ・手持ちとの相性を踏まえると優先度が低めです（あくまで目安）">👎</span>
             <div class="gm-pack-img" :class="genesisEffectClass(card)"
                  :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
             <div class="gm-pack-name">{{ fullName(card) }}</div>
@@ -7629,7 +7632,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.1',
+    BUILD_VERSION: '1.15.2',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8882,22 +8885,28 @@ new Vue({
       const nos = this.gsPackCardNos(d.packs[this.gs.seat]);
       return nos.map(no => this.cardByNo[String(no)]).filter(Boolean);
     },
-    /* ピック補助：CPUドラフトAI（gsCpuScoreCard）と同じ評価軸で、今の束の中でおすすめのカードを示す。
-       強制ではなく目安の表示のみ（クリックしてもよいし、無視して別のカードを選んでもよい）。
+    /* ピック補助：CPUドラフトAI（gsCpuScoreCard）と同じ評価軸で、今の束の中のカードを採点する
+       共通処理。おすすめ（👍）・非おすすめ（👎）の両方の判定がここから派生する。 */
+    gsDraftPackScored() {
+      const cards = this.gsMyPackCards;
+      if (!cards.length) return { scored: [], avg: 0 };
+      const kamiNo = this.gsMyKamiCard ? String(this.gsMyKamiCard.no) : null;
+      const tags = kamiNo ? this.gsCpuKamiAffinityTags(kamiNo) : [];
+      const ctx = { seat: this.gs.seat, kamiTags: tags, pickedCards: this.gsMyDraftDeckCards };
+      const scored = cards.map(c => ({ c, s: this.gsCpuScoreCard(c, ctx) }));
+      const avg = scored.reduce((sum, r) => sum + r.s, 0) / scored.length;
+      return { scored, avg };
+    },
+    /* ピック補助：おすすめ（👍）。強制ではなく目安の表示のみ（クリックしてもよいし、無視して別のカードを選んでもよい）。
        提示枚数は束の残り枚数に応じて可変：7枚以上=3枚、6〜5枚=2枚、4枚以下=1枚、1枚なら0枚。
        さらに、束の平均スコアより十分に優れたカードが無い（＝どれも大差ない）場合はおすすめ自体を出さない。 */
     gsDraftRecommendedCardNos() {
       if (!this.pickAssistEnabled) return [];
-      const cards = this.gsMyPackCards;
-      if (!cards.length) return [];
-      const kamiNo = this.gsMyKamiCard ? String(this.gsMyKamiCard.no) : null;
-      const tags = kamiNo ? this.gsCpuKamiAffinityTags(kamiNo) : [];
-      const ctx = { seat: this.gs.seat, kamiTags: tags, pickedCards: this.gsMyDraftDeckCards };
-      const total = cards.length;
+      const { scored, avg } = this.gsDraftPackScored;
+      if (!scored.length) return [];
+      const total = scored.length;
       const count = total <= 1 ? 0 : total <= 4 ? 1 : total <= 6 ? 2 : 3;
       if (count <= 0) return [];
-      const scored = cards.map(c => ({ c, s: this.gsCpuScoreCard(c, ctx) }));
-      const avg = scored.reduce((sum, r) => sum + r.s, 0) / scored.length;
       const QUALITY_MARGIN = 8; // 平均よりこれだけ優れていなければ「おすすめ」を表示しない
       const ranked = scored
         .slice()
@@ -8905,6 +8914,17 @@ new Vue({
         .slice(0, count)
         .filter(r => (r.s - avg) >= QUALITY_MARGIN);
       return ranked.map(r => String(r.c.no));
+    },
+    /* ピック補助：非おすすめ（👎）。束の平均より著しくスコアが低いカードにだけ付ける
+       （枚数の上限は設けず、閾値を明確に下回るものだけを対象にする）。選択肢が少ない
+       （2枚以下）束では「どれも最後の1枚」になるため表示しない。 */
+    gsDraftNotRecommendedCardNos() {
+      if (!this.pickAssistEnabled) return [];
+      const { scored, avg } = this.gsDraftPackScored;
+      if (scored.length <= 2) return [];
+      const LOW_QUALITY_MARGIN = 8; // 平均よりこれだけ劣っていたら「おすすめしない」を表示する
+      const bad = scored.filter(r => (avg - r.s) >= LOW_QUALITY_MARGIN);
+      return bad.map(r => String(r.c.no));
     },
     /* 現在自分の手元にある束のラベル（例：「ラウンド1・P2の1束目」） */
     gsMyBundleLabel() {
