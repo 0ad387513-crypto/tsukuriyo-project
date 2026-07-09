@@ -7823,7 +7823,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.12',
+    BUILD_VERSION: '1.15.13',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -21088,6 +21088,8 @@ new Vue({
     setLeader(card) {
       this._sfxPlay('decision');
       this.selectedKami = card;
+      // カミ選択直後はカミ絞り込みを解除し、即座に通常のカードリスト表示へ戻す
+      if (this.filterCategory === "カミ") this.filterCategory = "";
     },
     clearLeader() {
       this._sfxPlay('cancel');
