@@ -745,6 +745,23 @@
   .deck-item .qty button:hover { background: #3a4055; }
   .deck-item .qty .n { min-width: 18px; text-align: center; font-weight: bold; font-size: 13px; }
 
+  /* 密表示（多く表示）モード：デッキ一覧の各行を詰めて、一画面で見渡せる枚数を増やす。
+     マナカーブ・属性割合・種別数（.deck-stats-panel より上の.deck-info側）は変更しないため
+     最低限の情報は維持したまま、行そのものだけをコンパクトにする。 */
+  .deck-list.dense .deck-item {
+    min-height: 26px; padding: 3px 8px; gap: 6px;
+    box-shadow: none; background-image: none !important;
+  }
+  .deck-list.dense .deck-item::before { display: none; }
+  .deck-list.dense .deck-item .cost { width: 16px; height: 16px; font-size: 9px; border-width: 1px; }
+  .deck-list.dense .deck-item .name { font-size: 11px; }
+  .deck-list.dense .deck-item .name small { display: none; }
+  .deck-list.dense .deck-item .pack-no-badge { display: none; }
+  .deck-list.dense .deck-item .qty button { width: 16px; height: 16px; font-size: 10px; }
+  .deck-list.dense .deck-item .qty .n { font-size: 10px; min-width: 12px; }
+  .deck-list.dense .deck-item .mode-action-btn { padding: 1px 6px; font-size: 9px; height: 18px; }
+  .deck-dense-toggle-btn.active { background: #2a5cb8; border-color: #6090e0; color: #fff; }
+
   /* 返還・取消ボタン（通常モード deck-list 用） */
   .deck-item .return-btn,
   .deck-item .unreturn-btn {
@@ -4580,11 +4597,16 @@
     <div class="deck-cards">
 
     <!-- 通常時：縦リスト（同名カードはグループ化して合算表示） -->
-    <div class="deck-list" v-if="!deckExpanded">
+    <div class="deck-list" :class="{ dense: deckDenseView }" v-if="!deckExpanded">
       <div class="deck-section-label">
         <span class="deck-section-title">カード</span>
         <input class="deck-search" type="text" v-model="deckSearchText" placeholder="カード名 / No / 効果テキストで検索">
         <span class="deck-visible-count">{{ deckVisibleCountLabel }}</span>
+        <button class="deck-sort-btn deck-dense-toggle-btn" @click.stop="_sfxPlay('cancel'); toggleDeckDenseView()"
+                :class="{ active: deckDenseView }"
+                :title="deckDenseView ? '通常のカード表示に戻す' : 'カードを詰めて多く表示する'">
+          {{ deckDenseView ? '▦ 通常表示' : '▦ 多く表示' }}
+        </button>
         <div class="deck-sort-wrap">
           <button class="deck-sort-btn" @click.stop="_sfxPlay('cancel'); deckSortOpen = !deckSortOpen"
                   :class="{ active: deckSortOpen }">
@@ -4626,7 +4648,7 @@
         <div v-for="entry in deckEntriesDisplay" :key="(entry.returned?'r:':'a:') + fullName(entry.card)"
              class="deck-item"
              :class="{ 'is-returned': entry.returned }"
-             :style="deckItemBgStyle(entry.card)"
+             :style="deckDenseView ? {} : deckItemBgStyle(entry.card)"
              @click="handleDeckCardClick(entry)"
              @contextmenu.prevent="!returnModeActive && !entry.returned && removeCard(entry.card.no)">
           <div class="cost" :style="costBadgeStyle(entry.card)">{{ entry.card.cost }}</div>
@@ -7605,6 +7627,12 @@ const GS_CPU_NAMED_CARD_BONUS = {
   },
 };
 
+// 理念構築戦：ストラクチャーデッキが1件も無い場合に初回シードする既定リスト（開発者用ツールから追加・編集可能）
+const CB_STRUCTURE_DECK_SEED_DEFAULTS = [
+  { name: 'ツクヨミ赤忍者', kamiNo: '9',
+    deckCode: 'SzksMXgxLDJ4MSwxMXgxLDEyeDEsMTN4MSwxNHgxLDE3eDEsMjB4MSwyMXgxLDIyeDEsMjR4MSwyNXgxLDM0eDEsNDF4MSw0N3gxLDQ4eDEsNTN4MSw1NHgxLDY4eDEsODd4MSw5M3gxLDk0eDEsMTE2eDEsMTE3eDEsMTI2eDEsMTI3eDEsMTM3eDEsMTQweDEsMTQzeDEsMTQ0eDEsMTUzeDEsMTU1eDEsMTU3eDEsMTU4eDEsMTgweDE=' },
+];
+
 new Vue({
   el: "#app",
   data: {
@@ -7730,6 +7758,7 @@ new Vue({
     battleTurnTimerEnabled: loadStoredBool('tsukuriyo_turnTimerEnabled', true), // ターン経過時間の警告表示（強制的な時間切れ処理は行わない）
     pickAssistEnabled: loadStoredBool('tsukuriyo_pickAssistEnabled', true), // 選別の儀（4人対戦ドラフト）の「⭐おすすめ」ピック補助表示（初心者向け、OFF可）。シールド戦のパック選択には適用しない
     poolDenseView: loadStoredBool('tsukuriyo_poolDenseView', false), // カードリスト（左のカードプール）を小さいカードで多く並べる表示に切り替えるか（見方だけの切替。機能は従来通り）
+    deckDenseView: loadStoredBool('tsukuriyo_deckDenseView', false), // デッキ一覧（右のデッキパネル）の各行を詰めて多く表示するか（マナカーブ等の統計表示は変わらず維持）
     cpuAutoPlayEnabled: loadStoredBool('tsukuriyo_cpuAutoPlayEnabled', true), // ソロテスト時：CPUが自律してカードプレイ・攻撃を行うか（OFF＝従来通り待機のみ）
     battleTurnElapsedSec: 0,      // 現在のターンの経過秒数
     battleResultRevealReady: false, // false の間はひび割れ→破壊演出を表示し、勝敗オーバーレイ自体は隠す
@@ -7793,7 +7822,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.9',
+    BUILD_VERSION: '1.15.10',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -11207,6 +11236,10 @@ new Vue({
     togglePoolDenseView() {
       this.poolDenseView = !this.poolDenseView;
       try { localStorage.setItem('tsukuriyo_poolDenseView', String(this.poolDenseView)); } catch (e) { /* 保存できなくても続行 */ }
+    },
+    toggleDeckDenseView() {
+      this.deckDenseView = !this.deckDenseView;
+      try { localStorage.setItem('tsukuriyo_deckDenseView', String(this.deckDenseView)); } catch (e) { /* 保存できなくても続行 */ }
     },
     toggleCpuAutoPlay() {
       this.cpuAutoPlayEnabled = !this.cpuAutoPlayEnabled;
@@ -16396,10 +16429,15 @@ new Vue({
       // （対象選択等）も人間に委ねずCPU的に自動解決する。
       const needsSwap = cardOwnerSide === 'opp';
       const prevAutoResolving = this._battleCpuAutoResolving;
+      // 入れ替え中に積まれるUndoスナップショットはself/oppが逆転した状態のため、
+      // 後で人間が「一手戻る」を押した際に盤面が反転してしまわないよう、
+      // 入れ替え中に積まれた分は終了後にまとめて破棄する（_battleCpuTakeTurnと同じ対策）
+      const undoDepthBefore = this.battleUndoStack.length;
       const restore = () => {
         if (!needsSwap) return;
         this._dslSwapSelfOpp();
         this._battleCpuAutoResolving = prevAutoResolving;
+        if (this.battleUndoStack.length > undoDepthBefore) this.battleUndoStack.length = undoDepthBefore;
       };
       if (needsSwap) {
         this._dslSwapSelfOpp();
@@ -22079,6 +22117,10 @@ new Vue({
     async _cbSubmitRandomStructureDeckForCpu(roomCode) {
       let decks = this.cbStructureDecks;
       if (!decks.length) {
+        // _cbSubscribeStructureDecks側のシードは購読開始と並行して投げているだけで完了を待っていないため、
+        // ここで明示的に完了を待ってから取得し直す（初回起動直後にソロプレイを押すとシード未完了で
+        // 「デッキが1つもない」扱いになりCPUがいつまでも準備完了にならないバグの対策）
+        try { await seedStructureDecksIfEmpty(CB_STRUCTURE_DECK_SEED_DEFAULTS); } catch (e) { /* 失敗しても取得は試す */ }
         try { decks = await fetchStructureDecksOnce(); } catch (e) { decks = []; }
       }
       if (!decks.length) {
@@ -22127,6 +22169,11 @@ new Vue({
       this._sfxPlay('decision');
       if (this.cbMyReady) await unsubmitConstructDeck(this.cb.roomCode, this.cb.role);
       this.cbBuilding = true;
+      // デッキビルダー画面に入ったら「戦場の舞」を流す（ロビー表示中はBGMを変更しない）
+      if (this.bgmAuto) {
+        const key = this._bgmPickRandomKey('sentei');
+        if (key && key !== this.bgmCurrentKey) this._bgmPlay(key);
+      }
     },
     cbCloseBuilding() {
       this._sfxPlay('cancel');
@@ -22168,11 +22215,10 @@ new Vue({
     _cbSubscribeStructureDecks() {
       if (this._cbStructureUnsub) return;
       this._cbStructureUnsub = subscribeStructureDecks((list) => { this.cbStructureDecks = list; });
-      // 初回のみ：ストラクチャーデッキが1件も無ければサンプルをシードする
-      seedStructureDecksIfEmpty([
-        { name: 'ツクヨミ赤忍者', kamiNo: '9',
-          deckCode: 'SzksMXgxLDJ4MSwxMXgxLDEyeDEsMTN4MSwxNHgxLDE3eDEsMjB4MSwyMXgxLDIyeDEsMjR4MSwyNXgxLDM0eDEsNDF4MSw0N3gxLDQ4eDEsNTN4MSw1NHgxLDY4eDEsODd4MSw5M3gxLDk0eDEsMTE2eDEsMTE3eDEsMTI2eDEsMTI3eDEsMTM3eDEsMTQweDEsMTQzeDEsMTQ0eDEsMTUzeDEsMTU1eDEsMTU3eDEsMTU4eDEsMTgweDE=' },
-      ]).catch(e => console.warn('[construct] ストラクチャーデッキの初期シードに失敗:', e));
+      // 初回のみ：ストラクチャーデッキが1件も無ければサンプルをシードする（完了を待たない発火のみ。
+      // 確実性が必要な箇所＝_cbSubmitRandomStructureDeckForCpuでは別途完了を待って呼び直す）
+      seedStructureDecksIfEmpty(CB_STRUCTURE_DECK_SEED_DEFAULTS)
+        .catch(e => console.warn('[construct] ストラクチャーデッキの初期シードに失敗:', e));
     },
     /* 開発者用：ストラクチャーデッキの追加・編集・削除（他のツールと同じく、
        アクセス制御は行わない「動作確認用ツール」の一種として運用） */
