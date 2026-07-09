@@ -574,8 +574,7 @@
   .cb-build-status { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: #cbd3de; margin-bottom: 6px; flex-wrap: wrap; }
   .cb-build-status b { color: #f0b86c; }
   .cb-build-status b.ok { color: #7cf0a8; }
-  .cb-build-warnings { margin: 0 0 8px; padding-left: 18px; font-size: 11.5px; color: #f0a86c; }
-  .cb-build-warnings li { margin: 2px 0; }
+  .cb-build-warnings { margin: 0 0 8px; font-size: 11px; line-height: 1.4; color: #f0a86c; }
   .cb-structure-btn {
     display: block; width: 100%; margin-bottom: 8px; padding: 8px 10px;
     font-size: 12.5px; font-weight: 700; color: #e8d4a0;
@@ -4557,15 +4556,10 @@
             <template v-if="cbDeckReturnRemaining > 0">（あと{{ cbDeckReturnRemaining }}）</template>
           </span>
         </div>
-        <ul v-if="cbDeckValidationMessages.length" class="cb-build-warnings">
-          <li v-for="(m, i) in cbDeckValidationMessages" :key="i">⚠ {{ m }}</li>
-        </ul>
+        <div v-if="cbDeckValidationMessages.length" class="cb-build-warnings">⚠ {{ cbDeckValidationMessages.join(' ／ ') }}</div>
         <button class="cb-structure-btn" @click="cbOpenStructurePicker">📜 ストラクチャーデッキから選ぶ</button>
         <div class="cb-build-actions">
-          <button class="gm-btn" @click="cbCloseBuilding">◀ ロビーに戻る</button>
-          <button class="gm-btn gm-btn-primary" :disabled="!cbDeckValid" @click="cbSubmitDeck">
-            ▶ 準備完了（このデッキで提出）
-          </button>
+          <button class="gm-btn gm-btn-primary" :disabled="!cbDeckValid" @click="cbSubmitDeck">準備完了</button>
         </div>
       </div>
 
@@ -7823,7 +7817,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.13',
+    BUILD_VERSION: '1.15.14',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
