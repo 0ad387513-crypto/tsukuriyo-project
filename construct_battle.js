@@ -148,6 +148,16 @@ function subscribeStructureDecks(callback) {
 }
 
 /**
+ * ストラクチャーデッキ一覧を一度だけ取得する（ソロプレイでCPUのデッキを選ぶ際に使用）。
+ * @returns {Promise<Array<{ id, name, kamiNo, deckCode, updatedAt }>>}
+ */
+async function fetchStructureDecksOnce() {
+  const snap = await getDb().ref("structureDecks").once("value");
+  const val = snap.val() || {};
+  return Object.keys(val).map(id => Object.assign({ id }, val[id]));
+}
+
+/**
  * ストラクチャーデッキを新規作成 or 上書き保存する。
  * @param {string|null} id   既存IDを渡せば上書き、nullなら新規発行
  * @param {{ name: string, kamiNo: string, deckCode: string }} data
@@ -191,6 +201,6 @@ if (typeof module !== "undefined") {
     CONSTRUCT_DECK_SIZE, CONSTRUCT_MIN_RETURN_SUM,
     createConstructRoom, joinConstructRoom,
     submitConstructDeck, unsubmitConstructDeck, subscribeConstructRoom,
-    subscribeStructureDecks, saveStructureDeck, removeStructureDeck, seedStructureDecksIfEmpty,
+    subscribeStructureDecks, fetchStructureDecksOnce, saveStructureDeck, removeStructureDeck, seedStructureDecksIfEmpty,
   };
 }

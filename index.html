@@ -5163,6 +5163,18 @@
             </button>
           </div>
 
+          <hr class="sp-divider">
+
+          <div>
+            <h3>ソロプレイ</h3>
+            <button class="sp-btn sp-btn-solo" @click="cbSoloStart" :disabled="cb.connecting">
+              🤖 CPUと開始（ソロプレイ）
+            </button>
+            <div style="font-size:11px; color:#9aa; margin-top:6px; text-align:center;">
+              相手をCPUにして1人で動作確認できます（CPUのデッキ・カミはストラクチャーデッキからランダムに選ばれます）
+            </div>
+          </div>
+
           <div v-if="cb.error" style="color:#f88; font-size:13px; text-align:center;">{{ cb.error }}</div>
         </div>
 
@@ -7781,7 +7793,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.8',
+    BUILD_VERSION: '1.15.9',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7817,6 +7829,7 @@ new Vue({
     /* ===== 理念構築戦（自由構築1v1） ===== */
     constructOpen: false,
     cbBuilding: false,        // true＝デッキビルダー画面でデッキを編集・提出中（ロビーオーバーレイは隠す）
+    cbSolo: false,            // ソロプレイ（CPU戦）モードか
     cbCreatePublic: false,    // 部屋作成時：公開一覧に登録するか
     cbPublicRooms: [],        // 公開中の部屋一覧（ロビー画面表示中のみ購読）
     cbStructureDecks: [],     // structureDecksの購読結果
@@ -9459,7 +9472,7 @@ new Vue({
         oppName: oppInfo.name || '相手', firstSide, life: 10,
         selfDeck: this._cbDeckMapToCards(selfInfo.deck), oppDeck: this._cbDeckMapToCards(oppInfo.deck),
         selfKami, oppKami,
-        syncGame: true, code, table, mySeat, oppSeat,
+        syncGame: !this.cbSolo, oppIsCpu: this.cbSolo, code, table, mySeat, oppSeat,
       });
     },
     // { cardNo: count } のデッキマップをカードオブジェクト配列（枚数分の実体）に展開する
@@ -9699,7 +9712,8 @@ new Vue({
       // オンライン同期の合意プロトコルを介さず、こちらのクライアントだけで即座に再戦を開始する
       if (this.battleContext.oppIsCpu && this._battleRematchEligible()) {
         this._sfxPlay('decision');
-        this._battleRestartShieldBattleSolo();
+        if (this.battleContext.returnView === 'construct') this._battleRestartConstructBattleSolo();
+        else this._battleRestartShieldBattleSolo();
         return;
       }
       const n = this.battleNet;
@@ -9839,6 +9853,26 @@ new Vue({
       });
       this._battleScheduleRematchCleanup(code, table, mySeat);
       this._battleRematchTriggered = false;
+      this.battleWaitingForRematch = false;
+    },
+    /* 理念構築戦（CPU相手のソロプレイ）の再戦：相手が実在するクライアントではないため、
+       オンライン合意プロトコルを介さずこちらのクライアントだけで即座に再初期化する。
+       CPU（guest）のデッキ・カミは提出済みのものをそのまま使い回す。 */
+    _battleRestartConstructBattleSolo() {
+      const firstSide = Math.random() < 0.5 ? 'self' : 'opp';
+      const room = this.cb.roomData || {};
+      const oppRole = this.cb.role === 'host' ? 'guest' : 'host';
+      const selfInfo = room[this.cb.role] || {};
+      const oppInfo = room[oppRole] || {};
+      const selfKami = selfInfo.kamiNo ? this.allKamiCards.find(k => String(k.no) === String(selfInfo.kamiNo)) : null;
+      const oppKami  = oppInfo.kamiNo  ? this.allKamiCards.find(k => String(k.no) === String(oppInfo.kamiNo))  : null;
+      this._battleInitialize({
+        source: 'construct', modeLabel: '理念構築戦', returnView: 'construct',
+        selfName: selfInfo.name || this.cb.myName || '自分', oppName: oppInfo.name || 'CPU', firstSide, life: 10,
+        selfDeck: this._cbDeckMapToCards(selfInfo.deck), oppDeck: this._cbDeckMapToCards(oppInfo.deck),
+        selfKami, oppKami,
+        syncGame: false, oppIsCpu: true,
+      });
       this.battleWaitingForRematch = false;
     },
     // 観戦モード：既存の「対戦テスト」1v1の部屋を読み取り専用で覗き見る（両者の手札を含め全公開・デバッグ用）
@@ -19531,11 +19565,7 @@ new Vue({
       this._sfxPlay('menuselect');
       this.appView = 'construct';
       this.openConstruct();
-      // 起動直後から「戦場の舞」を流す（デッキ構築〜対戦開始前まで維持）
-      if (this.bgmAuto) {
-        const key = this._bgmPickRandomKey('sentei');
-        if (key) this._bgmPlay(key);
-      }
+      // BGMは変更しない（TOP画面から引き続き同じ曲を流す）
     },
     goToGame() {
       this._sfxPlay('menuselect');
@@ -21945,6 +21975,8 @@ new Vue({
     openConstruct() {
       this.constructOpen = true;
       this.appView = 'construct';
+      // ソロプレイ（CPU戦）でストラクチャーデッキが即使えるよう、ロビー表示時に一度だけ購読・シードしておく
+      this._cbSubscribeStructureDecks();
     },
     tryCloseConstruct() {
       if (this.cb.phase === 'building' && this.totalDeckCount > 0 && !confirm('理念構築戦を中断しますか？（編集中のデッキは失われます）')) return;
@@ -21966,6 +21998,7 @@ new Vue({
         connecting: false, error: '', role: null, playerId: null,
         roomCode: null, roomData: {}, _unsubscribe: null,
       };
+      this.cbSolo = false;
     },
     _cbCleanup() {
       if (this.cb._unsubscribe) { this.cb._unsubscribe(); this.cb._unsubscribe = null; }
@@ -22017,6 +22050,50 @@ new Vue({
         this.cb.connecting = false;
       }
     },
+    /* ソロプレイ：host=自分、guest=CPU。CPUのデッキ・カミはストラクチャーデッキから
+       ランダムに1つ選んでそのまま提出する（CPU自身がフリー編集で組むわけではない） */
+    async cbSoloStart() {
+      if (this.cb.connecting) return;
+      this.cb.error = '';
+      this._sfxPlay('decision');
+      this.cb.connecting = true;
+      this.deck = {}; this.returned = {}; this.selectedKami = null;
+      try {
+        const { roomCode, playerId } = await createConstructRoom(this.cb.myName || 'あなた');
+        this.cb.roomCode = roomCode;
+        this.cb.playerId = playerId;
+        this.cb.role     = 'host';
+        this.cb.phase    = 'lobby';
+        this.cbSolo      = true;
+        this._cbSubscribe(roomCode);
+        await joinConstructRoom(roomCode, 'CPU');
+        await this._cbSubmitRandomStructureDeckForCpu(roomCode);
+        this._saveActiveSession('construct', roomCode, { playerId, role: 'host' });
+      } catch (e) {
+        this.cb.error = e.message || 'ソロプレイの開始に失敗しました';
+        this.cbSolo = false;
+      } finally {
+        this.cb.connecting = false;
+      }
+    },
+    async _cbSubmitRandomStructureDeckForCpu(roomCode) {
+      let decks = this.cbStructureDecks;
+      if (!decks.length) {
+        try { decks = await fetchStructureDecksOnce(); } catch (e) { decks = []; }
+      }
+      if (!decks.length) {
+        this.cb.error = 'ストラクチャーデッキが1つも登録されていません（TOP画面の動作確認用ツールから追加してください）';
+        return;
+      }
+      const pick = decks[Math.floor(Math.random() * decks.length)];
+      let parsed;
+      try { parsed = this._decodeDeckCode(pick.deckCode); } catch (e) {
+        this.cb.error = 'CPU用ストラクチャーデッキの読込に失敗しました';
+        return;
+      }
+      const kamiNo = pick.kamiNo || parsed.kamiNo;
+      await submitConstructDeck(roomCode, 'guest', parsed.deck, kamiNo ? String(kamiNo) : null);
+    },
     async cbJoinPublic(code) {
       this.cb.joinCode = code;
       await this.cbJoinRoom();
@@ -22042,6 +22119,7 @@ new Vue({
       this.cb.role = null;
       this.cb.phase = 'lobby';
       this.cb.roomData = {};
+      this.cbSolo = false;
       this._clearActiveSession();
     },
     // デッキビルダーを開く（提出済みならまず取り下げてから編集に戻る）
@@ -22357,16 +22435,7 @@ new Vue({
         this._bgmAutoPickForView('shield');
       }
     });
-    // 理念構築戦：起動〜デッキ構築中〜構築完了（対戦開始前）までは戦場の舞を流し続ける
-    this.$watch('cb.phase', (v) => {
-      if (this.appView !== 'construct' || !this.bgmAuto) return;
-      if (v === 'lobby' || v === 'building' || v === 'complete') {
-        const key = this._bgmPickRandomKey('sentei');
-        if (key && key !== this.bgmCurrentKey) this._bgmPlay(key);
-      } else {
-        this._bgmAutoPickForView('construct');
-      }
-    });
+    // 理念構築戦：BGMは変更せず、TOP画面から流れていた曲をそのまま引き継ぐ（専用BGM watcherは意図的に持たない）
     // 勝敗確定：すぐに結果オーバーレイを出さず、カミがひび割れて破壊される演出を挟んでから
     // （battleResultRevealReadyがtrueになった時点で）結果オーバーレイと勝敗bgmを出す
     this.$watch('battleSample.result', (v) => {
