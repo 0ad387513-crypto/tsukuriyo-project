@@ -5183,11 +5183,15 @@
 
           <div>
             <h3>ソロプレイ</h3>
+            <select class="sp-input" v-model="cb.soloCpuDeckId" style="margin-bottom:8px;">
+              <option value="">🎲 CPUのデッキ：ランダム</option>
+              <option v-for="sd in cbStructureDecks" :key="sd.id" :value="sd.id">CPUのデッキ：{{ sd.name }}</option>
+            </select>
             <button class="sp-btn sp-btn-solo" @click="cbSoloStart" :disabled="cb.connecting">
               🤖 CPUと開始（ソロプレイ）
             </button>
             <div style="font-size:11px; color:#9aa; margin-top:6px; text-align:center;">
-              相手をCPUにして1人で動作確認できます（CPUのデッキ・カミはストラクチャーデッキからランダムに選ばれます）
+              相手をCPUにして1人で動作確認できます（CPUのデッキ・カミはストラクチャーデッキから選べます）
             </div>
           </div>
 
@@ -7817,7 +7821,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.14',
+    BUILD_VERSION: '1.15.15',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7871,6 +7875,7 @@ new Vue({
       roomCode:    null,
       roomData:    {},
       _unsubscribe: null,
+      soloCpuDeckId: "",       // ソロプレイでCPUに使わせるストラクチャーデッキid（空=ランダム）
     },
 
     /* ===== ゲームセッション（4人 / 壱 神託の儀〜） ===== */
@@ -22119,7 +22124,8 @@ new Vue({
       }
     },
     /* ソロプレイ：host=自分、guest=CPU。CPUのデッキ・カミはストラクチャーデッキから
-       ランダムに1つ選んでそのまま提出する（CPU自身がフリー編集で組むわけではない） */
+       選んでそのまま提出する（CPU自身がフリー編集で組むわけではない）。
+       ロビーでcb.soloCpuDeckIdを指定していればそのデッキを、未指定（空）ならランダムに選ぶ。 */
     async cbSoloStart() {
       if (this.cb.connecting) return;
       this.cb.error = '';
@@ -22135,7 +22141,7 @@ new Vue({
         this.cbSolo      = true;
         this._cbSubscribe(roomCode);
         await joinConstructRoom(roomCode, 'CPU');
-        await this._cbSubmitRandomStructureDeckForCpu(roomCode);
+        await this._cbSubmitStructureDeckForCpu(roomCode, this.cb.soloCpuDeckId);
         this._saveActiveSession('construct', roomCode, { playerId, role: 'host' });
       } catch (e) {
         this.cb.error = e.message || 'ソロプレイの開始に失敗しました';
@@ -22144,7 +22150,7 @@ new Vue({
         this.cb.connecting = false;
       }
     },
-    async _cbSubmitRandomStructureDeckForCpu(roomCode) {
+    async _cbSubmitStructureDeckForCpu(roomCode, preferredDeckId = '') {
       let decks = this.cbStructureDecks;
       if (!decks.length) {
         // _cbSubscribeStructureDecks側のシードは購読開始と並行して投げているだけで完了を待っていないため、
@@ -22157,7 +22163,8 @@ new Vue({
         this.cb.error = 'ストラクチャーデッキが1つも登録されていません（TOP画面の動作確認用ツールから追加してください）';
         return;
       }
-      const pick = decks[Math.floor(Math.random() * decks.length)];
+      const preferred = preferredDeckId ? decks.find(d => String(d.id) === String(preferredDeckId)) : null;
+      const pick = preferred || decks[Math.floor(Math.random() * decks.length)];
       let parsed;
       try { parsed = this._decodeDeckCode(pick.deckCode); } catch (e) {
         this.cb.error = 'CPU用ストラクチャーデッキの読込に失敗しました';
@@ -22246,7 +22253,7 @@ new Vue({
       if (this._cbStructureUnsub) return;
       this._cbStructureUnsub = subscribeStructureDecks((list) => { this.cbStructureDecks = list; });
       // 初回のみ：ストラクチャーデッキが1件も無ければサンプルをシードする（完了を待たない発火のみ。
-      // 確実性が必要な箇所＝_cbSubmitRandomStructureDeckForCpuでは別途完了を待って呼び直す）
+      // 確実性が必要な箇所＝_cbSubmitStructureDeckForCpuでは別途完了を待って呼び直す）
       seedStructureDecksIfEmpty(CB_STRUCTURE_DECK_SEED_DEFAULTS)
         .catch(e => console.warn('[construct] ストラクチャーデッキの初期シードに失敗:', e));
     },
