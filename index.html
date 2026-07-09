@@ -7409,6 +7409,38 @@ Vue.component("rich-text", {
     '</span>',
 });
 
+/* CPUドラフトAI：カミ軸（gsCpuKamiAffinityTags）ごとに名指しで優先度を調整したいカード。
+   キーワード/正規表現では拾いにくい「このカード固有の噛み合わせ」をここで直接加減点する。
+   キーは fullName() に部分一致する文字列（二つ名込みの表記揺れを避けるため、部分一致で判定）。 */
+const GS_CPU_NAMED_CARD_BONUS = {
+  // K1 スサノオ：進化・昇華軸
+  evolveSublim: {
+    '幽玄の面霊姫': 30, '葛ノ葉亭の若女将': 30, '千変万化の大妖狐': 30, // どのレガシーからでも進化できる＝最優先
+    '厳格なる森の長・ハクレン': 20, '拒絶の守衛・イズモ': 20,           // 昇華コスト軽減
+    '約束の光・ミズホ': 22, '平穏の祈り手': 22, '鐘鳴らしの童': 22,     // 天力を固定値で上げる（神技2との相性◎）
+  },
+  // K2 ヤマトタケル：同名一切禁止軸
+  unique: {
+    '約束の光・ミズホ': -18, '平穏の祈り手': -18, '鐘鳴らしの童': -18,  // 天力が毎ターン溜まるため固定値上昇と相性が悪い
+    '平和を願う剣・アヤト': 20, '暁の盟約': 20, '断禍の三重奏': 20,     // 他種族混成デッキになりやすい方針と好相性
+    '冥土送りの侍女': 14, '静かなる謀殺': 14,                          // 神技2の取りこぼし処理
+  },
+  // K3 オオクニヌシ：種族分散軸
+  tribeDiversity: {
+    '交差する想い': -10, // 種族が分散しているメリットを活かせないためやや優先度低
+    '平和を願う剣・アヤト': 26, '暁の盟約': 26, '断禍の三重奏': 26,
+    '無垢なる信徒・チフユ': 26, '約束の光・ミズホ': 26, 'もふもふ探求者': 26, '決別の白槍・ミナト': 26, // 自身と異なる種族のトークンを招来
+    '木漏れ日の道場': 10, '忠臣の予感': 10, // 手札切れ対策
+  },
+  // K4 タケミカヅチ：最高戦闘力軸
+  highPower: {
+    '戦陣の旗手': 20, '無貌の忍': 20, '白き閃刃・シラトリ': 20,          // 【奇襲】×神技1
+    '名刀集めの豪族': 24, '算盤弾きの刀剣商': 24, '千刃の破戒僧': 24, '妖刀を抱く乙女': 24, // レリック数依存の侍
+    '覚悟の出陣': 22, '忠臣の予感': 12, '刹那の救援': 22, '木漏れ日の道場': 26,
+    '冥土送りの侍女': 12, '静かなる謀殺': 12,
+  },
+};
+
 new Vue({
   el: "#app",
   data: {
@@ -7597,7 +7629,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.0',
+    BUILD_VERSION: '1.15.1',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -19581,18 +19613,40 @@ new Vue({
     gsCpuCardTagScore(card, tags, pickedCards) {
       let s = 0;
       const text = String(card.text || '');
+      const fullNm = this.fullName(card);
+      // 天力を固定値で上げる効果（約束の光・ミズホ、平穏の祈り手、鐘鳴らしの童 等）：
+      // スサノオ（神技2の必要天力が少ない）とは好相性、ヤマトタケル（天力が毎ターン自然に貯まる）とは相性が悪い
+      const grantsFixedTenryoku = /天力.{0,10}(増える|得る|上がる|＋|\+)/.test(text);
       for (const tag of tags) {
+        // 名指しカードの直接加減点（キーワード判定では拾いにくい固有の噛み合わせ）
+        const named = GS_CPU_NAMED_CARD_BONUS[tag];
+        if (named) {
+          for (const key in named) {
+            if (fullNm.includes(key)) { s += named[key]; break; }
+          }
+        }
         switch (tag) {
           case 'evolveSublim':
-            if (/【昇華|【進化/.test(text)) s += 22;
+            // 進化は神技2使用後も使え、ユニーク性も高いため昇華よりさらに優先度を上げる
+            if (/【進化/.test(text)) s += 26;
+            else if (/【昇華/.test(text)) s += 20;
+            if (grantsFixedTenryoku) s += 16;
             break;
           case 'unique':
-            break; // 同名重複ペナルティ側（gsCpuScoreCard）で処理
+            // 同名重複ペナルティはgsCpuScoreCard側で処理。ここではヤマトタケルならではの追加相性のみ加点
+            if (grantsFixedTenryoku) s -= 14; // 天力が自然に貯まるため恩恵が薄い
+            if (/マナ最大値/.test(text)) s += 8; // 神技2の盤面干渉と両立できる重量級デッキも成立する
+            if (card.category === 'レガシー' && (Number(card.cost) || 0) <= 2) s += 4; // 神技1のドローで息切れしにくい軽量構成
+            break;
           case 'tribeDiversity': {
             // 異なる種族を並べたい：未所持の種族のレガシーほど嬉しい
             if (card.category === 'レガシー' && card.type) {
               const types = new Set(pickedCards.filter(c => c.category === 'レガシー').map(c => c.type).filter(Boolean));
               s += types.has(card.type) ? 4 : 14;
+              // 神技1で人獣は自前調達できるため、人獣への偏りはやや控えめに評価
+              if (card.type === '人獣') s -= 6;
+              // 神技2でレガシーを召喚するため、強力なレガシー自体もやや優先
+              s += Math.min(10, (Number(card.power) || 0) / 200);
             }
             // 本体と異なる種族のトークンを招来する効果（例：約束の光・ミズホ等）は種族多様化に直結するため高評価
             const tribeWords = ['忍者', '侍', '人獣', '神使', '妖怪', '龍'];
@@ -19601,6 +19655,8 @@ new Vue({
             }
             // 複数の異なる種族が揃うほど効果を発揮するカード（例：暁の盟約・断禍の三重奏）
             if (/異なる種族|種族が異なる|それぞれ異なる/.test(text)) s += 14;
+            // 複数の異なる種族を同時に並べる必要があるため、重すぎるカードはやや避ける
+            if ((Number(card.cost) || 0) >= 7) s -= 6;
             break;
           }
           case 'highPower':
@@ -19608,6 +19664,12 @@ new Vue({
             s += Math.min(28, (Number(card.power) || 0) / 120);
             // 戦闘力を上げる補正効果（【補正+】等）を持つカードも高評価
             if (/【補正[+＋]|戦闘力.{0,6}(上が|増え|＋|\+)/.test(text)) s += 18;
+            // 【奇襲】：神技1でアンタップ状態のレガシーとも戦闘できるため好相性
+            if (/【奇襲】/.test(text)) s += 12;
+            // レリックの数に応じて戦闘力が伸びる侍レガシー：強力なレリックと合わせて評価
+            if (card.type === '侍' && /レリック.{0,10}(数|枚数).{0,10}(戦闘力|上が|＋|\+)/.test(text)) s += 14;
+            // 神使は天力・出現時効果に優れる一方で戦闘力は低めの傾向があるため、この軸ではやや評価を下げる
+            if (card.type === '神使' && card.category === 'レガシー') s -= 10;
             break;
           case 'oracleRelic':
             if (card.category === 'オラクル' || card.category === 'レリック') s += 18;
@@ -19631,6 +19693,20 @@ new Vue({
         }
       }
       return s;
+    },
+    /* 共通方針：デッキの半分程度がユニークカード（返還値0/1）になるよう緩やかに誘導する。
+       ヤマトタケル（unique）・ヤマタノオロチ（dragon）はユニーク比率が半分を多少超えても問題ないため目標をやや高めにする。
+       ピック序盤（4枚未満）は方針が定まらないため中立とする。 */
+    gsCpuUniqueRatioScore(card, pickedCards, kamiTags) {
+      const total = pickedCards.length;
+      if (total < 4) return 0;
+      const isUniqueCard = (parseInt(card.return, 10) || 0) !== 2;
+      const uniqueCount = pickedCards.filter(c => (parseInt(c.return, 10) || 0) !== 2).length;
+      const ratio = uniqueCount / total;
+      const target = (kamiTags.includes('unique') || kamiTags.includes('dragon')) ? 0.6 : 0.5;
+      const diff = target - ratio; // 不足なら正
+      const bonus = Math.max(-8, Math.min(8, diff * 30));
+      return isUniqueCard ? bonus : -bonus;
     },
     /* 優先度2：単体性能・汎用性の基礎点（軸が刺さらないカードでも最低限評価される） */
     gsCpuBaseScore(card) {
@@ -19746,9 +19822,11 @@ new Vue({
       s += this.gsCpuEffectSynergy(card, picked) * persona.effect;
       s += this.gsCpuCurveScore(card, picked) * persona.curve;
       s += this.gsCpuHumanStatScore(card); // 人間の実績データに基づく補正（重み付けはせず素点のまま加算）
-      // 同名重複：軽い減点（K2ヤマトタケル＝uniqueタグ持ちは重い減点）
+      // 共通方針：デッキの半分程度をユニークカードにする（ヤマトタケル・ヤマタノオロチは目標をやや高めに）
+      s += this.gsCpuUniqueRatioScore(card, picked, ctx.kamiTags);
+      // 同名重複：軽い減点（K2ヤマトタケル＝uniqueタグ持ちはほぼ選ばれないレベルの重い減点）
       const dup = picked.filter(c => this.fullName(c) === this.fullName(card)).length;
-      s -= dup * (ctx.kamiTags.includes('unique') ? 12 : 3);
+      s -= dup * (ctx.kamiTags.includes('unique') ? 20 : 3);
       return s;
     },
     /* パックから1枚選ぶ：上位2〜3枚から確率的に選択（スコア差が大きいほど1位を選びやすい） */
