@@ -4467,12 +4467,12 @@
             <span class="dt-label">{{ deckExpanded ? 'カードリストへ' : 'デッキ詳細' }}</span>
           </button>
         </div>
-        <div class="deck-controls">
+        <div class="deck-controls" v-if="!deckDenseView">
           <button @click="saveDeckImage" :disabled="capturing">{{ capturing ? '保存中…' : 'デッキを画像で保存' }}</button>
           <button @click="clearDeck">デッキをクリア</button>
           <button v-if="!gsPeeking && !shieldPeek" @click="openDeckManager">💾 デッキ管理</button>
         </div>
-        <div class="deck-controls" style="margin-top:6px;">
+        <div class="deck-controls" style="margin-top:6px;" v-if="!deckDenseView">
           <button class="udon-import-btn"
                   @click="$refs.udonFileInput.click()"
                   :disabled="importing">
@@ -5245,8 +5245,9 @@
             </button>
           </div>
 
-          <div style="text-align:center;margin-top:18px;">
+          <div style="text-align:center;margin-top:18px;display:flex;gap:8px;justify-content:center;">
             <button class="gm-btn" @click="cbLeave">退出</button>
+            <button v-if="cb.role === 'host'" class="gm-btn" style="background:#5a2a2a;" @click="cbDissolveRoom">🗑 部屋を解散する</button>
           </div>
         </div>
       </div>
@@ -7822,7 +7823,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.10',
+    BUILD_VERSION: '1.15.11',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -22043,11 +22044,45 @@ new Vue({
     },
     _cbSubscribe(roomCode) {
       const unsub = subscribeConstructRoom(roomCode, (data) => {
-        if (!data) return;
+        if (!data) {
+          // 部屋が消滅した（ホストが解散した、または期限切れ）。自分から解散した場合は
+          // cbDissolveRoom側で先に購読を止めているため、ここに来るのは相手起因のケースのみ
+          if (this.cb.roomCode === roomCode) {
+            this._sfxPlay('cancel');
+            alert('部屋が解散されました。ロビーに戻ります。');
+            this._cbCleanup();
+            this.cb.roomCode = null;
+            this.cb.role = null;
+            this.cb.phase = 'lobby';
+            this.cb.roomData = {};
+            this.cbSolo = false;
+            this._clearActiveSession();
+          }
+          return;
+        }
         this.cb.roomData = data;
         this.cb.phase = data.phase || 'lobby';
       });
       this.cb._unsubscribe = unsub;
+    },
+    // ホストが部屋を解散する（Firebase上のデータごと削除。相手も自動的にロビーへ戻される）
+    async cbDissolveRoom() {
+      if (this.cb.role !== 'host' || !this.cb.roomCode) return;
+      if (!confirm('部屋を解散しますか？（参加者がいる場合は退出させられます）')) return;
+      this._sfxPlay('cancel');
+      const roomCode = this.cb.roomCode;
+      this._cbCleanup(); // 自分自身には解散通知を出さないよう、削除前に購読を止めておく
+      try {
+        await dissolveConstructRoom(roomCode);
+      } catch (e) {
+        alert('部屋の解散に失敗しました: ' + (e.message || e));
+      }
+      this.cb.roomCode = null;
+      this.cb.role = null;
+      this.cb.phase = 'lobby';
+      this.cb.roomData = {};
+      this.cbSolo = false;
+      this._clearActiveSession();
     },
     async cbCreateRoom() {
       this.cb.connecting = true;

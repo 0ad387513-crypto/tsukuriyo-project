@@ -125,6 +125,15 @@ function subscribeConstructRoom(roomCode, callback) {
   return () => ref.off("value");
 }
 
+/**
+ * 部屋を解散する（ホストが呼ぶ想定）。Firebase上のルームデータを削除するため、
+ * 相手クライアントの購読には null が届き、相手側でも解散を検知できる。
+ * @param {string} roomCode
+ */
+async function dissolveConstructRoom(roomCode) {
+  await getDb().ref(`constructRooms/${roomCode}`).remove();
+}
+
 /* ------------------------------------------------------------------ */
 /* ストラクチャーデッキ（開発者が用意する構築済みデッキ）                    */
 /* 誰でも参照でき、開発者用ツールから追加・編集・削除できる（本アプリの他の  */
@@ -200,7 +209,7 @@ if (typeof module !== "undefined") {
   module.exports = {
     CONSTRUCT_DECK_SIZE, CONSTRUCT_MIN_RETURN_SUM,
     createConstructRoom, joinConstructRoom,
-    submitConstructDeck, unsubmitConstructDeck, subscribeConstructRoom,
+    submitConstructDeck, unsubmitConstructDeck, subscribeConstructRoom, dissolveConstructRoom,
     subscribeStructureDecks, fetchStructureDecksOnce, saveStructureDeck, removeStructureDeck, seedStructureDecksIfEmpty,
   };
 }
