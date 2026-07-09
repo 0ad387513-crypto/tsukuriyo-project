@@ -7823,7 +7823,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.11',
+    BUILD_VERSION: '1.15.12',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -17092,8 +17092,7 @@ new Vue({
           this.battleSublimModal = { card, index, zone: null, options: oracleOptions };
           return;
         }
-        this._battlePlayOracle(index, oracleOptions[0]);
-        return;
+        return this._battlePlayOracle(index, oracleOptions[0]);
       }
       // レガシー/レリック以外は未対応
       const zone = card.category === 'レガシー' ? 'legacies' : card.category === 'レリック' ? 'relics' : null;
@@ -17119,7 +17118,7 @@ new Vue({
       }
       // 通常配置（コスト1択）
       const cost = options[0];
-      this._battlePlayLegacyOrRelic(index, zone, cost, evolveBaseHint);
+      return this._battlePlayLegacyOrRelic(index, zone, cost, evolveBaseHint);
     },
     /* 昇華選択モーダルからの決定 */
     battleSublimChoose(payCost) {
