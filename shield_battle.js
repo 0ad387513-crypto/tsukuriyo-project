@@ -64,9 +64,10 @@ const KAMI_CANDIDATES = 10;  // カミ候補数
 /* ------------------------------------------------------------------ */
 /**
  * @param {string} playerName  自分の名前（任意）
+ * @param {boolean} [isPublic] trueならpublicRoomsに登録し、見知らぬ相手にも一覧・ランダムマッチから見つけてもらえるようにする
  * @returns {Promise<{ roomCode, playerId, role: 'host' }>}
  */
-async function createRoom(playerName) {
+async function createRoom(playerName, isPublic) {
   const db       = getDb();
   const roomCode = generateRoomCode();
   const playerId = generateRoomCode(); // セッションID（簡易）
@@ -99,6 +100,10 @@ async function createRoom(playerName) {
   // 1時間後に自動削除（Firebase側のTTLルールがなければクライアント側で設定）
   setTimeout(() => db.ref(`rooms/${roomCode}`).remove(), 60 * 60 * 1000);
 
+  if (isPublic && typeof publicRoomRegister === "function") {
+    publicRoomRegister("shield", roomCode, playerName);
+  }
+
   return { roomCode, playerId, role: "host" };
 }
 
@@ -129,6 +134,9 @@ async function joinRoom(roomCode, playerName) {
       ready: false,
     },
   });
+
+  // guestが入って満員になったので公開一覧からは外す
+  if (typeof publicRoomRemove === "function") publicRoomRemove(roomCode);
 
   return { playerId, role: "guest" };
 }

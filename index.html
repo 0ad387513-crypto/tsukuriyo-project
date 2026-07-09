@@ -1357,6 +1357,16 @@
   }
   .gm-btn-solo { background: #3a3052; border-color: #6a5a8a; color: #d8c8f8; }
   .gm-btn-solo:hover:not(:disabled) { background: #4a4068; color: #fff; }
+  .gm-public-room-list {
+    margin-top: 16px; padding: 10px 12px; background: #171b26;
+    border: 1px solid #2a2f3d; border-radius: 6px; max-height: 220px; overflow-y: auto;
+  }
+  .gm-public-room-title { font-size: 12px; color: #9ab; font-weight: 700; margin-bottom: 8px; }
+  .gm-public-room-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 6px 0; border-bottom: 1px solid #232838; font-size: 12.5px; color: #d8dee8;
+  }
+  .gm-public-room-row:last-child { border-bottom: none; }
   .cpu-auto-play-toggle {
     display: flex; align-items: center; gap: 6px; cursor: pointer;
     font-size: 11px; color: #c9d2df;
@@ -4570,10 +4580,32 @@
           <!-- 部屋を立てる -->
           <div>
             <h3>部屋を立てる</h3>
+            <label class="cpu-auto-play-toggle">
+              <input type="checkbox" v-model="sbCreatePublic">
+              この部屋を公開する（見知らぬ相手も一覧・ランダムマッチから参加できます）
+            </label>
             <button class="sp-btn sp-btn-create" @click="onCreateRoom"
                     :disabled="sb.connecting">
               {{ sb.connecting ? '接続中…' : '新しい部屋を作成' }}
             </button>
+          </div>
+
+          <hr class="sp-divider">
+
+          <!-- 公開中の部屋一覧・ランダムマッチ -->
+          <div>
+            <h3>公開中の部屋から参加</h3>
+            <button class="sp-btn sp-btn-join" :disabled="sb.connecting || !sbPublicRooms.length" @click="sbRandomMatch">
+              🎲 ランダムマッチ（公開中の部屋に参加）
+            </button>
+            <div v-if="sbPublicRooms.length" class="gm-public-room-list" style="margin-top:10px;">
+              <div class="gm-public-room-title">公開中の部屋（{{ sbPublicRooms.length }}件）</div>
+              <div v-for="r in sbPublicRooms" :key="r.code" class="gm-public-room-row">
+                <span>{{ r.hostName }}の部屋</span>
+                <button class="gm-btn" :disabled="sb.connecting" @click="sbJoinPublic(r.code)">参加する</button>
+              </div>
+            </div>
+            <div v-else style="font-size:11px; color:#9aa; margin-top:6px;">現在公開中の部屋はありません</div>
           </div>
 
           <hr class="sp-divider">
@@ -6175,6 +6207,10 @@
           <input type="text" v-model="gs.myName" maxlength="12" placeholder="プレイヤー名">
         </label>
         <div class="gm-menu-actions">
+          <label class="cpu-auto-play-toggle">
+            <input type="checkbox" v-model="gsCreatePublic">
+            このセッションを公開する（見知らぬ相手も一覧・ランダムマッチから参加できます）
+          </label>
           <button class="gm-btn gm-btn-primary" :disabled="gs.connecting" @click="gsCreate">
             {{ gs.connecting ? '通信中…' : 'セッションを作成' }}
           </button>
@@ -6185,8 +6221,18 @@
                    style="text-transform:uppercase;">
             <button class="gm-btn" :disabled="gs.connecting" @click="gsJoin">コードで参加</button>
           </div>
+          <button class="gm-btn" :disabled="gs.connecting || !gsPublicSessions.length" @click="gsRandomMatch">
+            🎲 ランダムマッチ（公開中のセッションに参加）
+          </button>
         </div>
         <div v-if="gs.error" class="gm-error">{{ gs.error }}</div>
+        <div v-if="gsPublicSessions.length" class="gm-public-room-list">
+          <div class="gm-public-room-title">公開中のセッション（{{ gsPublicSessions.length }}件）</div>
+          <div v-for="r in gsPublicSessions" :key="r.code" class="gm-public-room-row">
+            <span>{{ r.hostName }}のセッション（{{ r.seatsFilled || 1 }}/4人）</span>
+            <button class="gm-btn" :disabled="gs.connecting" @click="gsJoinPublic(r.code)">参加する</button>
+          </div>
+        </div>
         <div class="gm-solo-row">
           <label class="cpu-auto-play-toggle">
             <input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay">
@@ -7281,7 +7327,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.198',
+    BUILD_VERSION: '1.14.199',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7294,6 +7340,8 @@ new Vue({
     sbHoverTop:  0,
     sbPreviewCard: null, // クリックで大型プレビューするカード
     sbSolo: false,       // ソロテスト（CPUを自動操作）モード
+    sbCreatePublic: false, // 部屋作成時：公開一覧に登録するか（見知らぬ相手からの参加を許可）
+    sbPublicRooms: [],      // 公開中の部屋一覧（ロビー画面表示中のみ購読）
     sbPreBattleReturn: false, // シールド戦：パック確定後のデッキ確認/返還画面（対戦開始前）にいるか。BGMを戦場の舞のまま維持するために使う
     sb: {
       phase:       "lobby",   // lobby / waiting / coin_toss / picking / excluding / kami_select / complete
@@ -7346,6 +7394,8 @@ new Vue({
     gsGlobalCardStats: {},    // {[cardNo]: {picked, won}} 人間プレイヤーの実績統計（CPUドラフトの参考にする。CPU自身の対局結果は含めない）
     _gsPeekSaved: null,       // プレビュー前のデッキビルダー状態退避
     gsSolo:      false,       // ソロテスト（CPU3体を自動操作）モード
+    gsCreatePublic: false,    // セッション作成時：公開一覧に登録するか（見知らぬ相手からの参加を許可）
+    gsPublicSessions: [],     // 公開中のセッション一覧（メニュー画面表示中のみ購読）
     gsDeepenAction: null,     // 深化の刻で選択中のアクション: null(=メニュー) | 'reflect' | 'fusion' | 'bloom'
     gsCpuDeckViewSeat: null,  // 終戦画面で表示中の他プレイヤー（CPU・人間問わず）デッキの席番号（null=非表示）
   },
@@ -8148,6 +8198,11 @@ new Vue({
     },
     sbAllPickedPacks() {
       return [...this.sbMyPickedPacks, ...this.sbEnemyPickedPacks];
+    },
+    /* 待機中の参加通知用：guestが入室済みか（真偽値化して安定した比較対象にする。
+       sb.roomDataはFirebase更新のたびに丸ごと差し替わるため、オブジェクト参照では比較できない） */
+    sbHasGuest() {
+      return !!(this.sb.roomData && this.sb.roomData.guest);
     },
     sbIsMyPickTurn() {
       const r = this.sb.roomData;
@@ -10400,21 +10455,26 @@ new Vue({
       if (this._battleTurnTimerHandle) { clearInterval(this._battleTurnTimerHandle); this._battleTurnTimerHandle = null; }
       this.battleTurnElapsedSec = 0;
     },
-    /* 手番通知：タブがバックグラウンドの間に自分の手番が来たら、タブのタイトルを点滅させて知らせる。
-       通知権限のポップアップは煩わしいため、Notification APIは使わずdocument.titleの点滅のみで知らせる。 */
-    _battleStartTurnTitleFlash() {
-      if (this._battleTurnFlashHandle || !document.hidden) return;
-      if (!this._battleTurnFlashOriginalTitle) this._battleTurnFlashOriginalTitle = document.title;
+    /* 汎用タブタイトル点滅：タブがバックグラウンドの間に知らせたいことがあれば、
+       タブのタイトルを点滅させて知らせる。通知権限のポップアップは煩わしいため、
+       Notification APIは使わずdocument.titleの点滅のみで知らせる。
+       手番通知・ロビーでの参加通知など複数の用途で共用する（同時に両方は起きない想定）。 */
+    _startTitleFlash(text) {
+      if (this._titleFlashHandle || !document.hidden) return;
+      if (!this._titleFlashOriginalTitle) this._titleFlashOriginalTitle = document.title;
       let on = false;
-      this._battleTurnFlashHandle = setInterval(() => {
+      this._titleFlashHandle = setInterval(() => {
         on = !on;
-        document.title = on ? '🔴 あなたの番です！' : this._battleTurnFlashOriginalTitle;
+        document.title = on ? text : this._titleFlashOriginalTitle;
       }, 1000);
     },
-    _battleStopTurnTitleFlash() {
-      if (this._battleTurnFlashHandle) { clearInterval(this._battleTurnFlashHandle); this._battleTurnFlashHandle = null; }
-      if (this._battleTurnFlashOriginalTitle) { document.title = this._battleTurnFlashOriginalTitle; }
+    _stopTitleFlash() {
+      if (this._titleFlashHandle) { clearInterval(this._titleFlashHandle); this._titleFlashHandle = null; }
+      if (this._titleFlashOriginalTitle) { document.title = this._titleFlashOriginalTitle; }
     },
+    /* 手番通知：タブがバックグラウンドの間に自分の手番が来たら知らせる */
+    _battleStartTurnTitleFlash() { this._startTitleFlash('🔴 あなたの番です！'); },
+    _battleStopTurnTitleFlash() { this._stopTitleFlash(); },
     /* ヒットストップ：0.05秒だけ次の処理を遅延させ、衝撃の一瞬を演出する */
     _battleHitStop(ms = 50) {
       return new Promise(resolve => setTimeout(resolve, ms));
@@ -18792,7 +18852,7 @@ new Vue({
       if (!this.allKamiCards.length) { this.gs.error = 'カミデータの読み込みが完了していません'; return; }
       this.gs.connecting = true;
       try {
-        const { sessionCode, playerId, seat } = await createSession(this.gs.myName);
+        const { sessionCode, playerId, seat } = await createSession(this.gs.myName, this.gsCreatePublic);
         this.gs.sessionCode = sessionCode;
         this.gs.playerId    = playerId;
         this.gs.seat        = seat;
@@ -18827,6 +18887,25 @@ new Vue({
       } finally {
         this.gs.connecting = false;
       }
+    },
+    /* マッチメイキングの摩擦解消：公開ルーム一覧・ランダムマッチ */
+    async gsJoinPublic(code) {
+      this.gs.joinCode = code;
+      await this.gsJoin();
+    },
+    async gsRandomMatch() {
+      if (this.gs.connecting || !this.gsPublicSessions.length) return;
+      const pick = this.gsPublicSessions[Math.floor(Math.random() * this.gsPublicSessions.length)];
+      if (!pick) return;
+      await this.gsJoinPublic(pick.code);
+    },
+    _gsSubscribePublicList() {
+      this._gsUnsubscribePublicList();
+      this._gsPublicUnsub = subscribePublicRooms('game', (list) => { this.gsPublicSessions = list; });
+    },
+    _gsUnsubscribePublicList() {
+      if (this._gsPublicUnsub) { this._gsPublicUnsub(); this._gsPublicUnsub = null; }
+      this.gsPublicSessions = [];
     },
     async gsToggleReady() {
       const seats = (this.gs.data && this.gs.data.seats) || {};
@@ -20919,7 +20998,7 @@ new Vue({
       this.sb.connecting = true;
       this.sb.error = '';
       try {
-        const { roomCode, playerId } = await createRoom(this.sb.myName);
+        const { roomCode, playerId } = await createRoom(this.sb.myName, this.sbCreatePublic);
         this.sb.roomCode  = roomCode;
         this.sb.playerId  = playerId;
         this.sb.role      = 'host';
@@ -20979,6 +21058,25 @@ new Vue({
       } finally {
         this.sb.connecting = false;
       }
+    },
+    /* マッチメイキングの摩擦解消：公開ルーム一覧・ランダムマッチ */
+    async sbJoinPublic(code) {
+      this.sb.joinCode = code;
+      await this.onJoinRoom();
+    },
+    async sbRandomMatch() {
+      if (this.sb.connecting || !this.sbPublicRooms.length) return;
+      const pick = this.sbPublicRooms[Math.floor(Math.random() * this.sbPublicRooms.length)];
+      if (!pick) return;
+      await this.sbJoinPublic(pick.code);
+    },
+    _sbSubscribePublicList() {
+      this._sbUnsubscribePublicList();
+      this._sbPublicUnsub = subscribePublicRooms('shield', (list) => { this.sbPublicRooms = list; });
+    },
+    _sbUnsubscribePublicList() {
+      if (this._sbPublicUnsub) { this._sbPublicUnsub(); this._sbPublicUnsub = null; }
+      this.sbPublicRooms = [];
     },
 
     async onSetReady() {
@@ -21153,6 +21251,29 @@ new Vue({
       if (v === 'draft') this._gsStartPickTimer();
       else this._gsStopPickTimer();
     });
+    // 公開ルーム一覧：メニュー画面表示中だけ購読する
+    this.$watch('gs.view', (v) => {
+      if (v === 'menu') this._gsSubscribePublicList();
+      else this._gsUnsubscribePublicList();
+    });
+    this.$watch('sb.phase', (v) => {
+      if (v === 'lobby') this._sbSubscribePublicList();
+      else this._sbUnsubscribePublicList();
+    });
+    // 待機中の参加通知：ロビーで待っている間に新しい参加者が来たらSEを鳴らし、
+    // タブが非表示ならタブタイトルも点滅させる（手番通知と同じ仕組みを流用）
+    this.$watch('gsFilledCount', (now, before) => {
+      if (this.appView === 'game' && this.gs.view === 'lobby' && now > before) {
+        this._sfxPlay('decision');
+        this._startTitleFlash('🎉 参加者が来ました！');
+      }
+    });
+    this.$watch('sbHasGuest', (now, before) => {
+      if (this.appView === 'shield' && this.sb.phase === 'lobby' && now && !before) {
+        this._sfxPlay('decision');
+        this._startTitleFlash('🎉 参加者が来ました！');
+      }
+    });
     // 選別の儀：束が回ってくる（step/set/roundが変わる）たびに経過時間を0から数え直す
     this.$watch('gsDraftStepKey', () => {
       if (this.gs.view === 'draft') this._gsStartPickTimer();
@@ -21249,6 +21370,8 @@ new Vue({
     window.removeEventListener("click", this.onWindowClick);
     this._battleStopTurnTimer();
     this._battleStopTurnTitleFlash();
+    this._gsUnsubscribePublicList();
+    this._sbUnsubscribePublicList();
   },
 });
 </script>
