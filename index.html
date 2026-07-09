@@ -79,6 +79,18 @@
     grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
     gap: 14px;
   }
+  /* 密表示（多く表示）モード：カードを小さく詰めて並べ、デッキの中身を見ながらでも
+     一目で多くのカードを見渡せるようにする。機能・操作（±ボタン等）は従来のまま縮小するだけ。 */
+  .pool.dense-view .grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+  .pool.dense-view .grid-area { padding: 8px; }
+  .pool.dense-view .card .name-bar { font-size: 9px; padding: 8px 3px 3px; }
+  .pool.dense-view .card .cost-badge { width: 18px; height: 18px; font-size: 10px; border-width: 1px; }
+  .pool.dense-view .card .preview-btn { width: 18px; height: 18px; }
+  .pool.dense-view .card .preview-btn svg { width: 10px; height: 10px; }
+  .pool.dense-view .card .card-qty { gap: 3px; padding: 2px 3px; }
+  .pool.dense-view .card .card-qty button { width: 22px; height: 18px; font-size: 11px; }
+  .pool.dense-view .card .card-qty .n { min-width: 14px; font-size: 11px; }
+  .pool-dense-toggle-btn.active { background: #2a5cb8; border-color: #6090e0; color: #fff; }
   .card {
     position: relative;
     background: #11141c; border-radius: 6px; overflow: hidden;
@@ -3655,6 +3667,26 @@
     0% { opacity: .95; transform: translateY(0) scale(.6); filter: blur(0); }
     100% { opacity: 0; transform: translateY(-24px) scale(2.1); filter: blur(2px); }
   }
+  /* 効果発動グロー：【出現時】等の効果が解決したカードを一定時間光らせる（遊戯王マスターデュエル等を参考）。
+     同時発動は _battleDrainGlowQueue 側で1枚ずつ順番に処理するため、CSS側は単純な発光のみでよい。 */
+  .card-effect-glow {
+    animation: cardEffectGlowKf .65s ease-in-out;
+    z-index: 5;
+  }
+  @keyframes cardEffectGlowKf {
+    0%   { box-shadow: 0 0 0 0 rgba(140,220,255,0); filter: brightness(1); }
+    30%  { box-shadow: 0 0 18px 7px rgba(140,220,255,.9); filter: brightness(1.5) saturate(1.2); }
+    100% { box-shadow: 0 0 0 0 rgba(140,220,255,0); filter: brightness(1); }
+  }
+  /* 死亡時効果：墓地の山札アイコンごと光らせる（個々のカードは墓地では並べて表示されないため） */
+  .dgc-cell.graveyard-glow {
+    animation: graveyardGlowKf .65s ease-in-out;
+  }
+  @keyframes graveyardGlowKf {
+    0%   { box-shadow: 0 0 0 0 rgba(190,140,255,0); }
+    30%  { box-shadow: 0 0 16px 6px rgba(190,140,255,.85); }
+    100% { box-shadow: 0 0 0 0 rgba(190,140,255,0); }
+  }
   /* ライフが少ない時の警告演出：ライフ表示の脈動＋自陣が危険域なら画面端をうっすら赤く点滅 */
   .orb-disc.life.life-warning { animation: lifeWarningPulseKf 1s ease-in-out infinite; }
   @keyframes lifeWarningPulseKf {
@@ -4105,7 +4137,7 @@
   </div>
 
   <!-- ===== 左：カードプール ===== -->
-  <div class="pool" v-show="deckBuilderVisible">
+  <div class="pool" v-show="deckBuilderVisible" :class="{ 'dense-view': poolDenseView }">
     <div class="header">
       <div class="title-row">
         <button v-if="appView === 'cardlist'" class="back-to-top-btn" @click="goToTop">◀ トップ</button>
@@ -4113,6 +4145,12 @@
         <button class="glossary-open-btn" @click="_sfxPlay('decision'); glossaryModalOpen = true" title="キーワード集を開く">📚 キーワード集</button>
         <span class="total">全 {{ filteredCards.length }} 枚<span v-if="driveError" style="color:#fb7"> / Drive読込失敗</span></span>
         <div class="spacer"></div>
+        <!-- 表示モード切替：デッキの中身を見ながらでも多くのカードが一目で見えるよう、カードを小さく密に並べる表示に切り替える（従来の一覧表示・機能は変わらない） -->
+        <button class="deck-sort-btn pool-dense-toggle-btn" @click="_sfxPlay('cancel'); togglePoolDenseView()"
+                :class="{ active: poolDenseView }"
+                :title="poolDenseView ? '通常のカード表示に戻す' : 'カードを小さく密に並べて多く表示する'">
+          {{ poolDenseView ? '▦ 通常表示' : '▦ 多く表示' }}
+        </button>
         <!-- カードプール ソート（右端） -->
         <div class="pool-sort-wrap">
           <button class="deck-sort-btn" @click.stop="_sfxPlay('cancel'); poolSortOpen = !poolSortOpen"
@@ -4701,10 +4739,6 @@
             <div class="sp-pick-counter">
               自分: {{ sbMyPickedPacks.length }} / {{ PACKS_PER_SIDE }}パック取得
             </div>
-            <label class="cpu-auto-play-toggle">
-              <input type="checkbox" :checked="pickAssistEnabled" @change="togglePickAssist">
-              ピック補助
-            </label>
             <div class="ph-turn" :class="sbIsMyPickTurn ? 'my-turn' : 'wait-turn'">
               {{ sbIsMyPickTurn ? 'あなたの番 — パックを選んでください' : '相手が選んでいます…' }}
             </div>
@@ -4717,11 +4751,9 @@
                    'taken-by-me': sbMyPickedPacks.includes(i),
                    'taken': sbAllPickedPacks.includes(i) && !sbMyPickedPacks.includes(i),
                    'disabled': !sbIsMyPickTurn || sbAllPickedPacks.includes(i),
-                   'pick-assist-recommended': i === sbRecommendedPackIndex,
                  }">
               <div class="sp-pack-header">
                 <span class="ph-no">Pack {{ i + 1 }}</span>
-                <span v-if="i === sbRecommendedPackIndex" class="pick-assist-badge" title="可視3枚の評価が最も高いパックです（あくまで目安）">⭐ おすすめ</span>
                 <span class="ph-status"
                       :class="sbMyPickedPacks.includes(i) ? 'mine'
                              : sbEnemyPickedPacks.includes(i) ? 'enemy' : 'available'">
@@ -5115,7 +5147,7 @@
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.opp.relics" :key="'or'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
+                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)"
@@ -5133,7 +5165,7 @@
             <div class="battle-card-row legacy-row">
               <div v-for="(card, i) in battleSample.opp.legacies" :key="'ol'+i"
                    class="battle-card field-card opp-legacy-target"
-                   :class="{ 'battle-target-legacy': battleCanFieldDragToAttackTargets, tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
+                   :class="{ 'battle-target-legacy': battleCanFieldDragToAttackTargets, tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @dragover.prevent="battleUpdateFieldAttackTarget($event)"
@@ -5185,7 +5217,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('legacies', $event)">
               <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i, 'evolve-target': battleHandDragOverBaseIdx === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
+                   :class="{ tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i, 'evolve-target': battleHandDragOverBaseIdx === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','legacies',i,$event)"
                    @click="battleFieldCardClick(card)"
@@ -5238,7 +5270,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('relics', $event)">
               <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
+                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','relics',i,$event)"
                    @click="battleFieldCardClick(card)"
@@ -5350,7 +5382,7 @@
               <span class="dgc-count">{{ battleSample.opp.deckCount }}</span>
             </div>
           </div>
-          <div class="dgc-cell zone-graveyard opp-graveyard-drop" title="相手の墓地は閲覧のみ" @click="battleOpenZone('opp','graveyard')">
+          <div class="dgc-cell zone-graveyard opp-graveyard-drop" :class="{ 'graveyard-glow': battleSample.opp._glowActive }" title="相手の墓地は閲覧のみ" @click="battleOpenZone('opp','graveyard')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <path d="M 8 41 H 32 V 46 H 8 Z"/>
               <path d="M 12 41 V 19 a 8 8 0 0 1 16 0 V 41 Z"/>
@@ -5426,7 +5458,7 @@
             </div>
           </div>
           <div class="dgc-cell zone-graveyard self-graveyard-drop"
-               :class="{ 'graveyard-drop-ready': battleDragOverZone === 'graveyard', 'battle-target-graveyard': battleFieldDrag }"
+               :class="{ 'graveyard-drop-ready': battleDragOverZone === 'graveyard', 'battle-target-graveyard': battleFieldDrag, 'graveyard-glow': battleSample.self._glowActive }"
                @dragover.prevent="battleUpdateDragOverZone($event); battleUpdateFieldAttackTarget($event)"
                @drop.prevent="battleFieldDragEnd($event)"
                @click="battleOpenZone('self','graveyard')">
@@ -6175,6 +6207,12 @@
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#cbd3de;font-size:13px;">
             <input type="checkbox" v-model="battleAlphaSetup.oppYorishiro">
             相手フィールドにタップ済みのヨリシロを3体配置（戦闘検証用）
+          </label>
+        </div>
+        <div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#cbd3de;font-size:13px;">
+            <input type="checkbox" v-model="battleAlphaSetup.realisticStart">
+            自分の初期マナも本番と同じ状態にする（OFF＝検証用に10/10で開始）
           </label>
         </div>
       </div>
@@ -6976,6 +7014,7 @@ const SFX_FILES = {
   genesis: 'genesis.mp3',
   evilgod: 'evilgod.mp3',
   relic: 'relic.mp3',
+  effect: 'effect.mp3',    // 出現時/死亡時など効果発動時のグロー演出に合わせて鳴らす
   myTurn: 'my_turn.mp3',
   enemyTurn: 'enemy_turn.mp3',
   // 種族別の召喚音（レガシー限定・コスト1〜4=light、5以上=heavy）
@@ -7284,7 +7323,8 @@ new Vue({
     battleCpuThinking: false, // CPU対戦AIが自分のターンを自動実行中（内部的にself/oppを入れ替えて処理するため、その間は画面を覆い隠す）
     battleActiveEffectCard: null, // 現在解決中の効果の持ち主カード（多段階の選択が続いても見失わないためのUI用）
     battleTurnTimerEnabled: loadStoredBool('tsukuriyo_turnTimerEnabled', true), // ターン経過時間の警告表示（強制的な時間切れ処理は行わない）
-    pickAssistEnabled: loadStoredBool('tsukuriyo_pickAssistEnabled', true), // 選別の儀/パック選択の「⭐おすすめ」ピック補助表示（初心者向け、OFF可）
+    pickAssistEnabled: loadStoredBool('tsukuriyo_pickAssistEnabled', true), // 選別の儀（4人対戦ドラフト）の「⭐おすすめ」ピック補助表示（初心者向け、OFF可）。シールド戦のパック選択には適用しない
+    poolDenseView: loadStoredBool('tsukuriyo_poolDenseView', false), // カードリスト（左のカードプール）を小さいカードで多く並べる表示に切り替えるか（見方だけの切替。機能は従来通り）
     cpuAutoPlayEnabled: loadStoredBool('tsukuriyo_cpuAutoPlayEnabled', true), // ソロテスト時：CPUが自律してカードプレイ・攻撃を行うか（OFF＝従来通り待機のみ）
     battleTurnElapsedSec: 0,      // 現在のターンの経過秒数
     battleResultRevealReady: false, // false の間はひび割れ→破壊演出を表示し、勝敗オーバーレイ自体は隠す
@@ -7348,7 +7388,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.200',
+    BUILD_VERSION: '1.14.201',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8236,21 +8276,6 @@ new Vue({
       if (!this.sb.packs.length) return [];
       return this.sbMyPickedPacks.flatMap(id => this.sb.packs[id].all);
     },
-    /* ピック補助：カミ未確定のパック選択中はCPUドラフトAIと同じ評価軸（kamiTagsは空扱い）で
-       可視3枚の平均スコアを算出し、最もおすすめのパックを示す（目安表示のみ、強制ではない）。 */
-    sbRecommendedPackIndex() {
-      if (!this.pickAssistEnabled || !this.sbIsMyPickTurn || !this.sb.packs || !this.sb.packs.length) return -1;
-      const ctx = { seat: 1, kamiTags: [], pickedCards: this.sbMy48Cards };
-      let best = -1, bestScore = -Infinity;
-      this.sb.packs.forEach((pack, i) => {
-        if (this.sbAllPickedPacks.includes(i)) return;
-        const visible = (pack && pack.visible) || [];
-        if (!visible.length) return;
-        const s = visible.reduce((sum, c) => sum + this.gsCpuScoreCard(c, ctx), 0) / visible.length;
-        if (s > bestScore) { bestScore = s; best = i; }
-      });
-      return best;
-    },
     // パックピック中の右サイド用：取得済みカードを同名でまとめ属性→コスト→No順に整列
     sbMyDeckEntries() {
       const groups = new Map();
@@ -8527,18 +8552,10 @@ new Vue({
       const nos = this.gsPackCardNos(d.packs[this.gs.seat]);
       return nos.map(no => this.cardByNo[String(no)]).filter(Boolean);
     },
-    /* ピック補助：CPUドラフトAI（gsCpuScoreCard）と同じ評価軸で、今の束の中で最もおすすめの1枚を示す。
-       強制ではなく目安の表示のみ（クリックしてもよいし、無視して別のカードを選んでもよい）。 */
-    /* 束の残り枚数に応じておすすめの提示数を決める：
-       7枚以上は3枚、6〜5枚は2枚、4枚以下は2枚（ただし「残り枚数の半数以上をおすすめにしない」
-       という原則により、残り枚数-1を上限とする＝2枚なら1枚、1枚なら0枚）。 */
-    gsDraftRecommendCount(total) {
-      if (total <= 1) return 0;
-      if (total <= 4) return Math.min(2, total - 1);
-      if (total <= 6) return 2;
-      return 3;
-    },
-    /* おすすめカードNoの一覧（優先度の高い順、上記の枚数だけ） */
+    /* ピック補助：CPUドラフトAI（gsCpuScoreCard）と同じ評価軸で、今の束の中でおすすめのカードを示す。
+       強制ではなく目安の表示のみ（クリックしてもよいし、無視して別のカードを選んでもよい）。
+       提示枚数は束の残り枚数に応じて可変：7枚以上=3枚、6〜5枚=2枚、4枚以下=1枚、1枚なら0枚。
+       さらに、束の平均スコアより十分に優れたカードが無い（＝どれも大差ない）場合はおすすめ自体を出さない。 */
     gsDraftRecommendedCardNos() {
       if (!this.pickAssistEnabled) return [];
       const cards = this.gsMyPackCards;
@@ -8546,12 +8563,17 @@ new Vue({
       const kamiNo = this.gsMyKamiCard ? String(this.gsMyKamiCard.no) : null;
       const tags = kamiNo ? this.gsCpuKamiAffinityTags(kamiNo) : [];
       const ctx = { seat: this.gs.seat, kamiTags: tags, pickedCards: this.gsMyDraftDeckCards };
-      const count = this.gsDraftRecommendCount(cards.length);
+      const total = cards.length;
+      const count = total <= 1 ? 0 : total <= 4 ? 1 : total <= 6 ? 2 : 3;
       if (count <= 0) return [];
-      const ranked = cards
-        .map(c => ({ c, s: this.gsCpuScoreCard(c, ctx) }))
+      const scored = cards.map(c => ({ c, s: this.gsCpuScoreCard(c, ctx) }));
+      const avg = scored.reduce((sum, r) => sum + r.s, 0) / scored.length;
+      const QUALITY_MARGIN = 8; // 平均よりこれだけ優れていなければ「おすすめ」を表示しない
+      const ranked = scored
+        .slice()
         .sort((a, b) => b.s - a.s)
-        .slice(0, count);
+        .slice(0, count)
+        .filter(r => (r.s - avg) >= QUALITY_MARGIN);
       return ranked.map(r => String(r.c.no));
     },
     /* 現在自分の手元にある束のラベル（例：「ラウンド1・P2の1束目」） */
@@ -8844,6 +8866,7 @@ new Vue({
           selfKamiNo: kamiList[0] ? String(kamiList[0].no) : null,
           oppKamiNo: (kamiList[1] || kamiList[0]) ? String((kamiList[1] || kamiList[0]).no) : null,
           oppYorishiro: false,
+          realisticStart: false, // ON＝マナ10/10の検証用ショートカットをやめ、本番と同じ0（初手番のみ1）から開始
           kamiList,
         };
         console.log('[αsetup] modal set, kamiList=', kamiList.length);
@@ -8877,6 +8900,7 @@ new Vue({
         selfDeck: selfPool, oppDeck: oppPool,
         selfKami, oppKami,
         syncGame: false, oppIsCpu: !!setup.oppIsCpu,
+        previewFullMana: !setup.realisticStart,
       });
       // 相手フィールドにタップ済みヨリシロを3体配置
       if (setup.oppYorishiro) {
@@ -9301,8 +9325,9 @@ new Vue({
       if (gift) second.relics.push(gift);
       self.handCount = self.hand.length;
       opp.handCount = opp.hand.length;
-      // αモード（プレビュー）：自分のマナを10/10で開始（検証しやすくするため）
-      if (config.source === 'preview') {
+      // αモード（プレビュー）：既定では自分のマナを10/10で開始（検証しやすくするため）。
+      // 「本番同様の開始条件」が選ばれている場合は特別扱いせず、本番と同じ0（初手番のみ1）から始める。
+      if (config.source === 'preview' && config.previewFullMana !== false) {
         self.mana = 10; self.manaMax = 10;
       }
       this.battleSample = { turn: 1, activeSide: firstSide, result: null, self, opp };
@@ -9316,6 +9341,11 @@ new Vue({
         oppCpuAutoPlay: this.cpuAutoPlayEnabled, // CPUが自律してカードプレイ・攻撃を行うか（開始時点の設定を対戦中固定で使う。OFF＝従来通り待機のみ）
       };
       this.battleUndoStack = [];
+      this._battleGlowQueue = [];
+      this._battleGlowProcessing = false;
+      this._battleGlowOutbox = [];
+      this._battleGlowSeqCounter = 0;
+      this._battleLastGlowSeq = 0;
       this.battlePendingEffects = [];
       this.battleLog = [];
       this.battlePlayLog = { self: [], opp: [] };
@@ -9590,6 +9620,12 @@ new Vue({
           writer: n.mySeat, activeSeat, turn: bs.turn, result: bs.result || null,
           sides, ts: Date.now(),
         };
+        // 効果発動グロー演出：前回の公開以降に自分側で発動した効果を、この公開に便乗させて相手にも伝える
+        // （このpayloadに含まれるsides[n.mySeat]と同じ瞬間のインデックスを指すため、順序保証だけで足りる）
+        if (this._battleGlowOutbox && this._battleGlowOutbox.length) {
+          payload.glowEvents = this._battleGlowOutbox;
+          this._battleGlowOutbox = [];
+        }
       } catch (e) {
         console.error('[sync] シリアライズ失敗:', e);
         this.$set(this.battleNet, 'lastError', '送信前のシリアライズに失敗（' + (e && e.message) + '）');
@@ -9641,6 +9677,9 @@ new Vue({
         const sides = state.sides || {};
         this._battleApplySide('self', sides[n.mySeat], true);   // 自分席（手札/山札はローカル保持）
         this._battleApplySide('opp',  sides[n.oppSeat], false); // 相手席
+        // 効果発動グロー演出：相手側で発動した効果を、このスナップショットのopp配列に対する
+        // インデックスとして解決し、ローカルの再生キューに積む（1枚ずつ順番に光らせる）
+        this._battleApplyRemoteGlowEvents(state);
         const selfLegaciesLost = beforeSelfLegacies - (this.battleSample.self.legacies || []).length;
         const oppLegaciesLost = beforeOppLegacies - (this.battleSample.opp.legacies || []).length;
         const afterSelfLife = Number(this.battleSample.self.life) || 0;
@@ -9691,6 +9730,81 @@ new Vue({
         this.$set(this.battleNet, 'lastError', '受信適用失敗：' + (e && e.message));
       } finally {
         this.$nextTick(() => { this._battleApplyingRemote = false; });
+      }
+    },
+    /* ===================================================================
+       効果発動グロー演出（【出現時】等・非オラクル限定。死亡時は墓地アイコンを光らせる）
+       - ローカル（CPU戦・自分の手元）はカード/墓地オブジェクトを直接光らせるだけで完結する。
+       - オンライン対戦中は、自分側で発動した効果だけを_battleGlowOutboxに積んでおき、
+         次のPublishのpayloadに便乗させる（同じsides配列に対するインデックスなので
+         そのスナップショット内でのみ意味を持てば十分＝グローバルなカードIDは不要）。
+       - 複数の効果が同時に発動しても、キューに積んで1件ずつ順番に光らせる（重ならない）。
+       =================================================================== */
+    battleGlowCardEffect(card) {
+      try {
+        if (!card || card.category === 'オラクル') return;
+        this._battleGlowEnqueueLocal({ type: 'card', card });
+        const n = this.battleNet;
+        if (n && n.on && !n.spectating && this._battleFieldCardSide(card) === 'self') {
+          const p = this.battleSample.self || {};
+          let zone = null, idx = -1;
+          if (Array.isArray(p.legacies) && (idx = p.legacies.indexOf(card)) >= 0) zone = 'legacies';
+          else if (Array.isArray(p.relics) && (idx = p.relics.indexOf(card)) >= 0) zone = 'relics';
+          if (zone) this._battleGlowPublish(zone, idx, 'summon');
+        }
+      } catch (e) { console.warn('[glow] enqueue失敗:', e); }
+    },
+    battleGlowGraveyardEffect(playerObj, isTrueSelf) {
+      try {
+        if (!playerObj) return;
+        this._battleGlowEnqueueLocal({ type: 'graveyard', playerObj });
+        if (isTrueSelf) this._battleGlowPublish('graveyard', -1, 'death');
+      } catch (e) { console.warn('[glow] enqueue失敗:', e); }
+    },
+    _battleGlowPublish(zone, idx, kind) {
+      const n = this.battleNet;
+      if (!n || !n.on || n.spectating) return;
+      this._battleGlowSeqCounter = (this._battleGlowSeqCounter || 0) + 1;
+      this._battleGlowOutbox = this._battleGlowOutbox || [];
+      this._battleGlowOutbox.push({ zone, idx, kind, seq: this._battleGlowSeqCounter });
+    },
+    _battleGlowEnqueueLocal(entry) {
+      this._battleGlowQueue = this._battleGlowQueue || [];
+      this._battleGlowQueue.push(entry);
+      this._battleDrainGlowQueue();
+    },
+    // キューを1件ずつ処理する（発光中は次を待たせる＝同時発動でも重ならない）
+    _battleDrainGlowQueue() {
+      if (this._battleGlowProcessing) return;
+      const entry = (this._battleGlowQueue || []).shift();
+      if (!entry) return;
+      this._battleGlowProcessing = true;
+      const target = entry.type === 'card' ? entry.card : entry.playerObj;
+      if (!target) { this._battleGlowProcessing = false; this._battleDrainGlowQueue(); return; }
+      this._sfxPlay('effect');
+      this.$set(target, '_glowActive', true);
+      setTimeout(() => {
+        this.$set(target, '_glowActive', false);
+        this._battleGlowProcessing = false;
+        this._battleDrainGlowQueue();
+      }, 650);
+    },
+    // 受信したスナップショットに便乗してきたグローイベントを、自分側の再生キューに変換する
+    _battleApplyRemoteGlowEvents(state) {
+      if (!state || !Array.isArray(state.glowEvents) || !state.glowEvents.length) return;
+      const freshEnough = (Date.now() - Number(state.ts || 0)) < 5000; // 再接続直後の古いイベントは再生しない
+      const events = state.glowEvents.slice().sort((a, b) => (a.seq || 0) - (b.seq || 0));
+      for (const ev of events) {
+        if (!ev || !(Number(ev.seq || 0) > (this._battleLastGlowSeq || 0))) continue;
+        this._battleLastGlowSeq = Number(ev.seq || 0);
+        if (!freshEnough) continue;
+        if (ev.zone === 'graveyard') {
+          this._battleGlowEnqueueLocal({ type: 'graveyard', playerObj: this.battleSample.opp });
+        } else {
+          const arr = (this.battleSample.opp && this.battleSample.opp[ev.zone]) || [];
+          const card = arr[ev.idx];
+          if (card) this._battleGlowEnqueueLocal({ type: 'card', card });
+        }
       }
     },
     // 観戦モード用の受信適用：観戦者は自分では書き込まないため「自分のエコー」は存在せず
@@ -10475,6 +10589,10 @@ new Vue({
     togglePickAssist() {
       this.pickAssistEnabled = !this.pickAssistEnabled;
       try { localStorage.setItem('tsukuriyo_pickAssistEnabled', String(this.pickAssistEnabled)); } catch (e) { /* 保存できなくても続行 */ }
+    },
+    togglePoolDenseView() {
+      this.poolDenseView = !this.poolDenseView;
+      try { localStorage.setItem('tsukuriyo_poolDenseView', String(this.poolDenseView)); } catch (e) { /* 保存できなくても続行 */ }
     },
     toggleCpuAutoPlay() {
       this.cpuAutoPlayEnabled = !this.cpuAutoPlayEnabled;
@@ -15626,6 +15744,7 @@ new Vue({
         else if (hasUse) await this.dslRunSpec(card, '使用時', paidCost);
         if (hasSublim) await this.dslRunSpec(card, '昇華', paidCost);
         if (hasEnter) this.battleRunDoubledEnterEffect(card, paidCost);
+        if (hasEnter) this.battleGlowCardEffect(card); // 【出現時】が実際に発動した場合のみカードを光らせる（オラクルは除外）
         return true;
       }
       // effect_specでレビュー済み（specエントリが存在する）カードは、出現時に対応する能力が
@@ -15634,7 +15753,9 @@ new Vue({
       // 【選定】等を誤って出現時効果として実行してしまうため、レビュー済みカードでは
       // Layer1フォールバックを試みない（例：#91千変万化の大妖狐、#168色彩の旅絵巻）
       if (this.effectSpecsReady && this._dslGetSpec(card)) return true;
-      return this._battleQueueAndRunEffects(card, paidCost, '出現時');
+      const ranLayer1 = this._battleQueueAndRunEffects(card, paidCost, '出現時');
+      if (ranLayer1) this.battleGlowCardEffect(card);
+      return ranLayer1;
     },
     battleRunDeathKeywordEffects(card) {
       // このカードの本当の持ち主が実行中クライアント(手番側)と異なる場合（例：相手ターン中に
@@ -15645,6 +15766,10 @@ new Vue({
       // 実行そのものを委譲する（守護や相手選択破棄と同じ考え方）。
       const cardOwnerSide = (card && (card._lastFieldSide || this._battleFieldCardSide(card))) || 'self';
       const n = this.battleNet;
+      // グロー演出用：self/opp入れ替え（_dslSwapSelfOpp）が始まる前に、光らせるべき本当の墓地オブジェクトの
+      // 参照を確定しておく（入れ替え後は this.battleSample.self/opp の中身が入れ替わってしまうため）
+      const deathGlowPlayerObj = cardOwnerSide === 'opp' ? this.battleSample.opp : this.battleSample.self;
+      const deathGlowIsTrueSelf = cardOwnerSide === 'self';
       if (cardOwnerSide === 'opp' && n && n.on && !n.spectating) {
         this._battleDelegateDeathTrigger(card);
         return true;
@@ -15671,6 +15796,7 @@ new Vue({
       if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '死亡時')) {
         const p = this.dslRunSpec(card, '死亡時', null);
         this.battleRunDoubledDeathEffect(card);
+        this.battleGlowGraveyardEffect(deathGlowPlayerObj, deathGlowIsTrueSelf);
         if (needsSwap) Promise.resolve(p).finally(restore); else restore();
         return true;
       }
@@ -15678,6 +15804,7 @@ new Vue({
       // フォールバックを試みない（出現時側と同じ理由。例：#39シジマは死亡時効果を持たない）
       if (this.effectSpecsReady && this._dslGetSpec(card)) { restore(); return true; }
       const result = this._battleQueueAndRunEffects(card, null, '死亡時');
+      if (result) this.battleGlowGraveyardEffect(deathGlowPlayerObj, deathGlowIsTrueSelf);
       restore();
       return result;
     },
