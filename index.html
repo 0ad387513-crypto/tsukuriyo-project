@@ -745,8 +745,8 @@
   .deck-item .qty .n { min-width: 18px; text-align: center; font-weight: bold; font-size: 13px; }
 
   /* 密表示（多く表示）モード：デッキ一覧の各行を詰めて、一画面で見渡せる枚数を増やす。
-     マナカーブ・属性割合・種別数（.deck-stats-panel より上の.deck-info側）は変更しないため
-     最低限の情報は維持したまま、行そのものだけをコンパクトにする。 */
+     マナカーブ・属性割合・種別数（.deck-stats-panel より上の.deck-info側）はテンプレート側の
+     v-if="!deckDenseView" で非表示にし、より多くのカード行を表示できるスペースを確保する。 */
   .deck-list.dense .deck-item {
     min-height: 26px; padding: 3px 8px; gap: 6px;
     box-shadow: none; background-image: none !important;
@@ -4490,7 +4490,7 @@
         </div>
       </div>
 
-      <div class="curve">
+      <div class="curve" v-if="!deckDenseView">
         <div class="bar-col" v-for="(n, i) in curveBuckets" :key="i">
           <div class="bar-num">{{ n || '' }}</div>
           <div class="bar-bg"><div class="bar-fill" :style="{height: curveBarHeight(n) + '%'}"></div></div>
@@ -4498,12 +4498,12 @@
         </div>
       </div>
 
-      <div class="deck-stats deck-stats-cats">
+      <div class="deck-stats deck-stats-cats" v-if="!deckDenseView">
         <span>レガシー<b>{{ categoryCount('レガシー') }}</b></span>
         <span>オラクル<b>{{ categoryCount('オラクル') }}</b></span>
         <span>レリック<b>{{ categoryCount('レリック') }}</b></span>
       </div>
-      <div class="deck-stats deck-stats-colors">
+      <div class="deck-stats deck-stats-colors" v-if="!deckDenseView">
         <svg class="color-pie" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" title="属性割合">
           <circle cx="50" cy="50" r="50" fill="#2a2f3d" v-if="colorPieSlices.length === 0" />
           <path v-for="slice in colorPieSlices" :key="slice.key" :d="slice.d" :fill="slice.color" />
@@ -4517,7 +4517,7 @@
           <span class="cc cc-genesis">創<b>{{ colorCount('創') }}</b></span>
         </div>
       </div>
-      <div class="deck-stats deck-stats-types">
+      <div class="deck-stats deck-stats-types" v-if="!deckDenseView">
         <span class="tc">忍者<b>{{ typeCount('忍者') }}</b></span>
         <span class="tc">侍<b>{{ typeCount('侍') }}</b></span>
         <span class="tc">人獣<b>{{ typeCount('人獣') }}</b></span>
@@ -7821,7 +7821,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.16',
+    BUILD_VERSION: '1.15.17',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
