@@ -79,6 +79,18 @@
     grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
     gap: 14px;
   }
+  /* 密表示（多く表示）モード：カードを小さく詰めて並べ、デッキの中身を見ながらでも
+     一目で多くのカードを見渡せるようにする。機能・操作（±ボタン等）は従来のまま縮小するだけ。 */
+  .pool.dense-view .grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+  .pool.dense-view .grid-area { padding: 8px; }
+  .pool.dense-view .card .name-bar { font-size: 9px; padding: 8px 3px 3px; }
+  .pool.dense-view .card .cost-badge { width: 18px; height: 18px; font-size: 10px; border-width: 1px; }
+  .pool.dense-view .card .preview-btn { width: 18px; height: 18px; }
+  .pool.dense-view .card .preview-btn svg { width: 10px; height: 10px; }
+  .pool.dense-view .card .card-qty { gap: 3px; padding: 2px 3px; }
+  .pool.dense-view .card .card-qty button { width: 22px; height: 18px; font-size: 11px; }
+  .pool.dense-view .card .card-qty .n { min-width: 14px; font-size: 11px; }
+  .pool-dense-toggle-btn.active { background: #2a5cb8; border-color: #6090e0; color: #fff; }
   .card {
     position: relative;
     background: #11141c; border-radius: 6px; overflow: hidden;
@@ -537,6 +549,10 @@
     background: #4a7a4a; color: #fff; border-color: #6c9;
     box-shadow: 0 0 0 1px #6c9 inset;
   }
+  .deck-stats-return .mt-structure {
+    background: #2a2320; color: #e8d4a0; border-color: #6a4a2a;
+  }
+  .deck-stats-return .mt-structure:hover { background: #362a20; color: #fff; }
 
   .deck-return-hint {
     padding: 6px 14px 8px;
@@ -556,6 +572,15 @@
   }
   .deck-shield-battle-btn:hover { background: linear-gradient(135deg, #d8843a, #f8aa4a); }
   .deck-shield-battle-btn:active { transform: translateY(1px); }
+
+  /* 理念構築戦：デッキ構築中の状態表示・提出パネル */
+  .cb-build-panel { padding: 10px 14px; border-bottom: 1px solid #2a2f3d; border-top: 1px solid #2a2f3d; background: #1e2230; }
+  .cb-build-status { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: #cbd3de; margin-bottom: 6px; flex-wrap: wrap; }
+  .cb-build-status b { color: #f0b86c; }
+  .cb-build-status b.ok { color: #7cf0a8; }
+  .cb-build-warnings { margin: 0 0 8px; font-size: 11px; line-height: 1.4; color: #f0a86c; }
+  .cb-build-actions { display: flex; gap: 8px; }
+  .cb-build-actions .gm-btn { flex: 1; }
 
   /* 属性カウントは色つきドット付き */
   .deck-stats-colors {
@@ -716,6 +741,28 @@
   }
   .deck-item .qty button:hover { background: #3a4055; }
   .deck-item .qty .n { min-width: 18px; text-align: center; font-weight: bold; font-size: 13px; }
+
+  /* 密表示（多く表示）モード：デッキ一覧の各行を詰めて、一画面で見渡せる枚数を増やす。
+     マナカーブ・属性割合・種別数（.deck-stats-panel より上の.deck-info側）はテンプレート側の
+     v-if="!deckDenseView" で非表示にし、より多くのカード行を表示できるスペースを確保する。 */
+  .deck-list.dense .deck-item {
+    min-height: 26px; padding: 3px 8px; gap: 6px;
+    box-shadow: none; background-image: none !important;
+  }
+  .deck-list.dense .deck-item::before { display: none; }
+  .deck-list.dense .deck-item .cost { width: 16px; height: 16px; font-size: 9px; border-width: 1px; }
+  .deck-item-thumb {
+    width: 20px; height: 20px; flex-shrink: 0; border-radius: 3px;
+    background-repeat: no-repeat; background-size: cover;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset;
+  }
+  .deck-list.dense .deck-item .name { font-size: 11px; }
+  .deck-list.dense .deck-item .name small { display: none; }
+  .deck-list.dense .deck-item .pack-no-badge { display: none; }
+  .deck-list.dense .deck-item .qty button { width: 16px; height: 16px; font-size: 10px; }
+  .deck-list.dense .deck-item .qty .n { font-size: 10px; min-width: 12px; }
+  .deck-list.dense .deck-item .mode-action-btn { padding: 1px 6px; font-size: 9px; height: 18px; }
+  .deck-dense-toggle-btn.active { background: #2a5cb8; border-color: #6090e0; color: #fff; }
 
   /* 返還・取消ボタン（通常モード deck-list 用） */
   .deck-item .return-btn,
@@ -1132,7 +1179,7 @@
     border-radius: 8px; cursor: pointer; transition: transform 0.12s, box-shadow 0.12s, background 0.15s;
     color: #fff; border: 1px solid #2e3548;
     background: linear-gradient(135deg, #2a3550, #1a2540);
-    text-align: center;
+    text-align: center; word-break: keep-all;
   }
   .top-menu-btn:hover {
     transform: translateY(-2px); box-shadow: 0 6px 24px rgba(220, 159, 80, 0.2);
@@ -1147,12 +1194,12 @@
   /* トップ画面：主要モードカード（4枚グリッド） */
   .top-mode-grid {
     position: relative; z-index: 1;
-    display: grid; grid-template-columns: 1fr 1fr;
-    grid-template-areas: "game game" "deck shield";
-    gap: 16px; width: min(640px, 92vw); margin-bottom: 28px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas: "game game game" "deck shield construct";
+    gap: 16px; width: min(760px, 92vw); margin-bottom: 28px;
   }
   @media (max-width: 560px) {
-    .top-mode-grid { grid-template-columns: 1fr; grid-template-areas: "game" "deck" "shield"; }
+    .top-mode-grid { grid-template-columns: 1fr; grid-template-areas: "game" "deck" "shield" "construct"; }
   }
   .top-mode-card {
     display: flex; flex-direction: column; align-items: center; gap: 6px;
@@ -1160,6 +1207,7 @@
     color: #fff; border: 1px solid #2e3548;
     background: linear-gradient(160deg, #2a3550, #1a2540);
     transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    min-width: 0; /* グリッド内で内容（説明文の折り返し不可幅）に押されて列幅が不揃いになるのを防ぐ */
   }
   .top-mode-card:hover {
     transform: translateY(-3px); box-shadow: 0 8px 28px rgba(220, 159, 80, 0.22);
@@ -1168,7 +1216,7 @@
   .top-mode-icon { font-size: 30px; line-height: 1; }
   .genesis-globe-icon { display: inline-block; vertical-align: -0.15em; }
   .top-mode-label { font-size: 16px; font-weight: 800; letter-spacing: 0.03em; }
-  .top-mode-desc { font-size: 11px; color: #aab; }
+  .top-mode-desc { font-size: 11px; color: #aab; word-break: keep-all; overflow-wrap: anywhere; }
   .top-mode-card.deck { grid-area: deck; background: linear-gradient(160deg, #2a3a5a, #1a2a4a); padding: 16px 12px; }
   .top-mode-card.deck:hover { border-color: #7a9ad0; }
   .top-mode-card.deck .top-mode-icon { font-size: 22px; }
@@ -1177,6 +1225,10 @@
   .top-mode-card.shield:hover { border-color: #b090e0; }
   .top-mode-card.shield .top-mode-icon { font-size: 22px; }
   .top-mode-card.shield .top-mode-label { font-size: 13px; }
+  .top-mode-card.construct { grid-area: construct; background: linear-gradient(160deg, #6a4a2a, #543a1e); padding: 16px 12px; }
+  .top-mode-card.construct:hover { border-color: #e0b070; }
+  .top-mode-card.construct .top-mode-icon { font-size: 22px; }
+  .top-mode-card.construct .top-mode-label { font-size: 13px; }
   .top-mode-card.game {
     grid-area: game; background: linear-gradient(160deg, #2a5a4a, #1e4438);
     padding: 34px 20px; border-width: 2px; border-color: #4a9a72;
@@ -1190,7 +1242,7 @@
   .top-devtools { position: relative; z-index: 1; width: min(420px, 92vw); }
   .top-devtools-toggle {
     width: 100%; background: transparent; border: 1px dashed #3a4055; color: #8a94ac;
-    padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
+    padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; word-break: keep-all;
   }
   .top-devtools-toggle:hover { color: #cdd6e6; border-color: #5a6580; }
   .top-devtools-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
@@ -1207,7 +1259,7 @@
   .howto-section { padding: 12px 0; border-bottom: 1px solid #262b38; }
   .howto-section:last-child { border-bottom: none; }
   .howto-heading { font-size: 14px; font-weight: 800; color: #ffd86a; margin-bottom: 6px; }
-  .howto-body { font-size: 12.5px; color: #c8d0e0; line-height: 1.75; white-space: pre-wrap; }
+  .howto-body { font-size: 12.5px; color: #c8d0e0; line-height: 1.75; white-space: pre-wrap; word-break: keep-all; }
   .howto-open-btn { font-size: 15px; }
   .deck-manager-save-row { display: flex; gap: 8px; align-items: flex-start; }
   .deck-manager-name-input {
@@ -1321,7 +1373,7 @@
   .gm-abort-btn:hover { background: rgba(160,40,40,.25); color: #fff; }
   .gm-abort-btn + .gm-close { margin-left: 0; }
   .gm-body { padding: 18px; }
-  .gm-lead { color: #bcd; font-size: 13px; line-height: 1.7; margin: 0 0 16px; }
+  .gm-lead { color: #bcd; font-size: 13px; line-height: 1.7; margin: 0 0 16px; word-break: keep-all; }
 
   /* メニュー */
   .gm-field { display: block; margin-bottom: 18px; }
@@ -1357,9 +1409,19 @@
   }
   .gm-btn-solo { background: #3a3052; border-color: #6a5a8a; color: #d8c8f8; }
   .gm-btn-solo:hover:not(:disabled) { background: #4a4068; color: #fff; }
+  .gm-public-room-list {
+    margin-top: 16px; padding: 10px 12px; background: #171b26;
+    border: 1px solid #2a2f3d; border-radius: 6px; max-height: 220px; overflow-y: auto;
+  }
+  .gm-public-room-title { font-size: 12px; color: #9ab; font-weight: 700; margin-bottom: 8px; }
+  .gm-public-room-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 6px 0; border-bottom: 1px solid #232838; font-size: 12.5px; color: #d8dee8;
+  }
+  .gm-public-room-row:last-child { border-bottom: none; }
   .cpu-auto-play-toggle {
     display: flex; align-items: center; gap: 6px; cursor: pointer;
-    font-size: 11px; color: #c9d2df;
+    font-size: 11px; color: #c9d2df; word-break: keep-all;
   }
 
   /* ロビー */
@@ -1520,12 +1582,14 @@
   }
   .gm-pack-card:hover { transform: translateY(-3px); border-color: #6c9; }
   .gm-pack-card.pick-assist-recommended { border-color: #ffd86a; box-shadow: 0 0 10px rgba(255, 216, 106, .4); }
+  .gm-pack-card.pick-assist-not-recommended { border-color: #6a6a72; filter: grayscale(35%) brightness(0.82); }
   .pick-assist-badge {
     background: rgba(255, 216, 106, .95); color: #2a1c0a;
-    font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 10px;
-    white-space: nowrap;
+    font-size: 14px; font-weight: 800; padding: 2px 6px; border-radius: 10px;
+    white-space: nowrap; line-height: 1;
   }
-  .pick-assist-badge-overlay { position: absolute; top: 4px; left: 4px; z-index: 2; pointer-events: none; }
+  .pick-assist-badge-down { background: rgba(120, 120, 130, .95); color: #fff; }
+  .pick-assist-badge-overlay { position: absolute; top: 4px; right: 4px; z-index: 2; pointer-events: none; }
   .gm-pack-img { width: 100%; aspect-ratio: 744 / 1039; background: #0a0c12 center / cover no-repeat; }
   .gm-pack-name {
     padding: 4px 6px; font-size: 10px; color: #ddd; text-align: center;
@@ -1604,7 +1668,7 @@
     display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
     font-size: 14px; font-weight: 700; color: #eee;
   }
-  .gm-deepen-hint { font-size: 11px; color: #9ab; font-weight: 400; }
+  .gm-deepen-hint { font-size: 11px; color: #9ab; font-weight: 400; word-break: keep-all; }
   .gm-pick-timer-settings { margin-top: 14px; padding: 10px 12px; background: #171b26; border: 1px solid #2a2f3d; border-radius: 6px; }
   .gm-pick-timer-title { font-size: 11px; color: #9ab; margin-bottom: 8px; }
   .gm-pick-timer-row { display: flex; gap: 18px; flex-wrap: wrap; }
@@ -3645,6 +3709,26 @@
     0% { opacity: .95; transform: translateY(0) scale(.6); filter: blur(0); }
     100% { opacity: 0; transform: translateY(-24px) scale(2.1); filter: blur(2px); }
   }
+  /* 効果発動グロー：【出現時】等の効果が解決したカードを一定時間光らせる（遊戯王マスターデュエル等を参考）。
+     同時発動は _battleDrainGlowQueue 側で1枚ずつ順番に処理するため、CSS側は単純な発光のみでよい。 */
+  .card-effect-glow {
+    animation: cardEffectGlowKf .65s ease-in-out;
+    z-index: 5;
+  }
+  @keyframes cardEffectGlowKf {
+    0%   { box-shadow: 0 0 0 0 rgba(140,220,255,0); filter: brightness(1); }
+    30%  { box-shadow: 0 0 18px 7px rgba(140,220,255,.9); filter: brightness(1.5) saturate(1.2); }
+    100% { box-shadow: 0 0 0 0 rgba(140,220,255,0); filter: brightness(1); }
+  }
+  /* 死亡時効果：墓地の山札アイコンごと光らせる（個々のカードは墓地では並べて表示されないため） */
+  .dgc-cell.graveyard-glow {
+    animation: graveyardGlowKf .65s ease-in-out;
+  }
+  @keyframes graveyardGlowKf {
+    0%   { box-shadow: 0 0 0 0 rgba(190,140,255,0); }
+    30%  { box-shadow: 0 0 16px 6px rgba(190,140,255,.85); }
+    100% { box-shadow: 0 0 0 0 rgba(190,140,255,0); }
+  }
   /* ライフが少ない時の警告演出：ライフ表示の脈動＋自陣が危険域なら画面端をうっすら赤く点滅 */
   .orb-disc.life.life-warning { animation: lifeWarningPulseKf 1s ease-in-out infinite; }
   @keyframes lifeWarningPulseKf {
@@ -3904,7 +3988,7 @@
       <div class="top-menu-subtitle">— TSUKURIYO ONLINE —</div>
     </div>
     <div v-if="resumeSession" class="top-resume-banner">
-      <span>進行中のセッションがあります（{{ resumeSession.kind === 'game' ? '創世決戦' : resumeSession.kind === 'shield' ? '星紡ぎ戦' : '対戦テスト' }} / コード: {{ resumeSession.code }}）</span>
+      <span>進行中のセッションがあります（{{ resumeSession.kind === 'game' ? '創世決戦' : resumeSession.kind === 'shield' ? '星紡ぎ戦' : resumeSession.kind === 'construct' ? '理念構築戦' : '対戦テスト' }} / コード: {{ resumeSession.code }}）</span>
       <button class="top-resume-btn" @click="resumeActiveSession">↩ 戻る</button>
     </div>
     <div class="top-mode-grid">
@@ -3942,7 +4026,12 @@
       <button class="top-mode-card shield" @click="goToShield">
         <span class="top-mode-icon">⚔</span>
         <span class="top-mode-label">星紡ぎ戦</span>
-        <span class="top-mode-desc">2人・パックを開封してその場でデッキを組み対戦</span>
+        <span class="top-mode-desc">2人・パックを開封してその場で<wbr>デッキを組み対戦</span>
+      </button>
+      <button class="top-mode-card construct" @click="goToConstruct">
+        <span class="top-mode-icon">📜</span>
+        <span class="top-mode-label">理念構築戦</span>
+        <span class="top-mode-desc">2人・全カードから自由に35枚の<wbr>デッキを組んで対戦</span>
       </button>
     </div>
     <div class="top-devtools">
@@ -3954,6 +4043,30 @@
         <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(true)">🌐 対戦テスト：作成（2人同期確認）</button>
         <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(false)">🌐 対戦テスト：参加（コード入力）</button>
         <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleSpectate">🔍 対戦を観戦する（対戦テスト/星紡ぎ戦/創世決戦・コード入力）</button>
+        <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;"
+                @click="_sfxPlay('cancel'); cbDevEditorOpen = !cbDevEditorOpen; if (cbDevEditorOpen) _cbSubscribeStructureDecks()">
+          📜 理念構築戦：ストラクチャーデッキ編集 {{ cbDevEditorOpen ? '▲' : '▼' }}
+        </button>
+        <div v-if="cbDevEditorOpen" style="width:100%;max-width:420px;margin:0 auto;text-align:left;background:#181c26;border:1px dashed #3a4055;border-radius:6px;padding:10px;">
+          <div v-for="sd in cbStructureDecks" :key="sd.id" class="gm-public-room-row" style="margin-bottom:6px;">
+            <span>{{ sd.name }}</span>
+            <span style="display:flex;gap:6px;">
+              <button class="gm-btn" @click="cbEditStructureDeck(sd)">編集</button>
+              <button class="gm-btn" style="background:#5a2a2a;" @click="cbDeleteStructureDeck(sd.id)">削除</button>
+            </span>
+          </div>
+          <div v-if="!cbStructureDecks.length" style="font-size:12px;color:#9aa;padding:6px 0;">まだありません</div>
+          <button class="gm-btn gm-btn-primary" style="width:100%;margin-top:6px;" @click="cbNewStructureDeckDraft">＋ 新規追加（現在編集中のデッキから）</button>
+          <div v-if="cbEditingDeck" style="margin-top:10px;padding-top:10px;border-top:1px solid #2a2f3d;">
+            <input class="sp-input" v-model="cbEditingDeck.name" placeholder="デッキ名" style="margin-bottom:6px;">
+            <input class="sp-input" v-model="cbEditingDeck.kamiNo" placeholder="カミNo（任意・デッキコードのK指定を優先）" style="margin-bottom:6px;">
+            <textarea class="deck-manager-code-box" rows="3" v-model="cbEditingDeck.deckCode" placeholder="デッキコード（Base64）"></textarea>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+              <button class="gm-btn gm-btn-primary" style="flex:1;" @click="cbSaveStructureDeck">保存</button>
+              <button class="gm-btn" style="flex:1;" @click="cbCancelEditStructureDeck">キャンセル</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="top-menu-footer">v{{ BUILD_VERSION }}</div>
@@ -4014,6 +4127,110 @@
 ・L：バトルログを表示
 ・Q / E：カーソルを当てているフィールドカードのタップ状態を切り替え
 ・Esc：開いているメニュー/モーダルを閉じる</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">カミ別ピック指南（選別の儀・パック選択の参考に）</div>
+          <div class="howto-body">選んだカミによって狙いたいデッキの方向性は大きく変わります。以下は各カミの基本方針です（ドラフト補助の「おすすめ」もこの方針を踏まえて表示されます）。</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">スサノオ ― 進化・昇華</div>
+          <div class="howto-body">・基本方針として、昇華・進化のカードを優先的にピックしましょう。特に進化は神技2を使った後にも使える上ユニーク性も高いので、優先度は高いです。
+・神技2発動に必要な天力が少ないので、天力を固定値で上げるカード（約束の光・ミズホ、平穏の祈り手、鐘鳴らしの童など）との相性は最高です。神使が多いので、神使軸でデッキを組むのもありです。
+・どのレガシーからでも進化できるカード（幽玄の面霊姫、葛ノ葉亭の若女将、千変万化の大妖狐）は最優先でピックしましょう。
+・昇華のコストを軽減するカード（厳格なる森の長・ハクレン、拒絶の守衛・イズモ）も強力です。種族は人獣のため、こちらに寄せるのもよいでしょう。</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">ヤマトタケル ― 同名一切禁止</div>
+          <div class="howto-body">・デッキのカードに1枚も被りがないようにする必要があるので、すでに入っているカードのピックは避けましょう。
+・天力が毎ターン溜まっていくので、天力を固定値で上げるカード（約束の光・ミズホ、平穏の祈り手、鐘鳴らしの童など）との相性は比較的悪く、避けたほうがよいでしょう。
+・神技1で手札補充ができるので、軽めのカードを多くしても手札は尽きにくいです。
+・神技2で盤面干渉ができるので、マナ最大値を増やすカードを使う重量級の方針も強力です。
+・神技2は相手レガシーを1体残してしまうデメリットがあるので、単体除去のカード（冥土送りの侍女、静かなる謀殺など）を多めにピックしておくとよいでしょう。
+・同じ種族で固めることが難しく他種族寄りのデッキになりやすいので、「平和を願う剣・アヤト」「暁の盟約」「断禍の三重奏」の優先度は高くなります。</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">オオクニヌシ ― 種族分散</div>
+          <div class="howto-body">・他種族がフィールドにいると天力が増加するため、種族が分散するようにデッキを組むことが求められます。
+・神技2はレガシーを召喚する効果なので、デッキはレガシーの比率を多くし、強力なレガシーを優先的にピックしましょう。
+・他種族で組むことに意義があるので、「平和を願う剣・アヤト」「暁の盟約」「断禍の三重奏」は最優先です。
+・自身と異なる種族のトークンを招来するレガシー（無垢なる信徒・チフユ、約束の光・ミズホ、もふもふ探求者、決別の白槍・ミナト）も最優先でピックしましょう。
+・自身の神技1で人獣を招来できるので、人獣に偏ったピックは避けたほうがよいでしょう。
+・複数の種族を並べる必要があるので、コスト7以上の重いカードは避け気味に。
+・手札切れに備え、「木漏れ日の道場」や「忠臣の予感」もピックしておくとよいでしょう。</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">タケミカヅチ ― 最高戦闘力</div>
+          <div class="howto-body">・戦闘力が最も高いレガシーが自分フィールドにいる必要があるので、【補正+】持ちや素の戦闘力が高いレガシーと相性がよいです。
+・神技1はアンタップしているレガシーとも戦闘できるので、【奇襲】持ち（戦陣の旗手、無貌の忍、白き閃刃・シラトリなど）と相性がよいです。
+・神使は天力上昇や強力な出現時効果を持ちますが戦闘力は低めの傾向があるので、優先度は下がります。
+・侍にはレリックの数に応じて戦闘力が向上するレガシー（名刀集めの豪族、算盤弾きの刀剣商、千刃の破戒僧、妖刀を抱く乙女など）がおり、強力なレリックと共にピックすると最高の相性です。
+・「覚悟の出陣」はレリックを多数採用していないと真価を発揮しませんが、侍とレリックを自然にピックできるタケミカヅチなら発揮しやすいので優先度は高いです。
+・「刹那の救援」も戦闘力の高いレガシーを揃えるこのカミと好相性です。
+・「木漏れ日の道場」は毎ターン【補正+1000】をかけられ、天力トリガーの条件を満たしやすくドローも優秀なので最優先です。
+・自身より戦闘力の高い相手レガシーを確実に除去するカード（冥土送りの侍女、静かなる謀殺など）もピックしましょう。</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">オモイカネ ― オラクル・レリック</div>
+          <div class="howto-body">・基本方針として、オラクル・レリックをピックすることになります。
+・オラクルの使用コストを軽減できるヨリシロちゃんを招来できるカードは優先的にピックしましょう。
+・「社の施し」を招来できるカードも優先度が高いです。レリックを招来するので天力が溜まります。「社の施し」を多くピックできれば、レリックとシナジーがある侍カード（名刀集めの豪族、算盤弾きの刀剣商、千刃の破戒僧、妖刀を抱く乙女など）とも相性がよくなります。
+・「お節介な陰陽師」はオラクル中心だと大変高い価値を発揮し、ヨリシロちゃんも招来できるので最優先です。
+・選定カードにはオラクルが多いので、それらを多くピックできれば選定とシナジーを持つ忍者カード（胡蝶の密偵、慈愛の忍・イロハ、飛苦無の淑女）の優先度が高まります。
+・レガシーが少なくボードアドバンテージを取られやすいので、全体除去（恐怖の手記、熾烈なる戦役、禍ツ撃など）は優先してピックしましょう。
+・「晴れ空の門出」はオラクルでありながらレリックの「社の施し」を招来できるため、最優先でピックすべきカードです。
+・オラクル/レリックのコストを下げる「誇り高き名工」「史を紡ぐ語り部」も優先度が高く、場合によっては本体より優先してよいです。
+・レガシーの割合が少ないと勝つのが難しいので、最低限レガシーもピックしましょう。</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">アメノウズメ ― マナ最大値・ライフ</div>
+          <div class="howto-body">・基本方針として、ライフ回復、マナ最大値上昇、「社の施し」を招来できるカードを優先的にピックしましょう。
+・「冒険譚の始まり」は最優先です。マナ最大値を上昇させ、最大値7以上なら天力も増えるため非常に強力です。
+・「平穏の祈り手」も最優先です。召喚するだけで天力が2増加します。
+・マナを増やす都合上、場にレガシーを出すタイミングが少ないことがあるので、除去カード（瞬速の死闘、禁忌の祭壇、式神奏術・一目連など）をピックしておきましょう。特に後者2つはライフ回復も伴うため優先度はさらに高めです。
+・マナを増やして戦う都合上、高コストで場を大きく動かすカード（陰陽かぶれの犬神、紅翼龍・ルベル、偽りの聖女・サナエなど）とも相性がよいです。
+・「もふもふ探求者」は低コストでも使える上、マナが増えた後半でも昇華で使えるため最優先です。
+・上記の他、昇華のカード全般はマナ最大値が増えた後でも使いやすいため優先度は高めです。</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">ヒノカグツチ ― 破壊・【補正-】</div>
+          <div class="howto-body">・基本方針として、相手を破壊するカード、もしくは【補正-】をつけるカードを多くピックしましょう。
+・「蠢く陰謀」は神技1で墓地を肥やせるため、【補正-】効果を活かしやすく優先度が高いです。
+・「妖刀を抱く乙女」「二尾の猫女」は最優先です。相手レガシーと相打ちするだけで天力を2得られます。
+・全体除去カード（恐怖の手記、禁忌の祭壇、熾烈なる戦役、暗躍の妖将・カゲロウ、禍ツ撃、紫爪龍・プルプラなど）は最高の相性なので最優先でピックしましょう。
+・「貪食の童女」も貴重な低コスト破壊レガシーで、墓地も増やせるため墓地関連カードとの組み合わせもよいです。
+・総じて妖怪レガシーとの相性がよく、死亡時効果・墓地参照シナジーを活かせます。
+・「不屈の武者」は墓地が増えることで強くなり、すぐ破壊されるため天力もすぐ溜まるので相性がよいです。
+・「妖界の禍主・マガツヒ」は最優先です。神技1で墓地を溜めやすい上、出現時効果で破壊も行います。</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">アマテラス ― 守護</div>
+          <div class="howto-body">・基本方針として、守護を持つレガシーをピックするとよいです。守護を持つトークン（ヨリシロちゃん、巨躯なる獣霊）を招来するカードの優先度も上がります。「獣霊」を招来できるカードは、文言が「いずれかの獣霊」「異なる獣霊N種」等どのような形であっても、選択肢の中に守護持ちの巨躯なる獣霊が含まれ得るため優先度は高いです（厳格なる森の長・ハクレン、晴れ空の門出、もふもふ探求者など）。
+・神技2は墓地からカードを蘇生する効果なので、自然と墓地が増える霊視持ちのカードの優先度が少し上がります。
+・「平穏の祈り手」「鐘鳴らしの童」は召喚するだけで天力が2上がるため優先度がかなり高いです。
+・ヨリシロちゃんを招来できるカードは相性がよく、その中でも複数招来できる「無垢なる信徒・チフユ」「決別の白槍・ミナト」「陰陽かぶれの犬神」は特に相性がよいです。
+・神使には守護が多く、ヨリシロちゃんを招来するカードもあるので相性がよく、神使を中心にデッキを組むのもよいでしょう。
+・神技2はなんでも墓地から蘇生できる破格の効果なので、なるべくコストの高いカードを蘇生したいです。コストの重いカード全般の優先度は高く、特に守護を持つ「黄角龍・フラウス」は最高の相性です。</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">ツクヨミ ― トークン</div>
+          <div class="howto-body">・基本方針として、トークンを招来できるカードを集めましょう。「社の施し」はレリックでありながらトークンなので、これを招来できるカードも相性がよいです。
+・「月見草の修行場」はかなり優先度が高いです。1枚で2回天力が溜められます。
+・「晴れ空の門出」は最優先です。昇華をすることで天力を溜められます。
+・忍者レガシーは「影分身」トークンを出すカードが多いので相性がよく、選定シナジーも含めてピックできるとなおよいです。
+・天力トリガーの対象となるカードが多いので、天力を固定値で上げるカードとはあまり相性がよくなく、優先度は少し下がります。
+・ヨリシロちゃんを生成するカードを多くピックできているなら、ヨリシロちゃんのオラクル軽減効果によりオラクルの優先度が上がります。
+・「聖女の巡礼」は最優先です。1枚で天力を3得られます。
+・「落日の子守唄」「歓喜の凱旋」は毎ターントークンを招来できる最高の相性のカードなので、最優先でピックしましょう。</div>
+        </div>
+        <div class="howto-section">
+          <div class="howto-heading">ヤマタノオロチ ― 龍</div>
+          <div class="howto-body">・基本方針として、龍のカードを最優先でピックしましょう。
+・龍のカードは龍を複数集めた時にシナジーする効果が多いので、何よりも龍を複数集めることが最優先です。龍があるパックでそれ以外を優先することはほとんどありません。
+・「夜風の始末屋」「名刀集めの豪族」は、「隷属の龍血」「天喰らう咆哮」と組み合わせることで疾駆を得られ、神技2の効果で【神威+2】も得られるため大ダメージが狙えて相性がよいです。
+・龍の中でも「紅翼龍・ルベル」は特に優先的にピックすべき1枚です。神技2の【神威+2】と最高の相性です。
+・龍は比較的コストが重いカードが多いため、マナ最大値を上げるカード（冒険譚の始まり、浮遊する相棒・コマなど）と相性がよいです。
+・「荒き緑の眷属」もマナ最大値を上げるカードなので、龍の中で特に優先度が高いカードです。
+・「瞬速の死闘」「熾烈なる戦役」「救済の手」「禍ツ撃」などの除去カードを抑えておくと、序盤が安定する上に相手がこちらの龍を除去する手段をかなり減らせるので、優先度はかなり高いです。</div>
         </div>
       </div>
       <div class="battle-zone-modal-actions">
@@ -4095,7 +4312,7 @@
   </div>
 
   <!-- ===== 左：カードプール ===== -->
-  <div class="pool" v-show="deckBuilderVisible">
+  <div class="pool" v-show="deckBuilderVisible" :class="{ 'dense-view': poolDenseView }">
     <div class="header">
       <div class="title-row">
         <button v-if="appView === 'cardlist'" class="back-to-top-btn" @click="goToTop">◀ トップ</button>
@@ -4103,6 +4320,12 @@
         <button class="glossary-open-btn" @click="_sfxPlay('decision'); glossaryModalOpen = true" title="キーワード集を開く">📚 キーワード集</button>
         <span class="total">全 {{ filteredCards.length }} 枚<span v-if="driveError" style="color:#fb7"> / Drive読込失敗</span></span>
         <div class="spacer"></div>
+        <!-- 表示モード切替：デッキの中身を見ながらでも多くのカードが一目で見えるよう、カードを小さく密に並べる表示に切り替える（従来の一覧表示・機能は変わらない） -->
+        <button class="deck-sort-btn pool-dense-toggle-btn" @click="_sfxPlay('cancel'); togglePoolDenseView()"
+                :class="{ active: poolDenseView }"
+                :title="poolDenseView ? '通常のカード表示に戻す' : 'カードを小さく密に並べて多く表示する'">
+          {{ poolDenseView ? '▦ 通常表示' : '▦ 多く表示' }}
+        </button>
         <!-- カードプール ソート（右端） -->
         <div class="pool-sort-wrap">
           <button class="deck-sort-btn" @click.stop="_sfxPlay('cancel'); poolSortOpen = !poolSortOpen"
@@ -4246,12 +4469,12 @@
             <span class="dt-label">{{ deckExpanded ? 'カードリストへ' : 'デッキ詳細' }}</span>
           </button>
         </div>
-        <div class="deck-controls">
+        <div class="deck-controls" v-if="!deckDenseView">
           <button @click="saveDeckImage" :disabled="capturing">{{ capturing ? '保存中…' : 'デッキを画像で保存' }}</button>
           <button @click="clearDeck">デッキをクリア</button>
           <button v-if="!gsPeeking && !shieldPeek" @click="openDeckManager">💾 デッキ管理</button>
         </div>
-        <div class="deck-controls" style="margin-top:6px;">
+        <div class="deck-controls" style="margin-top:6px;" v-if="!deckDenseView">
           <button class="udon-import-btn"
                   @click="$refs.udonFileInput.click()"
                   :disabled="importing">
@@ -4270,7 +4493,7 @@
         </div>
       </div>
 
-      <div class="curve">
+      <div class="curve" v-if="!deckDenseView">
         <div class="bar-col" v-for="(n, i) in curveBuckets" :key="i">
           <div class="bar-num">{{ n || '' }}</div>
           <div class="bar-bg"><div class="bar-fill" :style="{height: curveBarHeight(n) + '%'}"></div></div>
@@ -4278,12 +4501,12 @@
         </div>
       </div>
 
-      <div class="deck-stats deck-stats-cats">
+      <div class="deck-stats deck-stats-cats" v-if="!deckDenseView">
         <span>レガシー<b>{{ categoryCount('レガシー') }}</b></span>
         <span>オラクル<b>{{ categoryCount('オラクル') }}</b></span>
         <span>レリック<b>{{ categoryCount('レリック') }}</b></span>
       </div>
-      <div class="deck-stats deck-stats-colors">
+      <div class="deck-stats deck-stats-colors" v-if="!deckDenseView">
         <svg class="color-pie" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" title="属性割合">
           <circle cx="50" cy="50" r="50" fill="#2a2f3d" v-if="colorPieSlices.length === 0" />
           <path v-for="slice in colorPieSlices" :key="slice.key" :d="slice.d" :fill="slice.color" />
@@ -4297,7 +4520,7 @@
           <span class="cc cc-genesis">創<b>{{ colorCount('創') }}</b></span>
         </div>
       </div>
-      <div class="deck-stats deck-stats-types">
+      <div class="deck-stats deck-stats-types" v-if="!deckDenseView">
         <span class="tc">忍者<b>{{ typeCount('忍者') }}</b></span>
         <span class="tc">侍<b>{{ typeCount('侍') }}</b></span>
         <span class="tc">人獣<b>{{ typeCount('人獣') }}</b></span>
@@ -4306,7 +4529,9 @@
         <span class="tc">龍<b>{{ typeCount('龍') }}</b></span>
       </div>
       <div class="deck-stats deck-stats-return">
-        <button v-if="!(gsPeeking && appView === 'game' && gsPeekingCpuSeat == null)" class="mode-toggle mt-return"
+        <button v-if="appView === 'construct' && cbBuilding" class="mode-toggle mt-structure"
+                @click="cbOpenStructurePicker">📜 ストラクチャーデッキから選ぶ</button>
+        <button v-else-if="!(gsPeeking && appView === 'game' && gsPeekingCpuSeat == null)" class="mode-toggle mt-return"
                 :class="{ active: returnModeActive }"
                 @click="_sfxPlay('cancel'); returnModeActive = !returnModeActive"
                 title="返還モード：ON中は−→返還 / +→取消 に変化">返還モード</button>
@@ -4326,6 +4551,20 @@
         <button class="deck-shield-battle-btn" @click="openBattleLaunch('shield')">
           ⚔ 対戦画面へ
         </button>
+      </div>
+
+      <!-- 理念構築戦：デッキ構築中の状態表示・提出操作 -->
+      <div v-if="appView === 'construct' && cbBuilding" class="cb-build-panel">
+        <div class="cb-build-status">
+          <span>デッキ <b :class="{ ok: totalDeckCount === CONSTRUCT_DECK_SIZE }">{{ totalDeckCount }}</b> / {{ CONSTRUCT_DECK_SIZE }}枚</span>
+          <span>返還値合計 <b :class="{ ok: cbDeckReturnSum >= CONSTRUCT_MIN_RETURN_SUM }">{{ cbDeckReturnSum }}</b> / {{ CONSTRUCT_MIN_RETURN_SUM }}以上
+            <template v-if="cbDeckReturnRemaining > 0">（あと{{ cbDeckReturnRemaining }}）</template>
+          </span>
+        </div>
+        <div v-if="cbDeckValidationMessages.length" class="cb-build-warnings">⚠ {{ cbDeckValidationMessages.join(' ／ ') }}</div>
+        <div class="cb-build-actions">
+          <button class="gm-btn gm-btn-primary" :disabled="!cbDeckValid" @click="cbSubmitDeck">準備完了</button>
+        </div>
       </div>
 
       <!-- カミ表示（deck-info内最下部） -->
@@ -4356,11 +4595,16 @@
     <div class="deck-cards">
 
     <!-- 通常時：縦リスト（同名カードはグループ化して合算表示） -->
-    <div class="deck-list" v-if="!deckExpanded">
+    <div class="deck-list" :class="{ dense: deckDenseView }" v-if="!deckExpanded">
       <div class="deck-section-label">
         <span class="deck-section-title">カード</span>
         <input class="deck-search" type="text" v-model="deckSearchText" placeholder="カード名 / No / 効果テキストで検索">
         <span class="deck-visible-count">{{ deckVisibleCountLabel }}</span>
+        <button class="deck-sort-btn deck-dense-toggle-btn" @click.stop="_sfxPlay('cancel'); toggleDeckDenseView()"
+                :class="{ active: deckDenseView }"
+                :title="deckDenseView ? '通常のカード表示に戻す' : 'カードを詰めて多く表示する'">
+          {{ deckDenseView ? '▦ 通常表示' : '▦ 多く表示' }}
+        </button>
         <div class="deck-sort-wrap">
           <button class="deck-sort-btn" @click.stop="_sfxPlay('cancel'); deckSortOpen = !deckSortOpen"
                   :class="{ active: deckSortOpen }">
@@ -4402,10 +4646,11 @@
         <div v-for="entry in deckEntriesDisplay" :key="(entry.returned?'r:':'a:') + fullName(entry.card)"
              class="deck-item"
              :class="{ 'is-returned': entry.returned }"
-             :style="deckItemBgStyle(entry.card)"
+             :style="deckDenseView ? {} : deckItemBgStyle(entry.card)"
              @click="handleDeckCardClick(entry)"
              @contextmenu.prevent="!returnModeActive && !entry.returned && removeCard(entry.card.no)">
           <div class="cost" :style="costBadgeStyle(entry.card)">{{ entry.card.cost }}</div>
+          <div v-if="deckDenseView" class="deck-item-thumb" :style="deckItemThumbStyle(entry.card)"></div>
           <div class="name">
             {{ fullName(entry.card) }}
             <small>{{ entry.card.category }}{{ entry.card.color ? ' / ' + entry.card.color : '' }}{{ entry.card.type ? ' / ' + entry.card.type : '' }}<template v-if="entry.returned"> / <em class="returned-tag">返還済</em></template></small>
@@ -4570,10 +4815,32 @@
           <!-- 部屋を立てる -->
           <div>
             <h3>部屋を立てる</h3>
+            <label class="cpu-auto-play-toggle">
+              <input type="checkbox" v-model="sbCreatePublic">
+              この部屋を公開する（見知らぬ相手も一覧・ランダムマッチから参加できます）
+            </label>
             <button class="sp-btn sp-btn-create" @click="onCreateRoom"
                     :disabled="sb.connecting">
               {{ sb.connecting ? '接続中…' : '新しい部屋を作成' }}
             </button>
+          </div>
+
+          <hr class="sp-divider">
+
+          <!-- 公開中の部屋一覧・ランダムマッチ -->
+          <div>
+            <h3>公開中の部屋から参加</h3>
+            <button class="sp-btn sp-btn-join" :disabled="sb.connecting || !sbPublicRooms.length" @click="sbRandomMatch">
+              🎲 ランダムマッチ（公開中の部屋に参加）
+            </button>
+            <div v-if="sbPublicRooms.length" class="gm-public-room-list" style="margin-top:10px;">
+              <div class="gm-public-room-title">公開中の部屋（{{ sbPublicRooms.length }}件）</div>
+              <div v-for="r in sbPublicRooms" :key="r.code" class="gm-public-room-row">
+                <span>{{ r.hostName }}の部屋</span>
+                <button class="gm-btn" :disabled="sb.connecting" @click="sbJoinPublic(r.code)">参加する</button>
+              </div>
+            </div>
+            <div v-else style="font-size:11px; color:#9aa; margin-top:6px;">現在公開中の部屋はありません</div>
           </div>
 
           <hr class="sp-divider">
@@ -4669,10 +4936,6 @@
             <div class="sp-pick-counter">
               自分: {{ sbMyPickedPacks.length }} / {{ PACKS_PER_SIDE }}パック取得
             </div>
-            <label class="cpu-auto-play-toggle">
-              <input type="checkbox" :checked="pickAssistEnabled" @change="togglePickAssist">
-              ピック補助
-            </label>
             <div class="ph-turn" :class="sbIsMyPickTurn ? 'my-turn' : 'wait-turn'">
               {{ sbIsMyPickTurn ? 'あなたの番 — パックを選んでください' : '相手が選んでいます…' }}
             </div>
@@ -4685,11 +4948,9 @@
                    'taken-by-me': sbMyPickedPacks.includes(i),
                    'taken': sbAllPickedPacks.includes(i) && !sbMyPickedPacks.includes(i),
                    'disabled': !sbIsMyPickTurn || sbAllPickedPacks.includes(i),
-                   'pick-assist-recommended': i === sbRecommendedPackIndex,
                  }">
               <div class="sp-pack-header">
                 <span class="ph-no">Pack {{ i + 1 }}</span>
-                <span v-if="i === sbRecommendedPackIndex" class="pick-assist-badge" title="可視3枚の評価が最も高いパックです（あくまで目安）">⭐ おすすめ</span>
                 <span class="ph-status"
                       :class="sbMyPickedPacks.includes(i) ? 'mine'
                              : sbEnemyPickedPacks.includes(i) ? 'enemy' : 'available'">
@@ -4864,6 +5125,160 @@
       </div>
     </div>
   </div><!-- /shield-overlay -->
+
+  <!-- ===================== 理念構築戦（自由構築1v1） ===================== -->
+  <div v-if="constructOpen" class="shield-overlay" :style="cbBuilding ? { display: 'none' } : {}">
+    <div class="shield-panel" @click.stop>
+      <div class="sp-header">
+        <button class="back-to-top-btn" @click="tryCloseConstruct">◀ トップ</button>
+        <h2>📜 理念構築戦</h2>
+        <span class="sp-phase-badge">{{ cbPhaseLabel }}</span>
+        <button class="sp-close" @click="tryCloseConstruct" title="閉じる">✕</button>
+      </div>
+
+      <div class="sp-body">
+        <!-- ======= ルーム未作成：ロビーフォーム ======= -->
+        <div v-if="!cb.roomCode" class="sp-lobby">
+          <div>
+            <h3>プレイヤー名</h3>
+            <input class="sp-input" v-model="cb.myName" placeholder="名前を入力（任意）" maxlength="20">
+          </div>
+
+          <div>
+            <h3>部屋を立てる</h3>
+            <label class="cpu-auto-play-toggle">
+              <input type="checkbox" v-model="cbCreatePublic">
+              この部屋を公開する（見知らぬ相手も一覧・ランダムマッチから参加できます）
+            </label>
+            <button class="sp-btn sp-btn-create" @click="cbCreateRoom" :disabled="cb.connecting">
+              {{ cb.connecting ? '接続中…' : '新しい部屋を作成' }}
+            </button>
+          </div>
+
+          <hr class="sp-divider">
+
+          <div>
+            <h3>公開中の部屋から参加</h3>
+            <button class="sp-btn sp-btn-join" :disabled="cb.connecting || !cbPublicRooms.length" @click="cbRandomMatch">
+              🎲 ランダムマッチ（公開中の部屋に参加）
+            </button>
+            <div v-if="cbPublicRooms.length" class="gm-public-room-list" style="margin-top:10px;">
+              <div class="gm-public-room-title">公開中の部屋（{{ cbPublicRooms.length }}件）</div>
+              <div v-for="r in cbPublicRooms" :key="r.code" class="gm-public-room-row">
+                <span>{{ r.hostName }}の部屋</span>
+                <button class="gm-btn" :disabled="cb.connecting" @click="cbJoinPublic(r.code)">参加する</button>
+              </div>
+            </div>
+            <div v-else style="font-size:11px; color:#9aa; margin-top:6px;">現在公開中の部屋はありません</div>
+          </div>
+
+          <hr class="sp-divider">
+
+          <div>
+            <h3>部屋に入る</h3>
+            <input class="sp-input" v-model="cb.joinCode"
+                   placeholder="部屋コード（6文字）" maxlength="6"
+                   style="text-transform:uppercase; letter-spacing:0.15em; margin-bottom:8px;">
+            <button class="sp-btn sp-btn-join" @click="cbJoinRoom" :disabled="cb.connecting || cb.joinCode.length < 4">
+              {{ cb.connecting ? '接続中…' : '入室する' }}
+            </button>
+          </div>
+
+          <hr class="sp-divider">
+
+          <div>
+            <h3>ソロプレイ</h3>
+            <select class="sp-input" v-model="cb.soloCpuDeckId" style="margin-bottom:8px;">
+              <option value="">🎲 CPUのデッキ：ランダム</option>
+              <option v-for="sd in cbStructureDecks" :key="sd.id" :value="sd.id">CPUのデッキ：{{ sd.name }}</option>
+            </select>
+            <button class="sp-btn sp-btn-solo" @click="cbSoloStart" :disabled="cb.connecting">
+              🤖 CPUと開始（ソロプレイ）
+            </button>
+            <div style="font-size:11px; color:#9aa; margin-top:6px; text-align:center;">
+              相手をCPUにして1人で動作確認できます（CPUのデッキ・カミはストラクチャーデッキから選べます）
+            </div>
+          </div>
+
+          <div v-if="cb.error" style="color:#f88; font-size:13px; text-align:center;">{{ cb.error }}</div>
+        </div>
+
+        <!-- ======= ルーム内（lobby待機／building／complete） ======= -->
+        <div v-else class="sp-waiting">
+          <div v-if="cb.role === 'host' && !cbGuestPresent" class="sp-room-code-display" style="margin-bottom:24px;">
+            <div class="rc-label">部屋コードを相手に伝えてください</div>
+            <div class="rc-code">{{ cb.roomCode }}</div>
+            <div class="rc-note">相手が入室するまでこのページを開いたままにしてください</div>
+          </div>
+
+          <div class="sp-players-row">
+            <div class="sp-player-chip" :class="{ ready: cb.roomData.host && cb.roomData.host.ready, you: cb.role === 'host' }">
+              <div class="pc-dot"></div>
+              {{ (cb.roomData.host && cb.roomData.host.name) || '…' }}
+              <span v-if="cb.role === 'host'" style="color:#9aa;font-size:11px;">（あなた）</span>
+              <span v-if="cb.roomData.host && cb.roomData.host.ready" style="color:#6c9;font-size:11px;">提出済み</span>
+            </div>
+            <div v-if="cbGuestPresent" class="sp-player-chip" :class="{ ready: cb.roomData.guest && cb.roomData.guest.ready, you: cb.role === 'guest' }">
+              <div class="pc-dot"></div>
+              {{ (cb.roomData.guest && cb.roomData.guest.name) || '…' }}
+              <span v-if="cb.role === 'guest'" style="color:#9aa;font-size:11px;">（あなた）</span>
+              <span v-if="cb.roomData.guest && cb.roomData.guest.ready" style="color:#6c9;font-size:11px;">提出済み</span>
+            </div>
+            <div v-else class="sp-player-chip">
+              <div class="sp-spinner" style="width:16px;height:16px;border-width:2px;margin:0;"></div>
+              相手の入室を待っています…
+            </div>
+          </div>
+
+          <div v-if="cbGuestPresent && cb.phase !== 'complete'" style="text-align:center;">
+            <button v-if="!cbMyReady" class="sp-btn sp-btn-create" style="max-width:280px;margin:0 auto;" @click="cbOpenBuilding">
+              📖 デッキを組む
+            </button>
+            <div v-else>
+              <div style="color:#7cf0a8;font-size:14px;margin-bottom:10px;">デッキを提出しました。相手の準備を待っています…</div>
+              <button class="sp-btn sp-btn-join" style="max-width:200px;margin:0 auto;" @click="cbOpenBuilding">編集に戻る</button>
+            </div>
+          </div>
+
+          <div v-if="cb.phase === 'complete'" style="text-align:center;padding:20px;">
+            <div style="font-size:48px;margin-bottom:12px;">🎉</div>
+            <div style="font-size:18px;font-weight:700;margin-bottom:16px;">両者のデッキが揃いました！</div>
+            <button class="sp-btn sp-btn-create" style="max-width:260px;margin:0 auto;" @click="openBattleLaunch('construct')">
+              ⚔ 対戦画面へ
+            </button>
+          </div>
+
+          <div style="text-align:center;margin-top:18px;display:flex;gap:8px;justify-content:center;">
+            <button class="gm-btn" @click="cbLeave">退出</button>
+            <button v-if="cb.role === 'host'" class="gm-btn" style="background:#5a2a2a;" @click="cbDissolveRoom">🗑 部屋を解散する</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /construct-overlay -->
+
+  <!-- 理念構築戦：デッキ構築中の「ロビーに戻る」フローティングボタン -->
+  <button v-if="cbBuilding" class="sb-peek-back-btn" @click="cbCloseBuilding">
+    ◀ 理念構築戦のロビーへ戻る
+  </button>
+
+  <!-- 理念構築戦：ストラクチャーデッキ選択モーダル -->
+  <div v-if="cbStructurePickerOpen" class="battle-zone-modal" @click.self="cbCloseStructurePicker">
+    <div class="battle-zone-modal-panel" style="max-width:480px;">
+      <h3 class="battle-zone-modal-title">ストラクチャーデッキを選ぶ</h3>
+      <p style="font-size:12px;color:#9aa;margin:0 0 10px;">選ぶと現在編集中のデッキ・カミが上書きされます</p>
+      <div v-if="!cbStructureDecks.length" style="font-size:12px;color:#9aa;text-align:center;padding:14px;">
+        ストラクチャーデッキがまだありません
+      </div>
+      <div v-for="sd in cbStructureDecks" :key="sd.id" class="gm-public-room-row" style="margin-bottom:6px;">
+        <span>{{ sd.name }}</span>
+        <button class="gm-btn gm-btn-primary" @click="cbLoadStructureDeck(sd)">選ぶ</button>
+      </div>
+      <div class="battle-zone-modal-actions">
+        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="cbCloseStructurePicker">閉じる</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===================== 4人対戦：ゲームセッション ===================== -->
   <!-- ===================== 対戦画面（Phase 3 手動対戦操作） ===================== -->
@@ -5083,7 +5498,7 @@
             <div class="battle-card-row">
               <div v-for="(card, i) in battleSample.opp.relics" :key="'or'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
+                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)"
@@ -5101,7 +5516,7 @@
             <div class="battle-card-row legacy-row">
               <div v-for="(card, i) in battleSample.opp.legacies" :key="'ol'+i"
                    class="battle-card field-card opp-legacy-target"
-                   :class="{ 'battle-target-legacy': battleCanFieldDragToAttackTargets, tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
+                   :class="{ 'battle-target-legacy': battleCanFieldDragToAttackTargets, tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @dragover.prevent="battleUpdateFieldAttackTarget($event)"
@@ -5153,7 +5568,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('legacies', $event)">
               <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i, 'evolve-target': battleHandDragOverBaseIdx === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
+                   :class="{ tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i, 'evolve-target': battleHandDragOverBaseIdx === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','legacies',i,$event)"
                    @click="battleFieldCardClick(card)"
@@ -5206,7 +5621,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('relics', $event)">
               <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i"
                    class="battle-card field-card"
-                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced }"
+                   :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','relics',i,$event)"
                    @click="battleFieldCardClick(card)"
@@ -5318,7 +5733,7 @@
               <span class="dgc-count">{{ battleSample.opp.deckCount }}</span>
             </div>
           </div>
-          <div class="dgc-cell zone-graveyard opp-graveyard-drop" title="相手の墓地は閲覧のみ" @click="battleOpenZone('opp','graveyard')">
+          <div class="dgc-cell zone-graveyard opp-graveyard-drop" :class="{ 'graveyard-glow': battleSample.opp._glowActive }" title="相手の墓地は閲覧のみ" @click="battleOpenZone('opp','graveyard')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <path d="M 8 41 H 32 V 46 H 8 Z"/>
               <path d="M 12 41 V 19 a 8 8 0 0 1 16 0 V 41 Z"/>
@@ -5394,7 +5809,7 @@
             </div>
           </div>
           <div class="dgc-cell zone-graveyard self-graveyard-drop"
-               :class="{ 'graveyard-drop-ready': battleDragOverZone === 'graveyard', 'battle-target-graveyard': battleFieldDrag }"
+               :class="{ 'graveyard-drop-ready': battleDragOverZone === 'graveyard', 'battle-target-graveyard': battleFieldDrag, 'graveyard-glow': battleSample.self._glowActive }"
                @dragover.prevent="battleUpdateDragOverZone($event); battleUpdateFieldAttackTarget($event)"
                @drop.prevent="battleFieldDragEnd($event)"
                @click="battleOpenZone('self','graveyard')">
@@ -5946,9 +6361,9 @@
         </div>
         <div class="result-actions">
           <button v-if="battleUndoStack.length" @click="battleUndo">一手戻る</button>
-          <button v-if="(battleContext.oppIsCpu || (battleNet.on && !battleNet.spectating)) && (battleContext.returnView === 'top' || battleContext.returnView === 'shield')"
+          <button v-if="(battleContext.oppIsCpu || (battleNet.on && !battleNet.spectating)) && (battleContext.returnView === 'top' || battleContext.returnView === 'shield' || battleContext.returnView === 'construct')"
                   :disabled="battleWaitingForRematch" @click="battleRequestRematch">
-            {{ battleWaitingForRematch ? '相手の応答を待っています…' : (battleContext.returnView === 'shield' ? '🔁 同じデッキで再戦する' : '🔁 もう一度対戦する') }}
+            {{ battleWaitingForRematch ? '相手の応答を待っています…' : ((battleContext.returnView === 'shield' || battleContext.returnView === 'construct') ? '🔁 同じデッキで再戦する' : '🔁 もう一度対戦する') }}
           </button>
           <button v-if="battleContext.returnView === 'shield'" @click="battleReturn">🎴 パック選択からやり直す（シールド戦のトップへ）</button>
           <button v-else @click="battleReturn">{{ battleContext.returnView === 'top' ? 'トップへ戻る' : '対戦を終える（' + battleReturnLabel + 'のトップへ）' }}</button>
@@ -6120,8 +6535,35 @@
         </div>
         <div>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#cbd3de;font-size:13px;">
+            <input type="checkbox" v-model="battleAlphaSetup.oppIsCpu">
+            相手をCPUにする（自律してカードを召喚・攻撃します）
+          </label>
+        </div>
+        <div v-if="battleAlphaSetup.oppIsCpu">
+          <div style="color:#e8d4a0;font-weight:700;font-size:13px;margin-bottom:6px;">相手（CPU）デッキの色</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            <label v-for="col in ['ミックス','赤','青','緑','黄','紫']" :key="'oc'+col"
+                   style="cursor:pointer;padding:5px 12px;border-radius:4px;background:#232a3a;border:1px solid #3a4256;font-size:12px;color:#cbd3de;"
+                   :style="battleAlphaSetup.oppColor === col ? 'background:#2a5cb8;border-color:#6090e0;color:#fff;' : ''">
+              <input type="radio" v-model="battleAlphaSetup.oppColor" :value="col" style="display:none;">
+              {{ col }}
+            </label>
+          </div>
+          <label class="cpu-auto-play-toggle" style="margin-top:8px;">
+            <input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay">
+            CPUが自律して行動する（OFF＝従来通り待機のみ）
+          </label>
+        </div>
+        <div v-else>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#cbd3de;font-size:13px;">
             <input type="checkbox" v-model="battleAlphaSetup.oppYorishiro">
             相手フィールドにタップ済みのヨリシロを3体配置（戦闘検証用）
+          </label>
+        </div>
+        <div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#cbd3de;font-size:13px;">
+            <input type="checkbox" v-model="battleAlphaSetup.realisticStart">
+            自分の初期マナも本番と同じ状態にする（OFF＝検証用に10/10で開始）
           </label>
         </div>
       </div>
@@ -6175,6 +6617,10 @@
           <input type="text" v-model="gs.myName" maxlength="12" placeholder="プレイヤー名">
         </label>
         <div class="gm-menu-actions">
+          <label class="cpu-auto-play-toggle">
+            <input type="checkbox" v-model="gsCreatePublic">
+            このセッションを公開する（見知らぬ相手も一覧・ランダムマッチから参加できます）
+          </label>
           <button class="gm-btn gm-btn-primary" :disabled="gs.connecting" @click="gsCreate">
             {{ gs.connecting ? '通信中…' : 'セッションを作成' }}
           </button>
@@ -6185,8 +6631,18 @@
                    style="text-transform:uppercase;">
             <button class="gm-btn" :disabled="gs.connecting" @click="gsJoin">コードで参加</button>
           </div>
+          <button class="gm-btn" :disabled="gs.connecting || !gsPublicSessions.length" @click="gsRandomMatch">
+            🎲 ランダムマッチ（公開中のセッションに参加）
+          </button>
         </div>
         <div v-if="gs.error" class="gm-error">{{ gs.error }}</div>
+        <div v-if="gsPublicSessions.length" class="gm-public-room-list">
+          <div class="gm-public-room-title">公開中のセッション（{{ gsPublicSessions.length }}件）</div>
+          <div v-for="r in gsPublicSessions" :key="r.code" class="gm-public-room-row">
+            <span>{{ r.hostName }}のセッション（{{ r.seatsFilled || 1 }}/4人）</span>
+            <button class="gm-btn" :disabled="gs.connecting" @click="gsJoinPublic(r.code)">参加する</button>
+          </div>
+        </div>
         <div class="gm-solo-row">
           <label class="cpu-auto-play-toggle">
             <input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay">
@@ -6344,10 +6800,11 @@
         </div>
         <div class="gm-pack-grid" :class="{ locked: gsIPickedThisStep }">
           <div v-for="(card, i) in gsMyPackCards" :key="i" class="gm-pack-card"
-               :class="{ 'pick-assist-recommended': String(card.no) === gsDraftRecommendedCardNo }"
+               :class="{ 'pick-assist-recommended': gsDraftRecommendedCardNos.includes(String(card.no)), 'pick-assist-not-recommended': gsDraftNotRecommendedCardNos.includes(String(card.no)) }"
                @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
                @click="gsDraftPick(card)">
-            <span v-if="String(card.no) === gsDraftRecommendedCardNo" class="pick-assist-badge pick-assist-badge-overlay" title="今のカミ・手持ちとの相性を踏まえたおすすめです（あくまで目安）">⭐ おすすめ</span>
+            <span v-if="gsDraftRecommendedCardNos.includes(String(card.no))" class="pick-assist-badge pick-assist-badge-overlay" title="今のカミ・手持ちとの相性を踏まえたおすすめです（あくまで目安）">👍</span>
+            <span v-else-if="gsDraftNotRecommendedCardNos.includes(String(card.no))" class="pick-assist-badge pick-assist-badge-down pick-assist-badge-overlay" title="今のカミ・手持ちとの相性を踏まえると優先度が低めです（あくまで目安）">👎</span>
             <div class="gm-pack-img" :class="genesisEffectClass(card)"
                  :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
             <div class="gm-pack-name">{{ fullName(card) }}</div>
@@ -6840,6 +7297,7 @@
 <script src="pack_generator.js"></script>
 <script src="udonarium_export.js"></script>
 <script src="shield_battle.js"></script>
+<script src="construct_battle.js"></script>
 <script src="session.js"></script>
 <script>
 /* ===== 埋め込み設定（カードリスト & 画像フォルダ） =====
@@ -6909,6 +7367,7 @@ const SFX_FILES = {
   genesis: 'genesis.mp3',
   evilgod: 'evilgod.mp3',
   relic: 'relic.mp3',
+  effect: 'effect.mp3',    // 出現時/死亡時など効果発動時のグロー演出に合わせて鳴らす
   myTurn: 'my_turn.mp3',
   enemyTurn: 'enemy_turn.mp3',
   // 種族別の召喚音（レガシー限定・コスト1〜4=light、5以上=heavy）
@@ -7096,6 +7555,88 @@ Vue.component("rich-text", {
     '</span>',
 });
 
+/* CPUドラフトAI：カミ軸（gsCpuKamiAffinityTags）ごとに名指しで優先度を調整したいカード。
+   キーワード/正規表現では拾いにくい「このカード固有の噛み合わせ」をここで直接加減点する。
+   キーは fullName() に部分一致する文字列（二つ名込みの表記揺れを避けるため、部分一致で判定）。 */
+const GS_CPU_NAMED_CARD_BONUS = {
+  // K1 スサノオ：進化・昇華軸
+  evolveSublim: {
+    '幽玄の面霊姫': 30, '葛ノ葉亭の若女将': 30, '千変万化の大妖狐': 30, // どのレガシーからでも進化できる＝最優先
+    '厳格なる森の長・ハクレン': 20, '拒絶の守衛・イズモ': 20,           // 昇華コスト軽減
+    '約束の光・ミズホ': 22, '平穏の祈り手': 22, '鐘鳴らしの童': 22,     // 天力を固定値で上げる（神技2との相性◎）
+  },
+  // K2 ヤマトタケル：同名一切禁止軸
+  unique: {
+    '約束の光・ミズホ': -18, '平穏の祈り手': -18, '鐘鳴らしの童': -18,  // 天力が毎ターン溜まるため固定値上昇と相性が悪い
+    '平和を願う剣・アヤト': 20, '暁の盟約': 20, '断禍の三重奏': 20,     // 他種族混成デッキになりやすい方針と好相性
+    '冥土送りの侍女': 14, '静かなる謀殺': 14,                          // 神技2の取りこぼし処理
+  },
+  // K3 オオクニヌシ：種族分散軸
+  tribeDiversity: {
+    '交差する想い': -10, // 種族が分散しているメリットを活かせないためやや優先度低
+    '平和を願う剣・アヤト': 26, '暁の盟約': 26, '断禍の三重奏': 26,
+    '無垢なる信徒・チフユ': 26, '約束の光・ミズホ': 26, 'もふもふ探求者': 26, '決別の白槍・ミナト': 26, // 自身と異なる種族のトークンを招来
+    '木漏れ日の道場': 10, '忠臣の予感': 10, // 手札切れ対策
+  },
+  // K4 タケミカヅチ：最高戦闘力軸
+  highPower: {
+    '戦陣の旗手': 20, '無貌の忍': 20, '白き閃刃・シラトリ': 20,          // 【奇襲】×神技1
+    '名刀集めの豪族': 24, '算盤弾きの刀剣商': 24, '千刃の破戒僧': 24, '妖刀を抱く乙女': 24, // レリック数依存の侍
+    '覚悟の出陣': 22, '忠臣の予感': 12, '刹那の救援': 22, '木漏れ日の道場': 26,
+    '冥土送りの侍女': 12, '静かなる謀殺': 12,
+  },
+  // K5 オモイカネ：オラクル・レリック軸
+  oracleRelic: {
+    'お節介な陰陽師': 34, // オラクル中心デッキで真価を発揮する上、ヨリシロちゃんも招来できる＝最優先
+    '晴れ空の門出': 32,   // オラクルでありながら「社の施し」（レリック）を招来＝天力が非常に貯まりやすい
+    '誇り高き名工': 22, '史を紡ぐ語り部': 22, // オラクル/レリックのコスト軽減。場合によっては本体より優先してよい
+    '恐怖の手記': 18, '熾烈なる戦役': 18, '禍ツ撃': 18, // レガシーが少ない都合上、全体除去は貴重
+  },
+  // K6 アメノウズメ：マナ最大値・ライフ軸
+  manaLife: {
+    '冒険譚の始まり': 34, // マナ最大値上昇。最大値7以上で天力も増えるため非常に強力
+    '平穏の祈り手': 30,   // 召喚するだけで天力+2
+    'もふもふ探求者': 26, // 低コストでも使え、マナが伸びた後半でも昇華で使える
+    '陰陽かぶれの犬神': 16, '紅翼龍・ルベル': 16, '偽りの聖女・サナエ': 16, // 高コストで場を大きく動かす
+    '瞬速の死闘': 14, '禁忌の祭壇': 18, '式神奏術・一目連': 18, // 除去（後者2つはライフ回復も伴うためさらに高評価）
+  },
+  // K7 ヒノカグツチ：破壊・【補正-】軸
+  destroy: {
+    '妖刀を抱く乙女': 30, '二尾の猫女': 30,         // 相打ちするだけで天力+2
+    '妖界の禍主・マガツヒ': 32,                       // 自身の神技1で墓地を溜めやすい上、出現時効果で破壊も行う＝最優先
+    '蠢く陰謀': 20,                                   // 神技1で墓地を肥やせるため【補正-】と好相性
+    '恐怖の手記': 26, '禁忌の祭壇': 26, '熾烈なる戦役': 26, '暗躍の妖将・カゲロウ': 26, '禍ツ撃': 26, '紫爪龍・プルプラ': 26, // 全体除去は最高の相性
+    '貪食の童女': 18,   // 貴重な低コスト破壊レガシー。墓地も増やせる
+    '不屈の武者': 16,   // 墓地が増えるほど強くなり、すぐ破壊されるため天力も早く溜まる
+  },
+  // K8 アマテラス：守護軸
+  guard: {
+    '平穏の祈り手': 30, '鐘鳴らしの童': 30,           // 召喚するだけで天力+2
+    '無垢なる信徒・チフユ': 26, '決別の白槍・ミナト': 26, '陰陽かぶれの犬神': 26, // ヨリシロちゃんを複数招来
+    '黄角龍・フラウス': 30,                           // 守護持ちの重量級＝神技2の蘇生先として最高
+  },
+  // K9 ツクヨミ：トークン軸
+  token: {
+    '月見草の修行場': 28, // 1枚で天力2回分
+    '晴れ空の門出': 30,   // 昇華をすることで天力を溜められる
+    '聖女の巡礼': 32,     // 1枚で天力+3
+    '落日の子守唄': 30, '歓喜の凱旋': 30, // 毎ターントークンを招来できる最高の相性
+  },
+  // K10 ヤマタノオロチ：龍軸
+  dragon: {
+    '夜風の始末屋': 18, '名刀集めの豪族': 18, // 隷属の龍血・天喰らう咆哮との疾駆コンボ
+    '紅翼龍・ルベル': 28,                     // 神技2【神威+2】と最高の相性
+    '冒険譚の始まり': 22, '浮遊する相棒・コマ': 22, '荒き緑の眷属': 26, // マナ最大値上昇。荒き緑の眷属は龍の中でも特に優先
+    '瞬速の死闘': 16, '熾烈なる戦役': 16, '救済の手': 16, '禍ツ撃': 16, // 序盤の安定・龍を守る除去
+  },
+};
+
+// 理念構築戦：ストラクチャーデッキが1件も無い場合に初回シードする既定リスト（開発者用ツールから追加・編集可能）
+const CB_STRUCTURE_DECK_SEED_DEFAULTS = [
+  { name: 'ツクヨミ赤忍者', kamiNo: '9',
+    deckCode: 'SzksMXgxLDJ4MSwxMXgxLDEyeDEsMTN4MSwxNHgxLDE3eDEsMjB4MSwyMXgxLDIyeDEsMjR4MSwyNXgxLDM0eDEsNDF4MSw0N3gxLDQ4eDEsNTN4MSw1NHgxLDY4eDEsODd4MSw5M3gxLDk0eDEsMTE2eDEsMTE3eDEsMTI2eDEsMTI3eDEsMTM3eDEsMTQweDEsMTQzeDEsMTQ0eDEsMTUzeDEsMTU1eDEsMTU3eDEsMTU4eDEsMTgweDE=' },
+];
+
 new Vue({
   el: "#app",
   data: {
@@ -7143,6 +7684,8 @@ new Vue({
     costRange: [0,1,2,3,4,5,6,7,8,9,10],
     roundRange: [1,2,3],
     deckSize: 50,
+    CONSTRUCT_DECK_SIZE: 35,      // 理念構築戦のデッキ枚数（construct_battle.jsの同名定数と一致させること）
+    CONSTRUCT_MIN_RETURN_SUM: 50, // 理念構築戦の返還値合計の下限（同上）
     previewCard: null,
     keywordGlossary: KEYWORD_GLOSSARY, // キーワード能力辞書
     keywordPopup: null,      // { name, desc } キーワード説明ポップアップ
@@ -7217,7 +7760,9 @@ new Vue({
     battleCpuThinking: false, // CPU対戦AIが自分のターンを自動実行中（内部的にself/oppを入れ替えて処理するため、その間は画面を覆い隠す）
     battleActiveEffectCard: null, // 現在解決中の効果の持ち主カード（多段階の選択が続いても見失わないためのUI用）
     battleTurnTimerEnabled: loadStoredBool('tsukuriyo_turnTimerEnabled', true), // ターン経過時間の警告表示（強制的な時間切れ処理は行わない）
-    pickAssistEnabled: loadStoredBool('tsukuriyo_pickAssistEnabled', true), // 選別の儀/パック選択の「⭐おすすめ」ピック補助表示（初心者向け、OFF可）
+    pickAssistEnabled: loadStoredBool('tsukuriyo_pickAssistEnabled', true), // 選別の儀（4人対戦ドラフト）の「⭐おすすめ」ピック補助表示（初心者向け、OFF可）。シールド戦のパック選択には適用しない
+    poolDenseView: loadStoredBool('tsukuriyo_poolDenseView', false), // カードリスト（左のカードプール）を小さいカードで多く並べる表示に切り替えるか（見方だけの切替。機能は従来通り）
+    deckDenseView: loadStoredBool('tsukuriyo_deckDenseView', false), // デッキ一覧（右のデッキパネル）の各行を詰めて多く表示するか（マナカーブ等の統計表示は変わらず維持）
     cpuAutoPlayEnabled: loadStoredBool('tsukuriyo_cpuAutoPlayEnabled', true), // ソロテスト時：CPUが自律してカードプレイ・攻撃を行うか（OFF＝従来通り待機のみ）
     battleTurnElapsedSec: 0,      // 現在のターンの経過秒数
     battleResultRevealReady: false, // false の間はひび割れ→破壊演出を表示し、勝敗オーバーレイ自体は隠す
@@ -7281,7 +7826,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.198',
+    BUILD_VERSION: '1.15.19',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7294,6 +7839,8 @@ new Vue({
     sbHoverTop:  0,
     sbPreviewCard: null, // クリックで大型プレビューするカード
     sbSolo: false,       // ソロテスト（CPUを自動操作）モード
+    sbCreatePublic: false, // 部屋作成時：公開一覧に登録するか（見知らぬ相手からの参加を許可）
+    sbPublicRooms: [],      // 公開中の部屋一覧（ロビー画面表示中のみ購読）
     sbPreBattleReturn: false, // シールド戦：パック確定後のデッキ確認/返還画面（対戦開始前）にいるか。BGMを戦場の舞のまま維持するために使う
     sb: {
       phase:       "lobby",   // lobby / waiting / coin_toss / picking / excluding / kami_select / complete
@@ -7310,6 +7857,30 @@ new Vue({
       tempKami:    null,      // カミ選択中の一時選択（確定前）
       showUnused:  false,
       _unsubscribe: null,     // Firebase リスナー解除関数
+    },
+
+    /* ===== 理念構築戦（自由構築1v1） ===== */
+    constructOpen: false,
+    cbBuilding: false,        // true＝デッキビルダー画面でデッキを編集・提出中（ロビーオーバーレイは隠す）
+    cbSolo: false,            // ソロプレイ（CPU戦）モードか
+    cbCreatePublic: false,    // 部屋作成時：公開一覧に登録するか
+    cbPublicRooms: [],        // 公開中の部屋一覧（ロビー画面表示中のみ購読）
+    cbStructureDecks: [],     // structureDecksの購読結果
+    cbStructurePickerOpen: false, // ストラクチャーデッキ選択モーダル
+    cbDevEditorOpen: false,   // 開発者用：ストラクチャーデッキ追加・編集の折りたたみ
+    cbEditingDeck: null,      // { id, name, kamiNo, deckCode } 編集フォームの一時データ（nullなら非表示）
+    cb: {
+      phase:       "lobby",   // lobby / building / complete
+      myName:      "",
+      joinCode:    "",
+      connecting:  false,
+      error:       "",
+      role:        null,      // "host" or "guest"
+      playerId:    null,
+      roomCode:    null,
+      roomData:    {},
+      _unsubscribe: null,
+      soloCpuDeckId: "",       // ソロプレイでCPUに使わせるストラクチャーデッキid（空=ランダム）
     },
 
     /* ===== ゲームセッション（4人 / 壱 神託の儀〜） ===== */
@@ -7346,6 +7917,8 @@ new Vue({
     gsGlobalCardStats: {},    // {[cardNo]: {picked, won}} 人間プレイヤーの実績統計（CPUドラフトの参考にする。CPU自身の対局結果は含めない）
     _gsPeekSaved: null,       // プレビュー前のデッキビルダー状態退避
     gsSolo:      false,       // ソロテスト（CPU3体を自動操作）モード
+    gsCreatePublic: false,    // セッション作成時：公開一覧に登録するか（見知らぬ相手からの参加を許可）
+    gsPublicSessions: [],     // 公開中のセッション一覧（メニュー画面表示中のみ購読）
     gsDeepenAction: null,     // 深化の刻で選択中のアクション: null(=メニュー) | 'reflect' | 'fusion' | 'bloom'
     gsCpuDeckViewSeat: null,  // 終戦画面で表示中の他プレイヤー（CPU・人間問わず）デッキの席番号（null=非表示）
   },
@@ -7363,11 +7936,13 @@ new Vue({
       if (this.appView === 'cardlist') return true;
       if (this.appView === 'shield' && this.shieldPeek) return true;
       if (this.appView === 'game' && this.gsPeeking) return true;
+      if (this.appView === 'construct' && this.cbBuilding) return true;
       return false;
     },
     battleReturnLabel() {
       if (this.battleContext.returnView === 'shield') return 'シールド戦';
       if (this.battleContext.returnView === 'game') return '星戦';
+      if (this.battleContext.returnView === 'construct') return '理念構築戦';
       return 'トップ';
     },
     /* バトルログ：新しい出来事ほど上に来るよう逆順で表示する（都度スクロールしなくて済むように） */
@@ -7725,10 +8300,49 @@ new Vue({
       if (!raw) return '';
       try { return btoa(unescape(encodeURIComponent(raw))); } catch (e) { return ''; }
     },
+    // 理念構築戦は35枚固定、それ以外は従来通りdeckSize（50・advisory表示のみ）
+    effectiveDeckSize() {
+      return this.appView === 'construct' ? this.CONSTRUCT_DECK_SIZE : this.deckSize;
+    },
     deckCountClass() {
-      if (this.totalDeckCount === this.deckSize) return 'ok';
-      if (this.totalDeckCount > this.deckSize) return 'warn';
+      if (this.totalDeckCount === this.effectiveDeckSize) return 'ok';
+      if (this.totalDeckCount > this.effectiveDeckSize) return 'warn';
       return '';
+    },
+    // 理念構築戦：デッキの返還値合計（返還済み分は含めない）
+    cbDeckReturnSum() {
+      let sum = 0;
+      for (const no of Object.keys(this.deck)) {
+        const c = this.cardByNo[no];
+        const count = Number(this.deck[no]) || 0;
+        if (c) sum += (parseInt(c.return, 10) || 0) * count;
+      }
+      return sum;
+    },
+    cbDeckReturnRemaining() {
+      return Math.max(0, this.CONSTRUCT_MIN_RETURN_SUM - this.cbDeckReturnSum);
+    },
+    // 理念構築戦：現在のデッキが対戦開始できる状態かどうか（不足理由の一覧も返す）
+    cbDeckValidationMessages() {
+      const msgs = [];
+      if (!this.selectedKami) msgs.push('カミが選択されていません');
+      if (this.totalDeckCount !== this.CONSTRUCT_DECK_SIZE) {
+        msgs.push(`デッキがちょうど${this.CONSTRUCT_DECK_SIZE}枚である必要があります（現在${this.totalDeckCount}枚）`);
+      }
+      if (this.cbDeckReturnSum < this.CONSTRUCT_MIN_RETURN_SUM) {
+        msgs.push(`返還値の合計が${this.CONSTRUCT_MIN_RETURN_SUM}に届いていません（あと${this.cbDeckReturnRemaining}）`);
+      }
+      const kamiIsOrochi = this.selectedKami && this._battleIsOrochiCard(this.selectedKami);
+      const badGenesis = Object.keys(this.deck).some(no => {
+        const c = this.cardByNo[no];
+        if (!c || !this.isGenesisCard(c)) return false;
+        return !(kamiIsOrochi && this.isDiesIraeCard(c));
+      });
+      if (badGenesis) msgs.push('ジェネシスカードが含まれています（ヤマタノオロチのディエスイレのみ例外）');
+      return msgs;
+    },
+    cbDeckValid() {
+      return this.cbDeckValidationMessages.length === 0;
     },
     deckEntries() {
       // active のみ
@@ -8134,6 +8748,29 @@ new Vue({
       const r = this.sb.roomData;
       return this.sb.role === 'host' ? r.host?.ready : r.guest?.ready;
     },
+    /* ===== 理念構築戦 ===== */
+    cbGuestPresent() {
+      return !!(this.cb.roomData && this.cb.roomData.guest);
+    },
+    cbMyReady() {
+      const r = this.cb.roomData || {};
+      const mine = this.cb.role === 'host' ? r.host : r.guest;
+      return !!(mine && mine.ready);
+    },
+    cbOppReady() {
+      const r = this.cb.roomData || {};
+      const opp = this.cb.role === 'host' ? r.guest : r.host;
+      return !!(opp && opp.ready);
+    },
+    cbOpponentName() {
+      const r = this.cb.roomData || {};
+      const opp = this.cb.role === 'host' ? r.guest : r.host;
+      return (opp && opp.name) || null;
+    },
+    cbPhaseLabel() {
+      const labels = { lobby: 'ロビー', building: 'デッキ構築中', complete: '構築完了' };
+      return labels[this.cb.phase] || '';
+    },
     sbIsFirstPicker() {
       return this.sb.roomData.firstPicker === this.sb.role;
     },
@@ -8149,6 +8786,14 @@ new Vue({
     sbAllPickedPacks() {
       return [...this.sbMyPickedPacks, ...this.sbEnemyPickedPacks];
     },
+    /* 待機中の参加通知用：guestが入室済みか（真偽値化して安定した比較対象にする。
+       sb.roomDataはFirebase更新のたびに丸ごと差し替わるため、オブジェクト参照では比較できない） */
+    sbHasGuest() {
+      return !!(this.sb.roomData && this.sb.roomData.guest);
+    },
+    cbHasGuest() {
+      return !!(this.cb.roomData && this.cb.roomData.guest);
+    },
     sbIsMyPickTurn() {
       const r = this.sb.roomData;
       const total = fbArr(r.hostPickedPacks).length + fbArr(r.guestPickedPacks).length;
@@ -8159,21 +8804,6 @@ new Vue({
     sbMy48Cards() {
       if (!this.sb.packs.length) return [];
       return this.sbMyPickedPacks.flatMap(id => this.sb.packs[id].all);
-    },
-    /* ピック補助：カミ未確定のパック選択中はCPUドラフトAIと同じ評価軸（kamiTagsは空扱い）で
-       可視3枚の平均スコアを算出し、最もおすすめのパックを示す（目安表示のみ、強制ではない）。 */
-    sbRecommendedPackIndex() {
-      if (!this.pickAssistEnabled || !this.sbIsMyPickTurn || !this.sb.packs || !this.sb.packs.length) return -1;
-      const ctx = { seat: 1, kamiTags: [], pickedCards: this.sbMy48Cards };
-      let best = -1, bestScore = -Infinity;
-      this.sb.packs.forEach((pack, i) => {
-        if (this.sbAllPickedPacks.includes(i)) return;
-        const visible = (pack && pack.visible) || [];
-        if (!visible.length) return;
-        const s = visible.reduce((sum, c) => sum + this.gsCpuScoreCard(c, ctx), 0) / visible.length;
-        if (s > bestScore) { bestScore = s; best = i; }
-      });
-      return best;
     },
     // パックピック中の右サイド用：取得済みカードを同名でまとめ属性→コスト→No順に整列
     sbMyDeckEntries() {
@@ -8451,21 +9081,48 @@ new Vue({
       const nos = this.gsPackCardNos(d.packs[this.gs.seat]);
       return nos.map(no => this.cardByNo[String(no)]).filter(Boolean);
     },
-    /* ピック補助：CPUドラフトAI（gsCpuScoreCard）と同じ評価軸で、今の束の中で最もおすすめの1枚を示す。
-       強制ではなく目安の表示のみ（クリックしてもよいし、無視して別のカードを選んでもよい）。 */
-    gsDraftRecommendedCardNo() {
-      if (!this.pickAssistEnabled) return null;
+    /* ピック補助：CPUドラフトAI（gsCpuScoreCard）と同じ評価軸で、今の束の中のカードを採点する
+       共通処理。おすすめ（👍）・非おすすめ（👎）の両方の判定がここから派生する。 */
+    gsDraftPackScored() {
       const cards = this.gsMyPackCards;
-      if (!cards.length) return null;
+      if (!cards.length) return { scored: [], avg: 0 };
       const kamiNo = this.gsMyKamiCard ? String(this.gsMyKamiCard.no) : null;
       const tags = kamiNo ? this.gsCpuKamiAffinityTags(kamiNo) : [];
       const ctx = { seat: this.gs.seat, kamiTags: tags, pickedCards: this.gsMyDraftDeckCards };
-      let best = null, bestScore = -Infinity;
-      for (const c of cards) {
-        const s = this.gsCpuScoreCard(c, ctx);
-        if (s > bestScore) { bestScore = s; best = c; }
-      }
-      return best ? String(best.no) : null;
+      const scored = cards.map(c => ({ c, s: this.gsCpuScoreCard(c, ctx) }));
+      const avg = scored.reduce((sum, r) => sum + r.s, 0) / scored.length;
+      return { scored, avg };
+    },
+    /* ピック補助：おすすめ（👍）。強制ではなく目安の表示のみ（クリックしてもよいし、無視して別のカードを選んでもよい）。
+       提示枚数は束の残り枚数に応じて可変：7枚以上=3枚、6〜5枚=2枚、4枚以下=1枚、1枚なら0枚。
+       さらに、束の平均スコアより十分に優れたカードが無い（＝どれも大差ない）場合はおすすめ自体を出さない。 */
+    gsDraftRecommendedCardNos() {
+      if (!this.pickAssistEnabled) return [];
+      const { scored, avg } = this.gsDraftPackScored;
+      if (!scored.length) return [];
+      const total = scored.length;
+      const count = total <= 1 ? 0 : total <= 4 ? 1 : total <= 6 ? 2 : 3;
+      if (count <= 0) return [];
+      const QUALITY_MARGIN = 8; // 平均よりこれだけ優れていなければ「おすすめ」を表示しない
+      const ranked = scored
+        .slice()
+        .sort((a, b) => b.s - a.s)
+        .slice(0, count)
+        .filter(r => (r.s - avg) >= QUALITY_MARGIN);
+      return ranked.map(r => String(r.c.no));
+    },
+    /* ピック補助：非おすすめ（👎）。束の平均より著しくスコアが低いカードのうち、
+       最もスコアが低い1枚にだけ付ける（表示するとしても常に最大1枚）。選択肢が少ない
+       （2枚以下）束では「どれも最後の1枚」になるため表示しない。 */
+    gsDraftNotRecommendedCardNos() {
+      if (!this.pickAssistEnabled) return [];
+      const { scored, avg } = this.gsDraftPackScored;
+      if (scored.length <= 2) return [];
+      const LOW_QUALITY_MARGIN = 8; // 平均よりこれだけ劣っていたら「おすすめしない」を表示する
+      const bad = scored.filter(r => (avg - r.s) >= LOW_QUALITY_MARGIN);
+      if (!bad.length) return [];
+      const worst = bad.reduce((min, r) => (r.s < min.s ? r : min), bad[0]);
+      return [String(worst.c.no)];
     },
     /* 現在自分の手元にある束のラベル（例：「ラウンド1・P2の1束目」） */
     gsMyBundleLabel() {
@@ -8752,9 +9409,12 @@ new Vue({
         const kamiList = withIllust.length ? withIllust : (this.allKamiCards || []);
         this.battleAlphaSetup = {
           selfColor: 'ミックス',
+          oppColor: 'ミックス',
+          oppIsCpu: true,
           selfKamiNo: kamiList[0] ? String(kamiList[0].no) : null,
           oppKamiNo: (kamiList[1] || kamiList[0]) ? String((kamiList[1] || kamiList[0]).no) : null,
-          oppYorishiro: true,
+          oppYorishiro: false,
+          realisticStart: false, // ON＝マナ10/10の検証用ショートカットをやめ、本番と同じ0（初手番のみ1）から開始
           kamiList,
         };
         console.log('[αsetup] modal set, kamiList=', kamiList.length);
@@ -8763,30 +9423,32 @@ new Vue({
         alert('対戦画面α起動エラー：' + (e && e.message ? e.message : e));
       }
     },
+    /* 対戦画面α用：指定色（ミックス/赤/青/緑/黄/紫）でデッキ候補プールを作る。
+       ミックスはジェネシスカード（創属性）も含める。単色は該当色のレガシー/オラクル/レリック全て。 */
+    _battleAlphaPoolForColor(color) {
+      const all = this.allCards.filter(c => !c.isToken && !c.isKami && c.color !== '創');
+      if (color === 'ミックス') {
+        const genesis = this.allCards.filter(c => !c.isToken && !c.isKami && c.color === '創');
+        return [...all, ...genesis];
+      }
+      const pool = all.filter(c => c.color === color);
+      return pool.length ? pool : all.slice(0, 30); // 念のためのフォールバック
+    },
     battleStartAlpha() {
       this._sfxPlay('decision');
       const setup = this.battleAlphaSetup || {};
-      const color = setup.selfColor || 'ミックス';
-      const all = this.allCards.filter(c => !c.isToken && !c.isKami && c.color !== '創');
-      let selfPool;
-      if (color === 'ミックス') {
-        // ミックスの場合はジェネシスカード（創属性）もデッキに含める
-        const genesis = this.allCards.filter(c => !c.isToken && !c.isKami && c.color === '創');
-        selfPool = [...all, ...genesis];
-      } else {
-        // 選んだ色のカードを全て入れる（その色のレガシー/オラクル/レリック＝合計36枚）
-        selfPool = all.filter(c => c.color === color);
-        if (!selfPool.length) selfPool = all.slice(0, 30); // 念のためのフォールバック
-      }
-      const oppPool = all.slice(30, 60);
+      const selfPool = this._battleAlphaPoolForColor(setup.selfColor || 'ミックス');
+      const oppPool = this._battleAlphaPoolForColor(setup.oppColor || 'ミックス');
       const selfKami = this.allKamiCards.find(k => String(k.no) === String(setup.selfKamiNo)) || this.allKamiCards[0] || null;
       const oppKami  = this.allKamiCards.find(k => String(k.no) === String(setup.oppKamiNo)) || this.allKamiCards[1] || this.allKamiCards[0] || null;
       this.battleAlphaSetup = null;
       this._battleInitialize({
         source: 'preview', modeLabel: 'プレビュー', returnView: 'top',
-        selfName: '自分', oppName: '相手', firstSide: 'self', life: 10,
+        selfName: '自分', oppName: setup.oppIsCpu ? 'CPU' : '相手', firstSide: 'self', life: 10,
         selfDeck: selfPool, oppDeck: oppPool,
         selfKami, oppKami,
+        syncGame: false, oppIsCpu: !!setup.oppIsCpu,
+        previewFullMana: !setup.realisticStart,
       });
       // 相手フィールドにタップ済みヨリシロを3体配置
       if (setup.oppYorishiro) {
@@ -8812,10 +9474,50 @@ new Vue({
     openBattleLaunch(source) {
       if (source === 'shield' && this.sb.phase !== 'complete') return;
       if (source === 'game' && (this.gs.view !== 'battle' || !this.gsMyBattleOpponent)) return;
+      if (source === 'construct' && this.cb.phase !== 'complete') return;
       this._sfxPlay('decision');
       const firstSide = Math.random() < 0.5 ? 'self' : 'opp';
       if (source === 'shield') this._startShieldBattle(firstSide);
       else if (source === 'game') this._startGameBattle(firstSide);
+      else if (source === 'construct') this._startConstructBattle(firstSide);
+    },
+    // 理念構築戦：構築済みデッキ（Firebaseに提出済みのdeck/kamiNo）から対戦を開始する
+    async _startConstructBattle() {
+      const room = this.cb.roomData || {};
+      const oppRole = this.cb.role === 'host' ? 'guest' : 'host';
+      const selfInfo = room[this.cb.role] || {};
+      const oppInfo = room[oppRole] || {};
+      const code = this.cb.roomCode;
+      const table = 'construct';
+      const mySeat = this.cb.role === 'host' ? 1 : 2;
+      const oppSeat = this.cb.role === 'host' ? 2 : 1;
+      let firstSeat = mySeat;
+      try {
+        const ref = getDb().ref(`sessions/${code}/battle/${table}/firstSeat`);
+        const res = await ref.transaction(cur => (cur != null ? cur : (Math.random() < 0.5 ? mySeat : oppSeat)));
+        firstSeat = res.snapshot.val();
+      } catch (e) {}
+      const firstSide = String(firstSeat) === String(mySeat) ? 'self' : 'opp';
+      const selfKami = selfInfo.kamiNo ? this.allKamiCards.find(k => String(k.no) === String(selfInfo.kamiNo)) : null;
+      const oppKami  = oppInfo.kamiNo  ? this.allKamiCards.find(k => String(k.no) === String(oppInfo.kamiNo))  : null;
+      this._battleInitialize({
+        source: 'construct', modeLabel: '理念構築戦', returnView: 'construct',
+        selfName: selfInfo.name || this.cb.myName || '自分',
+        oppName: oppInfo.name || '相手', firstSide, life: 10,
+        selfDeck: this._cbDeckMapToCards(selfInfo.deck), oppDeck: this._cbDeckMapToCards(oppInfo.deck),
+        selfKami, oppKami,
+        syncGame: !this.cbSolo, oppIsCpu: this.cbSolo, code, table, mySeat, oppSeat,
+      });
+    },
+    // { cardNo: count } のデッキマップをカードオブジェクト配列（枚数分の実体）に展開する
+    _cbDeckMapToCards(deckMap) {
+      const arr = [];
+      for (const no in (deckMap || {})) {
+        const card = this.cardByNo[String(no)];
+        if (!card) continue;
+        for (let i = 0; i < deckMap[no]; i++) arr.push(card);
+      }
+      return arr;
     },
     async _startShieldBattle(firstSideIgnored) {
       this.sbPreBattleReturn = false;
@@ -8965,6 +9667,15 @@ new Vue({
       } else if (r.kind === 'shield') {
         this.sb.joinCode = r.code;
         this.openShield();
+      } else if (r.kind === 'construct' && r.playerId && r.role) {
+        this.cb.roomCode = r.code;
+        this.cb.playerId = r.playerId;
+        this.cb.role     = r.role;
+        this._cbSubscribe(r.code);
+        this.openConstruct();
+      } else if (r.kind === 'construct') {
+        this.cb.joinCode = r.code;
+        this.openConstruct();
       } else if (r.kind === 'test') {
         this.startBattleTest(false, r.code);
       }
@@ -9028,14 +9739,15 @@ new Vue({
     /* 再戦対応モード：対戦テスト（1v1同期確認）とシールド戦（単発の1本勝負なので、
        ラウンド記録と衝突しない）。4人対戦は星戦の各ラウンドが勝敗記録される真剣勝負のため対象外。 */
     _battleRematchEligible() {
-      return this.battleContext.returnView === 'top' || this.battleContext.returnView === 'shield';
+      return this.battleContext.returnView === 'top' || this.battleContext.returnView === 'shield' || this.battleContext.returnView === 'construct';
     },
     async battleRequestRematch() {
       // 相手がCPU（駆動する2人目のクライアントが実在しない）場合は、
       // オンライン同期の合意プロトコルを介さず、こちらのクライアントだけで即座に再戦を開始する
       if (this.battleContext.oppIsCpu && this._battleRematchEligible()) {
         this._sfxPlay('decision');
-        this._battleRestartShieldBattleSolo();
+        if (this.battleContext.returnView === 'construct') this._battleRestartConstructBattleSolo();
+        else this._battleRestartShieldBattleSolo();
         return;
       }
       const n = this.battleNet;
@@ -9056,6 +9768,7 @@ new Vue({
       if (!val[n.mySeat] || !val[n.oppSeat]) return;
       this._battleRematchTriggered = true;
       if (this.battleContext.returnView === 'shield') this._battleRestartShieldBattle();
+      else if (this.battleContext.returnView === 'construct') this._battleRestartConstructBattle();
       else this._battleRestartTestBattle();
     },
     /* rematchノードの片付け（firstSeatトランザクション用の共有ノード）は席1側だけが担当し、
@@ -9147,6 +9860,55 @@ new Vue({
       });
       this.battleWaitingForRematch = false;
     },
+    /* 理念構築戦の再戦：Firebaseに提出済みの同じデッキ・カミをそのまま使い、先攻/後攻だけ再抽選する */
+    async _battleRestartConstructBattle() {
+      const n = this.battleNet;
+      if (!n) return;
+      const { mySeat, oppSeat, code, table } = n;
+      let firstSeat = mySeat;
+      try {
+        const ref = getDb().ref(`sessions/${code}/battle/${table}/rematch/firstSeat`);
+        const res = await ref.transaction(cur => (cur != null ? cur : (Math.random() < 0.5 ? mySeat : oppSeat)));
+        firstSeat = res.snapshot.val();
+      } catch (e) { /* 失敗しても自分視点で続行 */ }
+      const firstSide = String(firstSeat) === String(mySeat) ? 'self' : 'opp';
+      const room = this.cb.roomData || {};
+      const oppRole = this.cb.role === 'host' ? 'guest' : 'host';
+      const selfInfo = room[this.cb.role] || {};
+      const oppInfo = room[oppRole] || {};
+      const selfKami = selfInfo.kamiNo ? this.allKamiCards.find(k => String(k.no) === String(selfInfo.kamiNo)) : null;
+      const oppKami  = oppInfo.kamiNo  ? this.allKamiCards.find(k => String(k.no) === String(oppInfo.kamiNo))  : null;
+      this._battleInitialize({
+        source: 'construct', modeLabel: '理念構築戦', returnView: 'construct',
+        selfName: selfInfo.name || this.cb.myName || '自分', oppName: oppInfo.name || '相手', firstSide, life: 10,
+        selfDeck: this._cbDeckMapToCards(selfInfo.deck), oppDeck: this._cbDeckMapToCards(oppInfo.deck),
+        selfKami, oppKami,
+        syncGame: true, code, table, mySeat, oppSeat,
+      });
+      this._battleScheduleRematchCleanup(code, table, mySeat);
+      this._battleRematchTriggered = false;
+      this.battleWaitingForRematch = false;
+    },
+    /* 理念構築戦（CPU相手のソロプレイ）の再戦：相手が実在するクライアントではないため、
+       オンライン合意プロトコルを介さずこちらのクライアントだけで即座に再初期化する。
+       CPU（guest）のデッキ・カミは提出済みのものをそのまま使い回す。 */
+    _battleRestartConstructBattleSolo() {
+      const firstSide = Math.random() < 0.5 ? 'self' : 'opp';
+      const room = this.cb.roomData || {};
+      const oppRole = this.cb.role === 'host' ? 'guest' : 'host';
+      const selfInfo = room[this.cb.role] || {};
+      const oppInfo = room[oppRole] || {};
+      const selfKami = selfInfo.kamiNo ? this.allKamiCards.find(k => String(k.no) === String(selfInfo.kamiNo)) : null;
+      const oppKami  = oppInfo.kamiNo  ? this.allKamiCards.find(k => String(k.no) === String(oppInfo.kamiNo))  : null;
+      this._battleInitialize({
+        source: 'construct', modeLabel: '理念構築戦', returnView: 'construct',
+        selfName: selfInfo.name || this.cb.myName || '自分', oppName: oppInfo.name || 'CPU', firstSide, life: 10,
+        selfDeck: this._cbDeckMapToCards(selfInfo.deck), oppDeck: this._cbDeckMapToCards(oppInfo.deck),
+        selfKami, oppKami,
+        syncGame: false, oppIsCpu: true,
+      });
+      this.battleWaitingForRematch = false;
+    },
     // 観戦モード：既存の「対戦テスト」1v1の部屋を読み取り専用で覗き見る（両者の手札を含め全公開・デバッグ用）
     async startBattleSpectate() {
       if (!this.allCards.length) { alert('カード読み込み中です。少し待って再度お試しください。'); return; }
@@ -9155,17 +9917,17 @@ new Vue({
       // 対戦テスト/シールド戦/創世決戦のいずれも sessions/{code}/battle/{table}/state を
       // 共通の同期経路として使っているため、モードに応じてtableだけを切り替えれば観戦できる。
       const modeInput = (window.prompt(
-        '観戦するモードを番号で選んでください：\n1 = 対戦テスト\n2 = 星紡ぎ戦（シールド戦）\n3 = 創世決戦・卓1\n4 = 創世決戦・卓2',
+        '観戦するモードを番号で選んでください：\n1 = 対戦テスト\n2 = 星紡ぎ戦（シールド戦）\n3 = 創世決戦・卓1\n4 = 創世決戦・卓2\n5 = 理念構築戦',
         '1'
       ) || '').trim();
-      const tableMap = { '1': 'test', '2': 'shield', '3': 1, '4': 2 };
+      const tableMap = { '1': 'test', '2': 'shield', '3': 1, '4': 2, '5': 'construct' };
       const table = tableMap[modeInput];
-      if (table === undefined) { alert('1〜4のいずれかの番号を入力してください'); return; }
+      if (table === undefined) { alert('1〜5のいずれかの番号を入力してください'); return; }
       this._sfxPlay('decision');
       // 観戦は常に席1を自分視点（左）、席2を相手視点（右）として固定表示する
       const mySeat = 1, oppSeat = 2;
       const kami = this.allKamiCards[0] || null;
-      const modeLabelMap = { test: '対戦テスト', shield: '星紡ぎ戦', 1: '創世決戦・卓1', 2: '創世決戦・卓2' };
+      const modeLabelMap = { test: '対戦テスト', shield: '星紡ぎ戦', 1: '創世決戦・卓1', 2: '創世決戦・卓2', construct: '理念構築戦' };
       this._battleInitialize({
         source: 'spectate', modeLabel: `観戦中：${modeLabelMap[table]} ｜ コード ${code}`, returnView: 'top', round: null,
         selfName: 'プレイヤーA', oppName: 'プレイヤーB',
@@ -9211,8 +9973,9 @@ new Vue({
       if (gift) second.relics.push(gift);
       self.handCount = self.hand.length;
       opp.handCount = opp.hand.length;
-      // αモード（プレビュー）：自分のマナを10/10で開始（検証しやすくするため）
-      if (config.source === 'preview') {
+      // αモード（プレビュー）：既定では自分のマナを10/10で開始（検証しやすくするため）。
+      // 「本番同様の開始条件」が選ばれている場合は特別扱いせず、本番と同じ0（初手番のみ1）から始める。
+      if (config.source === 'preview' && config.previewFullMana !== false) {
         self.mana = 10; self.manaMax = 10;
       }
       this.battleSample = { turn: 1, activeSide: firstSide, result: null, self, opp };
@@ -9226,6 +9989,11 @@ new Vue({
         oppCpuAutoPlay: this.cpuAutoPlayEnabled, // CPUが自律してカードプレイ・攻撃を行うか（開始時点の設定を対戦中固定で使う。OFF＝従来通り待機のみ）
       };
       this.battleUndoStack = [];
+      this._battleGlowQueue = [];
+      this._battleGlowProcessing = false;
+      this._battleGlowOutbox = [];
+      this._battleGlowSeqCounter = 0;
+      this._battleLastGlowSeq = 0;
       this.battlePendingEffects = [];
       this.battleLog = [];
       this.battlePlayLog = { self: [], opp: [] };
@@ -9500,6 +10268,12 @@ new Vue({
           writer: n.mySeat, activeSeat, turn: bs.turn, result: bs.result || null,
           sides, ts: Date.now(),
         };
+        // 効果発動グロー演出：前回の公開以降に自分側で発動した効果を、この公開に便乗させて相手にも伝える
+        // （このpayloadに含まれるsides[n.mySeat]と同じ瞬間のインデックスを指すため、順序保証だけで足りる）
+        if (this._battleGlowOutbox && this._battleGlowOutbox.length) {
+          payload.glowEvents = this._battleGlowOutbox;
+          this._battleGlowOutbox = [];
+        }
       } catch (e) {
         console.error('[sync] シリアライズ失敗:', e);
         this.$set(this.battleNet, 'lastError', '送信前のシリアライズに失敗（' + (e && e.message) + '）');
@@ -9551,6 +10325,9 @@ new Vue({
         const sides = state.sides || {};
         this._battleApplySide('self', sides[n.mySeat], true);   // 自分席（手札/山札はローカル保持）
         this._battleApplySide('opp',  sides[n.oppSeat], false); // 相手席
+        // 効果発動グロー演出：相手側で発動した効果を、このスナップショットのopp配列に対する
+        // インデックスとして解決し、ローカルの再生キューに積む（1枚ずつ順番に光らせる）
+        this._battleApplyRemoteGlowEvents(state);
         const selfLegaciesLost = beforeSelfLegacies - (this.battleSample.self.legacies || []).length;
         const oppLegaciesLost = beforeOppLegacies - (this.battleSample.opp.legacies || []).length;
         const afterSelfLife = Number(this.battleSample.self.life) || 0;
@@ -9601,6 +10378,81 @@ new Vue({
         this.$set(this.battleNet, 'lastError', '受信適用失敗：' + (e && e.message));
       } finally {
         this.$nextTick(() => { this._battleApplyingRemote = false; });
+      }
+    },
+    /* ===================================================================
+       効果発動グロー演出（【出現時】等・非オラクル限定。死亡時は墓地アイコンを光らせる）
+       - ローカル（CPU戦・自分の手元）はカード/墓地オブジェクトを直接光らせるだけで完結する。
+       - オンライン対戦中は、自分側で発動した効果だけを_battleGlowOutboxに積んでおき、
+         次のPublishのpayloadに便乗させる（同じsides配列に対するインデックスなので
+         そのスナップショット内でのみ意味を持てば十分＝グローバルなカードIDは不要）。
+       - 複数の効果が同時に発動しても、キューに積んで1件ずつ順番に光らせる（重ならない）。
+       =================================================================== */
+    battleGlowCardEffect(card) {
+      try {
+        if (!card || card.category === 'オラクル') return;
+        this._battleGlowEnqueueLocal({ type: 'card', card });
+        const n = this.battleNet;
+        if (n && n.on && !n.spectating && this._battleFieldCardSide(card) === 'self') {
+          const p = this.battleSample.self || {};
+          let zone = null, idx = -1;
+          if (Array.isArray(p.legacies) && (idx = p.legacies.indexOf(card)) >= 0) zone = 'legacies';
+          else if (Array.isArray(p.relics) && (idx = p.relics.indexOf(card)) >= 0) zone = 'relics';
+          if (zone) this._battleGlowPublish(zone, idx, 'summon');
+        }
+      } catch (e) { console.warn('[glow] enqueue失敗:', e); }
+    },
+    battleGlowGraveyardEffect(playerObj, isTrueSelf) {
+      try {
+        if (!playerObj) return;
+        this._battleGlowEnqueueLocal({ type: 'graveyard', playerObj });
+        if (isTrueSelf) this._battleGlowPublish('graveyard', -1, 'death');
+      } catch (e) { console.warn('[glow] enqueue失敗:', e); }
+    },
+    _battleGlowPublish(zone, idx, kind) {
+      const n = this.battleNet;
+      if (!n || !n.on || n.spectating) return;
+      this._battleGlowSeqCounter = (this._battleGlowSeqCounter || 0) + 1;
+      this._battleGlowOutbox = this._battleGlowOutbox || [];
+      this._battleGlowOutbox.push({ zone, idx, kind, seq: this._battleGlowSeqCounter });
+    },
+    _battleGlowEnqueueLocal(entry) {
+      this._battleGlowQueue = this._battleGlowQueue || [];
+      this._battleGlowQueue.push(entry);
+      this._battleDrainGlowQueue();
+    },
+    // キューを1件ずつ処理する（発光中は次を待たせる＝同時発動でも重ならない）
+    _battleDrainGlowQueue() {
+      if (this._battleGlowProcessing) return;
+      const entry = (this._battleGlowQueue || []).shift();
+      if (!entry) return;
+      this._battleGlowProcessing = true;
+      const target = entry.type === 'card' ? entry.card : entry.playerObj;
+      if (!target) { this._battleGlowProcessing = false; this._battleDrainGlowQueue(); return; }
+      this._sfxPlay('effect');
+      this.$set(target, '_glowActive', true);
+      setTimeout(() => {
+        this.$set(target, '_glowActive', false);
+        this._battleGlowProcessing = false;
+        this._battleDrainGlowQueue();
+      }, 650);
+    },
+    // 受信したスナップショットに便乗してきたグローイベントを、自分側の再生キューに変換する
+    _battleApplyRemoteGlowEvents(state) {
+      if (!state || !Array.isArray(state.glowEvents) || !state.glowEvents.length) return;
+      const freshEnough = (Date.now() - Number(state.ts || 0)) < 5000; // 再接続直後の古いイベントは再生しない
+      const events = state.glowEvents.slice().sort((a, b) => (a.seq || 0) - (b.seq || 0));
+      for (const ev of events) {
+        if (!ev || !(Number(ev.seq || 0) > (this._battleLastGlowSeq || 0))) continue;
+        this._battleLastGlowSeq = Number(ev.seq || 0);
+        if (!freshEnough) continue;
+        if (ev.zone === 'graveyard') {
+          this._battleGlowEnqueueLocal({ type: 'graveyard', playerObj: this.battleSample.opp });
+        } else {
+          const arr = (this.battleSample.opp && this.battleSample.opp[ev.zone]) || [];
+          const card = arr[ev.idx];
+          if (card) this._battleGlowEnqueueLocal({ type: 'card', card });
+        }
       }
     },
     // 観戦モード用の受信適用：観戦者は自分では書き込まないため「自分のエコー」は存在せず
@@ -10386,6 +11238,14 @@ new Vue({
       this.pickAssistEnabled = !this.pickAssistEnabled;
       try { localStorage.setItem('tsukuriyo_pickAssistEnabled', String(this.pickAssistEnabled)); } catch (e) { /* 保存できなくても続行 */ }
     },
+    togglePoolDenseView() {
+      this.poolDenseView = !this.poolDenseView;
+      try { localStorage.setItem('tsukuriyo_poolDenseView', String(this.poolDenseView)); } catch (e) { /* 保存できなくても続行 */ }
+    },
+    toggleDeckDenseView() {
+      this.deckDenseView = !this.deckDenseView;
+      try { localStorage.setItem('tsukuriyo_deckDenseView', String(this.deckDenseView)); } catch (e) { /* 保存できなくても続行 */ }
+    },
     toggleCpuAutoPlay() {
       this.cpuAutoPlayEnabled = !this.cpuAutoPlayEnabled;
       try { localStorage.setItem('tsukuriyo_cpuAutoPlayEnabled', String(this.cpuAutoPlayEnabled)); } catch (e) { /* 保存できなくても続行 */ }
@@ -10400,21 +11260,26 @@ new Vue({
       if (this._battleTurnTimerHandle) { clearInterval(this._battleTurnTimerHandle); this._battleTurnTimerHandle = null; }
       this.battleTurnElapsedSec = 0;
     },
-    /* 手番通知：タブがバックグラウンドの間に自分の手番が来たら、タブのタイトルを点滅させて知らせる。
-       通知権限のポップアップは煩わしいため、Notification APIは使わずdocument.titleの点滅のみで知らせる。 */
-    _battleStartTurnTitleFlash() {
-      if (this._battleTurnFlashHandle || !document.hidden) return;
-      if (!this._battleTurnFlashOriginalTitle) this._battleTurnFlashOriginalTitle = document.title;
+    /* 汎用タブタイトル点滅：タブがバックグラウンドの間に知らせたいことがあれば、
+       タブのタイトルを点滅させて知らせる。通知権限のポップアップは煩わしいため、
+       Notification APIは使わずdocument.titleの点滅のみで知らせる。
+       手番通知・ロビーでの参加通知など複数の用途で共用する（同時に両方は起きない想定）。 */
+    _startTitleFlash(text) {
+      if (this._titleFlashHandle || !document.hidden) return;
+      if (!this._titleFlashOriginalTitle) this._titleFlashOriginalTitle = document.title;
       let on = false;
-      this._battleTurnFlashHandle = setInterval(() => {
+      this._titleFlashHandle = setInterval(() => {
         on = !on;
-        document.title = on ? '🔴 あなたの番です！' : this._battleTurnFlashOriginalTitle;
+        document.title = on ? text : this._titleFlashOriginalTitle;
       }, 1000);
     },
-    _battleStopTurnTitleFlash() {
-      if (this._battleTurnFlashHandle) { clearInterval(this._battleTurnFlashHandle); this._battleTurnFlashHandle = null; }
-      if (this._battleTurnFlashOriginalTitle) { document.title = this._battleTurnFlashOriginalTitle; }
+    _stopTitleFlash() {
+      if (this._titleFlashHandle) { clearInterval(this._titleFlashHandle); this._titleFlashHandle = null; }
+      if (this._titleFlashOriginalTitle) { document.title = this._titleFlashOriginalTitle; }
     },
+    /* 手番通知：タブがバックグラウンドの間に自分の手番が来たら知らせる */
+    _battleStartTurnTitleFlash() { this._startTitleFlash('🔴 あなたの番です！'); },
+    _battleStopTurnTitleFlash() { this._stopTitleFlash(); },
     /* ヒットストップ：0.05秒だけ次の処理を遅延させ、衝撃の一瞬を演出する */
     _battleHitStop(ms = 50) {
       return new Promise(resolve => setTimeout(resolve, ms));
@@ -10708,6 +11573,9 @@ new Vue({
       } else if (this.battleContext.returnView === 'game') {
         this.appView = 'game';
         this.gameOpen = true;
+      } else if (this.battleContext.returnView === 'construct') {
+        this.appView = 'construct';
+        this.constructOpen = true;
       } else {
         this.appView = 'top';
       }
@@ -15531,6 +16399,7 @@ new Vue({
         else if (hasUse) await this.dslRunSpec(card, '使用時', paidCost);
         if (hasSublim) await this.dslRunSpec(card, '昇華', paidCost);
         if (hasEnter) this.battleRunDoubledEnterEffect(card, paidCost);
+        if (hasEnter) this.battleGlowCardEffect(card); // 【出現時】が実際に発動した場合のみカードを光らせる（オラクルは除外）
         return true;
       }
       // effect_specでレビュー済み（specエントリが存在する）カードは、出現時に対応する能力が
@@ -15539,7 +16408,9 @@ new Vue({
       // 【選定】等を誤って出現時効果として実行してしまうため、レビュー済みカードでは
       // Layer1フォールバックを試みない（例：#91千変万化の大妖狐、#168色彩の旅絵巻）
       if (this.effectSpecsReady && this._dslGetSpec(card)) return true;
-      return this._battleQueueAndRunEffects(card, paidCost, '出現時');
+      const ranLayer1 = this._battleQueueAndRunEffects(card, paidCost, '出現時');
+      if (ranLayer1) this.battleGlowCardEffect(card);
+      return ranLayer1;
     },
     battleRunDeathKeywordEffects(card) {
       // このカードの本当の持ち主が実行中クライアント(手番側)と異なる場合（例：相手ターン中に
@@ -15550,6 +16421,10 @@ new Vue({
       // 実行そのものを委譲する（守護や相手選択破棄と同じ考え方）。
       const cardOwnerSide = (card && (card._lastFieldSide || this._battleFieldCardSide(card))) || 'self';
       const n = this.battleNet;
+      // グロー演出用：self/opp入れ替え（_dslSwapSelfOpp）が始まる前に、光らせるべき本当の墓地オブジェクトの
+      // 参照を確定しておく（入れ替え後は this.battleSample.self/opp の中身が入れ替わってしまうため）
+      const deathGlowPlayerObj = cardOwnerSide === 'opp' ? this.battleSample.opp : this.battleSample.self;
+      const deathGlowIsTrueSelf = cardOwnerSide === 'self';
       if (cardOwnerSide === 'opp' && n && n.on && !n.spectating) {
         this._battleDelegateDeathTrigger(card);
         return true;
@@ -15559,10 +16434,15 @@ new Vue({
       // （対象選択等）も人間に委ねずCPU的に自動解決する。
       const needsSwap = cardOwnerSide === 'opp';
       const prevAutoResolving = this._battleCpuAutoResolving;
+      // 入れ替え中に積まれるUndoスナップショットはself/oppが逆転した状態のため、
+      // 後で人間が「一手戻る」を押した際に盤面が反転してしまわないよう、
+      // 入れ替え中に積まれた分は終了後にまとめて破棄する（_battleCpuTakeTurnと同じ対策）
+      const undoDepthBefore = this.battleUndoStack.length;
       const restore = () => {
         if (!needsSwap) return;
         this._dslSwapSelfOpp();
         this._battleCpuAutoResolving = prevAutoResolving;
+        if (this.battleUndoStack.length > undoDepthBefore) this.battleUndoStack.length = undoDepthBefore;
       };
       if (needsSwap) {
         this._dslSwapSelfOpp();
@@ -15576,6 +16456,7 @@ new Vue({
       if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '死亡時')) {
         const p = this.dslRunSpec(card, '死亡時', null);
         this.battleRunDoubledDeathEffect(card);
+        this.battleGlowGraveyardEffect(deathGlowPlayerObj, deathGlowIsTrueSelf);
         if (needsSwap) Promise.resolve(p).finally(restore); else restore();
         return true;
       }
@@ -15583,6 +16464,7 @@ new Vue({
       // フォールバックを試みない（出現時側と同じ理由。例：#39シジマは死亡時効果を持たない）
       if (this.effectSpecsReady && this._dslGetSpec(card)) { restore(); return true; }
       const result = this._battleQueueAndRunEffects(card, null, '死亡時');
+      if (result) this.battleGlowGraveyardEffect(deathGlowPlayerObj, deathGlowIsTrueSelf);
       restore();
       return result;
     },
@@ -16214,8 +17096,7 @@ new Vue({
           this.battleSublimModal = { card, index, zone: null, options: oracleOptions };
           return;
         }
-        this._battlePlayOracle(index, oracleOptions[0]);
-        return;
+        return this._battlePlayOracle(index, oracleOptions[0]);
       }
       // レガシー/レリック以外は未対応
       const zone = card.category === 'レガシー' ? 'legacies' : card.category === 'レリック' ? 'relics' : null;
@@ -16241,7 +17122,7 @@ new Vue({
       }
       // 通常配置（コスト1択）
       const cost = options[0];
-      this._battlePlayLegacyOrRelic(index, zone, cost, evolveBaseHint);
+      return this._battlePlayLegacyOrRelic(index, zone, cost, evolveBaseHint);
     },
     /* 昇華選択モーダルからの決定 */
     battleSublimChoose(payCost) {
@@ -18722,6 +19603,12 @@ new Vue({
       this.appView = 'shield';
       this.openShield();
     },
+    goToConstruct() {
+      this._sfxPlay('menuselect');
+      this.appView = 'construct';
+      this.openConstruct();
+      // BGMは変更しない（TOP画面から引き続き同じ曲を流す）
+    },
     goToGame() {
       this._sfxPlay('menuselect');
       this.appView = 'game';
@@ -18792,7 +19679,7 @@ new Vue({
       if (!this.allKamiCards.length) { this.gs.error = 'カミデータの読み込みが完了していません'; return; }
       this.gs.connecting = true;
       try {
-        const { sessionCode, playerId, seat } = await createSession(this.gs.myName);
+        const { sessionCode, playerId, seat } = await createSession(this.gs.myName, this.gsCreatePublic);
         this.gs.sessionCode = sessionCode;
         this.gs.playerId    = playerId;
         this.gs.seat        = seat;
@@ -18827,6 +19714,25 @@ new Vue({
       } finally {
         this.gs.connecting = false;
       }
+    },
+    /* マッチメイキングの摩擦解消：公開ルーム一覧・ランダムマッチ */
+    async gsJoinPublic(code) {
+      this.gs.joinCode = code;
+      await this.gsJoin();
+    },
+    async gsRandomMatch() {
+      if (this.gs.connecting || !this.gsPublicSessions.length) return;
+      const pick = this.gsPublicSessions[Math.floor(Math.random() * this.gsPublicSessions.length)];
+      if (!pick) return;
+      await this.gsJoinPublic(pick.code);
+    },
+    _gsSubscribePublicList() {
+      this._gsUnsubscribePublicList();
+      this._gsPublicUnsub = subscribePublicRooms('game', (list) => { this.gsPublicSessions = list; });
+    },
+    _gsUnsubscribePublicList() {
+      if (this._gsPublicUnsub) { this._gsPublicUnsub(); this._gsPublicUnsub = null; }
+      this.gsPublicSessions = [];
     },
     async gsToggleReady() {
       const seats = (this.gs.data && this.gs.data.seats) || {};
@@ -18950,18 +19856,40 @@ new Vue({
     gsCpuCardTagScore(card, tags, pickedCards) {
       let s = 0;
       const text = String(card.text || '');
+      const fullNm = this.fullName(card);
+      // 天力を固定値で上げる効果（約束の光・ミズホ、平穏の祈り手、鐘鳴らしの童 等）：
+      // スサノオ（神技2の必要天力が少ない）とは好相性、ヤマトタケル（天力が毎ターン自然に貯まる）とは相性が悪い
+      const grantsFixedTenryoku = /天力.{0,10}(増える|得る|上がる|＋|\+)/.test(text);
       for (const tag of tags) {
+        // 名指しカードの直接加減点（キーワード判定では拾いにくい固有の噛み合わせ）
+        const named = GS_CPU_NAMED_CARD_BONUS[tag];
+        if (named) {
+          for (const key in named) {
+            if (fullNm.includes(key)) { s += named[key]; break; }
+          }
+        }
         switch (tag) {
           case 'evolveSublim':
-            if (/【昇華|【進化/.test(text)) s += 22;
+            // 進化は神技2使用後も使え、ユニーク性も高いため昇華よりさらに優先度を上げる
+            if (/【進化/.test(text)) s += 26;
+            else if (/【昇華/.test(text)) s += 20;
+            if (grantsFixedTenryoku) s += 16;
             break;
           case 'unique':
-            break; // 同名重複ペナルティ側（gsCpuScoreCard）で処理
+            // 同名重複ペナルティはgsCpuScoreCard側で処理。ここではヤマトタケルならではの追加相性のみ加点
+            if (grantsFixedTenryoku) s -= 14; // 天力が自然に貯まるため恩恵が薄い
+            if (/マナ最大値/.test(text)) s += 8; // 神技2の盤面干渉と両立できる重量級デッキも成立する
+            if (card.category === 'レガシー' && (Number(card.cost) || 0) <= 2) s += 4; // 神技1のドローで息切れしにくい軽量構成
+            break;
           case 'tribeDiversity': {
             // 異なる種族を並べたい：未所持の種族のレガシーほど嬉しい
             if (card.category === 'レガシー' && card.type) {
               const types = new Set(pickedCards.filter(c => c.category === 'レガシー').map(c => c.type).filter(Boolean));
               s += types.has(card.type) ? 4 : 14;
+              // 神技1で人獣は自前調達できるため、人獣への偏りはやや控えめに評価
+              if (card.type === '人獣') s -= 6;
+              // 神技2でレガシーを召喚するため、強力なレガシー自体もやや優先
+              s += Math.min(10, (Number(card.power) || 0) / 200);
             }
             // 本体と異なる種族のトークンを招来する効果（例：約束の光・ミズホ等）は種族多様化に直結するため高評価
             const tribeWords = ['忍者', '侍', '人獣', '神使', '妖怪', '龍'];
@@ -18970,6 +19898,8 @@ new Vue({
             }
             // 複数の異なる種族が揃うほど効果を発揮するカード（例：暁の盟約・断禍の三重奏）
             if (/異なる種族|種族が異なる|それぞれ異なる/.test(text)) s += 14;
+            // 複数の異なる種族を同時に並べる必要があるため、重すぎるカードはやや避ける
+            if ((Number(card.cost) || 0) >= 7) s -= 6;
             break;
           }
           case 'highPower':
@@ -18977,29 +19907,99 @@ new Vue({
             s += Math.min(28, (Number(card.power) || 0) / 120);
             // 戦闘力を上げる補正効果（【補正+】等）を持つカードも高評価
             if (/【補正[+＋]|戦闘力.{0,6}(上が|増え|＋|\+)/.test(text)) s += 18;
+            // 【奇襲】：神技1でアンタップ状態のレガシーとも戦闘できるため好相性
+            if (/【奇襲】/.test(text)) s += 12;
+            // レリックの数に応じて戦闘力が伸びる侍レガシー：強力なレリックと合わせて評価
+            if (card.type === '侍' && /レリック.{0,10}(数|枚数).{0,10}(戦闘力|上が|＋|\+)/.test(text)) s += 14;
+            // 神使は天力・出現時効果に優れる一方で戦闘力は低めの傾向があるため、この軸ではやや評価を下げる
+            if (card.type === '神使' && card.category === 'レガシー') s -= 10;
             break;
-          case 'oracleRelic':
+          case 'oracleRelic': {
             if (card.category === 'オラクル' || card.category === 'レリック') s += 18;
+            // ヨリシロちゃん（オラクル使用コスト軽減）を招来できるカード：好相性
+            if (/ヨリシロちゃん/.test(text)) s += 24;
+            // 「社の施し」（レリック・天力源）を招来できるカード
+            if (/社の施し/.test(text)) s += 20;
+            // 全体除去はレガシーが少なくボード不利になりやすいこの軸で貴重（名指しカードに加え汎用パターンでも拾う）
+            if (/(すべて|全て)/.test(text) && /破壊|崩壊/.test(text)) s += 8;
+            // 「社の施し」を多くピックできていれば、レリック数依存で戦闘力が伸びる侍カードを評価
+            const shrineCount = pickedCards.filter(c => /社の施し/.test(String(c.text || ''))).length;
+            if (shrineCount >= 2 && card.type === '侍' && /レリック.{0,10}(数|枚数).{0,10}(戦闘力|上が|＋|\+)/.test(text)) s += 16;
+            // 選定持ちオラクルを多くピックできていれば、選定シナジーの忍者カードを評価
+            const senteiCount = pickedCards.filter(c => /【選定/.test(String(c.text || ''))).length;
+            if (senteiCount >= 2 && card.type === '忍者' && /選定/.test(text)) s += 16;
+            // オラクル・レリック偏重になりやすいため、レガシー比率が低すぎる場合は最低限のレガシーを評価
+            const legacyCount = pickedCards.filter(c => c.category === 'レガシー').length;
+            if (card.category === 'レガシー' && pickedCards.length >= 6 && legacyCount / pickedCards.length < 0.2) s += 12;
             break;
+          }
           case 'manaLife':
             if (/マナ.{0,8}(回復|増|＋|\+)|ライフ.{0,8}(回復|増|＋|\+)|マナ最大値/.test(text)) s += 20;
+            // 「社の施し」を招来できるカードも方針に合う
+            if (/社の施し/.test(text)) s += 16;
+            // マナを伸ばして戦う都合上、高コストで場を大きく動かすカードとも相性がよい
+            if ((Number(card.cost) || 0) >= 6) s += 8;
+            // 昇華はマナが伸びた後半でも使いやすいため評価を上げる
+            if (/【昇華/.test(text)) s += 10;
             break;
           case 'destroy':
             if (/破壊|崩壊/.test(text)) s += 16;
             s += Math.min(8, (Number(card.power) || 0) / 400); // 戦闘での相打ちも破壊トリガーになる
+            // 【補正-】：戦闘力を下げて相打ち・処理をしやすくする効果
+            if (/【補正[-－ー]|戦闘力.{0,6}(下が|減)/.test(text)) s += 18;
+            // 全体除去はこの軸で最高の相性（名指しカードに加え汎用パターンでも拾う）
+            if (/(すべて|全て)/.test(text) && /破壊|崩壊/.test(text)) s += 8;
+            // 妖怪は死亡時・墓地参照シナジーが豊富で総じて好相性
+            if (card.type === '妖怪') s += 6;
+            if (/死亡時|墓地/.test(text)) s += 6;
             break;
           case 'guard':
             if (/【守護】/.test(text)) s += 22;
+            // 守護持ちのトークン（ヨリシロちゃん・巨躯なる獣霊）を招来できるカード。
+            // 「獣霊」はいずれかの獣霊/異なる獣霊N種/巨躯なる獣霊等、カードごとに文言が異なるため
+            // 特定の言い回しに決め打ちせず、獣霊トークンに触れるカード全般を対象にする
+            // （選択肢や種数指定の中に守護持ちの巨躯なる獣霊が含まれ得るため）
+            if (/ヨリシロちゃん|獣霊/.test(text)) s += 20;
+            // 神技2（墓地から蘇生）と好相性：霊視で自然に墓地を肥やせるカード、蘇生先として価値の高い重量級カード
+            if (/【霊視/.test(text)) s += 8;
+            if ((Number(card.cost) || 0) >= 6) s += 10;
+            // 神使は守護・ヨリシロちゃん招来が多く総じて好相性
+            if (card.type === '神使') s += 8;
             break;
-          case 'token':
+          case 'token': {
             if (/トークン|【招来/.test(text)) s += 20;
+            // 「社の施し」（レリックでもあるトークン）を招来できるカード
+            if (/社の施し/.test(text)) s += 16;
+            // 忍者は影分身トークン・選定シナジーが多く好相性
+            if (card.type === '忍者') s += 6;
+            // 天力トリガーの成立自体が容易なため、天力を固定値で上げるカードの優先度はやや下がる
+            if (grantsFixedTenryoku) s -= 10;
+            // ヨリシロちゃんを多く確保できていれば、オラクル軽減効果の恩恵でオラクルを評価
+            const yorishiroCount = pickedCards.filter(c => /ヨリシロちゃん/.test(String(c.text || ''))).length;
+            if (yorishiroCount >= 2 && card.category === 'オラクル') s += 12;
             break;
+          }
           case 'dragon':
-            if (card.type === '龍') s += 20;
+            // 龍のカードは複数集めてこそのシナジーが多く、ほぼ何よりも優先してよい
+            if (card.type === '龍') s += 30;
             break;
         }
       }
       return s;
+    },
+    /* 共通方針：デッキの半分程度がユニークカード（返還値0/1）になるよう緩やかに誘導する。
+       ヤマトタケル（unique）・ヤマタノオロチ（dragon）はユニーク比率が半分を多少超えても問題ないため目標をやや高めにする。
+       ピック序盤（4枚未満）は方針が定まらないため中立とする。 */
+    gsCpuUniqueRatioScore(card, pickedCards, kamiTags) {
+      const total = pickedCards.length;
+      if (total < 4) return 0;
+      const isUniqueCard = (parseInt(card.return, 10) || 0) !== 2;
+      const uniqueCount = pickedCards.filter(c => (parseInt(c.return, 10) || 0) !== 2).length;
+      const ratio = uniqueCount / total;
+      const target = (kamiTags.includes('unique') || kamiTags.includes('dragon')) ? 0.6 : 0.5;
+      const diff = target - ratio; // 不足なら正
+      const bonus = Math.max(-8, Math.min(8, diff * 30));
+      return isUniqueCard ? bonus : -bonus;
     },
     /* 優先度2：単体性能・汎用性の基礎点（軸が刺さらないカードでも最低限評価される） */
     gsCpuBaseScore(card) {
@@ -19115,9 +20115,11 @@ new Vue({
       s += this.gsCpuEffectSynergy(card, picked) * persona.effect;
       s += this.gsCpuCurveScore(card, picked) * persona.curve;
       s += this.gsCpuHumanStatScore(card); // 人間の実績データに基づく補正（重み付けはせず素点のまま加算）
-      // 同名重複：軽い減点（K2ヤマトタケル＝uniqueタグ持ちは重い減点）
+      // 共通方針：デッキの半分程度をユニークカードにする（ヤマトタケル・ヤマタノオロチは目標をやや高めに）
+      s += this.gsCpuUniqueRatioScore(card, picked, ctx.kamiTags);
+      // 同名重複：軽い減点（K2ヤマトタケル＝uniqueタグ持ちはほぼ選ばれないレベルの重い減点）
       const dup = picked.filter(c => this.fullName(c) === this.fullName(card)).length;
-      s -= dup * (ctx.kamiTags.includes('unique') ? 12 : 3);
+      s -= dup * (ctx.kamiTags.includes('unique') ? 20 : 3);
       return s;
     },
     /* パックから1枚選ぶ：上位2〜3枚から確率的に選択（スコア差が大きいほど1位を選びやすい） */
@@ -19988,6 +20990,16 @@ new Vue({
         backgroundPosition: `right top ${yPct}%`,
       };
     },
+    // 密表示：行の高さを保ったまま、カード判別用の小さなサムネイルとして顔付近を切り出す
+    deckItemThumbStyle(card) {
+      const url = this.cardImageUrl(card);
+      if (!url) return {};
+      const yPct = (card && card.bgY !== null && card.bgY !== undefined) ? card.bgY : 12;
+      return {
+        backgroundImage: `url("${url}")`,
+        backgroundPosition: `center top ${yPct}%`,
+      };
+    },
     costBadgeStyle(card) {
       // 創属性 → 5色の虹（円グラフ風）
       if (card.color === '創') {
@@ -20057,11 +21069,17 @@ new Vue({
       if (this.appView === 'shield' || this.appView === 'game') return false;
       if (card.isToken) return false;  // トークンはデッキに入れられない
       if (card.isKami) return false;   // カミはリーダー枠で管理（通常デッキに入らない）
+      // 理念構築戦：ジェネシスカードは原則デッキに入れられない
+      // （例外：カミにヤマタノオロチを選んでいる場合のみディエスイレを入れられる）
+      if (this.appView === 'construct' && this.isGenesisCard(card)) {
+        const kamiIsOrochi = this.selectedKami && this._battleIsOrochiCard(this.selectedKami);
+        if (!(kamiIsOrochi && this.isDiesIraeCard(card))) return false;
+      }
       // No単位で1枚まで（active + returned の合計）
       const no = String(card.no);
       const noCount = (this.deck[no] || 0) + (this.returned[no] || 0);
       if (noCount >= 1) return false;
-      // 同名グループの合計が上限を超えていないか
+      // 同名グループの合計が上限を超えていないか（返還値2の基本カードは2枚まで／それ以外のユニークカードは1枚まで）
       return this.groupCount(card) < this.maxCopiesFor(card);
     },
     // カミ背景スタイル（個別位置調整マップを反映）
@@ -20087,6 +21105,8 @@ new Vue({
     setLeader(card) {
       this._sfxPlay('decision');
       this.selectedKami = card;
+      // カミ選択直後はカミ絞り込みを解除し、即座に通常のカードリスト表示へ戻す
+      if (this.filterCategory === "カミ") this.filterCategory = "";
     },
     clearLeader() {
       this._sfxPlay('cancel');
@@ -20451,15 +21471,13 @@ new Vue({
         alert('コピーに失敗しました。表示されたコードを手動で選択してコピーしてください。');
       }
     },
-    // デッキコード読込：カードNoのみで表現されているため、現在のcardByNoで解決できたものだけ反映する
-    deckImportFromCode() {
-      const code = (this.deckManagerCodeInput || '').trim();
-      if (!code) return;
-      let raw;
-      try { raw = decodeURIComponent(escape(atob(code))); } catch (e) { alert('デッキコードの形式が正しくありません'); return; }
+    // デッキコードの解読のみ行う純粋処理（副作用・alert無し）。デッキビルダーの読込欄・
+    // 理念構築戦のストラクチャーデッキ読込の両方から共通で使う
+    _decodeDeckCode(code) {
+      const raw = decodeURIComponent(escape(atob(code)));
       const tokens = raw.split(',').filter(Boolean);
       let kamiNo = null;
-      const newDeck = {};
+      const deck = {};
       let unresolved = 0;
       for (const t of tokens) {
         if (/^K\d+$/.test(t)) { kamiNo = t.slice(1); continue; }
@@ -20467,17 +21485,25 @@ new Vue({
         if (!m) continue;
         const no = m[1], count = Number(m[2]) || 0;
         if (!this.cardByNo[no]) { unresolved++; continue; }
-        if (count > 0) newDeck[no] = count;
+        if (count > 0) deck[no] = count;
       }
-      if (!Object.keys(newDeck).length && !kamiNo) { alert('デッキコードを読み取れませんでした'); return; }
+      return { kamiNo, deck, unresolved };
+    },
+    // デッキコード読込：カードNoのみで表現されているため、現在のcardByNoで解決できたものだけ反映する
+    deckImportFromCode() {
+      const code = (this.deckManagerCodeInput || '').trim();
+      if (!code) return;
+      let parsed;
+      try { parsed = this._decodeDeckCode(code); } catch (e) { alert('デッキコードの形式が正しくありません'); return; }
+      if (!Object.keys(parsed.deck).length && !parsed.kamiNo) { alert('デッキコードを読み取れませんでした'); return; }
       if (this.totalDeckCount > 0 && !confirm('現在編集中のデッキを上書きして読み込みますか？')) return;
       this._sfxPlay('decision');
-      this.deck = newDeck;
+      this.deck = parsed.deck;
       this.returned = {};
-      this.selectedKami = kamiNo ? (this.allKamiCards.find(k => String(k.no) === String(kamiNo)) || null) : null;
+      this.selectedKami = parsed.kamiNo ? (this.allKamiCards.find(k => String(k.no) === String(parsed.kamiNo)) || null) : null;
       this.deckManagerCodeInput = '';
       this.deckManagerOpen = false;
-      if (unresolved) alert(`${unresolved}件のカードは現在のカードデータに見つからなかったため読み込みから除外しました`);
+      if (parsed.unresolved) alert(`${parsed.unresolved}件のカードは現在のカードデータに見つからなかったため読み込みから除外しました`);
     },
     // ユドナリウムのエクスポート（zip/xml）からデッキを読み込む
     async onUdonImport(ev) {
@@ -20919,7 +21945,7 @@ new Vue({
       this.sb.connecting = true;
       this.sb.error = '';
       try {
-        const { roomCode, playerId } = await createRoom(this.sb.myName);
+        const { roomCode, playerId } = await createRoom(this.sb.myName, this.sbCreatePublic);
         this.sb.roomCode  = roomCode;
         this.sb.playerId  = playerId;
         this.sb.role      = 'host';
@@ -20978,6 +22004,308 @@ new Vue({
         this.sb.error = e.message;
       } finally {
         this.sb.connecting = false;
+      }
+    },
+    /* マッチメイキングの摩擦解消：公開ルーム一覧・ランダムマッチ */
+    async sbJoinPublic(code) {
+      this.sb.joinCode = code;
+      await this.onJoinRoom();
+    },
+    async sbRandomMatch() {
+      if (this.sb.connecting || !this.sbPublicRooms.length) return;
+      const pick = this.sbPublicRooms[Math.floor(Math.random() * this.sbPublicRooms.length)];
+      if (!pick) return;
+      await this.sbJoinPublic(pick.code);
+    },
+    _sbSubscribePublicList() {
+      this._sbUnsubscribePublicList();
+      this._sbPublicUnsub = subscribePublicRooms('shield', (list) => { this.sbPublicRooms = list; });
+    },
+    _sbUnsubscribePublicList() {
+      if (this._sbPublicUnsub) { this._sbPublicUnsub(); this._sbPublicUnsub = null; }
+      this.sbPublicRooms = [];
+    },
+
+    /* ===================================================================
+       理念構築戦（自由構築1v1）
+       =================================================================== */
+    openConstruct() {
+      this.constructOpen = true;
+      this.appView = 'construct';
+      // ソロプレイ（CPU戦）でストラクチャーデッキが即使えるよう、ロビー表示時に一度だけ購読・シードしておく
+      this._cbSubscribeStructureDecks();
+    },
+    tryCloseConstruct() {
+      if (this.cb.phase === 'building' && this.totalDeckCount > 0 && !confirm('理念構築戦を中断しますか？（編集中のデッキは失われます）')) return;
+      this._sfxPlay('cancel');
+      this.deck = {};
+      this.returned = {};
+      this.selectedKami = null;
+      this.cbBuilding = false;
+      this._cbCleanup();
+      this.constructOpen = false;
+      this.appView = 'top';
+      this._clearActiveSession();
+      this._cbReset();
+    },
+    _cbReset() {
+      if (this.cb._unsubscribe) this.cb._unsubscribe();
+      this.cb = {
+        phase: 'lobby', myName: this.cb.myName, joinCode: '',
+        connecting: false, error: '', role: null, playerId: null,
+        roomCode: null, roomData: {}, _unsubscribe: null,
+      };
+      this.cbSolo = false;
+    },
+    _cbCleanup() {
+      if (this.cb._unsubscribe) { this.cb._unsubscribe(); this.cb._unsubscribe = null; }
+    },
+    _cbSubscribe(roomCode) {
+      const unsub = subscribeConstructRoom(roomCode, (data) => {
+        if (!data) {
+          // 部屋が消滅した（ホストが解散した、または期限切れ）。自分から解散した場合は
+          // cbDissolveRoom側で先に購読を止めているため、ここに来るのは相手起因のケースのみ
+          if (this.cb.roomCode === roomCode) {
+            this._sfxPlay('cancel');
+            alert('部屋が解散されました。ロビーに戻ります。');
+            this._cbCleanup();
+            this.cb.roomCode = null;
+            this.cb.role = null;
+            this.cb.phase = 'lobby';
+            this.cb.roomData = {};
+            this.cbSolo = false;
+            this._clearActiveSession();
+          }
+          return;
+        }
+        this.cb.roomData = data;
+        this.cb.phase = data.phase || 'lobby';
+      });
+      this.cb._unsubscribe = unsub;
+    },
+    // ホストが部屋を解散する（Firebase上のデータごと削除。相手も自動的にロビーへ戻される）
+    async cbDissolveRoom() {
+      if (this.cb.role !== 'host' || !this.cb.roomCode) return;
+      if (!confirm('部屋を解散しますか？（参加者がいる場合は退出させられます）')) return;
+      this._sfxPlay('cancel');
+      const roomCode = this.cb.roomCode;
+      this._cbCleanup(); // 自分自身には解散通知を出さないよう、削除前に購読を止めておく
+      try {
+        await dissolveConstructRoom(roomCode);
+      } catch (e) {
+        alert('部屋の解散に失敗しました: ' + (e.message || e));
+      }
+      this.cb.roomCode = null;
+      this.cb.role = null;
+      this.cb.phase = 'lobby';
+      this.cb.roomData = {};
+      this.cbSolo = false;
+      this._clearActiveSession();
+    },
+    async cbCreateRoom() {
+      this.cb.connecting = true;
+      this.cb.error = '';
+      this.deck = {}; this.returned = {}; this.selectedKami = null;
+      try {
+        const { roomCode, playerId } = await createConstructRoom(this.cb.myName, this.cbCreatePublic);
+        this.cb.roomCode = roomCode;
+        this.cb.playerId = playerId;
+        this.cb.role     = 'host';
+        this.cb.phase    = 'lobby';
+        this._cbSubscribe(roomCode);
+        this._saveActiveSession('construct', roomCode, { playerId, role: 'host' });
+        this._sfxPlay('decision');
+      } catch (e) {
+        this.cb.error = e.message;
+      } finally {
+        this.cb.connecting = false;
+      }
+    },
+    async cbJoinRoom() {
+      this.cb.connecting = true;
+      this.cb.error = '';
+      const code = (this.cb.joinCode || '').trim().toUpperCase();
+      this.deck = {}; this.returned = {}; this.selectedKami = null;
+      try {
+        const { playerId } = await joinConstructRoom(code, this.cb.myName);
+        this.cb.roomCode = code;
+        this.cb.playerId = playerId;
+        this.cb.role     = 'guest';
+        this.cb.phase    = 'building';
+        this._cbSubscribe(code);
+        this._saveActiveSession('construct', code, { playerId, role: 'guest' });
+        this._sfxPlay('decision');
+      } catch (e) {
+        this.cb.error = e.message;
+      } finally {
+        this.cb.connecting = false;
+      }
+    },
+    /* ソロプレイ：host=自分、guest=CPU。CPUのデッキ・カミはストラクチャーデッキから
+       選んでそのまま提出する（CPU自身がフリー編集で組むわけではない）。
+       ロビーでcb.soloCpuDeckIdを指定していればそのデッキを、未指定（空）ならランダムに選ぶ。 */
+    async cbSoloStart() {
+      if (this.cb.connecting) return;
+      this.cb.error = '';
+      this._sfxPlay('decision');
+      this.cb.connecting = true;
+      this.deck = {}; this.returned = {}; this.selectedKami = null;
+      try {
+        const { roomCode, playerId } = await createConstructRoom(this.cb.myName || 'あなた');
+        this.cb.roomCode = roomCode;
+        this.cb.playerId = playerId;
+        this.cb.role     = 'host';
+        this.cb.phase    = 'lobby';
+        this.cbSolo      = true;
+        this._cbSubscribe(roomCode);
+        await joinConstructRoom(roomCode, 'CPU');
+        await this._cbSubmitStructureDeckForCpu(roomCode, this.cb.soloCpuDeckId);
+        this._saveActiveSession('construct', roomCode, { playerId, role: 'host' });
+      } catch (e) {
+        this.cb.error = e.message || 'ソロプレイの開始に失敗しました';
+        this.cbSolo = false;
+      } finally {
+        this.cb.connecting = false;
+      }
+    },
+    async _cbSubmitStructureDeckForCpu(roomCode, preferredDeckId = '') {
+      let decks = this.cbStructureDecks;
+      if (!decks.length) {
+        // _cbSubscribeStructureDecks側のシードは購読開始と並行して投げているだけで完了を待っていないため、
+        // ここで明示的に完了を待ってから取得し直す（初回起動直後にソロプレイを押すとシード未完了で
+        // 「デッキが1つもない」扱いになりCPUがいつまでも準備完了にならないバグの対策）
+        try { await seedStructureDecksIfEmpty(CB_STRUCTURE_DECK_SEED_DEFAULTS); } catch (e) { /* 失敗しても取得は試す */ }
+        try { decks = await fetchStructureDecksOnce(); } catch (e) { decks = []; }
+      }
+      if (!decks.length) {
+        this.cb.error = 'ストラクチャーデッキが1つも登録されていません（TOP画面の動作確認用ツールから追加してください）';
+        return;
+      }
+      const preferred = preferredDeckId ? decks.find(d => String(d.id) === String(preferredDeckId)) : null;
+      const pick = preferred || decks[Math.floor(Math.random() * decks.length)];
+      let parsed;
+      try { parsed = this._decodeDeckCode(pick.deckCode); } catch (e) {
+        this.cb.error = 'CPU用ストラクチャーデッキの読込に失敗しました';
+        return;
+      }
+      const kamiNo = pick.kamiNo || parsed.kamiNo;
+      await submitConstructDeck(roomCode, 'guest', parsed.deck, kamiNo ? String(kamiNo) : null);
+    },
+    async cbJoinPublic(code) {
+      this.cb.joinCode = code;
+      await this.cbJoinRoom();
+    },
+    async cbRandomMatch() {
+      if (this.cb.connecting || !this.cbPublicRooms.length) return;
+      const pick = this.cbPublicRooms[Math.floor(Math.random() * this.cbPublicRooms.length)];
+      if (!pick) return;
+      await this.cbJoinPublic(pick.code);
+    },
+    _cbSubscribePublicList() {
+      this._cbUnsubscribePublicList();
+      this._cbPublicUnsub = subscribePublicRooms('construct', (list) => { this.cbPublicRooms = list; });
+    },
+    _cbUnsubscribePublicList() {
+      if (this._cbPublicUnsub) { this._cbPublicUnsub(); this._cbPublicUnsub = null; }
+      this.cbPublicRooms = [];
+    },
+    cbLeave() {
+      this._sfxPlay('cancel');
+      this._cbCleanup();
+      this.cb.roomCode = null;
+      this.cb.role = null;
+      this.cb.phase = 'lobby';
+      this.cb.roomData = {};
+      this.cbSolo = false;
+      this._clearActiveSession();
+    },
+    // デッキビルダーを開く（提出済みならまず取り下げてから編集に戻る）
+    async cbOpenBuilding() {
+      this._sfxPlay('decision');
+      if (this.cbMyReady) await unsubmitConstructDeck(this.cb.roomCode, this.cb.role);
+      this.cbBuilding = true;
+      // デッキビルダー画面に入ったら「戦場の舞」を流す（ロビー表示中はBGMを変更しない）
+      if (this.bgmAuto) {
+        const key = this._bgmPickRandomKey('sentei');
+        if (key && key !== this.bgmCurrentKey) this._bgmPlay(key);
+      }
+    },
+    cbCloseBuilding() {
+      this._sfxPlay('cancel');
+      this.cbBuilding = false;
+    },
+    async cbSubmitDeck() {
+      if (!this.cbDeckValid) return;
+      this._sfxPlay('decision');
+      const deckMap = {};
+      for (const no of Object.keys(this.deck)) {
+        const c = Number(this.deck[no]) || 0;
+        if (c > 0) deckMap[no] = c;
+      }
+      await submitConstructDeck(this.cb.roomCode, this.cb.role, deckMap, this.selectedKami ? String(this.selectedKami.no) : null);
+      this.cbBuilding = false;
+    },
+    /* ストラクチャーデッキ選択 */
+    cbOpenStructurePicker() {
+      this._sfxPlay('decision');
+      this._cbSubscribeStructureDecks();
+      this.cbStructurePickerOpen = true;
+    },
+    cbCloseStructurePicker() {
+      this._sfxPlay('cancel');
+      this.cbStructurePickerOpen = false;
+    },
+    cbLoadStructureDeck(sd) {
+      if (!sd || !sd.deckCode) return;
+      let parsed;
+      try { parsed = this._decodeDeckCode(sd.deckCode); } catch (e) { alert('このストラクチャーデッキのコードを読み取れませんでした'); return; }
+      this._sfxPlay('decision');
+      this.deck = parsed.deck;
+      this.returned = {};
+      const kamiNo = sd.kamiNo || parsed.kamiNo;
+      this.selectedKami = kamiNo ? (this.allKamiCards.find(k => String(k.no) === String(kamiNo)) || null) : null;
+      this.cbStructurePickerOpen = false;
+      if (parsed.unresolved) alert(`${parsed.unresolved}件のカードは現在のカードデータに見つからなかったため読み込みから除外しました`);
+    },
+    _cbSubscribeStructureDecks() {
+      if (this._cbStructureUnsub) return;
+      this._cbStructureUnsub = subscribeStructureDecks((list) => { this.cbStructureDecks = list; });
+      // 初回のみ：ストラクチャーデッキが1件も無ければサンプルをシードする（完了を待たない発火のみ。
+      // 確実性が必要な箇所＝_cbSubmitStructureDeckForCpuでは別途完了を待って呼び直す）
+      seedStructureDecksIfEmpty(CB_STRUCTURE_DECK_SEED_DEFAULTS)
+        .catch(e => console.warn('[construct] ストラクチャーデッキの初期シードに失敗:', e));
+    },
+    /* 開発者用：ストラクチャーデッキの追加・編集・削除（他のツールと同じく、
+       アクセス制御は行わない「動作確認用ツール」の一種として運用） */
+    cbNewStructureDeckDraft() {
+      this._sfxPlay('cancel');
+      this.cbEditingDeck = { id: null, name: '', kamiNo: this.selectedKami ? String(this.selectedKami.no) : '', deckCode: this.deckCurrentCode || '' };
+    },
+    cbEditStructureDeck(sd) {
+      this._sfxPlay('cancel');
+      this.cbEditingDeck = { id: sd.id, name: sd.name || '', kamiNo: sd.kamiNo || '', deckCode: sd.deckCode || '' };
+    },
+    cbCancelEditStructureDeck() {
+      this.cbEditingDeck = null;
+    },
+    async cbSaveStructureDeck() {
+      const d = this.cbEditingDeck;
+      if (!d || !d.name || !d.deckCode) { alert('名前とデッキコードを入力してください'); return; }
+      try {
+        await saveStructureDeck(d.id, { name: d.name, kamiNo: d.kamiNo || null, deckCode: d.deckCode });
+        this._sfxPlay('decision');
+        this.cbEditingDeck = null;
+      } catch (e) {
+        alert('保存に失敗しました: ' + (e.message || e));
+      }
+    },
+    async cbDeleteStructureDeck(id) {
+      if (!confirm('このストラクチャーデッキを削除しますか？')) return;
+      try {
+        await removeStructureDeck(id);
+        this._sfxPlay('cancel');
+      } catch (e) {
+        alert('削除に失敗しました: ' + (e.message || e));
       }
     },
 
@@ -21153,6 +22481,39 @@ new Vue({
       if (v === 'draft') this._gsStartPickTimer();
       else this._gsStopPickTimer();
     });
+    // 公開ルーム一覧：メニュー画面表示中だけ購読する
+    this.$watch('gs.view', (v) => {
+      if (v === 'menu') this._gsSubscribePublicList();
+      else this._gsUnsubscribePublicList();
+    });
+    this.$watch('sb.phase', (v) => {
+      if (v === 'lobby') this._sbSubscribePublicList();
+      else this._sbUnsubscribePublicList();
+    });
+    this.$watch('cb.phase', (v) => {
+      if (v === 'lobby') this._cbSubscribePublicList();
+      else this._cbUnsubscribePublicList();
+    });
+    // 待機中の参加通知：ロビーで待っている間に新しい参加者が来たらSEを鳴らし、
+    // タブが非表示ならタブタイトルも点滅させる（手番通知と同じ仕組みを流用）
+    this.$watch('gsFilledCount', (now, before) => {
+      if (this.appView === 'game' && this.gs.view === 'lobby' && now > before) {
+        this._sfxPlay('decision');
+        this._startTitleFlash('🎉 参加者が来ました！');
+      }
+    });
+    this.$watch('sbHasGuest', (now, before) => {
+      if (this.appView === 'shield' && this.sb.phase === 'lobby' && now && !before) {
+        this._sfxPlay('decision');
+        this._startTitleFlash('🎉 参加者が来ました！');
+      }
+    });
+    this.$watch('cbHasGuest', (now, before) => {
+      if (this.appView === 'construct' && now && !before) {
+        this._sfxPlay('decision');
+        this._startTitleFlash('🎉 参加者が来ました！');
+      }
+    });
     // 選別の儀：束が回ってくる（step/set/roundが変わる）たびに経過時間を0から数え直す
     this.$watch('gsDraftStepKey', () => {
       if (this.gs.view === 'draft') this._gsStartPickTimer();
@@ -21175,6 +22536,7 @@ new Vue({
         this._bgmAutoPickForView('shield');
       }
     });
+    // 理念構築戦：BGMは変更せず、TOP画面から流れていた曲をそのまま引き継ぐ（専用BGM watcherは意図的に持たない）
     // 勝敗確定：すぐに結果オーバーレイを出さず、カミがひび割れて破壊される演出を挟んでから
     // （battleResultRevealReadyがtrueになった時点で）結果オーバーレイと勝敗bgmを出す
     this.$watch('battleSample.result', (v) => {
@@ -21249,6 +22611,9 @@ new Vue({
     window.removeEventListener("click", this.onWindowClick);
     this._battleStopTurnTimer();
     this._battleStopTurnTitleFlash();
+    this._gsUnsubscribePublicList();
+    this._sbUnsubscribePublicList();
+    this._cbUnsubscribePublicList();
   },
 });
 </script>

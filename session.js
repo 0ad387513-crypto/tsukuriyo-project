@@ -65,9 +65,10 @@ function allSeatsReady(s) {
 /* ================================================================== */
 /**
  * @param {string} playerName
+ * @param {boolean} [isPublic] trueならpublicRoomsに登録し、見知らぬ相手にも一覧・ランダムマッチから見つけてもらえるようにする
  * @returns {Promise<{ sessionCode, playerId, seat: 1 }>}
  */
-async function createSession(playerName) {
+async function createSession(playerName, isPublic) {
   const db       = getDb();
   const code     = generateRoomCode();
   const playerId = generateRoomCode();
@@ -88,6 +89,10 @@ async function createSession(playerName) {
 
   // 2時間後に自動削除（Firebase側のTTLが無いためクライアント側タイマー）
   setTimeout(() => db.ref(`sessions/${code}`).remove(), 2 * 60 * 60 * 1000);
+
+  if (isPublic && typeof publicRoomRegister === "function") {
+    publicRoomRegister("game", code, playerName);
+  }
 
   return { sessionCode: code, playerId, seat: 1 };
 }
@@ -133,6 +138,13 @@ async function joinSession(code, playerName) {
     if (committed.seats[n] && committed.seats[n].id === playerId) { seat = n; break; }
   }
   if (seat === null) throw new Error("満員です");
+
+  // 満員になったら公開一覧からは即座に外す（それより前の途中人数はUI側の表示用に更新する）
+  if (typeof publicRoomRemove === "function") {
+    const filled = [1, 2, 3, 4].filter(n => committed.seats[n] && committed.seats[n].id).length;
+    if (filled >= 4) publicRoomRemove(code);
+    else if (typeof publicRoomUpdate === "function") publicRoomUpdate(code, { seatsFilled: filled });
+  }
 
   return { playerId, seat };
 }
@@ -199,7 +211,7 @@ async function setSeatReady(code, seat) {
 
   await ref.child(`seats/${seat}/ready`).set(true);
 
-  await ref.transaction(s => {
+  const res = await ref.transaction(s => {
     if (!s) return s;
     if (s.phase !== "lobby") return s;
     if (allSeatsFilled(s) && allSeatsReady(s)) {
@@ -209,6 +221,11 @@ async function setSeatReady(code, seat) {
     }
     return s;
   });
+
+  // ロビーを抜けたら（CPU席込みで開始した場合も含め）公開一覧からは外す
+  if (res.committed && res.snapshot.val() && res.snapshot.val().phase !== "lobby" && typeof publicRoomRemove === "function") {
+    publicRoomRemove(code);
+  }
 }
 
 /* ================================================================== */

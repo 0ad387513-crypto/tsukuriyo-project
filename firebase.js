@@ -73,7 +73,54 @@ function generateRoomCode() {
   return code;
 }
 
+/* ================================================================== */
+/* 公開ルーム一覧（マッチメイキングの摩擦解消）                          */
+/* ホストが任意で自分のルーム/セッションを publicRooms/{code} に登録し、  */
+/* 見知らぬ相手でも一覧やランダムマッチから合流できるようにする。          */
+/* 個人情報は含めない（ホスト自身が入力した表示名のみ）。                  */
+/* ================================================================== */
+
+/** ルームを公開一覧に登録する（作成側のクライアントのみ呼ぶ）。
+ *  そのクライアントが切断した場合は onDisconnect で自動的に一覧から消える。 */
+function publicRoomRegister(kind, code, hostName) {
+  const ref = getDb().ref(`publicRooms/${code}`);
+  ref.set({ kind, code, hostName: hostName || "プレイヤー1", createdAt: Date.now() }).catch(() => {});
+  ref.onDisconnect().remove();
+  return ref;
+}
+
+/** 公開一覧から明示的に削除する（満員になった・対戦が始まった等） */
+function publicRoomRemove(code) {
+  try { getDb().ref(`publicRooms/${code}`).remove().catch(() => {}); } catch (e) { /* noop */ }
+}
+
+/** 公開一覧の一部フィールドだけ更新する（例：4人対戦の埋まった席数） */
+function publicRoomUpdate(code, patch) {
+  try { getDb().ref(`publicRooms/${code}`).update(patch).catch(() => {}); } catch (e) { /* noop */ }
+}
+
+/** kind（"game" | "shield"）の公開ルーム一覧を購読する。
+ *  戻り値は購読解除関数。2時間以上前の記録はホスト異常終了等の取りこぼしと
+ *  みなし一覧から除外する（実体のセッション/部屋自体のTTLとは別に、表示側でも保険をかける）。 */
+function subscribePublicRooms(kind, callback) {
+  const ref = getDb().ref("publicRooms");
+  const handler = (snap) => {
+    const val = snap.val() || {};
+    const now = Date.now();
+    const list = Object.keys(val)
+      .map(code => val[code])
+      .filter(r => r && r.kind === kind && now - (r.createdAt || 0) < 2 * 60 * 60 * 1000)
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    callback(list);
+  };
+  ref.on("value", handler);
+  return () => ref.off("value", handler);
+}
+
 /* Node.js テスト用 */
 if (typeof module !== "undefined") {
-  module.exports = { FIREBASE_CONFIG, getDb, fbArr, generateRoomCode };
+  module.exports = {
+    FIREBASE_CONFIG, getDb, fbArr, generateRoomCode,
+    publicRoomRegister, publicRoomRemove, publicRoomUpdate, subscribePublicRooms,
+  };
 }
