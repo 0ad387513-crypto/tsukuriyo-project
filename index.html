@@ -549,6 +549,10 @@
     background: #4a7a4a; color: #fff; border-color: #6c9;
     box-shadow: 0 0 0 1px #6c9 inset;
   }
+  .deck-stats-return .mt-structure {
+    background: #2a2320; color: #e8d4a0; border-color: #6a4a2a;
+  }
+  .deck-stats-return .mt-structure:hover { background: #362a20; color: #fff; }
 
   .deck-return-hint {
     padding: 6px 14px 8px;
@@ -575,12 +579,6 @@
   .cb-build-status b { color: #f0b86c; }
   .cb-build-status b.ok { color: #7cf0a8; }
   .cb-build-warnings { margin: 0 0 8px; font-size: 11px; line-height: 1.4; color: #f0a86c; }
-  .cb-structure-btn {
-    display: block; width: 100%; margin-bottom: 8px; padding: 8px 10px;
-    font-size: 12.5px; font-weight: 700; color: #e8d4a0;
-    background: #2a2320; border: 1px solid #6a4a2a; border-radius: 5px; cursor: pointer;
-  }
-  .cb-structure-btn:hover { background: #362a20; }
   .cb-build-actions { display: flex; gap: 8px; }
   .cb-build-actions .gm-btn { flex: 1; }
 
@@ -753,6 +751,11 @@
   }
   .deck-list.dense .deck-item::before { display: none; }
   .deck-list.dense .deck-item .cost { width: 16px; height: 16px; font-size: 9px; border-width: 1px; }
+  .deck-item-thumb {
+    width: 20px; height: 20px; flex-shrink: 0; border-radius: 3px;
+    background-repeat: no-repeat; background-size: cover;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.15) inset;
+  }
   .deck-list.dense .deck-item .name { font-size: 11px; }
   .deck-list.dense .deck-item .name small { display: none; }
   .deck-list.dense .deck-item .pack-no-badge { display: none; }
@@ -4526,7 +4529,9 @@
         <span class="tc">龍<b>{{ typeCount('龍') }}</b></span>
       </div>
       <div class="deck-stats deck-stats-return">
-        <button v-if="!(gsPeeking && appView === 'game' && gsPeekingCpuSeat == null)" class="mode-toggle mt-return"
+        <button v-if="appView === 'construct' && cbBuilding" class="mode-toggle mt-structure"
+                @click="cbOpenStructurePicker">📜 ストラクチャーデッキから選ぶ</button>
+        <button v-else-if="!(gsPeeking && appView === 'game' && gsPeekingCpuSeat == null)" class="mode-toggle mt-return"
                 :class="{ active: returnModeActive }"
                 @click="_sfxPlay('cancel'); returnModeActive = !returnModeActive"
                 title="返還モード：ON中は−→返還 / +→取消 に変化">返還モード</button>
@@ -4557,7 +4562,6 @@
           </span>
         </div>
         <div v-if="cbDeckValidationMessages.length" class="cb-build-warnings">⚠ {{ cbDeckValidationMessages.join(' ／ ') }}</div>
-        <button class="cb-structure-btn" @click="cbOpenStructurePicker">📜 ストラクチャーデッキから選ぶ</button>
         <div class="cb-build-actions">
           <button class="gm-btn gm-btn-primary" :disabled="!cbDeckValid" @click="cbSubmitDeck">準備完了</button>
         </div>
@@ -4646,6 +4650,7 @@
              @click="handleDeckCardClick(entry)"
              @contextmenu.prevent="!returnModeActive && !entry.returned && removeCard(entry.card.no)">
           <div class="cost" :style="costBadgeStyle(entry.card)">{{ entry.card.cost }}</div>
+          <div v-if="deckDenseView" class="deck-item-thumb" :style="deckItemThumbStyle(entry.card)"></div>
           <div class="name">
             {{ fullName(entry.card) }}
             <small>{{ entry.card.category }}{{ entry.card.color ? ' / ' + entry.card.color : '' }}{{ entry.card.type ? ' / ' + entry.card.type : '' }}<template v-if="entry.returned"> / <em class="returned-tag">返還済</em></template></small>
@@ -7821,7 +7826,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.18',
+    BUILD_VERSION: '1.15.19',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -20983,6 +20988,16 @@ new Vue({
       return {
         backgroundImage: `url("${url}")`,
         backgroundPosition: `right top ${yPct}%`,
+      };
+    },
+    // 密表示：行の高さを保ったまま、カード判別用の小さなサムネイルとして顔付近を切り出す
+    deckItemThumbStyle(card) {
+      const url = this.cardImageUrl(card);
+      if (!url) return {};
+      const yPct = (card && card.bgY !== null && card.bgY !== undefined) ? card.bgY : 12;
+      return {
+        backgroundImage: `url("${url}")`,
+        backgroundPosition: `center top ${yPct}%`,
       };
     },
     costBadgeStyle(card) {
