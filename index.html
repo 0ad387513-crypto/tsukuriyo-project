@@ -1132,7 +1132,7 @@
     border-radius: 8px; cursor: pointer; transition: transform 0.12s, box-shadow 0.12s, background 0.15s;
     color: #fff; border: 1px solid #2e3548;
     background: linear-gradient(135deg, #2a3550, #1a2540);
-    text-align: center;
+    text-align: center; word-break: keep-all;
   }
   .top-menu-btn:hover {
     transform: translateY(-2px); box-shadow: 0 6px 24px rgba(220, 159, 80, 0.2);
@@ -1168,7 +1168,7 @@
   .top-mode-icon { font-size: 30px; line-height: 1; }
   .genesis-globe-icon { display: inline-block; vertical-align: -0.15em; }
   .top-mode-label { font-size: 16px; font-weight: 800; letter-spacing: 0.03em; }
-  .top-mode-desc { font-size: 11px; color: #aab; }
+  .top-mode-desc { font-size: 11px; color: #aab; word-break: keep-all; }
   .top-mode-card.deck { grid-area: deck; background: linear-gradient(160deg, #2a3a5a, #1a2a4a); padding: 16px 12px; }
   .top-mode-card.deck:hover { border-color: #7a9ad0; }
   .top-mode-card.deck .top-mode-icon { font-size: 22px; }
@@ -1190,7 +1190,7 @@
   .top-devtools { position: relative; z-index: 1; width: min(420px, 92vw); }
   .top-devtools-toggle {
     width: 100%; background: transparent; border: 1px dashed #3a4055; color: #8a94ac;
-    padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
+    padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; word-break: keep-all;
   }
   .top-devtools-toggle:hover { color: #cdd6e6; border-color: #5a6580; }
   .top-devtools-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
@@ -1207,7 +1207,7 @@
   .howto-section { padding: 12px 0; border-bottom: 1px solid #262b38; }
   .howto-section:last-child { border-bottom: none; }
   .howto-heading { font-size: 14px; font-weight: 800; color: #ffd86a; margin-bottom: 6px; }
-  .howto-body { font-size: 12.5px; color: #c8d0e0; line-height: 1.75; white-space: pre-wrap; }
+  .howto-body { font-size: 12.5px; color: #c8d0e0; line-height: 1.75; white-space: pre-wrap; word-break: keep-all; }
   .howto-open-btn { font-size: 15px; }
   .deck-manager-save-row { display: flex; gap: 8px; align-items: flex-start; }
   .deck-manager-name-input {
@@ -1321,7 +1321,7 @@
   .gm-abort-btn:hover { background: rgba(160,40,40,.25); color: #fff; }
   .gm-abort-btn + .gm-close { margin-left: 0; }
   .gm-body { padding: 18px; }
-  .gm-lead { color: #bcd; font-size: 13px; line-height: 1.7; margin: 0 0 16px; }
+  .gm-lead { color: #bcd; font-size: 13px; line-height: 1.7; margin: 0 0 16px; word-break: keep-all; }
 
   /* メニュー */
   .gm-field { display: block; margin-bottom: 18px; }
@@ -1369,7 +1369,7 @@
   .gm-public-room-row:last-child { border-bottom: none; }
   .cpu-auto-play-toggle {
     display: flex; align-items: center; gap: 6px; cursor: pointer;
-    font-size: 11px; color: #c9d2df;
+    font-size: 11px; color: #c9d2df; word-break: keep-all;
   }
 
   /* ロビー */
@@ -1614,7 +1614,7 @@
     display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
     font-size: 14px; font-weight: 700; color: #eee;
   }
-  .gm-deepen-hint { font-size: 11px; color: #9ab; font-weight: 400; }
+  .gm-deepen-hint { font-size: 11px; color: #9ab; font-weight: 400; word-break: keep-all; }
   .gm-pick-timer-settings { margin-top: 14px; padding: 10px 12px; background: #171b26; border: 1px solid #2a2f3d; border-radius: 6px; }
   .gm-pick-timer-title { font-size: 11px; color: #9ab; margin-bottom: 8px; }
   .gm-pick-timer-row { display: flex; gap: 18px; flex-wrap: wrap; }
@@ -6152,6 +6152,27 @@
         </div>
         <div>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#cbd3de;font-size:13px;">
+            <input type="checkbox" v-model="battleAlphaSetup.oppIsCpu">
+            相手をCPUにする（自律してカードを召喚・攻撃します）
+          </label>
+        </div>
+        <div v-if="battleAlphaSetup.oppIsCpu">
+          <div style="color:#e8d4a0;font-weight:700;font-size:13px;margin-bottom:6px;">相手（CPU）デッキの色</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            <label v-for="col in ['ミックス','赤','青','緑','黄','紫']" :key="'oc'+col"
+                   style="cursor:pointer;padding:5px 12px;border-radius:4px;background:#232a3a;border:1px solid #3a4256;font-size:12px;color:#cbd3de;"
+                   :style="battleAlphaSetup.oppColor === col ? 'background:#2a5cb8;border-color:#6090e0;color:#fff;' : ''">
+              <input type="radio" v-model="battleAlphaSetup.oppColor" :value="col" style="display:none;">
+              {{ col }}
+            </label>
+          </div>
+          <label class="cpu-auto-play-toggle" style="margin-top:8px;">
+            <input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay">
+            CPUが自律して行動する（OFF＝従来通り待機のみ）
+          </label>
+        </div>
+        <div v-else>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#cbd3de;font-size:13px;">
             <input type="checkbox" v-model="battleAlphaSetup.oppYorishiro">
             相手フィールドにタップ済みのヨリシロを3体配置（戦闘検証用）
           </label>
@@ -6390,10 +6411,10 @@
         </div>
         <div class="gm-pack-grid" :class="{ locked: gsIPickedThisStep }">
           <div v-for="(card, i) in gsMyPackCards" :key="i" class="gm-pack-card"
-               :class="{ 'pick-assist-recommended': String(card.no) === gsDraftRecommendedCardNo }"
+               :class="{ 'pick-assist-recommended': gsDraftRecommendedCardNos.includes(String(card.no)) }"
                @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
                @click="gsDraftPick(card)">
-            <span v-if="String(card.no) === gsDraftRecommendedCardNo" class="pick-assist-badge pick-assist-badge-overlay" title="今のカミ・手持ちとの相性を踏まえたおすすめです（あくまで目安）">⭐ おすすめ</span>
+            <span v-if="gsDraftRecommendedCardNos.includes(String(card.no))" class="pick-assist-badge pick-assist-badge-overlay" title="今のカミ・手持ちとの相性を踏まえたおすすめです（あくまで目安）">⭐ おすすめ</span>
             <div class="gm-pack-img" :class="genesisEffectClass(card)"
                  :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
             <div class="gm-pack-name">{{ fullName(card) }}</div>
@@ -7327,7 +7348,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.14.199',
+    BUILD_VERSION: '1.14.200',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8508,19 +8529,30 @@ new Vue({
     },
     /* ピック補助：CPUドラフトAI（gsCpuScoreCard）と同じ評価軸で、今の束の中で最もおすすめの1枚を示す。
        強制ではなく目安の表示のみ（クリックしてもよいし、無視して別のカードを選んでもよい）。 */
-    gsDraftRecommendedCardNo() {
-      if (!this.pickAssistEnabled) return null;
+    /* 束の残り枚数に応じておすすめの提示数を決める：
+       7枚以上は3枚、6〜5枚は2枚、4枚以下は2枚（ただし「残り枚数の半数以上をおすすめにしない」
+       という原則により、残り枚数-1を上限とする＝2枚なら1枚、1枚なら0枚）。 */
+    gsDraftRecommendCount(total) {
+      if (total <= 1) return 0;
+      if (total <= 4) return Math.min(2, total - 1);
+      if (total <= 6) return 2;
+      return 3;
+    },
+    /* おすすめカードNoの一覧（優先度の高い順、上記の枚数だけ） */
+    gsDraftRecommendedCardNos() {
+      if (!this.pickAssistEnabled) return [];
       const cards = this.gsMyPackCards;
-      if (!cards.length) return null;
+      if (!cards.length) return [];
       const kamiNo = this.gsMyKamiCard ? String(this.gsMyKamiCard.no) : null;
       const tags = kamiNo ? this.gsCpuKamiAffinityTags(kamiNo) : [];
       const ctx = { seat: this.gs.seat, kamiTags: tags, pickedCards: this.gsMyDraftDeckCards };
-      let best = null, bestScore = -Infinity;
-      for (const c of cards) {
-        const s = this.gsCpuScoreCard(c, ctx);
-        if (s > bestScore) { bestScore = s; best = c; }
-      }
-      return best ? String(best.no) : null;
+      const count = this.gsDraftRecommendCount(cards.length);
+      if (count <= 0) return [];
+      const ranked = cards
+        .map(c => ({ c, s: this.gsCpuScoreCard(c, ctx) }))
+        .sort((a, b) => b.s - a.s)
+        .slice(0, count);
+      return ranked.map(r => String(r.c.no));
     },
     /* 現在自分の手元にある束のラベル（例：「ラウンド1・P2の1束目」） */
     gsMyBundleLabel() {
@@ -8807,9 +8839,11 @@ new Vue({
         const kamiList = withIllust.length ? withIllust : (this.allKamiCards || []);
         this.battleAlphaSetup = {
           selfColor: 'ミックス',
+          oppColor: 'ミックス',
+          oppIsCpu: true,
           selfKamiNo: kamiList[0] ? String(kamiList[0].no) : null,
           oppKamiNo: (kamiList[1] || kamiList[0]) ? String((kamiList[1] || kamiList[0]).no) : null,
-          oppYorishiro: true,
+          oppYorishiro: false,
           kamiList,
         };
         console.log('[αsetup] modal set, kamiList=', kamiList.length);
@@ -8818,30 +8852,31 @@ new Vue({
         alert('対戦画面α起動エラー：' + (e && e.message ? e.message : e));
       }
     },
+    /* 対戦画面α用：指定色（ミックス/赤/青/緑/黄/紫）でデッキ候補プールを作る。
+       ミックスはジェネシスカード（創属性）も含める。単色は該当色のレガシー/オラクル/レリック全て。 */
+    _battleAlphaPoolForColor(color) {
+      const all = this.allCards.filter(c => !c.isToken && !c.isKami && c.color !== '創');
+      if (color === 'ミックス') {
+        const genesis = this.allCards.filter(c => !c.isToken && !c.isKami && c.color === '創');
+        return [...all, ...genesis];
+      }
+      const pool = all.filter(c => c.color === color);
+      return pool.length ? pool : all.slice(0, 30); // 念のためのフォールバック
+    },
     battleStartAlpha() {
       this._sfxPlay('decision');
       const setup = this.battleAlphaSetup || {};
-      const color = setup.selfColor || 'ミックス';
-      const all = this.allCards.filter(c => !c.isToken && !c.isKami && c.color !== '創');
-      let selfPool;
-      if (color === 'ミックス') {
-        // ミックスの場合はジェネシスカード（創属性）もデッキに含める
-        const genesis = this.allCards.filter(c => !c.isToken && !c.isKami && c.color === '創');
-        selfPool = [...all, ...genesis];
-      } else {
-        // 選んだ色のカードを全て入れる（その色のレガシー/オラクル/レリック＝合計36枚）
-        selfPool = all.filter(c => c.color === color);
-        if (!selfPool.length) selfPool = all.slice(0, 30); // 念のためのフォールバック
-      }
-      const oppPool = all.slice(30, 60);
+      const selfPool = this._battleAlphaPoolForColor(setup.selfColor || 'ミックス');
+      const oppPool = this._battleAlphaPoolForColor(setup.oppColor || 'ミックス');
       const selfKami = this.allKamiCards.find(k => String(k.no) === String(setup.selfKamiNo)) || this.allKamiCards[0] || null;
       const oppKami  = this.allKamiCards.find(k => String(k.no) === String(setup.oppKamiNo)) || this.allKamiCards[1] || this.allKamiCards[0] || null;
       this.battleAlphaSetup = null;
       this._battleInitialize({
         source: 'preview', modeLabel: 'プレビュー', returnView: 'top',
-        selfName: '自分', oppName: '相手', firstSide: 'self', life: 10,
+        selfName: '自分', oppName: setup.oppIsCpu ? 'CPU' : '相手', firstSide: 'self', life: 10,
         selfDeck: selfPool, oppDeck: oppPool,
         selfKami, oppKami,
+        syncGame: false, oppIsCpu: !!setup.oppIsCpu,
       });
       // 相手フィールドにタップ済みヨリシロを3体配置
       if (setup.oppYorishiro) {
