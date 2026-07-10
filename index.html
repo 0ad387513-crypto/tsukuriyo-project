@@ -859,6 +859,12 @@
     z-index: 2;
   }
   .kami-clear:hover { background: rgba(80,40,40,0.95); color: #fff; }
+  .kami-dies-irae-btn {
+    display: block; width: 100%; margin-top: 8px; padding: 7px 10px;
+    font-size: 11.5px; font-weight: 700; color: #e8b0d4;
+    background: #241522; border: 1px solid #6a2a5a; border-radius: 5px; cursor: pointer;
+  }
+  .kami-dies-irae-btn:hover { background: #341c30; }
 
   /* 拡大モード：カミ枠は残りスペースを吸収（下部の余白/境界線を消す）。
      画像自体は控えめなサイズで、枠の中央に配置する。 */
@@ -4556,7 +4562,7 @@
       <!-- 理念構築戦：デッキ構築中の状態表示・提出操作 -->
       <div v-if="appView === 'construct' && cbBuilding" class="cb-build-panel">
         <div class="cb-build-status">
-          <span>デッキ <b :class="{ ok: totalDeckCount === CONSTRUCT_DECK_SIZE }">{{ totalDeckCount }}</b> / {{ CONSTRUCT_DECK_SIZE }}枚</span>
+          <span>デッキ <b :class="{ ok: cbCoreDeckCount === CONSTRUCT_DECK_SIZE }">{{ cbCoreDeckCount }}</b> / {{ CONSTRUCT_DECK_SIZE }}枚<template v-if="cbHasDiesIraeBonus"> +ディエスイレ</template></span>
           <span>返還値合計 <b :class="{ ok: cbDeckReturnSum >= CONSTRUCT_MIN_RETURN_SUM }">{{ cbDeckReturnSum }}</b> / {{ CONSTRUCT_MIN_RETURN_SUM }}以上
             <template v-if="cbDeckReturnRemaining > 0">（あと{{ cbDeckReturnRemaining }}）</template>
           </span>
@@ -4588,6 +4594,11 @@
           </div>
           <button class="kami-clear" @click="clearLeader" title="カミを解除">×</button>
         </div>
+        <!-- 理念構築戦：ヤマタノオロチ選択中にディエスイレを外した場合、ここから再度付与できる -->
+        <button v-if="appView === 'construct' && isOrochiLeader && !cbHasDiesIraeBonus"
+                class="kami-dies-irae-btn" @click="cbAddDiesIrae">
+          ＋ ディエスイレを再度加える
+        </button>
       </div>
     </div>
 
@@ -7826,7 +7837,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.19',
+    BUILD_VERSION: '1.15.20',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8287,6 +8298,14 @@ new Vue({
     totalDeckCount() {
       return Object.values(this.deck).reduce((a,b) => a + b, 0);
     },
+    // 理念構築戦：ディエスイレ（ヤマタノオロチ専用・35枚枠外のボーナスカード）がデッキに入っているか
+    cbHasDiesIraeBonus() {
+      return this.isOrochiLeader && !!this.deck['198'];
+    },
+    // 理念構築戦：35枚制限の判定・表示に使う実質枚数（ディエスイレが入っていればその1枚を除いた枚数）
+    cbCoreDeckCount() {
+      return this.totalDeckCount - (this.cbHasDiesIraeBonus ? 1 : 0);
+    },
     /* デッキコード：現在のデッキ内容（カードNo×枚数＋カミNo）を短い文字列にエンコードしたもの。
        実データではなくカードNoのみを保持するため、読込側で現在のcardByNoに解決して復元する
        （存在しないNoは読込時にスキップする＝カード改廃に強い）。 */
@@ -8326,8 +8345,9 @@ new Vue({
     cbDeckValidationMessages() {
       const msgs = [];
       if (!this.selectedKami) msgs.push('カミが選択されていません');
-      if (this.totalDeckCount !== this.CONSTRUCT_DECK_SIZE) {
-        msgs.push(`デッキがちょうど${this.CONSTRUCT_DECK_SIZE}枚である必要があります（現在${this.totalDeckCount}枚）`);
+      // ヤマタノオロチはディエスイレ1枚を35枚とは別枠で持てるため、判定からはその1枚を除く
+      if (this.cbCoreDeckCount !== this.CONSTRUCT_DECK_SIZE) {
+        msgs.push(`デッキがちょうど${this.CONSTRUCT_DECK_SIZE}枚である必要があります（現在${this.cbCoreDeckCount}枚）`);
       }
       if (this.cbDeckReturnSum < this.CONSTRUCT_MIN_RETURN_SUM) {
         msgs.push(`返還値の合計が${this.CONSTRUCT_MIN_RETURN_SUM}に届いていません（あと${this.cbDeckReturnRemaining}）`);
@@ -21069,12 +21089,10 @@ new Vue({
       if (this.appView === 'shield' || this.appView === 'game') return false;
       if (card.isToken) return false;  // トークンはデッキに入れられない
       if (card.isKami) return false;   // カミはリーダー枠で管理（通常デッキに入らない）
-      // 理念構築戦：ジェネシスカードは原則デッキに入れられない
-      // （例外：カミにヤマタノオロチを選んでいる場合のみディエスイレを入れられる）
-      if (this.appView === 'construct' && this.isGenesisCard(card)) {
-        const kamiIsOrochi = this.selectedKami && this._battleIsOrochiCard(this.selectedKami);
-        if (!(kamiIsOrochi && this.isDiesIraeCard(card))) return false;
-      }
+      // 理念構築戦：ジェネシスカードはカードリストから手動で入れられない。
+      // ディエスイレはヤマタノオロチ選択時に自動付与される専用枠のため、
+      // ここでの例外は設けない（再度入れたい場合はカミ枠のボタンから行う）
+      if (this.appView === 'construct' && this.isGenesisCard(card)) return false;
       // No単位で1枚まで（active + returned の合計）
       const no = String(card.no);
       const noCount = (this.deck[no] || 0) + (this.returned[no] || 0);
@@ -21107,6 +21125,16 @@ new Vue({
       this.selectedKami = card;
       // カミ選択直後はカミ絞り込みを解除し、即座に通常のカードリスト表示へ戻す
       if (this.filterCategory === "カミ") this.filterCategory = "";
+      // 理念構築戦：ヤマタノオロチ選択時はディエスイレを無条件でデッキに自動追加する（35枚とは別枠の例外）
+      if (this.appView === 'construct' && this._battleIsOrochiCard(card)) this.cbAddDiesIrae();
+    },
+    // 理念構築戦専用：ディエスイレをデッキに追加する（canAddの手動追加制限をバイパスする専用口。
+    // カードリストからは入れられず、ヤマタノオロチ選択時の自動付与とカミ枠の再追加ボタンからのみ呼ばれる）
+    cbAddDiesIrae() {
+      if (this.deck['198']) return;
+      const dies = this.cardByNo['198'];
+      if (!dies) return;
+      this.$set(this.deck, '198', 1);
     },
     clearLeader() {
       this._sfxPlay('cancel');
