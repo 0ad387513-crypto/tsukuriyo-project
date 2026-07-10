@@ -91,13 +91,16 @@ async function submitConstructDeck(roomCode, role, deckMap, kamiNo) {
   const ref = db.ref(`constructRooms/${roomCode}`);
   await ref.child(role).update({ deck: deckMap || {}, kamiNo: kamiNo || null, ready: true });
 
-  await ref.transaction(room => {
-    if (!room) return room;
-    if (room.host && room.host.ready && room.guest && room.guest.ready && room.phase !== "complete") {
-      room.phase = "complete";
-    }
-    return room;
-  });
+  // room全体（host/guestのデッキという比較的大きなオブジェクトを含む）を
+  // ref.transaction()で丸ごと読み書きすると、ローカルキャッシュと再試行の絡みで
+  // phaseへの反映が行われないまま終わることがあった（両者ready済みなのに
+  // completeへ遷移しないバグの原因）。ここは単純な条件付き書き込みで十分なため、
+  // 素直に最新値を読んでphaseだけをピンポイントで更新する方式に変更した。
+  const snap = await ref.once("value");
+  const room = snap.val();
+  if (room && room.host && room.host.ready && room.guest && room.guest.ready && room.phase !== "complete") {
+    await ref.child("phase").set("complete");
+  }
 }
 
 /**
