@@ -2452,9 +2452,35 @@
     32%  { transform: translate(1px, 1px) scale(1); }
     48%  { transform: translate(0,0) scale(1); filter: brightness(1) contrast(1); }
     58%  { filter: brightness(2.4) contrast(1.4); }
-    64%  { transform: scale(1.08); filter: brightness(2.8) contrast(1.5); opacity: 1; }
-    82%  { transform: scale(0.85); filter: brightness(1.2) contrast(1); opacity: .15; }
-    100% { transform: scale(0.78); opacity: 0; }
+    64%  { transform: scale(1.12); filter: brightness(3.2) contrast(1.6); opacity: 1; }
+    /* 静かに縮小フェードするのではなく、フラッシュのピーク直後に一気に消え去り、
+       同時に発生する粒子爆散（.kami-shatter-particle）へ視覚的にバトンタッチする */
+    70%  { transform: scale(1.16); filter: brightness(3.6) contrast(1.7); opacity: 1; }
+    72%  { transform: scale(1.16); filter: brightness(1) contrast(1); opacity: 0; }
+    100% { transform: scale(1.16); filter: brightness(1) contrast(1); opacity: 0; }
+  }
+  /* 勝敗確定：カミのポートレートが砕け散る粒子爆散演出 */
+  .kami-shatter-particles {
+    position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 6;
+  }
+  .kami-shatter-particle {
+    position: absolute; top: 50%; left: 50%;
+    width: var(--kp-size, 7px); height: var(--kp-size, 7px);
+    margin: calc(var(--kp-size, 7px) / -2) 0 0 calc(var(--kp-size, 7px) / -2);
+    background: linear-gradient(135deg, #fff8e0, #ffb84d 60%, #b23a2a);
+    clip-path: polygon(50% 0%, 100% 40%, 70% 100%, 0% 60%);
+    box-shadow: 0 0 6px rgba(255, 200, 120, .9);
+    opacity: 0;
+    animation: kamiShatterParticleKf 0.85s cubic-bezier(.2,.7,.4,1) forwards;
+    animation-delay: var(--kp-delay, 0s);
+  }
+  @keyframes kamiShatterParticleKf {
+    0%   { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.6); }
+    8%   { opacity: 1; }
+    100% {
+      opacity: 0;
+      transform: translate(var(--kp-dx, 40px), var(--kp-dy, 40px)) rotate(var(--kp-rot, 180deg)) scale(0.3);
+    }
   }
   /* イラスト未登録時のバッジ（カミポートレートの上に小さく表示） */
   .kami-illust-missing {
@@ -5497,6 +5523,9 @@
                   <path class="kami-crack-line" d="M50 0 L46 22 L58 34 L40 50 L54 66 L44 82 L50 100"/>
                   <path class="kami-crack-line" d="M50 30 L20 20 M50 30 L78 24 M58 55 L84 60 M40 50 L14 46 M44 82 L18 90 M54 66 L82 74"/>
                 </svg>
+                <div v-if="battleShatterParticles && battleShatterParticles.side === 'opp'" class="kami-shatter-particles">
+                  <div v-for="p in battleShatterParticles.particles" :key="p.id" class="kami-shatter-particle" :style="p.style"></div>
+                </div>
               </div>
               <!-- 右：ライフ（赤丸 / 上：ライフラベル） -->
               <div class="hud-orb">
@@ -5674,6 +5703,9 @@
                   <path class="kami-crack-line" d="M50 0 L46 22 L58 34 L40 50 L54 66 L44 82 L50 100"/>
                   <path class="kami-crack-line" d="M50 30 L20 20 M50 30 L78 24 M58 55 L84 60 M40 50 L14 46 M44 82 L18 90 M54 66 L82 74"/>
                 </svg>
+                <div v-if="battleShatterParticles && battleShatterParticles.side === 'self'" class="kami-shatter-particles">
+                  <div v-for="p in battleShatterParticles.particles" :key="p.id" class="kami-shatter-particle" :style="p.style"></div>
+                </div>
               </div>
               <!-- 右：ライフ（赤丸の右に △▽、下に - +） -->
               <div class="hud-orb">
@@ -7366,6 +7398,7 @@ const SFX_FILES = {
   hit: 'hit.mp3',
   destroy: 'destroy.mp3',
   crumble: 'crumble.mp3',
+  delete: 'delete.mp3',     // 勝敗確定：カミが粒子となって砕け散る演出に合わせて鳴らす
   skill: 'skill.mp3',       // 神技1
   skill2: 'skill2.mp3',     // 神技2（必殺技クローズアップ演出）
   dragStart: 'drag_Start.mp3',
@@ -7781,6 +7814,7 @@ new Vue({
     cpuAutoPlayEnabled: loadStoredBool('tsukuriyo_cpuAutoPlayEnabled', true), // ソロテスト時：CPUが自律してカードプレイ・攻撃を行うか（OFF＝従来通り待機のみ）
     battleTurnElapsedSec: 0,      // 現在のターンの経過秒数
     battleResultRevealReady: false, // false の間はひび割れ→破壊演出を表示し、勝敗オーバーレイ自体は隠す
+    battleShatterParticles: null, // ひび割れ後の粒子爆散演出：{ side, particles: [{ id, style }] }
     battleTurnFlash: null, // 手番切替時に画面中央へ一瞬表示する演出：{ text, side }
     battleTurnWipe: null,  // 手番切替時の画面ワイプ演出：{ id, side }
     battleCoinFlip: null, // 先攻/後攻決めのコイン演出：{ firstSide, phase: 'spin'|'result' }
@@ -7841,7 +7875,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.26',
+    BUILD_VERSION: '1.15.27',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -11009,6 +11043,32 @@ new Vue({
       if (!result || !result.outcome) return;
       const key = result.outcome === 'win' ? 'victory' : result.outcome === 'loss' ? 'defeat' : null;
       if (key) this._bgmPlay(key);
+    },
+    /* 敗者側カミのポートレートが粒子となって砕け散る演出：中心から放射状に飛び散る
+       破片をランダム生成する（CSS側のkamiShatterParticleKfが実際のアニメーションを担う） */
+    _battleSpawnShatterParticles(side) {
+      const count = 22;
+      const particles = [];
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+        const distance = 46 + Math.random() * 60;
+        const dx = Math.round(Math.cos(angle) * distance);
+        const dy = Math.round(Math.sin(angle) * distance);
+        const size = 5 + Math.random() * 6;
+        const rot = Math.round((Math.random() - 0.5) * 720);
+        const delay = Math.random() * 0.12;
+        particles.push({
+          id: i,
+          style: {
+            '--kp-dx': dx + 'px',
+            '--kp-dy': dy + 'px',
+            '--kp-rot': rot + 'deg',
+            '--kp-size': size + 'px',
+            '--kp-delay': delay + 's',
+          },
+        });
+      }
+      this.battleShatterParticles = { side, particles };
     },
     /* 戦績・対戦履歴：対戦（創世決戦の星戦・星紡ぎ戦・対戦テスト）の勝敗を
        この端末のlocalStorageに記録する。観戦中は記録しない。 */
@@ -22651,17 +22711,28 @@ new Vue({
     this.$watch('battleSample.result', (v) => {
       if (v) {
         this.battleResultRevealReady = false;
+        this.battleShatterParticles = null;
         this._battleStopTurnTimer();
         this._battleStopTurnTitleFlash();
         this._battleRecordHistoryEntry(v);
         clearTimeout(this._battleResultRevealT);
+        clearTimeout(this._battleShatterT);
+        // ひび割れ→フラッシュのピーク直後（kamiShatterKfが一気に消え去るタイミングに合わせる）に
+        // 粒子爆散を発生させ、同時に破壊音（delete）を鳴らす
+        this._battleShatterT = setTimeout(() => {
+          this._battleSpawnShatterParticles(v.outcome === 'win' ? 'opp' : 'self');
+          this._sfxPlay('delete');
+        }, 1050);
         this._battleResultRevealT = setTimeout(() => {
           this.battleResultRevealReady = true;
+          this.battleShatterParticles = null;
           this._battlePlayResultSound(v);
         }, 1600);
       } else {
         this.battleResultRevealReady = false;
+        this.battleShatterParticles = null;
         clearTimeout(this._battleResultRevealT);
+        clearTimeout(this._battleShatterT);
         if (this.appView === 'battle' && this.bgmAuto) this._bgmAutoPickForView('battle');
       }
     });
