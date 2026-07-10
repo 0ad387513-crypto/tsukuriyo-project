@@ -7990,7 +7990,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.36',
+    BUILD_VERSION: '1.15.37',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -15887,14 +15887,20 @@ new Vue({
     /* dslAskOptionalの「CPU自動対戦中は常に自動解決（発動しない）」を一時的に無効化して呼ぶ版。
        CPUの手番代行中（self/opp入れ替え中）でも、決定権が本当は人間側にある場面
        （例：CPUの攻撃を人間の守護カードで受けるかどうか）では、_battleCpuAutoResolvingが
-       立っていても実際にモーダルを開いて本人に確認する必要があるために使う。 */
+       立っていても実際にモーダルを開いて本人に確認する必要があるために使う。
+       CPUの手番代行中はbattleCpuThinking（z-index:9999の全画面覆い）も立ったままのため、
+       これも一緒に外さないと、開いたモーダル（z-index:400）が覆いの下に隠れてクリックできない
+       ままフリーズしてしまう（実際に発生した操作不能バグの原因）。 */
     async _dslAskOptionalForceHuman(card, triggerLabel, summary, kind = 'ability') {
-      const prev = this._battleCpuAutoResolving;
+      const prevAutoResolving = this._battleCpuAutoResolving;
+      const prevThinking = this.battleCpuThinking;
       this._battleCpuAutoResolving = false;
+      this.battleCpuThinking = false;
       try {
         return await this.dslAskOptional(card, triggerLabel, summary, kind);
       } finally {
-        this._battleCpuAutoResolving = prev;
+        this._battleCpuAutoResolving = prevAutoResolving;
+        this.battleCpuThinking = prevThinking;
       }
     },
     /* 相手（本当の持ち主）に決定権がある任意確認（守護 等）。
