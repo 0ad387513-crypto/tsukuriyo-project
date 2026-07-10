@@ -1541,6 +1541,43 @@
   .gm-pick-kami { font-size: 12px; color: #9aa; text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .gm-pick-seat.done .gm-pick-kami { color: #6c9; }
 
+  /* 終戦：勝者発表の溜め演出 */
+  .gs-scoring-reveal {
+    position: fixed; inset: 0; z-index: 800;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: #000; overflow: hidden;
+  }
+  .gs-scoring-announce-text {
+    font-size: 30px; font-weight: 700; letter-spacing: 0.12em; color: #f0e6d2;
+    text-shadow: 0 0 18px rgba(240, 220, 160, .7);
+    animation: gsAnnounceFadeKf 2.4s ease-in-out forwards;
+  }
+  @keyframes gsAnnounceFadeKf {
+    0%   { opacity: 0; letter-spacing: 0.3em; }
+    25%  { opacity: 1; letter-spacing: 0.12em; }
+    80%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .gs-scoring-kami-img {
+    max-width: min(70vw, 420px); max-height: 60vh; border-radius: 10px;
+    box-shadow: 0 0 40px rgba(255, 220, 140, .55);
+    animation: gsKamiRevealKf 2.6s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  @keyframes gsKamiRevealKf {
+    0%   { opacity: 0; transform: scale(1.15); filter: brightness(2.2); }
+    18%  { opacity: 1; filter: brightness(1.6); }
+    40%  { transform: scale(1); filter: brightness(1); }
+    85%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .gs-scoring-kami-name {
+    margin-top: 18px; font-size: 22px; font-weight: 700; color: #fff;
+    text-shadow: 0 0 12px rgba(255, 210, 120, .8);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    animation: gsAnnounceFadeKf 2.6s ease-in-out forwards;
+  }
+  .gs-scoring-kami-name small { font-size: 14px; color: #d8c89a; font-weight: 400; }
+
   /* 完了 */
   .gm-done-title { text-align: center; font-size: 16px; color: #eee; font-weight: 700; margin-bottom: 18px; }
   .gm-done-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
@@ -7085,6 +7122,19 @@
         </div>
       </div>
 
+      <!-- ===== 終戦：勝者発表の溜め演出（結果表の前に一度だけ再生） ===== -->
+      <div v-else-if="gs.view === 'scoring' && gsScoringRevealStage === 'announce'" class="gs-scoring-reveal gs-scoring-announce">
+        <div class="gs-scoring-announce-text">今回の勝者は…</div>
+      </div>
+      <div v-else-if="gs.view === 'scoring' && gsScoringRevealStage === 'kami'" class="gs-scoring-reveal gs-scoring-kami">
+        <img v-if="gsScoringWinnerKami" class="gs-scoring-kami-img"
+             :src="'kami_cutin/' + gsScoringWinnerKami.no + '.jpg'"
+             @error="gsScoringWinnerKamiImgError" alt="">
+        <div class="gs-scoring-kami-name">
+          {{ gsScoringWinnerRow ? gsScoringWinnerRow.name : '' }} の勝利！
+          <small v-if="gsScoringWinnerKami">{{ fullName(gsScoringWinnerKami) }}</small>
+        </div>
+      </div>
       <!-- ===== 終戦・集計 ===== -->
       <div v-else-if="gs.view === 'scoring'" class="gm-body gm-scoring">
         <div class="gm-done-title">終戦 — 星魂の集計</div>
@@ -7399,6 +7449,7 @@ const SFX_FILES = {
   destroy: 'destroy.mp3',
   crumble: 'crumble.mp3',
   delete: 'delete.mp3',     // 勝敗確定：カミが粒子となって砕け散る演出に合わせて鳴らす
+  endofwar: 'endofwar.mp3', // 終戦画面：「今回の勝者は…」の黒背景演出に合わせて鳴らす
   skill: 'skill.mp3',       // 神技1
   skill2: 'skill2.mp3',     // 神技2（必殺技クローズアップ演出）
   dragStart: 'drag_Start.mp3',
@@ -7875,7 +7926,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.32',
+    BUILD_VERSION: '1.15.33',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -7970,6 +8021,7 @@ new Vue({
     gsPublicSessions: [],     // 公開中のセッション一覧（メニュー画面表示中のみ購読）
     gsDeepenAction: null,     // 深化の刻で選択中のアクション: null(=メニュー) | 'reflect' | 'fusion' | 'bloom'
     gsCpuDeckViewSeat: null,  // 終戦画面で表示中の他プレイヤー（CPU・人間問わず）デッキの席番号（null=非表示）
+    gsScoringRevealStage: null, // 終戦画面の演出ステージ：null(通常/結果表を表示) | 'announce'(黒背景「今回の勝者は…」) | 'kami'(優勝者のカミアップ)
   },
   computed: {
     /* BGM選択メニュー用：{key, name} の配列（BGM_FILESそのものではなく整形して渡す） */
@@ -9341,6 +9393,14 @@ new Vue({
         r.rank = rank;
       });
       return rows;
+    },
+    // 終戦の勝者発表演出用：優勝者（1位）のカミカード
+    gsScoringWinnerRow() {
+      return this.gsScoreRows.length ? this.gsScoreRows[0] : null;
+    },
+    gsScoringWinnerKami() {
+      const row = this.gsScoringWinnerRow;
+      return row ? this.seatKamiCard(row.seat) : null;
     },
 
     /* ===== 星戦（結果記録） ===== */
@@ -10796,7 +10856,9 @@ new Vue({
         this._sfxLoadBuffer(name).catch(e => console.warn(`[sfx] "${name}" の先読みに失敗:`, e && e.message));
       });
     },
-    async _sfxPlay(name) {
+    /* volumeMultiplier: 通常のSE音量設定に対する倍率（1=通常、1.6=やや大きめ 等）。
+       特定の演出だけ他のSEより目立たせたい場合に使う（例：終戦画面のendofwar）。 */
+    async _sfxPlay(name, volumeMultiplier = 1) {
       try {
         if (!SFX_FILES[name]) return;
         const buffer = await this._sfxLoadBuffer(name);
@@ -10805,7 +10867,14 @@ new Vue({
         if (ctx.state === 'suspended') { try { await ctx.resume(); } catch (e) { /* 次のユーザー操作で再試行される */ } }
         const source = ctx.createBufferSource();
         source.buffer = buffer;
-        source.connect(this._sfxGainNode());
+        if (volumeMultiplier !== 1) {
+          const boost = ctx.createGain();
+          boost.gain.value = volumeMultiplier;
+          source.connect(boost);
+          boost.connect(this._sfxGainNode());
+        } else {
+          source.connect(this._sfxGainNode());
+        }
         source.start();
       } catch (e) { console.warn(`[sfx] "${name}" の再生に失敗:`, e && e.message); }
     },
@@ -11549,6 +11618,21 @@ new Vue({
     /* 星戦勝利画面のカミ画像：カットイン(jpg)→カットイン(png)→従来イラストの順にフォールバック */
     battleResultKamiImgError(e) {
       const kami = this.battleSample.self && this.battleSample.self.kami;
+      const img = e && e.target;
+      if (!kami || !img) return;
+      if (img.dataset.fallback !== 'png') {
+        img.dataset.fallback = 'png';
+        img.src = `kami_cutin/${kami.no}.png`;
+      } else if (img.dataset.fallback !== 'illustration') {
+        img.dataset.fallback = 'illustration';
+        img.onerror = null;
+        img.src = this.kamiIllustrationUrl(kami) || '';
+      }
+    },
+    // 終戦：勝者発表演出のカミ画像用フォールバック（battleResultKamiImgErrorはbattleSample.self.kami
+    // 前提のため、星戦の優勝者（gsScoringWinnerKami）はこちらの専用版を使う）
+    gsScoringWinnerKamiImgError(e) {
+      const kami = this.gsScoringWinnerKami;
       const img = e && e.target;
       if (!kami || !img) return;
       if (img.dataset.fallback !== 'png') {
@@ -20576,6 +20660,25 @@ new Vue({
       }
       this.returned = newReturned;
     },
+    /* 終戦（星魂の集計）画面に入った瞬間の演出：
+       黒背景「今回の勝者は…」（bgm:endofwar、少し大きめの音量）
+       → 画面遷移 → 優勝者のカミアップ（対戦の勝利演出と同じ画像）＋勝利bgm
+       → 結果表（gsScoreRows）を表示、の順に溜めを作る。
+       各クライアントがローカルで独立に再生する演出のため、同期の仕組みは不要
+       （対戦画面のbattleResultRevealReadyと同じ考え方）。 */
+    async _gsRunScoringReveal() {
+      if (this.gsScoringRevealStage) return; // 二重起動防止
+      this.gsScoringRevealStage = 'announce';
+      this._sfxPlay('endofwar', 1.6);
+      await new Promise(r => setTimeout(r, 2400));
+      if (this.gs.view !== 'scoring') { this.gsScoringRevealStage = null; return; }
+      this.gsScoringRevealStage = 'kami';
+      if (this.bgmAuto) this._bgmPlay('victory');
+      await new Promise(r => setTimeout(r, 2600));
+      if (this.gs.view !== 'scoring') { this.gsScoringRevealStage = null; return; }
+      this.gsScoringRevealStage = null;
+      if (this.bgmAuto) this._bgmAutoPickForView('game');
+    },
     // 他プレイヤー（CPU・人間問わず）のデッキをデッキビルダーで確認（閲覧専用：返還等の操作はしない）
     gsPeekCpuDeck(seat) {
       this._sfxPlay('decision');
@@ -22713,15 +22816,20 @@ new Vue({
     // 選定の儀（ピック）〜返還〜深化の刻（見識の使用）：対戦に移行するまでは
     // 専用BGM「戦場の舞」を流し続ける。候補が1曲だけのカテゴリなので同期の仕組みは不要。
     this.$watch('gs.view', (v) => {
-      if (this.appView !== 'game' || !this.bgmAuto) return;
-      if (v === 'draft' || v === 'draft_done' || v === 'deepen') {
-        const key = this._bgmPickRandomKey('sentei');
-        if (key && key !== this.bgmCurrentKey) this._bgmPlay(key);
-      } else if (v !== 'battle') {
-        this._bgmAutoPickForView('game');
+      // 終戦（scoring）画面はBGMを_gsRunScoringReveal側で演出に合わせて制御するため、
+      // ここでの自動選曲の対象からは除外する
+      if (this.appView === 'game' && this.bgmAuto) {
+        if (v === 'draft' || v === 'draft_done' || v === 'deepen') {
+          const key = this._bgmPickRandomKey('sentei');
+          if (key && key !== this.bgmCurrentKey) this._bgmPlay(key);
+        } else if (v !== 'battle' && v !== 'scoring') {
+          this._bgmAutoPickForView('game');
+        }
       }
       if (v === 'draft') this._gsStartPickTimer();
       else this._gsStopPickTimer();
+      // 終戦画面に入った瞬間：勝者発表の演出（黒背景「今回の勝者は…」→優勝者のカミアップ→結果表）を開始する
+      if (v === 'scoring') this._gsRunScoringReveal();
     });
     // 公開ルーム一覧：メニュー画面表示中だけ購読する
     this.$watch('gs.view', (v) => {
