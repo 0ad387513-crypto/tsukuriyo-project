@@ -7875,7 +7875,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.29',
+    BUILD_VERSION: '1.15.30',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -14488,16 +14488,21 @@ new Vue({
       // 表示中の増減ポップ（+n/-n）もswapによる見かけ上の変化のため消しておく
       this.battleStatPops = {};
     },
-    /* 入れ替え（_dslSwapSelfOpp）の影響を受けない「本当のactiveSide」。
-       補正・拘束等の「有効期限side」を記録する際、入れ替え中の見かけ上のself/oppラベルを
-       そのまま保存すると、入れ替えが解けた後（battleEndTurn等は常に非入れ替え状態で呼ばれる）
-       のself/oppラベルと食い違い、期限判定が一致しなくなる（例：CPU戦中に付与した【補正】が
-       CPUのターン終了時に巻き戻らず、次の自分のターンまで残ってしまうバグ）。
-       入れ替え回数の偶奇から本当の側を逆算することで、この食い違いを防ぐ。 */
+    /* 入れ替え（_dslSwapSelfOpp）の影響を受けない「本当の」side。見かけ上のself/oppラベル
+       （rawSide）を、入れ替え回数の偶奇から本当の側へ逆算して返す。
+       用途：CPU戦の手番代行中（self/oppが一時的に入れ替わっている）に生のラベルだけで
+       「このカードの本当の持ち主は誰か」を判定すると、以下のような誤判定が起きる：
+       ・補正/拘束等の期限side（_dslTrueActiveSide）：入れ替え中に付与した【補正】が
+         CPUのターン終了時に巻き戻らず、次の自分のターンまで残ってしまう
+       ・守護の決定権（battleResolveGuardTarget/_battleChooseGuard）：CPUの攻撃フェーズ中は
+         defenderSide='opp'に入れ替わるため、本当は人間の持ち物である守護カードの判断が
+         誤ってCPU自動判断（_battleCpuDecideGuard）に回され、人間が自分の守護を選べなくなる */
+    _dslToTrueSide(rawSide) {
+      if (!this._dslSwapped) return rawSide;
+      return rawSide === 'self' ? 'opp' : 'self';
+    },
     _dslTrueActiveSide() {
-      const cur = (this.battleSample && this.battleSample.activeSide) || 'self';
-      if (!this._dslSwapped) return cur;
-      return cur === 'self' ? 'opp' : 'self';
+      return this._dslToTrueSide((this.battleSample && this.battleSample.activeSide) || 'self');
     },
     async _dslOpGrant(act, sourceCard, permanent) {
       const targets = await this.dslChooseTargets(this._dslMergeActNumRef(act.対象, act), `【${(act.付与 || []).join('・')}】を付与`);
@@ -15694,6 +15699,19 @@ new Vue({
       const m = this.dslOptionalModal;
       this.dslOptionalModal = null;
       if (m && m.resolver) m.resolver(!!yes);
+    },
+    /* dslAskOptionalの「CPU自動対戦中は常に自動解決（発動しない）」を一時的に無効化して呼ぶ版。
+       CPUの手番代行中（self/opp入れ替え中）でも、決定権が本当は人間側にある場面
+       （例：CPUの攻撃を人間の守護カードで受けるかどうか）では、_battleCpuAutoResolvingが
+       立っていても実際にモーダルを開いて本人に確認する必要があるために使う。 */
+    async _dslAskOptionalForceHuman(card, triggerLabel, summary, kind = 'ability') {
+      const prev = this._battleCpuAutoResolving;
+      this._battleCpuAutoResolving = false;
+      try {
+        return await this.dslAskOptional(card, triggerLabel, summary, kind);
+      } finally {
+        this._battleCpuAutoResolving = prev;
+      }
     },
     /* 相手（本当の持ち主）に決定権がある任意確認（守護 等）。
        オンライン対戦中は相手クライアントへ確認を委ね、回答が来るまで待つ。
@@ -18071,21 +18089,28 @@ new Vue({
     async _battleChooseGuard(attacker, defenderSide, originalIndex = null) {
       const defender = this.battleSample[defenderSide];
       if (!defender || !Array.isArray(defender.legacies)) return null;
+      // CPUの攻撃フェーズ中はself/oppが入れ替わっており、defenderSide='opp'は「本当は人間」を
+      // 指していることがある。生のラベルだけで判定すると、人間の守護判断がCPU自動判断へ
+      // 誤って回されてしまう（＝CPU戦で自分の攻撃を守護で受けられないバグの原因だった）ため、
+      // 本当の持ち主で決定権を判定する。
+      const trueDefenderSide = this._dslToTrueSide(defenderSide);
       for (let i = 0; i < defender.legacies.length; i++) {
         if (i === originalIndex) continue;
         const guard = defender.legacies[i];
         if (!guard || guard._tapped) continue;
         if (!this.battleCardHasKeyword(guard, '守護') || !this.battleCanTargetLegacy(attacker, guard)) continue;
-        // 守護カードの持ち主が相手の場合、決定権は相手にある。
+        // 守護カードの本当の持ち主が相手の場合、決定権は相手にある。
         // オンライン対戦中は本当の相手プレイヤーのクライアントへ確認を委ねるが、
         // 相手がCPUの場合は確認する相手クライアントが実在しないため、人間に委ねず
         // CPU自身が判断する（攻撃を受けても生き残れる、または神攻でライフを守れるなら守護する）。
         const prompt = `「${this.fullName(guard)}」をタップして相手の攻撃を【守護】で引き受けますか？`;
-        const ok = defenderSide === 'opp'
+        const ok = trueDefenderSide === 'opp'
           ? (this.battleContext && this.battleContext.oppIsCpu
               ? this._battleCpuDecideGuard(guard, attacker, originalIndex === null)
               : await this._battleAskOptionalRemote(guard, '守護', prompt))
-          : await this.dslAskOptional(guard, '守護', prompt);
+          // 本当の持ち主は自分（人間）：CPUの手番代行中で自動解決フラグが立っていても、
+          // ここは必ず本人にモーダルで確認する
+          : await this._dslAskOptionalForceHuman(guard, '守護', prompt);
         if (ok) {
           const idx = defender.legacies.indexOf(guard);
           if (idx < 0) continue;
