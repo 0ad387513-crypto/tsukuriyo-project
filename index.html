@@ -4707,7 +4707,7 @@
           </template>
           <!-- returned -->
           <template v-else>
-            <div v-if="!returnModeActive || (gsPeeking && appView === 'game')" class="qty qty-returned" @click.stop>×{{ entry.count }}</div>
+            <div v-if="deckUnreturnHidden" class="qty qty-returned" @click.stop>×{{ entry.count }}</div>
             <button v-else class="mode-action-btn mode-action-unreturn" @click.stop="onDeckUnreturnClick(entry.card.no)">取消</button>
           </template>
         </div>
@@ -4813,7 +4813,7 @@
             </template>
             <!-- returned -->
             <template v-else>
-              <div v-if="!returnModeActive || (gsPeeking && appView === 'game')" class="deck-grid-returned-badge">返還済</div>
+              <div v-if="deckUnreturnHidden" class="deck-grid-returned-badge">返還済</div>
               <button v-else class="deck-grid-mode-btn deck-grid-unreturn-btn"
                       @click.stop="onDeckUnreturnClick(entry.card.no)">取消</button>
             </template>
@@ -7875,7 +7875,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.31',
+    BUILD_VERSION: '1.15.32',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8717,6 +8717,13 @@ new Vue({
         return this.gsMyDraftReturnDone || this.gsMyDraftFreeReturnedCount >= this.gsDraftFreeReturnLimit;
       }
       return this.sbReturnLimitReached;
+    },
+    // デッキ一覧の返還済みカードで「取消」ボタンの代わりに読み取り専用バッジ（×N）を出す条件。
+    // 4人対戦のデッキビルダー画面（gsPeeking）で自分のデッキを見ている場合は、返還選択が
+    // 完了するまで取消ボタンを表示する（CPUのデッキ閲覧中は従来通り取消不可）
+    deckUnreturnHidden() {
+      if (this.gsPeeking && this.appView === 'game') return this.gsPeekingCpuSeat != null;
+      return !this.returnModeActive;
     },
     // デッキの返還値合計（active + returned の合算 = 「全部返したら得られる総額」の指標）
     // ヤマタノオロチ選択時は龍レガシーの返還値+1
@@ -20542,20 +20549,7 @@ new Vue({
         deck: this.deck, returned: this.returned, selectedKami: this.selectedKami,
         deckExpanded: this.deckExpanded, returnModeActive: this.returnModeActive,
       };
-      // これまでにドラフトしたカードを一時的に読み込む
-      const newDeck = {};
-      for (const c of this.gsMyDraftDeckCards) {
-        const no = String(c.no);
-        newDeck[no] = (newDeck[no] || 0) + 1;
-      }
-      this.deck = newDeck;
-      // このラウンドで無料返還済みのカードも、返還済み表示（灰色）としてデッキ一覧に表示する
-      const newReturned = {};
-      for (const c of this.gsMyDraftFreeReturnedCards) {
-        const no = String(c.no);
-        newReturned[no] = (newReturned[no] || 0) + 1;
-      }
-      this.returned = newReturned;
+      this._gsSyncPeekDeckFromDraft();
       this.selectedKami = this.gsMyKamiCard || this.selectedKami;
       this.returnModeActive = true;
       this.deckExpanded = true;
@@ -20563,6 +20557,24 @@ new Vue({
       this.gameOpen = false;
       this.gsPeekingCpuSeat = null;
       this.gsPeeking = true;
+    },
+    // gsPeekDeck中のdeck/returnedスナップショットを、ドラフトの最新状態（gsMyDraftDeckCards/
+    // gsMyDraftFreeReturnedCards）から再構築する。this.deck/this.returnedはプレーンな代入で
+    // 作られたスナップショットのため、ピーク中に返還/取消を行った直後は自動で追従しない
+    // （このメソッドをその都度呼び直して表示を最新化する）。
+    _gsSyncPeekDeckFromDraft() {
+      const newDeck = {};
+      for (const c of this.gsMyDraftDeckCards) {
+        const no = String(c.no);
+        newDeck[no] = (newDeck[no] || 0) + 1;
+      }
+      this.deck = newDeck;
+      const newReturned = {};
+      for (const c of this.gsMyDraftFreeReturnedCards) {
+        const no = String(c.no);
+        newReturned[no] = (newReturned[no] || 0) + 1;
+      }
+      this.returned = newReturned;
     },
     // 他プレイヤー（CPU・人間問わず）のデッキをデッキビルダーで確認（閲覧専用：返還等の操作はしない）
     gsPeekCpuDeck(seat) {
@@ -21551,18 +21563,28 @@ new Vue({
     },
     // active から returned に1枚移す（カウントは変わらない）
     // デッキ一覧からの返還クリックの窓口。4人対戦のプレビュー中はFirebase側の無料返還として処理する
-    onDeckReturnClick(no) {
+    async onDeckReturnClick(no) {
       if (this.gsPeeking && this.gsPeekingCpuSeat != null) return; // CPUのデッキは返還不可
       if (this.gsPeeking && this.appView === 'game') {
         const card = this.cardByNo[String(no)];
-        if (card) this.gsDraftFreeReturn(card);
+        if (card) await this.gsDraftFreeReturn(card);
+        // gsDraftFreeReturnはFirebaseへ書き込むだけでピーク中のスナップショット
+        // (this.deck/this.returned)は自動更新されないため、完了後に表示を最新化する
+        this._gsSyncPeekDeckFromDraft();
         return;
       }
       this.returnCard(no);
     },
-    // デッキ一覧からの返還取消クリックの窓口。4人対戦のプレビュー中は取消不可（デッキに戻すことはできない）
-    onDeckUnreturnClick(no) {
-      if (this.gsPeeking && this.appView === 'game') return;
+    // デッキ一覧からの返還取消クリックの窓口。4人対戦のデッキビルダー画面では
+    // 自分のデッキならgsDraftFreeReturnUndoで無料返還を取り消す（CPUのデッキ閲覧中は不可）
+    async onDeckUnreturnClick(no) {
+      if (this.gsPeeking && this.gsPeekingCpuSeat != null) return; // CPUのデッキは取消不可
+      if (this.gsPeeking && this.appView === 'game') {
+        const card = this.cardByNo[String(no)];
+        if (card) await this.gsDraftFreeReturnUndo(card);
+        this._gsSyncPeekDeckFromDraft();
+        return;
+      }
       this.unreturnCard(no);
     },
     returnCard(no) {
