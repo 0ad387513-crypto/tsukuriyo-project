@@ -2500,23 +2500,46 @@
   .kami-shatter-particles {
     position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 6;
   }
+  /* 爆散の起点を強調する衝撃波リング */
+  .kami-shatter-ring {
+    position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
+    margin: -10px 0 0 -10px; border-radius: 50%;
+    border: 3px solid rgba(255, 230, 170, .95);
+    box-shadow: 0 0 24px rgba(255, 200, 120, .9);
+    opacity: 0;
+    animation: kamiShatterRingKf 0.55s ease-out forwards;
+  }
+  .kami-shatter-particles.orochi .kami-shatter-ring {
+    border-color: rgba(255, 90, 60, .95);
+    box-shadow: 0 0 24px rgba(200, 20, 20, .9);
+  }
+  @keyframes kamiShatterRingKf {
+    0%   { opacity: 1; transform: scale(0.3); }
+    100% { opacity: 0; transform: scale(7); }
+  }
   .kami-shatter-particle {
     position: absolute; top: 50%; left: 50%;
-    width: var(--kp-size, 7px); height: var(--kp-size, 7px);
-    margin: calc(var(--kp-size, 7px) / -2) 0 0 calc(var(--kp-size, 7px) / -2);
+    width: var(--kp-size, 9px); height: var(--kp-size, 9px);
+    margin: calc(var(--kp-size, 9px) / -2) 0 0 calc(var(--kp-size, 9px) / -2);
     background: linear-gradient(135deg, #fff8e0, #ffb84d 60%, #b23a2a);
     clip-path: polygon(50% 0%, 100% 40%, 70% 100%, 0% 60%);
-    box-shadow: 0 0 6px rgba(255, 200, 120, .9);
+    box-shadow: 0 0 8px rgba(255, 200, 120, .9);
     opacity: 0;
-    animation: kamiShatterParticleKf 0.85s cubic-bezier(.2,.7,.4,1) forwards;
+    animation: kamiShatterParticleKf 1.15s cubic-bezier(.15,.65,.3,1) forwards;
     animation-delay: var(--kp-delay, 0s);
   }
+  /* ヤマタノオロチ敗北時：金橙系ではなく赤黒い粒子にする */
+  .kami-shatter-particles.orochi .kami-shatter-particle {
+    background: linear-gradient(135deg, #ff5a3c, #a30f0f 55%, #170303);
+    box-shadow: 0 0 8px rgba(200, 20, 20, .9);
+  }
   @keyframes kamiShatterParticleKf {
-    0%   { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.6); }
-    8%   { opacity: 1; }
+    0%   { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.7); }
+    6%   { opacity: 1; }
+    70%  { opacity: 1; }
     100% {
       opacity: 0;
-      transform: translate(var(--kp-dx, 40px), var(--kp-dy, 40px)) rotate(var(--kp-rot, 180deg)) scale(0.3);
+      transform: translate(var(--kp-dx, 60px), var(--kp-dy, 60px)) rotate(var(--kp-rot, 220deg)) scale(0.25);
     }
   }
   /* イラスト未登録時のバッジ（カミポートレートの上に小さく表示） */
@@ -5564,7 +5587,8 @@
                   <path class="kami-crack-line" d="M50 0 L46 22 L58 34 L40 50 L54 66 L44 82 L50 100"/>
                   <path class="kami-crack-line" d="M50 30 L20 20 M50 30 L78 24 M58 55 L84 60 M40 50 L14 46 M44 82 L18 90 M54 66 L82 74"/>
                 </svg>
-                <div v-if="battleShatterParticles && battleShatterParticles.side === 'opp'" class="kami-shatter-particles">
+                <div v-if="battleShatterParticles && battleShatterParticles.side === 'opp'" class="kami-shatter-particles" :class="{ orochi: battleShatterParticles.isOrochi }">
+                  <div class="kami-shatter-ring"></div>
                   <div v-for="p in battleShatterParticles.particles" :key="p.id" class="kami-shatter-particle" :style="p.style"></div>
                 </div>
               </div>
@@ -5744,7 +5768,8 @@
                   <path class="kami-crack-line" d="M50 0 L46 22 L58 34 L40 50 L54 66 L44 82 L50 100"/>
                   <path class="kami-crack-line" d="M50 30 L20 20 M50 30 L78 24 M58 55 L84 60 M40 50 L14 46 M44 82 L18 90 M54 66 L82 74"/>
                 </svg>
-                <div v-if="battleShatterParticles && battleShatterParticles.side === 'self'" class="kami-shatter-particles">
+                <div v-if="battleShatterParticles && battleShatterParticles.side === 'self'" class="kami-shatter-particles" :class="{ orochi: battleShatterParticles.isOrochi }">
+                  <div class="kami-shatter-ring"></div>
                   <div v-for="p in battleShatterParticles.particles" :key="p.id" class="kami-shatter-particle" :style="p.style"></div>
                 </div>
               </div>
@@ -7940,7 +7965,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.34',
+    BUILD_VERSION: '1.15.35',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -11137,16 +11162,17 @@ new Vue({
     /* 敗者側カミのポートレートが粒子となって砕け散る演出：中心から放射状に飛び散る
        破片をランダム生成する（CSS側のkamiShatterParticleKfが実際のアニメーションを担う） */
     _battleSpawnShatterParticles(side) {
-      const count = 22;
+      const isOrochi = this.battleIsOrochi(side);
+      const count = 34; // より派手にするため増量（22→34）
       const particles = [];
       for (let i = 0; i < count; i++) {
         const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
-        const distance = 46 + Math.random() * 60;
+        const distance = 60 + Math.random() * 110; // 飛距離も拡大
         const dx = Math.round(Math.cos(angle) * distance);
         const dy = Math.round(Math.sin(angle) * distance);
-        const size = 5 + Math.random() * 6;
-        const rot = Math.round((Math.random() - 0.5) * 720);
-        const delay = Math.random() * 0.12;
+        const size = 6 + Math.random() * 9;
+        const rot = Math.round((Math.random() - 0.5) * 900);
+        const delay = Math.random() * 0.15;
         particles.push({
           id: i,
           style: {
@@ -11158,7 +11184,7 @@ new Vue({
           },
         });
       }
-      this.battleShatterParticles = { side, particles };
+      this.battleShatterParticles = { side, isOrochi, particles };
     },
     /* 戦績・対戦履歴：対戦（創世決戦の星戦・星紡ぎ戦・対戦テスト）の勝敗を
        この端末のlocalStorageに記録する。観戦中は記録しない。 */
@@ -22923,7 +22949,8 @@ new Vue({
         clearTimeout(this._battleResultRevealT);
         clearTimeout(this._battleShatterT);
         // ひび割れ→フラッシュのピーク直後（kamiShatterKfが一気に消え去るタイミングに合わせる）に
-        // 粒子爆散を発生させ、同時に破壊音（delete）を鳴らす
+        // 粒子爆散を発生させ、同時に破壊音（delete）を鳴らす。粒子が完全に消えきってから
+        // 一呼吸置いてから結果オーバーレイを出す（爆散→勝利演出が同時に重ならないようにする）
         this._battleShatterT = setTimeout(() => {
           this._battleSpawnShatterParticles(v.outcome === 'win' ? 'opp' : 'self');
           this._sfxPlay('delete');
@@ -22932,7 +22959,7 @@ new Vue({
           this.battleResultRevealReady = true;
           this.battleShatterParticles = null;
           this._battlePlayResultSound(v);
-        }, 1600);
+        }, 2900);
       } else {
         this.battleResultRevealReady = false;
         this.battleShatterParticles = null;
