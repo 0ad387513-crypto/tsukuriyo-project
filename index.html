@@ -5258,6 +5258,9 @@
             <button class="sp-btn sp-btn-create" style="max-width:260px;margin:0 auto;" @click="openBattleLaunch('construct')">
               ⚔ 対戦画面へ
             </button>
+            <button class="sp-btn sp-btn-join" style="max-width:260px;margin:10px auto 0;" @click="cbOpenBuilding">
+              📖 デッキ選択に戻る
+            </button>
           </div>
 
           <div style="text-align:center;margin-top:18px;display:flex;gap:8px;justify-content:center;">
@@ -7838,7 +7841,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.24',
+    BUILD_VERSION: '1.15.25',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -22165,6 +22168,14 @@ new Vue({
         }
         this.cb.roomData = data;
         this.cb.phase = data.phase || 'lobby';
+        // 両者readyなのにphaseがcompleteへ反映されていない場合はここで補完する。
+        // submitConstructDeck側の書き込み直後に追加の往復（読み直し等）を挟むと「準備完了」を
+        // 押してから画面が切り替わるまでの体感速度が悪化するため、既に繋ぎっぱなしの
+        // リアルタイム購読（このコールバック自体）が最新データを受け取った瞬間に判定・修復する
+        // 方式にして、追加のFirebase往復を発生させないようにしている。
+        if (data.host && data.host.ready && data.guest && data.guest.ready && data.phase !== 'complete' && this.cb.role === 'host') {
+          markConstructRoomComplete(roomCode).catch(() => {});
+        }
       });
       this.cb._unsubscribe = unsub;
     },

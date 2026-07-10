@@ -89,18 +89,19 @@ async function joinConstructRoom(roomCode, playerName) {
 async function submitConstructDeck(roomCode, role, deckMap, kamiNo) {
   const db  = getDb();
   const ref = db.ref(`constructRooms/${roomCode}`);
+  // phaseをcompleteにする判定・書き込みはここでは行わない（両者readyの検知は、既に
+  // 繋ぎっぱなしのリアルタイム購読側（index.htmlの_cbSubscribe）が最新データを受け取った
+  // 瞬間に行う方が、ここで追加の読み直しを挟むより速く・確実なため）。
   await ref.child(role).update({ deck: deckMap || {}, kamiNo: kamiNo || null, ready: true });
+}
 
-  // room全体（host/guestのデッキという比較的大きなオブジェクトを含む）を
-  // ref.transaction()で丸ごと読み書きすると、ローカルキャッシュと再試行の絡みで
-  // phaseへの反映が行われないまま終わることがあった（両者ready済みなのに
-  // completeへ遷移しないバグの原因）。ここは単純な条件付き書き込みで十分なため、
-  // 素直に最新値を読んでphaseだけをピンポイントで更新する方式に変更した。
-  const snap = await ref.once("value");
-  const room = snap.val();
-  if (room && room.host && room.host.ready && room.guest && room.guest.ready && room.phase !== "complete") {
-    await ref.child("phase").set("complete");
-  }
+/**
+ * 両者のデッキが揃った（host/guestともready）ことを検知したクライアントが呼ぶ、
+ * phaseをcompleteへ進めるだけの単純な書き込み。何度呼ばれても結果は同じなので安全。
+ * @param {string} roomCode
+ */
+async function markConstructRoomComplete(roomCode) {
+  await getDb().ref(`constructRooms/${roomCode}/phase`).set("complete");
 }
 
 /**
@@ -112,11 +113,9 @@ async function unsubmitConstructDeck(roomCode, role) {
   const db  = getDb();
   const ref = db.ref(`constructRooms/${roomCode}`);
   await ref.child(`${role}/ready`).set(false);
-  await ref.transaction(room => {
-    if (!room) return room;
-    if (room.phase === "complete") room.phase = "building"; // 対戦自体は別パスなのでこの巻き戻しは無害
-    return room;
-  });
+  // 対戦自体は別パス（openBattleLaunch）なので、ここでphaseをbuildingへ戻すのは無害。
+  // room全体を読み書きするtransaction()は不要な往復・遅延の原因になるため、単純な書き込みにする。
+  await ref.child("phase").set("building");
 }
 
 /* ------------------------------------------------------------------ */
@@ -212,7 +211,7 @@ if (typeof module !== "undefined") {
   module.exports = {
     CONSTRUCT_DECK_SIZE, CONSTRUCT_MIN_RETURN_SUM,
     createConstructRoom, joinConstructRoom,
-    submitConstructDeck, unsubmitConstructDeck, subscribeConstructRoom, dissolveConstructRoom,
+    submitConstructDeck, markConstructRoomComplete, unsubmitConstructDeck, subscribeConstructRoom, dissolveConstructRoom,
     subscribeStructureDecks, fetchStructureDecksOnce, saveStructureDeck, removeStructureDeck, seedStructureDecksIfEmpty,
   };
 }
