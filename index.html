@@ -7875,7 +7875,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.27',
+    BUILD_VERSION: '1.15.28',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -15205,25 +15205,28 @@ new Vue({
       const opp = this.battleSample && this.battleSample.opp;
       if (!opp) return;
       const need = Math.max(1, Number(act.数 || 1));
+      // 領域:"hand" 指定時は手札のみを候補にする（例：#静かなる謀殺「相手は手札からカード2枚墓地」）。
+      // 未指定時は従来通り手札+レガシーの両方を候補にする（#呪殺持ちカード等の既存仕様を維持）。
+      const handOnly = act.領域 === 'hand';
       const n = this.battleNet;
       if (n && n.on && !n.spectating) {
         // オンライン対戦中：相手の手札は非公開のため、相手クライアント自身に選択・移動・
         // 破壊処理まで実行してもらい、結果（動かしたカード）だけを受け取って通知する。
-        const moved = await this._battleDelegateOpponentDiscard(need);
+        const moved = await this._battleDelegateOpponentDiscard(need, handOnly);
         if (moved.length) {
           this.battleShowNotice('相手選択破棄', `${moved.map(c => `「${this.fullName(c)}」`).join('、')}を相手の墓地へ送りました。`, moved);
         }
         return;
       }
-      const candidates = [
-        ...(opp.hand || []),
-        ...(opp.legacies || [])
-      ].filter(Boolean);
+      const candidates = (handOnly
+        ? [...(opp.hand || [])]
+        : [...(opp.hand || []), ...(opp.legacies || [])]
+      ).filter(Boolean);
       if (!candidates.length) {
-        this.battleShowNotice('相手選択破棄', '相手が選択できる手札またはレガシーがありません。', sourceCard ? [sourceCard] : []);
+        this.battleShowNotice('相手選択破棄', handOnly ? '相手が選択できる手札がありません。' : '相手が選択できる手札またはレガシーがありません。', sourceCard ? [sourceCard] : []);
         return;
       }
-      const picked = await this.dslAskCustomTargets('相手が墓地へ送る手札/破壊するレガシーを選択', candidates, need, sourceCard);
+      const picked = await this.dslAskCustomTargets(handOnly ? '相手が墓地へ送る手札を選択' : '相手が墓地へ送る手札/破壊するレガシーを選択', candidates, need, sourceCard);
       if (!picked.length) return;
       this.battleSaveUndo();
       const moved = [];
@@ -15823,7 +15826,7 @@ new Vue({
     /* 候補に相手の手札（非公開情報）を含む「相手が選ぶ」効果（相手選択破棄 等）。
        こちら側は相手の手札の実体を持たないため、相手クライアント自身に選択と
        移動処理そのものを委ね、実行結果（動かしたカードのNo）だけを受け取る。 */
-    async _battleDelegateOpponentDiscard(need) {
+    async _battleDelegateOpponentDiscard(need, handOnly) {
       const n = this.battleNet;
       const reqId = 'g' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
       const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
@@ -15831,7 +15834,7 @@ new Vue({
       this._battleDelegatePendingBegin('相手が手札から選択中…');
       try {
         try {
-          await getDb().ref(reqPath).set({ id: reqId, forSeat: n.oppSeat, kind: 'discard', need, ts: Date.now() });
+          await getDb().ref(reqPath).set({ id: reqId, forSeat: n.oppSeat, kind: 'discard', need, handOnly: !!handOnly, ts: Date.now() });
         } catch (e) {
           console.error('[sync] 委譲依頼の送信失敗:', e);
           this.$set(this.battleNet, 'lastError', '委譲依頼の送信失敗：' + (e && e.message));
@@ -15875,11 +15878,16 @@ new Vue({
       if (data.kind === 'deathTrigger') { await this._battleHandleRemoteDeathTriggerRequest(data); return; }
       if (data.kind !== 'discard') return;
       const self = this.battleSample.self;
-      const candidates = [...(self.hand || []), ...(self.legacies || [])].filter(Boolean);
+      const candidates = (data.handOnly
+        ? [...(self.hand || [])]
+        : [...(self.hand || []), ...(self.legacies || [])]
+      ).filter(Boolean);
       let picked = [];
       if (candidates.length) {
         const need = Math.min(Math.max(1, Number(data.need) || 1), candidates.length);
-        picked = await this.dslAskCustomTargets('相手の効果により、墓地へ送る手札/破壊するレガシーを選択してください', candidates, need, null);
+        picked = await this.dslAskCustomTargets(
+          data.handOnly ? '相手の効果により、墓地へ送る手札を選択してください' : '相手の効果により、墓地へ送る手札/破壊するレガシーを選択してください',
+          candidates, need, null);
       }
       const moved = [];
       const destroyed = [];
