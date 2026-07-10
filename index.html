@@ -3877,6 +3877,27 @@
   .battle-result-panel.loss { border-color: #737983; filter: grayscale(.35); }
   .battle-result-panel.loss .battle-result-title { color: #989da5; text-shadow: 0 4px 0 #3e4249; }
   .battle-result-subtext { margin-top: 10px; font-size: 16px; font-weight: 700; color: #cbd3de; }
+  /* 勝敗確定演出：勝者のプレイヤー名・カミ名を大きく表示。
+     文字が全部表示し終わった直後（battleResultPetalDelay、花びらの舞い始めと同じタイミング）に
+     フェードインさせることで、演出全体の「間」を延ばし駆け足感を無くす */
+  .battle-result-winner-info {
+    margin-top: 14px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    opacity: 0; animation: battleResultWinnerInfoInKf 0.7s ease-out forwards;
+  }
+  @keyframes battleResultWinnerInfoInKf {
+    0%   { opacity: 0; transform: translateY(10px) scale(.97); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .battle-result-winner-name {
+    font-size: clamp(22px, 4vw, 34px); font-weight: 900; color: #fff;
+    text-shadow: 0 0 10px rgba(255, 220, 140, .7), 0 3px 0 rgba(0,0,0,.5);
+  }
+  .battle-result-winner-kami {
+    font-size: clamp(15px, 2.4vw, 20px); font-weight: 700; color: #ffe06a;
+    text-shadow: 0 0 8px rgba(255, 200, 60, .6);
+  }
+  .battle-result-panel.loss .battle-result-winner-name,
+  .battle-result-panel.loss .battle-result-winner-kami { color: #cfd4db; text-shadow: 0 3px 0 rgba(0,0,0,.4); }
   .victory-spark { position: absolute; color: #ffe883; font-size: 32px; animation: spark-spin 2.4s linear infinite; }
   .victory-spark.s1 { top: 16px; left: 8%; }
   .victory-spark.s2 { top: 24%; right: 8%; animation-delay: -.8s; }
@@ -6462,12 +6483,16 @@
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s1">✦</span>
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s2">✦</span>
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s3">✦</span>
-        <img v-if="battleSample.result.outcome === 'win' && battleSample.self.kami" class="battle-result-kami"
-             :src="'kami_cutin/' + battleSample.self.kami.no + '.jpg'"
+        <img v-if="battleResultWinnerKami" class="battle-result-kami"
+             :src="'kami_cutin/' + battleResultWinnerKami.no + '.jpg'"
              @error="battleResultKamiImgError" alt="">
         <div class="battle-result-title">
           <span v-for="(ch, i) in battleResultTitleChars" :key="'rch'+i" class="result-char"
                 :style="{ animationDelay: (i * 0.15) + 's' }">{{ ch }}</span>
+        </div>
+        <div class="battle-result-winner-info" :style="{ animationDelay: battleResultPetalDelay + 's' }">
+          <span class="battle-result-winner-name">{{ battleResultWinnerName }}</span>
+          <span v-if="battleResultWinnerKami" class="battle-result-winner-kami">{{ fullName(battleResultWinnerKami) }}</span>
         </div>
         <div v-if="battleSample.result.reason === 'surrender'" class="battle-result-subtext">
           {{ battleSample.result.outcome === 'win' ? '相手が降参しました' : '降参しました' }}
@@ -7965,7 +7990,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.35',
+    BUILD_VERSION: '1.15.36',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -9480,6 +9505,19 @@ new Vue({
     battleResultPetalDelay() {
       const n = this.battleResultTitleChars.length;
       return n * 0.15 + 0.24 + 0.3;
+    },
+    // 勝敗確定演出：勝者側のカミ（勝ち負けに関わらず、実際に勝った側のカミを大きく見せる）
+    battleResultWinnerKami() {
+      const r = this.battleSample.result;
+      if (!r) return null;
+      const p = r.outcome === 'win' ? this.battleSample.self : this.battleSample.opp;
+      return (p && p.kami) || null;
+    },
+    // 勝敗確定演出：勝者側のプレイヤー名
+    battleResultWinnerName() {
+      const r = this.battleSample.result;
+      if (!r) return '';
+      return r.outcome === 'win' ? this.battleContext.selfName : this.battleContext.oppName;
     },
     battleTurnTimerLabel() {
       const s = this.battleTurnElapsedSec;
@@ -11657,7 +11695,7 @@ new Vue({
     },
     /* 星戦勝利画面のカミ画像：カットイン(jpg)→カットイン(png)→従来イラストの順にフォールバック */
     battleResultKamiImgError(e) {
-      const kami = this.battleSample.self && this.battleSample.self.kami;
+      const kami = this.battleResultWinnerKami;
       const img = e && e.target;
       if (!kami || !img) return;
       if (img.dataset.fallback !== 'png') {
