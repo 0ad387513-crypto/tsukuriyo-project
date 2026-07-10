@@ -7841,7 +7841,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.25',
+    BUILD_VERSION: '1.15.26',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -17659,12 +17659,25 @@ new Vue({
     },
     /* 通常の戦闘宣言時（プレイヤーが最初に攻撃対象を選ぶ時）専用の判定。
        相手のタップ済みレガシーのみ戦闘対象にできる（アンタップ状態のレガシーは対象にできない）。
-       「アンタップされていないレガシーと戦闘できる」等の特殊能力を持つ攻撃側は例外として許可する。
+       「アンタップ〜と戦闘できる／可能」等の特殊能力を持つ攻撃側は例外として許可する。
        守護による対象変更はこの制約の対象外（守護は未タップであることが前提のため）。 */
     battleCanDeclareAttackTarget(attacker, defender) {
       if (!defender) return false;
-      if (!defender._tapped && !this.battleCardHasKeyword(attacker, 'アンタップされていないレガシーと戦闘できる')) return false;
+      if (!defender._tapped && !this._battleCanAttackUntappedTargets(attacker)) return false;
       return this.battleCanTargetLegacy(attacker, defender);
+    },
+    /* このカードにアンタップ状態の相手レガシーを攻撃対象にできる特殊能力が付与されているか。
+       effect_spec.json側の文言は「アンタップ相手とも戦闘可能」「このターン:アンタップ相手
+       レガシーとも戦闘可能」等カードごとに揺れがある（固定の1文と完全一致でしか判定して
+       いなかったため、該当するどのカードも実際には発動していなかった）。文言の揺れに
+       決め打ちせず、「アンタップ」の後に「戦闘」＋「できる/可能」が続くという意味的な
+       パターンで判定する（例：#67ヴィリデ②、#80アヤト、忠義の一刀、K4タケミカヅチ神技1）。 */
+    _battleCanAttackUntappedTargets(card) {
+      if (!card) return false;
+      const grants = []
+        .concat(Array.isArray(card._kwGrant) ? card._kwGrant : [])
+        .concat(Array.isArray(card._staticKwGrant) ? card._staticKwGrant : []);
+      return grants.some(g => /アンタップ.{0,15}戦闘.{0,10}(できる|可能)/.test(String(g)));
     },
     /* フィールド表示用：このカードが【拘束】中かどうか（縄アイコン表示に使用） */
     battleCardIsBound(card, side) {
