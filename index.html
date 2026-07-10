@@ -729,10 +729,11 @@
   .deck-item .name { flex: 0 1 auto; font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .deck-item .name small { display: block; color: #9aa; font-size: 10px; }
   .deck-item .qty {
-    display: flex; align-items: center; gap: 4px;
+    display: flex; align-items: center; gap: 4px; flex-shrink: 0;
     background: rgba(0,0,0,0.4); border-radius: 3px; padding: 2px;
     margin-left: auto;
   }
+  .deck-item .qty button { flex-shrink: 0; }
   .deck-item .qty-returned { margin-left: auto; }
   .deck-item .qty button {
     width: 22px; height: 22px; border: none; border-radius: 2px;
@@ -7837,7 +7838,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.20',
+    BUILD_VERSION: '1.15.21',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -14387,6 +14388,25 @@ new Vue({
       this.$set(bs, 'self', bs.opp);
       this.$set(bs, 'opp', tmp);
       this.$set(bs, 'activeSide', bs.activeSide === 'self' ? 'opp' : 'self');
+      // self/oppはオブジェクト参照ごと入れ替わるため、ライフ/マナ/天力/封印のカウントアップ表示
+      // watcher（battleSample.self.life等）も「値が変わった」と誤検知し、実際には起きていない
+      // 変化をアニメーションしてしまう（例：CPU戦の入れ替え中に自分のライフ表示が一瞬相手の値になる）。
+      // 入れ替え直後に表示を実データへ即座に同期し、アニメーションさせないようにする。
+      this._battleSyncStatDisplayForSwap();
+    },
+    // self/opp入れ替え直後：カウントアップ表示をアニメーションなしで実データへ即時同期する
+    _battleSyncStatDisplayForSwap() {
+      const bs = this.battleSample;
+      ['self', 'opp'].forEach(side => {
+        const p = bs[side];
+        if (!p) return;
+        ['life', 'mana', 'tenryoku', 'seal'].forEach(key => {
+          const dispKey = side + key.charAt(0).toUpperCase() + key.slice(1);
+          this.$set(this.battleStatDisplay, dispKey, p[key]);
+        });
+      });
+      // 表示中の増減ポップ（+n/-n）もswapによる見かけ上の変化のため消しておく
+      this.battleStatPops = {};
     },
     async _dslOpGrant(act, sourceCard, permanent) {
       const targets = await this.dslChooseTargets(this._dslMergeActNumRef(act.対象, act), `【${(act.付与 || []).join('・')}】を付与`);
