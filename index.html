@@ -7838,7 +7838,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.22',
+    BUILD_VERSION: '1.15.23',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -11654,7 +11654,7 @@ new Vue({
         target.manaMax = Math.max(0, Math.min(10, next));   // マナ最大値は 10 まで
         if (target.mana > target.manaMax) target.mana = target.manaMax;
       }
-      else if (key === 'tenryoku') target.tenryoku = Math.max(0, next);
+      else if (key === 'tenryoku') target.tenryoku = Math.max(0, Math.min(10, next)); // 天力は10が上限
       else if (key === 'seal' && target.seal !== null) {
         target.seal = Math.max(0, Math.min(8, next));
         await this._battleHandleSealThreshold(side, previous, target.seal);
@@ -11698,7 +11698,7 @@ new Vue({
     _battleKamiGainTenryoku(side, n, reason) {
       const p = this.battleSample[side];
       if (!p || !n) return;
-      p.tenryoku = (Number(p.tenryoku) || 0) + n;
+      p.tenryoku = Math.max(0, Math.min(10, (Number(p.tenryoku) || 0) + n)); // 天力は10が上限
       const kamiName = p.kami ? this.fullName(p.kami) : 'カミ';
       this.battleShowNotice(
         `天力トリガー：${reason}`,
@@ -15347,7 +15347,8 @@ new Vue({
       const p = this.battleSample[side];
       if (!p) return;
       this.battleSaveUndo();
-      p[key] = Math.max(0, (Number(p[key]) || 0) + n);
+      const next = Math.max(0, (Number(p[key]) || 0) + n);
+      p[key] = key === 'tenryoku' ? Math.min(10, next) : next; // 天力は10が上限
       this.battleShowNotice('天力変化', `${side === 'opp' ? '相手' : '自分'}の天力が ${n >= 0 ? '+' : ''}${n} (現在 ${p[key]})`);
     },
     _dslOpLife(act, sourceCard) {
@@ -21160,9 +21161,17 @@ new Vue({
       this._sfxPlay('cancel');
       this.selectedKami = null;
     },
-    // 拡大モードを解除してカードリストをカミでフィルタ
+    // 拡大モードを解除してカードリストをカミだけの表示にする
+    // （種別以外の絞り込みが残っていると該当カミが埋もれてしまうため、全フィルタを解除してから適用する）
     openKamiFilter() {
       this.deckExpanded = false;
+      this.searchText = "";
+      this.filterKeyword = "";
+      this.filterColor = "";
+      this.filterType = "";
+      this.filterReturn = "";
+      this.filterCost = "";
+      this.filterRound = "";
       this.filterCategory = "カミ";
     },
     // 解除管理用キー（カミと通常カードのNo重複を避ける）
