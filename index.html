@@ -7875,7 +7875,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.30',
+    BUILD_VERSION: '1.15.31',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -13656,8 +13656,11 @@ new Vue({
       }
       return null;
     },
-    /* 汎用対象選択：プレイヤー手動 or 自動 */
-    dslChooseTargets(sel, promptLabel) {
+    /* 汎用対象選択：プレイヤー手動 or 自動
+       opts.preferOpponent: true の場合、対象側:both（自分・相手どちらも対象にできる）の効果を
+       CPUが自動解決する際、相手側の候補を優先する（破壊/タップ/崩壊/補正-/手札に戻す等の
+       妨害効果で、自分のカードを対象にしてしまう不具合の対策。呼び出し元の各_dslOp*から渡す）。 */
+    dslChooseTargets(sel, promptLabel, opts = {}) {
       if (!sel) return Promise.resolve([]);
       // 自身指定
       if (sel.自身) {
@@ -13728,6 +13731,15 @@ new Vue({
         let ranked = pool;
         if (sel.対象側 === 'opp' && pool.every(c => c && c.category === 'レガシー')) {
           ranked = pool.slice().sort((a, b) => (Number(b.power) || 0) - (Number(a.power) || 0));
+        } else if (sel.対象側 === 'both' && opts.preferOpponent) {
+          // 妨害系効果（破壊/タップ/崩壊/補正-/手札に戻す等）で自分・相手どちらも対象にできる場合、
+          // 自分のカードを誤って対象にしないよう相手側の候補のみに絞り込む。
+          // 相手側に候補が1枚も無ければ、自分を傷つけてまで発動する意味がないため見送る。
+          const oppOnly = pool.filter(c => this._battleFieldCardSide(c) === 'opp');
+          if (!oppOnly.length) return Promise.resolve([]);
+          ranked = oppOnly.every(c => c && c.category === 'レガシー')
+            ? oppOnly.slice().sort((a, b) => (Number(b.power) || 0) - (Number(a.power) || 0))
+            : oppOnly;
         }
         return Promise.resolve(ranked.slice(0, Math.min(need, ranked.length)));
       }
@@ -14505,7 +14517,9 @@ new Vue({
       return this._dslToTrueSide((this.battleSample && this.battleSample.activeSide) || 'self');
     },
     async _dslOpGrant(act, sourceCard, permanent) {
-      const targets = await this.dslChooseTargets(this._dslMergeActNumRef(act.対象, act), `【${(act.付与 || []).join('・')}】を付与`);
+      // 【補正-N】等の負の補正はデバフ（妨害）のため、対象側:both時はCPU自動解決で相手側を優先する
+      const isHarmfulGrant = (act.付与 || []).some(g => /^補正[:：]?-\d+$/.test(String(g)));
+      const targets = await this.dslChooseTargets(this._dslMergeActNumRef(act.対象, act), `【${(act.付与 || []).join('・')}】を付与`, isHarmfulGrant ? { preferOpponent: true } : {});
       if (!targets.length) return;
       this.battleSaveUndo();
       const baseGrants = this._dslResolveDynamicGrantAmounts(act);
@@ -14584,7 +14598,7 @@ new Vue({
           ? `戦闘力${refVal}以下のレガシーを選択（破壊）`
           : destroyPrompt;
       }
-      const targets = await this.dslChooseTargets(destroySel, destroyPrompt);
+      const targets = await this.dslChooseTargets(destroySel, destroyPrompt, { preferOpponent: true });
       if (!targets.length) return;
       this.battleSaveUndo();
       this._dslLastDestroyedCards = targets.map(card => ({
@@ -14647,7 +14661,7 @@ new Vue({
       const returnSel = this._dslMergeActNumRef((act.対象 && !act.対象.対象側 && !act.対象.自陣全体 && !act.対象.自身)
         ? Object.assign({}, act.対象, { 対象側: 'both' })
         : act.対象, act);
-      const targets = await this.dslChooseTargets(returnSel, '手札に戻す対象を選択');
+      const targets = await this.dslChooseTargets(returnSel, '手札に戻す対象を選択', { preferOpponent: true });
       if (!targets.length) return;
       this.battleSaveUndo();
       const defaultSide = (act.対象 && act.対象.対象側 === 'opp') ? 'opp' : 'self';
@@ -14691,7 +14705,7 @@ new Vue({
     async _dslOpCrumble(act, sourceCard) {
       // 「レガシーを崩壊させる」等、絞込の指定がない崩壊効果はレガシー・レリック両方を対象にする
       const crumbleSel = this._dslDefaultBothCategoriesIfUnrestricted(act.対象);
-      const targets = await this.dslChooseTargets(crumbleSel, '崩壊させる対象を選択');
+      const targets = await this.dslChooseTargets(crumbleSel, '崩壊させる対象を選択', { preferOpponent: true });
       if (!targets.length) return;
       this.battleSaveUndo();
       // 数参照用コンテキスト
@@ -14717,7 +14731,8 @@ new Vue({
       const tapSel = this._dslMergeActNumRef((act.対象 && !act.対象.対象側 && !act.対象.自陣全体 && !act.対象.自身)
         ? Object.assign({}, act.対象, { 対象側: 'both' })
         : act.対象, act);
-      const targets = await this.dslChooseTargets(tapSel, doTap ? 'タップする対象を選択' : 'アンタップする対象を選択');
+      // タップ（妨害）は相手のカードを優先。アンタップは基本的に自分の利益になる行動のため優先付けしない
+      const targets = await this.dslChooseTargets(tapSel, doTap ? 'タップする対象を選択' : 'アンタップする対象を選択', doTap ? { preferOpponent: true } : {});
       if (!targets.length) { this._dslLastActionSucceeded = false; return; }
       // 期間:このターン終了時 のアンタップ（例：K8アマテラス神技1「照護」）は即時実行せず、このターンの終了時まで予約する
       if (!doTap && act.期間 === 'このターン終了時') {
