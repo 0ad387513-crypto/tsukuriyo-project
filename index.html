@@ -7875,7 +7875,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.28',
+    BUILD_VERSION: '1.15.29',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -15039,23 +15039,26 @@ new Vue({
         this.battleShowNotice('他効果発動：手動確認', `対象効果を自動判定できませんでした。\n${targetText}`, sourceCard ? [sourceCard] : []);
         return;
       }
-      const selector = {
-        対象側: 'self',
-        領域: /墓地/.test(targetText) ? 'graveyard' : 'field',
-        絞込: ['レガシー'],
-        枚数: 1,
-        選択者: 'player',
-        備考: /他の/.test(targetText) ? 'このカード以外' : '',
-      };
-      const targets = await this.dslChooseTargets(selector, `${trigger}効果を発動するレガシーを選択`);
+      // 選択肢は【${trigger}】を実際に持つレガシーのみに絞り込む（例：#62幽玄の面霊姫①「自分レガシーの
+      // 死亡時効果」）。従来は場/墓地の自分レガシー全体から選ばせ、選んだ後に持っていなければ
+      // 「手動確認」扱いにしていたが、そもそも対象外のカードを選べてしまうこと自体が不具合のため。
+      const self = this.battleSample.self;
+      const pool = (/墓地/.test(targetText) ? (self.graveyard || []) : (self.legacies || []));
+      const excludeSelf = /他の/.test(targetText);
+      const candidates = pool.filter(card => {
+        if (!card || card.category !== 'レガシー') return false;
+        if (excludeSelf && card === sourceCard) return false;
+        return this.effectSpecsReady && this.dslHasSpecForTrigger(card, trigger);
+      });
+      if (!candidates.length) {
+        this.battleShowNotice('他効果発動', `【${trigger}】効果を持つ対象のレガシーがありません。`, sourceCard ? [sourceCard] : []);
+        return;
+      }
+      const targets = await this.dslAskCustomTargets(`${trigger}効果を発動するレガシーを選択`, candidates, 1, sourceCard);
       if (!targets.length) return;
       const card = targets[0];
-      if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, trigger)) {
-        await this.dslRunSpec(card, trigger, null);
-        this.battleShowNotice('他効果発動', `「${this.fullName(card)}」の【${trigger}】効果を発動しました。`, [card]);
-      } else {
-        this.battleShowNotice('他効果発動：手動確認', `「${this.fullName(card)}」の【${trigger}】効果は自動処理できませんでした。カード本文に従って手動で処理してください。`, [card]);
-      }
+      await this.dslRunSpec(card, trigger, null);
+      this.battleShowNotice('他効果発動', `「${this.fullName(card)}」の【${trigger}】効果を発動しました。`, [card]);
     },
     async _dslOpPublicNotice(act, sourceCard) {
       // 対象指定がある場合（例：カシマ「レリック1枚を手札から見せる」）は、通常の対象選択と同様に
