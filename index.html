@@ -1198,53 +1198,73 @@
   .top-menu-btn.shield:hover { background: linear-gradient(135deg, #5a4a7a, #7a4a9a); }
   .top-menu-btn.game { background: linear-gradient(135deg, #2a5a4a, #2a7a5a); border-color: #5abb8a; }
   .top-menu-btn.game:hover { background: linear-gradient(135deg, #3a6a5a, #3a8a6a); }
-  /* トップ画面：主要モードカード（4枚グリッド） */
+  /* トップ画面：主要モードカード（4枚均等グリッド。サムネイル画像＋ラベルのみ、詳しい説明は
+     モード詳細画面側に譲る） */
   .top-mode-grid {
     position: relative; z-index: 1;
-    display: grid; grid-template-columns: 1fr 1fr 1fr;
-    grid-template-areas: "game game game" "deck shield construct";
-    gap: 16px; width: min(760px, 92vw); margin-bottom: 28px;
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 16px; width: min(920px, 94vw); margin-bottom: 28px;
   }
-  @media (max-width: 560px) {
-    .top-mode-grid { grid-template-columns: 1fr; grid-template-areas: "game" "deck" "shield" "construct"; }
+  @media (max-width: 700px) {
+    .top-mode-grid { grid-template-columns: repeat(2, 1fr); }
   }
   .top-mode-card {
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
-    padding: 24px 14px; border-radius: 12px; cursor: pointer; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    padding: 14px; border-radius: 12px; cursor: pointer; text-align: center;
     color: #fff; border: 1px solid #2e3548;
     background: linear-gradient(160deg, #2a3550, #1a2540);
     transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
-    min-width: 0; /* グリッド内で内容（説明文の折り返し不可幅）に押されて列幅が不揃いになるのを防ぐ */
+    min-width: 0;
   }
   .top-mode-card:hover {
     transform: translateY(-3px); box-shadow: 0 8px 28px rgba(220, 159, 80, 0.22);
     border-color: #8a95b5;
   }
-  .top-mode-icon { font-size: 30px; line-height: 1; }
-  .genesis-globe-icon { display: inline-block; vertical-align: -0.15em; }
-  .top-mode-label { font-size: 16px; font-weight: 800; letter-spacing: 0.03em; }
-  .top-mode-desc { font-size: 11px; color: #aab; word-break: keep-all; overflow-wrap: anywhere; }
-  .top-mode-card.deck { grid-area: deck; background: linear-gradient(160deg, #2a3a5a, #1a2a4a); padding: 16px 12px; }
-  .top-mode-card.deck:hover { border-color: #7a9ad0; }
-  .top-mode-card.deck .top-mode-icon { font-size: 22px; }
-  .top-mode-card.deck .top-mode-label { font-size: 13px; }
-  .top-mode-card.shield { grid-area: shield; background: linear-gradient(160deg, #4a3a6a, #362854); padding: 16px 12px; }
-  .top-mode-card.shield:hover { border-color: #b090e0; }
-  .top-mode-card.shield .top-mode-icon { font-size: 22px; }
-  .top-mode-card.shield .top-mode-label { font-size: 13px; }
-  .top-mode-card.construct { grid-area: construct; background: linear-gradient(160deg, #6a4a2a, #543a1e); padding: 16px 12px; }
-  .top-mode-card.construct:hover { border-color: #e0b070; }
-  .top-mode-card.construct .top-mode-icon { font-size: 22px; }
-  .top-mode-card.construct .top-mode-label { font-size: 13px; }
-  .top-mode-card.game {
-    grid-area: game; background: linear-gradient(160deg, #2a5a4a, #1e4438);
-    padding: 34px 20px; border-width: 2px; border-color: #4a9a72;
-    box-shadow: 0 0 24px rgba(90, 187, 138, 0.18);
+  .top-mode-thumb {
+    width: 100%; aspect-ratio: 1 / 1; border-radius: 10px;
+    background-color: #10131c; background-size: cover; background-position: center;
+    border: 1px solid rgba(255,255,255,0.12);
   }
-  .top-mode-card.game:hover { border-color: #7ad0a8; box-shadow: 0 10px 34px rgba(90, 187, 138, 0.32); }
-  .top-mode-card.game .top-mode-icon { font-size: 42px; }
-  .top-mode-card.game .top-mode-label { font-size: 21px; }
-  .top-mode-card.game .top-mode-desc { font-size: 13px; }
+  .top-mode-label { font-size: 15px; font-weight: 800; letter-spacing: 0.03em; }
+  .genesis-globe-icon { display: inline-block; vertical-align: -0.15em; } /* 創世決戦ロビー見出し等で使用 */
+  /* ===== モード詳細画面：TOPのモードタイルをクリックした遷移先（画像＋説明＋開始ボタン） ===== */
+  .mode-detail-back {
+    position: absolute; top: 18px; left: 18px; z-index: 2;
+    padding: 8px 16px; border-radius: 8px; cursor: pointer;
+    color: #fff; border: 1px solid #3a4258; background: rgba(20,24,36,0.7);
+    font-size: 13px; font-weight: 700;
+  }
+  .mode-detail-back:hover { border-color: #8a95b5; background: rgba(30,36,52,0.85); }
+  .mode-detail-panel {
+    position: relative; z-index: 1;
+    display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; justify-content: center;
+    width: min(1000px, 94vw); margin-top: 24px;
+  }
+  .mode-detail-left { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(420px, 90vw); }
+  .mode-detail-title { font-size: 22px; font-weight: 800; color: #ffe9a8; letter-spacing: 0.04em; text-align: center; }
+  .mode-detail-image {
+    width: 100%; aspect-ratio: 1 / 1; border-radius: 14px;
+    background-color: #10131c; background-size: cover; background-position: center;
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  }
+  .mode-detail-right {
+    flex: 1 1 320px; min-width: 280px; max-width: 460px;
+    display: flex; flex-direction: column; gap: 14px; padding-top: 8px;
+  }
+  .mode-detail-desc-heading { font-size: 20px; font-weight: 800; color: #fff; }
+  .mode-detail-desc-body { font-size: 14px; line-height: 1.8; color: #cdd3e0; white-space: pre-wrap; }
+  .mode-detail-start-btn {
+    margin-top: auto; padding: 16px 20px; border-radius: 10px; cursor: pointer;
+    font-size: 16px; font-weight: 800; letter-spacing: 0.04em; color: #fff;
+    background: linear-gradient(135deg, #2a5a4a, #2a7a5a); border: 1px solid #5abb8a;
+    transition: transform 0.12s, box-shadow 0.12s;
+  }
+  .mode-detail-start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(90,187,138,.35); }
+  @media (max-width: 700px) {
+    .mode-detail-panel { flex-direction: column; align-items: center; }
+    .mode-detail-right { max-width: min(420px, 90vw); }
+  }
   /* トップ画面：開発者・動作確認用ツール（折りたたみ） */
   .top-devtools { position: relative; z-index: 1; width: min(420px, 92vw); }
   .top-devtools-toggle {
@@ -4194,46 +4214,21 @@
       <button class="top-resume-btn" @click="resumeActiveSession">↩ 戻る</button>
     </div>
     <div class="top-mode-grid">
-      <button class="top-mode-card deck" @click="goToCardlist">
-        <span class="top-mode-icon">📖</span>
+      <button class="top-mode-card" @click="goToCardlist">
+        <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/cardlist.png)' }"></span>
         <span class="top-mode-label">カードリスト</span>
-        <span class="top-mode-desc">デッキ構築・カード検索</span>
       </button>
-      <button class="top-mode-card game" @click="goToGame">
-        <span class="top-mode-icon">
-          <svg class="genesis-globe-icon" viewBox="0 0 64 64" width="1em" height="1em" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <radialGradient id="ggGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#fff6c8" stop-opacity="0.95"/>
-                <stop offset="55%" stop-color="#ffe27a" stop-opacity="0.4"/>
-                <stop offset="100%" stop-color="#ffe27a" stop-opacity="0"/>
-              </radialGradient>
-              <linearGradient id="ggEarth" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#7ad4ff"/>
-                <stop offset="100%" stop-color="#2a5ea8"/>
-              </linearGradient>
-            </defs>
-            <circle cx="32" cy="32" r="30" fill="url(#ggGlow)"/>
-            <circle cx="32" cy="32" r="17" fill="url(#ggEarth)"/>
-            <path d="M18 26c3-4 8-5 11-2s7 1 9-2" stroke="#bff0c0" stroke-width="2" fill="none" opacity="0.85"/>
-            <path d="M21 39c4 3 9 3 13-1" stroke="#bff0c0" stroke-width="2" fill="none" opacity="0.75"/>
-            <ellipse cx="18" cy="19" rx="8" ry="3.4" fill="#fff" opacity="0.9"/>
-            <ellipse cx="45" cy="41" rx="7" ry="3" fill="#fff" opacity="0.8"/>
-            <ellipse cx="47" cy="21" rx="5" ry="2.2" fill="#fff" opacity="0.7"/>
-          </svg>
-        </span>
+      <button class="top-mode-card" @click="openModeDetail('game')">
+        <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/genesis4p.png)' }"></span>
         <span class="top-mode-label">創世決戦</span>
-        <span class="top-mode-desc">4人でドラフト〜星戦。CPUを交えれば2人からでも対戦可能（星戦は人間同士で3回行います）</span>
       </button>
-      <button class="top-mode-card shield" @click="goToShield">
-        <span class="top-mode-icon">⚔</span>
-        <span class="top-mode-label">星紡ぎ戦</span>
-        <span class="top-mode-desc">2人・パックを開封してその場で<wbr>デッキを組み対戦</span>
-      </button>
-      <button class="top-mode-card construct" @click="goToConstruct">
-        <span class="top-mode-icon">📜</span>
+      <button class="top-mode-card" @click="openModeDetail('construct')">
+        <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/construct2p.png)' }"></span>
         <span class="top-mode-label">理念構築戦</span>
-        <span class="top-mode-desc">2人・全カードから自由に35枚の<wbr>デッキを組んで対戦</span>
+      </button>
+      <button class="top-mode-card" @click="openModeDetail('shield')">
+        <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/shield2p.png)' }"></span>
+        <span class="top-mode-label">星紡ぎ戦</span>
       </button>
     </div>
     <div class="top-devtools">
@@ -4272,6 +4267,26 @@
       </div>
     </div>
     <div class="top-menu-footer">v{{ BUILD_VERSION }}</div>
+  </div>
+  </transition>
+
+  <!-- ===== モード詳細画面（TOPのモードタイルをクリックした遷移先。画像＋説明＋開始ボタン） ===== -->
+  <transition name="top-menu-fade">
+  <div v-if="appView === 'modeDetail' && modeDetailInfo" class="top-menu">
+    <span v-for="i in 16" :key="'mdPetal'+i" class="top-menu-petal"
+          :style="{ left: ((i*61)%100) + '%', animationDelay: ((i%7)*0.9) + 's', animationDuration: (9 + (i%5)*1.6) + 's' }"></span>
+    <button class="mode-detail-back" @click="modeDetailBack">◀ トップへ戻る</button>
+    <div class="mode-detail-panel">
+      <div class="mode-detail-left">
+        <div class="mode-detail-title">{{ modeDetailInfo.title }}</div>
+        <div class="mode-detail-image" :style="{ backgroundImage: 'url(' + modeDetailInfo.image + ')' }"></div>
+      </div>
+      <div class="mode-detail-right">
+        <div class="mode-detail-desc-heading">詳しい説明</div>
+        <div class="mode-detail-desc-body">{{ modeDetailInfo.desc }}</div>
+        <button class="mode-detail-start-btn" @click="modeDetailStart">{{ modeDetailInfo.startLabel }}</button>
+      </div>
+    </div>
   </div>
   </transition>
 
@@ -7840,6 +7855,28 @@ const EMOTE_TYPES = [
   { key: "boast",     emoji: "🔥", label: "大見栄" },
 ];
 
+// TOP画面のモードタイル→詳細画面（画像＋説明＋開始ボタン）の内容。カードリストは詳細画面を挟まず直接遷移する
+const MODE_DETAIL_INFO = {
+  game: {
+    title: '創世決戦（4人対戦）',
+    image: 'top_mode_icons/genesis4p.png',
+    desc: '4人（CPUを交えれば2人からでも対戦可能）でロビーに集まり、①神託の儀でカミを選び、②選別の儀でパックを取り合ってデッキ候補を集め、③深化の刻で必要な分だけデッキに残し、④星戦（人間同士の対戦）を3回行い、⑤終戦で星魂を集計して順位を決めます。',
+    startLabel: '創世決戦を開始する',
+  },
+  construct: {
+    title: '理念構築戦（2人対戦）',
+    image: 'top_mode_icons/construct2p.png',
+    desc: '2人で対戦するモードです。パックのドラフトは行わず、全カードプールの中から自由に35枚のデッキを組み立てて対戦できます。あらかじめ用意されたストラクチャーデッキを使うこともできます。',
+    startLabel: '理念構築戦を開始する',
+  },
+  shield: {
+    title: '星紡ぎ戦（2人対戦）',
+    image: 'top_mode_icons/shield2p.png',
+    desc: '2人で部屋を作り、①パックを交互に選んで48枚集め、②その中から8枚を除外して40枚のデッキを確定し、③カミを選び、④その場で対戦します。対戦後は「同じデッキで再戦する」か「パック選択からやり直す」かを選べます。',
+    startLabel: '星紡ぎ戦を開始する',
+  },
+};
+
 /* ================================================================== */
 /* キーワード能力辞書（クリックでポップアップ表示）                     */
 /* ================================================================== */
@@ -8236,7 +8273,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.48',
+    BUILD_VERSION: '1.15.49',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8314,6 +8351,7 @@ new Vue({
     poolDragCard: null,       // カードリストからドラッグ中のカード（デッキ欄へドロップで追加）
     glossaryModalOpen: false, // TOP画面のキーワード集モーダル
     howToPlayModalOpen: false, // TOP画面の遊び方ガイドモーダル
+    modeDetailKey: null, // TOP画面のモード詳細画面（appView==='modeDetail'）：'game'|'construct'|'shield'。MODE_DETAIL_INFOのキー
     battleHistoryModalOpen: false, // TOP画面の戦績・対戦履歴モーダル
     battleHistoryList: [],          // 表示中の対戦履歴一覧（localStorageから読み込み）
     bgmLoopTesterOpen: false, // BGMループ調整ツール（開発用）の開閉
@@ -8604,6 +8642,10 @@ new Vue({
       if (kind === 'レガシー') return 'レガシー展開';
       if (kind === 'レリック') return 'レリック設置';
       return 'オラクル発動';
+    },
+    // TOP画面のモード詳細画面：現在選択中のモードの表示内容（MODE_DETAIL_INFO参照）
+    modeDetailInfo() {
+      return MODE_DETAIL_INFO[this.modeDetailKey] || null;
     },
     // エモートホイール：EMOTE_TYPES（6件）を中心から均等な円状に配置するための座標を計算
     emoteWheelItems() {
@@ -9850,6 +9892,25 @@ new Vue({
       this._sfxPlay('menuselect');
       this.appView = 'cardlist';
       this.sbPreBattleReturn = false;
+    },
+    // TOP画面のモードタイル（創世決戦/理念構築戦/星紡ぎ戦）をクリック → 画像＋説明＋開始ボタンの詳細画面へ
+    openModeDetail(key) {
+      if (!MODE_DETAIL_INFO[key]) return;
+      this._sfxPlay('menuselect');
+      this.modeDetailKey = key;
+      this.appView = 'modeDetail';
+    },
+    // モード詳細画面の「◯◯を開始する」：従来の各モード開始処理へそのまま引き継ぐ
+    modeDetailStart() {
+      const key = this.modeDetailKey;
+      if (key === 'game') this.goToGame();
+      else if (key === 'shield') this.goToShield();
+      else if (key === 'construct') this.goToConstruct();
+    },
+    modeDetailBack() {
+      this._sfxPlay('cancel');
+      this.appView = 'top';
+      this.modeDetailKey = null;
     },
     async ensureBattleAssetsLoaded() {
       const jobs = [];
