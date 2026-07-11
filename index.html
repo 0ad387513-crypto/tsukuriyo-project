@@ -1146,6 +1146,10 @@
     display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
     padding: 56px 20px 40px; z-index: 50; overflow-y: auto; overflow-x: hidden;
   }
+  .top-menu.top-menu-home {
+    justify-content: center; padding: clamp(16px, 2.4vh, 30px) clamp(18px, 2vw, 38px);
+    overflow: hidden;
+  }
   /* TOP画面から他画面へ遷移する際、ゆっくりフェードアウトさせる（leave中は最前面に固定して
      4人対戦/シールド戦のような高z-indexのオーバーレイの上からでも確実にフェードが見えるようにする） */
   .top-menu-fade-enter-active { transition: opacity .5s ease; }
@@ -1158,7 +1162,7 @@
     border-radius: 0 100% 0 100%; opacity: 0; pointer-events: none; z-index: 0;
     animation-name: victoryPetalFallKf; animation-timing-function: linear; animation-iteration-count: infinite;
   }
-  .top-menu-hero { position: relative; z-index: 1; margin-bottom: 20px; }
+  .top-menu-hero { position: relative; z-index: 1; margin-bottom: clamp(10px, 1.8vh, 20px); }
   .top-menu-title {
     font-size: 42px; font-weight: 800; letter-spacing: 0.08em;
     color: #e0d4a0; margin-bottom: 12px; text-align: center;
@@ -1203,14 +1207,14 @@
   .top-mode-grid {
     position: relative; z-index: 1;
     display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: 16px; width: min(920px, 94vw); margin-bottom: 28px;
+    gap: clamp(12px, 1.3vw, 22px); width: min(1500px, 97vw); margin-bottom: clamp(12px, 1.8vh, 22px);
   }
   @media (max-width: 700px) {
     .top-mode-grid { grid-template-columns: repeat(2, 1fr); }
   }
   .top-mode-card {
     display: flex; flex-direction: column; align-items: center; gap: 10px;
-    padding: 14px; border-radius: 12px; cursor: pointer; text-align: center;
+    padding: clamp(10px, 1.2vw, 18px); border-radius: 14px; cursor: pointer; text-align: center;
     color: #fff; border: 1px solid #2e3548;
     background: linear-gradient(160deg, #2a3550, #1a2540);
     transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
@@ -1221,11 +1225,11 @@
     border-color: #8a95b5;
   }
   .top-mode-thumb {
-    width: 100%; aspect-ratio: 1 / 1; border-radius: 10px;
+    width: 100%; aspect-ratio: 1 / 1; max-height: min(61vh, 560px); border-radius: 10px;
     background-color: #10131c; background-size: cover; background-position: center;
     border: 1px solid rgba(255,255,255,0.12);
   }
-  .top-mode-label { font-size: 15px; font-weight: 800; letter-spacing: 0.03em; }
+  .top-mode-label { font-size: clamp(16px, 1.25vw, 22px); font-weight: 800; letter-spacing: 0.03em; }
   .genesis-globe-icon { display: inline-block; vertical-align: -0.15em; } /* 創世決戦ロビー見出し等で使用 */
   /* ===== モード詳細画面：TOPのモードタイルをクリックした遷移先（画像＋説明＋開始ボタン） ===== */
   .mode-detail-back {
@@ -1238,22 +1242,22 @@
   .mode-detail-panel {
     position: relative; z-index: 1;
     display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; justify-content: center;
-    width: min(1000px, 94vw); margin-top: 24px;
+    width: min(1500px, 96vw); margin-top: 8px;
   }
-  .mode-detail-left { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(420px, 90vw); }
+  .mode-detail-left { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(620px, 46vw); }
   .mode-detail-title { font-size: 22px; font-weight: 800; color: #ffe9a8; letter-spacing: 0.04em; text-align: center; }
   .mode-detail-image {
-    width: 100%; aspect-ratio: 1 / 1; border-radius: 14px;
+    width: min(100%, 62vh); aspect-ratio: 1 / 1; border-radius: 14px;
     background-color: #10131c; background-size: cover; background-position: center;
     border: 1px solid rgba(255,255,255,0.15);
     box-shadow: 0 10px 30px rgba(0,0,0,.5);
   }
   .mode-detail-right {
-    flex: 1 1 320px; min-width: 280px; max-width: 460px;
+    flex: 1 1 420px; min-width: 320px; max-width: 660px;
     display: flex; flex-direction: column; gap: 14px; padding-top: 8px;
   }
   .mode-detail-desc-heading { font-size: 20px; font-weight: 800; color: #fff; }
-  .mode-detail-desc-body { font-size: 14px; line-height: 1.8; color: #cdd3e0; white-space: pre-wrap; }
+  .mode-detail-desc-body { font-size: clamp(15px, 1.05vw, 18px); line-height: 1.9; color: #cdd3e0; white-space: pre-line; word-break: normal; overflow-wrap: anywhere; }
   .mode-detail-start-btn {
     margin-top: auto; padding: 16px 20px; border-radius: 10px; cursor: pointer;
     font-size: 16px; font-weight: 800; letter-spacing: 0.04em; color: #fff;
@@ -1273,6 +1277,7 @@
   }
   .top-devtools-toggle:hover { color: #cdd6e6; border-color: #5a6580; }
   .top-devtools-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+  .devtools-screen { justify-content: flex-start; overflow-y: auto; }
   .top-menu-footer {
     position: relative; z-index: 1;
     margin-top: 32px; font-size: 11px; color: #677; letter-spacing: 0.04em;
@@ -4202,7 +4207,7 @@
 
   <!-- ===== ツクリヨオンライン トップメニュー ===== -->
   <transition name="top-menu-fade">
-  <div v-if="appView === 'top'" class="top-menu">
+  <div v-if="appView === 'top'" class="top-menu top-menu-home">
     <span v-for="i in 16" :key="'topPetal'+i" class="top-menu-petal"
           :style="{ left: ((i*61)%100) + '%', animationDelay: ((i%7)*0.9) + 's', animationDuration: (9 + (i%5)*1.6) + 's' }"></span>
     <div class="top-menu-hero">
@@ -4214,7 +4219,7 @@
       <button class="top-resume-btn" @click="resumeActiveSession">↩ 戻る</button>
     </div>
     <div class="top-mode-grid">
-      <button class="top-mode-card" @click="goToCardlist">
+      <button class="top-mode-card" @click="openModeDetail('cardlist')">
         <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/cardlist.png)' }"></span>
         <span class="top-mode-label">カードリスト</span>
       </button>
@@ -4232,10 +4237,24 @@
       </button>
     </div>
     <div class="top-devtools">
-      <button class="top-devtools-toggle" @click="_sfxPlay('cancel'); topDevToolsOpen = !topDevToolsOpen">
-        🔧 動作確認用ツール（対戦テスト・α版） {{ topDevToolsOpen ? '▲' : '▼' }}
+      <button class="top-devtools-toggle" @click="openDevToolsScreen">
+        🔧 動作確認用ツール（対戦テスト・α版）
       </button>
-      <div v-if="topDevToolsOpen" class="top-devtools-buttons">
+    </div>
+    <div class="top-menu-footer">v{{ BUILD_VERSION }}</div>
+  </div>
+  </transition>
+
+  <!-- ===== 動作確認用ツール専用画面 ===== -->
+  <transition name="top-menu-fade">
+  <div v-if="appView === 'devTools'" class="top-menu devtools-screen">
+    <button class="mode-detail-back" @click="modeDetailBack">◀ トップへ戻る</button>
+    <div class="top-menu-hero">
+      <div class="top-menu-title" style="font-size:32px;">動作確認用ツール</div>
+      <div class="top-menu-subtitle">対戦テスト・α版・管理機能</div>
+    </div>
+    <div class="top-devtools">
+      <div class="top-devtools-buttons">
         <button class="top-menu-btn" style="background:linear-gradient(135deg,#5a3030,#7a3050);border-color:#bb6a8a;" @click="goToBattle">⚔ 対戦画面(α)</button>
         <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(true)">🌐 対戦テスト：作成（2人同期確認）</button>
         <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(false)">🌐 対戦テスト：参加（コード入力）</button>
@@ -7855,24 +7874,30 @@ const EMOTE_TYPES = [
   { key: "boast",     emoji: "🔥", label: "大見栄" },
 ];
 
-// TOP画面のモードタイル→詳細画面（画像＋説明＋開始ボタン）の内容。カードリストは詳細画面を挟まず直接遷移する
+// TOP画面の各モードタイル→詳細画面（画像＋説明＋開始ボタン）の内容
 const MODE_DETAIL_INFO = {
+  cardlist: {
+    title: 'カードリスト',
+    image: 'top_mode_icons/cardlist.png',
+    desc: '収録されているカードを、画像とカード情報を見ながら確認できます。\n\n色・カード種別・種族・コストなどで絞り込み、目的のカードを素早く探せます。カードにカーソルを合わせると、大きな画像で内容を確認できます。\n\n画面内の「キーワード集」では、【疾駆】【守護】【誘】【招来】など、共通能力の詳しい意味も確認できます。',
+    startLabel: 'カードリストを見る',
+  },
   game: {
     title: '創世決戦（4人対戦）',
     image: 'top_mode_icons/genesis4p.png',
-    desc: '4人（CPUを交えれば2人からでも対戦可能）でロビーに集まり、①神託の儀でカミを選び、②選別の儀でパックを取り合ってデッキ候補を集め、③深化の刻で必要な分だけデッキに残し、④星戦（人間同士の対戦）を3回行い、⑤終戦で星魂を集計して順位を決めます。',
+    desc: '4人でロビーに集まって遊ぶ対戦モードです。CPUを交えれば、2人からでも開始できます。\n\n① 神託の儀：対戦で使用するカミを選びます。\n② 選別の儀：パックを順番に取り、デッキ候補を集めます。\n③ 深化の刻：集めたカードから、使用するデッキを完成させます。\n④ 星戦：組み合わせを変えながら、3回の対戦を行います。\n⑤ 終戦：獲得した星魂を集計し、最終順位を決定します。',
     startLabel: '創世決戦を開始する',
   },
   construct: {
     title: '理念構築戦（2人対戦）',
     image: 'top_mode_icons/construct2p.png',
-    desc: '2人で対戦するモードです。パックのドラフトは行わず、全カードプールの中から自由に35枚のデッキを組み立てて対戦できます。あらかじめ用意されたストラクチャーデッキを使うこともできます。',
+    desc: '2人で、自由に構築したデッキを使って対戦するモードです。\n\nパックのドラフトは行わず、全カードプールから35枚を選んでデッキを作ります。\n\n自分で一から構築するほか、あらかじめ用意されたストラクチャーデッキを使って、すぐに対戦することもできます。',
     startLabel: '理念構築戦を開始する',
   },
   shield: {
     title: '星紡ぎ戦（2人対戦）',
     image: 'top_mode_icons/shield2p.png',
-    desc: '2人で部屋を作り、①パックを交互に選んで48枚集め、②その中から8枚を除外して40枚のデッキを確定し、③カミを選び、④その場で対戦します。対戦後は「同じデッキで再戦する」か「パック選択からやり直す」かを選べます。',
+    desc: '2人でパックを選び、その場で作ったデッキを使って対戦するモードです。\n\n① パックを交互に選び、カードを48枚集めます。\n② 集めたカードから8枚を除外し、40枚のデッキを完成させます。\n③ 対戦で使用するカミを選びます。\n④ 完成したデッキで対戦します。\n\n対戦後は、同じデッキで再戦するか、パック選択からやり直すかを選べます。',
     startLabel: '星紡ぎ戦を開始する',
   },
 };
@@ -8273,7 +8298,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.49',
+    BUILD_VERSION: '1.15.50',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -9893,7 +9918,7 @@ new Vue({
       this.appView = 'cardlist';
       this.sbPreBattleReturn = false;
     },
-    // TOP画面のモードタイル（創世決戦/理念構築戦/星紡ぎ戦）をクリック → 画像＋説明＋開始ボタンの詳細画面へ
+    // TOP画面のモードタイルをクリック → 画像＋説明＋開始ボタンの詳細画面へ
     openModeDetail(key) {
       if (!MODE_DETAIL_INFO[key]) return;
       this._sfxPlay('menuselect');
@@ -9903,7 +9928,8 @@ new Vue({
     // モード詳細画面の「◯◯を開始する」：従来の各モード開始処理へそのまま引き継ぐ
     modeDetailStart() {
       const key = this.modeDetailKey;
-      if (key === 'game') this.goToGame();
+      if (key === 'cardlist') this.goToCardlist();
+      else if (key === 'game') this.goToGame();
       else if (key === 'shield') this.goToShield();
       else if (key === 'construct') this.goToConstruct();
     },
@@ -9911,6 +9937,11 @@ new Vue({
       this._sfxPlay('cancel');
       this.appView = 'top';
       this.modeDetailKey = null;
+    },
+    openDevToolsScreen() {
+      this._sfxPlay('menuselect');
+      this.topDevToolsOpen = true;
+      this.appView = 'devTools';
     },
     async ensureBattleAssetsLoaded() {
       const jobs = [];
@@ -16897,6 +16928,17 @@ new Vue({
           onComplete: resolve,
           message: `デッキの上から${n}枚を公開しました。レガシー・レリックを1枚ずつ選んで手札に加えられます（コスト3以下なら代わりに場に出せます）。選ばなかったカードはデッキの下へ戻ります。`,
         };
+        // CPUの手番中は、画面の裏に選択モーダルを残さずCPU自身が候補を選んで完了する。
+        if (this._battleCpuAutoResolving) {
+          const modal = this.battleDeckModal;
+          Promise.resolve().then(async () => {
+            const legacyIndex = modal.cards.findIndex(c => c && c.category === 'レガシー');
+            const relicIndex = modal.cards.findIndex(c => c && c.category === 'レリック');
+            if (legacyIndex >= 0 && this.battleDeckModal === modal) await this.battleGokugoPick(legacyIndex, 'レガシー');
+            if (relicIndex >= 0 && this.battleDeckModal === modal) await this.battleGokugoPick(relicIndex, 'レリック');
+            if (this.battleDeckModal === modal) await this.battleFinishGokugoPick();
+          });
+        }
       });
     },
     /* デッキの上からN枚を公開し、種族が異なるカードを条件内で場に出す（例：#174誓いの契り、K3オオクニヌシ神技2） */
@@ -16930,6 +16972,24 @@ new Vue({
           onComplete: resolve,
           message: `デッキの上から${n}枚を公開しました。${distinctLabel}${costLabel}${config.category}を${config.maxCount}枚まで場に出せます${grantLabel}。選ばなかったカードはデッキの下へ戻ります。`,
         };
+        // 「調和」「誓いの契り」等をCPUが使った場合は、コストの高い有効候補から自動選択する。
+        // 選べる枚数が上限未満でも必ず完了し、CPU手番をモーダル待ちで停止させない。
+        if (this._battleCpuAutoResolving) {
+          const modal = this.battleDeckModal;
+          Promise.resolve().then(async () => {
+            const candidates = modal.cards
+              .map((card, index) => ({ card, index }))
+              .filter(x => x.card && x.card.category === config.category)
+              .sort((a, b) => (Number(b.card.cost) || 0) - (Number(a.card.cost) || 0));
+            for (const candidate of candidates) {
+              if (this.battleDeckModal !== modal || modal.placed.length >= config.maxCount) break;
+              if (this.battleGokugoPlaceDistinctEligible(modal, candidate.card)) {
+                await this.battleGokugoPlaceDistinct(candidate.index);
+              }
+            }
+            if (this.battleDeckModal === modal) await this.battleFinishGokugoPlaceDistinct();
+          });
+        }
       });
     },
     /* 「異なる種族のコストX以下カードY枚を場に出す」「異なる種族のカードY枚まで合計コストX以下で場に出す」を解析する
