@@ -3682,7 +3682,7 @@
   /* 神技2（必殺技）発動：デッキビルダーのカミ選択画面を踏まえた、顔だけアップのカードがカットインする演出
      （画面全体を覆う派手なズームではなく、コンパクトな1枚のカードとして中央に出す） */
   .battle-skill-closeup-overlay {
-    position: fixed; inset: 0; z-index: 900; pointer-events: none;
+    position: fixed; inset: 0; z-index: 900; pointer-events: auto; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     background: rgba(2, 3, 6, 0.5);
   }
@@ -3785,14 +3785,15 @@
 
   /* ===== カミの吹き出し（エモート／神技セリフ） ===== */
   .emote-bubble {
-    position: fixed; z-index: 4200; max-width: 260px;
+    position: fixed; z-index: 4200; width: max-content; max-width: 260px;
     padding: 10px 16px; border-radius: 16px;
     background: rgba(20, 16, 30, 0.92); border: 1px solid rgba(255, 220, 160, 0.5);
     color: #fff2dc; font-size: 14px; font-weight: 700; line-height: 1.5;
     box-shadow: 0 4px 18px rgba(0,0,0,.45);
+    overflow-wrap: break-word; word-break: break-word;
     pointer-events: none;
   }
-  .emote-bubble-self { left: 50%; bottom: calc(50% + 8px); transform: translateX(-50%); }
+  .emote-bubble-self { left: 50%; top: 62%; transform: translateX(-50%); }
   .emote-bubble-opp  { left: 50%; top: calc(50% + 8px); transform: translateX(-50%); }
   .emote-bubble-fade-enter-active { transition: opacity 0.2s ease, transform 0.2s ease; }
   .emote-bubble-fade-leave-active { transition: opacity 0.3s ease; }
@@ -6550,9 +6551,9 @@
       </div>
     </div>
 
-    <!-- オラクル発動／レガシー展開／レリック設置 中央演出（閉じるボタンを押すまで残る／詳細プレビュー可。
-         相手が発動した場合は同期表示され、一定時間で自動的に消える） -->
-    <div v-if="battleOracleEffect" class="oracle-effect-overlay">
+    <!-- オラクル発動／レガシー展開／レリック設置 中央演出（出現から0.5秒経てばどこをクリックしても
+         閉じられる／詳細プレビュー可。相手が発動した場合は同期表示され、一定時間で自動的に消える） -->
+    <div v-if="battleOracleEffect" class="oracle-effect-overlay" @click="_battleOracleEffectClickDismiss">
       <div class="oracle-effect-label">{{ (battleOracleEffect.remote ? '相手の' : '') + battleOracleEffectLabel }}</div>
       <div class="oracle-effect-card"
            :style="cardImageUrl(battleOracleEffect.card) ? { backgroundImage: 'url(' + cardImageUrl(battleOracleEffect.card) + ')' } : {}"
@@ -6617,7 +6618,8 @@
 
   <!-- ===== 神技1/2発動時のカットイン：神技2は顔アップの大きなカード、神技1は目線だけアップの軽量演出 ===== -->
   <transition name="battle-skill-closeup-fade">
-    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :class="{ 'skill1-mode': battleSkillCloseup.mode === 'skill1' }">
+    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :class="{ 'skill1-mode': battleSkillCloseup.mode === 'skill1' }"
+         @click="battleSkillCloseupClickDismiss">
       <div class="battle-skill-closeup-card" :class="{ 'skill1-mode': battleSkillCloseup.mode === 'skill1' }">
         <div class="battle-skill-closeup-skillname">
           <div class="battle-skill-closeup-skillname-main"
@@ -8225,7 +8227,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.46',
+    BUILD_VERSION: '1.15.47',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -11943,9 +11945,14 @@ new Vue({
         kamiName: kami ? kami.name : '',
         skillName: skillName || '',
         line: this._battleEmoteLineFor(kami, 'skill2'),
+        _shownAt: Date.now(),
       };
       this._sfxPlay('skill2');
-      await new Promise(resolve => { this._battleSkillCloseupT = setTimeout(resolve, 3000); });
+      await new Promise(resolve => {
+        this._battleSkillCloseupResolve = resolve;
+        this._battleSkillCloseupT = setTimeout(resolve, 3000);
+      });
+      this._battleSkillCloseupResolve = null;
       this.battleSkillCloseup = null;
     },
     /* 神技1：目線だけアップの軽量カットイン。専用画像（kami_cutin_eyes/{No}.jpg|png、目元中心の
@@ -11961,9 +11968,24 @@ new Vue({
         kamiName: kami ? kami.name : '',
         skillName: skillName || '',
         line: this._battleEmoteLineFor(kami, 'skill1'),
+        _shownAt: Date.now(),
       };
-      await new Promise(resolve => { this._battleSkillCloseupT = setTimeout(resolve, 1800); });
+      await new Promise(resolve => {
+        this._battleSkillCloseupResolve = resolve;
+        this._battleSkillCloseupT = setTimeout(resolve, 1800);
+      });
+      this._battleSkillCloseupResolve = null;
       this.battleSkillCloseup = null;
+    },
+    // 神技カットイン：出現から0.5秒経っていればどこをクリックしても早めに閉じる
+    battleSkillCloseupClickDismiss() {
+      const c = this.battleSkillCloseup;
+      if (!c || !c._shownAt || !this._battleSkillCloseupResolve) return;
+      if (Date.now() - c._shownAt < 500) return;
+      clearTimeout(this._battleSkillCloseupT);
+      const resolve = this._battleSkillCloseupResolve;
+      this._battleSkillCloseupResolve = null;
+      resolve();
     },
     /* 神技カットイン画像の読み込み失敗時のフォールバック。神技2は jpg→png→従来イラストの順、
        神技1は 目アップ専用(jpg→png)→神技2用の顔アップ(jpg→png)→従来イラストの順に試す */
@@ -12178,11 +12200,20 @@ new Vue({
       const card = this.cardByNo[String(payload.cardNo)] || null;
       if (!card) return;
       const id = (this._battleOracleEffectSeq = (this._battleOracleEffectSeq || 0) + 1);
-      this.battleOracleEffect = { card, remote: true, id, kind: payload.kind || 'オラクル' };
+      this.battleOracleEffect = { card, remote: true, id, kind: payload.kind || 'オラクル', _shownAt: Date.now() };
       clearTimeout(this._battleOracleEffectRemoteT);
       this._battleOracleEffectRemoteT = setTimeout(() => {
         if (this.battleOracleEffect && this.battleOracleEffect.id === id) this.battleOracleEffect = null;
       }, 2500);
+    },
+    // オラクル/レガシー/レリック発動演出：出現から0.5秒経っていればどこをクリックしても閉じる
+    // （誤って出た瞬間のクリックで即座に消えてしまわないよう、直後だけ猶予を設ける）
+    _battleOracleEffectClickDismiss() {
+      const eff = this.battleOracleEffect;
+      if (!eff || !eff._shownAt) return;
+      if (Date.now() - eff._shownAt < 500) return;
+      this._sfxPlay('cancel');
+      this.battleOracleEffect = null;
     },
     battleReturn() {
       this._sfxPlay('cancel');
@@ -15508,7 +15539,7 @@ new Vue({
           const zpZone = this._battleLeaveZone(card, 'graveyard');
           p[zpZone] = p[zpZone] || [];
           p[zpZone].push(card);
-          this.battleOracleEffect = { card };
+          this.battleOracleEffect = { card, _shownAt: Date.now() };
           this._battlePublishOracleEffect(card.no);
           used.push(card);
           // 「オラクルを使用したとき」条件用（例：#84お節介な陰陽師③は自身①の無償使用でも発動する）
@@ -17989,7 +18020,7 @@ new Vue({
       player.handCount = player.hand.length;
       // このターンのカード使用枚数を加算（「2枚目以降」条件用）
       player.cardPlaysThisTurn = (Number(player.cardPlaysThisTurn) || 0) + 1;
-      this.battleOracleEffect = { card };
+      this.battleOracleEffect = { card, _shownAt: Date.now() };
       this._battlePublishOracleEffect(card.no);
       this.hideCardHover();
       // 天力トリガー：オラクル使用（K5 オモイカネ）／昇華支払い（K1 スサノオ）
@@ -18085,7 +18116,7 @@ new Vue({
       // このターンのカード使用枚数を加算（「2枚目以降」条件用）
       player.cardPlaysThisTurn = (Number(player.cardPlaysThisTurn) || 0) + 1;
       // オラクルと同様の中央発動演出を表示し、相手クライアントにも同期する
-      this.battleOracleEffect = { card: fieldCard, kind: fieldCard.category };
+      this.battleOracleEffect = { card: fieldCard, kind: fieldCard.category, _shownAt: Date.now() };
       this._battlePublishOracleEffect(fieldCard.no, fieldCard.category);
       this.hideCardHover();
       this.dslRefreshStaticAbilities();
