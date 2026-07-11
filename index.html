@@ -3815,7 +3815,10 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     border-radius: 50%; background: rgba(20, 16, 30, 0.88); border: 2px solid rgba(255,255,255,0.3);
     color: #fff; transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+    pointer-events: auto; cursor: pointer;
   }
+  /* 右クリックで開いた静止モード：背景をクリックすると選ばずに閉じる */
+  .emote-wheel-backdrop { position: fixed; inset: 0; z-index: 4290; }
   .emote-wheel-item .emote-wheel-emoji { font-size: 22px; line-height: 1; }
   .emote-wheel-item .emote-wheel-label { font-size: 10px; margin-top: 2px; white-space: nowrap; }
   .emote-wheel-item.active {
@@ -5873,6 +5876,7 @@
                    @click="battleSelfKamiClick"
                    @mousedown="battleEmoteDragStart"
                    @touchstart="battleEmoteDragStart"
+                   @contextmenu.prevent="battleEmoteContextMenu"
                    @mouseenter="battleSample.self.kami && showCardHover(battleSample.self.kami, $event)"
                    @mouseleave="hideCardHover">
                 <div v-if="!battleSample.self.kami" class="kami-placeholder">カミ</div>
@@ -6649,11 +6653,15 @@
          :style="emoteBubbles.opp.pos ? { left: emoteBubbles.opp.pos.x + 'px', top: emoteBubbles.opp.pos.y + 'px' } : {}">{{ emoteBubbles.opp.text }}</div>
   </transition>
 
-  <!-- ===== エモート選択ホイール：自分のカミポートレートをドラッグすると表示 ===== -->
+  <!-- ===== エモート選択ホイール：自分のカミポートレートをドラッグ、または右クリックで表示 ===== -->
+  <div v-if="emoteWheel && emoteWheel.static" class="emote-wheel-backdrop"
+       @click="emoteWheel = null" @contextmenu.prevent="emoteWheel = null"></div>
   <div v-if="emoteWheel" class="emote-wheel" :style="{ left: emoteWheel.x + 'px', top: emoteWheel.y + 'px' }">
     <div class="emote-wheel-center"></div>
     <div v-for="(t, i) in emoteWheelItems" :key="t.key" class="emote-wheel-item"
-         :class="{ active: emoteWheel.hoverKey === t.key }" :style="t.style">
+         :class="{ active: emoteWheel.hoverKey === t.key }" :style="t.style"
+         @mouseenter="emoteWheel.hoverKey = t.key" @mouseleave="emoteWheel.hoverKey = null"
+         @click.stop="battleEmoteWheelItemClick(t.key)">
       <span class="emote-wheel-emoji">{{ t.emoji }}</span>
       <span class="emote-wheel-label">{{ t.label }}</span>
     </div>
@@ -7620,6 +7628,7 @@ const SFX_FILES = {
   endofwar: 'endofwar.mp3', // 終戦画面：「今回の勝者は…」の黒背景演出に合わせて鳴らす
   skill: 'skill.mp3',       // 神技1
   skill2: 'skill2.mp3',     // 神技2（必殺技クローズアップ演出）
+  emote: 'emote.mp3',       // エモート送信時（吹き出し表示に合わせて鳴らす）
   dragStart: 'drag_Start.mp3',
   dragDrop: 'drag_Drop.mp3',
   dragDropHeavy: 'drag_Drop_Heavy.mp3',
@@ -8227,7 +8236,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.47',
+    BUILD_VERSION: '1.15.48',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -10554,7 +10563,22 @@ new Vue({
       if (m.remaining <= 0) this.battleFinishMulligan();
     },
     /* マリガンせずこの手札で開始（任意でマリガン無し） */
-    battleKeepHand() { this._sfxPlay('decision'); this.battleFinishMulligan(); },
+    battleKeepHand() {
+      // 引き直す対象としてカードを選択したまま「この手札で開始」を押した場合、
+      // 押し間違いの可能性が高いため一度確認を挟む
+      const m = this.battleMulligan;
+      if (m && m.selectedIdx && m.selectedIdx.length) {
+        this.battleAskConfirm({
+          action: 'keepHandDespiteMulliganSelection',
+          title: '引き直すカードが選択されたままです',
+          message: `${m.selectedIdx.length}枚のカードを引き直す対象として選択していますが、このまま引き直さずに「この手札で開始」してよろしいですか？`,
+          confirmLabel: 'この手札で開始する',
+        });
+        return;
+      }
+      this._sfxPlay('decision');
+      this.battleFinishMulligan();
+    },
     /* マリガン確定 → 同期モードでは相手の準備完了を待ってからターン開始 */
     battleFinishMulligan() {
       this.battleMulligan = null;
@@ -12090,7 +12114,7 @@ new Vue({
       const kami = this.battleSample.self && this.battleSample.self.kami;
       const text = this._battleEmoteLineFor(kami, key);
       if (!text) return;
-      this._sfxPlay('menuselect');
+      this._sfxPlay('emote');
       this._battleShowEmoteBubble('self', text);
       this._battlePublishEmote(key);
     },
@@ -12111,7 +12135,7 @@ new Vue({
       const kami = this.battleSample.opp && this.battleSample.opp.kami;
       const text = this._battleEmoteLineFor(kami, payload.key);
       if (!text) return;
-      this._sfxPlay('menuselect');
+      this._sfxPlay('emote');
       this._battleShowEmoteBubble('opp', text);
     },
     // 自分のカミポートレートのクリック：エモートのドラッグ操作直後は誤ってプレビューを開かないよう抑止する
@@ -12134,6 +12158,16 @@ new Vue({
       window.addEventListener('mouseup', up);
       window.addEventListener('touchmove', move, { passive: false });
       window.addEventListener('touchend', up);
+    },
+    // 自分のカミポートレートを右クリック：ドラッグ不要でエモートホイールを開き、アイコンを直接クリックして選べる
+    battleEmoteContextMenu(e) {
+      if (this.battleNet && this.battleNet.spectating) return;
+      if (!this.battleSample.self.kami || this.battleSample.result) return;
+      this.emoteWheel = { x: e.clientX, y: e.clientY, hoverKey: null, static: true };
+    },
+    battleEmoteWheelItemClick(key) {
+      this.emoteWheel = null;
+      this.battleSendEmote(key);
     },
     _battleEmoteDragMove(e) {
       const point = e.touches ? e.touches[0] : e;
@@ -17889,6 +17923,8 @@ new Vue({
         this.battleReturnNow();
       } else if (modal.action === 'drawDeck') {
         this.battleDraw(modal.payload.side);
+      } else if (modal.action === 'keepHandDespiteMulliganSelection') {
+        this.battleFinishMulligan();
       }
     },
     /* 手札カード → 場/発動。マナ消費・昇華選択・オラクル演出を含む統合エントリ */
