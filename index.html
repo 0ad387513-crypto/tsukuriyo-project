@@ -1267,6 +1267,11 @@
   .howto-section:last-child { border-bottom: none; }
   .howto-heading { font-size: 14px; font-weight: 800; color: #ffd86a; margin-bottom: 6px; }
   .howto-body { font-size: 12.5px; color: #c8d0e0; line-height: 1.75; white-space: pre-wrap; word-break: keep-all; }
+  .howto-card-ref {
+    color: #ffe9a8; border-bottom: 1px dashed rgba(255, 216, 106, 0.6);
+    cursor: help;
+  }
+  .howto-card-ref:hover { color: #fff2cc; border-bottom-color: #ffd86a; }
   .howto-open-btn { font-size: 15px; }
   .deck-manager-save-row { display: flex; gap: 8px; align-items: flex-start; }
   .deck-manager-name-input {
@@ -4105,7 +4110,7 @@
        重なるため、対戦画面表示中はこちらを隠す。カードリスト画面ではBGM不要かつ他の
        ボタン群と重なるため非表示にする） ===== -->
   <div v-if="appView !== 'battle' && appView !== 'cardlist'" class="global-sound-settings">
-    <button class="global-sound-btn howto-open-btn" @click.stop="_sfxPlay('decision'); howToPlayModalOpen = true" title="遊び方ガイド">📖</button>
+    <button class="global-sound-btn howto-open-btn" @click.stop="_sfxPlay('decision'); howToPlayModalOpen = true; $nextTick(_howtoAnnotateCardRefs)" title="遊び方ガイド">📖</button>
     <button class="global-sound-btn howto-open-btn" @click.stop="openBattleHistory" title="戦績・対戦履歴">📜</button>
     <button class="global-sound-btn" @click.stop="_sfxPlay('cancel'); soundSettingsOpen = !soundSettingsOpen" title="音量設定">🎵</button>
     <div v-if="soundSettingsOpen" class="global-sound-popover" @click.stop>
@@ -4283,7 +4288,7 @@
   </div>
 
   <!-- ===== 遊び方ガイドモーダル（TOP画面「📖」から。初見ユーザー向けの流れの説明） ===== -->
-  <div v-if="howToPlayModalOpen" class="battle-zone-modal" @click.self="howToPlayModalOpen = false">
+  <div v-if="howToPlayModalOpen" class="battle-zone-modal" @click.self="howToPlayModalOpen = false; hideCardHover()">
     <div class="battle-zone-modal-panel">
       <h3 class="battle-zone-modal-title">📖 遊び方ガイド</h3>
       <div class="howto-list">
@@ -4436,7 +4441,7 @@
         </div>
       </div>
       <div class="battle-zone-modal-actions">
-        <button class="battle-back-btn" @click="_sfxPlay('cancel'); howToPlayModalOpen = false">閉じる</button>
+        <button class="battle-back-btn" @click="_sfxPlay('cancel'); howToPlayModalOpen = false; hideCardHover()">閉じる</button>
       </div>
     </div>
   </div>
@@ -8220,7 +8225,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.44',
+    BUILD_VERSION: '1.15.45',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -22066,6 +22071,44 @@ new Vue({
     },
     hideCardHover() {
       this.hoverCard = null;
+    },
+    /* 遊び方ガイド内の静的テキストに含まれるカード名を自動検出し、カーソルを当てると
+       カードリストと同じホバープレビューが出るようにする。ガイド本文はVueバインディングの
+       無い静的HTMLのため、開いた直後に一度だけDOMを直接書き換えて<span>化し、
+       ホバー判定はモーダル全体への委譲リスナー1つで済ませる（モーダルはv-ifで開くたびに
+       作り直されるため、開くたびにこの処理を呼び直せば古いリスナーが残る心配はない）。 */
+    _howtoAnnotateCardRefs() {
+      const root = this.$el && this.$el.querySelector('.howto-list');
+      if (!root) return;
+      const nameMap = {};
+      const pool = [...(this.allCards || []), ...(this.allKamiCards || [])];
+      for (const c of pool) {
+        if (c && c.name && c.name.length >= 2 && !(c.name in nameMap)) nameMap[c.name] = c;
+      }
+      const names = Object.keys(nameMap).sort((a, b) => b.length - a.length);
+      if (!names.length) return;
+      const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(names.map(esc).join('|'), 'g');
+      root.querySelectorAll('.howto-body').forEach(el => {
+        const raw = el.textContent;
+        re.lastIndex = 0;
+        if (!re.test(raw)) return;
+        re.lastIndex = 0;
+        el.innerHTML = raw.replace(re, m => `<span class="howto-card-ref" data-card-name="${m}">${m}</span>`);
+      });
+      root.addEventListener('mouseover', e => {
+        const span = e.target.closest && e.target.closest('.howto-card-ref');
+        if (!span || !root.contains(span)) return;
+        const card = nameMap[span.dataset.cardName];
+        if (card) this.showCardHover(card, { currentTarget: span });
+      });
+      root.addEventListener('mouseout', e => {
+        const span = e.target.closest && e.target.closest('.howto-card-ref');
+        if (!span) return;
+        const to = e.relatedTarget;
+        if (to && span.contains(to)) return;
+        this.hideCardHover();
+      });
     },
     /* 手札カードのホバーチルト＋ホロ光沢：Vueのリアクティブ更新を経由せず、
        パフォーマンスのためカード要素へ直接styleを適用する（マウス位置に応じた3D傾き＋光沢の追従）。 */
