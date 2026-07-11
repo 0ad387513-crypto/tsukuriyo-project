@@ -3735,16 +3735,48 @@
     font-size: 22px; font-weight: 900; letter-spacing: 0.04em; color: #fff;
   }
   .battle-skill-closeup-line {
-    margin-top: 10px; font-size: 15px; font-weight: 700; color: #ffe9c2;
-    text-shadow: 0 0 8px rgba(255, 200, 100, .6);
-    opacity: 0; animation: battleSkillCloseupLineInKf 0.5s ease-out 0.3s forwards;
+    margin-top: 12px; font-size: 21px; font-weight: 900; color: #fff4da;
+    letter-spacing: 0.03em; line-height: 1.35;
+    text-shadow: 0 0 10px rgba(255,200,100,.9), 0 0 24px rgba(255,150,50,.7), 0 2px 3px rgba(0,0,0,.85);
+    opacity: 0; transform: translateY(8px) scale(0.85);
+    animation: battleSkillCloseupLineInKf 0.55s cubic-bezier(.22,1,.36,1) 0.3s forwards;
   }
   @keyframes battleSkillCloseupLineInKf {
-    0%   { opacity: 0; transform: translateY(6px); }
-    100% { opacity: 1; transform: translateY(0); }
+    0%   { opacity: 0; transform: translateY(8px) scale(0.85); }
+    60%  { opacity: 1; transform: translateY(-2px) scale(1.06); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
   }
   .battle-skill-closeup-fade-leave-active { transition: opacity 0.3s ease; }
   .battle-skill-closeup-fade-leave-to { opacity: 0; }
+
+  /* ===== 神技1：目線だけアップの軽量カットイン（神技2と質感を分けるための専用スタイル） ===== */
+  .battle-skill-closeup-overlay.skill1-mode { background: rgba(2, 3, 6, 0.4); }
+  .battle-skill-closeup-card.skill1-mode {
+    border-color: #7fd4ff;
+    box-shadow: 0 0 26px rgba(127,212,255,.55), 0 18px 46px rgba(0,0,0,.7);
+    animation: skill1CloseupCardKf 0.9s cubic-bezier(.22,1,.36,1) forwards;
+  }
+  @keyframes skill1CloseupCardKf {
+    0%   { opacity: 0; transform: scale(0.9) scaleX(0.7); }
+    18%  { opacity: 1; transform: scale(1) scaleX(1.02); }
+    26%  { transform: scale(1) scaleX(1); }
+    76%  { opacity: 1; transform: scale(1) scaleX(1); }
+    100% { opacity: 0; transform: scale(0.98) scaleX(0.96); }
+  }
+  .battle-skill-closeup-card.skill1-mode .battle-skill-closeup-skillname {
+    color: #d8f4ff;
+    text-shadow: 0 0 14px rgba(140,220,255,.9), 0 2px 4px rgba(0,0,0,.9);
+  }
+  .battle-skill-closeup-card.skill1-mode .battle-skill-closeup-face {
+    aspect-ratio: 32 / 9; object-position: center 40%;
+  }
+  .battle-skill-closeup-card.skill1-mode .battle-skill-closeup-identity {
+    border-top-color: rgba(127,212,255,.4);
+  }
+  .battle-skill-closeup-card.skill1-mode .battle-skill-closeup-line {
+    color: #e2f8ff;
+    text-shadow: 0 0 10px rgba(140,220,255,.9), 0 0 22px rgba(100,200,255,.7), 0 2px 3px rgba(0,0,0,.85);
+  }
 
   /* ===== カミの吹き出し（エモート／神技セリフ） ===== */
   .emote-bubble {
@@ -6578,10 +6610,10 @@
     <div class="battle-cpu-thinking-label">🤖 相手が考えています…</div>
   </div>
 
-  <!-- ===== 神技2（必殺技）発動時：デッキビルダーのカミ選択画面を踏まえた顔アップカードのカットイン ===== -->
+  <!-- ===== 神技1/2発動時のカットイン：神技2は顔アップの大きなカード、神技1は目線だけアップの軽量演出 ===== -->
   <transition name="battle-skill-closeup-fade">
-    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay">
-      <div class="battle-skill-closeup-card">
+    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :class="{ 'skill1-mode': battleSkillCloseup.mode === 'skill1' }">
+      <div class="battle-skill-closeup-card" :class="{ 'skill1-mode': battleSkillCloseup.mode === 'skill1' }">
         <div class="battle-skill-closeup-skillname">
           <div class="battle-skill-closeup-skillname-main"
                :style="{ '--fit-len': battleSkillCloseupNameParts.main.length }">{{ battleSkillCloseupNameParts.main }}</div>
@@ -6589,7 +6621,7 @@
                :style="{ '--fit-len': battleSkillCloseupNameParts.furigana.length }">（{{ battleSkillCloseupNameParts.furigana }}）</div>
         </div>
         <img v-if="battleSkillCloseup.imgUrl" class="battle-skill-closeup-face"
-             :class="{ 'fallback-zoom': battleSkillCloseup.fallbackStage === 2 }"
+             :class="{ 'fallback-zoom': battleSkillCloseup.mode === 'skill1' ? battleSkillCloseup.fallbackStage >= 2 : battleSkillCloseup.fallbackStage === 2 }"
              :src="battleSkillCloseup.imgUrl" alt="" @error="battleSkillCloseupImgError">
         <div class="battle-skill-closeup-identity">
           <div v-if="battleSkillCloseup.kamiNickname" class="battle-skill-closeup-nickname">{{ battleSkillCloseup.kamiNickname }}</div>
@@ -6600,12 +6632,14 @@
     </div>
   </transition>
 
-  <!-- ===== カミの吹き出し（エモート／神技1・2のセリフ） ===== -->
+  <!-- ===== カミの吹き出し（エモート／神技1・2のセリフ）：カミポートレートの真下に表示 ===== -->
   <transition name="emote-bubble-fade">
-    <div v-if="emoteBubbles.self" :key="'self'+emoteBubbles.self.id" class="emote-bubble emote-bubble-self">{{ emoteBubbles.self.text }}</div>
+    <div v-if="emoteBubbles.self" :key="'self'+emoteBubbles.self.id" class="emote-bubble emote-bubble-self"
+         :style="emoteBubbles.self.pos ? { left: emoteBubbles.self.pos.x + 'px', top: emoteBubbles.self.pos.y + 'px' } : {}">{{ emoteBubbles.self.text }}</div>
   </transition>
   <transition name="emote-bubble-fade">
-    <div v-if="emoteBubbles.opp" :key="'opp'+emoteBubbles.opp.id" class="emote-bubble emote-bubble-opp">{{ emoteBubbles.opp.text }}</div>
+    <div v-if="emoteBubbles.opp" :key="'opp'+emoteBubbles.opp.id" class="emote-bubble emote-bubble-opp"
+         :style="emoteBubbles.opp.pos ? { left: emoteBubbles.opp.pos.x + 'px', top: emoteBubbles.opp.pos.y + 'px' } : {}">{{ emoteBubbles.opp.text }}</div>
   </transition>
 
   <!-- ===== エモート選択ホイール：自分のカミポートレートをドラッグすると表示 ===== -->
@@ -8185,7 +8219,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.40',
+    BUILD_VERSION: '1.15.41',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -11888,6 +11922,7 @@ new Vue({
       // 顔だけアップの専用カットイン画像（kami_cutin/{No}.jpg|png）があればそれを最優先で使い、
       // 用意されていなければ .jpg→.png→従来の対戦画面用イラストの順にフォールバックする
       this.battleSkillCloseup = {
+        mode: 'skill2',
         imgUrl: kami ? `kami_cutin/${kami.no}.jpg` : null,
         fallbackStage: 0, // 0=カットイン(jpg)試行中 1=カットイン(png)試行中 2=従来イラストにフォールバック済み
         kami,
@@ -11900,10 +11935,35 @@ new Vue({
       await new Promise(resolve => { this._battleSkillCloseupT = setTimeout(resolve, 1500); });
       this.battleSkillCloseup = null;
     },
-    /* 神技2カットイン画像の読み込み失敗時：jpg→png→従来イラストの順に試す */
+    /* 神技1：目線だけアップの軽量カットイン。専用画像（kami_cutin_eyes/{No}.jpg|png、目元中心の
+       横長トリミング推奨。例：1920x540程度、顔全体ではなく目のあたりだけが写るように用意）が
+       あればそれを使い、無ければ神技2用の顔アップ→従来イラストの順にフォールバックする */
+    async _battleShowSkill1Closeup(kami, skillName) {
+      this.battleSkillCloseup = {
+        mode: 'skill1',
+        imgUrl: kami ? `kami_cutin_eyes/${kami.no}.jpg` : null,
+        fallbackStage: 0, // 0/1=目アップ専用画像(jpg/png) 2/3=神技2用の顔アップ(jpg/png) 4=従来イラスト
+        kami,
+        kamiNickname: kami ? (kami.nickname || '') : '',
+        kamiName: kami ? kami.name : '',
+        skillName: skillName || '',
+        line: this._battleEmoteLineFor(kami, 'skill1'),
+      };
+      await new Promise(resolve => { this._battleSkillCloseupT = setTimeout(resolve, 900); });
+      this.battleSkillCloseup = null;
+    },
+    /* 神技カットイン画像の読み込み失敗時のフォールバック。神技2は jpg→png→従来イラストの順、
+       神技1は 目アップ専用(jpg→png)→神技2用の顔アップ(jpg→png)→従来イラストの順に試す */
     battleSkillCloseupImgError() {
       const c = this.battleSkillCloseup;
       if (!c || !c.kami) return;
+      if (c.mode === 'skill1') {
+        if (c.fallbackStage === 0) { c.fallbackStage = 1; c.imgUrl = `kami_cutin_eyes/${c.kami.no}.png`; return; }
+        if (c.fallbackStage === 1) { c.fallbackStage = 2; c.imgUrl = `kami_cutin/${c.kami.no}.jpg`; return; }
+        if (c.fallbackStage === 2) { c.fallbackStage = 3; c.imgUrl = `kami_cutin/${c.kami.no}.png`; return; }
+        if (c.fallbackStage === 3) { c.fallbackStage = 4; c.imgUrl = this.kamiIllustrationUrl(c.kami); return; }
+        return;
+      }
       if (c.fallbackStage === 0) {
         c.fallbackStage = 1;
         c.imgUrl = `kami_cutin/${c.kami.no}.png`;
@@ -11942,15 +12002,16 @@ new Vue({
         img.src = this.kamiIllustrationUrl(kami) || '';
       }
     },
-    /* 神技2演出を相手クライアントにも同期（相手の必殺技も見られるように） */
-    _battlePublishSkill2(kamiNo, skillName) {
+    /* 神技1/2演出を相手クライアントにも同期（相手の神技も見られるように）。
+       同じ同期チャネル（/skill2パス）をindexで使い分ける：index省略時は従来通り神技2として送る */
+    _battlePublishSkill2(kamiNo, skillName, index = 2) {
       const n = this.battleNet;
       if (!n || !n.on || !n.statePath || n.spectating) return;
       try {
         const path = n.statePath.replace(/\/state$/, '/skill2');
         getDb().ref(path).set({
           writer: n.mySeat, kamiNo: kamiNo != null ? String(kamiNo) : null,
-          skillName: String(skillName || ''), ts: Date.now(),
+          skillName: String(skillName || ''), index: Number(index) === 1 ? 1 : 2, ts: Date.now(),
         }).catch(() => {});
       } catch (e) { /* silent */ }
     },
@@ -11962,7 +12023,8 @@ new Vue({
       if (payload.ts && payload.ts <= (this._battleLastSkill2At || 0)) return;
       this._battleLastSkill2At = payload.ts || Date.now();
       const kami = this.cardByNo[String(payload.kamiNo)] || null;
-      this._battleShowSkill2Closeup(kami, payload.skillName);
+      if (Number(payload.index) === 1) this._battleShowSkill1Closeup(kami, payload.skillName);
+      else this._battleShowSkill2Closeup(kami, payload.skillName);
     },
     /* ===== カミのエモート（あいさつ・困惑・賞賛・驚き・疑問・大見栄）＋神技1/2のセリフ ===== */
     // カミポートレートの下/上あたりに吹き出しを一定時間表示する（自分/相手それぞれ独立に管理）
@@ -11970,7 +12032,12 @@ new Vue({
       if (!text) return;
       this._emoteBubbleSeq = (this._emoteBubbleSeq || 0) + 1;
       const id = this._emoteBubbleSeq;
-      this.$set(this.emoteBubbles, side, { text, id });
+      // カミポートレートの実際の表示位置（真下）に吹き出しを出す
+      const sel = side === 'opp' ? '.battle-row-opp-top .kami-portrait' : '.battle-row-self-bot .kami-portrait';
+      const el = this.$el && this.$el.querySelector(sel);
+      const rect = el ? el.getBoundingClientRect() : null;
+      const pos = rect ? { x: rect.left + rect.width / 2, y: rect.bottom + 10 } : null;
+      this.$set(this.emoteBubbles, side, { text, id, pos });
       setTimeout(() => {
         if (this.emoteBubbles[side] && this.emoteBubbles[side].id === id) {
           this.$set(this.emoteBubbles, side, null);
@@ -19524,8 +19591,8 @@ new Vue({
       if (index === 1) {
         this._sfxPlay('skill'); // 神技2はこの後のクローズアップ演出内でskill2を鳴らす
         const skill1Kami = this.battleSample.self.kami;
-        this._battleShowEmoteBubble('self', this._battleEmoteLineFor(skill1Kami, 'skill1'));
-        this._battlePublishEmote('skill1');
+        this._battlePublishSkill2(skill1Kami ? skill1Kami.no : null, skill.name, 1);
+        await this._battleShowSkill1Closeup(skill1Kami, skill.name);
       }
       this.battleSaveUndo();
       this.battleSample.self.tenryoku = Math.max(0, this.battleSample.self.tenryoku - skill.cost);
