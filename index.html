@@ -3686,7 +3686,7 @@
     border: 3px solid #dc9f50; border-radius: 12px; overflow: hidden;
     background: #1a1d28;
     box-shadow: 0 0 30px rgba(220,159,80,.55), 0 18px 46px rgba(0,0,0,.7);
-    animation: skillCloseupCardKf 1.5s cubic-bezier(.22,1,.36,1) forwards;
+    animation: skillCloseupCardKf 3s cubic-bezier(.22,1,.36,1) forwards;
   }
   @keyframes skillCloseupCardKf {
     0%   { opacity: 0; transform: scale(0.82); }
@@ -3754,7 +3754,7 @@
   .battle-skill-closeup-card.skill1-mode {
     border-color: #7fd4ff;
     box-shadow: 0 0 26px rgba(127,212,255,.55), 0 18px 46px rgba(0,0,0,.7);
-    animation: skill1CloseupCardKf 0.9s cubic-bezier(.22,1,.36,1) forwards;
+    animation: skill1CloseupCardKf 1.8s cubic-bezier(.22,1,.36,1) forwards;
   }
   @keyframes skill1CloseupCardKf {
     0%   { opacity: 0; transform: scale(0.9) scaleX(0.7); }
@@ -8219,7 +8219,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.41',
+    BUILD_VERSION: '1.15.42',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -11932,7 +11932,7 @@ new Vue({
         line: this._battleEmoteLineFor(kami, 'skill2'),
       };
       this._sfxPlay('skill2');
-      await new Promise(resolve => { this._battleSkillCloseupT = setTimeout(resolve, 1500); });
+      await new Promise(resolve => { this._battleSkillCloseupT = setTimeout(resolve, 3000); });
       this.battleSkillCloseup = null;
     },
     /* 神技1：目線だけアップの軽量カットイン。専用画像（kami_cutin_eyes/{No}.jpg|png、目元中心の
@@ -11949,7 +11949,7 @@ new Vue({
         skillName: skillName || '',
         line: this._battleEmoteLineFor(kami, 'skill1'),
       };
-      await new Promise(resolve => { this._battleSkillCloseupT = setTimeout(resolve, 900); });
+      await new Promise(resolve => { this._battleSkillCloseupT = setTimeout(resolve, 1800); });
       this.battleSkillCloseup = null;
     },
     /* 神技カットイン画像の読み込み失敗時のフォールバック。神技2は jpg→png→従来イラストの順、
@@ -19744,10 +19744,19 @@ new Vue({
       if (this.battleSample.result) return;
       this.battleApplyLifeReplacement('self');
       this.battleApplyLifeReplacement('opp');
+      // self/opp入れ替え中（CPUの手番代行中）は「自分」がCPU自身を指しているため、ここでの
+      // self/oppをそのまま勝敗に使うと、CPUが勝った場合でも人間側の「勝利」として記録されて
+      // しまう（入れ替えが解けた後は真のself/oppに戻り、記録した勝敗ラベルだけが取り残されるため）。
+      // 常に真の自分（人間）視点の勝敗になるよう、入れ替え中は判定を反転させて記録する。
+      const swapped = !!this._dslSwapped;
       if (this.battleSample.opp.life <= 0) {
-        this.battleSample.result = { outcome: 'win', title: '星戦勝利！' };
+        this.battleSample.result = swapped
+          ? { outcome: 'loss', title: '星戦敗北…' }
+          : { outcome: 'win', title: '星戦勝利！' };
       } else if (this.battleSample.self.life <= 0) {
-        this.battleSample.result = { outcome: 'loss', title: '星戦敗北…' };
+        this.battleSample.result = swapped
+          ? { outcome: 'win', title: '星戦勝利！' }
+          : { outcome: 'loss', title: '星戦敗北…' };
       }
     },
     battleSurrender() {
