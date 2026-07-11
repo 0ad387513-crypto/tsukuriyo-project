@@ -8225,7 +8225,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.45',
+    BUILD_VERSION: '1.15.46',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -16315,11 +16315,17 @@ new Vue({
     async _dslAskOptionalForceHuman(card, triggerLabel, summary, kind = 'ability') {
       const prevAutoResolving = this._battleCpuAutoResolving;
       const prevThinking = this.battleCpuThinking;
+      // CPUの手番代行中（self/opp入れ替え中）はbattleSample.self/oppも入れ替わったままのため、
+      // 覆いを外して盤面を見せるだけだと、カミの表示や手札・フィールドが自分/相手入れ替わった
+      // まま見えてしまう（実際に発生した表示バグ）。モーダルを見せている間だけ真の視点へ戻す。
+      const wasSwapped = !!this._dslSwapped;
+      if (wasSwapped) this._dslSwapSelfOpp();
       this._battleCpuAutoResolving = false;
       this.battleCpuThinking = false;
       try {
         return await this.dslAskOptional(card, triggerLabel, summary, kind);
       } finally {
+        if (wasSwapped) this._dslSwapSelfOpp();
         this._battleCpuAutoResolving = prevAutoResolving;
         this.battleCpuThinking = prevThinking;
       }
