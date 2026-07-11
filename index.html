@@ -8185,7 +8185,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.39',
+    BUILD_VERSION: '1.15.40',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -17093,7 +17093,7 @@ new Vue({
       if (ranLayer1) this.battleGlowCardEffect(card);
       return ranLayer1;
     },
-    battleRunDeathKeywordEffects(card) {
+    async battleRunDeathKeywordEffects(card) {
       // このカードの本当の持ち主が実行中クライアント(手番側)と異なる場合（例：相手ターン中に
       // 自分のカードが戦闘で破壊された時の【死亡時】、または傀儡化等で持ち主が変わったカードの
       // 【死亡時】）、DSLの「自分」は常に実行側自身を指すため、このままここで処理すると
@@ -17111,43 +17111,54 @@ new Vue({
         return true;
       }
       // 委譲できない場合（CPU戦・ソロプレイ等、相手クライアントが実在しない）で持ち主が相手側なら、
-      // 「自分」がその持ち主を指すよう一時的に視点を入れ替えてから実行する。判断が必要な場面
-      // （対象選択等）も人間に委ねずCPU的に自動解決する。
+      // 「自分」がその持ち主を指すよう一時的に視点を入れ替えてから実行する。
+      // 入れ替え前がCPU自動解決中でなかった場合（人間の手番中に相手＝CPUのカードが死亡した場合）は、
+      // 入れ替え後の「自分」はCPU本人を指すため、判断（任意効果の可否・対象選択等）を人間に委ねず
+      // CPU的に自動解決する。逆に入れ替え前が既にCPU自動解決中だった場合（CPUの手番中に、
+      // 人間の守護カード等、人間側のカードが死亡した場合）は、入れ替え後の「自分」は真の人間を
+      // 指すため、任意効果や対象選択は自動解決せず本人（人間）の判断に委ねる必要がある
+      // （これを誤ってCPU側に倒すと、人間の守護カードの任意な死亡時効果が確認なしに常に
+      // 発動しない扱いになってしまう＝実際に発生していたバグ）。
       const needsSwap = cardOwnerSide === 'opp';
       const prevAutoResolving = this._battleCpuAutoResolving;
+      const prevThinking = this.battleCpuThinking;
       // 入れ替え中に積まれるUndoスナップショットはself/oppが逆転した状態のため、
       // 後で人間が「一手戻る」を押した際に盤面が反転してしまわないよう、
       // 入れ替え中に積まれた分は終了後にまとめて破棄する（_battleCpuTakeTurnと同じ対策）
       const undoDepthBefore = this.battleUndoStack.length;
-      const restore = () => {
-        if (!needsSwap) return;
-        this._dslSwapSelfOpp();
-        this._battleCpuAutoResolving = prevAutoResolving;
-        if (this.battleUndoStack.length > undoDepthBefore) this.battleUndoStack.length = undoDepthBefore;
-      };
       if (needsSwap) {
         this._dslSwapSelfOpp();
-        this._battleCpuAutoResolving = true;
+        this._battleCpuAutoResolving = !prevAutoResolving;
+        // 判断が人間に委ねられる場合（＝入れ替え前は既にCPU自動解決中だった）、CPU手番中の
+        // 全画面覆い（battleCpuThinking）を外しておかないと、任意確認モーダルが覆いの下に
+        // 隠れてクリックできないまま止まってしまう（_dslAskOptionalForceHumanと同じ対策）
+        if (!this._battleCpuAutoResolving) this.battleCpuThinking = false;
       }
-      if (this._battleIsEffectDisabled(card)) {
-        this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、死亡時効果は発動しません。`, [card]);
-        restore();
-        return true;
+      try {
+        if (this._battleIsEffectDisabled(card)) {
+          this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、死亡時効果は発動しません。`, [card]);
+          return true;
+        }
+        if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '死亡時')) {
+          await this.dslRunSpec(card, '死亡時', null);
+          this.battleRunDoubledDeathEffect(card);
+          this.battleGlowGraveyardEffect(deathGlowPlayerObj, deathGlowIsTrueSelf);
+          return true;
+        }
+        // レビュー済みカードでは、Layer1（本文正規表現）の文脈を区別できない誤検出を避けるため
+        // フォールバックを試みない（出現時側と同じ理由。例：#39シジマは死亡時効果を持たない）
+        if (this.effectSpecsReady && this._dslGetSpec(card)) return true;
+        const result = this._battleQueueAndRunEffects(card, null, '死亡時');
+        if (result) this.battleGlowGraveyardEffect(deathGlowPlayerObj, deathGlowIsTrueSelf);
+        return result;
+      } finally {
+        if (needsSwap) {
+          this._dslSwapSelfOpp();
+          this._battleCpuAutoResolving = prevAutoResolving;
+          this.battleCpuThinking = prevThinking;
+          if (this.battleUndoStack.length > undoDepthBefore) this.battleUndoStack.length = undoDepthBefore;
+        }
       }
-      if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '死亡時')) {
-        const p = this.dslRunSpec(card, '死亡時', null);
-        this.battleRunDoubledDeathEffect(card);
-        this.battleGlowGraveyardEffect(deathGlowPlayerObj, deathGlowIsTrueSelf);
-        if (needsSwap) Promise.resolve(p).finally(restore); else restore();
-        return true;
-      }
-      // レビュー済みカードでは、Layer1（本文正規表現）の文脈を区別できない誤検出を避けるため
-      // フォールバックを試みない（出現時側と同じ理由。例：#39シジマは死亡時効果を持たない）
-      if (this.effectSpecsReady && this._dslGetSpec(card)) { restore(); return true; }
-      const result = this._battleQueueAndRunEffects(card, null, '死亡時');
-      if (result) this.battleGlowGraveyardEffect(deathGlowPlayerObj, deathGlowIsTrueSelf);
-      restore();
-      return result;
     },
     /* 死亡時トリガーの委譲依頼側。カードの完全なデータをそのまま送る（相手クライアント側で
        自分の墓地配列からNoで探そうとすると、通常の状態同期がまだ追いついておらず見つからない
@@ -18747,8 +18758,12 @@ new Vue({
       ].filter(Boolean);
       if (destroyed.length) this.dslRefreshStaticAbilities();
       this.battleShowNotice('戦闘解決', lines.join('\n'), [attacker, defender, ...destroyed.map(d => d.card)]);
-      // 死亡時トリガー：両サイドのカードに対して発火（カードの所有者に紐づく効果）
-      destroyed.forEach(d => this.battleRunDeathKeywordEffects(d.card));
+      // 死亡時トリガー：両サイドのカードに対して発火（カードの所有者に紐づく効果）。
+      // 任意効果の確認等で本当の持ち主（人間）の判断待ちになる場合があるため、CPU戦の攻撃フェーズが
+      // 誤って自分/相手が入れ替わったままの状態で先に進んでしまわないよう、ここで待ってから続ける。
+      for (const d of destroyed) {
+        await this.battleRunDeathKeywordEffects(d.card);
+      }
       // 常在の「自分レガシーが戦闘でレガシーを破壊したとき」条件用（例：ヴィリデ、木漏れ日の道場）
       if (destroyed.some(d => d.card === defender)) {
         this.battleFireKamiEvent(attackerSide, 'legacyDestroyedInCombat', { by: attacker, destroyed: defender });
@@ -18809,7 +18824,8 @@ new Vue({
       const guard = await this._battleChooseGuard(attacker, 'opp', null);
       if (guard) {
         // 【神攻時】は宣言時点（上記）で既に発動済みのため、ここでは再発動させない。
-        this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index, { viaDivineGuard: true });
+        // 死亡時トリガーの人間確認待ち等があり得るため、CPU戦の攻撃フェーズ側が先走らないようawaitする。
+        await this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index, { viaDivineGuard: true });
         return;
       }
       // K10ヤマタノオロチ「封神・終極八岐」：全ての封印が解かれている間、神技の発動なしに自動で有効。
