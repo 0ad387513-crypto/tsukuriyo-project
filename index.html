@@ -6545,10 +6545,10 @@
       </div>
     </div>
 
-    <!-- オラクル発動 中央演出（閉じるボタンを押すまで残る／詳細プレビュー可。
+    <!-- オラクル発動／レガシー展開／レリック設置 中央演出（閉じるボタンを押すまで残る／詳細プレビュー可。
          相手が発動した場合は同期表示され、一定時間で自動的に消える） -->
     <div v-if="battleOracleEffect" class="oracle-effect-overlay">
-      <div class="oracle-effect-label">{{ battleOracleEffect.remote ? '相手のオラクル発動' : 'オラクル発動' }}</div>
+      <div class="oracle-effect-label">{{ (battleOracleEffect.remote ? '相手の' : '') + battleOracleEffectLabel }}</div>
       <div class="oracle-effect-card"
            :style="cardImageUrl(battleOracleEffect.card) ? { backgroundImage: 'url(' + cardImageUrl(battleOracleEffect.card) + ')' } : {}"
            @click="openPreview(battleOracleEffect.card)"
@@ -8219,7 +8219,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.42',
+    BUILD_VERSION: '1.15.43',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8580,6 +8580,13 @@ new Vue({
       const raw = String((this.battleSkillCloseup && this.battleSkillCloseup.skillName) || '');
       const m = raw.match(/^(.*?)[（(]([^）)]*)[）)]\s*$/);
       return m ? { main: m[1].trim(), furigana: m[2].trim() } : { main: raw, furigana: '' };
+    },
+    // 中央発動演出のラベル：オラクル/レガシー/レリックでそれぞれ自然な表現に変える
+    battleOracleEffectLabel() {
+      const kind = (this.battleOracleEffect && this.battleOracleEffect.kind) || 'オラクル';
+      if (kind === 'レガシー') return 'レガシー展開';
+      if (kind === 'レリック') return 'レリック設置';
+      return 'オラクル発動';
     },
     // エモートホイール：EMOTE_TYPES（6件）を中心から均等な円状に配置するための座標を計算
     emoteWheelItems() {
@@ -12141,19 +12148,19 @@ new Vue({
         setTimeout(() => { this._suppressNextKamiClick = false; }, 50);
       }
     },
-    /* オラクル発動の中央演出を相手クライアントにも同期する（呼び出し側でbattleOracleEffectを
-       セットした直後に、そのカードのNoを渡して呼ぶ） */
-    _battlePublishOracleEffect(cardNo) {
+    /* オラクル/レガシー/レリック発動の中央演出を相手クライアントにも同期する（呼び出し側で
+       battleOracleEffectをセットした直後に、そのカードのNoとkind（省略時は従来通り'オラクル'）を渡して呼ぶ） */
+    _battlePublishOracleEffect(cardNo, kind = 'オラクル') {
       const n = this.battleNet;
       if (!n || !n.on || !n.statePath || n.spectating) return;
       try {
         const path = n.statePath.replace(/\/state$/, '/oracleEffect');
         getDb().ref(path).set({
-          writer: n.mySeat, cardNo: cardNo != null ? String(cardNo) : null, ts: Date.now(),
+          writer: n.mySeat, cardNo: cardNo != null ? String(cardNo) : null, kind: String(kind || 'オラクル'), ts: Date.now(),
         }).catch(() => {});
       } catch (e) { /* silent */ }
     },
-    /* 相手クライアントから届いたオラクル発動演出を受け取り、一定時間だけ表示する。
+    /* 相手クライアントから届いたオラクル/レガシー/レリック発動演出を受け取り、一定時間だけ表示する。
        発動した本人（相手）は「閉じる」ボタンで手動で消すまで表示され続ける仕様のままだが、
        受信側（見ているだけの自分）はいつまでも残ると邪魔なので自動的に消す。 */
     _battleApplyRemoteOracleEffect(payload) {
@@ -12165,7 +12172,7 @@ new Vue({
       const card = this.cardByNo[String(payload.cardNo)] || null;
       if (!card) return;
       const id = (this._battleOracleEffectSeq = (this._battleOracleEffectSeq || 0) + 1);
-      this.battleOracleEffect = { card, remote: true, id };
+      this.battleOracleEffect = { card, remote: true, id, kind: payload.kind || 'オラクル' };
       clearTimeout(this._battleOracleEffectRemoteT);
       this._battleOracleEffectRemoteT = setTimeout(() => {
         if (this.battleOracleEffect && this.battleOracleEffect.id === id) this.battleOracleEffect = null;
@@ -12605,10 +12612,9 @@ new Vue({
         const zone = pick.card.category === 'レガシー' ? 'legacies' : pick.card.category === 'レリック' ? 'relics' : null;
         const handIdx = player.hand.indexOf(pick.card);
         if (handIdx < 0) continue;
-        const wasOracle = pick.card.category === 'オラクル';
         await this.battlePlayFromHand(handIdx, zone, zone ? null : undefined);
-        if (wasOracle && this.battleOracleEffect) {
-          // オラクル発動演出は本来手動で閉じるまで残るが、CPU自身のプレイでは短時間で自動的に閉じる
+        if (this.battleOracleEffect) {
+          // 発動演出は本来手動で閉じるまで残るが、CPU自身のプレイでは短時間で自動的に閉じる
           const effRef = this.battleOracleEffect;
           setTimeout(() => { if (this.battleOracleEffect === effRef) this.battleOracleEffect = null; }, 1800);
         }
@@ -18054,6 +18060,9 @@ new Vue({
       player.handCount = player.hand.length;
       // このターンのカード使用枚数を加算（「2枚目以降」条件用）
       player.cardPlaysThisTurn = (Number(player.cardPlaysThisTurn) || 0) + 1;
+      // オラクルと同様の中央発動演出を表示し、相手クライアントにも同期する
+      this.battleOracleEffect = { card: fieldCard, kind: fieldCard.category };
+      this._battlePublishOracleEffect(fieldCard.no, fieldCard.category);
       this.hideCardHover();
       this.dslRefreshStaticAbilities();
       // 天力トリガー：
