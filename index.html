@@ -3734,8 +3734,55 @@
   .battle-skill-closeup-name {
     font-size: 22px; font-weight: 900; letter-spacing: 0.04em; color: #fff;
   }
+  .battle-skill-closeup-line {
+    margin-top: 10px; font-size: 15px; font-weight: 700; color: #ffe9c2;
+    text-shadow: 0 0 8px rgba(255, 200, 100, .6);
+    opacity: 0; animation: battleSkillCloseupLineInKf 0.5s ease-out 0.3s forwards;
+  }
+  @keyframes battleSkillCloseupLineInKf {
+    0%   { opacity: 0; transform: translateY(6px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
   .battle-skill-closeup-fade-leave-active { transition: opacity 0.3s ease; }
   .battle-skill-closeup-fade-leave-to { opacity: 0; }
+
+  /* ===== カミの吹き出し（エモート／神技セリフ） ===== */
+  .emote-bubble {
+    position: fixed; z-index: 4200; max-width: 260px;
+    padding: 10px 16px; border-radius: 16px;
+    background: rgba(20, 16, 30, 0.92); border: 1px solid rgba(255, 220, 160, 0.5);
+    color: #fff2dc; font-size: 14px; font-weight: 700; line-height: 1.5;
+    box-shadow: 0 4px 18px rgba(0,0,0,.45);
+    pointer-events: none;
+  }
+  .emote-bubble-self { left: 50%; bottom: calc(50% + 8px); transform: translateX(-50%); }
+  .emote-bubble-opp  { left: 50%; top: calc(50% + 8px); transform: translateX(-50%); }
+  .emote-bubble-fade-enter-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+  .emote-bubble-fade-leave-active { transition: opacity 0.3s ease; }
+  .emote-bubble-fade-enter-from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  .emote-bubble-fade-leave-to { opacity: 0; }
+
+  /* ===== エモート選択ホイール：自分のカミポートレートをドラッグすると表示 ===== */
+  .emote-wheel {
+    position: fixed; z-index: 4300; width: 0; height: 0; transform: translate(0, 0);
+    pointer-events: none;
+  }
+  .emote-wheel-center {
+    position: absolute; left: -6px; top: -6px; width: 12px; height: 12px;
+    border-radius: 50%; background: rgba(255, 220, 160, 0.85);
+    box-shadow: 0 0 10px rgba(255, 200, 100, .7);
+  }
+  .emote-wheel-item {
+    position: absolute; left: -32px; top: -32px; width: 64px; height: 64px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border-radius: 50%; background: rgba(20, 16, 30, 0.88); border: 2px solid rgba(255,255,255,0.3);
+    color: #fff; transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+  }
+  .emote-wheel-item .emote-wheel-emoji { font-size: 22px; line-height: 1; }
+  .emote-wheel-item .emote-wheel-label { font-size: 10px; margin-top: 2px; white-space: nowrap; }
+  .emote-wheel-item.active {
+    background: rgba(255, 180, 60, 0.92); border-color: #fff2dc; color: #2a1a08;
+  }
 
   /* ドロー時のカード送出演出：山札側からスライド＋フェードインしながら手札に収まる */
   .hand-card-drawn { animation: handCardDrawnKf 0.45s cubic-bezier(.2,.9,.3,1); }
@@ -5785,7 +5832,9 @@
               <div class="kami-portrait"
                    :class="['kami-tier-' + battleSkillTone, { 'orochi-awakened': battleIsOrochi('self') && battleSample.self.seal === 0, 'kami-shattering': battleSample.result && battleSample.result.outcome === 'loss' }]"
                    :style="battleSample.self.kami && kamiIllustrationUrl(battleSample.self.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.self.kami) + ')' } : {}"
-                   @click="battleSample.self.kami && openPreview(battleSample.self.kami)"
+                   @click="battleSelfKamiClick"
+                   @mousedown="battleEmoteDragStart"
+                   @touchstart="battleEmoteDragStart"
                    @mouseenter="battleSample.self.kami && showCardHover(battleSample.self.kami, $event)"
                    @mouseleave="hideCardHover">
                 <div v-if="!battleSample.self.kami" class="kami-placeholder">カミ</div>
@@ -6546,9 +6595,28 @@
           <div v-if="battleSkillCloseup.kamiNickname" class="battle-skill-closeup-nickname">{{ battleSkillCloseup.kamiNickname }}</div>
           <div class="battle-skill-closeup-name">{{ battleSkillCloseup.kamiName }}</div>
         </div>
+        <div v-if="battleSkillCloseup.line" class="battle-skill-closeup-line">「{{ battleSkillCloseup.line }}」</div>
       </div>
     </div>
   </transition>
+
+  <!-- ===== カミの吹き出し（エモート／神技1・2のセリフ） ===== -->
+  <transition name="emote-bubble-fade">
+    <div v-if="emoteBubbles.self" :key="'self'+emoteBubbles.self.id" class="emote-bubble emote-bubble-self">{{ emoteBubbles.self.text }}</div>
+  </transition>
+  <transition name="emote-bubble-fade">
+    <div v-if="emoteBubbles.opp" :key="'opp'+emoteBubbles.opp.id" class="emote-bubble emote-bubble-opp">{{ emoteBubbles.opp.text }}</div>
+  </transition>
+
+  <!-- ===== エモート選択ホイール：自分のカミポートレートをドラッグすると表示 ===== -->
+  <div v-if="emoteWheel" class="emote-wheel" :style="{ left: emoteWheel.x + 'px', top: emoteWheel.y + 'px' }">
+    <div class="emote-wheel-center"></div>
+    <div v-for="(t, i) in emoteWheelItems" :key="t.key" class="emote-wheel-item"
+         :class="{ active: emoteWheel.hoverKey === t.key }" :style="t.style">
+      <span class="emote-wheel-emoji">{{ t.emoji }}</span>
+      <span class="emote-wheel-label">{{ t.label }}</span>
+    </div>
+  </div>
 
   <!-- ===== フィールド空き部 右クリックメニュー（トークン招来） ===== -->
   <div v-if="battleFieldZoneMenu" class="deck-context-menu"
@@ -7607,6 +7675,122 @@ function driveThumbUrl(fileId, width) {
 }
 
 /* ================================================================== */
+/* カミ別エモート・神技セリフ（対戦画面：カミアイコンからドラッグして送る） */
+/* キーはカミNo（kamiPositionMap等と同じ "1"〜"10"）。                  */
+/* ================================================================== */
+const KAMI_EMOTE_LINES = {
+  "1": { // スサノオ
+    greeting: "よぉ！景気よくいこうぜ！",
+    confusion: "あー…？どうなってんだこれ？",
+    praise: "やるじゃねえか",
+    surprise: "うおっ、マジか！？",
+    taunt: "どうした？調子でねぇのか？",
+    boast: "変わり続ける世界を、俺自身の手で創ってやる！",
+    skill1: "荒ぶる魂よ！",
+    skill2: "こっからが本気だ！ついて来れるか？",
+  },
+  "2": { // ヤマトタケル
+    greeting: "……始めるぞ",
+    confusion: "……妙だな",
+    praise: "悪くない",
+    surprise: "……予想外だ",
+    taunt: "その程度か？",
+    boast: "誰にも縋る必要のない個の世界…必ず創り上げて見せる",
+    skill1: "無駄口はいい",
+    skill2: "徒党を組んだところで無意味だ",
+  },
+  "3": { // オオクニヌシ
+    greeting: "よろしく頼みます",
+    confusion: "ふむ……少し考えさせてください",
+    praise: "お見事",
+    surprise: "なんという手だ……",
+    taunt: "私の助けが必要ですか？",
+    boast: "異なる者同士が、争わず手を取り合える世界を。",
+    skill1: "どうか力を貸してください。",
+    skill2: "好機！皆さん、準備はいいですか？",
+  },
+  "4": { // タケミカヅチ
+    greeting: "私が相手だ。かかってこい",
+    confusion: "……計算が狂ったか",
+    praise: "なるほど、力はあるようだな",
+    surprise: "…やるな",
+    taunt: "弱き者は去れ",
+    boast: "力こそが全て……それが私の世界だ",
+    skill1: "私の力、見せてやろう",
+    skill2: "さあ……終幕の刻だ",
+  },
+  "5": { // オモイカネ
+    greeting: "では、始めましょうか",
+    confusion: "……計算が合いません",
+    praise: "合理的な一手ですね",
+    surprise: "まあ！",
+    taunt: "それが最善手のつもりですか？",
+    boast: "争いを終わらせる叡智の世界を、私は望みます",
+    skill1: "計算通りです",
+    skill2: "これが——最適解です",
+  },
+  "6": { // アメノウズメ
+    greeting: "んー…よろしく〜",
+    confusion: "あれ…？",
+    praise: "すごいねぇ！",
+    surprise: "ちょっと目が覚めちゃった",
+    taunt: "疲れてるのかな？休んでもいいんだよ〜",
+    boast: "みんなで踊って、笑って過ごせる世界がいいなぁ",
+    skill1: "じゃあ……踊ろっか",
+    skill2: "みんな、見ててね……とっておきだよ",
+  },
+  "7": { // ヒノカグツチ
+    greeting: "よお、暴れる準備はできてんな？",
+    confusion: "あぁ？わけわかんねえ",
+    praise: "いいじゃねえか、気に入ったぜ！",
+    surprise: "マジかよ、やるな！",
+    taunt: "その程度で縛られてんじゃねえよ",
+    boast: "誰にも縛られず、暴れ狂える自由な世界——それが俺の望みだ！",
+    skill1: "暴れさせてもらうぜ！",
+    skill2: "全部、燃やし尽くしてやる！",
+  },
+  "8": { // アマテラス
+    greeting: "よろしくお願いしますね",
+    confusion: "あら……どうしましょう",
+    praise: "素晴らしいですわ",
+    surprise: "まあ……そんなことが",
+    taunt: "きっと、本調子ではないのですね",
+    boast: "争いや諍いのない、優しい世界を望みます",
+    skill1: "世界を照らします",
+    skill2: "どうか、これで……終わりにしましょう",
+  },
+  "9": { // ツクヨミ
+    greeting: "……始める",
+    confusion: "……理解できない",
+    praise: "……悪くない",
+    surprise: "……そう",
+    taunt: "……（溜め息）",
+    boast: "無駄な音は、全て消す。静寂だけが満ちる世界を",
+    skill1: "……うるさい",
+    skill2: "……刻よ、止まって",
+  },
+  "10": { // ヤマタノオロチ
+    greeting: "さあ、我らが前に跪くがよい",
+    confusion: "……ほう？",
+    praise: "下等な者にしては、やるではないか",
+    surprise: "この我らを驚かせるとはな",
+    taunt: "下等種族の考えることは理解できぬわ",
+    boast: "我ら龍こそが世界支配者なのがなぜわからぬ",
+    skill1: "力の一部を見せてやろう",
+    skill2: "これが……我らが真の力よ",
+  },
+};
+// エモートホイールの並び順・アイコン・見出し（ドラッグ操作のUIで使用）
+const EMOTE_TYPES = [
+  { key: "greeting",  emoji: "👋", label: "あいさつ" },
+  { key: "praise",    emoji: "👏", label: "賞賛" },
+  { key: "surprise",  emoji: "😲", label: "驚き" },
+  { key: "taunt",     emoji: "😏", label: "疑問" },
+  { key: "confusion", emoji: "😥", label: "困惑" },
+  { key: "boast",     emoji: "🔥", label: "大見栄" },
+];
+
+/* ================================================================== */
 /* キーワード能力辞書（クリックでポップアップ表示）                     */
 /* ================================================================== */
 const KEYWORD_GLOSSARY = {
@@ -7939,6 +8123,8 @@ new Vue({
     battleTurnElapsedSec: 0,      // 現在のターンの経過秒数
     battleResultRevealReady: false, // false の間はひび割れ→破壊演出を表示し、勝敗オーバーレイ自体は隠す
     battleShatterParticles: null, // ひび割れ後の粒子爆散演出：{ side, particles: [{ id, style }] }
+    emoteWheel: null, // カミアイコンからドラッグ中のエモート選択ホイール：{ x, y, hoverKey }
+    emoteBubbles: { self: null, opp: null }, // カミの吹き出し表示：{ text, id } / null
     battleTurnFlash: null, // 手番切替時に画面中央へ一瞬表示する演出：{ text, side }
     battleTurnWipe: null,  // 手番切替時の画面ワイプ演出：{ id, side }
     battleCoinFlip: null, // 先攻/後攻決めのコイン演出：{ firstSide, phase: 'spin'|'result' }
@@ -7999,7 +8185,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.38',
+    BUILD_VERSION: '1.15.39',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -8360,6 +8546,19 @@ new Vue({
       const raw = String((this.battleSkillCloseup && this.battleSkillCloseup.skillName) || '');
       const m = raw.match(/^(.*?)[（(]([^）)]*)[）)]\s*$/);
       return m ? { main: m[1].trim(), furigana: m[2].trim() } : { main: raw, furigana: '' };
+    },
+    // エモートホイール：EMOTE_TYPES（6件）を中心から均等な円状に配置するための座標を計算
+    emoteWheelItems() {
+      const n = EMOTE_TYPES.length;
+      const radius = 92;
+      const hoverKey = this.emoteWheel && this.emoteWheel.hoverKey;
+      return EMOTE_TYPES.map((t, i) => {
+        const angle = (Math.PI * 2 * i) / n - Math.PI / 2; // 先頭を真上から時計回りに配置
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        const scale = hoverKey === t.key ? 1.15 : 1;
+        return Object.assign({}, t, { style: { transform: `translate(${x}px, ${y}px) scale(${scale})` } });
+      });
     },
     filteredCards() {
       const q = this.searchText.trim().toLowerCase();
@@ -10782,6 +10981,11 @@ new Vue({
         const oracleEffectRef = getDb().ref(oracleEffectPath);
         const oracleEffectHandler = snap => this._battleApplyRemoteOracleEffect(snap.val());
         oracleEffectRef.on('value', oracleEffectHandler);
+        // エモート（あいさつ・困惑・賞賛・驚き・疑問・大見栄）も同期：相手が送ったエモートも自分の画面に出す
+        const emotePath = path.replace(/\/state$/, '/emote');
+        const emoteRef = getDb().ref(emotePath);
+        const emoteHandler = snap => this._battleApplyRemoteEmote(snap.val());
+        emoteRef.on('value', emoteHandler);
         // 在席状態（プレゼンス）：.info/connected + onDisconnect で自分の切断を検知させ、
         // 相手側の在席パスを購読することで「相手が切断した」ことを能動的に把握できるようにする
         const presenceBase = path.replace(/\/state$/, '/presence');
@@ -10823,6 +11027,7 @@ new Vue({
           try { delegateRef.off('value', delegateHandler); } catch (e) {}
           try { skill2Ref.off('value', skill2Handler); } catch (e) {}
           try { oracleEffectRef.off('value', oracleEffectHandler); } catch (e) {}
+          try { emoteRef.off('value', emoteHandler); } catch (e) {}
           try { connectedRef.off('value', connectedHandler); } catch (e) {}
           try { oppPresenceRef.off('value', presenceHandler); } catch (e) {}
           try { rematchRef.off('value', rematchHandler); } catch (e) {}
@@ -10874,6 +11079,10 @@ new Vue({
         const oracleEffectRef = getDb().ref(oracleEffectPath);
         const oracleEffectHandler = snap => this._battleApplyRemoteOracleEffect(snap.val());
         oracleEffectRef.on('value', oracleEffectHandler);
+        const emotePath = path.replace(/\/state$/, '/emote');
+        const emoteRef = getDb().ref(emotePath);
+        const emoteHandler = snap => this._battleApplyRemoteEmote(snap.val());
+        emoteRef.on('value', emoteHandler);
         // 観戦者数を対戦者側に見せるための在席登録（自分がこの部屋を観戦中であることを記録するだけ）
         const spectatorsPath = path.replace(/\/state$/, '/spectators');
         const mySpectatorRef = getDb().ref(`${spectatorsPath}/${this._battleClientId()}`);
@@ -10884,6 +11093,7 @@ new Vue({
           try { noticeRef.off('value', noticeHandler); } catch (e) {}
           try { skill2Ref.off('value', skill2Handler); } catch (e) {}
           try { oracleEffectRef.off('value', oracleEffectHandler); } catch (e) {}
+          try { emoteRef.off('value', emoteHandler); } catch (e) {}
           try { mySpectatorRef.onDisconnect().cancel(); } catch (e) {}
           try { mySpectatorRef.remove(); } catch (e) {}
         };
@@ -11684,6 +11894,7 @@ new Vue({
         kamiNickname: kami ? (kami.nickname || '') : '',
         kamiName: kami ? kami.name : '',
         skillName: skillName || '',
+        line: this._battleEmoteLineFor(kami, 'skill2'),
       };
       this._sfxPlay('skill2');
       await new Promise(resolve => { this._battleSkillCloseupT = setTimeout(resolve, 1500); });
@@ -11752,6 +11963,116 @@ new Vue({
       this._battleLastSkill2At = payload.ts || Date.now();
       const kami = this.cardByNo[String(payload.kamiNo)] || null;
       this._battleShowSkill2Closeup(kami, payload.skillName);
+    },
+    /* ===== カミのエモート（あいさつ・困惑・賞賛・驚き・疑問・大見栄）＋神技1/2のセリフ ===== */
+    // カミポートレートの下/上あたりに吹き出しを一定時間表示する（自分/相手それぞれ独立に管理）
+    _battleShowEmoteBubble(side, text) {
+      if (!text) return;
+      this._emoteBubbleSeq = (this._emoteBubbleSeq || 0) + 1;
+      const id = this._emoteBubbleSeq;
+      this.$set(this.emoteBubbles, side, { text, id });
+      setTimeout(() => {
+        if (this.emoteBubbles[side] && this.emoteBubbles[side].id === id) {
+          this.$set(this.emoteBubbles, side, null);
+        }
+      }, 3200);
+    },
+    // 自分のカミのセリフを取得（kindは EMOTE_TYPES の key か 'skill1'/'skill2'）
+    _battleEmoteLineFor(kami, kind) {
+      if (!kami) return '';
+      const lines = KAMI_EMOTE_LINES[String(kami.no)];
+      return (lines && lines[kind]) || '';
+    },
+    // エモートホイールで選んだ種類を自分側に表示し、相手クライアントにも同期する
+    battleSendEmote(key) {
+      const kami = this.battleSample.self && this.battleSample.self.kami;
+      const text = this._battleEmoteLineFor(kami, key);
+      if (!text) return;
+      this._sfxPlay('menuselect');
+      this._battleShowEmoteBubble('self', text);
+      this._battlePublishEmote(key);
+    },
+    _battlePublishEmote(key) {
+      const n = this.battleNet;
+      if (!n || !n.on || !n.statePath || n.spectating) return;
+      try {
+        const path = n.statePath.replace(/\/state$/, '/emote');
+        getDb().ref(path).set({ writer: n.mySeat, key: String(key), ts: Date.now() }).catch(() => {});
+      } catch (e) { /* silent */ }
+    },
+    _battleApplyRemoteEmote(payload) {
+      const n = this.battleNet;
+      if (!payload || !n || !n.on) return;
+      if (!n.spectating && String(payload.writer) === String(n.mySeat)) return; // 自分のは無視
+      if (payload.ts && payload.ts <= (this._battleLastEmoteAt || 0)) return;
+      this._battleLastEmoteAt = payload.ts || Date.now();
+      const kami = this.battleSample.opp && this.battleSample.opp.kami;
+      const text = this._battleEmoteLineFor(kami, payload.key);
+      if (!text) return;
+      this._sfxPlay('menuselect');
+      this._battleShowEmoteBubble('opp', text);
+    },
+    // 自分のカミポートレートのクリック：エモートのドラッグ操作直後は誤ってプレビューを開かないよう抑止する
+    battleSelfKamiClick() {
+      if (this._suppressNextKamiClick) { this._suppressNextKamiClick = false; return; }
+      if (this.battleSample.self.kami) this.openPreview(this.battleSample.self.kami);
+    },
+    // 自分のカミポートレートでの mousedown/touchstart：一定距離ドラッグしたらエモートホイールを表示する
+    battleEmoteDragStart(e) {
+      if (this.battleNet && this.battleNet.spectating) return;
+      if (!this.battleSample.self.kami || this.battleSample.result) return;
+      const point = e.touches ? e.touches[0] : e;
+      this._emoteDragStartX = point.clientX;
+      this._emoteDragStartY = point.clientY;
+      this._emoteDragMoved = false;
+      this.emoteWheel = null;
+      const move = ev => this._battleEmoteDragMove(ev);
+      const up = ev => this._battleEmoteDragEnd(ev, move, up);
+      window.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', up);
+      window.addEventListener('touchmove', move, { passive: false });
+      window.addEventListener('touchend', up);
+    },
+    _battleEmoteDragMove(e) {
+      const point = e.touches ? e.touches[0] : e;
+      const dx = point.clientX - this._emoteDragStartX;
+      const dy = point.clientY - this._emoteDragStartY;
+      const dist = Math.hypot(dx, dy);
+      if (!this.emoteWheel) {
+        if (dist < 14) return; // ドラッグ判定の閾値未満はクリック扱いのままにする
+        this._emoteDragMoved = true;
+        this.emoteWheel = { x: this._emoteDragStartX, y: this._emoteDragStartY, hoverKey: null };
+      }
+      if (e.cancelable) e.preventDefault();
+      if (dist < 30) {
+        this.emoteWheel.hoverKey = null;
+        return;
+      }
+      const angle = Math.atan2(point.clientY - this.emoteWheel.y, point.clientX - this.emoteWheel.x);
+      const idx = this._battleEmoteAngleToIndex(angle);
+      this.emoteWheel.hoverKey = EMOTE_TYPES[idx] ? EMOTE_TYPES[idx].key : null;
+    },
+    // 角度（真上=0、時計回り）から最も近いエモート項目のインデックスを求める（emoteWheelItemsの配置と対応）
+    _battleEmoteAngleToIndex(angle) {
+      const n = EMOTE_TYPES.length;
+      const step = (Math.PI * 2) / n;
+      let a = angle + Math.PI / 2;
+      a = ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+      return Math.round(a / step) % n;
+    },
+    _battleEmoteDragEnd(e, move, up) {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      window.removeEventListener('touchmove', move);
+      window.removeEventListener('touchend', up);
+      const wheel = this.emoteWheel;
+      this.emoteWheel = null;
+      if (wheel && wheel.hoverKey) this.battleSendEmote(wheel.hoverKey);
+      if (this._emoteDragMoved) {
+        // 実際にドラッグが発生した場合、この直後に発火するnative clickでのプレビュー開閉を1回だけ抑止する
+        this._suppressNextKamiClick = true;
+        setTimeout(() => { this._suppressNextKamiClick = false; }, 50);
+      }
     },
     /* オラクル発動の中央演出を相手クライアントにも同期する（呼び出し側でbattleOracleEffectを
        セットした直後に、そのカードのNoを渡して呼ぶ） */
@@ -19184,7 +19505,12 @@ new Vue({
       if (this.battleNet && this.battleNet.spectating) return;
       const skill = this.battleSkillOptions.find(item => item.index === index);
       if (!skill || !skill.enabled || this.battleSample.result) return;
-      if (index === 1) this._sfxPlay('skill'); // 神技2はこの後のクローズアップ演出内でskill2を鳴らす
+      if (index === 1) {
+        this._sfxPlay('skill'); // 神技2はこの後のクローズアップ演出内でskill2を鳴らす
+        const skill1Kami = this.battleSample.self.kami;
+        this._battleShowEmoteBubble('self', this._battleEmoteLineFor(skill1Kami, 'skill1'));
+        this._battlePublishEmote('skill1');
+      }
       this.battleSaveUndo();
       this.battleSample.self.tenryoku = Math.max(0, this.battleSample.self.tenryoku - skill.cost);
       this.battleSkillModal = null;
