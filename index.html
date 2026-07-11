@@ -1257,7 +1257,10 @@
     display: flex; flex-direction: column; gap: 14px; padding-top: 8px;
   }
   .mode-detail-desc-heading { font-size: 20px; font-weight: 800; color: #fff; }
-  .mode-detail-desc-body { font-size: clamp(15px, 1.05vw, 18px); line-height: 1.9; color: #cdd3e0; white-space: pre-line; word-break: normal; overflow-wrap: anywhere; }
+  .mode-detail-desc-body {
+    font-size: clamp(15px, 1.05vw, 18px); line-height: 1.9; color: #cdd3e0;
+    white-space: pre-line; word-break: keep-all; overflow-wrap: normal; line-break: strict;
+  }
   .mode-detail-start-btn {
     margin-top: auto; padding: 16px 20px; border-radius: 10px; cursor: pointer;
     font-size: 16px; font-weight: 800; letter-spacing: 0.04em; color: #fff;
@@ -7879,25 +7882,25 @@ const MODE_DETAIL_INFO = {
   cardlist: {
     title: 'カードリスト',
     image: 'top_mode_icons/cardlist.png',
-    desc: '収録されているカードを、画像とカード情報を見ながら確認できます。\n\n色・カード種別・種族・コストなどで絞り込み、目的のカードを素早く探せます。カードにカーソルを合わせると、大きな画像で内容を確認できます。\n\n画面内の「キーワード集」では、【疾駆】【守護】【誘】【招来】など、共通能力の詳しい意味も確認できます。',
+    desc: '収録されているカードを、\n画像とカード情報を見ながら確認できます。\n\n色・カード種別・種族・コストなどで絞り込みます。\n目的のカードを素早く探せます。\n\nカードにカーソルを合わせると、\n大きな画像で内容を確認できます。\n\n画面内の「キーワード集」では、\n【疾駆】【守護】【誘】【招来】など、共通能力の詳しい意味を確認できます。',
     startLabel: 'カードリストを見る',
   },
   game: {
     title: '創世決戦（4人対戦）',
     image: 'top_mode_icons/genesis4p.png',
-    desc: '4人でロビーに集まって遊ぶ対戦モードです。CPUを交えれば、2人からでも開始できます。\n\n① 神託の儀：対戦で使用するカミを選びます。\n② 選別の儀：パックを順番に取り、デッキ候補を集めます。\n③ 深化の刻：集めたカードから、使用するデッキを完成させます。\n④ 星戦：組み合わせを変えながら、3回の対戦を行います。\n⑤ 終戦：獲得した星魂を集計し、最終順位を決定します。',
+    desc: '4人でロビーに集まって遊ぶ対戦モードです。\nCPUを交えれば、2人からでも開始できます。\n\n① 神託の儀：対戦で使用するカミを選びます。\n② 選別の儀：パックを順番に取り、\n　 デッキ候補を集めます。\n③ 深化の刻：集めたカードから、\n　 使用するデッキを完成させます。\n④ 星戦：組み合わせを変えながら、\n　 3回の対戦を行います。\n⑤ 終戦：獲得した星魂を集計し、\n　 最終順位を決定します。',
     startLabel: '創世決戦を開始する',
   },
   construct: {
     title: '理念構築戦（2人対戦）',
     image: 'top_mode_icons/construct2p.png',
-    desc: '2人で、自由に構築したデッキを使って対戦するモードです。\n\nパックのドラフトは行わず、全カードプールから35枚を選んでデッキを作ります。\n\n自分で一から構築するほか、あらかじめ用意されたストラクチャーデッキを使って、すぐに対戦することもできます。',
+    desc: '2人で、自由に構築したデッキを使って\n対戦するモードです。\n\nパックのドラフトは行わず、\n全カードプールから35枚を選んでデッキを作ります。\n\n自分で一から構築するほか、\nあらかじめ用意されたストラクチャーデッキを使って、\nすぐに対戦することもできます。',
     startLabel: '理念構築戦を開始する',
   },
   shield: {
     title: '星紡ぎ戦（2人対戦）',
     image: 'top_mode_icons/shield2p.png',
-    desc: '2人でパックを選び、その場で作ったデッキを使って対戦するモードです。\n\n① パックを交互に選び、カードを48枚集めます。\n② 集めたカードから8枚を除外し、40枚のデッキを完成させます。\n③ 対戦で使用するカミを選びます。\n④ 完成したデッキで対戦します。\n\n対戦後は、同じデッキで再戦するか、パック選択からやり直すかを選べます。',
+    desc: '2人でパックを選び、その場で作ったデッキを使って\n対戦するモードです。\n\n① パックを交互に選び、カードを48枚集めます。\n② 集めたカードから8枚を除外し、\n　 40枚のデッキを完成させます。\n③ 対戦で使用するカミを選びます。\n④ 完成したデッキで対戦します。\n\n対戦後は、同じデッキで再戦するか、\nパック選択からやり直すかを選べます。',
     startLabel: '星紡ぎ戦を開始する',
   },
 };
@@ -8298,7 +8301,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.50',
+    BUILD_VERSION: '1.15.51',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
