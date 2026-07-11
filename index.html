@@ -6607,7 +6607,7 @@
 
   <!-- ===== CPU対戦AI実行中の目隠し（内部的にself/oppを入れ替えて処理するため、その間は盤面を隠す） ===== -->
   <div v-if="battleCpuThinking" class="battle-cpu-thinking-overlay">
-    <div class="battle-cpu-thinking-label">🤖 相手が考えています…</div>
+    <div class="battle-cpu-thinking-label">{{ battleCpuThinkingLabel || '🤖 相手が考えています…' }}</div>
   </div>
 
   <!-- ===== 神技1/2発動時のカットイン：神技2は顔アップの大きなカード、神技1は目線だけアップの軽量演出 ===== -->
@@ -8148,6 +8148,7 @@ new Vue({
     battleWaitingLabel: null, // 相手クライアントへの委譲応答待ち中に表示するラベル（null=待ちなし）
     battleWaitingForRematch: false, // 再戦をリクエスト済みで相手の応答を待っている間true（対戦テストのみ）
     battleCpuThinking: false, // CPU対戦AIが自分のターンを自動実行中（内部的にself/oppを入れ替えて処理するため、その間は画面を覆い隠す）
+    battleCpuThinkingLabel: null, // 覆い隠し中に表示する詳細ラベル（例：どのカードを出そうとしているか）。null時は既定文言
     battleActiveEffectCard: null, // 現在解決中の効果の持ち主カード（多段階の選択が続いても見失わないためのUI用）
     battleTurnTimerEnabled: loadStoredBool('tsukuriyo_turnTimerEnabled', true), // ターン経過時間の警告表示（強制的な時間切れ処理は行わない）
     pickAssistEnabled: loadStoredBool('tsukuriyo_pickAssistEnabled', true), // 選別の儀（4人対戦ドラフト）の「⭐おすすめ」ピック補助表示（初心者向け、OFF可）。シールド戦のパック選択には適用しない
@@ -8219,7 +8220,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.43',
+    BUILD_VERSION: '1.15.44',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -12580,11 +12581,16 @@ new Vue({
         this._battleCpuAutoResolving = false;
         this._dslSwapSelfOpp();
         this.battleCpuThinking = false;
+        this.battleCpuThinkingLabel = null;
         if (this.battleUndoStack.length > undoDepthBefore) this.battleUndoStack.length = undoDepthBefore;
       }
       if (!this.battleSample.result && this.battleSample.activeSide === 'opp' && this.battleSample.turn === turnAtStart) {
         this.battleEndTurn();
       }
+    },
+    // CPU手番の演出用に一定時間待つ（キャンセル不要な単純な間なので専用のawaitヘルパーとして切り出す）
+    _battleCpuThinkPause(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
     },
     /* 召喚フェーズ：出せる中で最大コストのレガシーを最優先、次点でレリック/オラクルを
        コストが余っている限り出し続ける。昇華等の追加コスト選択・進化が絡むカードは
@@ -12612,6 +12618,11 @@ new Vue({
         const zone = pick.card.category === 'レガシー' ? 'legacies' : pick.card.category === 'レリック' ? 'relics' : null;
         const handIdx = player.hand.indexOf(pick.card);
         if (handIdx < 0) continue;
+        // 複数枚を同時に出したように見えて分かりにくいという指摘があったため、1枚ごとに
+        // 「何を出そうとしているか」を思考中オーバーレイのラベルに表示しつつ、間を置いて1枚ずつ処理する
+        this.battleCpuThinkingLabel = `🤖 相手が「${this.fullName(pick.card)}」を場に出しています…`;
+        await this._battleCpuThinkPause(500);
+        if (!stillMyTurn()) break;
         await this.battlePlayFromHand(handIdx, zone, zone ? null : undefined);
         if (this.battleOracleEffect) {
           // 発動演出は本来手動で閉じるまで残るが、CPU自身のプレイでは短時間で自動的に閉じる
@@ -12619,6 +12630,8 @@ new Vue({
           setTimeout(() => { if (this.battleOracleEffect === effRef) this.battleOracleEffect = null; }, 1800);
         }
         if (!stillMyTurn()) break;
+        // 出した直後も少し間を置いてから次のカードの検討に移る（一枚ずつ処理していると分かるように）
+        await this._battleCpuThinkPause(600);
       }
     },
     /* 攻撃フェーズ：戦闘対象にできる（タップ済みの）相手レガシーの中に倒せるものがあれば
