@@ -31,6 +31,11 @@ const CONSTRUCT_MIN_RETURN_SUM  = 50;  // デッキの返還値合計の下限
  * @returns {Promise<{ roomCode, playerId, role: 'host' }>}
  */
 async function createConstructRoom(playerName, isPublic) {
+  if (typeof validatePlayerName === "function") {
+    const valid = validatePlayerName(playerName);
+    if (!valid.ok) throw new Error(valid.message);
+    playerName = valid.value;
+  }
   const db       = getDb();
   const roomCode = generateRoomCode();
   const playerId = generateRoomCode();
@@ -47,7 +52,7 @@ async function createConstructRoom(playerName, isPublic) {
   setTimeout(() => db.ref(`constructRooms/${roomCode}`).remove(), 60 * 60 * 1000);
 
   if (isPublic && typeof publicRoomRegister === "function") {
-    publicRoomRegister("construct", roomCode, playerName);
+    await publicRoomRegister("construct", roomCode, playerName);
   }
   return { roomCode, playerId, role: "host" };
 }
@@ -58,6 +63,11 @@ async function createConstructRoom(playerName, isPublic) {
  * @returns {Promise<{ playerId, role: 'guest' }>}
  */
 async function joinConstructRoom(roomCode, playerName) {
+  if (typeof validatePlayerName === "function") {
+    const valid = validatePlayerName(playerName);
+    if (!valid.ok) throw new Error(valid.message);
+    playerName = valid.value;
+  }
   const db  = getDb();
   const ref = db.ref(`constructRooms/${roomCode}`);
   const snap = await ref.once("value");

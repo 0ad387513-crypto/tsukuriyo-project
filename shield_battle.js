@@ -68,6 +68,11 @@ const KAMI_CANDIDATES = 10;  // カミ候補数
  * @returns {Promise<{ roomCode, playerId, role: 'host' }>}
  */
 async function createRoom(playerName, isPublic) {
+  if (typeof validatePlayerName === "function") {
+    const valid = validatePlayerName(playerName);
+    if (!valid.ok) throw new Error(valid.message);
+    playerName = valid.value;
+  }
   const db       = getDb();
   const roomCode = generateRoomCode();
   const playerId = generateRoomCode(); // セッションID（簡易）
@@ -101,7 +106,7 @@ async function createRoom(playerName, isPublic) {
   setTimeout(() => db.ref(`rooms/${roomCode}`).remove(), 60 * 60 * 1000);
 
   if (isPublic && typeof publicRoomRegister === "function") {
-    publicRoomRegister("shield", roomCode, playerName);
+    await publicRoomRegister("shield", roomCode, playerName);
   }
 
   return { roomCode, playerId, role: "host" };
@@ -116,6 +121,11 @@ async function createRoom(playerName, isPublic) {
  * @returns {Promise<{ playerId, role: 'guest' }>}
  */
 async function joinRoom(roomCode, playerName) {
+  if (typeof validatePlayerName === "function") {
+    const valid = validatePlayerName(playerName);
+    if (!valid.ok) throw new Error(valid.message);
+    playerName = valid.value;
+  }
   const db  = getDb();
   const ref = db.ref(`rooms/${roomCode}`);
   const snap = await ref.once("value");

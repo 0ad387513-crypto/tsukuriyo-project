@@ -73,6 +73,19 @@ function generateRoomCode() {
   return code;
 }
 
+/* Shared validation for every multiplayer entry point. Empty names use each
+ * mode's default name; submitted names must be safe display text. */
+function validatePlayerName(name) {
+  const value = String(name == null ? "" : name).trim();
+  if (!value) return { ok: true, value: "" };
+  if (value.length > 20) return { ok: false, message: "プレイヤー名は20文字以内にしてください。" };
+  if (/[\u0000-\u001f\u007f]/.test(value) || /[<>]/.test(value)) return { ok: false, message: "使用できない文字が含まれています。" };
+  const normalized = value.toLowerCase().replace(/[\s\-_.・]/g, "");
+  const banned = ["死ね", "しね", "殺す", "ころす", "ころし", "ばか", "バカ", "あほ", "アホ", "ちんこ", "ちんぽ", "まんこ", "セックス", "ふぁっく", "fuck", "shit", "asshole", "nigger", "retard", "rape"];
+  if (banned.some(word => normalized.includes(word.toLowerCase()))) return { ok: false, message: "そのプレイヤー名は使用できません。別の名前にしてください。" };
+  return { ok: true, value };
+}
+
 /* ================================================================== */
 /* 公開ルーム一覧（マッチメイキングの摩擦解消）                          */
 /* ホストが任意で自分のルーム/セッションを publicRooms/{code} に登録し、  */
@@ -84,9 +97,11 @@ function generateRoomCode() {
  *  そのクライアントが切断した場合は onDisconnect で自動的に一覧から消える。 */
 function publicRoomRegister(kind, code, hostName) {
   const ref = getDb().ref(`publicRooms/${code}`);
-  ref.set({ kind, code, hostName: hostName || "プレイヤー1", createdAt: Date.now() }).catch(() => {});
-  ref.onDisconnect().remove();
-  return ref;
+  const valid = validatePlayerName(hostName);
+  if (!valid.ok) return Promise.reject(new Error(valid.message));
+  // Wait for the index write before the creator proceeds to its lobby.
+  return ref.set({ kind, code, hostName: valid.value || "Player 1", seatsFilled: 1, createdAt: Date.now() })
+    .then(() => { ref.onDisconnect().remove(); return ref; });
 }
 
 /** 公開一覧から明示的に削除する（満員になった・対戦が始まった等） */
@@ -121,6 +136,6 @@ function subscribePublicRooms(kind, callback) {
 if (typeof module !== "undefined") {
   module.exports = {
     FIREBASE_CONFIG, getDb, fbArr, generateRoomCode,
-    publicRoomRegister, publicRoomRemove, publicRoomUpdate, subscribePublicRooms,
+    publicRoomRegister, publicRoomRemove, publicRoomUpdate, subscribePublicRooms, validatePlayerName,
   };
 }
