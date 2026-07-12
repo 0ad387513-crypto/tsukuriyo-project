@@ -1204,16 +1204,17 @@
   .top-menu-btn.game { background: linear-gradient(135deg, #2a5a4a, #2a7a5a); border-color: #5abb8a; }
   .top-menu-btn.game:hover { background: linear-gradient(135deg, #3a6a5a, #3a8a6a); }
   /* トップ画面：主要モードカード。創世決戦を大きく左に、理念構築戦/星紡ぎ戦を中央に縦2段、
-     カードリストを右に配置する（PPTモックアップのレイアウトに準拠）。
-     カードリストの下は今のところ空けてある（用途未定）。 */
+     カードリストを右上に（理念構築戦/星紡ぎ戦より大きく、縦2段分）配置する
+     （PPTモックアップのレイアウトに準拠）。カードリストの下は遊び方ガイドの横長ボタン。 */
   .top-mode-grid {
     position: relative; z-index: 1;
     display: grid;
     grid-template-columns: 1.6fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: 1fr 1fr 64px;
     grid-template-areas:
       "game construct cardlist"
-      "game shield    .";
+      "game shield    cardlist"
+      "game .         guide";
     gap: clamp(12px, 1.3vw, 22px);
     width: min(1500px, 97vw);
     height: min(680px, calc(100vh - 260px));
@@ -1222,8 +1223,8 @@
   @media (max-width: 700px) {
     .top-mode-grid {
       grid-template-columns: 1fr 1fr;
-      grid-template-rows: auto auto auto;
-      grid-template-areas: "game game" "construct shield" "cardlist cardlist";
+      grid-template-rows: auto auto auto auto;
+      grid-template-areas: "game game" "construct shield" "cardlist cardlist" "guide guide";
       width: min(560px, 94vw);
       height: auto;
     }
@@ -1257,6 +1258,23 @@
   }
   .top-mode-label { font-size: clamp(16px, 1.25vw, 22px); font-weight: 800; letter-spacing: 0.03em; }
   .top-mode-card.game .top-mode-label { font-size: clamp(20px, 1.7vw, 28px); }
+  /* カードリスト下の横長ボタン：遊び方ガイド（右上の📖と同じ内容を開く別入口） */
+  .top-mode-guide-btn {
+    grid-area: guide;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    cursor: pointer; border-radius: 12px;
+    color: #fff; border: 1px solid #2e3548;
+    background: linear-gradient(160deg, #2a3550, #1a2540);
+    font-size: clamp(13px, 1.1vw, 15px); font-weight: 800; letter-spacing: 0.03em;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  }
+  .top-mode-guide-btn:hover {
+    transform: translateY(-2px); box-shadow: 0 8px 20px rgba(220, 159, 80, 0.2);
+    border-color: #8a95b5;
+  }
+  @media (max-width: 700px) {
+    .top-mode-guide-btn { height: 52px; }
+  }
   .genesis-globe-icon { display: inline-block; vertical-align: -0.15em; } /* 創世決戦ロビー見出し等で使用 */
   /* ===== モード詳細画面：TOPのモードタイルをクリックした遷移先（画像＋説明＋開始ボタン） ===== */
   .mode-detail-back {
@@ -4291,6 +4309,9 @@
       <button class="top-mode-card cardlist" @click="openModeDetail('cardlist')">
         <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/cardlist.webp)' }"></span>
         <span class="top-mode-label">カードリスト</span>
+      </button>
+      <button class="top-mode-guide-btn" @click.stop="_sfxPlay('decision'); howToPlayModalOpen = true; $nextTick(_howtoAnnotateCardRefs)">
+        📖 遊び方ガイド
       </button>
     </div>
     <div class="top-devtools">
@@ -8367,7 +8388,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.53',
+    BUILD_VERSION: '1.15.54',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
