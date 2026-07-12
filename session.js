@@ -69,6 +69,11 @@ function allSeatsReady(s) {
  * @returns {Promise<{ sessionCode, playerId, seat: 1 }>}
  */
 async function createSession(playerName, isPublic) {
+  if (typeof validatePlayerName === "function") {
+    const valid = validatePlayerName(playerName);
+    if (!valid.ok) throw new Error(valid.message);
+    playerName = valid.value;
+  }
   const db       = getDb();
   const code     = generateRoomCode();
   const playerId = generateRoomCode();
@@ -91,7 +96,7 @@ async function createSession(playerName, isPublic) {
   setTimeout(() => db.ref(`sessions/${code}`).remove(), 2 * 60 * 60 * 1000);
 
   if (isPublic && typeof publicRoomRegister === "function") {
-    publicRoomRegister("game", code, playerName);
+    await publicRoomRegister("game", code, playerName);
   }
 
   return { sessionCode: code, playerId, seat: 1 };
@@ -106,6 +111,11 @@ async function createSession(playerName, isPublic) {
  * @returns {Promise<{ playerId, seat }>}
  */
 async function joinSession(code, playerName) {
+  if (typeof validatePlayerName === "function") {
+    const valid = validatePlayerName(playerName);
+    if (!valid.ok) throw new Error(valid.message);
+    playerName = valid.value;
+  }
   const db  = getDb();
   const ref = db.ref(`sessions/${code}`);
 
@@ -373,12 +383,17 @@ async function startDraft(code, round, roundCardNos) {
     if (s.draft && s.draft.round === round && !s.draft.done) return s; // 開始済み
     const seed = s.seed || Math.floor(Math.random() * 1e9);
     const sets = dealDraftSets(roundCardNos, seed, round);
+    // Every pack set randomly chooses clockwise or counter-clockwise passing.
+    // Store the result so all clients use the exact same circulation order.
+    const directionRng = mulberry32(((seed | 0) + round * 7919) | 0);
+    const directions = sets.map(() => directionRng() < 0.5 ? 'L' : 'R');
     s.seed  = seed;
     s.draft = {
       round,
       numSets:   cfg.numSets,
       bundleSize: cfg.bundleSize,
-      direction: cfg.direction,
+      direction: directions[0] || cfg.direction,
+      directions,
       setIndex:  0,
       step:      0,
       sets,
@@ -437,6 +452,7 @@ async function draftPick(code, seat, cardNo) {
         if (d.setIndex < d.numSets - 1) {
           d.setIndex += 1;
           d.packs = fbArr(d.sets)[d.setIndex];            // 次セットを配る
+          d.direction = fbArr(d.directions)[d.setIndex] || cfg.direction;
           d.step  = 0;
         } else {
           d.done = true;
