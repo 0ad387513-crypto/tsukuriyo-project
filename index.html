@@ -1203,15 +1203,30 @@
   .top-menu-btn.shield:hover { background: linear-gradient(135deg, #5a4a7a, #7a4a9a); }
   .top-menu-btn.game { background: linear-gradient(135deg, #2a5a4a, #2a7a5a); border-color: #5abb8a; }
   .top-menu-btn.game:hover { background: linear-gradient(135deg, #3a6a5a, #3a8a6a); }
-  /* トップ画面：主要モードカード（4枚均等グリッド。サムネイル画像＋ラベルのみ、詳しい説明は
-     モード詳細画面側に譲る） */
+  /* トップ画面：主要モードカード。創世決戦を大きく左に、理念構築戦/星紡ぎ戦を中央に縦2段、
+     カードリストを右に配置する（PPTモックアップのレイアウトに準拠）。
+     カードリストの下は今のところ空けてある（用途未定）。 */
   .top-mode-grid {
     position: relative; z-index: 1;
-    display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: clamp(12px, 1.3vw, 22px); width: min(1500px, 97vw); margin-bottom: clamp(12px, 1.8vh, 22px);
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    grid-template-areas:
+      "game construct cardlist"
+      "game shield    .";
+    gap: clamp(12px, 1.3vw, 22px);
+    width: min(1500px, 97vw);
+    height: min(680px, calc(100vh - 260px));
+    margin-bottom: clamp(12px, 1.8vh, 22px);
   }
   @media (max-width: 700px) {
-    .top-mode-grid { grid-template-columns: repeat(2, 1fr); }
+    .top-mode-grid {
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto auto auto;
+      grid-template-areas: "game game" "construct shield" "cardlist cardlist";
+      width: min(560px, 94vw);
+      height: auto;
+    }
   }
   .top-mode-card {
     display: flex; flex-direction: column; align-items: center; gap: 10px;
@@ -1219,18 +1234,29 @@
     color: #fff; border: 1px solid #2e3548;
     background: linear-gradient(160deg, #2a3550, #1a2540);
     transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
-    min-width: 0;
+    min-width: 0; min-height: 0; height: 100%;
   }
   .top-mode-card:hover {
     transform: translateY(-3px); box-shadow: 0 8px 28px rgba(220, 159, 80, 0.22);
     border-color: #8a95b5;
   }
+  .top-mode-card.game { grid-area: game; }
+  .top-mode-card.construct { grid-area: construct; }
+  .top-mode-card.shield { grid-area: shield; }
+  .top-mode-card.cardlist { grid-area: cardlist; }
+  @media (max-width: 700px) {
+    .top-mode-card { height: auto; }
+  }
   .top-mode-thumb {
-    width: 100%; aspect-ratio: 1 / 1; max-height: min(61vh, 560px); border-radius: 10px;
+    width: 100%; flex: 1 1 auto; min-height: 0; border-radius: 10px;
     background-color: #10131c; background-size: cover; background-position: center;
     border: 1px solid rgba(255,255,255,0.12);
   }
+  @media (max-width: 700px) {
+    .top-mode-thumb { aspect-ratio: 1 / 1; flex: none; }
+  }
   .top-mode-label { font-size: clamp(16px, 1.25vw, 22px); font-weight: 800; letter-spacing: 0.03em; }
+  .top-mode-card.game .top-mode-label { font-size: clamp(20px, 1.7vw, 28px); }
   .genesis-globe-icon { display: inline-block; vertical-align: -0.15em; } /* 創世決戦ロビー見出し等で使用 */
   /* ===== モード詳細画面：TOPのモードタイルをクリックした遷移先（画像＋説明＋開始ボタン） ===== */
   .mode-detail-back {
@@ -4250,21 +4276,21 @@
       <button class="top-resume-btn" @click="resumeActiveSession">↩ 戻る</button>
     </div>
     <div class="top-mode-grid">
-      <button class="top-mode-card" @click="openModeDetail('cardlist')">
-        <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/cardlist.webp)' }"></span>
-        <span class="top-mode-label">カードリスト</span>
-      </button>
-      <button class="top-mode-card" @click="openModeDetail('game')">
+      <button class="top-mode-card game" @click="openModeDetail('game')">
         <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/genesis4p.webp)' }"></span>
         <span class="top-mode-label">創世決戦</span>
       </button>
-      <button class="top-mode-card" @click="openModeDetail('construct')">
+      <button class="top-mode-card construct" @click="openModeDetail('construct')">
         <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/construct2p.webp)' }"></span>
         <span class="top-mode-label">理念構築戦</span>
       </button>
-      <button class="top-mode-card" @click="openModeDetail('shield')">
+      <button class="top-mode-card shield" @click="openModeDetail('shield')">
         <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/shield2p.webp)' }"></span>
         <span class="top-mode-label">星紡ぎ戦</span>
+      </button>
+      <button class="top-mode-card cardlist" @click="openModeDetail('cardlist')">
+        <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/cardlist.webp)' }"></span>
+        <span class="top-mode-label">カードリスト</span>
       </button>
     </div>
     <div class="top-devtools">
@@ -8341,7 +8367,7 @@ new Vue({
     battleTokenPickModal: null, // { zone, candidates }
 
     /* ===== シールド戦 ===== */
-    BUILD_VERSION: '1.15.52',
+    BUILD_VERSION: '1.15.53',
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
