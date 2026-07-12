@@ -4149,6 +4149,11 @@
   }
   @keyframes appLoadingSpin { to { transform: rotate(360deg); } }
 </style>
+<!-- TOP の4枚は Vue の初期化や音声処理より先に読み込みを開始する。 -->
+<link rel="preload" as="image" href="top_mode_icons/cardlist.png" fetchpriority="high">
+<link rel="preload" as="image" href="top_mode_icons/genesis4p.png" fetchpriority="high">
+<link rel="preload" as="image" href="top_mode_icons/construct2p.png" fetchpriority="high">
+<link rel="preload" as="image" href="top_mode_icons/shield2p.png" fetchpriority="high">
 </head>
 <body>
 <div id="app-loading"><div class="app-loading-spinner"></div><div>読み込み中…</div></div>
@@ -11352,6 +11357,47 @@ new Vue({
     /* 効果音：sfx/ 配下の音源ファイル（mp3、SFX_FILES参照）をその都度 Audio インスタンスを
        作って再生する（同じ音が連続しても前の再生を止めずに重ねて鳴らせるよう、使い回さず毎回生成する）。
        呼び出し側は名前だけを渡す設計なので、音源の追加・差し替えは SFX_FILES の変更だけで済む。 */
+    /* 起動直後はTOPの静的画像を最優先する。Google Driveの一覧取得と全音声の
+       デコードを同時に始めると、画像自体が軽くても通信・メインスレッドが競合して
+       TOPとカットインの表示が遅くなるため、非必須の仕事は段階的に後回しにする。 */
+    _deferStartupWork(work, delay) {
+      window.setTimeout(() => {
+        if (typeof window.requestIdleCallback === 'function') {
+          window.requestIdleCallback(() => work(), { timeout: 1500 });
+        } else {
+          work();
+        }
+      }, delay);
+    },
+    _preloadKamiCutinImages() {
+      if (this._kamiCutinPreloadStarted) return;
+      this._kamiCutinPreloadStarted = true;
+      const urls = Array.from({ length: 10 }, (_, index) => `kami_cutin/${index + 1}.png`);
+      const loadNext = (index) => {
+        if (index >= urls.length) return;
+        const image = new Image();
+        image.decoding = 'async';
+        if ('fetchPriority' in image) image.fetchPriority = 'low';
+        image.onload = image.onerror = () => loadNext(index + 1);
+        image.src = urls[index];
+      };
+      loadNext(0);
+    },
+    _scheduleStartupAssetWork() {
+      // TOP の表示後、次に対戦で使うカットインを低優先度でキャッシュする。
+      this._deferStartupWork(() => this._preloadKamiCutinImages(), 900);
+      // TOP を開くだけでは不要な外部一覧・統計はアイドル時まで開始しない。
+      this._deferStartupWork(() => {
+        this.loadDriveImages();
+        this.loadKamiImages();
+        this.loadKamiIllustrations();
+        this.loadCardBack();
+        this.gsLoadGlobalCardStats();
+      }, 1800);
+      // 音声の全件デコードは特にCPU負荷が高いため、画面が安定してから行う。
+      this._deferStartupWork(() => this._sfxPreloadAll(), 3500);
+      this._deferStartupWork(() => this._bgmPreloadAll(), 7000);
+    },
     /* SEはBGMと共有のAudioContextを使い、専用のGainNodeを経由して鳴らす。
        毎回 new Audio(src) でHTTP取得からやり直すと、本番環境（CDN経由）ではローカルサーバーに
        比べてネットワーク往復が乗る分だけ再生が遅れて聞こえるため、デコード済みAudioBufferを
@@ -11454,6 +11500,9 @@ new Vue({
       if (this._bgmBufferCache[key]) return this._bgmBufferCache[key];
       const entry = BGM_FILES[key];
       if (!entry) return null;
+      this._bgmLoadingPromises = this._bgmLoadingPromises || {};
+      if (this._bgmLoadingPromises[key]) return this._bgmLoadingPromises[key];
+      const promise = (async () => {
       const ctx = this._bgmAudioCtx();
       const src = `bgm/${encodeURIComponent(entry.file)}`;
       const resp = await fetch(src);
@@ -11486,6 +11535,13 @@ new Vue({
       const media = { buffer, loopBuffer, loopStartSec, loopEndSec, silenceBounds };
       this._bgmBufferCache[key] = media;
       return media;
+      })();
+      this._bgmLoadingPromises[key] = promise;
+      try {
+        return await promise;
+      } finally {
+        delete this._bgmLoadingPromises[key];
+      }
     },
     // 起動直後にBGMを1曲ずつ順番にバックグラウンド先読みする（画面遷移時の初回再生ラグ対策）。
     // 総容量が大きい（数十MB）ため、カード画像等の読み込みと帯域を奪い合わないよう並列にはしない。
@@ -23755,18 +23811,9 @@ new Vue({
       if (el) el.remove();
     });
     this.loadCards();
-    this.loadDriveImages();
     this.loadKamiCards();
-    this.loadKamiImages();
-    this.loadKamiIllustrations();
-    this.loadCardBack();
     this.loadEffectSpecs();
-    this.gsLoadGlobalCardStats(); // CPUドラフトAIが参照する人間プレイヤーの実績統計（起動時に一度だけ取得）
-    // SE/BGMの先読み：本番環境（CDN経由）ではローカルサーバーよりネットワーク往復が乗る分だけ
-    // 初回再生が遅れて聞こえるため、起動直後にバックグラウンドで先読みしておく
-    // （SEは総容量が数MB程度なので一括、BGMは帯域を奪い合わないよう1曲ずつ順に読み込む）
-    this._sfxPreloadAll();
-    this._bgmPreloadAll();
+    this._scheduleStartupAssetWork();
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("click", this.onWindowClick);
     // 招待リンク（?room=XXXX）で開かれた場合：4人対戦のセッションコード欄に自動入力してメニューを開く
@@ -23827,8 +23874,9 @@ new Vue({
         this.$watch(`battleSample.${side}.${key}`, (val) => this._battleTweenStat(dispKey, val));
       });
     });
-    // BGM：画面カテゴリ（対戦画面／それ以外）に応じて自動選曲（起動直後にも一度実行）
-    this.$watch('appView', (v) => { this._bgmRestoreAfterBattle(v); }, { immediate: true });
+    // BGM：TOP画像の初期表示を優先し、初回の曲読み込みだけ少し後ろへ回す。
+    this.$watch('appView', (v) => { this._bgmRestoreAfterBattle(v); });
+    this._deferStartupWork(() => this._bgmRestoreAfterBattle(this.appView), 2500);
     // 選定の儀（ピック）〜返還〜深化の刻（見識の使用）：対戦に移行するまでは
     // 専用BGM「戦場の舞」を流し続ける。候補が1曲だけのカテゴリなので同期の仕組みは不要。
     this.$watch('gs.view', (v) => {
