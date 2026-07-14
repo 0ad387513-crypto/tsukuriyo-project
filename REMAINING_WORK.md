@@ -6,6 +6,8 @@
 
 運用プラン: Firebase Spark
 
+公開URL: https://tsukuriyo-online.netlify.app/
+
 ## 実装・ローカル検証済み
 
 - [x] Firebase匿名認証を前提としたUID・座席所有権検証
@@ -35,8 +37,8 @@
 - [x] Firebase CLIブラウザ認証
 - [x] 一時互換Rulesを本番へ反映し、旧クライアントの動作を維持
 - [x] Spark対応版Rulesを本番へ反映
-- [ ] v1.15.93をmainへpushし、GitHub Actionsを確認
-- [ ] Netlifyでv1.15.93の公開を確認
+- [x] v1.15.93をmainへpushし、GitHub Actions成功を確認
+- [x] Netlifyでv1.15.93の公開を確認
 - [x] Firebase Consoleで匿名認証が有効であることを実通信で確認
 - [ ] iPhone Safari / Android Chromeで実機確認
 - [ ] VoiceOver / TalkBackで実機確認
