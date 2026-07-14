@@ -19,6 +19,8 @@
 
 "use strict";
 
+const CONSTRUCT_ROOM_TTL_MS     = 60 * 60 * 1000;
+
 const CONSTRUCT_DECK_SIZE       = 35;  // 理念構築戦のデッキ枚数（ちょうど35枚）
 const CONSTRUCT_MIN_RETURN_SUM  = 50;  // デッキの返還値合計の下限
 
@@ -31,6 +33,7 @@ const CONSTRUCT_MIN_RETURN_SUM  = 50;  // デッキの返還値合計の下限
  * @returns {Promise<{ roomCode, playerId, role: 'host' }>}
  */
 async function createConstructRoom(playerName, isPublic) {
+  const authUser = await ensureFirebaseAuth();
   if (typeof validatePlayerName === "function") {
     const valid = validatePlayerName(playerName);
     if (!valid.ok) throw new Error(valid.message);
@@ -42,14 +45,15 @@ async function createConstructRoom(playerName, isPublic) {
 
   const room = {
     phase: "lobby",
-    host:  { id: playerId, name: playerName || "プレイヤー1", ready: false, deck: null, kamiNo: null },
+    buildVersion: getAppBuildVersion(),
+    host:  { id: playerId, ownerUid: authUser.uid, name: playerName || "プレイヤー1", ready: false, deckCount: 0, kamiNo: null },
     guest: null,
     createdAt: Date.now(),
   };
   await db.ref(`constructRooms/${roomCode}`).set(room);
 
   // 1時間後に自動削除
-  setTimeout(() => db.ref(`constructRooms/${roomCode}`).remove(), 60 * 60 * 1000);
+  setTimeout(() => db.ref(`constructRooms/${roomCode}`).remove(), CONSTRUCT_ROOM_TTL_MS);
 
   if (isPublic && typeof publicRoomRegister === "function") {
     await publicRoomRegister("construct", roomCode, playerName);
@@ -63,6 +67,7 @@ async function createConstructRoom(playerName, isPublic) {
  * @returns {Promise<{ playerId, role: 'guest' }>}
  */
 async function joinConstructRoom(roomCode, playerName) {
+  const authUser = await ensureFirebaseAuth();
   if (typeof validatePlayerName === "function") {
     const valid = validatePlayerName(playerName);
     if (!valid.ok) throw new Error(valid.message);
@@ -74,13 +79,23 @@ async function joinConstructRoom(roomCode, playerName) {
 
   if (!snap.exists()) throw new Error("部屋が見つかりません");
   const room = snap.val();
+  assertCompatibleBuild(room.buildVersion);
+  if (Date.now() - Number(room.createdAt || 0) >= CONSTRUCT_ROOM_TTL_MS) {
+    throw new Error("この部屋は期限切れです。公開一覧から別の部屋を選んでください");
+  }
+  if (room.phase !== "lobby") throw new Error("この部屋はすでに対戦準備が始まっています");
   if (room.guest) throw new Error("この部屋はすでに満員です");
 
   const playerId = generateRoomCode();
-  await ref.update({
-    guest: { id: playerId, name: playerName || "プレイヤー2", ready: false, deck: null, kamiNo: null },
-    phase: "building",
+  const res = await ref.transaction(cur => {
+    if (!cur || cur.buildVersion !== getAppBuildVersion()) return;
+    if (Date.now() - Number(cur.createdAt || 0) >= CONSTRUCT_ROOM_TTL_MS) return;
+    if (cur.phase !== "lobby" || cur.guest) return;
+    cur.guest = { id: playerId, ownerUid: authUser.uid, name: playerName || "プレイヤー2", ready: false, deckCount: 0, kamiNo: null };
+    cur.phase = "building";
+    return cur;
   });
+  if (!res.committed) throw new Error("部屋への参加に失敗しました。満員・期限切れ・バージョン違いの可能性があります");
 
   if (typeof publicRoomRemove === "function") publicRoomRemove(roomCode);
   return { playerId, role: "guest" };
@@ -98,11 +113,25 @@ async function joinConstructRoom(roomCode, playerName) {
  */
 async function submitConstructDeck(roomCode, role, deckMap, kamiNo) {
   const db  = getDb();
-  const ref = db.ref(`constructRooms/${roomCode}`);
+  const normalizedDeck = deckMap || {};
+  const deckCount = Object.values(normalizedDeck).reduce((sum, count) => sum + Math.max(0, Number(count) || 0), 0);
   // phaseをcompleteにする判定・書き込みはここでは行わない（両者readyの検知は、既に
   // 繋ぎっぱなしのリアルタイム購読側（index.htmlの_cbSubscribe）が最新データを受け取った
   // 瞬間に行う方が、ここで追加の読み直しを挟むより速く・確実なため）。
-  await ref.child(role).update({ deck: deckMap || {}, kamiNo: kamiNo || null, ready: true });
+  await db.ref().update({
+    [`privateConstructRooms/${roomCode}/${role}/deck`]: normalizedDeck,
+    [`privateConstructRooms/${roomCode}/${role}/updatedAt`]: firebase.database.ServerValue.TIMESTAMP,
+    [`constructRooms/${roomCode}/${role}/deckCount`]: deckCount,
+    [`constructRooms/${roomCode}/${role}/kamiNo`]: kamiNo || null,
+    [`constructRooms/${roomCode}/${role}/ready`]: true,
+  });
+}
+
+/** 本人の提出デッキだけを取得する。対戦相手のprivateパスはルールで読めない。 */
+async function fetchPrivateConstructDeck(roomCode, role) {
+  await ensureFirebaseAuth();
+  const snap = await getDb().ref(`privateConstructRooms/${roomCode}/${role}`).once("value");
+  return snap.val() || {};
 }
 
 /**
@@ -156,7 +185,8 @@ async function dissolveConstructRoom(roomCode) {
  * @returns {Function} unsubscribe
  */
 function subscribeStructureDecks(callback) {
-  const ref = getDb().ref("structureDecks");
+  let ref = null;
+  let cancelled = false;
   const handler = (snap) => {
     const val = snap.val() || {};
     const list = Object.keys(val)
@@ -164,8 +194,12 @@ function subscribeStructureDecks(callback) {
       .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "ja"));
     callback(list);
   };
-  ref.on("value", handler);
-  return () => ref.off("value", handler);
+  ensureFirebaseAuth().then(() => {
+    if (cancelled) return;
+    ref = getDb().ref("structureDecks");
+    ref.on("value", handler);
+  }).catch(err => { console.error("[auth] ストラクチャーデッキ購読失敗:", err); callback([]); });
+  return () => { cancelled = true; if (ref) ref.off("value", handler); };
 }
 
 /**
@@ -173,6 +207,7 @@ function subscribeStructureDecks(callback) {
  * @returns {Promise<Array<{ id, name, kamiNo, deckCode, updatedAt }>>}
  */
 async function fetchStructureDecksOnce() {
+  await ensureFirebaseAuth();
   const snap = await getDb().ref("structureDecks").once("value");
   const val = snap.val() || {};
   return Object.keys(val).map(id => Object.assign({ id }, val[id]));
@@ -185,6 +220,7 @@ async function fetchStructureDecksOnce() {
  * @returns {Promise<string>} id
  */
 async function saveStructureDeck(id, data) {
+  await requireFirebaseAdmin();
   const ref = getDb().ref("structureDecks");
   const key = id || ref.push().key;
   await ref.child(key).set({
@@ -197,6 +233,7 @@ async function saveStructureDeck(id, data) {
 }
 
 async function removeStructureDeck(id) {
+  await requireFirebaseAdmin();
   await getDb().ref(`structureDecks/${id}`).remove();
 }
 
@@ -205,6 +242,7 @@ async function removeStructureDeck(id) {
  * @param {Array<{ name: string, kamiNo: string, deckCode: string }>} defaults
  */
 async function seedStructureDecksIfEmpty(defaults) {
+  await requireFirebaseAdmin();
   const ref  = getDb().ref("structureDecks");
   const snap = await ref.once("value");
   if (snap.exists()) return;
@@ -219,9 +257,9 @@ async function seedStructureDecksIfEmpty(defaults) {
 /* Node.js テスト用 */
 if (typeof module !== "undefined") {
   module.exports = {
-    CONSTRUCT_DECK_SIZE, CONSTRUCT_MIN_RETURN_SUM,
+    CONSTRUCT_DECK_SIZE, CONSTRUCT_MIN_RETURN_SUM, CONSTRUCT_ROOM_TTL_MS,
     createConstructRoom, joinConstructRoom,
-    submitConstructDeck, markConstructRoomComplete, unsubmitConstructDeck, subscribeConstructRoom, dissolveConstructRoom,
+    submitConstructDeck, fetchPrivateConstructDeck, markConstructRoomComplete, unsubmitConstructDeck, subscribeConstructRoom, dissolveConstructRoom,
     subscribeStructureDecks, fetchStructureDecksOnce, saveStructureDeck, removeStructureDeck, seedStructureDecksIfEmpty,
   };
 }

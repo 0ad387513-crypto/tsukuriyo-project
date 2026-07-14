@@ -1,0 +1,7 @@
+"use strict";
+const test = require("node:test"); const assert = require("node:assert/strict");
+const { stateHash, adjudicateBattle } = require("../functions/battle_watchdog_core.js");
+function state() { const value = { writer: 1, activeSeat: 1, turn: 2, sides: { 1: {}, 2: {} }, revision: 4, buildVersion: "1", ts: 100, turnDeadlineAt: 1000 }; value.stateHash = stateHash(value); return value; }
+test("サーバーが期限切れターンを相手へ移しハッシュと連番を更新する", () => { const result = adjudicateBattle({ state: state(), presence: {}, now: 1001, disconnectGraceMs: 90000, turnLimitMs: 180000 }); assert.equal(result.kind, "turn-timeout"); assert.equal(result.state.activeSeat, 2); assert.equal(result.state.revision, 5); assert.equal(result.state.stateHash, stateHash(result.state)); });
+test("切断猶予超過は再接続していない席の敗北を確定する", () => { const result = adjudicateBattle({ state: state(), presence: { 1: { online: false, ts: 100 } }, now: 90101, disconnectGraceMs: 90000, turnLimitMs: 180000 }); assert.equal(result.kind, "disconnect"); assert.equal(result.winnerSeat, 2); assert.equal(result.state.result.outcome, "win"); assert.equal(result.state.serverAdjudicated, true); });
+test("猶予中・決着済みの状態は変更しない", () => { const waiting = state(); waiting.turnDeadlineAt = 5000; assert.equal(adjudicateBattle({ state: waiting, presence: { 1: { online: false, ts: 900 } }, now: 1000, disconnectGraceMs: 90000, turnLimitMs: 180000 }), null); const done = state(); done.result = { outcome: "win" }; assert.equal(adjudicateBattle({ state: done, presence: {}, now: 999999, disconnectGraceMs: 1, turnLimitMs: 1 }), null); });

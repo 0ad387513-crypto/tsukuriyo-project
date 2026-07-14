@@ -1,0 +1,9 @@
+"use strict";
+
+const TSUKURIYO_BUILD_VERSION = "1.15.93";
+const TSUKURIYO_APPCHECK_SITE_KEY = "";
+const TSUKURIYO_SERVER_FUNCTIONS_ENABLED = false;
+
+if (typeof module !== "undefined") {
+  module.exports = { TSUKURIYO_BUILD_VERSION, TSUKURIYO_APPCHECK_SITE_KEY, TSUKURIYO_SERVER_FUNCTIONS_ENABLED };
+}

@@ -27,6 +27,8 @@
 
 "use strict";
 
+const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
+
 /* ================================================================== */
 /* 純粋ヘルパー（Node テスト可能）                                       */
 /* ================================================================== */
@@ -69,6 +71,7 @@ function allSeatsReady(s) {
  * @returns {Promise<{ sessionCode, playerId, seat: 1 }>}
  */
 async function createSession(playerName, isPublic) {
+  const authUser = await ensureFirebaseAuth();
   if (typeof validatePlayerName === "function") {
     const valid = validatePlayerName(playerName);
     if (!valid.ok) throw new Error(valid.message);
@@ -80,11 +83,12 @@ async function createSession(playerName, isPublic) {
 
   const session = {
     phase:     "lobby",
+    buildVersion: getAppBuildVersion(),
     createdAt: Date.now(),
     hostId:    playerId,
     seed:      null,
     seats: {
-      1: { id: playerId, name: playerName || "プレイヤー1", ready: false, kamiNo: null },
+      1: { id: playerId, ownerUid: authUser.uid, name: playerName || "プレイヤー1", ready: false, kamiNo: null },
     },
     kami: null,
     pickTimeLimits: { first: 120, later: 60 }, // ピック警告表示の目安秒数（強制効果なし。ホストがロビーで変更可）
@@ -93,7 +97,7 @@ async function createSession(playerName, isPublic) {
   await db.ref(`sessions/${code}`).set(session);
 
   // 2時間後に自動削除（Firebase側のTTLが無いためクライアント側タイマー）
-  setTimeout(() => db.ref(`sessions/${code}`).remove(), 2 * 60 * 60 * 1000);
+  setTimeout(() => db.ref(`sessions/${code}`).remove(), SESSION_TTL_MS);
 
   if (isPublic && typeof publicRoomRegister === "function") {
     await publicRoomRegister("game", code, playerName);
@@ -111,6 +115,7 @@ async function createSession(playerName, isPublic) {
  * @returns {Promise<{ playerId, seat }>}
  */
 async function joinSession(code, playerName) {
+  const authUser = await ensureFirebaseAuth();
   if (typeof validatePlayerName === "function") {
     const valid = validatePlayerName(playerName);
     if (!valid.ok) throw new Error(valid.message);
@@ -121,12 +126,16 @@ async function joinSession(code, playerName) {
 
   const snap = await ref.once("value");
   if (!snap.exists()) throw new Error("セッションが見つかりません");
+  assertCompatibleBuild(snap.val().buildVersion);
+  if (Date.now() - Number(snap.val().createdAt || 0) >= SESSION_TTL_MS) throw new Error("このセッションは期限切れです");
   if (snap.val().phase !== "lobby") throw new Error("このセッションはすでに開始されています");
 
   const playerId = generateRoomCode();
 
   const res = await ref.transaction(cur => {
     if (!cur) return cur;
+    if (cur.buildVersion !== getAppBuildVersion()) return;
+    if (Date.now() - Number(cur.createdAt || 0) >= SESSION_TTL_MS) return;
     if (cur.phase !== "lobby") return;          // 開始済み → 中止
     cur.seats = cur.seats || {};
     let seat = null;
@@ -135,7 +144,7 @@ async function joinSession(code, playerName) {
     }
     if (seat === null) return;                  // 満員 → 中止
     cur.seats[seat] = {
-      id: playerId, name: playerName || ("プレイヤー" + seat), ready: false, kamiNo: null,
+      id: playerId, ownerUid: authUser.uid, name: playerName || ("プレイヤー" + seat), ready: false, kamiNo: null,
     };
     return cur;
   });
@@ -784,14 +793,19 @@ function subscribeSession(code, callback) {
   return () => ref.off("value");
 }
 
+function subscribePrivateGameSeat(code, seat, callback) {
+  callback(null);
+  return () => {};
+}
+
 /* Node.js テスト用 */
 if (typeof module !== "undefined") {
   module.exports = {
     createSession, joinSession, setSeatReady, unsetSeatReady,
-    dealKamiOffer, pickKami, subscribeSession,
+    dealKamiOffer, pickKami, subscribeSession, subscribePrivateGameSeat,
     dealKamiCandidatesFor, pickedKamiNos, allSeatsFilled, allSeatsReady,
     startDraft, draftPick, dealDraftSets, rotatePacks, draftRoundTarget,
-    DRAFT_ROUND_CONFIG,
+    DRAFT_ROUND_CONFIG, SESSION_TTL_MS,
     startDeepen, deepenReflect, deepenFusion, deepenBloomDraw, deepenBloomPick,
     draftFreeReturn, draftFreeReturnUndo, draftFreeReturnDone, draftFreeReturnLimit,
     deepenSetDone, packCards,

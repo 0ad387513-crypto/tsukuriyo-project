@@ -28,6 +28,8 @@
 
 "use strict";
 
+const SHIELD_ROOM_TTL_MS = 60 * 60 * 1000;
+
 /* ================================================================== */
 /* Firebase 設定 / getDb / fbArr / generateRoomCode は firebase.js に  */
 /* 移動しました（シールド戦とゲームセッションで共用）。                  */
@@ -68,6 +70,7 @@ const KAMI_CANDIDATES = 10;  // カミ候補数
  * @returns {Promise<{ roomCode, playerId, role: 'host' }>}
  */
 async function createRoom(playerName, isPublic) {
+  const authUser = await ensureFirebaseAuth();
   if (typeof validatePlayerName === "function") {
     const valid = validatePlayerName(playerName);
     if (!valid.ok) throw new Error(valid.message);
@@ -80,9 +83,11 @@ async function createRoom(playerName, isPublic) {
 
   const room = {
     phase:     "lobby",
+    buildVersion: getAppBuildVersion(),
     seed,
     host: {
       id:     playerId,
+      ownerUid: authUser.uid,
       name:   playerName || "プレイヤー1",
       ready:  false,
     },
@@ -103,7 +108,7 @@ async function createRoom(playerName, isPublic) {
   await db.ref(`rooms/${roomCode}`).set(room);
 
   // 1時間後に自動削除（Firebase側のTTLルールがなければクライアント側で設定）
-  setTimeout(() => db.ref(`rooms/${roomCode}`).remove(), 60 * 60 * 1000);
+  setTimeout(() => db.ref(`rooms/${roomCode}`).remove(), SHIELD_ROOM_TTL_MS);
 
   if (isPublic && typeof publicRoomRegister === "function") {
     await publicRoomRegister("shield", roomCode, playerName);
@@ -121,6 +126,7 @@ async function createRoom(playerName, isPublic) {
  * @returns {Promise<{ playerId, role: 'guest' }>}
  */
 async function joinRoom(roomCode, playerName) {
+  const authUser = await ensureFirebaseAuth();
   if (typeof validatePlayerName === "function") {
     const valid = validatePlayerName(playerName);
     if (!valid.ok) throw new Error(valid.message);
@@ -132,18 +138,28 @@ async function joinRoom(roomCode, playerName) {
 
   if (!snap.exists()) throw new Error("部屋が見つかりません");
   const room = snap.val();
+  assertCompatibleBuild(room.buildVersion);
+  if (Date.now() - Number(room.createdAt || 0) >= SHIELD_ROOM_TTL_MS) {
+    throw new Error("この部屋は期限切れです。公開一覧から別の部屋を選んでください");
+  }
   if (room.phase !== "lobby") throw new Error("この部屋はすでに対戦が始まっています");
   if (room.guest) throw new Error("この部屋はすでに満員です");
 
   const playerId = generateRoomCode();
 
-  await ref.update({
-    guest: {
+  const res = await ref.transaction(cur => {
+    if (!cur || cur.buildVersion !== getAppBuildVersion()) return;
+    if (Date.now() - Number(cur.createdAt || 0) >= SHIELD_ROOM_TTL_MS) return;
+    if (cur.phase !== "lobby" || cur.guest) return;
+    cur.guest = {
       id:    playerId,
+      ownerUid: authUser.uid,
       name:  playerName || "プレイヤー2",
       ready: false,
-    },
+    };
+    return cur;
   });
+  if (!res.committed) throw new Error("部屋への参加に失敗しました。満員・期限切れ・バージョン違いの可能性があります");
 
   // guestが入って満員になったので公開一覧からは外す
   if (typeof publicRoomRemove === "function") publicRoomRemove(roomCode);
@@ -264,6 +280,30 @@ async function finalizeExclusion(roomCode, role, excludedNos) {
   });
 }
 
+/** 返還後の最終デッキを本人専用パスへ保存し、公開ルームには枚数だけを残す。 */
+async function submitPrivateShieldDeck(roomCode, role, cards) {
+  await ensureFirebaseAuth();
+  const deck = {};
+  for (const card of (cards || [])) {
+    if (!card || card.no == null) continue;
+    const no = String(card.no);
+    deck[no] = (deck[no] || 0) + 1;
+  }
+  const count = Object.values(deck).reduce((sum, n) => sum + Number(n || 0), 0);
+  await getDb().ref().update({
+    [`privateShieldRooms/${roomCode}/${role}/deck`]: deck,
+    [`privateShieldRooms/${roomCode}/${role}/updatedAt`]: firebase.database.ServerValue.TIMESTAMP,
+    [`rooms/${roomCode}/${role}/deckCount`]: count,
+  });
+  return deck;
+}
+
+async function fetchPrivateShieldDeck(roomCode, role) {
+  await ensureFirebaseAuth();
+  const snap = await getDb().ref(`privateShieldRooms/${roomCode}/${role}`).once("value");
+  return snap.val() || {};
+}
+
 /* ------------------------------------------------------------------ */
 /* カミの選択（後攻→先攻）                                              */
 /* ------------------------------------------------------------------ */
@@ -342,8 +382,8 @@ function selectKamiCandidates(allKamiCards, seed) {
 /* export */
 if (typeof module !== "undefined") {
   module.exports = {
-    createRoom, joinRoom, setReady, startPicking,
-    pickPack, finalizeExclusion, selectKami,
+    createRoom, joinRoom, setReady, startPicking, SHIELD_ROOM_TTL_MS,
+    pickPack, finalizeExclusion, submitPrivateShieldDeck, fetchPrivateShieldDeck, selectKami,
     subscribeRoom, computeDeck, selectKamiCandidates,
   };
 }
