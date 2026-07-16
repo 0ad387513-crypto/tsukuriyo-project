@@ -1999,7 +1999,27 @@
     text-align: center; font-size: 14px; color: #bcd; font-weight: 700;
     padding: 10px; margin-bottom: 14px; border-radius: 8px; background: #1a1d28;
   }
-  .gm-draft-status.mine { color: #fff; background: #2a5a4a; }
+  .gm-draft-status.mine {
+    color: #fff; background: linear-gradient(135deg, #23634d, #318361);
+    border: 2px solid #73e2ad; box-shadow: 0 0 0 3px rgba(115,226,173,.12), 0 0 18px rgba(66,210,145,.28);
+    animation: gmPickReadyPulse 1.35s ease-in-out infinite;
+  }
+  .gm-pick-turn-callout {
+    position: fixed; z-index: 12050; left: 50%; top: 20%; transform: translateX(-50%);
+    min-width: min(560px, calc(100vw - 32px)); padding: 18px 26px; text-align: center;
+    color: #fff; font-size: 22px; font-weight: 900; letter-spacing: .04em;
+    border: 2px solid #8ef0bd; border-radius: 14px;
+    background: linear-gradient(135deg, rgba(24,85,62,.97), rgba(31,126,88,.97));
+    box-shadow: 0 12px 45px rgba(0,0,0,.55), 0 0 28px rgba(91,235,164,.45);
+    pointer-events: none;
+  }
+  .gm-pick-turn-callout small { display:block; margin-top:5px; color:#d9ffec; font-size:13px; }
+  .gm-pick-turn-enter-active, .gm-pick-turn-leave-active { transition: opacity .22s, transform .22s; }
+  .gm-pick-turn-enter, .gm-pick-turn-leave-to { opacity:0; transform:translate(-50%, -14px) scale(.96); }
+  @keyframes gmPickReadyPulse {
+    0%,100% { filter:brightness(1); transform:scale(1); }
+    50% { filter:brightness(1.13); transform:scale(1.006); }
+  }
   .gm-pack-grid {
     display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px;
   }
@@ -6034,8 +6054,8 @@
           <!-- 公開中の部屋一覧・ランダムマッチ -->
           <div>
             <h3>公開中の部屋から参加</h3>
-            <button v-if="!sbMatchToken" class="sp-btn sp-btn-join" :disabled="sb.connecting || !sbPublicRooms.length" @click="sbRandomMatch">
-              🎲 ランダムマッチ（公開中の部屋に参加）
+            <button v-if="!sbMatchToken" class="sp-btn sp-btn-join" :disabled="sb.connecting" @click="sbRandomMatch">
+              🎲 対戦相手を探す
             </button>
             <button v-else class="sp-btn" @click="sbCancelMatch">検索をキャンセル</button>
             <div v-if="sbPublicRooms.length" class="gm-public-room-list" style="margin-top:10px;">
@@ -6365,8 +6385,8 @@
 
           <div>
             <h3>公開中の部屋から参加</h3>
-            <button v-if="!cbMatchToken" class="sp-btn sp-btn-join" :disabled="cb.connecting || !cbPublicRooms.length" @click="cbRandomMatch">
-              🎲 ランダムマッチ（公開中の部屋に参加）
+            <button v-if="!cbMatchToken" class="sp-btn sp-btn-join" :disabled="cb.connecting" @click="cbRandomMatch">
+              🎲 対戦相手を探す
             </button>
             <button v-else class="sp-btn" @click="cbCancelMatch">検索をキャンセル</button>
             <div v-if="cbPublicRooms.length" class="gm-public-room-list" style="margin-top:10px;">
@@ -8139,8 +8159,8 @@
                    style="text-transform:uppercase;">
             <button class="gm-btn" :disabled="gs.connecting" @click="gsJoin">コードで参加</button>
           </div>
-          <button v-if="!gsMatchToken" class="gm-btn" :disabled="gs.connecting || !gsPublicSessions.length" @click="gsRandomMatch">
-            🎲 ランダムマッチ（公開中のセッションに参加）
+          <button v-if="!gsMatchToken" class="gm-btn" :disabled="gs.connecting" @click="gsRandomMatch">
+            🎲 対戦相手を探す
           </button>
           <button v-else class="gm-btn" @click="gsCancelMatch">検索をキャンセル</button>
         </div>
@@ -8281,6 +8301,12 @@
 
       <!-- ===== 弐 選別の儀（ドラフト） ===== -->
       <div v-else-if="gs.view === 'draft'" class="gm-body gm-draft">
+        <transition name="gm-pick-turn">
+          <div v-if="gsPickTurnNotice" class="gm-pick-turn-callout" role="status" aria-live="assertive">
+            🎴 次のピックです
+            <small>新しいパックが届きました。カードを1枚選んでください</small>
+          </div>
+        </transition>
         <div class="gm-draft-head">
           <div class="gm-draft-title">
             弐 選別の儀（ラウンド{{ gsDraftRound }}）<span class="gm-draft-set">{{ gsDraftSetLabel }}</span>
@@ -8299,7 +8325,7 @@
           ⚠ 制限時間の目安（{{ gsDraftPickTimeLimitSec }}秒）を超えています。早めに選択してください
         </div>
         <div class="gm-draft-status" :class="{ mine: !gsIPickedThisStep }">
-          <template v-if="!gsIPickedThisStep">★ パックから1枚選んでデッキに加えてください（残りは隣へ回ります）</template>
+          <template v-if="!gsIPickedThisStep">★ あなたのピックです — パックから1枚選んでください（残りは隣へ回ります）</template>
           <template v-else>選択しました。他のプレイヤーを待っています…（{{ gsDraftPickedCount }}/4）</template>
         </div>
         <div class="gm-draft-kami-strip">
@@ -9895,6 +9921,7 @@ new Vue({
     },
     gsInviteCopied: false,    // 招待リンクコピー直後のフィードバック表示用
     gsPickElapsedSec: 0,      // 選別の儀：現在の束を受け取ってからの経過秒数（警告表示のみ・強制効果なし）
+    gsPickTurnNotice: false,  // 新しい束が届いた瞬間の強調表示
     gsPhaseElapsedSec: 0,     // 返還選択・深化の刻の経過秒数
     gsGenesisPickFlash: null, // ジェネシス取得時のデッキ投入演出
     gsCinematic: null,        // 4人対戦の全画面演出（神託／理の開花／ディエスイレ）
@@ -12798,7 +12825,9 @@ new Vue({
         buildVersion: state.buildVersion,
       }).catch(e => console.warn('[sync] 操作ログ保存失敗:', e));
     },
-    _battleCommitStateDirect(n, payload) {
+    _battleCommitStateDirect(n, payload, authRetry = 0) {
+      payload.writer = Number(payload.writer);
+      payload.activeSeat = Number(payload.activeSeat);
       getDb().ref(n.statePath).transaction(cur => {
         if (cur && String(cur.writer) !== String(n.mySeat) && Number(cur.ts || 0) > Number(this._battleLastAppliedRemoteTs || 0)) return;
         const next = Object.assign({}, payload, {
@@ -12823,7 +12852,19 @@ new Vue({
         if (this.battleNet.lastError) this.$set(this.battleNet, 'lastError', null);
       }).catch(err => {
         console.error('[sync] 直接送信失敗:', err);
-        this.$set(this.battleNet, 'lastError', '送信失敗：' + (err && err.message));
+        const denied = String(err && (err.code || err.message) || '').toLowerCase().includes('permission_denied');
+        // 長時間のドラフト後などに認証トークンが古くなっていた場合は、強制更新して1回だけ再送する。
+        // Rulesの値検証違反まで無限再送しないよう、再試行回数は厳密に1回に限定する。
+        const user = typeof firebase !== 'undefined' && typeof firebase.auth === 'function' ? firebase.auth().currentUser : null;
+        if (denied && authRetry === 0 && user && typeof user.getIdToken === 'function') {
+          user.getIdToken(true)
+            .then(() => { if (this.battleNet === n && n.on) this._battleCommitStateDirect(n, payload, 1); })
+            .catch(() => this.$set(this.battleNet, 'lastError', '同期認証の更新に失敗しました。ページを再読み込みして同じルームへ入り直してください。'));
+          return;
+        }
+        this.$set(this.battleNet, 'lastError', denied
+          ? '同期権限を確認できませんでした。ページを再読み込みして同じルームへ入り直してください（permission_denied）'
+          : '送信失敗：' + (err && err.message));
       });
     },
     _battlePublishState() {
@@ -13170,6 +13211,18 @@ new Vue({
     },
     _battleSyncStart(code, table, mySeat, oppSeat, options = {}) {
       this._battleSyncStop();
+      // Firebase Rulesはwriter/activeSeatを数値として検証する。Firebaseの
+      // オブジェクトキーや保存状態を経由した席番号が文字列でも、同期時は必ず数値に揃える。
+      mySeat = Number(mySeat);
+      oppSeat = Number(oppSeat);
+      if (!Number.isInteger(mySeat) || !Number.isInteger(oppSeat)
+          || mySeat < 1 || mySeat > 4 || oppSeat < 1 || oppSeat > 4) {
+        this.battleNet = Object.assign({}, this.battleNet, {
+          on: false,
+          lastError: '座席情報が正しくありません。対戦ルームへ入り直してください。',
+        });
+        return;
+      }
       const path = `sessions/${code}/battle/${table}/state`;
       this.battleNet = {
         on: true, code, table, mySeat, oppSeat, statePath: path,
@@ -23647,17 +23700,43 @@ new Vue({
       if (!joined) this.gsPublicSessions = this.gsPublicSessions.filter(room => room.code !== code);
       return joined;
     },
+    async _findPublicMatch(kind, token, tokenField, cachedRooms, joinRoom) {
+      // 2人が同時に検索を始めた場合、短いランダム待機後に再検索することで、
+      // 先に公開部屋を作った側へもう一方が合流できるようにする。
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (!this[tokenField] || await matchmakingIsCancelled(token)) return false;
+        if (attempt) await new Promise(resolve => setTimeout(resolve, 350 + Math.floor(Math.random() * 650)));
+        if (!this[tokenField] || await matchmakingIsCancelled(token)) return false;
+        let fresh = [];
+        try { fresh = (await fetchPublicRoomsPage(kind, null, 20)).rooms; }
+        catch (e) { console.warn('[matchmaking] 公開部屋の再取得に失敗:', e); }
+        const seen = new Set();
+        const candidates = [...fresh, ...(cachedRooms || [])]
+          .filter(room => {
+            if (!room || !room.code || seen.has(room.code)) return false;
+            seen.add(room.code);
+            return true;
+          })
+          .sort(() => Math.random() - 0.5);
+        for (const room of candidates) {
+          if (!this[tokenField] || await matchmakingIsCancelled(token)) return false;
+          if (await joinRoom(room.code)) return true;
+        }
+      }
+      return false;
+    },
     async gsRandomMatch() {
-      if (this.gs.connecting || !this.gsPublicSessions.length) return;
+      if (this.gs.connecting || this.gsMatchToken) return;
       const token = await beginMatchmaking('game');
       this.gsMatchToken = token;
-      const candidates = this.gsPublicSessions.slice().sort(() => Math.random() - 0.5);
       try {
-        for (const room of candidates) {
-          if (!this.gsMatchToken || await matchmakingIsCancelled(token)) return;
-          if (await this.gsJoinPublic(room.code)) return;
-        }
-        this.gs.error = '参加可能な公開セッションがありませんでした。一覧を更新して再度お試しください';
+        const joined = await this._findPublicMatch('game', token, 'gsMatchToken', this.gsPublicSessions, code => this.gsJoinPublic(code));
+        if (joined || !this.gsMatchToken || await matchmakingIsCancelled(token)) return;
+        // 空室がなければ自分が公開セッションを作り、次の検索者を待つ。
+        this.gsCreatePublic = true;
+        await this.gsCreate();
+      } catch (e) {
+        this.gs.error = e.message || '対戦相手の検索に失敗しました';
       } finally {
         await finishMatchmaking(token).catch(() => {});
         if (this.gsMatchToken === token) this.gsMatchToken = null;
@@ -23739,6 +23818,13 @@ new Vue({
     _gsStopPickTimer() {
       clearInterval(this._gsPickTimerHandle);
       this.gsPickElapsedSec = 0;
+    },
+    _gsShowPickTurnNotice() {
+      clearTimeout(this._gsPickTurnNoticeTimer);
+      this.gsPickTurnNotice = true;
+      this._sfxPlay('decision');
+      if (document.hidden) this._startTitleFlash('🎴 次のピックです！');
+      this._gsPickTurnNoticeTimer = setTimeout(() => { this.gsPickTurnNotice = false; }, 2400);
     },
     _gsStartPhaseTimer() {
       clearInterval(this._gsPhaseTimerHandle);
@@ -26327,16 +26413,16 @@ new Vue({
       return joined;
     },
     async sbRandomMatch() {
-      if (this.sb.connecting || !this.sbPublicRooms.length) return;
+      if (this.sb.connecting || this.sbMatchToken) return;
       const token = await beginMatchmaking('shield');
       this.sbMatchToken = token;
-      const candidates = this.sbPublicRooms.slice().sort(() => Math.random() - 0.5);
       try {
-        for (const room of candidates) {
-          if (!this.sbMatchToken || await matchmakingIsCancelled(token)) return;
-          if (await this.sbJoinPublic(room.code)) return;
-        }
-        this.sb.error = '参加可能な公開ルームがありませんでした。一覧を更新して再度お試しください';
+        const joined = await this._findPublicMatch('shield', token, 'sbMatchToken', this.sbPublicRooms, code => this.sbJoinPublic(code));
+        if (joined || !this.sbMatchToken || await matchmakingIsCancelled(token)) return;
+        this.sbCreatePublic = true;
+        await this.onCreateRoom();
+      } catch (e) {
+        this.sb.error = e.message || '対戦相手の検索に失敗しました';
       } finally {
         await finishMatchmaking(token).catch(() => {});
         if (this.sbMatchToken === token) this.sbMatchToken = null;
@@ -26554,16 +26640,16 @@ new Vue({
       return joined;
     },
     async cbRandomMatch() {
-      if (this.cb.connecting || !this.cbPublicRooms.length) return;
+      if (this.cb.connecting || this.cbMatchToken) return;
       const token = await beginMatchmaking('construct');
       this.cbMatchToken = token;
-      const candidates = this.cbPublicRooms.slice().sort(() => Math.random() - 0.5);
       try {
-        for (const room of candidates) {
-          if (!this.cbMatchToken || await matchmakingIsCancelled(token)) return;
-          if (await this.cbJoinPublic(room.code)) return;
-        }
-        this.cb.error = '参加可能な公開ルームがありませんでした。一覧を更新して再度お試しください';
+        const joined = await this._findPublicMatch('construct', token, 'cbMatchToken', this.cbPublicRooms, code => this.cbJoinPublic(code));
+        if (joined || !this.cbMatchToken || await matchmakingIsCancelled(token)) return;
+        this.cbCreatePublic = true;
+        await this.cbCreateRoom();
+      } catch (e) {
+        this.cb.error = e.message || '対戦相手の検索に失敗しました';
       } finally {
         await finishMatchmaking(token).catch(() => {});
         if (this.cbMatchToken === token) this.cbMatchToken = null;
@@ -26946,6 +27032,13 @@ new Vue({
     // 選別の儀：束が回ってくる（step/set/roundが変わる）たびに経過時間を0から数え直す
     this.$watch('gsDraftStepKey', () => {
       if (this.gs.view === 'draft') this._gsStartPickTimer();
+    });
+    // 選択済みから未選択へ戻るのは、新しい束が自分へ届いた合図。
+    // 画面中央・効果音・非表示タブのタイトルで次のピックを明確に知らせる。
+    this.$watch('gsIPickedThisStep', (picked, wasPicked) => {
+      if (this.gs.view !== 'draft') return;
+      if (wasPicked && !picked) this._gsShowPickTurnNotice();
+      if (picked) this.gsPickTurnNotice = false;
     });
     // 選別の儀完了後の返還：全員が「返還選択を完了する」を押したら、
     // ホストの操作を待たずに自動で深化の刻へ進む（各クライアントが検知して呼ぶが、

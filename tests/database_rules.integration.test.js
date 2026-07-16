@@ -163,6 +163,32 @@ test("シールド戦参加者は共通対戦パスを作成できる", async ()
   await assertFails(set(ref(db("outsider"), "sessions/SHLD01/battle/shield/state"), { turn: 1 }));
 });
 
+test("星紡ぎ戦と理念構築戦は両参加者が数値席で盤面を同期できる", async () => {
+  const cases = [
+    { code: "SHBT01", roomRoot: "rooms", table: "shield", a: "sh-a", b: "sh-b", version: "1.15.104" },
+    { code: "CNBT01", roomRoot: "constructRooms", table: "construct", a: "cn-a", b: "cn-b", version: "1.15.104" },
+  ];
+  for (const item of cases) {
+    const clientA = db(item.a);
+    const clientB = db(item.b);
+    await assertSucceeds(set(ref(clientA, `${item.roomRoot}/${item.code}`), {
+      phase: "lobby", buildVersion: item.version, createdAt: Date.now(),
+      ...(item.roomRoot === "rooms" ? { seed: 1 } : {}),
+      host: { id: "a", ownerUid: item.a, name: "A", ready: false, deckCount: 35 },
+    }));
+    await assertSucceeds(update(ref(clientB, `${item.roomRoot}/${item.code}`), {
+      guest: { id: "b", ownerUid: item.b, name: "B", ready: false, deckCount: 35 },
+    }));
+    const base = `sessions/${item.code}/battle/${item.table}`;
+    await assertSucceeds(set(ref(clientA, `${base}/protocol`), { buildVersion: item.version, createdAt: Date.now() }));
+    const first = { writer: 1, activeSeat: 1, turn: 1, sides: { 1: { life: 10 }, 2: { life: 10 } }, buildVersion: item.version, revision: 1, stateHash: "a", ts: Date.now() };
+    await assertSucceeds(set(ref(clientA, `${base}/state`), first));
+    await assertSucceeds(set(ref(clientB, `${base}/state`), { ...first, writer: 2, activeSeat: 2, revision: 2, prevHash: "a", stateHash: "b", ts: Date.now() }));
+    await assertSucceeds(set(ref(clientA, `${base}/mulligan/1`), true));
+    await assertSucceeds(set(ref(clientB, `${base}/mulligan/2`), true));
+  }
+});
+
 test("シールド戦の最終デッキは本人だけが読み書きできる", async () => {
   const owner = db("shield-a");
   const guest = db("shield-b");
@@ -206,6 +232,28 @@ test("共有盤面は座席所有者・連番・プロトコルを検証する",
   await assertFails(set(ref(db("guest-b"), "sessions/SYNC01/battle/1/notice"), {
     writer: 1, title: "fake", message: "fake", cardNos: [], ts: Date.now(),
   }));
+});
+
+test("4人対戦の席3・席4もラウンド別の卓へ同期できる", async () => {
+  const host = db("four-a");
+  const seat2 = db("four-b");
+  const seat3 = db("four-c");
+  const seat4 = db("four-d");
+  await assertSucceeds(set(ref(host, "sessions/FOUR01"), {
+    phase: "lobby", buildVersion: "1.15.104", createdAt: Date.now(),
+    seats: { 1: { id: "a", ownerUid: "four-a", name: "A" } },
+  }));
+  await assertSucceeds(update(ref(seat2, "sessions/FOUR01"), { "seats/2": { id: "b", ownerUid: "four-b", name: "B" } }));
+  await assertSucceeds(update(ref(seat3, "sessions/FOUR01"), { "seats/3": { id: "c", ownerUid: "four-c", name: "C" } }));
+  await assertSucceeds(update(ref(seat4, "sessions/FOUR01"), { "seats/4": { id: "d", ownerUid: "four-d", name: "D" } }));
+  await assertSucceeds(update(ref(host, "sessions/FOUR01"), { phase: "battle" }));
+  const base = "sessions/FOUR01/battle/star_r1_t2";
+  await assertSucceeds(set(ref(seat3, `${base}/protocol`), { buildVersion: "1.15.104", createdAt: Date.now() }));
+  const first = { writer: 3, activeSeat: 3, turn: 1, sides: { 3: { life: 10 }, 4: { life: 10 } }, buildVersion: "1.15.104", revision: 1, stateHash: "c", ts: Date.now() };
+  await assertSucceeds(set(ref(seat3, `${base}/state`), first));
+  await assertSucceeds(set(ref(seat4, `${base}/state`), { ...first, writer: 4, activeSeat: 4, revision: 2, prevHash: "c", stateHash: "d", ts: Date.now() }));
+  await assertSucceeds(set(ref(seat3, `${base}/mulligan/3`), true));
+  await assertSucceeds(set(ref(seat4, `${base}/mulligan/4`), true));
 });
 
 test("対戦中の確認依頼・回答・在席情報は本人の座席だけ書き込める", async () => {

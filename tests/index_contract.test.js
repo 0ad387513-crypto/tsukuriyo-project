@@ -301,11 +301,28 @@ test("battle effect guidance and motion preferences are available", () => {
   assert.match(html, /PublicVisibleLimit/);
   assert.match(html, /さらに表示/);
   assert.match(html, /for \(const room of candidates\)/);
-  assert.match(html, /参加可能な公開セッションがありませんでした/);
-  assert.match(html, /参加可能な公開ルームがありませんでした/);
+  assert.match(html, /_findPublicMatch/);
+  assert.match(html, /fetchPublicRoomsPage\(kind, null, 20\)/);
+  assert.match(html, /this\.gsCreatePublic = true/);
+  assert.match(html, /this\.sbCreatePublic = true/);
+  assert.match(html, /this\.cbCreatePublic = true/);
+  assert.doesNotMatch(html, /connecting \|\| !sbPublicRooms\.length/);
+  assert.doesNotMatch(html, /connecting \|\| !cbPublicRooms\.length/);
+  assert.doesNotMatch(html, /connecting \|\| !gsPublicSessions\.length/);
   assert.match(html, /PublicSessions = this\.gsPublicSessions\.filter/);
   assert.match(html, /PublicRooms = this\.sbPublicRooms\.filter/);
   assert.match(html, /PublicRooms = this\.cbPublicRooms\.filter/);
+});
+
+test("four-player pick arrival and numeric battle seats are explicit", () => {
+  assert.match(html, /gm-pick-turn-callout/);
+  assert.match(html, /次のピックです/);
+  assert.match(html, /this\.\$watch\('gsIPickedThisStep'/);
+  assert.match(html, /mySeat = Number\(mySeat\)/);
+  assert.match(html, /oppSeat = Number\(oppSeat\)/);
+  assert.match(html, /user\.getIdToken\(true\)/);
+  assert.match(html, /authRetry === 0/);
+  assert.match(html, /permission_denied/);
 });
 
 test("problem reports and replays exclude private battle resources", () => {
