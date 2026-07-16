@@ -408,6 +408,10 @@ async function startDraft(code, round, roundCardNos) {
       sets,
       packs:     sets[0],
       picks:     {},
+      orochiSeats: [1, 2, 3, 4].filter(seat =>
+        s.seats && s.seats[seat] && String(s.seats[seat].kamiNo) === '10'
+      ),
+      diesIraeGrantedSeats: [],
       done:      false,
     };
     s.round = round;        // 現在のラウンド
@@ -461,9 +465,18 @@ async function draftPick(code, seat, cardNo) {
         if (d.setIndex < d.numSets - 1) {
           d.setIndex += 1;
           d.packs = fbArr(d.sets)[d.setIndex];            // 次セットを配る
-          d.direction = fbArr(d.directions)[d.setIndex] || cfg.direction;
+          d.direction = fbArr(d.directions)[d.setIndex] || (DRAFT_ROUND_CONFIG[d.round] && DRAFT_ROUND_CONFIG[d.round].direction) || 'L';
           d.step  = 0;
         } else {
+          if (Number(d.round) === 3) {
+            d.diesIraeGrantedSeats = [];
+            for (const orochiSeat of d.orochiSeats || []) {
+              const deck = fbArr(s.decks[orochiSeat]).map(String);
+              if (!deck.includes('198')) deck.push('198');
+              s.decks[orochiSeat] = deck;
+              d.diesIraeGrantedSeats.push(Number(orochiSeat));
+            }
+          }
           d.done = true;
           d.completedRound = d.round;
           s.phase = 'draft_done';                         // ラウンドのドラフト完了
@@ -486,33 +499,34 @@ async function draftPick(code, seat, cardNo) {
  * 見識はラウンドを超えて持ち越し可能。
  */
 
-/* 星戦の対戦カード（総当たり）: 各ラウンド 卓1/卓2 のペア */
-const PAIRINGS = {
-  1: [[1, 2], [3, 4]],
-  2: [[1, 3], [2, 4]],
-  3: [[1, 4], [2, 3]],
-};
-
-/** そのラウンドの実際のペアリングを返す。
- *  CPUあり構成（プレイヤー2人＋CPU2人）では総当たりにせず、
- *  常に「人間2人＝卓1／CPU2人＝卓2」に固定する（星戦は人間同士でのみ行うため）。
- *  人間が1人しかいない場合（ソロテスト＝人間1人+CPU3人）は、人間が実際に対戦の
- *  動作を確認できるよう、CPUを1体だけ人間卓に組み込んで1v1対戦させ、
- *  残りのCPU同士をもう一方の卓にする。 */
-function pairingsFor(s, round) {
-  if (!sessionHasCpu(s)) return PAIRINGS[round];
-  const cpus = cpuSeatsOf(s);
-  const humans = [1, 2, 3, 4].filter(n => !cpus.includes(n));
-  if (humans.length >= 2) {
-    // 想定は 人間[1,2]/CPU[3,4]。想定外の席構成でも人間卓を先頭に安定して組む
-    return [humans.slice(0, 2), cpus.slice(0, 2)];
+/* 星戦の対戦カード：セッションseedで席順をシャッフルしてから総当たりを組む。
+ * 3ラウンドで全員が一度ずつ当たりつつ、どの相手から始まるかはセッションごとに変わる。 */
+function randomizedRoundRobinPairings(seed, round) {
+  const seats = [1, 2, 3, 4];
+  const rng = mulberry32(((Number(seed) || 0) ^ 0x51F15E) | 0);
+  for (let i = seats.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [seats[i], seats[j]] = [seats[j], seats[i]];
   }
-  const human = humans[0];
-  const table1 = human != null ? [human, cpus[0]] : cpus.slice(0, 2);
-  const table2 = human != null ? cpus.slice(1) : cpus.slice(2);
-  return [table1, table2];
+  const [a, b, c, d] = seats;
+  return ({
+    1: [[a, b], [c, d]],
+    2: [[a, c], [b, d]],
+    3: [[a, d], [b, c]],
+  })[Number(round)] || [];
 }
 
+/** そのラウンドの実際のペアリングを返す。
+ *  通常はランダム化した総当たり。人間2人＋CPU2人の構成だけは、
+ *  常に「人間2人＝卓1／CPU2人＝卓2」に分け、人間同士の星戦を維持する。 */
+function pairingsFor(s, round) {
+  const cpus = cpuSeatsOf(s);
+  // 4人対戦・全CPU・ソロ検証は、3ラウンドで必ず全員が別の相手と当たる。
+  if (cpus.length !== 2) return randomizedRoundRobinPairings(s && s.seed, round);
+  const humans = [1, 2, 3, 4].filter(n => !cpus.includes(n));
+  // 通常の人間2人＋CPU2人構成だけは、人間卓／CPU卓を維持する。
+  return [humans.slice(0, 2), cpus.slice(0, 2)];
+}
 /** あるラウンドの星戦で seat が勝ったか（battle={t1Winner,t2Winner}） */
 function battleWonBySeat(battle, pairs, seat) {
   if (!battle || !pairs) return false;

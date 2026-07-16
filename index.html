@@ -1158,8 +1158,8 @@
     padding: 56px 20px 40px; z-index: 50; overflow-y: auto; overflow-x: hidden;
   }
   .top-menu.top-menu-home {
-    justify-content: center; padding: clamp(16px, 2.4vh, 30px) clamp(18px, 2vw, 38px);
-    overflow: hidden;
+    justify-content: flex-start; padding: clamp(16px, 2.4vh, 30px) clamp(18px, 2vw, 38px);
+    overflow-y: auto; overflow-x: hidden;
   }
   /* TOP画面から他画面へ遷移する際、ゆっくりフェードアウトさせる（leave中は最前面に固定して
      4人対戦/シールド戦のような高z-indexのオーバーレイの上からでも確実にフェードが見えるようにする） */
@@ -1172,6 +1172,22 @@
     background: linear-gradient(160deg, #ff6b81, #b3193a);
     border-radius: 0 100% 0 100%; opacity: 0; pointer-events: none; z-index: 0;
     animation-name: victoryPetalFallKf; animation-timing-function: linear; animation-iteration-count: infinite;
+  }
+  /* TOP・モード詳細・創世決戦で共有する、左右下端の彼岸花装飾。 */
+  .higanbana-corner {
+    position: fixed; bottom: -1px; z-index: 0;
+    width: clamp(180px, 14.5vw, 290px); height: auto; max-height: 48vh;
+    object-fit: contain; pointer-events: none; user-select: none;
+    opacity: .8;
+    filter: saturate(.9) brightness(.76) drop-shadow(0 0 16px rgba(150, 20, 38, .18));
+  }
+  .higanbana-corner-left { left: 0; }
+  .higanbana-corner-right { right: 0; }
+  @media (max-width: 1180px) {
+    .higanbana-corner { width: clamp(130px, 13vw, 160px); opacity: .62; }
+  }
+  @media (max-width: 700px) {
+    .higanbana-corner { display: none; }
   }
   .top-menu-hero { position: relative; z-index: 1; margin-bottom: clamp(10px, 1.8vh, 20px); }
   .top-menu-title {
@@ -1213,31 +1229,35 @@
   .top-menu-btn.shield:hover { background: linear-gradient(135deg, #5a4a7a, #7a4a9a); }
   .top-menu-btn.game { background: linear-gradient(135deg, #2a5a4a, #2a7a5a); border-color: #5abb8a; }
   .top-menu-btn.game:hover { background: linear-gradient(135deg, #3a6a5a, #3a8a6a); }
-  /* トップ画面：主要モードカード。創世決戦を大きく左に、理念構築戦/星紡ぎ戦を中央に縦2段、
-     カードリストを右上に（理念構築戦/星紡ぎ戦より大きく、縦2段分）配置する
-     （PPTモックアップのレイアウトに準拠）。カードリストの下は遊び方ガイドの横長ボタン。 */
+  /* トップ画面：3つの独立列で画像本来の縦横比を維持する。
+     画面高が足りない場合はカードを圧縮せず、トップ画面全体を縦スクロールさせる。 */
   .top-mode-grid {
     position: relative; z-index: 1;
     display: grid;
-    grid-template-columns: 1.6fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr 64px;
-    grid-template-areas:
-      "game construct cardlist"
-      "game shield    cardlist"
-      "game .         guide";
+    grid-template-columns: 1.2fr 1fr 1fr;
+    align-items: start;
     gap: clamp(12px, 1.3vw, 22px);
     width: min(1500px, 97vw);
-    height: min(680px, calc(100vh - 260px));
+    height: auto;
     margin-bottom: clamp(12px, 1.8vh, 22px);
   }
-  @media (max-width: 700px) {
+  .top-mode-column {
+    display: flex; flex-direction: column; gap: clamp(12px, 1.3vw, 22px);
+    min-width: 0;
+  }
+  @media (max-width: 1100px) {
     .top-mode-grid {
-      grid-template-columns: 1fr 1fr;
-      grid-template-rows: auto auto auto auto;
-      grid-template-areas: "game game" "construct shield" "cardlist cardlist" "guide guide";
-      width: min(560px, 94vw);
-      height: auto;
+      grid-template-columns: 1fr 1fr; width: min(960px, 94vw);
     }
+    .top-mode-column-side {
+      grid-column: 1 / -1;
+      width: calc(50% - clamp(6px, .65vw, 11px));
+      justify-self: center;
+    }
+  }
+  @media (max-width: 700px) {
+    .top-mode-grid { grid-template-columns: 1fr; width: min(560px, 94vw); }
+    .top-mode-column-side { grid-column: auto; width: 100%; }
   }
   .top-mode-card {
     display: flex; flex-direction: column; align-items: center; gap: 10px;
@@ -1245,33 +1265,30 @@
     color: #fff; border: 1px solid #2e3548;
     background: linear-gradient(160deg, #2a3550, #1a2540);
     transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
-    min-width: 0; min-height: 0; height: 100%;
+    min-width: 0; min-height: 0; height: auto;
   }
   .top-mode-card:hover {
     transform: translateY(-3px); box-shadow: 0 8px 28px rgba(220, 159, 80, 0.22);
     border-color: #8a95b5;
   }
-  .top-mode-card.game { grid-area: game; }
-  .top-mode-card.construct { grid-area: construct; }
-  .top-mode-card.shield { grid-area: shield; }
-  .top-mode-card.cardlist { grid-area: cardlist; }
-  @media (max-width: 700px) {
-    .top-mode-card { height: auto; }
-  }
   .top-mode-thumb {
-    width: 100%; flex: 1 1 auto; min-height: 0; border-radius: 10px;
+    display: block; width: 100%; flex: none; min-height: 0; border-radius: 10px;
     background-color: #10131c; background-size: cover; background-position: center;
     border: 1px solid rgba(255,255,255,0.12);
   }
-  @media (max-width: 700px) {
-    .top-mode-thumb { aspect-ratio: 1 / 1; flex: none; }
-  }
+  .top-mode-card.game .top-mode-thumb,
+  .top-mode-card.cardlist .top-mode-thumb { aspect-ratio: 1 / 1; }
+  .top-mode-card.construct .top-mode-thumb,
+  .top-mode-card.shield .top-mode-thumb { aspect-ratio: 1024 / 536; }
   .top-mode-label { font-size: clamp(16px, 1.25vw, 22px); font-weight: 800; letter-spacing: 0.03em; }
   .top-mode-card.game .top-mode-label { font-size: clamp(20px, 1.7vw, 28px); }
-  /* カードリスト下の横長ボタン：遊び方ガイド（右上の📖と同じ内容を開く別入口） */
+  /* カードリスト下の横長ボタン：説明書とピックガイドを独立した入口にする */
+  .top-guide-stack {
+    display: grid; grid-template-columns: 1fr 1fr; gap: clamp(8px, .8vw, 12px);
+  }
   .top-mode-guide-btn {
-    grid-area: guide;
     display: flex; align-items: center; justify-content: center; gap: 8px;
+    flex: none; min-height: 64px;
     cursor: pointer; border-radius: 12px;
     color: #fff; border: 1px solid #2e3548;
     background: linear-gradient(160deg, #2a3550, #1a2540);
@@ -1282,8 +1299,11 @@
     transform: translateY(-2px); box-shadow: 0 8px 20px rgba(220, 159, 80, 0.2);
     border-color: #8a95b5;
   }
+  .top-mode-guide-btn.manual { border-color: #9d7a3d; background: linear-gradient(160deg, #4a3822, #271d16); }
+  .top-mode-guide-btn.pick { border-color: #536d91; background: linear-gradient(160deg, #293d59, #192538); }
   @media (max-width: 700px) {
-    .top-mode-guide-btn { height: 52px; }
+    .top-mode-guide-btn { min-height: 52px; }
+    .top-guide-stack { grid-template-columns: 1fr; }
   }
   .genesis-globe-icon { display: inline-block; vertical-align: -0.15em; } /* 創世決戦ロビー見出し等で使用 */
   /* ===== モード詳細画面：TOPのモードタイルをクリックした遷移先（画像＋説明＋開始ボタン） ===== */
@@ -1352,10 +1372,208 @@
   .howto-body { font-size: 12.5px; color: #c8d0e0; line-height: 1.75; white-space: pre-wrap; word-break: keep-all; }
   .howto-card-ref {
     color: #ffe9a8; border-bottom: 1px dashed rgba(255, 216, 106, 0.6);
-    cursor: help;
+    cursor: help; white-space: nowrap;
   }
   .howto-card-ref:hover { color: #fff2cc; border-bottom-color: #ffd86a; }
   .howto-open-btn { font-size: 15px; }
+
+  /* ===== プレイガイド（添付説明書をWeb向けに再構成） ===== */
+  .battle-zone-modal.manual-modal { padding: 20px; }
+  .battle-zone-modal-panel.manual-panel {
+    width: min(1180px, 96vw); max-width: 1180px; height: min(92vh, 980px); max-height: 92vh;
+    box-sizing: border-box; padding: 0; overflow: hidden; border-color: #765e35;
+    background:
+      radial-gradient(circle at 90% 5%, rgba(218,165,82,.13), transparent 30%),
+      linear-gradient(165deg, #17171d 0%, #0d1017 68%, #15110e 100%);
+  }
+  .manual-header {
+    position: relative; z-index: 2; display: flex; align-items: center; gap: 14px;
+    padding: 15px 18px; border-bottom: 1px solid rgba(225,184,102,.35);
+    background: rgba(12,13,18,.94); box-shadow: 0 8px 24px rgba(0,0,0,.28);
+  }
+  .manual-header-mark {
+    display: grid; place-items: center; width: 38px; height: 38px; flex: none;
+    border: 1px solid #b58d49; border-radius: 50%; color: #f5d98e; font-size: 21px;
+    background: radial-gradient(circle, #40321f, #18140f);
+  }
+  .manual-header-copy { min-width: 0; }
+  .manual-header-title { color: #fff1c2; font-size: 20px; font-weight: 900; letter-spacing: .08em; }
+  .manual-header-sub { color: #9ea6b7; font-size: 11px; margin-top: 2px; }
+  .manual-close {
+    margin-left: auto; flex: none; border: 1px solid #655b4d; border-radius: 7px; padding: 8px 13px;
+    background: #27231e; color: #eee4d4; font-weight: 800; cursor: pointer;
+  }
+  .manual-close:hover { border-color: #c9a963; background: #383024; }
+  .manual-scroll { height: calc(100% - 69px); overflow-y: auto; scroll-behavior: smooth; }
+  .manual-cover {
+    position: relative; min-height: 430px; display: grid; grid-template-columns: minmax(0,1.2fr) minmax(250px,.8fr);
+    align-items: center; gap: clamp(20px, 5vw, 70px); padding: clamp(34px, 6vw, 74px);
+    overflow: hidden; border-bottom: 1px solid rgba(225,184,102,.22);
+  }
+  .manual-cover::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .14;
+    background: url('ui_decorations/higanbana-left.png') left bottom / min(48vw,560px) auto no-repeat;
+    filter: sepia(.2) saturate(.8);
+  }
+  .manual-cover-copy { position: relative; z-index: 1; }
+  .manual-kicker { color: #cba75f; font-size: 12px; font-weight: 900; letter-spacing: .22em; }
+  .manual-cover h1 { margin: 10px 0 14px; color: #fff; font-size: clamp(38px, 6vw, 72px); letter-spacing: .16em; line-height: 1; }
+  .manual-cover-lead { color: #d2d5dc; font-size: clamp(14px, 1.5vw, 18px); line-height: 2; max-width: 590px; }
+  .manual-copy, .manual-cover-lead, .manual-flow-step, .manual-card, .manual-callout,
+  .manual-keyword, .manual-question, .manual-answer, .howto-body {
+    line-break: strict; word-break: normal; word-break: auto-phrase;
+    overflow-wrap: break-word; text-wrap: pretty;
+  }
+  .manual-cover-cards { position: relative; height: 330px; z-index: 1; }
+  .manual-cover-cards img {
+    position: absolute; width: min(190px, 48%); border-radius: 10px; box-shadow: 0 18px 40px rgba(0,0,0,.65);
+  }
+  .manual-cover-cards img:first-child { left: 4%; top: 14%; transform: rotate(-8deg); }
+  .manual-cover-cards img:last-child { right: 4%; top: 0; transform: rotate(7deg); }
+  .manual-quick-nav {
+    position: sticky; top: 0; z-index: 2; display: flex; gap: 7px; overflow-x: auto;
+    padding: 10px 16px; border-bottom: 1px solid #302c27; background: rgba(13,15,21,.96);
+    scrollbar-width: thin;
+  }
+  .manual-quick-nav a {
+    flex: none; color: #cbd2df; text-decoration: none; font-size: 11px; font-weight: 800;
+    border: 1px solid #3a4050; border-radius: 999px; padding: 7px 12px; background: #1a1e29;
+  }
+  .manual-quick-nav a:hover { color: #fff1bd; border-color: #aa884e; }
+  .manual-main { padding: clamp(22px, 4vw, 52px); }
+  .manual-chapter { scroll-margin-top: 62px; padding: 12px 0 38px; }
+  .manual-chapter + .manual-chapter { border-top: 1px solid rgba(255,255,255,.09); padding-top: 38px; }
+  .manual-chapter-tag { color: #caa75f; font-size: 10px; font-weight: 900; letter-spacing: .18em; }
+  .manual-chapter h2 { margin: 7px 0 18px; color: #fff1c2; font-size: clamp(23px, 3vw, 34px); letter-spacing: .06em; }
+  .manual-chapter h3 { margin: 24px 0 9px; color: #f2d88d; font-size: 17px; }
+  .manual-copy { color: #cbd1dc; font-size: 14px; line-height: 1.9; }
+  .manual-copy p { margin: 0 0 13px; }
+  .manual-copy strong { color: #fff0bd; }
+  .manual-rule-badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+  .manual-rule-badge {
+    display: inline-flex; align-items: center; gap: 6px; border: 1px solid #50442d; border-radius: 999px;
+    padding: 7px 11px; background: rgba(178,135,63,.1); color: #ead9ad; font-size: 12px; font-weight: 800;
+  }
+  .manual-callout {
+    margin: 16px 0; border-left: 4px solid #c49b50; border-radius: 5px;
+    padding: 13px 16px; background: rgba(196,155,80,.1); color: #ddd6c8; font-size: 13px; line-height: 1.75;
+  }
+  .manual-callout.blue { border-left-color: #6c91c9; background: rgba(86,123,178,.1); }
+  .manual-callout.red { border-left-color: #c56969; background: rgba(177,75,75,.1); }
+  .manual-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; margin: 16px 0; }
+  .manual-mode-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 16px 0; }
+  .manual-mode-card { border: 1px solid #3b4352; border-radius: 11px; padding: 16px; background: linear-gradient(150deg,rgba(35,41,54,.9),rgba(18,21,29,.9)); }
+  .manual-mode-card b { display: block; margin: 6px 0 7px; color: #ffe7a7; font-size: 16px; }
+  .manual-mode-card p { margin: 0; color: #c5ccd8; font-size: 12px; line-height: 1.75; }
+  .manual-mode-card .manual-mode-meta { color: #8fa8d2; font-size: 11px; font-weight: 900; letter-spacing: .05em; }
+  .manual-card {
+    border: 1px solid #303644; border-radius: 10px; padding: 16px; background: rgba(24,28,38,.72);
+  }
+  .manual-card h3 { margin-top: 0; }
+  .manual-card-icon { font-size: 25px; margin-bottom: 7px; }
+  .manual-card-figure {
+    display: grid; grid-template-columns: minmax(150px,220px) minmax(0,1fr); gap: 22px; align-items: start;
+    margin: 17px 0; padding: 18px; border: 1px solid #343b4a; border-radius: 12px; background: #11151e;
+  }
+  .manual-card-image-wrap { position: relative; width: 100%; }
+  .manual-card-image-wrap img { display: block; width: 100%; border-radius: 8px; box-shadow: 0 12px 30px rgba(0,0,0,.55); }
+  .manual-card-pin, .manual-field-pin {
+    position: absolute; z-index: 2; display: grid; place-items: center; width: 25px; height: 25px;
+    border: 2px solid #fff3c8; border-radius: 50%; background: #9b6924; color: #fff;
+    font-size: 12px; font-weight: 900; line-height: 1; box-shadow: 0 2px 8px rgba(0,0,0,.8);
+    transform: translate(-50%,-50%);
+  }
+  .manual-card-pin.p1 { left: 10%; top: 33%; } .manual-card-pin.p2 { left: 8%; top: 6%; }
+  .manual-card-pin.p3 { left: 91%; top: 6%; } .manual-card-pin.p4 { left: 10%; top: 61%; }
+  .manual-card-pin.p5 { left: 39%; top: 61%; } .manual-card-pin.p6 { left: 50%; top: 95%; }
+  .manual-card-pin.p7 { left: 89%; top: 95%; } .manual-card-pin.p8 { left: 10%; top: 95%; }
+  .manual-card-pin.p9 { left: 50%; top: 70%; } .manual-card-pin.p10 { left: 97%; top: 50%; }
+  .manual-number-list { list-style: none; margin: 0; padding: 0; counter-reset: manual-point; }
+  .manual-number-list li { position: relative; padding: 0 0 10px 35px; color: #cbd1dc; font-size: 13px; line-height: 1.65; }
+  .manual-number-list li::before {
+    counter-increment: manual-point; content: counter(manual-point); position: absolute; left: 0; top: 0;
+    display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+    background: #8d6a32; color: #fff8e7; font-size: 11px; font-weight: 900;
+  }
+  .manual-flow { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin: 18px 0; }
+  .manual-flow-step {
+    position: relative; min-height: 108px; border: 1px solid #3c4250; border-radius: 9px; padding: 13px 12px;
+    background: linear-gradient(150deg, #202633, #151923); color: #cbd2df; font-size: 12px; line-height: 1.55;
+  }
+  .manual-flow-step b { display: block; color: #ffe9ac; font-size: 13px; margin-bottom: 5px; }
+  .manual-flow-step span { display: block; color: #75819a; font-size: 10px; font-weight: 900; margin-bottom: 4px; }
+  .manual-table-wrap { overflow-x: auto; margin: 15px 0; }
+  .manual-table { width: 100%; min-width: 570px; border-collapse: collapse; color: #ccd3df; font-size: 12px; }
+  .manual-table th, .manual-table td { border: 1px solid #343a48; padding: 10px 11px; text-align: left; vertical-align: top; line-height: 1.6; }
+  .manual-table th { background: #282d39; color: #ffe9ae; font-weight: 900; }
+  .manual-table td { background: rgba(18,21,29,.72); }
+  .manual-board {
+    margin: 20px 0; border: 2px solid #59482f; border-radius: 15px; padding: 15px;
+    background: radial-gradient(circle at center, #2b241c, #111318 68%); box-shadow: inset 0 0 36px rgba(0,0,0,.75);
+  }
+  .manual-board-side { display: grid; grid-template-columns: 105px 1fr 90px; gap: 12px; align-items: center; min-height: 150px; }
+  .manual-board-side + .manual-board-side { border-top: 1px dashed #756342; margin-top: 12px; padding-top: 12px; }
+  .manual-board-kami, .manual-board-zone {
+    display: grid; place-items: center; min-height: 94px; border: 1px solid #5c5140; border-radius: 8px;
+    background: rgba(22,21,20,.75); color: #d8c89f; font-size: 11px; text-align: center;
+  }
+  .manual-board-zone { border-style: dashed; color: #8e96a7; }
+  .manual-board-field { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }
+  .manual-board-slot { min-height: 92px; border: 1px dashed #4d566a; border-radius: 7px; display: grid; place-items: center; color: #717c91; font-size: 10px; }
+  .manual-board-slot img { width: 52px; border-radius: 4px; transform: rotate(1deg); }
+  .manual-stat { display: inline-flex; gap: 5px; margin-top: 6px; color: #fff; font-weight: 900; }
+  .manual-field-figure { margin: 20px 0; border: 1px solid #54452f; border-radius: 12px; padding: 12px; background: #090c12; }
+  .manual-field-shot { position: relative; overflow: hidden; border-radius: 7px; }
+  .manual-field-shot img { display: block; width: 100%; height: auto; }
+  .manual-field-pin.f1 { left: 14%; top: 12%; } .manual-field-pin.f2 { left: 68%; top: 12%; }
+  .manual-field-pin.f3 { left: 39%; top: 34%; } .manual-field-pin.f4 { left: 39%; top: 59%; }
+  .manual-field-pin.f5 { left: 14%; top: 86%; } .manual-field-pin.f6 { left: 69%; top: 86%; }
+  .manual-field-pin.f7 { left: 47%; top: 89%; } .manual-field-pin.f8 { left: 94%; top: 89%; }
+  .manual-field-pin.f9 { left: 94%; top: 57%; }
+  .manual-field-legend { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-top: 11px; }
+  .manual-field-legend div { border: 1px solid #303746; border-radius: 7px; padding: 9px 10px; color: #c7cfdb; font-size: 11.5px; line-height: 1.55; background: #151923; }
+  .manual-field-legend b { color: #f4d889; }
+  .manual-keyword-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; margin: 16px 0; }
+  .manual-keyword { border: 1px solid #333a49; border-radius: 8px; padding: 12px; background: rgba(18,22,30,.78); color: #c9d0dc; font-size: 12px; line-height: 1.65; }
+  .manual-keyword b { display: block; color: #f1d68d; font-size: 13px; margin-bottom: 4px; }
+  .manual-qa { margin: 11px 0; border: 1px solid #333b4a; border-radius: 9px; overflow: hidden; }
+  .manual-question { padding: 11px 14px; background: #242a36; color: #f2dda4; font-size: 13px; font-weight: 800; line-height: 1.6; }
+  .manual-answer { padding: 12px 14px; background: rgba(17,20,27,.88); color: #ccd3df; font-size: 12.5px; line-height: 1.75; }
+  .manual-kami-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 11px; }
+  .manual-kami {
+    display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: center;
+    border: 1px solid #343a46; border-radius: 9px; padding: 10px; background: rgba(20,23,31,.8);
+  }
+  .manual-kami img { width: 64px; height: 64px; object-fit: cover; object-position: top; border-radius: 8px; }
+  .manual-kami b { color: #f5dda0; font-size: 13px; }
+  .manual-kami-difficulty { color: #e9b85c; font-size: 11px; margin: 2px 0 4px; }
+  .manual-kami p { color: #aeb7c6; font-size: 11px; line-height: 1.55; margin: 0; }
+  @media (max-width: 760px) {
+    .battle-zone-modal.manual-modal { padding: 0; }
+    .battle-zone-modal-panel.manual-panel { width: 100vw; min-width: 0; max-width: 100vw; height: 100%; max-height: 100%; overflow-x: hidden; border-radius: 0; }
+    .manual-scroll { width: 100%; min-width: 0; height: calc(100% - 69px); overflow-x: hidden; }
+    .manual-header { box-sizing: border-box; width: 100%; gap: 8px; padding: 12px; }
+    .manual-header-mark { width: 32px; height: 32px; font-size: 17px; }
+    .manual-header-copy { flex: 1 1 0; overflow: hidden; }
+    .manual-header-title { font-size: 17px; letter-spacing: .03em; white-space: nowrap; }
+    .manual-close { display: block; margin-left: 0; padding: 6px 9px; font-size: 11px; }
+    .manual-cover { box-sizing: border-box; grid-template-columns: minmax(0,1fr); width: 100%; min-width: 0; padding: 34px 22px; }
+    .manual-cover-copy, .manual-cover-lead { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; }
+    .manual-cover-lead { white-space: normal; word-break: normal; overflow-wrap: anywhere; }
+    .manual-rule-badges { width: 100%; min-width: 0; }
+    .manual-rule-badge { padding: 6px 9px; font-size: 11px; }
+    .manual-cover-cards { width: 100%; min-width: 0; height: 250px; }
+    .manual-quick-nav { box-sizing: border-box; width: 100%; max-width: 100%; scrollbar-width: none; }
+    .manual-quick-nav::-webkit-scrollbar { display: none; }
+    .manual-main { padding: 22px 16px; }
+    .manual-grid, .manual-mode-grid, .manual-keyword-grid, .manual-kami-grid, .manual-field-legend { grid-template-columns: 1fr; }
+    .manual-card-figure { grid-template-columns: 1fr; }
+    .manual-card-image-wrap { width: min(230px,75vw); margin: 0 auto; }
+    .manual-flow { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .manual-board-side { grid-template-columns: 74px 1fr 60px; gap: 6px; }
+    .manual-board-slot { min-height: 72px; }
+    .manual-header-sub { display: none; }
+  }
   .deck-manager-save-row { display: flex; gap: 8px; align-items: flex-start; }
   .deck-manager-name-input {
     flex: 1; background: #12151f; border: 1px solid #3a4256; color: #e8e8f0;
@@ -1449,6 +1667,7 @@
     width: min(880px, 96vw); max-height: 92vh; overflow-y: auto;
     background: #161922; border: 1px solid #2e3548; border-radius: 10px;
     box-shadow: 0 12px 48px rgba(0,0,0,0.6);
+    position: relative; z-index: 1;
     display: flex; flex-direction: column;
   }
   .gm-header {
@@ -1574,9 +1793,9 @@
     padding: 12px; margin-bottom: 16px; border-radius: 8px; background: #1a1d28;
   }
   .gm-kami-status.mine { color: #fff; background: #2a5a4a; }
-  .gm-offer { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+  .gm-offer { display: flex; gap: clamp(18px,2.5vw,30px); justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
   .gm-kami-card {
-    width: 180px; cursor: pointer; border-radius: 8px; overflow: hidden;
+    width: clamp(200px,22vw,240px); cursor: pointer; border-radius: 10px; overflow: hidden;
     border: 2px solid #3a3f55; background: #11141c;
     transition: transform 0.12s, border-color 0.12s;
   }
@@ -1612,12 +1831,68 @@
   @keyframes kamiDivinePulseKf { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
   @keyframes kamiOrochiPulseKf { 0%, 100% { opacity: .65; } 50% { opacity: 1; } }
   .gm-kami-name {
-    padding: 6px 8px; font-size: 12px; color: #eee; text-align: center;
+    padding: 8px 8px; font-size: clamp(10px,1.2vw,13px); color: #eee; text-align: center;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .gm-kami-pick {
     text-align: center; font-size: 12px; font-weight: 700; color: #fff;
     background: #2a7a5a; padding: 6px;
+  }
+  .gm-kami-info-btn { width:100%; border:0; cursor:pointer; letter-spacing:.03em; }
+  .gm-kami-info-btn:hover { background:#35946f; }
+  .gs-kami-info-overlay {
+    position:fixed; inset:0; z-index:5100; display:grid; place-items:center; padding:22px;
+    background:rgba(2,4,10,.92); backdrop-filter:blur(8px);
+  }
+  .gs-kami-info-panel {
+    position:relative; width:min(1320px,98vw); max-height:96vh; overflow-y:auto;
+    border:1px solid #756545; border-radius:14px; padding:clamp(18px,3vw,30px);
+    background:radial-gradient(circle at 16% 20%,rgba(214,177,92,.13),transparent 34%),linear-gradient(145deg,#171a25,#0d1018 70%);
+    box-shadow:0 24px 80px rgba(0,0,0,.75),0 0 34px rgba(221,185,102,.16); color:#e9edf5;
+  }
+  .gs-kami-info-panel.orochi { border-color:#853a42; background:radial-gradient(circle at 16% 20%,rgba(176,22,39,.18),transparent 36%),linear-gradient(145deg,#1b1017,#090b11 70%); }
+  .gs-kami-info-close { position:absolute; z-index:3; right:13px; top:11px; width:36px; height:36px; border:1px solid #555d6f; border-radius:50%; background:rgba(12,15,23,.82); color:#d9deea; font-size:22px; cursor:pointer; }
+  .gs-kami-info-close:hover { border-color:#e4cf93; color:#fff; }
+  .gs-kami-info-layout { display:grid; grid-template-columns:minmax(390px,520px) minmax(0,1fr); gap:clamp(28px,4vw,52px); align-items:start; }
+  .gs-kami-info-card-image { width:min(100%,50vh,520px); aspect-ratio:2/3; margin:0 auto; border:2px solid #d7c38c; border-radius:14px; background-color:#080a10; background-position:center; background-size:contain; background-repeat:no-repeat; box-shadow:0 15px 44px rgba(0,0,0,.7),0 0 22px rgba(236,207,129,.28); }
+  .gs-kami-info-panel.orochi .gs-kami-info-card-image { border-color:#c94c5d; box-shadow:0 15px 44px rgba(0,0,0,.8),0 0 28px rgba(218,31,56,.42); }
+  .gs-kami-info-card-note { margin-top:8px; color:#8f99aa; font-size:11px; text-align:center; }
+  .gs-kami-info-kicker { color:#cfb875; font-size:10px; font-weight:900; letter-spacing:.2em; }
+  .gs-kami-info-name { margin:5px 38px 18px 0; color:#fff3c9; font-family:'Yu Mincho','Hiragino Mincho ProN',serif; font-size:clamp(22px,2.4vw,35px); font-weight:1000; letter-spacing:.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .gs-kami-info-section { margin-top:15px; border:1px solid #343b4b; border-radius:9px; padding:13px 15px; background:rgba(20,24,34,.72); }
+  .gs-kami-info-section-title { margin-bottom:8px; color:#ecd895; font-size:13px; font-weight:900; letter-spacing:.08em; }
+  .gs-kami-effect-row + .gs-kami-effect-row { margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,.08); }
+  .gs-kami-effect-label { display:block; margin-bottom:3px; color:#90bff2; font-size:10px; font-weight:900; }
+  .gs-kami-effect-text { color:#d6dce7; font-size:12px; line-height:1.65; white-space:pre-wrap; }
+  .gs-kami-pick-policy { margin:0; padding-left:20px; color:#d6dce7; font-size:13px; line-height:1.75; }
+  .gs-kami-pick-policy li + li { margin-top:4px; }
+  .gs-kami-philosophy { border-color:#655733; background:linear-gradient(135deg,rgba(104,79,30,.2),rgba(25,24,27,.68)); }
+  .gs-kami-philosophy p { margin:0; color:#ddd8ca; font-family:'Yu Mincho','Hiragino Mincho ProN',serif; font-size:14px; line-height:1.85; }
+  .gs-kami-philosophy p + p { margin-top:7px; }
+  .gs-kami-world-emphasis { color:#ffe39a; font-size:1.08em; font-weight:1000; text-shadow:0 0 12px rgba(255,218,116,.22); }
+  .gs-kami-confirm { margin-top:18px; border:1px solid #6d5b32; border-radius:10px; padding:14px; background:rgba(67,51,20,.24); text-align:center; }
+  .gs-kami-confirm-question { margin:0 0 12px; color:#fff2c8; font-size:14px; font-weight:900; line-height:1.6; }
+  .gs-kami-confirm-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .gs-kami-accept-btn { width:100%; border:1px solid #dec37b; border-radius:9px; padding:12px 16px; background:linear-gradient(135deg,#7a5c25,#b48a38); color:#fffbed; font-size:14px; font-weight:1000; line-height:1.45; cursor:pointer; box-shadow:0 8px 24px rgba(154,112,31,.25); }
+  .gs-kami-accept-btn:hover:not(:disabled) { filter:brightness(1.16); transform:translateY(-1px); }
+  .gs-kami-accept-btn:disabled { opacity:.55; cursor:wait; }
+  .gs-kami-decline-btn { width:100%; border:1px solid #626b7c; border-radius:9px; padding:12px 16px; background:#272d3a; color:#e4e8f0; font-size:14px; font-weight:900; cursor:pointer; }
+  .gs-kami-decline-btn:hover:not(:disabled) { background:#343c4c; border-color:#8b96a9; }
+  .gs-kami-decline-btn:disabled { opacity:.55; cursor:wait; }
+  .gs-kami-info-panel.orochi .gs-kami-accept-btn { border-color:#e06a76; background:linear-gradient(135deg,#641624,#a5283c); }
+  .gs-kami-info-nav { position:absolute; z-index:4; top:50%; width:46px; height:70px; border:1px solid #85754f; border-radius:10px; background:rgba(12,15,23,.9); color:#ffe4a0; font-size:30px; font-weight:900; cursor:pointer; transform:translateY(-50%); box-shadow:0 8px 26px rgba(0,0,0,.5); }
+  .gs-kami-info-nav:hover { background:#3a3020; border-color:#e1c477; }
+  .gs-kami-info-nav.prev { left:10px; }
+  .gs-kami-info-nav.next { right:10px; }
+  @media (max-width:700px) {
+    .gs-kami-info-overlay { padding:8px; }
+    .gs-kami-info-panel { width:98vw; max-height:96vh; padding:15px; }
+    .gs-kami-info-layout { grid-template-columns:1fr; gap:16px; }
+    .gs-kami-info-card-image { width:min(86vw,46vh,420px); margin:0 auto; }
+    .gs-kami-info-name { font-size:clamp(18px,5.4vw,24px); }
+    .gs-kami-info-nav { position:fixed; top:50%; width:40px; height:58px; font-size:25px; }
+    .gs-kami-info-nav.prev { left:3px; }
+    .gs-kami-info-nav.next { right:3px; }
   }
   .gm-waiting { text-align: center; color: #889; font-size: 14px; padding: 30px 0; }
   .gm-pick-status {
@@ -1653,24 +1928,33 @@
     100% { opacity: 0; }
   }
   .gs-scoring-kami-img {
-    max-width: min(70vw, 420px); max-height: 60vh; border-radius: 10px;
+    width: auto; height: min(72vh, 780px); max-width: min(58vw, 520px); aspect-ratio: 2 / 3;
+    object-fit: contain; border-radius: 12px;
     box-shadow: 0 0 40px rgba(255, 220, 140, .55);
-    animation: gsKamiRevealKf 2.6s cubic-bezier(.2,.7,.3,1) forwards;
+    animation: gsKamiRevealKf 1.2s cubic-bezier(.2,.7,.3,1) both;
   }
   @keyframes gsKamiRevealKf {
     0%   { opacity: 0; transform: scale(1.15); filter: brightness(2.2); }
-    18%  { opacity: 1; filter: brightness(1.6); }
-    40%  { transform: scale(1); filter: brightness(1); }
-    85%  { opacity: 1; }
-    100% { opacity: 0; }
+    22%  { opacity: 1; filter: brightness(1.6); }
+    100% { opacity: 1; transform: scale(1); filter: brightness(1); }
   }
   .gs-scoring-kami-name {
-    margin-top: 18px; font-size: 22px; font-weight: 700; color: #fff;
+    margin-top: 14px; font-size: 22px; font-weight: 700; color: #fff;
     text-shadow: 0 0 12px rgba(255, 210, 120, .8);
     display: flex; flex-direction: column; align-items: center; gap: 4px;
-    animation: gsAnnounceFadeKf 2.6s ease-in-out forwards;
+    animation: gsScoringNameInKf .8s .45s ease-out both;
   }
+  @keyframes gsScoringNameInKf { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
   .gs-scoring-kami-name small { font-size: 14px; color: #d8c89a; font-weight: 400; }
+  .gs-scoring-kami-line {
+    max-width:min(88vw,760px); margin-top:12px; padding:10px 18px;
+    border-top:1px solid rgba(236,202,119,.52); border-bottom:1px solid rgba(236,202,119,.52);
+    color:#fff4d1; font-size:clamp(16px,2vw,23px); font-weight:800; line-height:1.55;
+    text-align:center; text-wrap:balance; text-shadow:0 0 12px rgba(255,196,72,.42);
+    animation:gsScoringNameInKf .8s .72s ease-out both;
+  }
+  .gs-scoring-skip { position:absolute; right:24px; bottom:22px; z-index:2; padding:9px 16px; border:1px solid rgba(255,255,255,.42); border-radius:8px; background:rgba(12,14,20,.76); color:#f4ead3; font-weight:700; cursor:pointer; }
+  .gs-scoring-skip:hover { background:rgba(72,58,35,.88); border-color:#eacb86; }
 
   /* 完了 */
   .gm-done-title { text-align: center; font-size: 16px; color: #eee; font-weight: 700; margin-bottom: 18px; }
@@ -1698,6 +1982,13 @@
   .gm-draft-headright { display: flex; align-items: center; gap: 12px; }
   .gm-draft-progress { font-size: 13px; color: #bcd; }
   .gm-draft-progress b { color: #6c9; font-size: 17px; }
+  .gm-draft-return-total {
+    display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px;
+    border: 1px solid #6b7080; border-radius: 12px; background: #11151f;
+    color: #d8deea; font-size: 11px; white-space: nowrap;
+  }
+  .gm-draft-return-total .gm-soul-icon { width: 15px; height: 15px; color: #fff2ad; font-size: 9px; }
+  .gm-draft-return-total b { color: #fff2ad; font-size: 15px; }
   .gm-btn-peek {
     height: 32px; padding: 0 12px; font-size: 12px;
     background: #2a4a6a; border-color: #3a6a9a; color: #cfe6ff;
@@ -1728,7 +2019,29 @@
   }
   .pick-assist-badge-down { background: rgba(120, 120, 130, .95); color: #fff; }
   .pick-assist-badge-overlay { position: absolute; top: 4px; right: 4px; z-index: 2; pointer-events: none; }
-  .gm-pack-img { width: 100%; aspect-ratio: 744 / 1039; background: #0a0c12 center / cover no-repeat; }
+  .pick-assist-recommend-overlay {
+    position: absolute; z-index: 3; top: 4px; left: 36px; right: 4px;
+    display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 3px;
+    pointer-events: none;
+  }
+  .pick-assist-reason {
+    padding: 2px 5px; border: 1px solid rgba(255, 231, 151, .9); border-radius: 8px;
+    background: rgba(38, 29, 11, .94); color: #fff4c5; font-size: 9px; font-weight: 800;
+    line-height: 1; white-space: nowrap; box-shadow: 0 1px 4px rgba(0, 0, 0, .75);
+  }
+  .gm-pack-img { position: relative; width: 100%; aspect-ratio: 744 / 1039; background: #0a0c12 center / cover no-repeat; }
+  .gm-pack-return-overlay {
+    position: absolute; z-index: 2; left: 3px; bottom: 3px;
+    display: inline-flex; align-items: center; gap: 3px; padding: 3px 6px 3px 4px;
+    border: 1px solid rgba(255, 255, 255, .92); border-radius: 10px;
+    background: rgba(5, 7, 12, .94); color: #fff; font-size: 12px; font-weight: 900;
+    line-height: 1; text-shadow: 0 1px 2px #000; box-shadow: 0 1px 5px #000, 0 0 5px rgba(255, 255, 255, .35);
+    pointer-events: none;
+  }
+  .gm-soul-icon {
+    display: inline-grid; place-items: center; width: 17px; height: 17px;
+    border: 1.5px solid currentColor; border-radius: 50%; font-size: 11px; line-height: 1;
+  }
   .gm-pack-name {
     padding: 4px 6px; font-size: 10px; color: #ddd; text-align: center;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -3335,19 +3648,6 @@
     box-shadow: 0 0 12px rgba(245, 202, 88, .55);
     filter: brightness(.82); /* タップ中＝行動不可を一瞥で分かるよう明度を落とす */
   }
-  .battle-card.field-card.evolved {
-    box-shadow: 0 0 0 2px #c98aff, 0 0 14px rgba(180,120,255,.55);
-    position: relative;
-  }
-  .battle-card.field-card.evolved::after {
-    content: '進化';
-    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
-    background: linear-gradient(135deg, #b46cff, #6a3aa6);
-    color: #fff; font-size: 10px; font-weight: 900; padding: 2px 8px;
-    border-radius: 8px; border: 1px solid #e0c6ff; letter-spacing: .05em;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-    pointer-events: none; z-index: 4;
-  }
   .battle-card.field-card.effect-disabled {
     filter: grayscale(0.65) brightness(0.78);
     box-shadow: 0 0 0 2px #888, 0 0 10px rgba(120,120,120,.4);
@@ -4095,19 +4395,93 @@
   .genesis-pick-fly { position:fixed; z-index:1800; left:50%; top:46%; width:150px; aspect-ratio:744/1039; border:3px solid #fff1a6; border-radius:10px; background:#141725 center/cover no-repeat; box-shadow:0 0 12px #fff, 0 0 34px #ffd33c, 0 0 72px #ff9d2b; pointer-events:none; animation:genesisPickFlyKf 1.05s cubic-bezier(.2,.85,.25,1) forwards; }
   .genesis-pick-fly::after { content:'GENESIS'; position:absolute; inset:0; display:grid; place-items:center; color:#fff9c5; font-size:17px; font-weight:1000; letter-spacing:.14em; text-shadow:0 0 8px #ff9e28,0 0 22px #fff; background:radial-gradient(circle,rgba(255,245,180,.42),rgba(255,188,40,.06) 65%,transparent 72%); }
   @keyframes genesisPickFlyKf { 0%{opacity:0;transform:translate(-50%,-50%) scale(.35) rotate(-12deg);filter:brightness(2.5)} 28%{opacity:1;transform:translate(-50%,-50%) scale(1.1) rotate(2deg)} 72%{opacity:1;transform:translate(180%,-230%) scale(.58) rotate(0)} 100%{opacity:0;transform:translate(260%,-290%) scale(.15);filter:brightness(3)} }
-  .battle-skill-closeup-overlay.orochi-seal-four-mode { background: radial-gradient(circle, rgba(255,85,40,.35), rgba(14,0,24,.9)); }
-  .battle-skill-closeup-card.orochi-seal-four-mode { border-color:#ff8a38; box-shadow:0 0 18px 5px #ff3b24, 0 0 48px 16px rgba(255,185,30,.45); animation:orochiSealFourKf 2.3s ease-in-out forwards; }
-  .battle-skill-closeup-card.orochi-seal-four-mode .battle-skill-closeup-skillname { color:#ffe08a; text-shadow:0 0 14px #ff5a26, 0 0 28px #ffb11c; }
-  @keyframes orochiSealFourKf { 0% { opacity:0; transform:scale(.72) rotate(-2deg); filter:brightness(2.2); } 20% { opacity:1; transform:scale(1.04) rotate(1deg); } 80% { opacity:1; transform:scale(1); } 100% { opacity:0; transform:scale(1.08); filter:brightness(1.8); } }
-  /* Summoning sickness states: no actions / battle only / both actions. */
-  .field-card.summon-sick-gray { box-shadow: 0 0 10px 3px rgba(148,156,170,.55), inset 0 0 10px rgba(94,100,110,.45); }
-  .field-card.summon-sick-red { box-shadow: 0 0 12px 4px rgba(244,75,65,.72), inset 0 0 12px rgba(185,35,35,.35); }
-  .field-card.summon-sick-yellow { box-shadow: 0 0 13px 4px rgba(255,211,65,.8), inset 0 0 11px rgba(255,182,40,.35); }
-  .field-card.summon-sick-gray::after, .field-card.summon-sick-red::after, .field-card.summon-sick-yellow::after { content:''; position:absolute; inset:-3px; border-radius:inherit; pointer-events:none; animation:summonSicknessAuraKf 1.45s ease-in-out infinite alternate; }
-  .field-card.summon-sick-gray::after { border:1px solid rgba(190,198,212,.7); }
-  .field-card.summon-sick-red::after { border:1px solid rgba(255,116,90,.85); }
-  .field-card.summon-sick-yellow::after { border:1px solid rgba(255,232,118,.9); }
-  @keyframes summonSicknessAuraKf { from { opacity:.3; transform:scale(.985); } to { opacity:.9; transform:scale(1.025); } }
+  /* 4人対戦の節目を見せる全画面演出（神託／理の開花／ディエスイレ）。 */
+  .gs-cinematic {
+    position:fixed; inset:0; z-index:5200; overflow:hidden; display:grid; place-items:center;
+    background:#02030a; isolation:isolate; color:#fff; cursor:default;
+  }
+  .gs-cinematic-bg { position:absolute; inset:-5%; width:110%; height:110%; object-fit:cover; z-index:-4; }
+  .gs-cinematic::before {
+    content:''; position:absolute; inset:0; z-index:-2; pointer-events:none;
+    background:radial-gradient(circle at 50% 48%, transparent 20%, rgba(0,0,0,.2) 58%, rgba(0,0,0,.82) 100%);
+  }
+  .gs-cinematic-glow { position:absolute; inset:0; z-index:-1; pointer-events:none; opacity:0; }
+  .gs-cinematic-flash { position:absolute; inset:0; z-index:5; pointer-events:none; opacity:0; background:#fffbe0; }
+  .gs-cinematic-copy { position:absolute; left:50%; bottom:8%; transform:translateX(-50%); width:min(90vw,860px); text-align:center; opacity:0; text-shadow:0 2px 5px #000,0 0 18px currentColor; }
+  .gs-cinematic-kicker { font-size:clamp(12px,1.4vw,17px); font-weight:900; letter-spacing:.38em; margin-bottom:7px; }
+  .gs-cinematic-title { font-family:'Yu Mincho','Hiragino Mincho ProN',serif; font-size:clamp(28px,4.4vw,64px); font-weight:1000; letter-spacing:.13em; }
+  .gs-cinematic-sub { margin-top:8px; font-size:clamp(12px,1.5vw,18px); font-weight:800; letter-spacing:.09em; color:#e8edf8; }
+  .gs-cinematic-skip { position:absolute; z-index:10; right:18px; bottom:16px; border:1px solid rgba(255,255,255,.42); border-radius:999px; padding:7px 13px; background:rgba(5,7,16,.55); color:#e9edf7; font-size:12px; cursor:pointer; backdrop-filter:blur(6px); }
+  .gs-cinematic-skip:hover { background:rgba(35,39,57,.82); border-color:#fff; }
+  .gs-cinematic-fade-enter-active,.gs-cinematic-fade-leave-active { transition:opacity .24s ease; }
+  .gs-cinematic-fade-enter-from,.gs-cinematic-fade-leave-to { opacity:0; }
+
+  .gs-cinematic.is-kami .gs-cinematic-bg { animation:gsKamiApproachKf 4.2s cubic-bezier(.18,.7,.22,1) forwards; }
+  .gs-cinematic.is-kami .gs-cinematic-glow { background:radial-gradient(circle at 50% 53%,rgba(255,245,178,.92),rgba(255,190,55,.2) 20%,transparent 46%); }
+  .gs-cinematic.is-kami.stage-radiance .gs-cinematic-glow { animation:gsKamiRadianceKf 1.35s ease-out forwards; }
+  .gs-cinematic.is-kami.stage-radiance .gs-cinematic-flash { animation:gsCinematicFlashKf 1.2s ease-in forwards; }
+  .gs-cinematic.is-kami .gs-cinematic-copy { animation:gsCopyRiseKf 2.1s .45s ease-out forwards; color:#fff1a8; }
+  @keyframes gsKamiApproachKf { from{transform:scale(1);filter:brightness(.46) saturate(.76)} to{transform:scale(1.23);filter:brightness(1.16) saturate(1.2)} }
+  @keyframes gsKamiRadianceKf { 0%{opacity:.1;transform:scale(.7)} 65%{opacity:1;transform:scale(1.18)} 100%{opacity:.9;transform:scale(1.55)} }
+  @keyframes gsCinematicFlashKf { 0%,42%{opacity:0} 78%{opacity:.94} 100%{opacity:1} }
+  @keyframes gsCopyRiseKf { 0%{opacity:0;transform:translate(-50%,16px)} 28%,80%{opacity:1;transform:translate(-50%,0)} 100%{opacity:0;transform:translate(-50%,-5px)} }
+
+  .gs-cinematic.is-bloom .gs-lotus-closed,.gs-cinematic.is-bloom .gs-lotus-open { transition:opacity 1.15s ease,transform 3.5s ease,filter 1.15s ease; }
+  .gs-cinematic.is-bloom .gs-lotus-closed { opacity:1; transform:scale(1); }
+  .gs-cinematic.is-bloom .gs-lotus-open { opacity:0; transform:scale(1.045); filter:brightness(1.55); }
+  .gs-cinematic.is-bloom.stage-opening .gs-lotus-closed { opacity:0; transform:scale(1.09); filter:brightness(1.7); }
+  .gs-cinematic.is-bloom.stage-opening .gs-lotus-open { opacity:1; transform:scale(1.1); filter:brightness(1.08); }
+  .gs-cinematic.is-bloom .gs-cinematic-glow { background:radial-gradient(circle at 50% 58%,rgba(191,244,255,.88),rgba(47,127,255,.18) 25%,transparent 53%); }
+  .gs-cinematic.is-bloom.stage-opening .gs-cinematic-glow { animation:gsBloomGlowKf 1.9s ease-out forwards; }
+  .gs-cinematic.is-bloom.stage-opening .gs-cinematic-copy { animation:gsCopyRiseKf 2.1s ease-out forwards; color:#c9f5ff; }
+  @keyframes gsBloomGlowKf { 0%{opacity:0;transform:scale(.45)} 45%{opacity:1;transform:scale(1)} 100%{opacity:.22;transform:scale(1.48)} }
+
+  .gs-cinematic.is-dies .gs-cinematic-bg { animation:gsDiesRitualKf 5s ease-out forwards; filter:saturate(.85) brightness(.58); }
+  .gs-cinematic.is-dies .gs-cinematic-glow { opacity:.65; background:radial-gradient(circle at 50% 58%,rgba(255,24,57,.68),rgba(111,0,25,.18) 28%,transparent 56%); animation:gsDiesPulseKf 1.25s ease-in-out infinite alternate; }
+  .gs-dies-card { position:absolute; left:50%; top:48%; width:min(29vh,180px); aspect-ratio:744/1039; border:3px solid #ff6980; border-radius:10px; background:#18020a center/cover no-repeat; box-shadow:0 0 18px #ff1e43,0 0 58px rgba(255,0,48,.8),0 0 105px rgba(114,0,36,.9); opacity:0; transform:translate(-50%,-50%) scale(.25) rotate(-3deg); }
+  .gs-cinematic.is-dies.stage-reveal .gs-dies-card { animation:gsDiesCardRevealKf 3.1s cubic-bezier(.17,.84,.22,1) forwards; }
+  .gs-cinematic.is-dies.stage-reveal .gs-cinematic-copy { animation:gsCopyRiseKf 2.35s .45s ease-out forwards; color:#ff98a6; }
+  .gs-cinematic.is-dies.stage-reveal .gs-cinematic-flash { background:#ff4261; animation:gsDiesFlashKf .65s ease-out forwards; }
+  @keyframes gsDiesRitualKf { from{transform:scale(1.04)} to{transform:scale(1.13);filter:saturate(1.22) brightness(.84)} }
+  @keyframes gsDiesPulseKf { from{transform:scale(.78);opacity:.25} to{transform:scale(1.16);opacity:.82} }
+  @keyframes gsDiesCardRevealKf { 0%{opacity:0;transform:translate(-50%,-50%) scale(.2) rotate(-5deg);filter:brightness(3)} 24%{opacity:1;transform:translate(-50%,-50%) scale(1.16) rotate(1deg)} 42%,88%{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(0);filter:brightness(1.08)} 100%{opacity:1;transform:translate(-50%,-50%) scale(1.03);filter:brightness(1)} }
+  @keyframes gsDiesFlashKf { 0%{opacity:.92} 100%{opacity:0} }
+  @media (prefers-reduced-motion:reduce) {
+    .gs-cinematic * { animation-duration:.3s !important; animation-delay:0s !important; transition-duration:.2s !important; }
+    .gs-cinematic-bg { transform:scale(1.04) !important; }
+  }
+  .battle-skill-closeup-overlay.orochi-seal-four-mode,
+  .battle-skill-closeup-overlay.orochi-skill2-mode { background:radial-gradient(circle,rgba(126,36,28,.2),rgba(4,2,12,.78)); }
+  .battle-skill-closeup-card.orochi-seal-four-mode,
+  .battle-skill-closeup-card.orochi-skill2-mode { border-color:#ffb15b; box-shadow:0 0 16px 3px rgba(255,92,44,.65),0 14px 42px rgba(0,0,0,.82); animation:orochiCutinKf 2.3s cubic-bezier(.22,1,.36,1) forwards; }
+  .battle-skill-closeup-card.orochi-skill2-mode { border-color:#ffd57b; box-shadow:0 0 22px 5px rgba(255,173,54,.72),0 16px 48px rgba(0,0,0,.84); animation-duration:3s; }
+  .battle-skill-closeup-card.orochi-seal-four-mode .battle-skill-closeup-face,
+  .battle-skill-closeup-card.orochi-skill2-mode .battle-skill-closeup-face { aspect-ratio:32/9; object-position:center; filter:none; image-rendering:auto; }
+  .battle-skill-closeup-card.orochi-seal-four-mode .battle-skill-closeup-skillname,
+  .battle-skill-closeup-card.orochi-skill2-mode .battle-skill-closeup-skillname { color:#fff0bd; text-shadow:0 0 9px rgba(255,98,38,.75),0 2px 4px #000; }
+  @keyframes orochiCutinKf { 0%{opacity:0;transform:scale(.9)} 18%{opacity:1;transform:scale(1.02)} 76%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(.985)} }
+
+  /* Legacy readiness: dark sleeping frame, floating actionable card, gold when both actions are ready. */
+  .field-card.legacy-action-sick { border-color:#24272d !important; box-shadow:0 0 0 2px #111318,inset 0 0 16px rgba(0,0,0,.68) !important; filter:brightness(.72) saturate(.76); }
+  .field-card.legacy-action-battle:not(.tapped),
+  .field-card.legacy-action-divine:not(.tapped),
+  .field-card.legacy-action-both:not(.tapped) { transform:translateY(-5px); transition:transform .2s ease,box-shadow .2s ease; }
+  .field-card.legacy-action-battle:not(.tapped) { box-shadow:0 7px 16px rgba(238,104,55,.3); }
+  .field-card.legacy-action-divine:not(.tapped) { box-shadow:0 7px 16px rgba(100,175,255,.3); }
+  .field-card.legacy-action-both:not(.tapped) { border-color:#ffe78b !important; animation:legacyReadyGoldKf 1.35s ease-in-out infinite alternate; }
+  @keyframes legacyReadyGoldKf { from{box-shadow:0 6px 15px rgba(255,196,50,.55),0 0 7px rgba(255,232,130,.55)} to{box-shadow:0 8px 20px rgba(255,180,25,.82),0 0 18px 5px rgba(255,225,95,.82)} }
+  .summon-piyopiyo { position:absolute; z-index:12; left:50%; top:-19px; width:50px; height:24px; transform:translateX(-50%); pointer-events:none; filter:drop-shadow(0 1px 2px rgba(0,0,0,.9)); }
+  .summon-piyopiyo i { position:absolute; left:50%; top:50%; width:16px; height:16px; margin:-8px; font-style:normal; line-height:16px; text-align:center; animation:piyopiyoChickOrbitKf 1.45s linear infinite; }
+  .summon-piyopiyo i::before { content:'🐥'; font-size:13px; }
+  .summon-piyopiyo i:nth-child(2) { animation-delay:-.48s; }
+  .summon-piyopiyo i:nth-child(3) { animation-delay:-.96s; }
+  @keyframes piyopiyoChickOrbitKf {
+    0%   { transform:translate(-21px, 1px) scale(.84); opacity:.72; }
+    25%  { transform:translate(0, -8px) scale(1.05); opacity:1; }
+    50%  { transform:translate(21px, 1px) scale(.84); opacity:.72; }
+    75%  { transform:translate(0, 8px) scale(.72); opacity:.52; }
+    100% { transform:translate(-21px, 1px) scale(.84); opacity:.72; }
+  }
   .return-recommended { outline:2px solid #c68dff; outline-offset:2px; box-shadow:0 0 14px rgba(198,141,255,.65) !important; }
   .return-recommend-badge { position:absolute; z-index:8; top:4px; right:4px; border-radius:10px; padding:2px 5px; background:#4b276d; color:#fff3ba; font-size:10px; font-weight:900; pointer-events:none; }
   .status-icon.surprise-icon, .status-icon.dash-icon { display:none; }
@@ -4168,24 +4542,57 @@
 
   .battle-result-overlay { z-index: 700; overflow: hidden; }
   .battle-result-panel {
-    position: relative; width: min(720px, 94vw); max-height: 96vh; overflow-y: auto; box-sizing: border-box;
-    padding: clamp(22px, 5vh, 56px) 28px; text-align: center;
-    border: 3px solid; background: #11151d; box-shadow: 0 22px 70px rgba(0,0,0,.85);
+    position: relative; width: min(980px, 96vw); max-height: 96vh; overflow-y: auto; box-sizing: border-box;
+    padding: clamp(18px, 3.2vh, 38px) clamp(16px, 3vw, 36px); text-align: center;
+    border: 3px solid; background: #050609; box-shadow: 0 22px 70px rgba(0,0,0,.92);
   }
-  .battle-result-title { font-size: clamp(42px, 8vw, 92px); font-weight: 1000; line-height: 1.05; }
-  .battle-result-kami {
-    display: block; width: min(560px, 92%); aspect-ratio: 16 / 9; object-fit: cover; object-position: center 22%;
-    margin: 0 auto 18px; border-radius: 10px; background: #1a1d28;
-    border: 4px solid #ffe06a; box-shadow: 0 0 28px rgba(255, 224, 106, .55), 0 0 60px rgba(255, 200, 60, .3);
-    animation: victory-flash 1.15s ease-in-out infinite;
-  }
+  .battle-result-title { font-size: clamp(34px, 6vw, 68px); font-weight: 1000; line-height: 1.05; margin-bottom: 12px; }
   .battle-result-panel.win { border-color: #ffe06a; }
   .battle-result-panel.win .battle-result-title {
     color: #ffd43b; text-shadow: 0 0 8px #fff1a6, 0 0 24px #d99400, 0 5px 0 #7d4c00;
     animation: victory-flash 1.15s ease-in-out infinite;
   }
-  .battle-result-panel.loss { border-color: #737983; filter: grayscale(.35); }
+  .battle-result-panel.loss { border-color: #737983; }
   .battle-result-panel.loss .battle-result-title { color: #989da5; text-shadow: 0 4px 0 #3e4249; }
+  .battle-result-duel {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center; gap: clamp(10px, 2vw, 28px); margin: 0 auto 16px;
+  }
+  .battle-result-portrait { min-width: 0; margin: 0; }
+  .battle-result-portrait-frame {
+    position: relative; width: min(100%, 320px); aspect-ratio: 1 / 1; margin: 0 auto;
+    border: 3px solid #41495a; border-radius: 10px; overflow: hidden; background: #11151d;
+  }
+  .battle-result-portrait.winner .battle-result-portrait-frame {
+    border-color: #ffe06a; box-shadow: 0 0 22px rgba(255,224,106,.48);
+  }
+  .battle-result-portrait.loser .battle-result-portrait-frame {
+    border-color: #737983; box-shadow: 0 0 18px rgba(110,120,140,.26);
+  }
+  .battle-result-portrait-img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+  .battle-result-portrait.loser .battle-result-portrait-img { filter: saturate(.72) brightness(.8); }
+  .battle-result-role {
+    position: absolute; top: 8px; left: 8px; z-index: 1; padding: 4px 9px; border-radius: 999px;
+    background: rgba(5,6,9,.82); border: 1px solid currentColor; font-size: 10px; font-weight: 900; letter-spacing: .12em;
+  }
+  .battle-result-portrait.winner .battle-result-role { color: #ffe06a; }
+  .battle-result-portrait.loser .battle-result-role { color: #aab1bd; }
+  .battle-result-portrait-name {
+    display: block; margin-top: 8px; color: #f0f2f7; font-size: clamp(13px, 1.8vw, 18px); font-weight: 900;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .battle-result-versus { color: #8992a2; font-size: clamp(14px, 2vw, 22px); font-weight: 1000; letter-spacing: .08em; }
+  .battle-result-dialogue {
+    position: relative; margin: 12px auto 4px; padding: 14px clamp(14px, 2.5vw, 24px);
+    border: 2px solid #d8dde8; border-radius: 4px; background: #050609; color: #fff; text-align: left;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.08);
+  }
+  .battle-result-dialogue-speaker { color: #ffe06a; font-size: 12px; font-weight: 900; margin-bottom: 5px; }
+  .battle-result-dialogue-line {
+    min-height: 1.5em; font-size: clamp(16px, 2.3vw, 24px); font-weight: 800; line-height: 1.55;
+    line-break: strict; word-break: normal; overflow-wrap: break-word; text-wrap: balance;
+  }
+  .battle-result-dialogue-clause { display: inline-block; white-space: nowrap; }
   .battle-result-subtext { margin-top: 10px; font-size: 16px; font-weight: 700; color: #cbd3de; }
   .battle-result-summary { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 7px; margin: 16px auto 4px; max-width: 620px; }
   .battle-result-summary-item { padding: 8px 5px; border-radius: 7px; background: rgba(31,39,53,.9); border: 1px solid #46536a; }
@@ -4196,7 +4603,11 @@
   .battle-result-review-actions button:hover { border-color: #8ba5d4; background: #303b51; }
   @media (max-width: 560px) {
     .battle-result-summary { grid-template-columns: repeat(2, minmax(0,1fr)); }
-    .battle-result-kami { width: 96%; }
+    .battle-result-duel { gap: 7px; }
+    .battle-result-dialogue-clause { white-space: normal; }
+    .battle-result-portrait-frame { border-width: 2px; }
+    .battle-result-role { top: 5px; left: 5px; padding: 3px 6px; font-size: 8px; }
+    .battle-result-portrait-name { font-size: 11px; }
   }
   /* 勝敗確定演出：勝者のプレイヤー名・カミ名を大きく表示。
      文字が全部表示し終わった直後（battleResultPetalDelay、花びらの舞い始めと同じタイミング）に
@@ -4349,6 +4760,16 @@
   .battle-mulligan .bm-go { background: linear-gradient(135deg, #b23a5a, #d24a6a); border-color: #f06a8a; }
   .battle-mulligan .bm-go:hover:not(:disabled) { background: linear-gradient(135deg, #c24a6a, #e25a7a); transform: translateY(-1px); }
   .battle-mulligan .bm-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .reroll-candidate-heading { color: #dbe7f7; font-size: 13px; font-weight: 700; margin: 10px 0 7px; }
+  .reroll-candidate-list { display: flex; gap: 9px; flex-wrap: wrap; justify-content: center; margin: 0 0 14px; }
+  .reroll-candidate-card {
+    width: 78px; aspect-ratio: 744 / 1039; border: 1px solid #56637a; border-radius: 5px;
+    background: #151a24 center / cover no-repeat; position: relative; overflow: hidden;
+  }
+  .reroll-candidate-name {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 3px; font-size: 9px;
+    line-height: 1.25; color: #fff; background: rgba(0,0,0,.76);
+  }
   /* Vueマウント完了までテンプレート構文({{ }})が生で見えてしまうのを防ぐ（FOUC対策） */
   [v-cloak] { display: none; }
   #app-loading {
@@ -4383,7 +4804,8 @@
        重なるため、対戦画面表示中はこちらを隠す。カードリスト画面ではBGM不要かつ他の
        ボタン群と重なるため非表示にする） ===== -->
   <div v-if="appView !== 'battle' && appView !== 'cardlist' && !deckExpanded" class="global-sound-settings">
-    <button class="global-sound-btn howto-open-btn" @click.stop="_sfxPlay('decision'); howToPlayModalOpen = true; $nextTick(_howtoAnnotateCardRefs)" title="遊び方ガイド">📖</button>
+    <button class="global-sound-btn howto-open-btn" @click.stop="_sfxPlay('decision'); manualModalOpen = true" title="プレイガイド（説明書）">📖</button>
+    <button class="global-sound-btn howto-open-btn" @click.stop="_sfxPlay('decision'); howToPlayModalOpen = true; $nextTick(_howtoAnnotateCardRefs)" title="ピックガイド">🧭</button>
     <button class="global-sound-btn howto-open-btn" @click.stop="openBattleHistory" title="戦績・対戦履歴">📜</button>
     <button class="global-sound-btn" @click.stop="_sfxPlay('cancel'); soundSettingsOpen = !soundSettingsOpen" title="音量設定">🎵</button>
     <div v-if="soundSettingsOpen" class="global-sound-popover" @click.stop>
@@ -4448,13 +4870,15 @@
 
   <!-- フィールド確認中：選択画面へ戻るボタン -->
   <button v-if="battleModalPeek" class="modal-peek-return-btn" @click="_sfxPlay('cancel'); battleModalPeek = false">選択画面に戻る</button>
-  <button v-else-if="appView === 'battle' && (battleMulligan || _battleHasBlockingModal())" class="modal-peek-return-btn" @click="_sfxPlay('decision'); battleModalPeek = true">フィールドを確認</button>
+  <button v-else-if="appView === 'battle' && _battleHasBlockingModal()" class="modal-peek-return-btn" @click="_sfxPlay('decision'); battleModalPeek = true">フィールドを確認</button>
 
   <!-- ===== ツクリヨオンライン トップメニュー ===== -->
   <transition name="top-menu-fade">
   <div v-if="appView === 'top'" class="top-menu top-menu-home">
     <span v-for="i in 16" :key="'topPetal'+i" class="top-menu-petal"
           :style="{ left: ((i*61)%100) + '%', animationDelay: ((i%7)*0.9) + 's', animationDuration: (9 + (i%5)*1.6) + 's' }"></span>
+    <img class="higanbana-corner higanbana-corner-left" src="ui_decorations/higanbana-left.png" alt="" aria-hidden="true" draggable="false">
+    <img class="higanbana-corner higanbana-corner-right" src="ui_decorations/higanbana-right.png" alt="" aria-hidden="true" draggable="false">
     <div class="top-menu-hero">
       <div class="top-menu-title">ツクリヨオンライン</div>
       <div class="top-menu-subtitle">— TSUKURIYO ONLINE —</div>
@@ -4464,25 +4888,36 @@
       <button class="top-resume-btn" @click="resumeActiveSession">↩ 戻る</button>
     </div>
     <div class="top-mode-grid">
-      <button class="top-mode-card game" @click="openModeDetail('game')">
-        <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/genesis4p.webp)' }"></span>
-        <span class="top-mode-label">創世決戦</span>
-      </button>
-      <button class="top-mode-card construct" @click="openModeDetail('construct')">
-        <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/construct2p-oblong.webp)' }"></span>
-        <span class="top-mode-label">理念構築戦</span>
-      </button>
-      <button class="top-mode-card shield" @click="openModeDetail('shield')">
-        <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/shield2p-oblong.webp)' }"></span>
-        <span class="top-mode-label">星紡ぎ戦</span>
-      </button>
-      <button class="top-mode-card cardlist" @click="openModeDetail('cardlist')">
-        <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/cardlist.webp)' }"></span>
-        <span class="top-mode-label">カードリスト</span>
-      </button>
-      <button class="top-mode-guide-btn" @click.stop="_sfxPlay('decision'); howToPlayModalOpen = true; $nextTick(_howtoAnnotateCardRefs)">
-        📖 遊び方ガイド
-      </button>
+      <div class="top-mode-column top-mode-column-game">
+        <button class="top-mode-card game" @click="openModeDetail('game')">
+          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/genesis4p.webp)' }"></span>
+          <span class="top-mode-label">創世決戦</span>
+        </button>
+      </div>
+      <div class="top-mode-column top-mode-column-center">
+        <button class="top-mode-card construct" @click="openModeDetail('construct')">
+          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/construct2p-oblong.webp)' }"></span>
+          <span class="top-mode-label">理念構築戦</span>
+        </button>
+        <button class="top-mode-card shield" @click="openModeDetail('shield')">
+          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/shield2p-oblong.webp)' }"></span>
+          <span class="top-mode-label">星紡ぎ戦</span>
+        </button>
+      </div>
+      <div class="top-mode-column top-mode-column-side">
+        <button class="top-mode-card cardlist" @click="openModeDetail('cardlist')">
+          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/cardlist.webp)' }"></span>
+          <span class="top-mode-label">カードリスト</span>
+        </button>
+        <div class="top-guide-stack">
+          <button class="top-mode-guide-btn manual" @click.stop="_sfxPlay('decision'); manualModalOpen = true">
+            📖 プレイガイド
+          </button>
+          <button class="top-mode-guide-btn pick" @click.stop="_sfxPlay('decision'); howToPlayModalOpen = true; $nextTick(_howtoAnnotateCardRefs)">
+            🧭 ピックガイド
+          </button>
+        </div>
+      </div>
     </div>
     <div class="top-devtools">
       <button class="top-devtools-toggle" @click="openDevToolsScreen">
@@ -4545,6 +4980,8 @@
   <div v-if="appView === 'modeDetail' && modeDetailInfo" class="top-menu">
     <span v-for="i in 16" :key="'mdPetal'+i" class="top-menu-petal"
           :style="{ left: ((i*61)%100) + '%', animationDelay: ((i%7)*0.9) + 's', animationDuration: (9 + (i%5)*1.6) + 's' }"></span>
+    <img class="higanbana-corner higanbana-corner-left" src="ui_decorations/higanbana-left.png" alt="" aria-hidden="true" draggable="false">
+    <img class="higanbana-corner higanbana-corner-right" src="ui_decorations/higanbana-right.png" alt="" aria-hidden="true" draggable="false">
     <button class="mode-detail-back" @click="modeDetailBack">◀ トップへ戻る</button>
     <div class="mode-detail-panel">
       <div class="mode-detail-left">
@@ -4576,45 +5013,290 @@
     </div>
   </div>
 
-  <!-- ===== 遊び方ガイドモーダル（TOP画面「📖」から。初見ユーザー向けの流れの説明） ===== -->
+  <!-- ===== プレイガイド（添付説明書の構成を現行ルールとオンライン操作へ合わせて再構成） ===== -->
+  <div v-if="manualModalOpen" class="battle-zone-modal manual-modal" role="dialog" aria-modal="true" aria-label="ツクリヨ プレイガイド" @click.self="manualModalOpen = false">
+    <div class="battle-zone-modal-panel manual-panel">
+      <div class="manual-header">
+        <div class="manual-header-mark" aria-hidden="true" title="プレイガイド">📖</div>
+        <div class="manual-header-copy">
+          <div class="manual-header-title">ツクリヨ プレイガイド</div>
+          <div class="manual-header-sub">3つの対戦モード／星戦のルール／キーワード／細則</div>
+        </div>
+        <button class="manual-close" @click="_sfxPlay('cancel'); manualModalOpen = false">閉じる</button>
+      </div>
+      <div class="manual-scroll">
+        <section class="manual-cover">
+          <div class="manual-cover-copy">
+            <div class="manual-kicker">TSUKURIYO PLAY GUIDE</div>
+            <h1>ツクリヨ</h1>
+            <div class="manual-cover-lead">生命の記憶を集め、理念をデッキに刻み、次の世を創るカミとなれ。この説明書では、3つの対戦モード、星戦、カード用語、細則を順に説明します。</div>
+            <div class="manual-rule-badges">
+              <span class="manual-rule-badge">👥 2人／4人対戦</span>
+              <span class="manual-rule-badge">🃏 ドラフト／構築／パック選択</span>
+              <span class="manual-rule-badge">⚔ 3つの対戦モード</span>
+            </div>
+          </div>
+          <div class="manual-cover-cards" aria-hidden="true">
+            <img src="card_images/320/001.webp" alt="">
+            <img src="kami_card_images/320/001.webp" alt="">
+          </div>
+        </section>
+
+        <nav class="manual-quick-nav" aria-label="説明書の目次">
+          <a href="#manual-world">世界観</a>
+          <a href="#manual-goal">目的</a>
+          <a href="#manual-modes">対戦モード</a>
+          <a href="#manual-cards">カード</a>
+          <a href="#manual-flow">ゲーム進行</a>
+          <a href="#manual-draft">選別・深化</a>
+          <a href="#manual-battle">星戦</a>
+          <a href="#manual-keywords">用語</a>
+          <a href="#manual-faq">細則Q&amp;A</a>
+          <a href="#manual-kami">カミ</a>
+        </nav>
+
+        <main class="manual-main manual-copy">
+          <section id="manual-world" class="manual-chapter">
+            <div class="manual-chapter-tag">CHAPTER 01</div>
+            <h2>終焉の先に、次の世を</h2>
+            <p>突如飛来した無数の巨龍は文明を蹂躙し、生命を滅亡の淵へ追いやりました。古き神々は永い死闘の末に巨龍を打ち倒しましたが、その代償として星から生命の息吹は失われます。</p>
+            <p>神々が星の深淵で見つけたのは、かつて存在した生命の記憶の残滓――<strong>「レガシー」</strong>。神秘のエネルギー<strong>「星魂」</strong>によってレガシーに命を吹き込めば、新たな世界を創ることができます。</p>
+            <p>しかし、どの生命を蘇らせ、どのような未来を築くべきか。異なる理念を抱くカミたちは、創世の資格と星魂を賭けた闘争――<strong>「星戦」</strong>を選びました。</p>
+          </section>
+
+          <section id="manual-goal" class="manual-chapter">
+            <div class="manual-chapter-tag">CHAPTER 02</div>
+            <h2>ゲームの目的</h2>
+            <p>プレイヤーはカミの1人となり、ドラフト形式でカードを集め、自らの理念を体現するデッキを作ります。3回の星戦を終えた時、最も多くの<strong>星魂</strong>を持つプレイヤーが、次の世を創る勝者です。</p>
+            <div class="manual-grid">
+              <article class="manual-card">
+                <div class="manual-card-icon">⚔️</div>
+                <h3>星戦に勝つ</h3>
+                <p>星戦に1回勝利するたび、<strong>星魂10</strong>を獲得します。相手カミのライフを0にするか、相手が山札切れになると勝利です。</p>
+              </article>
+              <article class="manual-card">
+                <div class="manual-card-icon">★</div>
+                <h3>カードを還元する</h3>
+                <p>ゲーム終了時、集めた全カードにある<strong>変換値（0～2）</strong>の合計が星魂になります。途中で返還したカードの変換値も集計します。</p>
+              </article>
+            </div>
+            <div class="manual-callout"><strong>強さと星魂のバランスが重要です。</strong> 強力な能力を持つ代わりに変換値が低いカードもあります。強いカードだけでは終戦時の星魂が伸びず、変換値の高いカードだけでは星戦に勝ちにくくなります。星戦の勝利とカードから得る星魂の両方を見据えて構築しましょう。</div>
+          </section>
+
+          <section id="manual-modes" class="manual-chapter">
+            <div class="manual-chapter-tag">CHAPTER 03</div>
+            <h2>3つの対戦モード</h2>
+            <p>共通の星戦ルールを、カードの集め方が異なる3つのモードで遊べます。初めて遊ぶ場合は、すぐ対戦できるストラクチャーデッキを使った理念構築戦がおすすめです。</p>
+            <div class="manual-mode-grid">
+              <article class="manual-mode-card"><div class="manual-mode-meta">4人対戦（CPU参加時は2人から）</div><b>創世決戦</b><p>神託でカミを選び、3回の選別と深化を行いながら星戦を3回行います。星戦の勝利点と、集めたカードの変換値から得る星魂で最終順位を決めます。</p></article>
+              <article class="manual-mode-card"><div class="manual-mode-meta">2人対戦</div><b>理念構築戦</b><p>全カードプールから35枚を自由に選んで構築し、選んだカミとデッキで1回の星戦を行います。用意済みのストラクチャーデッキでも開始できます。</p></article>
+              <article class="manual-mode-card"><div class="manual-mode-meta">2人対戦</div><b>星紡ぎ戦</b><p>提示されたパックを交互に選び、合計48枚のカードを集めます。集めた48枚をそのままデッキとして使い、最後に選んだカミと1回の星戦を行います。</p></article>
+            </div>
+            <div class="manual-callout blue">星戦の盤面、ターン進行、手札上限などの対戦ルールは3モード共通です。創世決戦だけは3回の星戦を行い、星魂で最終順位を決めます。</div>
+          </section>
+
+          <section id="manual-cards" class="manual-chapter">
+            <div class="manual-chapter-tag">CHAPTER 04</div>
+            <h2>カードの種類と見方</h2>
+            <div class="manual-grid">
+              <article class="manual-card"><div class="manual-card-icon">👑</div><h3>カミ</h3><p>プレイヤーの分身です。固有の天力トリガーと2つの神技を持ちます。神技はメインフェイズ中、1ターンにどちらか1回だけ使用できます。</p></article>
+              <article class="manual-card"><div class="manual-card-icon">⚔️</div><h3>レガシー</h3><p>レガシーフィールドに出て戦います。戦闘力で相手レガシーと戦い、神攻力で相手カミへダメージを与えます。</p></article>
+              <article class="manual-card"><div class="manual-card-icon">✨</div><h3>オラクル</h3><p>使用すると効果を即座に解決し、その後は墓地へ置かれる使い切りのカードです。</p></article>
+              <article class="manual-card"><div class="manual-card-icon">🏺</div><h3>レリック</h3><p>レリックフィールドに置かれ、常在効果や起動効果で戦いを支えます。</p></article>
+            </div>
+            <div class="manual-card-figure">
+              <div class="manual-card-image-wrap">
+                <img src="card_images/600/001.webp" alt="①から⑩の番号を重ねたレガシーカードの例">
+                <span class="manual-card-pin p1">①</span><span class="manual-card-pin p2">②</span>
+                <span class="manual-card-pin p3">③</span><span class="manual-card-pin p4">④</span>
+                <span class="manual-card-pin p5">⑤</span><span class="manual-card-pin p6">⑥</span>
+                <span class="manual-card-pin p7">⑦</span><span class="manual-card-pin p8">⑧</span>
+                <span class="manual-card-pin p9">⑨</span><span class="manual-card-pin p10">⑩</span>
+              </div>
+              <ol class="manual-number-list">
+                <li><strong>カード名</strong>：カードの名称です。</li>
+                <li><strong>コスト</strong>：使用に必要なマナ。形状はカード種類／レガシーの種族を示します。</li>
+                <li><strong>ラウンド</strong>：どのラウンドの選別で登場するカードかを示します。</li>
+                <li><strong>属性</strong>：赤・青・黄・緑・紫が基本。無属性と、基本5属性を併せ持つ創属性があります。</li>
+                <li><strong>種類・種族</strong>：レガシーの種族は、忍者・侍・人獣・神使・妖怪・龍の6種です。</li>
+                <li><strong>戦闘力</strong>：戦闘で比較する値。0以下になったレガシーは破壊されます。</li>
+                <li><strong>神攻力</strong>：神攻で相手カミに与えるダメージです。</li>
+                <li><strong>変換値</strong>：終戦時に星魂へ還元される値（0～2）です。</li>
+                <li><strong>効果</strong>：カード固有の能力です。</li>
+                <li><strong>カード枠</strong>：銀枠は各種2枚、金枠は各種<strong>1枚</strong>存在します。</li>
+              </ol>
+            </div>
+            <div class="manual-callout blue">ジェネシスは深化の刻に獲得できる強力な創属性カードです。トークンはカード効果で招来され、通常のデッキには入りません。</div>
+          </section>
+
+          <section id="manual-flow" class="manual-chapter">
+            <div class="manual-chapter-tag">CHAPTER 05</div>
+            <h2>創世決戦の流れ</h2>
+            <div class="manual-flow">
+              <div class="manual-flow-step"><span>壱</span><b>神託の儀</b>3枚の候補から、自分のカミを1体選びます。</div>
+              <div class="manual-flow-step"><span>弐</span><b>選別の儀①</b>30枚をドラフトし、1枚を無料返還します。</div>
+              <div class="manual-flow-step"><span>参</span><b>深化の刻①</b>見識を使いデッキを調整して、星戦①へ。</div>
+              <div class="manual-flow-step"><span>肆</span><b>選別の儀②</b>10枚を追加し、2枚を無料返還します。</div>
+              <div class="manual-flow-step"><span>伍</span><b>深化の刻②</b>見識で強化して、組み合わせを変え星戦②へ。</div>
+              <div class="manual-flow-step"><span>陸</span><b>選別の儀③</b>5枚を追加し、2枚を無料返還します。</div>
+              <div class="manual-flow-step"><span>漆</span><b>深化の刻③</b>最後の調整を行い、星戦③を戦います。</div>
+              <div class="manual-flow-step"><span>捌</span><b>終戦</b>勝利点と全カードの変換値を合計します。</div>
+            </div>
+            <div class="manual-callout">オンライン版では、CPUを加えることで2人から創世決戦を開始できます。人間2人＋CPU2人の場合、星戦は人間同士の卓とCPU同士の卓に分かれ、人間だけで最終順位を競います。</div>
+          </section>
+
+          <section id="manual-draft" class="manual-chapter">
+            <div class="manual-chapter-tag">CHAPTER 06</div>
+            <h2>神託・選別・深化</h2>
+            <h3>神託の儀</h3>
+            <p>プレイヤー1から順に、ランダムに提示された3枚のカミカードから1枚を選びます。選ばなかった2枚は候補へ戻り、次のプレイヤーへ進みます。</p>
+            <h3>選別の儀</h3>
+            <p>配られた束から全員が同時に1枚ずつ選び、残りを画面に示された方向の隣プレイヤーへ渡します。束がなくなるまで繰り返します。</p>
+            <div class="manual-table-wrap"><table class="manual-table">
+              <thead><tr><th>ラウンド</th><th>配布</th><th>1人が得る枚数</th><th>選別後の無料返還</th></tr></thead>
+              <tbody>
+                <tr><td>第1ラウンド</td><td>10枚束 × 3回</td><td><strong>30枚</strong></td><td><strong>1枚</strong></td></tr>
+                <tr><td>第2ラウンド</td><td>10枚束 × 1回</td><td><strong>10枚</strong></td><td><strong>2枚</strong></td></tr>
+                <tr><td>第3ラウンド</td><td>5枚束 × 1回</td><td><strong>5枚</strong></td><td><strong>2枚</strong></td></tr>
+              </tbody>
+            </table></div>
+            <div class="manual-callout red"><strong>デフォルトデッキ削除（無料返還）</strong>は、各ラウンドの選別が終わった直後、深化の刻へ入る前に行います。返還したカードはデッキから取り除かれますが、その変換値は星魂として保持されます。</div>
+            <div class="manual-callout blue"><strong>ヤマタノオロチ専用：</strong>第3ラウンドの選別が完了すると、「終焉龍・ディエスイレ」1枚が専用枠としてデッキへ自動的に加わります。</div>
+            <h3>深化の刻</h3>
+            <p>ゲーム開始時は全員が見識1を獲得します。第2・第3ラウンドの深化開始時は、直前の星戦の勝者が見識1、敗者が見識3を獲得します。見識は次のラウンドへ持ち越せます。</p>
+            <div class="manual-grid">
+              <article class="manual-card"><h3>省察 ／ 見識1</h3><p>デッキからカード1枚を選び、即座に星魂へ変換します。</p></article>
+              <article class="manual-card"><h3>習合 ／ 見識2</h3><p>次の星戦に限り、マリガンを2回行える権利を得ます。各深化で1回までです。</p></article>
+              <article class="manual-card"><h3>理の開花 ／ 見識3</h3><p>ジェネシスカードを3枚確認し、その中から1枚をデッキに加えます。</p></article>
+              <article class="manual-card"><h3>完了</h3><p>全員が深化完了を選ぶと、そのラウンドの星戦へ進みます。</p></article>
+            </div>
+          </section>
+
+          <section id="manual-battle" class="manual-chapter">
+            <div class="manual-chapter-tag">CHAPTER 07</div>
+            <h2>星戦のルール</h2>
+            <h3>組み合わせ</h3>
+            <p>創世決戦の星戦は、セッション開始時にランダムな組み合わせが決まります。3ラウンドを通して同じ相手とは重複せず、4人全員が一度ずつ対戦します。各ラウンドの対戦相手は星戦画面で確認できます。</p>
+            <div class="manual-callout blue">人間2人＋CPU2人の場合は、人間同士の卓とCPU同士の卓に分かれます。理念構築戦と星紡ぎ戦は参加した2人で1回対戦します。</div>
+            <h3>対戦の準備</h3>
+            <div class="manual-rule-badges"><span class="manual-rule-badge">♥ ライフ：第1戦8／第2戦以降10</span><span class="manual-rule-badge">🔷 天力：0</span><span class="manual-rule-badge">🟢 マナ：0</span><span class="manual-rule-badge">🖐 初期手札：4枚</span></div>
+            <p>先攻・後攻を決め、後攻は戦闘開始前に【社の施し】トークン1枚を獲得します。各自デッキをシャッフルして4枚引き、0～4枚を選んで1回マリガンできます。習合の権利があれば2回行えます。</p>
+            <div class="manual-field-figure" aria-label="実際の対戦画面を使ったフィールド説明">
+              <div class="manual-field-shot">
+                <img src="ui_decorations/manual-battle-field.png" alt="実際の星戦画面。相手側が上、自分側が下に配置されている">
+                <span class="manual-field-pin f1">①</span><span class="manual-field-pin f2">②</span>
+                <span class="manual-field-pin f3">③</span><span class="manual-field-pin f4">④</span>
+                <span class="manual-field-pin f5">⑤</span><span class="manual-field-pin f6">⑥</span>
+                <span class="manual-field-pin f7">⑦</span><span class="manual-field-pin f8">⑧</span>
+                <span class="manual-field-pin f9">⑨</span>
+              </div>
+              <div class="manual-field-legend">
+                <div><b>① 相手の手札</b><br>内容は非公開で、裏面と枚数だけが表示されます。</div>
+                <div><b>② 相手のレリック</b><br>常在／起動効果を持つカード。上限7枚です。</div>
+                <div><b>③ 相手のレガシー</b><br>戦闘・神攻を行うカード。上限7枚です。</div>
+                <div><b>④ 自分のレガシー</b><br>手札からこの領域へドラッグして使用します。上限7枚です。</div>
+                <div><b>⑤ 自分のレリック</b><br>手札からこの領域へドラッグして使用します。上限7枚です。</div>
+                <div><b>⑥ 自分の手札</b><br>エンドフェイズ終了時の上限は8枚です。</div>
+                <div><b>⑦ カミとステータス</b><br>ライフ、天力／封印、カミ名、神技を確認します。</div>
+                <div><b>⑧ デッキ／墓地／崩壊</b><br>各領域の枚数を表示。墓地と崩壊はクリックして内容を確認できます。</div>
+                <div><b>⑨ マナとターン</b><br>現在マナ、最大マナ、ターン番号、ターン終了操作を表示します。</div>
+              </div>
+            </div>
+            <h3>ターンの5フェーズ</h3>
+            <div class="manual-flow">
+              <div class="manual-flow-step"><span>1</span><b>ドロー</b>デッキから1枚引く。先攻の第1ターンのみスキップ。</div>
+              <div class="manual-flow-step"><span>2</span><b>スタンバイ</b>自分のレガシーとレリックをすべてアンタップ。</div>
+              <div class="manual-flow-step"><span>3</span><b>マナ</b>マナ最大値を1増やし、マナを最大値まで回復（上限10）。</div>
+              <div class="manual-flow-step"><span>4</span><b>メイン</b>カード使用、戦闘・神攻、効果、神技を好きな順で行う。</div>
+              <div class="manual-flow-step"><span>5</span><b>エンド</b>終了時効果を解決し、手札が9枚以上なら8枚になるまで選んで墓地へ送る。</div>
+            </div>
+            <h3>メインフェイズでできること</h3>
+            <div class="manual-grid">
+              <article class="manual-card"><h3>カードの使用</h3><p>コスト分のマナを支払います。レガシー／レリックの各フィールド上限は7枚。オラクルは効果解決後に墓地へ置きます。</p></article>
+              <article class="manual-card"><h3>戦闘</h3><p>アンタップ状態のレガシーをタップし、タップ状態の相手レガシーを攻撃。戦闘力の低い側を破壊し、同値なら双方を破壊します。</p></article>
+              <article class="manual-card"><h3>神攻</h3><p>レガシーをタップして相手カミを攻撃し、その神攻力だけ相手のライフを減らします。</p></article>
+              <article class="manual-card"><h3>効果・神技</h3><p>起動できるカード効果を使用できます。神技は天力を支払い、1ターンに2つのうちどちらか1回だけ使用できます。</p></article>
+            </div>
+            <div class="manual-callout blue"><strong>リロール：</strong>手札から使用したカードと同じ色のカード1枚を公開すると、効果解決前に1枚引き、公開したカードをデッキへ戻してシャッフルできます。</div>
+            <h3>その他の勝敗ルール</h3>
+            <p><strong>山札切れ：</strong>デッキが0枚の状態でさらに引く必要があると敗北します（【誘】などで一時的に0枚になるだけなら除く）。<br><strong>疲労ダメージ：</strong>11ターン目以降、自分のターン開始時に1、2、3…と増えるダメージを受けます。</p>
+          </section>
+
+          <section id="manual-keywords" class="manual-chapter">
+            <div class="manual-chapter-tag">CHAPTER 08</div>
+            <h2>カード用語・キーワード</h2>
+            <div class="manual-table-wrap"><table class="manual-table">
+              <tbody><tr><th>破壊</th><td>対象のカードをフィールドから墓地へ置きます。</td></tr><tr><th>崩壊</th><td>対象のカードをゲームから取り除き、崩壊エリアへ置きます。</td></tr><tr><th>タップ／アンタップ</th><td>カードを使用済みの横向き状態／使用可能な縦向き状態にします。</td></tr><tr><th>出現時／死亡時</th><td>フィールドに出た時／レガシーがフィールドから墓地へ送られた時に発動します。崩壊では死亡時は発動しません。</td></tr></tbody>
+            </table></div>
+            <div class="manual-keyword-grid">
+              <div class="manual-keyword"><b>【疾駆】</b>出たターンから【戦闘】【神攻】を行えます。</div>
+              <div class="manual-keyword"><b>【奇襲】</b>出たターンから【戦闘】を行えます。</div>
+              <div class="manual-keyword"><b>【死角】</b>【死角】を持たないレガシーは、このレガシーを【戦闘】の攻撃対象に選ぶことができず、【守護】により攻撃先を変更することもできません。</div>
+              <div class="manual-keyword"><b>【守護】</b>相手の【戦闘】または【神攻】宣言時、このレガシーをタップして攻撃先を自身へ変更します。</div>
+              <div class="manual-keyword"><b>【不可侵】</b>相手カードの効果の対象に選ばれません。自分の効果では選べます。</div>
+              <div class="manual-keyword"><b>【呪殺】</b>このレガシーと戦闘したレガシーは、戦闘力に関係なく破壊されます。</div>
+              <div class="manual-keyword"><b>【選定：X】</b>複数の選択肢から、異なるX個の効果を選んで発動します。</div>
+              <div class="manual-keyword"><b>【誘X：条件】</b>デッキから非公開でX枚引き、条件を満たすカードを1枚まで公開して手札へ。残りは好きな順でデッキの下へ戻します。</div>
+              <div class="manual-keyword"><b>【霊視：X】</b>デッキからX枚確認し、確認したカードをX枚まで選んで墓地に置いてもよい。その後、残りを好きな順番でデッキの上に戻します。</div>
+              <div class="manual-keyword"><b>【昇華X】</b>追加でXコストを支払うことで得られる効果です。手札以外から使用された場合は、【昇華】を発動できません。</div>
+              <div class="manual-keyword"><b>【招来：対象】</b>対象の無属性カード（トークン）を場に出します。トークンは手札か墓地へ置かれると崩壊します。</div>
+              <div class="manual-keyword"><b>【補正：X】／【神威：X】</b>そのターン中、戦闘力／神攻力をXだけ上下させます。</div>
+            </div>
+            <h3>【進化：条件】</h3>
+            <p>この能力を持つレガシーが出る時、自分の場に条件を満たす属性／種族のレガシー（無属性を除く）がいれば、その上に重ねて出せます。進化せずに出すこともできます。</p>
+            <div class="manual-callout">進化したレガシーは、<strong>【進化中】の効果を使用でき、【疾駆】を持ちます。</strong> 下のレガシーの効果は失われ、タップ状態は引き継ぎます。上のレガシーが破壊・崩壊・手札へ戻された場合、下のレガシーは墓地へ送られます。</div>
+          </section>
+
+          <section id="manual-faq" class="manual-chapter">
+            <div class="manual-chapter-tag">CHAPTER 09</div>
+            <h2>細則（Q&amp;A）</h2>
+            <div class="manual-qa"><div class="manual-question">【出現時】などの効果が同時に発生した場合、どのような処理順になりますか。</div><div class="manual-answer">同時に発生した効果は、<strong>ターンプレイヤーから好きな順番</strong>で処理してください。</div></div>
+            <div class="manual-qa"><div class="manual-question">傀儡化されたレガシーの【死亡時】効果は、どちらのフィールドで発動しますか。</div><div class="manual-answer">傀儡化したプレイヤー側のフィールドで発動します。手札へ戻す効果を受けた場合は、元々使用していたプレイヤーの手札へ戻ります。</div></div>
+            <div class="manual-qa"><div class="manual-question">デッキや墓地から【進化】を持つレガシーを場に出した時、進化できますか。</div><div class="manual-answer">条件を満たすレガシーがすでにフィールドにいれば進化できます。同時に場へ出るレガシーを進化元にすることはできません。</div></div>
+            <div class="manual-qa"><div class="manual-question">【進化】や【誘】の条件が複数記載されている場合、すべて満たす必要がありますか。</div><div class="manual-answer">どれか1つを満たせば、条件を満たしたものとして扱います。</div></div>
+            <div class="manual-qa"><div class="manual-question">「旅路の終わり」で無属性（トークン）カードを戻して、別のカードを場に出せますか。</div><div class="manual-answer">出せます。手札に加わった無属性カードは即座に崩壊します。</div></div>
+            <div class="manual-qa"><div class="manual-question">「無垢なる信徒・チフユ」と「ヨリシロちゃん」が相手フィールドにいる状態で、「傲慢なる翼の竜人」を昇華せずに出した場合はどうなりますか。</div><div class="manual-answer">竜人の効果で相手レガシー全てに【補正：-1000】を付与します。まずチフユの戦闘力が0になり破壊され、その後チフユの効果を受けられなくなったヨリシロちゃんの戦闘力も0になり、破壊されます。</div></div>
+            <div class="manual-qa"><div class="manual-question">「飛苦無の淑女」の②「自分のターン中1回、【選定】の値を+1してもよい」を、自身の①【出現時】≫【選定：1】に適用できますか。</div><div class="manual-answer">適用できます。</div></div>
+            <div class="manual-qa"><div class="manual-question">フィールドのレガシーへ後から【守護】を付与した場合、アマテラスの天力トリガーは発動しますか。</div><div class="manual-answer">発動しません。</div></div>
+            <div class="manual-qa"><div class="manual-question">マナ最大値が10の状態で、さらにマナ最大値を増やすカードを使用した場合、アメノウズメの天力トリガーは発動しますか。</div><div class="manual-answer">発動します。</div></div>
+            <div class="manual-qa"><div class="manual-question">【誘X：カード】の場合でも、選んだカードを相手に公開する必要がありますか。</div><div class="manual-answer">公開する必要があります。</div></div>
+          </section>
+
+          <section id="manual-score" class="manual-chapter">
+            <div class="manual-chapter-tag">CHAPTER 10</div>
+            <h2>終戦・星魂の集計</h2>
+            <p><strong>星魂 ＝ 星戦の勝利点（1勝につき10）＋ 集めた全カードの変換値</strong>です。デッキに残したカードと、無料返還／省察で星魂に変換したカードをすべて合計します。</p>
+            <p>星魂が最も多いプレイヤーが勝者です。同点なら星戦の勝利数が多いプレイヤー、勝利数も同じなら該当プレイヤー同士の星戦に勝ったプレイヤーが上位です。</p>
+          </section>
+
+          <section id="manual-kami" class="manual-chapter">
+            <div class="manual-chapter-tag">CHAPTER 11</div>
+            <h2>カミと難易度</h2>
+            <div class="manual-kami-grid">
+              <article class="manual-kami"><img src="kami_illustrations/スサノオ.webp" alt="スサノオ"><div><b>スサノオ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>変化を受け入れる、変幻自在の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_illustrations/ヤマトタケル.webp" alt="ヤマトタケル"><div><b>ヤマトタケル</b><div class="manual-kami-difficulty">難易度 ★★★★★</div><p>他者に依らない、孤高利己の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_illustrations/オオクニヌシ.webp" alt="オオクニヌシ"><div><b>オオクニヌシ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>すべての生命と繁栄する、他種共存の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_illustrations/タケミカズチ.webp" alt="タケミカヅチ"><div><b>タケミカヅチ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>絶対的な力が支配する、武威震天の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_illustrations/オモイカネ.webp" alt="オモイカネ"><div><b>オモイカネ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>知識を求め理解を深める、温故知新の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_illustrations/アメノウズメ.webp" alt="アメノウズメ"><div><b>アメノウズメ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>困難より快楽を求める、悦楽至上の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_illustrations/ヒノカグツチ.webp" alt="ヒノカグツチ"><div><b>ヒノカグツチ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>欲望に素直に生きる、天衣無縫の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_illustrations/アマテラス.webp" alt="アマテラス"><div><b>アマテラス</b><div class="manual-kami-difficulty">難易度 ★</div><p>慈愛をもって接する、慈悲深厚の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_illustrations/ツクヨミ.webp" alt="ツクヨミ"><div><b>ツクヨミ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>統制された生命だけの、静寂閑雅の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_illustrations/ヤマタノオロチ.webp" alt="ヤマタノオロチ"><div><b>ヤマタノオロチ</b><div class="manual-kami-difficulty">難易度 ★</div><p>龍こそ真の支配者とする、龍の世界を目指す邪なる存在。</p></div></article>
+            </div>
+            <h3>オンライン操作のショートカット</h3>
+            <div class="manual-table-wrap"><table class="manual-table"><tbody><tr><th>Space / Enter</th><td>ターン終了</td></tr><tr><th>Z</th><td>一手戻る（Undo）</td></tr><tr><th>L</th><td>バトルログを表示</td></tr><tr><th>Q / E</th><td>カーソルを当てたフィールドカードのタップ状態を切り替え</td></tr><tr><th>Esc</th><td>開いているメニュー／モーダルを閉じる</td></tr></tbody></table></div>
+          </section>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ピックガイド（説明書から分離。既存のカミ別指南は内容を維持） ===== -->
   <div v-if="howToPlayModalOpen" class="battle-zone-modal" @click.self="howToPlayModalOpen = false; hideCardHover()">
     <div class="battle-zone-modal-panel">
-      <h3 class="battle-zone-modal-title">📖 遊び方ガイド</h3>
+      <h3 class="battle-zone-modal-title">🧭 ピックガイド</h3>
       <div class="howto-list">
-        <div class="howto-section">
-          <div class="howto-heading">ツクリヨとは</div>
-          <div class="howto-body">オリジナルカードゲーム「ツクリヨ」を、声を繋ぎながら対戦できるオンラインツールです。デッキを組んで、リーダーである「カミ」を選び、相手のカミの体力（ライフ）を0にすれば勝利です。</div>
-        </div>
-        <div class="howto-section">
-          <div class="howto-heading">カードの種類</div>
-          <div class="howto-body">・カミ ― 各プレイヤーのリーダー。対戦開始時に1体選び、神技を使って戦況を左右します。
-・レガシー ― 場に出して戦うクリーチャー。戦闘力で殴り合い、神攻力でカミへ直接攻撃できます。
-・オラクル ― 使い切りの効果。手札から使うと効果を発動して墓地へ送られます。
-・レリック ― 場に置いて使う道具。多くは常在効果や起動効果を持ちます。
-・ジェネシス ― 特別な演出を持つ強力なカード群。
-・トークン ― カードの効果で生み出される、デッキに入っていない補助的なカード。
-キーワード能力（【疾駆】【守護】など）の詳しい意味は、カードリスト画面の「📚 キーワード集」から確認できます。</div>
-        </div>
-        <div class="howto-section">
-          <div class="howto-heading">対戦の基本ルール</div>
-          <div class="howto-body">自分の手番では「ドロー→マナが増える→手札からカードを使う→レガシーで攻撃する→ターン終了」の順に進みます。カードを使うにはコスト分のマナが必要です。レガシーは戦闘力で相手のレガシー（タップ済みのもの）と戦うか、神攻力で相手のカミへ直接攻撃できます。相手のカミのライフを0にすれば勝利です。</div>
-        </div>
-        <div class="howto-section">
-          <div class="howto-heading">創世決戦（4人対戦）の流れ</div>
-          <div class="howto-body">4人（CPUを交えれば2人からでも可）でロビーに集まり、①神託の儀でカミを選び、②選別の儀でパックを取り合ってデッキ候補を集め、③深化の刻で必要な分だけデッキに残し、④星戦（人間同士の対戦）を3回行い、⑤終戦で星魂を集計して順位を決めます。</div>
-        </div>
-        <div class="howto-section">
-          <div class="howto-heading">星紡ぎ戦（シールド戦）の流れ</div>
-          <div class="howto-body">2人で部屋を作り、①パックを交互に選んで48枚集め、②その中から8枚を除外して40枚のデッキを確定し、③カミを選び、④その場で対戦します。対戦後は「同じデッキで再戦する」か「パック選択からやり直す」かを選べます。</div>
-        </div>
-        <div class="howto-section">
-          <div class="howto-heading">対戦画面のキーボードショートカット</div>
-          <div class="howto-body">・Space または Enter：ターン終了
-・Z：一手戻る（Undo）
-・L：バトルログを表示
-・Q / E：カーソルを当てているフィールドカードのタップ状態を切り替え
-・Esc：開いているメニュー/モーダルを閉じる</div>
-        </div>
         <div class="howto-section">
           <div class="howto-heading">カミ別ピック指南（選別の儀・パック選択の参考に）</div>
           <div class="howto-body">選んだカミによって狙いたいデッキの方向性は大きく変わります。以下は各カミの基本方針です（ドラフト補助の「おすすめ」もこの方針を踏まえて表示されます）。</div>
@@ -4910,7 +5592,7 @@
                'is-leader': card.isKami && selectedKami && selectedKami.no === card.no,
                'is-spoiler': isSpoilerHidden(card),
              }">
-          <div class="img-wrap" :style="cardImageStyle(card)"
+          <div class="img-wrap" v-lazy-card-bg="cardImageUrl(card, 320)"
                :class="genesisEffectClass(card)"
                :draggable="!card.isKami"
                @dragstart="onPoolCardDragStart(card, $event)"
@@ -6026,7 +6708,6 @@
           </div>
         </div>
         <div class="bm-actions">
-          <button class="bm-btn bm-keep" @click="_sfxPlay('decision'); battleModalPeek = true">フィールドを確認</button>
           <button class="bm-btn bm-keep" @click="battleKeepHand">この手札で開始</button>
           <button class="bm-btn bm-go"
                   :disabled="!battleMulligan.selectedIdx.length || battleMulligan.remaining <= 0"
@@ -6129,6 +6810,7 @@
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
                 <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
                 <span class="battle-card-overlay battle-card-power">戦闘力 {{ card.power || 0 }}</span>
+                <span v-if="battleSummonAuraClass(card) === 'legacy-action-sick'" class="summon-piyopiyo" aria-label="召喚酔い"><i></i><i></i><i></i></span>
                 <div class="status-icon-row">
                   <svg v-if="battleCardHasKeyword(card, '守護')" class="status-icon guard-icon" viewBox="0 0 24 24">
                     <path d="M12 2 L21 6 V11 C21 16.5 17.5 20.8 12 22 C6.5 20.8 3 16.5 3 11 V6 Z" />
@@ -6182,6 +6864,7 @@
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
                 <span class="battle-card-overlay battle-card-attack">⚔ {{ card.attack || 0 }}</span>
                 <span class="battle-card-overlay battle-card-power">戦闘力 {{ card.power || 0 }}</span>
+                <span v-if="battleSummonAuraClass(card) === 'legacy-action-sick'" class="summon-piyopiyo" aria-label="召喚酔い"><i></i><i></i><i></i></span>
                 <div class="status-icon-row">
                   <svg v-if="battleCardHasKeyword(card, '守護')" class="status-icon guard-icon" viewBox="0 0 24 24">
                     <path d="M12 2 L21 6 V11 C21 16.5 17.5 20.8 12 22 C6.5 20.8 3 16.5 3 11 V6 Z" />
@@ -6837,7 +7520,7 @@
         <div class="battle-zone-modal-actions">
           <span v-if="dslTargetSelectionReady()" class="dsl-target-ready">✓ 選択できます　Enterで決定</span>
           <button class="battle-back-btn"
-                  :disabled="dslTargetModal.candidates.length > 0 && dslTargetModal.selected.length === 0 && !dslTargetModal.canSkip"
+                  :disabled="dslTargetModal.candidates.length > 0 && ((dslTargetModal.exactCount && dslTargetModal.selected.length !== dslTargetModal.need) || (!dslTargetModal.exactCount && dslTargetModal.selected.length === 0)) && !dslTargetModal.canSkip"
                   @click="dslResolveTargets">
             決定（{{ dslTargetModal.selected.length }} / {{ dslTargetModal.need }}）
           </button>
@@ -6991,12 +7674,39 @@
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s1">✦</span>
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s2">✦</span>
         <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s3">✦</span>
-        <img v-if="battleResultWinnerKami" class="battle-result-kami"
-             :src="'kami_cutin/' + battleResultWinnerKami.no + '.webp'"
-             @error="battleResultKamiImgError" alt="">
         <div class="battle-result-title">
           <span v-for="(ch, i) in battleResultTitleChars" :key="'rch'+i" class="result-char"
                 :style="{ animationDelay: (i * 0.15) + 's' }">{{ ch }}</span>
+        </div>
+        <div v-if="battleResultWinnerKami && battleResultLoserKami" class="battle-result-duel">
+          <figure v-if="battleResultWinnerKami" class="battle-result-portrait winner">
+            <div class="battle-result-portrait-frame">
+              <span class="battle-result-role">WINNER</span>
+              <img class="battle-result-portrait-img"
+                   :src="battleResultPortraitUrl(battleResultWinnerKami, 'normal')"
+                   data-expression="normal"
+                   @error="battleResultPortraitImgError($event, battleResultWinnerKami)" alt="">
+            </div>
+            <figcaption class="battle-result-portrait-name">{{ fullName(battleResultWinnerKami) }}</figcaption>
+          </figure>
+          <div class="battle-result-versus" aria-hidden="true">VS</div>
+          <figure v-if="battleResultLoserKami" class="battle-result-portrait loser">
+            <div class="battle-result-portrait-frame">
+              <span class="battle-result-role">DEFEATED</span>
+              <img class="battle-result-portrait-img"
+                   :src="battleResultPortraitUrl(battleResultLoserKami, 'defeat')"
+                   data-expression="defeat"
+                   @error="battleResultPortraitImgError($event, battleResultLoserKami)" alt="">
+            </div>
+            <figcaption class="battle-result-portrait-name">{{ fullName(battleResultLoserKami) }}</figcaption>
+          </figure>
+        </div>
+        <div v-if="battleResultWinnerKami && battleResultLoserKami" class="battle-result-dialogue" aria-label="勝者のセリフ">
+          <div class="battle-result-dialogue-speaker">{{ fullName(battleResultWinnerKami) }}</div>
+          <div class="battle-result-dialogue-line">
+            <span v-for="(clause, index) in battleResultVictoryLineClauses"
+                  :key="'victory-clause-' + index" class="battle-result-dialogue-clause">{{ clause }}</span>
+          </div>
         </div>
         <div class="battle-result-winner-info" :style="{ animationDelay: battleResultPetalDelay + 's' }">
           <span class="battle-result-winner-name">{{ battleResultWinnerName }}</span>
@@ -7047,9 +7757,9 @@
 
   <!-- ===== 神技1/2発動時のカットイン：神技2は顔アップの大きなカード、神技1は目線だけアップの軽量演出 ===== -->
   <transition name="battle-skill-closeup-fade">
-    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :class="{ 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four' }"
+    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :class="{ 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }"
          @click="battleSkillCloseupClickDismiss">
-      <div class="battle-skill-closeup-card" :class="{ 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four' }">
+      <div class="battle-skill-closeup-card" :class="{ 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }">
         <div class="battle-skill-closeup-skillname">
           <div class="battle-skill-closeup-skillname-main"
                :style="{ '--fit-len': battleSkillCloseupNameParts.main.length }">{{ battleSkillCloseupNameParts.main }}</div>
@@ -7137,6 +7847,17 @@
         <template v-else>「{{ fullName(dslOptionalModal.sourceCard) }}」の効果です。発動してもよいですが、必須ではありません。</template>
       </p>
       <pre style="background:#10141d;color:#cbd3de;padding:10px 12px;border-radius:5px;font-size:12px;white-space:pre-wrap;line-height:1.55;margin:0 0 12px;">{{ dslOptionalModal.summary }}</pre>
+      <template v-if="dslOptionalModal.kind === 'reroll' && dslOptionalModal.cards && dslOptionalModal.cards.length">
+        <div class="reroll-candidate-heading">リロールに使用できるカード（{{ dslOptionalModal.cards.length }}枚）</div>
+        <div class="reroll-candidate-list">
+          <div v-for="(card, i) in dslOptionalModal.cards" :key="'reroll-option-' + i"
+               class="reroll-candidate-card"
+               @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
+               :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}">
+            <div v-if="!cardImageUrl(card)" class="reroll-candidate-name">{{ fullName(card) }}</div>
+          </div>
+        </div>
+      </template>
       <div class="battle-zone-modal-actions">
         <button class="battle-back-btn" style="background:#2e7d4f;border-color:#7cf0a8;color:#fff;" @click="dslAnswerOptional(true)">{{ dslOptionalModal.kind === 'reroll' ? 'リロールする' : '発動する' }}</button>
         <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="dslAnswerOptional(false)">{{ dslOptionalModal.kind === 'reroll' ? 'リロールしない' : '発動しない' }}</button>
@@ -7260,6 +7981,108 @@
   </div>
 
   <div v-if="gameOpen" class="game-overlay">
+    <img class="higanbana-corner higanbana-corner-left" src="ui_decorations/higanbana-left.png" alt="" aria-hidden="true" draggable="false">
+    <img class="higanbana-corner higanbana-corner-right" src="ui_decorations/higanbana-right.png" alt="" aria-hidden="true" draggable="false">
+    <transition name="gs-cinematic-fade">
+        <div v-if="gsCinematic" class="gs-cinematic"
+             :class="['is-' + gsCinematic.kind, 'stage-' + gsCinematic.stage]"
+             role="dialog" aria-modal="true" aria-live="polite">
+          <img v-if="gsCinematic.kind === 'kami'" class="gs-cinematic-bg" src="ui_cinematics/kami-summoning-shrine.png" alt="暗闇に浮かぶ豪華な神棚">
+          <template v-else-if="gsCinematic.kind === 'bloom'">
+            <img class="gs-cinematic-bg gs-lotus-closed" src="ui_cinematics/bloom-lotus-closed.png" alt="水上で光る閉じた蓮の花">
+            <img class="gs-cinematic-bg gs-lotus-open" src="ui_cinematics/bloom-lotus-open.png" alt="光とともに開いた蓮の花">
+          </template>
+          <img v-else class="gs-cinematic-bg" src="ui_cinematics/dies-irae-ritual.png" alt="赤黒い選定の儀の祭壇">
+          <div class="gs-cinematic-glow" aria-hidden="true"></div>
+          <div class="gs-cinematic-flash" aria-hidden="true"></div>
+
+          <div v-if="gsCinematic.kind === 'dies' && cardByNo['198']" class="gs-dies-card"
+               :style="cardImageUrl(cardByNo['198']) ? { backgroundImage: 'url(' + cardImageUrl(cardByNo['198']) + ')' } : {}"
+               aria-label="終焉龍・ディエスイレ"></div>
+
+          <div class="gs-cinematic-copy">
+            <template v-if="gsCinematic.kind === 'kami'">
+              <div class="gs-cinematic-kicker">THE DIVINE ORACLE</div>
+              <div class="gs-cinematic-title">神託の儀</div>
+              <div class="gs-cinematic-sub">導きの光が、カミを示す</div>
+            </template>
+            <template v-else-if="gsCinematic.kind === 'bloom'">
+              <div class="gs-cinematic-kicker">AWAKENING</div>
+              <div class="gs-cinematic-title">理の開花</div>
+              <div class="gs-cinematic-sub">新たな理が、今ここに花開く</div>
+            </template>
+            <template v-else>
+              <div class="gs-cinematic-kicker">GENESIS DESCENDS</div>
+              <div class="gs-cinematic-title">終焉龍・ディエスイレ</div>
+              <div class="gs-cinematic-sub">ヤマタノオロチのデッキに加わった</div>
+            </template>
+          </div>
+          <button type="button" class="gs-cinematic-skip" @click.stop="gsSkipCinematic">演出をスキップ</button>
+        </div>
+    </transition>
+
+    <!-- 神託の儀：候補カミの効果・ピック方針・創生理念を確認してから正式選択する -->
+    <div v-if="gsKamiInfoCard" class="gs-kami-info-overlay" @click.self="gsCloseKamiInfo"
+         role="dialog" aria-modal="true" aria-labelledby="gs-kami-info-title">
+      <div class="gs-kami-info-panel" :class="{ orochi: gsKamiInfoCard.type === 'ヤマタノオロチ' }">
+        <button type="button" class="gs-kami-info-close" @click="gsCloseKamiInfo" aria-label="カミ情報を閉じる">×</button>
+        <button v-if="gsMyOfferCards.length > 1" type="button" class="gs-kami-info-nav prev"
+                @click="gsShowAdjacentKamiInfo(-1)" aria-label="前の候補カミを表示">◁</button>
+        <button v-if="gsMyOfferCards.length > 1" type="button" class="gs-kami-info-nav next"
+                @click="gsShowAdjacentKamiInfo(1)" aria-label="次の候補カミを表示">▷</button>
+        <div class="gs-kami-info-layout">
+          <div>
+            <div class="gs-kami-info-card-image" role="img" :aria-label="fullName(gsKamiInfoCard)"
+                 :style="kamiSelectionIllustrationUrl(gsKamiInfoCard) ? { backgroundImage: 'url(' + kamiSelectionIllustrationUrl(gsKamiInfoCard) + ')' } : {}"></div>
+            <div class="gs-kami-info-card-note">カミのイラストを拡大表示しています</div>
+          </div>
+          <div>
+            <div class="gs-kami-info-kicker">DIVINE ORACLE / KAMI PROFILE</div>
+            <div id="gs-kami-info-title" class="gs-kami-info-name">{{ fullName(gsKamiInfoCard) }}</div>
+
+            <div class="gs-kami-info-section">
+              <div class="gs-kami-info-section-title">カミの効果</div>
+              <div v-if="gsKamiInfoCard.trigger" class="gs-kami-effect-row">
+                <span class="gs-kami-effect-label">{{ gsKamiInfoCard.type === 'ヤマタノオロチ' ? '固有能力' : '天力トリガー' }}</span>
+                <div class="gs-kami-effect-text">{{ gsKamiInfoCard.trigger }}</div>
+              </div>
+              <div v-if="gsKamiInfoCard.skill1name || gsKamiInfoCard.skill1effect" class="gs-kami-effect-row">
+                <span class="gs-kami-effect-label">神技1 {{ gsKamiInfoCard.skill1name }}<template v-if="gsKamiInfoCard.type !== 'ヤマタノオロチ' && gsKamiInfoCard.skill1cost != null"> ／ 消費天力{{ gsKamiInfoCard.skill1cost }}</template></span>
+                <div class="gs-kami-effect-text">{{ gsKamiInfoCard.skill1effect }}</div>
+              </div>
+              <div v-if="gsKamiInfoCard.skill2name || gsKamiInfoCard.skill2effect" class="gs-kami-effect-row">
+                <span class="gs-kami-effect-label">神技2 {{ gsKamiInfoCard.skill2name }}<template v-if="gsKamiInfoCard.type !== 'ヤマタノオロチ' && gsKamiInfoCard.skill2cost != null"> ／ 消費天力{{ gsKamiInfoCard.skill2cost }}</template></span>
+                <div class="gs-kami-effect-text">{{ gsKamiInfoCard.skill2effect }}</div>
+              </div>
+            </div>
+
+            <div class="gs-kami-info-section">
+              <div class="gs-kami-info-section-title">選別の儀 ― ピックの基本方針</div>
+              <ul class="gs-kami-pick-policy">
+                <li v-for="(point, index) in gsKamiGuide(gsKamiInfoCard).pick" :key="index">{{ point }}</li>
+              </ul>
+            </div>
+
+            <div class="gs-kami-info-section gs-kami-philosophy">
+              <div class="gs-kami-info-section-title">創生理念</div>
+              <p>{{ gsKamiGuide(gsKamiInfoCard).cause }}</p>
+              <p>{{ gsKamiVisionParts(gsKamiInfoCard).before }}<strong class="gs-kami-world-emphasis">{{ gsKamiVisionParts(gsKamiInfoCard).world }}</strong>{{ gsKamiVisionParts(gsKamiInfoCard).after }}</p>
+            </div>
+
+            <div class="gs-kami-confirm">
+              <p class="gs-kami-confirm-question">{{ gsKamiAcceptanceLabel(gsKamiInfoCard) }}</p>
+              <div class="gs-kami-confirm-actions">
+                <button type="button" class="gs-kami-accept-btn" :disabled="gsKamiPickSubmitting || !gsIsMyKamiTurn"
+                        @click="gsConfirmKami(gsKamiInfoCard)">{{ gsKamiPickSubmitting ? '確定中…' : 'はい' }}</button>
+                <button type="button" class="gs-kami-decline-btn" :disabled="gsKamiPickSubmitting"
+                        @click="gsCloseKamiInfo">いいえ</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="gm-modal">
       <div class="gm-header">
         <button class="back-to-top-btn" @click="goToTop">◀ トップ</button>
@@ -7412,11 +8235,11 @@
                class="gm-kami-card"
                :class="card.type === 'ヤマタノオロチ' ? 'kami-orochi-aura' : 'kami-divine-glow'"
                @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
-               @click="gsConfirmKami(card)">
+               @click="gsOpenKamiInfo(card)" tabindex="0" @keydown.enter.prevent="gsOpenKamiInfo(card)">
             <div class="gm-kami-img"
                  :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
             <div class="gm-kami-name">{{ fullName(card) }}</div>
-            <div class="gm-kami-pick">このカミを選ぶ</div>
+            <button type="button" class="gm-kami-pick gm-kami-info-btn" @click.stop="gsOpenKamiInfo(card)">カミの情報を確認する</button>
           </div>
         </div>
         <div v-else class="gm-waiting">他のプレイヤーの選択をお待ちください…</div>
@@ -7464,6 +8287,9 @@
             <span v-if="gsMyBundleLabel" class="gm-draft-bundle">{{ gsMyBundleLabel }}</span>
           </div>
           <div class="gm-draft-headright">
+            <span class="gm-draft-return-total" title="現在のデッキに含まれるカードの返還値合計です">
+              <span class="gm-soul-icon">★</span>デッキ返還値 <b>{{ gsMyDraftDeckReturnTotal }}</b>
+            </span>
             <span class="gm-draft-progress">あなたの取得 <b>{{ gsDraftRoundPicked }}</b> / {{ gsDraftTarget }}</span>
             <button class="gm-btn gm-btn-peek" @click="gsPeekDeck"
                     :disabled="gsMyDraftDeckCards.length === 0">デッキ詳細を見る</button>
@@ -7490,10 +8316,19 @@
                :class="{ 'pick-assist-recommended': gsDraftRecommendedCardNos.includes(String(card.no)), 'pick-assist-not-recommended': gsDraftNotRecommendedCardNos.includes(String(card.no)) }"
                @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
                @click="gsDraftPick(card)">
-            <span v-if="gsDraftRecommendedCardNos.includes(String(card.no))" class="pick-assist-badge pick-assist-badge-overlay" title="今のカミ・手持ちとの相性を踏まえたおすすめです（あくまで目安）">👍</span>
+            <div v-if="gsDraftRecommendedCardNos.includes(String(card.no))" class="pick-assist-recommend-overlay"
+                 :title="'おすすめ理由: ' + (gsDraftRecommendationReasons[String(card.no)] || ['その他']).join('・')">
+              <span class="pick-assist-badge">👍</span>
+              <span v-for="reason in (gsDraftRecommendationReasons[String(card.no)] || ['その他'])"
+                    :key="String(card.no) + reason" class="pick-assist-reason">{{ reason }}</span>
+            </div>
             <span v-else-if="gsDraftNotRecommendedCardNos.includes(String(card.no))" class="pick-assist-badge pick-assist-badge-down pick-assist-badge-overlay" title="今のカミ・手持ちとの相性を踏まえると優先度が低めです（あくまで目安）">👎</span>
             <div class="gm-pack-img" :class="genesisEffectClass(card)"
-                 :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"></div>
+                 :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}">
+              <span class="gm-pack-return-overlay" title="このカードの返還値">
+                <span class="gm-soul-icon">★</span><span>×</span><b>{{ gsDraftCardReturnValue(card) }}</b>
+              </span>
+            </div>
             <div class="gm-pack-name">{{ fullName(card) }}</div>
           </div>
         </div>
@@ -7735,15 +8570,18 @@
       <!-- ===== 終戦：勝者発表の溜め演出（結果表の前に一度だけ再生） ===== -->
       <div v-else-if="gs.view === 'scoring' && gsScoringRevealStage === 'announce'" class="gs-scoring-reveal gs-scoring-announce">
         <div class="gs-scoring-announce-text">今回の勝者は…</div>
+        <button class="gs-scoring-skip" @click.stop="gsSkipScoringReveal">演出をスキップ</button>
       </div>
       <div v-else-if="gs.view === 'scoring' && gsScoringRevealStage === 'kami'" class="gs-scoring-reveal gs-scoring-kami">
         <img v-if="gsScoringWinnerKami" class="gs-scoring-kami-img"
-             :src="'kami_cutin/' + gsScoringWinnerKami.no + '.webp'"
+             :src="kamiSelectionIllustrationUrl(gsScoringWinnerKami)"
              @error="gsScoringWinnerKamiImgError" alt="">
         <div class="gs-scoring-kami-name">
           {{ gsScoringWinnerRow ? gsScoringWinnerRow.name : '' }} の勝利！
           <small v-if="gsScoringWinnerKami">{{ fullName(gsScoringWinnerKami) }}</small>
         </div>
+        <div v-if="gsScoringWinnerLine" class="gs-scoring-kami-line">「{{ gsScoringWinnerLine }}」</div>
+        <button class="gs-scoring-skip" @click.stop="gsSkipScoringReveal">演出をスキップ</button>
       </div>
       <!-- ===== 終戦・集計 ===== -->
       <div v-else-if="gs.view === 'scoring'" class="gm-body gm-scoring">
@@ -8033,9 +8871,9 @@ const SHEET_RANGE = "カード設定!A2:U1000"; // T列:背景Y位置 / U列:ぼ
 const DRIVE_PARENT_FOLDER_ID = "1hIbAEGkA86we9tZPODOj10Dz1JsS2Bhs";
 const DRIVE_CHILD_FOLDER_NAME = "CNo順";   // 通常カード画像フォルダ
 const DRIVE_KAMI_FOLDER_NAME  = "カミ";    // カミカード画像フォルダ
-// 対戦画面で使うカミの正方形イラスト（カードアートではなく1:1のヒーローポートレート）
-// 親フォルダ「カミ（縦横比調整）」のID。サブフォルダを丸ごと入れ替えても追従する。
-const DRIVE_KAMI_ILLUST_FOLDER_ID = "1FMXzO1b4D4XEUvPVKZtCv2Euw3aCPnz6";
+// 対戦画面で使うカミの正方形イラスト。リポジトリ内のmanifestを正本とし、
+// 同じファイル名で画像を上書きするだけで次のビルドへ反映できる。
+const KAMI_ILLUST_MANIFEST_URL = "kami_illustrations/manifest.json";
 // 対戦画面で相手手札に使う「カード裏.png」が入っているフォルダID
 const DRIVE_CARD_BACK_FOLDER_ID = "1IlBk7WDrbhDi1U1sD9ByAesuNLrIxdSH";
 
@@ -8145,6 +8983,7 @@ const BGM_FILES = {
 };
 const BATTLE_TURN_LIMIT_SEC = 90; // 通常の警告開始
 const BATTLE_ONLINE_TURN_LIMIT_SEC = 180; // オンライン対戦では3分で自動的にターンを終了する
+const BATTLE_HAND_LIMIT = 8; // エンドフェイズ終了時の手札上限
 const BATTLE_DISCONNECT_GRACE_SEC = 90; // 切断後、この猶予を過ぎても戻らなければ相手の勝利
 const BATTLE_REMOTE_DECISION_TIMEOUT_MS = 90 * 1000; // 相手依存の確認・選択を無期限に待たない
 const COLOR_ORDER = { '赤': 0, '青': 1, '緑': 2, '黄': 3, '紫': 4, '創': 5, '無': 6 };
@@ -8172,6 +9011,81 @@ function cardSortCompare(a, b) {
 function driveThumbUrl(fileId, width) {
   return `https://lh3.googleusercontent.com/d/${fileId}=w${width || 1000}`;
 }
+
+const LOCAL_CARD_IMAGE_MAX_NO = 198;
+const LOCAL_KAMI_CARD_IMAGE_MAX_NO = 10;
+function localCardImageUrl(cardNo, isKami, width, buildVersion) {
+  const no = parseInt(cardNo, 10);
+  const maxNo = isKami ? LOCAL_KAMI_CARD_IMAGE_MAX_NO : LOCAL_CARD_IMAGE_MAX_NO;
+  if (!Number.isFinite(no) || no < 1 || no > maxNo) return null;
+  const assetWidth = Number(width) <= 400 ? 320 : 600;
+  const directory = isKami ? 'kami_card_images' : 'card_images';
+  return `${directory}/${assetWidth}/${String(no).padStart(3, '0')}.webp?v=${encodeURIComponent(buildVersion)}`;
+}
+
+/* 神託の儀：カミ選択前に提示する創生理念と、実際のドラフトAIに沿ったピック基本方針。 */
+const GS_KAMI_SELECTION_GUIDES = Object.freeze({
+  "1": {
+    name: "スサノオ", world: "変幻自在の世界",
+    cause: "人々は、変化に対応できなかったが故に滅びた。",
+    vision: "新奇を受け入れ、あらゆる変化に柔軟に対応できる「変幻自在の世界」を創生する。",
+    pick: ["【進化】や【昇華】を持つカードを優先する。", "天力を直接増やすカードを確保し、神技を早く使える構成を目指す。", "特定の種族や属性に寄せすぎず、状況に応じて姿を変えられるデッキにする。"],
+  },
+  "2": {
+    name: "ヤマトタケル", world: "孤高利己の世界",
+    cause: "人々は、増えすぎたが故に滅びた。",
+    vision: "他者を意識する必要のない「孤高利己の世界」を創生する。",
+    pick: ["同名カードの重複を避け、異なる名前のカードを広く集める。", "軽量レガシーと手札補充を確保し、単独でも途切れず戦える構成にする。", "天力を直接増やすだけのカードは優先度を下げ、単体で役割を持つカードを選ぶ。"],
+  },
+  "3": {
+    name: "オオクニヌシ", world: "他種共存の世界",
+    cause: "人々は、他者への敬意を忘れたが故に滅びた。",
+    vision: "あらゆる生命と共に繁栄する「他種共存の世界」を創生する。",
+    pick: ["忍者・侍・人獣・神使・妖怪・龍を偏りなく集める。", "異なる種族や複数種のトークンを参照するカードを優先する。", "各種族の役割をつなげられるよう、マナカーブとカード種別のバランスも整える。"],
+  },
+  "4": {
+    name: "タケミカヅチ", world: "武威震天の世界",
+    cause: "人々は、脅威を打ち倒すことができなかったが故に滅びた。",
+    vision: "絶対的な力だけがすべてを支配する「武威震天の世界」を創生する。",
+    pick: ["素の戦闘力が高いレガシーを最優先する。", "【補正＋】や【奇襲】など、戦闘で力を押しつけられるカードを集める。", "重量級に偏りすぎないよう、序盤を支える軽量カードも確保する。"],
+  },
+  "5": {
+    name: "オモイカネ", world: "温故知新の世界",
+    cause: "人々は、脅威に対抗する知恵が足りなかったが故に滅びた。",
+    vision: "知識を求め、万物への理解を深める「温故知新の世界」を創生する。",
+    pick: ["オラクルとレリックを中心に、状況への回答を増やす。", "ヨリシロちゃんや社の施しを招来するカード、墓地を活用するカードを優先する。", "盤面が薄くならないよう、少数でも質の高いレガシーと全体除去を確保する。"],
+  },
+  "6": {
+    name: "アメノウズメ", world: "悦楽至上の世界",
+    cause: "人々は、苦痛に向き合うことを選び続けたが故に滅びた。",
+    vision: "困難よりも目の前の快楽を求める「悦楽至上の世界」を創生する。",
+    pick: ["マナ最大値やライフを増やすカードを優先する。", "社の施しなどのマナ基盤を整え、強力な高コストカードへつなげる。", "後半に余ったマナを生かせる【昇華】や、盤面を大きく動かすカードを確保する。"],
+  },
+  "7": {
+    name: "ヒノカグツチ", world: "天衣無縫の世界",
+    cause: "人々は、自らの欲望を抑え続けたが故に滅びた。",
+    vision: "誰もが何ものにも縛られず、自由を追求できる「天衣無縫の世界」を創生する。",
+    pick: ["破壊・崩壊・【死亡時】を持つカードを優先する。", "妖怪や墓地利用カードを集め、破壊そのものを利益へ変える。", "【補正－】や除去で相手を崩し、自分のカードも恐れず破壊できる構成にする。"],
+  },
+  "8": {
+    name: "アマテラス", world: "慈悲深厚の世界",
+    cause: "人々は、互いに傷つけ合い、協力できなかったが故に滅びた。",
+    vision: "慈愛の心をもって他者と接する「慈悲深厚の世界」を創生する。",
+    pick: ["【守護】を持つレガシーや、守護トークンを招来するカードを優先する。", "神使・ヨリシロちゃん・獣霊を活用して盤面を守る。", "【霊視】で墓地を整え、神技で蘇生したい重量級レガシーも確保する。"],
+  },
+  "9": {
+    name: "ツクヨミ", world: "静寂閑雅の世界",
+    cause: "人々は、自由を許容しすぎたが故に滅びた。",
+    vision: "統制された生命だけが存在する「静寂閑雅の世界」を創生する。",
+    pick: ["トークンや【招来】を持つカードを優先し、統制された盤面を築く。", "影分身を扱う忍者や、社の施し・ヨリシロちゃんを生み出すカードを集める。", "トークンが十分に揃ったら、軽減を生かせるオラクルも確保する。"],
+  },
+  "10": {
+    name: "ヤマタノオロチ", world: "龍の世界",
+    cause: "人々は、この星の統治者として不完全であったが故に滅びた。",
+    vision: "完全なる種族である龍が真の統治者となる「龍の世界」を創生する。",
+    pick: ["龍レガシーを最優先し、龍同士の強力な連携を成立させる。", "天力を直接増やすだけのカードは避け、封印と龍の能力を生かせるカードを選ぶ。", "天喰らう咆哮を見据え、属性を一色に寄せず複数属性を集める。"],
+  },
+});
 
 /* ================================================================== */
 /* カミ別エモート・神技セリフ（対戦画面：カミアイコンからドラッグして送る） */
@@ -8275,10 +9189,140 @@ const KAMI_EMOTE_LINES = {
     surprise: "この我らを驚かせるとはな",
     taunt: "下等種族の考えることは理解できぬわ",
     boast: "我ら龍こそが世界支配者なのがなぜわからぬ",
-    skill1: "力の一部を見せてやろう",
+    skill1: "終焉の刻は近づいているぞ",
     skill2: "これが……我らが真の力よ",
   },
 };
+
+/* 創世決戦（4人対戦）の終戦で、優勝したカミが告げる暫定セリフ。
+   内容は後から精査しやすいよう、カミNo単位の独立データにしておく。 */
+const GS_SCORING_KAMI_LINES = Object.freeze({
+  "1": "さあ、ここから新しい世界の始まりだ！",
+  "2": "この勝利を胸に、俺は己の道を進む。",
+  "3": "皆と手を取り合える世界を、ここから築こう。",
+  "4": "力は示した。新たな世を切り開くぞ。",
+  "5": "すべては計算通りです。理想の世界を始めましょう。",
+  "6": "さあ、勝利を祝ってみんなで踊ろう！",
+  "7": "誰にも縛られない世界を、私が創ってやる！",
+  "8": "慈しみの光で、新たな世界を照らしましょう。",
+  "9": "静寂の中で、あるべき世界を完成させる。",
+  "10": "これより、我ら龍が統べる世界の始まりだ。",
+});
+
+/* 勝敗画面で、勝者のカミが敗者へ語りかける確定セリフ。
+   KAMI_VICTORY_LINES[勝者No][敗者No] で全90通りを直接参照する。 */
+const KAMI_VICTORY_LINES = Object.freeze({
+  "1": { // スサノオ
+    "2": "たまには一人になるのもいいけどよ。それだけじゃ新しい刺激は得られないもんだぜ？",
+    "3": "手を取り合う世界、悪くねえよな。だが変化は、時にぶつかり合うところから生まれるもんだ！",
+    "4": "力だけで世界を変えたところで、長続きしねえし、何より面白くねえよな？",
+    "5": "頭でっかちなだけじゃ、世界は変えられねえぜ、オモイカネ。",
+    "6": "踊って笑うのは俺も好きだけどよ、本当にそれだけでいいのか？",
+    "7": "お前の理念、俺と近いところもあるかもな。でもな、自由すぎるってのも考えもんだよな。",
+    "8": "アマテラス、お前は本当に優しいんだな……よし、お前の想いも俺が受け継いでやるよ！",
+    "9": "静かな世界？俺には向いてねえな。俺は昔から騒がしいって言われて……って、何の記憶だ？これ？",
+    "10": "人と龍の共存ができねえっつうんなら、俺はお前の存在を許すわけにはいかねえな……"
+  },
+  "2": { // ヤマトタケル
+    "1": "俺は変わらない、絶対の個としてここにいる",
+    "3": "支え合わずとも、俺は独りで十分だ",
+    "4": "群れを許容しているようでは、お前の力もそこが知れるな",
+    "5": "独りで生き抜く知恵なら俺も持っている",
+    "6": "……楽な道を選んで、その先に何が残る",
+    "7": "自由を求めるのは、俺も同じだ。ただ、俺は独りで掴みに行く",
+    "8": "優しさだけでは、俺は止められない",
+    "9": "……静けさなら、俺の方が慣れている",
+    "10": "俺一人だろうと、そう簡単にお前の思い通りにはさせない"
+  },
+  "3": { // オオクニヌシ
+    "1": "変化を望むのは結構ですが……あなたの理念さえも、ただの気まぐれではないかと疑ってしまうのです。",
+    "2": "誰にも頼らない、とは立派ですね。……しかし本当は誰かに依存するのが怖いだけではないのですか？",
+    "4": "力を誇示する方ほど、内心は不安を抱えているものですよ",
+    "5": "あなたほどの理知があるなら、きっと正しい世界のあり方にも気づけるはずですよ。",
+    "6": "辛いことから目をそらすのも、悪いことではありませんよ。ただ、いつかは向き合えると良いですね。",
+    "7": "縛られることを恐れるあまり、誰かと繋がることまで拒んでいませんか？",
+    "8": "優しさだけで、本当に守れるものがあるのでしょうか",
+    "9": "静けさを望むのは、向き合うことから逃げているからではないですか？",
+    "10": "異なる者を消し去ることでしか成り立たない世界など、脆いものですよ"
+  },
+  "4": { // タケミカヅチ
+    "1": "私の考えを変えるなら、まず力でねじ伏せてみせるのだな",
+    "2": "独りで立つ胆力、私は認めよう。だが、独りの力には限界があるのだよ",
+    "3": "平等とは、強者の慈悲の上に築かれるものだと、私は知っているがな",
+    "5": "知恵だけでは、私のこの一撃は止められぬだろう",
+    "6": "楽な道を選ぶ者に、力が宿ることはない。それが私の知る理だ",
+    "7": "自由を叫ぶ前に、まずその身に見合う力を、私に示してみせよ",
+    "8": "優しさとは、力ある者だけに許された贅沢なのだよ、アマテラス。",
+    "9": "沈黙の中に、覇気は宿らぬものだ",
+    "10": "龍の力、真に恐るべきものだと認めよう。だが、その力で人を滅ぼすというなら、私はお前の敵となる"
+  },
+  "5": { // オモイカネ
+    "1": "変化を追い求めるあまり、思考を止めてしまってはいませんか？",
+    "2": "独りで戦う覚悟、立派です。……ですが、知識は分かち合うことでこそ真価を発揮するのですよ",
+    "3": "共存を望む心は尊いですが、それを支える知恵がなければ、理想は理想のままですよ",
+    "4": "あなたの剣筋、私には読めていましたよ",
+    "6": "楽な道を選ぶことも、一つの判断でしょう。……ですが、それでは何も学べませんよ",
+    "7": "縛られることを嫌うのは結構ですが、学ぶという営みそのものからも逃げていませんか？",
+    "8": "優しさは尊いものです。ですが、優しさだけでは、正しい判断はできません",
+    "9": "静寂は、思考には適した環境です。……ですが、それだけでは何も進みません",
+    "10": "知も理も持たぬまま滅びを振りまくあなたの存在を、私は許すことはできません。"
+  },
+  "6": { // アメノウズメ
+    "1": "そんなに頑張って変わらなくても、いいと思うんだけどなぁ〜",
+    "2": "独りで頑張るの、しんどくない？無理しなくていいんだよ〜",
+    "3": "みんな仲良く、肩の力抜いて過ごせたらそれでいいと思うんだけどなぁ〜",
+    "4": "そんなに気を張ってると、疲れちゃうよ〜？たまには力抜きなよ〜",
+    "5": "難しいこと考えすぎだよ〜、たまには何も考えないのも気持ちいいよ？",
+    "7": "縛られるの嫌なんでしょ？　それなら、肩の力を抜いちゃえばもっと楽になるよ〜",
+    "8": "優しいのはいいことだけど、頑張りすぎなくていいんだよ〜",
+    "9": "静かなのも落ち着くけど、たまにはゆる〜く笑ってみようよ〜",
+    "10": "いくら私でも、人を滅ぼすなんて言われたら黙ってられないよ。それだけは絶対にダメ"
+  },
+  "7": { // ヒノカグツチ
+    "1": "半端に変わったつもりかよ。まだまだ生ぬるいぜ",
+    "2": "独りで気取ってんじゃねえよ。それじゃ本当の自由とは言えねえぜ",
+    "3": "みんな仲良く、ね。ちょっと綺麗事すぎやしねえか？",
+    "4": "力自慢が聞いて呆れるぜ。所詮そんなもんかよ",
+    "5": "御託はいいんだよ。頭で考えてばっかで何ができるってんだ",
+    "6": "のほほんとしてんじゃねえよ。それじゃ舐められるだけだぜ",
+    "8": "世界に優しさをってか？　俺が知ってる世界は、ちょっとやそっとの優しさじゃ変わらねえくらい、容赦ねえもんだったぜ",
+    "9": "辛気臭え面しやがって。もっと感情出してみろよ。ツクヨミさんよ！",
+    "10": "人を根絶やしにするようなやり方、反吐が出るぜ。お前だけは絶対に許せねえ"
+  },
+  "8": { // アマテラス
+    "1": "変化を求めて突き進むあなたを見ていると、なかなか気が休まりませんね",
+    "2": "独りで抱え込まずとも、寄り添う道もあるでしょうに……",
+    "3": "平等を願うお心、私も同じ想いです。争わずとも、私たちなら分かり合えるはずです",
+    "4": "力で示さずとも、心はきっと通じ合えるはずです……",
+    "5": "知恵も大切ですけれど、時には心で感じることも大事ですよ",
+    "6": "辛さから逃げるのではなく、共に乗り越える道もあるはずです",
+    "7": "自由を求めるあなたにも、優しさが宿っていると信じています",
+    "9": "ツクヨミさん、あなたが求める静けさの中にも、温もりを添えられたらと思っています",
+    "10": "争いのない世界を望む私ですが……人を滅ぼすというのなら、あなたとだけは、戦わずにはいられません"
+  },
+  "9": { // ツクヨミ
+    "1": "……騒がしい変化は、要らない",
+    "2": "……孤独なら、私も慣れてる",
+    "3": "……対話を重ねずとも、答えは見えている",
+    "4": "……統制なき力は、脆い",
+    "5": "……オモイカネ、それがあなたの答えなの？",
+    "6": "……笑い声も、いつか消える",
+    "7": "……秩序なき自由に、価値はない",
+    "8": "……アマテラス、あなたの優しさは、……嫌いじゃない",
+    "10": "……消えるべきは、お前の方だ"
+  },
+  "10": { // ヤマタノオロチ
+    "1": "貴様の顔、見るだけで虫唾が走るわ",
+    "2": "独りで気高く在ろうと、所詮は滅びゆく種の足掻きよ",
+    "3": "手を取り合うなど、我らには無用の慈悲だ",
+    "4": "その力、我らの前では児戯に等しいわ",
+    "5": "所詮は猿知恵よ。真の頂点たる我らを出し抜けるとでも？",
+    "6": "楽を求める者から、真っ先に滅びるのだ",
+    "7": "自由を叫んでも、滅びからは決して逃れられぬ",
+    "8": "優しさなど、この世で最も不要な感傷よ",
+    "9": "静寂は、人が消えた後に訪れるものよ"
+  }
+});
 // エモートホイールの並び順・アイコン・見出し（ドラッグ操作のUIで使用）
 const EMOTE_TYPES = [
   { key: "greeting",  emoji: "👋", label: "あいさつ" },
@@ -8312,7 +9356,7 @@ const MODE_DETAIL_INFO = {
   shield: {
     title: '星紡ぎ戦（2人対戦）',
     image: 'top_mode_icons/shield2p.webp',
-    desc: '2人でパックを選び、その場で作ったデッキを使って\n対戦するモードです。\n\n① パックを交互に選び、カードを48枚集めます。\n② 集めたカードから8枚を除外し、\n　 40枚のデッキを完成させます。\n③ 対戦で使用するカミを選びます。\n④ 完成したデッキで対戦します。\n\n対戦後は、同じデッキで再戦するか、\nパック選択からやり直すかを選べます。',
+    desc: '2人でパックを選び、その場で作ったデッキを使って\n対戦するモードです。\n\n① パックを交互に選び、カードを48枚集めます。\n② 対戦で使用するカミを選びます。\n③ 集めた48枚をそのままデッキとして使い、対戦します。\n\n対戦後は、同じデッキで再戦するか、\nパック選択からやり直すかを選べます。',
     startLabel: '星紡ぎ戦を開始する',
   },
 };
@@ -8336,8 +9380,8 @@ const KEYWORD_GLOSSARY = {
   "選定": "複数ある効果の選択肢の中から、異なる X 個の効果をプレイヤー自身が選んで発動します。",
   "進化": "この能力を持つレガシーが場に出る時、自分の場に［条件］に記載された属性や種族のレガシー（無属性カードを除く）がいれば、その上に重ねて出すことができます。進化せずに出すことも可能です。重ねて出した場合、以下のルールが適用されます。\n・【進化中】の効果を使用することができます。\n・そのレガシーは【疾駆】を持ちます。\n・下のレガシーが持つあらゆる効果は失われます（一部例外となる効果があります。詳細は「細則」をご確認ください）。\n・タップ／アンタップ状態は、下のレガシーの状態を引き継ぎます。\n・そのレガシーが破壊／崩壊される、もしくは手札に戻された場合、下のレガシーは墓地へ送られます。",
   "誘": "デッキから非公開でX枚カードを引き、その中に条件を満たすカードがあれば、1枚までそれを公開して手札に加えます。残ったカードは、好きな順番で山札の一番下に戻します。",
-  "霊視": "デッキから非公開でX枚カードを確認し、確認したカードをX枚まで選択して墓地に置き、残ったカードは、好きな順番で山札の一番上に戻します。",
-  "昇華": "追加でXコストを支払うことにより、得られる効果です。",
+  "霊視": "デッキからX枚カードを確認し、確認したカードをX枚まで選択して墓地に置いてもよい。その後、残ったカードを好きな順番でデッキの上に戻します。",
+  "昇華": "追加でXコストを支払うことにより、得られる効果です。手札以外から使用された場合は、【昇華】を発動することができません。",
   "招来": "対象に記載された無属性カード（トークン）を場に出します。無属性カード（トークン）は、手札か墓地に置かれると「崩壊」します。",
   "補正": "Xの数だけ、このターン中戦闘力を上下させます。",
   "神威": "Xの数だけ、このターン中神攻力を上下させます。",
@@ -8422,6 +9466,48 @@ Vue.component("rich-text", {
         '<span v-else :key="i">{{ seg.s }}</span>' +
       '</template>' +
     '</span>',
+});
+
+/* カード一覧の背景画像は、画面付近へ来たカードだけ読み込む。
+   CSS背景画像には native loading="lazy" が使えないため IntersectionObserver で補う。 */
+Vue.directive("lazy-card-bg", {
+  inserted(el, binding) {
+    el.__lazyCardBgUrl = binding.value || "";
+    el.__lazyCardBgVisible = false;
+    const applyBackground = () => {
+      const url = String(el.__lazyCardBgUrl || "");
+      el.style.backgroundImage = url
+        ? `url("${url.replace(/(["\\])/g, "\\$1")}")`
+        : "";
+    };
+    el.__lazyCardBgApply = applyBackground;
+    if (typeof window.IntersectionObserver !== "function") {
+      el.__lazyCardBgVisible = true;
+      applyBackground();
+      return;
+    }
+    const observer = new IntersectionObserver(entries => {
+      if (!entries.some(entry => entry.isIntersecting)) return;
+      el.__lazyCardBgVisible = true;
+      applyBackground();
+      observer.disconnect();
+      el.__lazyCardBgObserver = null;
+    }, { root: null, rootMargin: "600px 0px", threshold: 0.01 });
+    el.__lazyCardBgObserver = observer;
+    observer.observe(el);
+  },
+  update(el, binding) {
+    if (binding.value === binding.oldValue) return;
+    el.__lazyCardBgUrl = binding.value || "";
+    if (el.__lazyCardBgVisible && el.__lazyCardBgApply) el.__lazyCardBgApply();
+  },
+  unbind(el) {
+    if (el.__lazyCardBgObserver) el.__lazyCardBgObserver.disconnect();
+    delete el.__lazyCardBgObserver;
+    delete el.__lazyCardBgApply;
+    delete el.__lazyCardBgUrl;
+    delete el.__lazyCardBgVisible;
+  },
 });
 
 /* CPUドラフトAI：カミ軸（gsCpuKamiAffinityTags）ごとに名指しで優先度を調整したいカード。
@@ -8527,7 +9613,7 @@ new Vue({
     allCards: [],
     allKamiCards: [],    // カミ設定シートから読み込んだカミカード
     kamiFileMap: {},     // kamiNo → Drive fileId（カミ専用フォルダから取得）
-    kamiIllustFiles: [], // [{ id, name }] 対戦画面用 1:1 イラスト（番号/名前マッチ両対応）
+    kamiIllustFiles: [], // [{ id, name, modifiedTime, path }] 対戦画面用 1:1 イラスト
     kamiIllustError: '', // 読み込みエラーメッセージ（デバッグ用）
     cardBackUrl: '',     // 対戦画面：相手手札に使う「カード裏」画像URL
     selectedKami: null,  // 選択中のリーダーカード（カミ）
@@ -8811,11 +9897,17 @@ new Vue({
     gsPickElapsedSec: 0,      // 選別の儀：現在の束を受け取ってからの経過秒数（警告表示のみ・強制効果なし）
     gsPhaseElapsedSec: 0,     // 返還選択・深化の刻の経過秒数
     gsGenesisPickFlash: null, // ジェネシス取得時のデッキ投入演出
+    gsCinematic: null,        // 4人対戦の全画面演出（神託／理の開花／ディエスイレ）
+    gsKamiInfoCard: null,     // 神託の儀：理念・ピック方針を確認中の候補カミ
+    gsKamiPickSubmitting: false, // 理念受諾ボタンの多重送信防止
+    gsLastPublicPhase: null,  // 共有フェーズの遷移検知用
+    gsPlayedDiesRevealKey: null, // 同じ第3選定の儀でディエスイレ演出を重複再生しない
     resumeSession: null,      // TOP画面用：直近の進行中セッション記録（{kind, code, ts} or null）
     showMobileNotice: false,  // 画面が狭い環境向けのPC推奨案内（一度閉じたら次回以降は表示しない）
     poolDragCard: null,       // カードリストからドラッグ中のカード（デッキ欄へドロップで追加）
     glossaryModalOpen: false, // TOP画面のキーワード集モーダル
-    howToPlayModalOpen: false, // TOP画面の遊び方ガイドモーダル
+    manualModalOpen: false, // TOP画面のプレイガイド（説明書）モーダル
+    howToPlayModalOpen: false, // TOP画面のカミ別ピックガイドモーダル
     modeDetailKey: null, // TOP画面のモード詳細画面（appView==='modeDetail'）：'game'|'construct'|'shield'。MODE_DETAIL_INFOのキー
     battleHistoryModalOpen: false, // TOP画面の戦績・対戦履歴モーダル
     battleHistoryList: [],          // 表示中の対戦履歴一覧（localStorageから読み込み）
@@ -10168,7 +11260,10 @@ new Vue({
       const kamiNo = this.gsMyKamiCard ? String(this.gsMyKamiCard.no) : null;
       const tags = kamiNo ? this.gsCpuKamiAffinityTags(kamiNo) : [];
       const ctx = { seat: this.gs.seat, kamiTags: tags, pickedCards: this.gsMyDraftDeckCards };
-      const scored = cards.map(c => ({ c, s: this.gsCpuScoreCard(c, ctx) }));
+      const scored = cards.map(c => {
+        const parts = this.gsCpuScoreBreakdown(c, ctx);
+        return { c, s: parts.total, parts };
+      });
       const avg = scored.reduce((sum, r) => sum + r.s, 0) / scored.length;
       return { scored, avg };
     },
@@ -10189,6 +11284,32 @@ new Vue({
         .slice(0, count)
         .filter(r => (r.s - avg) >= QUALITY_MARGIN);
       return ranked.map(r => String(r.c.no));
+    },
+    /* おすすめ理由：総合点を「カミ・種族・属性・コスト・その他」に分け、
+       同じ束の平均より実際に優先度を押し上げた要素を表示する。 */
+    gsDraftRecommendationReasons() {
+      if (!this.pickAssistEnabled) return {};
+      const { scored } = this.gsDraftPackScored;
+      if (!scored.length) return {};
+      const recommended = new Set(this.gsDraftRecommendedCardNos);
+      const keys = ['kami', 'tribe', 'color', 'curve', 'other'];
+      const labels = { kami: 'カミ', tribe: '種族', color: '属性', curve: 'コスト', other: 'その他' };
+      const averages = {};
+      for (const key of keys) {
+        averages[key] = scored.reduce((sum, row) => sum + (row.parts[key] || 0), 0) / scored.length;
+      }
+      const out = {};
+      for (const row of scored) {
+        const no = String(row.c.no);
+        if (!recommended.has(no)) continue;
+        const reasons = keys.filter(key => {
+          const value = row.parts[key] || 0;
+          const raisedAbovePack = value - averages[key] >= 1;
+          return raisedAbovePack && (key === 'other' || value > 0);
+        }).map(key => labels[key]);
+        out[no] = reasons.length ? reasons : ['その他'];
+      }
+      return out;
     },
     /* ピック補助：非おすすめ（👎）。束の平均より著しくスコアが低いカードのうち、
        最もスコアが低い1枚にだけ付ける（表示するとしても常に最大1枚）。選択肢が少ない
@@ -10257,6 +11378,9 @@ new Vue({
       const nos = Array.isArray(raw) ? raw
         : (raw ? Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k]) : []);
       return nos.map(no => this.cardByNo[String(no)]).filter(Boolean);
+    },
+    gsMyDraftDeckReturnTotal() {
+      return this.gsMyDraftDeckCards.reduce((sum, card) => sum + this.gsDraftCardReturnValue(card), 0);
     },
     gsDraftFreeReturnLimit() {
       const r = (this.gsDraft && this.gsDraft.completedRound) || this.gsRound || 1;
@@ -10379,6 +11503,10 @@ new Vue({
       const row = this.gsScoringWinnerRow;
       return row ? this.seatKamiCard(row.seat) : null;
     },
+    gsScoringWinnerLine() {
+      const kami = this.gsScoringWinnerKami;
+      return kami ? (GS_SCORING_KAMI_LINES[String(parseInt(kami.no, 10))] || '') : '';
+    },
 
     /* ===== 星戦（結果記録） ===== */
     gsRound() { return (this.gs.data && this.gs.data.round) || 1; },
@@ -10425,6 +11553,37 @@ new Vue({
       if (!r) return null;
       const p = r.outcome === 'win' ? this.battleSample.self : this.battleSample.opp;
       return (p && p.kami) || null;
+    },
+    // 勝敗確定演出：敗者側のカミ。各端末の勝敗表示に左右されず、常に勝者の対面へ置く。
+    battleResultLoserKami() {
+      const r = this.battleSample.result;
+      if (!r) return null;
+      const p = r.outcome === 'win' ? this.battleSample.opp : this.battleSample.self;
+      return (p && p.kami) || null;
+    },
+    // 確定セリフ表を勝者No→敗者Noの順で直接参照する。
+    battleResultVictoryLine() {
+      const winner = this.battleResultWinnerKami;
+      const loser = this.battleResultLoserKami;
+      if (!winner || !loser) return '';
+      const winnerLines = KAMI_VICTORY_LINES[String(winner.no)] || {};
+      return String(winnerLines[String(loser.no)] || '').trim();
+    },
+    // 句読点までを一まとまりにして、語尾だけが次行へ孤立する不自然な改行を避ける。
+    battleResultVictoryLineClauses() {
+      const line = this.battleResultVictoryLine;
+      if (!line) return [];
+      const clauses = [];
+      let clause = '';
+      for (const character of Array.from(line)) {
+        clause += character;
+        if ('、。！？!?'.includes(character)) {
+          clauses.push(clause);
+          clause = '';
+        }
+      }
+      if (clause) clauses.push(clause);
+      return clauses;
     },
     // 勝敗確定演出：勝者側のプレイヤー名
     battleResultWinnerName() {
@@ -10565,8 +11724,10 @@ new Vue({
       const jobs = [];
       if (!Array.isArray(this.allCards) || this.allCards.length === 0) jobs.push(this.loadCards());
       if (!Array.isArray(this.allKamiCards) || this.allKamiCards.length === 0) jobs.push(this.loadKamiCards());
-      if (!this.cardFileMap || Object.keys(this.cardFileMap).length === 0) jobs.push(this.loadDriveImages());
-      if (!this.kamiFileMap || Object.keys(this.kamiFileMap).length === 0) jobs.push(this.loadKamiImages());
+      const needsDriveCards = (this.allCards || []).some(card => !localCardImageUrl(card.no, false, 600, this.BUILD_VERSION));
+      const needsDriveKami = (this.allKamiCards || []).some(card => !localCardImageUrl(card.no, true, 600, this.BUILD_VERSION));
+      if (needsDriveCards && (!this.driveFileMap || Object.keys(this.driveFileMap).length === 0)) jobs.push(this.loadDriveImages());
+      if (needsDriveKami && (!this.kamiFileMap || Object.keys(this.kamiFileMap).length === 0)) jobs.push(this.loadKamiImages());
       if (!Array.isArray(this.kamiIllustFiles) || this.kamiIllustFiles.length === 0) jobs.push(this.loadKamiIllustrations());
       if (!this.cardBackUrl) jobs.push(this.loadCardBack());
       if (!this.effectSpecsReady) jobs.push(this.loadEffectSpecs());
@@ -10583,8 +11744,8 @@ new Vue({
       console.log('[αsetup] goToBattle clicked. allKamiCards length=', (this.allKamiCards || []).length);
       try {
         await this.ensureBattleAssetsLoaded();
-        const withIllust = (this.allKamiCards || []).filter(k => k && this.hasKamiIllustration && this.hasKamiIllustration(k));
-        const kamiList = withIllust.length ? withIllust : (this.allKamiCards || []);
+        // The alpha tool keeps every Kami selectable, even while diagnosing a missing asset.
+        const kamiList = (this.allKamiCards || []).filter(Boolean);
         this.battleAlphaSetup = {
           selfColor: 'ミックス',
           oppColor: 'ミックス',
@@ -12292,8 +13453,13 @@ new Vue({
       this._deferStartupWork(() => this._preloadKamiCutinImages(), 900);
       // TOP を開くだけでは不要な外部一覧・統計はアイドル時まで開始しない。
       this._deferStartupWork(() => {
-        this.loadDriveImages();
-        this.loadKamiImages();
+        // 同梱WebPがない新規カードだけ、従来のDrive画像一覧を補助経路として取得する。
+        if ((this.allCards || []).some(card => !localCardImageUrl(card.no, false, 600, this.BUILD_VERSION))) {
+          this.loadDriveImages();
+        }
+        if ((this.allKamiCards || []).some(card => !localCardImageUrl(card.no, true, 600, this.BUILD_VERSION))) {
+          this.loadKamiImages();
+        }
         this.loadKamiIllustrations();
         this.loadCardBack();
         this.gsLoadGlobalCardStats();
@@ -12350,10 +13516,13 @@ new Vue({
     async _sfxPlay(name, volumeMultiplier = 1) {
       try {
         if (!SFX_FILES[name]) return;
+        this._sfxStopSeq = this._sfxStopSeq || {};
+        const playSeq = Number(this._sfxStopSeq[name]) || 0;
         const buffer = await this._sfxLoadBuffer(name);
-        if (!buffer) return;
+        if (!buffer || playSeq !== (Number(this._sfxStopSeq[name]) || 0)) return;
         const ctx = this._bgmAudioCtx();
         if (ctx.state === 'suspended') { try { await ctx.resume(); } catch (e) { /* 次のユーザー操作で再試行される */ } }
+        if (playSeq !== (Number(this._sfxStopSeq[name]) || 0)) return;
         const source = ctx.createBufferSource();
         source.buffer = buffer;
         if (volumeMultiplier !== 1) {
@@ -12364,10 +13533,24 @@ new Vue({
         } else {
           source.connect(this._sfxGainNode());
         }
+        this._sfxActiveSources = this._sfxActiveSources || {};
+        const active = this._sfxActiveSources[name] || (this._sfxActiveSources[name] = new Set());
+        active.add(source);
+        source.onended = () => active.delete(source);
         source.start();
       } catch (e) { console.warn(`[sfx] "${name}" の再生に失敗:`, e && e.message); }
     },
-    /* SE音量を変更し、次回以降のために保存する（0〜1） */
+    _sfxStop(name) {
+      this._sfxStopSeq = this._sfxStopSeq || {};
+      this._sfxStopSeq[name] = (Number(this._sfxStopSeq[name]) || 0) + 1;
+      const active = this._sfxActiveSources && this._sfxActiveSources[name];
+      if (!active) return;
+      active.forEach(source => {
+        try { source.stop(); } catch (e) { /* already stopped */ }
+        try { source.disconnect(); } catch (e) { /* noop */ }
+      });
+      active.clear();
+    },    /* SE音量を変更し、次回以降のために保存する（0〜1） */
     battleSetSfxVolume(v) {
       const n = Math.min(1, Math.max(0, Number(v)));
       this.battleSfxVolume = isNaN(n) ? this.battleSfxVolume : n;
@@ -12961,6 +14144,15 @@ new Vue({
       this.pickAssistEnabled = !this.pickAssistEnabled;
       try { localStorage.setItem('tsukuriyo_pickAssistEnabled', String(this.pickAssistEnabled)); } catch (e) { /* 保存できなくても続行 */ }
     },
+    /* 4人対戦で実際に星魂へ算入される返還値。ヤマタノオロチの龍レガシー+1も反映する。 */
+    gsDraftCardReturnValue(card) {
+      if (!card) return 0;
+      let value = parseInt(card.return, 10);
+      if (isNaN(value)) value = 0;
+      const orochi = this.gsMyKamiCard && this._battleIsOrochiCard(this.gsMyKamiCard);
+      if (orochi && card.category === 'レガシー' && card.type === '龍') value += 1;
+      return value;
+    },
     togglePoolDenseView() {
       this.poolDenseView = !this.poolDenseView;
       try { localStorage.setItem('tsukuriyo_poolDenseView', String(this.poolDenseView)); } catch (e) { /* 保存できなくても続行 */ }
@@ -13252,8 +14444,8 @@ new Vue({
       // 顔だけアップの専用カットイン画像（kami_cutin/{No}.webp|png）があればそれを最優先で使い、
       // 用意されていなければ .webp→.png→従来の対戦画面用イラストの順にフォールバックする
       this.battleSkillCloseup = {
-        mode: 'skill2',
-        imgUrl: kami ? `kami_cutin/${kami.no}.webp` : null,
+        mode: kami && String(kami.no) === '10' ? 'orochi-skill2' : 'skill2',
+        imgUrl: kami ? (String(kami.no) === '10' ? 'kami_cutin_eyes/10.png' : `kami_cutin/${kami.no}.webp`) : null,
         fallbackStage: 0, // 0=カットイン(webp)試行中 1=カットイン(png)試行中 2=従来イラストにフォールバック済み
         kami,
         kamiNickname: kami ? (kami.nickname || '') : '',
@@ -13306,7 +14498,7 @@ new Vue({
        神技1は 目アップ専用→神技2用の顔アップ(webp→png)→従来イラストの順に試す */
     async _battleShowOrochiSealFourCutin(kami) {
       this.battleSkillCloseup = {
-        mode: 'orochi-seal-four', imgUrl: `kami_cutin/${kami.no || '10'}.webp`, fallbackStage: 0,
+        mode: 'orochi-seal-four', imgUrl: 'kami_cutin_eyes/10.png', fallbackStage: 0,
         kami, kamiNickname: kami.nickname || '', kamiName: kami.name || 'ヤマタノオロチ',
         skillName: '四岐龍胤（封印四解放）', line: '四つの封印が解け、龍胤が目覚める。', _shownAt: Date.now(),
       };
@@ -13323,7 +14515,7 @@ new Vue({
     battleSkillCloseupImgError() {
       const c = this.battleSkillCloseup;
       if (!c || !c.kami) return;
-      if (c.mode === 'skill1') {
+      if (c.mode === 'skill1' || c.mode === 'orochi-seal-four' || c.mode === 'orochi-skill2') {
         if (c.fallbackStage === 0) { c.fallbackStage = 1; c.imgUrl = `kami_cutin/${c.kami.no}.webp`; return; }
         if (c.fallbackStage === 1) { c.fallbackStage = 2; c.imgUrl = `kami_cutin/${c.kami.no}.png`; return; }
         if (c.fallbackStage === 2) { c.fallbackStage = 3; c.imgUrl = this.kamiIllustrationUrl(c.kami); return; }
@@ -13338,7 +14530,33 @@ new Vue({
       }
       // fallbackStage 2（従来イラスト）自体が読み込めない場合はそのまま（画像なしで名前/技名のみ表示）
     },
-    /* 星戦勝利画面のカミ画像：カットイン(webp)→カットイン(png)→従来イラストの順にフォールバック */
+    /* 勝敗画面の立ち絵。敗北表情は kami_illustrations/defeat/ に通常画像と同名で配置する。
+       未配置なら img の error から通常表情へ自動的に戻す。 */
+    battleResultPortraitUrl(kami, expression = 'normal') {
+      if (!kami) return '';
+      if (expression === 'defeat') {
+        const file = this.findKamiIllustFile(kami);
+        if (file && file.name) {
+          return `kami_illustrations/defeat/${encodeURIComponent(file.name)}?v=${encodeURIComponent(this.BUILD_VERSION)}`;
+        }
+      }
+      return this.kamiIllustrationUrl(kami) || '';
+    },
+    battleResultPortraitImgError(e, kami) {
+      const img = e && e.target;
+      if (!img || !kami) return;
+      if (img.dataset.expression === 'defeat' && img.dataset.fallback !== 'normal') {
+        img.dataset.fallback = 'normal';
+        img.src = this.kamiIllustrationUrl(kami) || '';
+        return;
+      }
+      if (img.dataset.fallback !== 'cutin') {
+        img.dataset.fallback = 'cutin';
+        img.onerror = null;
+        img.src = `kami_cutin/${kami.no}.webp`;
+      }
+    },
+    /* 旧勝利画面のカミ画像：カットイン(webp)→カットイン(png)→従来イラストの順にフォールバック */
     battleResultKamiImgError(e) {
       const kami = this.battleResultWinnerKami;
       const img = e && e.target;
@@ -14128,6 +15346,7 @@ new Vue({
       // 天力トリガー（ターン終了系：K2 ヤマトタケル / K3 オオクニヌシ / K4 タケミカヅチ）
       this.battleFireKamiEvent(endingSide, 'turnEnd', {});
       await this.battleRunTurnEndEffects(endingSide);
+      if (!bs.result) await this._battleEnforceHandLimit(endingSide);
       const nextSide = bs.activeSide === 'self' ? 'opp' : 'self';
       if (nextSide === this.battleContext.firstSide) bs.turn += 1;
       bs.activeSide = nextSide;
@@ -14144,6 +15363,45 @@ new Vue({
       };
       this.battleLog.push(turnEntry);
       this._battlePublishSemanticOperation(turnEntry);
+    },
+    async _battleEnforceHandLimit(side) {
+      const player = this.battleSample && this.battleSample[side];
+      const hand = player && Array.isArray(player.hand) ? player.hand : [];
+      const excess = Math.max(0, hand.length - BATTLE_HAND_LIMIT);
+      if (!excess) return;
+      const cpuControlled = side === 'opp' && this.battleContext && this.battleContext.oppIsCpu;
+      const picked = cpuControlled
+        ? hand.slice(-excess)
+        : await this.dslAskCustomTargets(
+            `手札上限は${BATTLE_HAND_LIMIT}枚です。墓地へ送るカードを${excess}枚選択してください`,
+            hand.slice(), excess, null, false, true
+          );
+      const moved = [];
+      for (const card of picked) {
+        const index = hand.indexOf(card);
+        if (index < 0) continue;
+        hand.splice(index, 1);
+        this._battleResetCardBuffs(card);
+        const destination = this._battleLeaveZone(card, 'graveyard');
+        player[destination] = player[destination] || [];
+        player[destination].push(card);
+        moved.push(card);
+      }
+      player.handCount = hand.length;
+      if (moved.length) {
+        this.battleShowNotice(
+          '手札上限',
+          `手札が${BATTLE_HAND_LIMIT}枚になるよう、${moved.length}枚を墓地へ送りました。`,
+          moved
+        );
+        this.battleLog.push({
+          turn: this.battleSample.turn,
+          side,
+          title: '手札上限',
+          message: `${side === 'self' ? 'あなた' : '相手'}は手札を${BATTLE_HAND_LIMIT}枚にしました。`,
+          icon: 'discard',
+        });
+      }
     },
     /* 当該side+turn で適用された一時補正を巻き戻す（戦闘力表示・_buf を復元） */
     _battleExpireBuffsForSide(side, turn) {
@@ -14520,11 +15778,8 @@ new Vue({
       target.cardPlaysThisTurn = 0;
       // 自分フィールドのカードを全てアンタップ
       this._battleUntapField(side);
-      // ターン開始ドロー（先攻・後攻とも最初のターンだけ無し。初期手札4枚を両者とも維持する）
-      // Only the player who starts the game skips their first draw. The second
-      // player still draws on turn 1.
-      const skipInitialDraw = this.battleSample.turn === 1 && side === this.battleContext.firstSide;
-      if (!skipInitialDraw) this._battleDrawForTurn(side);
+      // 初期手札はマリガン時点で4枚。各プレイヤーは自分のターン開始時に1枚引く。
+      this._battleDrawForTurn(side);
       // 疲労ダメージ：ターン11以降に発生（11→1, 12→2, ...）
       // ※自分のターン番号に基づく。相手も同じ番号でダメージを受ける想定。
       const turn = this.battleSample.turn;
@@ -15807,7 +17062,7 @@ new Vue({
         this._dslDeferred = resolve;
       });
     },
-    dslAskCustomTargets(promptLabel, candidates, need = 1, sourceCard = null, canSkip = false) {
+    dslAskCustomTargets(promptLabel, candidates, need = 1, sourceCard = null, canSkip = false, exactCount = false) {
       const pool = (candidates || []).filter(Boolean);
       if (!pool.length) return Promise.resolve([]);
       if (this._battleCpuAutoResolving) {
@@ -15820,7 +17075,8 @@ new Vue({
           candidates: pool,
           selected: [],
           need: Math.min(Math.max(1, Number(need) || 1), pool.length),
-          canSkip: !!canSkip
+          canSkip: !!canSkip,
+          exactCount: !!exactCount
         };
         this._dslDeferred = resolve;
       });
@@ -15883,6 +17139,7 @@ new Vue({
     dslTargetSelectionReady() {
       const modal = this.dslTargetModal;
       if (!modal) return false;
+      if (modal.exactCount) return modal.selected.length === modal.need;
       return !modal.candidates.length || modal.selected.length > 0 || !!modal.canSkip;
     },
     dslTargetUnavailableReason(card) {
@@ -15959,6 +17216,7 @@ new Vue({
     dslResolveTargets() {
       const m = this.dslTargetModal;
       if (!m) return;
+      if (m.exactCount && m.selected.length !== m.need) return;
       this._sfxPlay('decision');
       const sel = m.selected.slice();
       const resolver = this._dslDeferred;
@@ -17827,7 +19085,7 @@ new Vue({
       await this.dslRunActions(chosen.処理 || [], sourceCard);
     },
     /* 任意能力の発動可否を尋ねる。kind='reroll' の場合はカード効果ではなくシステムルールとして文言を出し分ける */
-    dslAskOptional(card, triggerLabel, summary, kind = 'ability') {
+    dslAskOptional(card, triggerLabel, summary, kind = 'ability', options = {}) {
       // CPU自動対戦中：人間の確認を待てないため、任意効果は安全側（発動しない）に倒す
       if (this._battleCpuAutoResolving) return Promise.resolve(false);
       return new Promise((resolve) => {
@@ -17836,6 +19094,7 @@ new Vue({
           triggerLabel,
           summary,
           kind,
+          cards: Array.isArray(options.cards) ? options.cards.slice() : [],
           resolver: resolve,
         };
       });
@@ -19468,7 +20727,8 @@ new Vue({
         playedCard,
         'リロール',
         `${colorLabel}のカードを手札から1枚公開し、デッキに戻してシャッフルした上で1枚ドローできます。`,
-        'reroll'
+        'reroll',
+        { cards: candidates }
       );
       if (!ok) return;
       const picked = await this.dslAskCustomTargets(`公開する${colorLabel}のカードを選択`, candidates, 1, playedCard);
@@ -20002,12 +21262,13 @@ new Vue({
       return { ok: true };
     },
     battleSummonAuraClass(card, side) {
-      if (!card || !this.battleLegacyIsSummonedThisTurn(card)) return '';
+      if (!card || !this.battleSample || card._tapped) return '';
       const battle = this.battleLegacyCanAct(card, 'battle').ok;
       const divine = this.battleLegacyCanAct(card, 'divine').ok;
-      if (battle && divine) return 'summon-sick-yellow';
-      if (battle) return 'summon-sick-red';
-      return 'summon-sick-gray';
+      if (battle && divine) return 'legacy-action-both';
+      if (battle) return 'legacy-action-battle';
+      if (divine) return 'legacy-action-divine';
+      return this.battleLegacyIsSummonedThisTurn(card) ? 'legacy-action-sick' : '';
     },
     battleFieldDragStart(side, zone, index, e) {
       if (this.battleSample.result || side !== 'self' || !['legacies', 'relics'].includes(zone)) { e.preventDefault(); return; }
@@ -22229,12 +23490,16 @@ new Vue({
     },
     closeGame() {
       this._sfxPlay('cancel');
+      this._gsClearCinematic();
+      this.gsKamiInfoCard = null;
+      this.gsKamiPickSubmitting = false;
       this.gameOpen = false;
       this.hideCardHover();   // 残ったホバープレビューを消す
       this.appView = 'top';
     },
     gsResetState() {
       this.hideCardHover();   // 残ったホバープレビューを消す
+      this._gsClearCinematic();
       this.gsPeeking = false;
       this._gsPeekSaved = null;
       this.gsSolo = false;
@@ -22250,12 +23515,19 @@ new Vue({
       this.gs.privateData = {};
       this.gs.error       = '';
       this.gs.connecting  = false;
+      this.gsKamiInfoCard = null;
+      this.gsKamiPickSubmitting = false;
+      this.gsLastPublicPhase = null;
+      this.gsPlayedDiesRevealKey = null;
     },
     gsSubscribe(code) {
       if (this.gs._unsubscribe) { try { this.gs._unsubscribe(); } catch (e) {} }
+      this.gsLastPublicPhase = null;
       const unsubscribePublic = subscribeSession(code, (data) => {
+        const previousPhase = this.gsLastPublicPhase;
         this.gs.data = data || {};
         if (!data) return;  // セッションが削除された
+        this.gsLastPublicPhase = data.phase || null;
         if (!TSUKURIYO_SERVER_FUNCTIONS_ENABLED) {
           const seat = this.gs.seat;
           const round = Number(data.round || 1);
@@ -22283,6 +23555,30 @@ new Vue({
         else if (data.phase === 'battle')      this.gs.view = 'battle';
         else if (data.phase === 'scoring')     this.gs.view = 'scoring';
         else if (data.phase === 'aborted')     this.gs.view = 'aborted';
+        if (this.gsKamiInfoCard &&
+            (data.phase !== 'kami_select' || !data.kami || data.kami.turn !== this.gs.seat)) {
+          this.gsKamiInfoCard = null;
+          this.gsKamiPickSubmitting = false;
+        }
+        if (data.phase === 'lobby') this._gsPreloadCinematicAssets(['ui_cinematics/kami-summoning-shrine.png']);
+        if (data.phase === 'draft' && Number(data.round || (data.draft && data.draft.round)) === 3) {
+          this._gsPreloadCinematicAssets(['ui_cinematics/dies-irae-ritual.png']);
+        }
+        if (data.phase === 'deepen') {
+          this._gsPreloadCinematicAssets(['ui_cinematics/bloom-lotus-closed.png', 'ui_cinematics/bloom-lotus-open.png']);
+        }
+        if (data.phase === 'kami_select' && previousPhase && previousPhase !== 'kami_select') {
+          this._gsPlayKamiCinematic();
+        }
+        const diesSeats = this.gsNorm(data.draft && data.draft.diesIraeGrantedSeats).map(Number);
+        if (data.phase === 'draft_done' && previousPhase === 'draft' &&
+            Number(data.draft && data.draft.completedRound) === 3 && diesSeats.length) {
+          const revealKey = `${code}:3:${Number(data.draft && data.draft.revision || 0)}`;
+          if (this.gsPlayedDiesRevealKey !== revealKey) {
+            this.gsPlayedDiesRevealKey = revealKey;
+            this._gsPlayDiesIraeCinematic(diesSeats);
+          }
+        }
         // 自分の番が来てカミ候補が未配布なら配布する
         if (data.phase === 'kami_select' && data.kami && data.kami.turn === this.gs.seat) {
           const offer = data.kami.offer && data.kami.offer[this.gs.seat];
@@ -22796,27 +24092,31 @@ new Vue({
       const winRate = won / picked; // 0〜1（人間プレイヤーがこのカードを採用した際の勝率）
       return Math.max(-10, Math.min(10, (winRate - 0.5) * 40));
     },
-    /* 総合スコア：全要素の重み付き合算。CPUごとに性格差をつける */
-    gsCpuScoreCard(card, ctx) {
+    /* 総合スコアの内訳。CPUの選択とピック補助の理由表示で同じ計算結果を共有する。 */
+    gsCpuScoreBreakdown(card, ctx) {
       // CPU3＝シナジー重視／CPU4＝単体性能・マナカーブ重視
       const persona = ctx.seat === 4
         ? { base: 1.3, kami: 1.0, tribe: 0.85, color: 0.9,  effect: 0.85, curve: 1.3 }
         : { base: 1.0, kami: 1.15, tribe: 1.35, color: 1.25, effect: 1.3,  curve: 0.85 };
       const picked = ctx.pickedCards;
-      let s = 0;
-      s += this.gsCpuBaseScore(card) * persona.base;
-      s += this.gsCpuCardTagScore(card, ctx.kamiTags, picked) * persona.kami;
-      s += this.gsCpuTribeSynergy(card, picked) * persona.tribe;
-      s += this.gsCpuColorSynergy(card, picked, ctx.kamiTags) * persona.color;
-      s += this.gsCpuEffectSynergy(card, picked) * persona.effect;
-      s += this.gsCpuCurveScore(card, picked) * persona.curve;
-      s += this.gsCpuHumanStatScore(card); // 人間の実績データに基づく補正（重み付けはせず素点のまま加算）
+      const base = this.gsCpuBaseScore(card) * persona.base;
+      const kami = this.gsCpuCardTagScore(card, ctx.kamiTags, picked) * persona.kami;
+      const tribe = this.gsCpuTribeSynergy(card, picked) * persona.tribe;
+      const color = this.gsCpuColorSynergy(card, picked, ctx.kamiTags) * persona.color;
+      const effect = this.gsCpuEffectSynergy(card, picked) * persona.effect;
+      const curve = this.gsCpuCurveScore(card, picked) * persona.curve;
+      const human = this.gsCpuHumanStatScore(card); // 人間の実績データに基づく補正（重み付けはせず素点のまま加算）
       // 共通方針：デッキの半分程度をユニークカードにする（ヤマトタケル・ヤマタノオロチは目標をやや高めに）
-      s += this.gsCpuUniqueRatioScore(card, picked, ctx.kamiTags);
+      const unique = this.gsCpuUniqueRatioScore(card, picked, ctx.kamiTags);
       // 同名重複：軽い減点（K2ヤマトタケル＝uniqueタグ持ちはほぼ選ばれないレベルの重い減点）
       const dup = picked.filter(c => this.fullName(c) === this.fullName(card)).length;
-      s -= dup * (ctx.kamiTags.includes('unique') ? 20 : 3);
-      return s;
+      const duplicate = -dup * (ctx.kamiTags.includes('unique') ? 20 : 3);
+      const other = base + effect + human + unique + duplicate;
+      return { total: other + kami + tribe + color + curve, kami, tribe, color, curve, other };
+    },
+    /* 総合スコア：全要素の重み付き合算。CPUごとに性格差をつける */
+    gsCpuScoreCard(card, ctx) {
+      return this.gsCpuScoreBreakdown(card, ctx).total;
     },
     /* パックから1枚選ぶ：上位2〜3枚から確率的に選択（スコア差が大きいほど1位を選びやすい） */
     gsCpuChoosePick(cards, ctx) {
@@ -22939,15 +24239,72 @@ new Vue({
         });
       }
     },
+    gsKamiGuide(card) {
+      const no = card && card.no != null ? String(card.no) : '';
+      return GS_KAMI_SELECTION_GUIDES[no] || {
+        name: card ? this.fullName(card) : 'このカミ',
+        world: '新たな世界',
+        cause: '滅びの記憶を受け止める。',
+        vision: 'カミの理念に従い、新たな世界を創生する。',
+        pick: ['カードの効果とカミの能力がかみ合うものを優先する。', '種族・属性・コストの偏りを見ながらデッキを整える。'],
+      };
+    },
+    gsKamiAcceptanceLabel(card) {
+      const guide = this.gsKamiGuide(card);
+      return `${guide.name}の理念を受け入れ、「${guide.world}」の創世を目指しますか？`;
+    },
+    gsKamiVisionParts(card) {
+      const guide = this.gsKamiGuide(card);
+      const vision = String(guide.vision || '');
+      const world = String(guide.world || '');
+      const index = world ? vision.indexOf(world) : -1;
+      if (index < 0) return { before: vision, world: '', after: '' };
+      return {
+        before: vision.slice(0, index),
+        world,
+        after: vision.slice(index + world.length),
+      };
+    },
+    gsOpenKamiInfo(card) {
+      if (!this.gsIsMyKamiTurn || !card) return;
+      if (!this.gsMyOfferCards.some(candidate => String(candidate.no) === String(card.no))) return;
+      this.hideCardHover();
+      this._sfxPlay('decision');
+      this.gsKamiPickSubmitting = false;
+      this.gsKamiInfoCard = card;
+    },
+    gsShowAdjacentKamiInfo(direction) {
+      if (this.gsKamiPickSubmitting) return;
+      const cards = this.gsMyOfferCards;
+      if (!this.gsKamiInfoCard || cards.length < 2) return;
+      const currentIndex = cards.findIndex(card => String(card.no) === String(this.gsKamiInfoCard.no));
+      if (currentIndex < 0) return;
+      const nextIndex = (currentIndex + (direction < 0 ? -1 : 1) + cards.length) % cards.length;
+      this.hideCardHover();
+      this._sfxPlay('decision');
+      this.gsKamiInfoCard = cards[nextIndex];
+    },
+    gsCloseKamiInfo() {
+      if (this.gsKamiPickSubmitting) return;
+      this._sfxPlay('cancel');
+      this.gsKamiInfoCard = null;
+    },
     async gsConfirmKami(card) {
-      if (!this.gsIsMyKamiTurn) return;
-      if (!confirm(`「${this.fullName(card)}」をあなたのカミにします。よろしいですか？`)) return;
+      if (!this.gsIsMyKamiTurn || !card || this.gsKamiPickSubmitting) return;
+      if (!this.gsMyOfferCards.some(candidate => String(candidate.no) === String(card.no))) {
+        this.gsKamiInfoCard = null;
+        return;
+      }
+      this.gsKamiPickSubmitting = true;
       this._sfxPlay(card.type === 'ヤマタノオロチ' ? 'evilgod' : 'genesis');
       this.hideCardHover();   // 候補が消えるとき mouseleave が発火しない対策
       try {
         await pickKami(this.gs.sessionCode, this.gs.seat, String(card.no));
+        this.gsKamiInfoCard = null;
       } catch (e) {
         alert('カミの確定に失敗しました: ' + (e.message || e));
+      } finally {
+        this.gsKamiPickSubmitting = false;
       }
     },
     gsCopyCode() {
@@ -23075,28 +24432,39 @@ new Vue({
     },
     /* 終戦（星魂の集計）画面に入った瞬間の演出：
        黒背景「今回の勝者は…」（bgm:endofwar、少し大きめの音量）
-       → 画面遷移 → 優勝者のカミアップ（対戦の勝利演出と同じ画像）＋勝利bgm
+       → 画面遷移 → 優勝者のカミアップ（神託の儀と同じ縦長画像）＋勝利bgm
        → 結果表（gsScoreRows）を表示、の順に溜めを作る。
        各クライアントがローカルで独立に再生する演出のため、同期の仕組みは不要
        （対戦画面のbattleResultRevealReadyと同じ考え方）。 */
     async _gsRunScoringReveal() {
       if (this.gsScoringRevealStage) return; // 二重起動防止
+      const revealId = this._gsScoringRevealId = (this._gsScoringRevealId || 0) + 1;
       this.gsScoringRevealStage = 'announce';
       this._sfxPlay('endofwar', 1.6);
       await new Promise(r => setTimeout(r, 2400));
-      if (this.gs.view !== 'scoring') { this.gsScoringRevealStage = null; return; }
+      if (revealId !== this._gsScoringRevealId || this.gs.view !== 'scoring') return;
+      // 勝者が映る瞬間には終戦SEを確実に止める。
+      this._sfxStop('endofwar');
       this.gsScoringRevealStage = 'kami';
       if (this.bgmAuto) {
         await this._bgmPlay('victory');
+        if (revealId !== this._gsScoringRevealId) return;
         const media = await this._bgmLoadBuffer('victory').catch(() => null);
-        // Keep the winner screen visible for the complete non-looping victory track.
         await new Promise(r => setTimeout(r, Math.max(2600, Math.ceil(((media && media.buffer && media.buffer.duration) || 0) * 1000))));
       } else {
         await new Promise(r => setTimeout(r, 2600));
       }
-      if (this.gs.view !== 'scoring') { this.gsScoringRevealStage = null; return; }
+      if (revealId !== this._gsScoringRevealId || this.gs.view !== 'scoring') return;
       this.gsScoringRevealStage = null;
-      if (this.bgmAuto) this._bgmAutoPickForView('game');
+    },
+    gsSkipScoringReveal() {
+      if (!this.gsScoringRevealStage) return;
+      this._gsScoringRevealId = (this._gsScoringRevealId || 0) + 1;
+      this._sfxStop('endofwar');
+      // 演出だけを閉じ、終戦BGMは止めない。announce中に飛ばした場合も勝利曲を開始し、
+      // 集計画面へ移った途端に無音にならないようにする。
+      if (this.bgmAuto && this.bgmCurrentKey !== 'victory') this._bgmPlay('victory');
+      this.gsScoringRevealStage = null;
     },
     // 他プレイヤー（CPU・人間問わず）のデッキをデッキビルダーで確認（閲覧専用：返還等の操作はしない）
     gsPeekCpuDeck(seat) {
@@ -23244,8 +24612,65 @@ new Vue({
     async gsBloomDraw() {
       if (this.gsMyInsight < 3 || this.gsMyDeepenDone) return;
       this._sfxPlay('decision');
-      try { await deepenBloomDraw(this.gs.sessionCode, this.gs.seat, this.genesisPoolNos()); }
+      try {
+        await deepenBloomDraw(this.gs.sessionCode, this.gs.seat, this.genesisPoolNos());
+        this._gsPlayBloomCinematic();
+      }
       catch (e) { alert('理の開花に失敗しました: ' + (e.message || e)); }
+    },
+    _gsPreloadCinematicAssets(urls) {
+      if (typeof Image === 'undefined') return;
+      for (const url of urls || []) { const img = new Image(); img.src = url; }
+    },
+    _gsCinematicReducedMotion() {
+      return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    },
+    _gsClearCinematic() {
+      for (const timer of this._gsCinematicTimers || []) clearTimeout(timer);
+      this._gsCinematicTimers = [];
+      this.gsCinematic = null;
+    },
+    _gsCinematicLater(callback, delay) {
+      this._gsCinematicTimers = this._gsCinematicTimers || [];
+      const timer = setTimeout(callback, delay);
+      this._gsCinematicTimers.push(timer);
+    },
+    gsSkipCinematic() {
+      this._sfxPlay('cancel');
+      this._gsClearCinematic();
+    },
+    _gsPlayKamiCinematic() {
+      this._gsClearCinematic();
+      const reduced = this._gsCinematicReducedMotion();
+      this.gsCinematic = { kind: 'kami', stage: 'approach' };
+      this._gsCinematicLater(() => {
+        if (!this.gsCinematic || this.gsCinematic.kind !== 'kami') return;
+        this.gsCinematic = { ...this.gsCinematic, stage: 'radiance' };
+        this._sfxPlay('genesis');
+      }, reduced ? 180 : 2350);
+      this._gsCinematicLater(() => this._gsClearCinematic(), reduced ? 650 : 3650);
+    },
+    _gsPlayBloomCinematic() {
+      this._gsClearCinematic();
+      const reduced = this._gsCinematicReducedMotion();
+      this.gsCinematic = { kind: 'bloom', stage: 'closed' };
+      this._gsCinematicLater(() => {
+        if (!this.gsCinematic || this.gsCinematic.kind !== 'bloom') return;
+        this.gsCinematic = { ...this.gsCinematic, stage: 'opening' };
+        this._sfxPlay('genesis');
+      }, reduced ? 180 : 1050);
+      this._gsCinematicLater(() => this._gsClearCinematic(), reduced ? 700 : 3500);
+    },
+    _gsPlayDiesIraeCinematic(seats) {
+      this._gsClearCinematic();
+      const reduced = this._gsCinematicReducedMotion();
+      this.gsCinematic = { kind: 'dies', stage: 'ritual', seats: (seats || []).map(Number) };
+      this._gsCinematicLater(() => {
+        if (!this.gsCinematic || this.gsCinematic.kind !== 'dies') return;
+        this.gsCinematic = { ...this.gsCinematic, stage: 'reveal' };
+        this._sfxPlay('evilgod');
+      }, reduced ? 180 : 1250);
+      this._gsCinematicLater(() => this._gsClearCinematic(), reduced ? 750 : 4700);
     },
     async gsFusion() {
       if (this.gsMyInsight < 2 || this.gsMyDeepenDone || this.gsMyFusionUsed) return;
@@ -23339,7 +24764,11 @@ new Vue({
     },
 
     async reloadAll() {
-      await Promise.all([this.loadCards(), this.loadDriveImages(), this.loadKamiCards(), this.loadKamiImages(), this.loadKamiIllustrations(), this.loadCardBack()]);
+      await Promise.all([this.loadCards(), this.loadKamiCards(), this.loadKamiIllustrations(), this.loadCardBack()]);
+      const fallbacks = [];
+      if ((this.allCards || []).some(card => !localCardImageUrl(card.no, false, 600, this.BUILD_VERSION))) fallbacks.push(this.loadDriveImages());
+      if ((this.allKamiCards || []).some(card => !localCardImageUrl(card.no, true, 600, this.BUILD_VERSION))) fallbacks.push(this.loadKamiImages());
+      if (fallbacks.length) await Promise.all(fallbacks);
     },
     async loadKamiCards() {
       const url =
@@ -23376,51 +24805,37 @@ new Vue({
         console.error("カミカード読み込みエラー", e);
       }
     },
-    /* 対戦画面用：カミの 1:1 イラスト読み込み
-       指定 ID のフォルダ内をスキャンし、画像 + サブフォルダ(1階層) を再帰的に探す。
-       → 親フォルダ ID を指定しても、その中のサブフォルダにある画像まで自動取得できる。
-       「フォルダごと入れ替える」運用に対応：親フォルダ ID を固定しておけば、
-       サブフォルダを置き換えても自動で新しい画像を参照できる。
-    */
+    /* 対戦画面用：リポジトリ内のカミ正方形イラストを読み込む。
+       manifestのファイル名は固定し、画像を同名上書きする運用とする。 */
     async loadKamiIllustrations() {
       this.kamiIllustError = '';
       try {
-        const rootId = DRIVE_KAMI_ILLUST_FOLDER_ID;
-        // 1階層目をスキャン
-        const rootItems = await this._driveListFolder(rootId);
-        const files     = [];
-        const subDirs   = [];
-        for (const f of rootItems) {
-          if (f.mimeType === 'application/vnd.google-apps.folder') subDirs.push(f);
-          else if (this._isImageFile(f)) files.push({ id: f.id, name: f.name });
-        }
-        // サブフォルダがあれば、その中も走査（1階層）
-        for (const sub of subDirs) {
+        const manifestRes = await axios.get(`${KAMI_ILLUST_MANIFEST_URL}?v=${encodeURIComponent(this.BUILD_VERSION)}`);
+        const manifest = manifestRes.data || {};
+        const files = [];
+        for (const [no, filename] of Object.entries(manifest)) {
+          if (!filename) continue;
+          const localUrl = `kami_illustrations/${encodeURIComponent(String(filename))}`;
           try {
-            const subItems = await this._driveListFolder(sub.id);
-            for (const f of subItems) {
-              if (this._isImageFile(f)) files.push({ id: f.id, name: f.name });
-            }
+            await axios.get(`${localUrl}?v=${encodeURIComponent(this.BUILD_VERSION)}`, { responseType: 'blob' });
+            files.push({ id: `local-${no}`, no: String(no), name: String(filename), localUrl, modifiedTime: this.BUILD_VERSION, path: 'kami_illustrations/' });
           } catch (e) {
-            console.warn(`サブフォルダ取得失敗: ${sub.name}`, e);
+            console.warn(`カミ正方形イラスト未配置: ${localUrl}`);
           }
         }
         this.kamiIllustFiles = files;
         console.log(
-          `カミイラスト: ${files.length}件取得 ` +
-          `(直下: ${files.length - subDirs.length}件, サブフォルダ: ${subDirs.length}個)`,
-          files.slice(0, 8).map(f => f.name)
+          `カミイラスト: ${this.kamiIllustFiles.length}件取得（リポジトリ内）`,
+          this.kamiIllustFiles.slice(0, 8).map(f => `${f.path}${f.name}`)
         );
-        if (files.length === 0) {
+        if (this.kamiIllustFiles.length === 0) {
           this.kamiIllustError =
-            'フォルダにアクセスできましたが画像が0件です。' +
-            'サブフォルダの共有設定も「リンクを知っている全員」になっているか確認してください。';
+            'カミ正方形イラストが未配置です。kami_illustrationsフォルダへK01.webp〜K10.webpを配置してください。';
         }
       } catch (e) {
         console.error("カミイラスト読み込みエラー", e);
         this.kamiIllustError =
-          'カミイラストフォルダにアクセスできませんでした。' +
-          'フォルダの共有設定が「リンクを知っている全員」になっているか確認してください。';
+          'kami_illustrations/manifest.jsonを読み込めませんでした。';
       }
     },
     /* Drive フォルダ内の全ファイル/サブフォルダを取得（pagination 対応） */
@@ -23430,7 +24845,7 @@ new Vue({
       do {
         const params = new URLSearchParams({
           q: `'${folderId}' in parents and trashed = false`,
-          fields: "nextPageToken, files(id, name, mimeType)",
+          fields: "nextPageToken, files(id, name, mimeType, modifiedTime)",
           pageSize: "1000",
           key: API_KEY,
         });
@@ -23489,11 +24904,13 @@ new Vue({
         .replace(/[・･\s_\-—―]+/g, '')
         .toLowerCase();
     },
-    findKamiIllustFileId(card) {
+    findKamiIllustFile(card) {
       if (!card) return null;
       const files = this.kamiIllustFiles || [];
       if (!files.length) return null;
       const no       = String(parseInt(card.no, 10));
+      const direct = files.find(f => String(f.no || '') === no);
+      if (direct) return direct;
       const names = [card.type, card.name, card.nickname]
         .map(value => this._normalizeKamiIllustKey(value))
         .filter(Boolean);
@@ -23501,24 +24918,37 @@ new Vue({
       for (const f of files) {
         const base = f.name.replace(/\.[^.]+$/, '');
         const m = base.match(/^(?:[A-Za-z]+\.?)?\s*0*(\d+)/);
-        if (m && String(parseInt(m[1], 10)) === no) return f.id;
+        if (m && String(parseInt(m[1], 10)) === no) return f;
       }
       // 2) 名前マッチ（カミ識別名を優先し、表記揺れを正規化して双方向比較）
       for (const f of files) {
         const base = this._normalizeKamiIllustKey(f.name.replace(/\.[^.]+$/, ''));
-        if (names.some(name => base === name || base.includes(name) || name.includes(base))) return f.id;
+        if (names.some(name => base === name || base.includes(name) || name.includes(base))) return f;
       }
       return null;
     },
+    findKamiIllustFileId(card) {
+      const file = this.findKamiIllustFile(card);
+      return file ? file.id : null;
+    },
     /* イラスト URL（無ければ通常カード画像にフォールバック） */
     kamiIllustrationUrl(card) {
-      const fid = this.findKamiIllustFileId(card);
-      if (fid) return driveThumbUrl(fid, 400);
+      const file = this.findKamiIllustFile(card);
+      if (file && file.localUrl) return `${file.localUrl}?v=${encodeURIComponent(this.BUILD_VERSION)}`;
+      if (file) return `${driveThumbUrl(file.id, 400)}?v=${encodeURIComponent(file.modifiedTime || file.id)}`;
       return this.cardImageUrl(card);
+    },
+    /* 4人対戦の神託詳細だけで使う縦長イラスト。通常の対戦・勝敗画像とは分離する。 */
+    kamiSelectionIllustrationUrl(card) {
+      const no = parseInt(card && card.no, 10);
+      if (Number.isFinite(no) && no >= 1 && no <= 10) {
+        return `kami_illustrations/selection/${String(no).padStart(3, '0')}.webp?v=${encodeURIComponent(this.BUILD_VERSION)}`;
+      }
+      return this.kamiIllustrationUrl(card);
     },
     /* イラスト登録済みか判定（UI で「未登録」バッジ表示や、優先選択に使用） */
     hasKamiIllustration(card) {
-      return !!this.findKamiIllustFileId(card);
+      return !!this.findKamiIllustFile(card);
     },
     async loadKamiImages() {
       try {
@@ -23690,18 +25120,22 @@ new Vue({
       }
       this.imageMap = newMap;
     },
-    cardImageUrl(card) {
+    cardImageUrl(card, width = 600) {
       if (!card) return null;
       const no = String(parseInt(card.no, 10));
+      const requestedWidth = Math.max(120, Math.min(1200, Number(width) || 600));
+      // リポジトリ内の軽量WebPを最優先し、一覧は320px、詳細・対戦画面は600pxを使う。
+      const localUrl = localCardImageUrl(no, !!card.isKami, requestedWidth, this.BUILD_VERSION);
+      if (localUrl) return localUrl;
       if (card.isKami) {
-        // カミ専用フォルダから取得
+        // ローカル未登録時だけカミ専用Driveフォルダへフォールバック
         const fileId = this.kamiFileMap[no];
-        return fileId ? driveThumbUrl(fileId, 600) : null;
+        return fileId ? driveThumbUrl(fileId, requestedWidth) : null;
       }
-      // 1) DriveフォルダのファイルIDを優先
+      // ローカル未登録時だけ通常カードのDriveフォルダへフォールバック
       const fileId = this.driveFileMap[no];
-      if (fileId) return driveThumbUrl(fileId, 600);
-      // 2) ローカルフォルダのフォールバック（任意）
+      if (fileId) return driveThumbUrl(fileId, requestedWidth);
+      // ブラウザーから手動選択されたフォルダの最終フォールバック
       return this.imageMap[no] || null;
     },
     cardImageStyle(card) {
@@ -23959,7 +25393,10 @@ new Vue({
       const nameMap = {};
       const pool = [...(this.allCards || []), ...(this.allKamiCards || [])];
       for (const c of pool) {
-        if (c && c.name && c.name.length >= 2 && !(c.name in nameMap)) nameMap[c.name] = c;
+        if (!c) continue;
+        const full = c.nickname ? `${c.nickname}・${c.name}` : c.name;
+        if (full && full.length >= 2 && !(full in nameMap)) nameMap[full] = c;
+        if (c.name && c.name.length >= 2 && !(c.name in nameMap)) nameMap[c.name] = c;
       }
       const names = Object.keys(nameMap).sort((a, b) => b.length - a.length);
       if (!names.length) return;
@@ -24130,7 +25567,9 @@ new Vue({
       }
       if (e.key === "Escape") {
         // 上に重なっているものから順に閉じる
-        if (this.battleFieldMenu)     this.battleFieldMenu = null;
+        if (this.manualModalOpen) this.manualModalOpen = false;
+        else if (this.howToPlayModalOpen) { this.howToPlayModalOpen = false; this.hideCardHover(); }
+        else if (this.battleFieldMenu)     this.battleFieldMenu = null;
         else if (this.battleFieldZoneMenu) this.battleFieldZoneMenu = null;
         else if (this.battleTokenPickModal) this.battleTokenPickModal = null;
         else if (this.dslOptionalModal) this.dslAnswerOptional(false);

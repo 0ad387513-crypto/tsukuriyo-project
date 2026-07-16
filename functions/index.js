@@ -7,6 +7,7 @@ const { initializeApp } = require("firebase-admin/app");
 const { getDatabase } = require("firebase-admin/database");
 const { ROOM_TTL_MS, buildCleanupUpdates } = require("./cleanup_core.js");
 const { buildBattleStatContribution } = require("./battle_stats_core.js");
+const { pairingsForSession } = require("./pairings_core.js");
 const { stateHash, adjudicateBattle } = require("./battle_watchdog_core.js");
 const { validateBattleTransition } = require("./battle_transition_core.js");
 const { nextRateLimit } = require("./security_core.js");
@@ -139,12 +140,7 @@ function cpuSeats(session) {
 }
 
 function battlePairings(session, round) {
-  const standard = { 1: [[1, 2], [3, 4]], 2: [[1, 3], [2, 4]], 3: [[1, 4], [2, 3]] };
-  const cpus = cpuSeats(session);
-  if (!cpus.length) return standard[round];
-  const humans = [1, 2, 3, 4].filter(seat => !cpus.includes(seat));
-  if (humans.length >= 2) return [humans.slice(0, 2), cpus.slice(0, 2)];
-  return humans.length ? [[humans[0], cpus[0]], cpus.slice(1)] : [cpus.slice(0, 2), cpus.slice(2)];
+  return pairingsForSession(session, round);
 }
 
 async function publishDraftState(db, code, state) {
@@ -209,8 +205,11 @@ exports.startServerDraft = onCall(CALLABLE_OPTIONS, async request => {
       converted[seat] = arrayValue(current && current.converted && current.converted[seat] || session.converted && session.converted[seat]);
     }
     const freeReturned = current && current.freeReturned || session.draftFreeReturned || {};
+    const orochiSeats = [1, 2, 3, 4].filter(seat =>
+      session.seats && session.seats[seat] && String(session.seats[seat].kamiNo) === "10"
+    );
     try {
-      const next = createDraftState({ round, cardNos, seed, decks, converted, freeReturned });
+      const next = createDraftState({ round, cardNos, seed, decks, converted, freeReturned, orochiSeats });
       if (current) {
         next.insight = current.insight || {};
         next.insightAwarded = current.insightAwarded || {};

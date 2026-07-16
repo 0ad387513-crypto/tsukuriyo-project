@@ -22,6 +22,12 @@ test("every static script and preload reference exists", () => {
     "card_back.png",
     "coin_front.png",
     "coin_back.png",
+    "ui_decorations/higanbana-left.png",
+    "ui_decorations/higanbana-right.png",
+    "ui_cinematics/kami-summoning-shrine.png",
+    "ui_cinematics/bloom-lotus-closed.png",
+    "ui_cinematics/bloom-lotus-open.png",
+    "ui_cinematics/dies-irae-ritual.png",
   ];
   assert.ok(refs.length > 10);
   for (const ref of refs) assert.equal(fs.existsSync(path.join(root, ref)), true, `missing asset: ${ref}`);

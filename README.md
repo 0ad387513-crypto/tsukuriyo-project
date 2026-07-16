@@ -43,3 +43,5 @@ firebase deploy --only database --project tsukuriyo-7afe3
 - 通常テストとFirebase Database Rules Emulator統合テスト
 
 本番反映状況と外部確認項目は [REMAINING_WORK.md](REMAINING_WORK.md) を参照してください。
+
+TOP画面とカミ画像の交換方法は [IMAGE_REPLACEMENT.md](IMAGE_REPLACEMENT.md) を参照してください。

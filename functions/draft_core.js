@@ -1,5 +1,7 @@
 "use strict";
 
+const { pairingsForSession } = require("./pairings_core.js");
+
 const DRAFT_ROUND_CONFIG = Object.freeze({
   1: { numSets: 3, bundleSize: 10, direction: "L" },
   2: { numSets: 1, bundleSize: 10, direction: "R" },
@@ -62,7 +64,7 @@ function dealDraftSets(cardNos, seed, round) {
   return sets;
 }
 
-function createDraftState({ round, cardNos, seed, decks = {}, converted = {}, freeReturned = {} }) {
+function createDraftState({ round, cardNos, seed, decks = {}, converted = {}, freeReturned = {}, orochiSeats = [] }) {
   const cfg = DRAFT_ROUND_CONFIG[round];
   if (!cfg) throw new Error(`不正なドラフトラウンドです: ${round}`);
   const sets = dealDraftSets(cardNos, seed, round);
@@ -84,6 +86,8 @@ function createDraftState({ round, cardNos, seed, decks = {}, converted = {}, fr
     decks: { 1: [...(decks[1] || [])], 2: [...(decks[2] || [])], 3: [...(decks[3] || [])], 4: [...(decks[4] || [])] },
     converted: { 1: [...(converted[1] || [])], 2: [...(converted[2] || [])], 3: [...(converted[3] || [])], 4: [...(converted[4] || [])] },
     freeReturned: JSON.parse(JSON.stringify(freeReturned || {})),
+    orochiSeats: [...new Set((orochiSeats || []).map(Number).filter(seat => [1, 2, 3, 4].includes(seat)))],
+    diesIraeGrantedSeats: [],
     phase: "draft",
     done: false,
   };
@@ -120,6 +124,14 @@ function resolveStep(state) {
       state.direction = state.directions[state.setIndex] || state.direction;
       state.step = 0;
     } else {
+      if (Number(state.round) === 3) {
+        state.diesIraeGrantedSeats = [];
+        for (const seat of state.orochiSeats || []) {
+          state.decks[seat] = state.decks[seat] || [];
+          if (!state.decks[seat].some(no => String(no) === "198")) state.decks[seat].push("198");
+          state.diesIraeGrantedSeats.push(Number(seat));
+        }
+      }
       state.done = true;
       state.completedRound = state.round;
       state.phase = "draft_done";
@@ -161,6 +173,9 @@ function publicDraftState(state) {
     picks: Object.fromEntries(Object.keys(state.picks || {}).map(seat => [seat, true])),
     done: !!state.done,
     ...(state.completedRound ? { completedRound: state.completedRound } : {}),
+    ...(state.diesIraeGrantedSeats && state.diesIraeGrantedSeats.length
+      ? { diesIraeGrantedSeats: state.diesIraeGrantedSeats.map(Number) }
+      : {}),
   };
 }
 
@@ -234,18 +249,9 @@ function undoFreeReturn(state, seat, cardNo) {
   return state;
 }
 
-function pairingForSession(session, round) {
-  const standard = { 1: [[1, 2], [3, 4]], 2: [[1, 3], [2, 4]], 3: [[1, 4], [2, 3]] };
-  const cpu = [1, 2, 3, 4].filter(seat => session.seats && session.seats[seat] && session.seats[seat].isCpu === true);
-  if (!cpu.length) return standard[round];
-  const humans = [1, 2, 3, 4].filter(seat => !cpu.includes(seat));
-  if (humans.length >= 2) return [humans.slice(0, 2), cpu.slice(0, 2)];
-  return humans.length ? [[humans[0], cpu[0]], cpu.slice(1)] : [cpu.slice(0, 2), cpu.slice(2)];
-}
-
 function wonPreviousBattle(session, round, seat) {
   const battle = session.battles && session.battles[round];
-  const pairs = pairingForSession(session, round);
+  const pairs = pairingsForSession(session, round);
   if (!battle || !pairs) return false;
   if (pairs[0].includes(seat)) return Number(battle.t1Winner) === seat;
   if (pairs[1].includes(seat)) return Number(battle.t2Winner) === seat;
