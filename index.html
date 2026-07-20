@@ -516,12 +516,11 @@
   }
   .udon-import-btn:hover { background: #3a3f4d; color: #ccc; }
 
-  .deck-info-collapse-bar { background: #1b1e28; border-top: 1px solid #2a2f3d; }
   .deck-info-collapse-btn {
-    display: block; width: 100%; padding: 5px 10px; font-size: 11px;
-    color: #9aa; background: transparent; border: none; cursor: pointer; text-align: center;
+    padding: 5px 8px; font-size: 11px; white-space: nowrap;
+    color: #9aa; background: #22262f; border: 1px solid #333846; border-radius: 3px; cursor: pointer;
   }
-  .deck-info-collapse-btn:hover { color: #ccc; background: #22262f; }
+  .deck-info-collapse-btn:hover { color: #ccc; background: #2c313d; }
 
   .curve { display: flex; align-items: flex-end; gap: 3px; height: 64px; padding: 10px 14px 4px; background: #1b1e28; }
   .curve .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
@@ -638,11 +637,12 @@
 
   .deck-list { flex: 1; overflow-y: auto; }
   .deck-section-label {
-    display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
     padding: 6px 10px;
     background: #1a1d28; border-bottom: 1px solid #2a2f3d;
     position: sticky; top: 0; z-index: 3;
   }
+  .deck-section-right { display: flex; align-items: center; gap: 8px; }
   .deck-section-title {
     font-size: 11px; color: #9aa; font-weight: 600;
     letter-spacing: 0.08em; flex-shrink: 0;
@@ -5718,12 +5718,6 @@
         </div>
       </div>
 
-      <div class="deck-info-collapse-bar" v-if="!deckDenseView">
-        <button class="deck-info-collapse-btn" @click="_sfxPlay('cancel'); deckInfoCollapsed = !deckInfoCollapsed">
-          {{ deckInfoCollapsed ? '▼ マナカーブ・属性内訳を表示' : '▲ マナカーブ・属性内訳を隠す' }}
-        </button>
-      </div>
-
       <div v-show="!deckInfoCollapsed" v-if="!deckDenseView">
         <div class="curve">
           <div class="bar-col" v-for="(n, i) in curveBuckets" :key="i">
@@ -5835,23 +5829,28 @@
     <!-- 通常時：縦リスト（同名カードはグループ化して合算表示） -->
     <div class="deck-list" :class="{ dense: deckDenseView }" v-if="!deckExpanded">
       <div class="deck-section-label">
-        <button class="deck-sort-btn deck-dense-toggle-btn" @click.stop="_sfxPlay('cancel'); toggleDeckDenseView()"
-                :class="{ active: deckDenseView }"
-                :title="deckDenseView ? '通常のカード表示に戻す' : 'カードを詰めて多く表示する'">
-          {{ deckDenseView ? '▦ 通常表示' : '▦ 多く表示' }}
+        <button v-if="!deckDenseView" class="deck-info-collapse-btn" @click.stop="_sfxPlay('cancel'); deckInfoCollapsed = !deckInfoCollapsed">
+          {{ deckInfoCollapsed ? '▼ マナカーブ・属性内訳を表示' : '▲ マナカーブ・属性内訳を隠す' }}
         </button>
-        <div class="deck-sort-wrap">
-          <button class="deck-sort-btn" @click.stop="_sfxPlay('cancel'); deckSortOpen = !deckSortOpen"
-                  :class="{ active: deckSortOpen }">
-            ↕ {{ deckSortOptions.find(o => o.key === deckSortKey).label }}
+        <div class="deck-section-right">
+          <button class="deck-sort-btn deck-dense-toggle-btn" @click.stop="_sfxPlay('cancel'); toggleDeckDenseView()"
+                  :class="{ active: deckDenseView }"
+                  :title="deckDenseView ? '通常のカード表示に戻す' : 'カードを詰めて多く表示する'">
+            {{ deckDenseView ? '▦ 通常表示' : '▦ 多く表示' }}
           </button>
-          <div v-if="deckSortOpen" class="deck-sort-dropdown" @click.stop>
-            <div v-for="opt in deckSortOptions" :key="opt.key"
-                 class="deck-sort-item"
-                 :class="{ selected: deckSortKey === opt.key }"
-                 @click="deckSortKey = opt.key; deckSortOpen = false">
-              <span class="check">{{ deckSortKey === opt.key ? '✓' : '　' }}</span>
-              {{ opt.label }}
+          <div class="deck-sort-wrap">
+            <button class="deck-sort-btn" @click.stop="_sfxPlay('cancel'); deckSortOpen = !deckSortOpen"
+                    :class="{ active: deckSortOpen }">
+              ↕ {{ deckSortOptions.find(o => o.key === deckSortKey).label }}
+            </button>
+            <div v-if="deckSortOpen" class="deck-sort-dropdown" @click.stop>
+              <div v-for="opt in deckSortOptions" :key="opt.key"
+                   class="deck-sort-item"
+                   :class="{ selected: deckSortKey === opt.key }"
+                   @click="deckSortKey = opt.key; deckSortOpen = false">
+                <span class="check">{{ deckSortKey === opt.key ? '✓' : '　' }}</span>
+                {{ opt.label }}
+              </div>
             </div>
           </div>
         </div>
