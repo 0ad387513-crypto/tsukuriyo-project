@@ -506,6 +506,7 @@
   .deck-controls button {
     flex: 1; padding: 5px; font-size: 12px; cursor: pointer;
     background: #2a2f3d; border: 1px solid #444; color: #ccc; border-radius: 3px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .deck-controls button:hover { background: #3a3f4d; }
   .udon-import-btn {
@@ -845,12 +846,12 @@
       rgba(21,23,31,0.28) 80%,
       rgba(21,23,31,0.15) 100%);
   }
-  .kami-name {
+  .kami-slot .kami-name {
     position: relative; z-index: 1;
     color: #fff; font-weight: bold;
     padding: 6px 10px; text-shadow: 0 1px 4px rgba(0,0,0,0.8);
     display: flex; flex-direction: column; gap: 1px;
-    width: 100%;
+    width: 100%; text-align: left;
   }
   .kami-nickname {
     font-size: 10px; color: #ccc; font-weight: 400;
@@ -5534,8 +5535,8 @@
       <div class="title-row">
         <button v-if="appView === 'cardlist'" class="back-to-top-btn" @click="goToTop">◀ トップ</button>
         <h1>ツクリヨ デッキビルダー</h1>
-        <button class="glossary-open-btn" @click="_sfxPlay('decision'); glossaryModalOpen = true" title="キーワード集を開く">📚 キーワード集</button>
         <span class="total">全 {{ filteredCards.length }} 枚<span v-if="driveError" style="color:#fb7"> / Drive読込失敗</span></span>
+        <button class="glossary-open-btn" @click="_sfxPlay('decision'); glossaryModalOpen = true" title="キーワード集を開く">📚 キーワード集</button>
         <div class="spacer"></div>
         <!-- 表示モード切替：デッキの中身を見ながらでも多くのカードが一目で見えるよう、カードを小さく密に並べる表示に切り替える（従来の一覧表示・機能は変わらない） -->
         <button class="deck-sort-btn pool-dense-toggle-btn" @click="_sfxPlay('cancel'); togglePoolDenseView()"
@@ -5687,7 +5688,7 @@
           </button>
         </div>
         <div class="deck-controls" v-if="!deckDenseView">
-          <button @click="saveDeckImage" :disabled="capturing">{{ capturing ? '保存中…' : 'デッキを画像で保存' }}</button>
+          <button @click="saveDeckImage" :disabled="capturing">{{ capturing ? '保存中…' : '画像で保存' }}</button>
           <button @click="clearDeck">デッキをクリア</button>
           <button v-if="!gsPeeking && !shieldPeek" @click="openDeckManager">💾 デッキ管理</button>
         </div>
@@ -5819,9 +5820,6 @@
     <!-- 通常時：縦リスト（同名カードはグループ化して合算表示） -->
     <div class="deck-list" :class="{ dense: deckDenseView }" v-if="!deckExpanded">
       <div class="deck-section-label">
-        <span class="deck-section-title">カード</span>
-        <input class="deck-search" type="text" v-model="deckSearchText" placeholder="カード名 / No / 効果テキストで検索">
-        <span class="deck-visible-count">{{ deckVisibleCountLabel }}</span>
         <button class="deck-sort-btn deck-dense-toggle-btn" @click.stop="_sfxPlay('cancel'); toggleDeckDenseView()"
                 :class="{ active: deckDenseView }"
                 :title="deckDenseView ? '通常のカード表示に戻す' : 'カードを詰めて多く表示する'">
@@ -5841,25 +5839,6 @@
               {{ opt.label }}
             </div>
           </div>
-        </div>
-      </div>
-      <div v-if="deckEntries.length > 0" class="deck-stats-panel">
-        <div class="deck-curve-chart">
-          <div v-for="b in deckManaCurveBuckets" :key="'curve'+b.label" class="deck-curve-col" :title="'コスト' + b.label + ': ' + b.count + '枚'">
-            <div class="deck-curve-bar" :style="{ height: (b.count ? Math.max(6, b.count / deckManaCurveMax * 44) : 0) + 'px' }"></div>
-            <span v-if="b.count" class="deck-curve-count">{{ b.count }}</span>
-            <span class="deck-curve-label">{{ b.label }}</span>
-          </div>
-        </div>
-        <div class="deck-color-bar">
-          <div v-for="cb in deckColorBuckets" :key="'colorbar'+cb.color"
-               class="deck-color-seg" :style="{ width: cb.pct + '%', background: cb.hex }"
-               :title="cb.color + ': ' + cb.count + '枚'"></div>
-        </div>
-        <div class="deck-color-legend">
-          <span v-for="cb in deckColorBuckets" :key="'colorleg'+cb.color" class="deck-color-legend-item">
-            <span class="deck-color-dot" :style="{ background: cb.hex }"></span>{{ cb.color }} {{ cb.count }}
-          </span>
         </div>
       </div>
       <div class="empty" v-if="deckEntriesDisplay.length === 0 && deckEntriesGrouped.length > 0">検索結果なし</div>
