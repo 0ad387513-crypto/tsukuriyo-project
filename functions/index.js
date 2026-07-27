@@ -58,7 +58,7 @@ exports.cleanupExpiredRooms = onSchedule({
 
 exports.fetchExpiredRooms = fetchExpiredRooms;
 
-exports.indexActiveBattle = onValueWritten("/sessions/{code}/battle/{table}/state", async event => {
+exports.indexActiveBattle = onValueWritten("/battleTables/{code}/{table}/state", async event => {
   const state = event.data.after.val();
   const key = `${event.params.code}__${encodeURIComponent(event.params.table)}`;
   const ref = getDatabase().ref(`battleWatchdogs/${key}`);
@@ -76,7 +76,7 @@ exports.adjudicateActiveBattles = onSchedule({
   let changed = 0;
   for (const [key, entry] of Object.entries(entries)) {
     if (!entry || !entry.code || !entry.table) continue;
-    const base = `sessions/${entry.code}/battle/${entry.table}`;
+    const base = `battleTables/${entry.code}/${entry.table}`;
     const presence = (await db.ref(`${base}/presence`).once("value")).val() || {};
     let decision = null;
     const result = await db.ref(`${base}/state`).transaction(current => {
@@ -414,7 +414,7 @@ exports.publishBattleState = onCall(CALLABLE_OPTIONS, async request => {
   const baseRevision = Number(request.data && request.data.baseRevision || 0);
   const db = getDatabase();
   await enforceRateLimit(db, uid, "publishBattleState", 180);
-  const base = `sessions/${code}/battle/${table}`;
+  const base = `battleTables/${code}/${table}`;
   const protocol = (await db.ref(`${base}/protocol`).once("value")).val() || {};
   const writer = Number(payload && payload.writer);
   const [claimSnap, sessionSeatSnap, roomSnap, constructSnap] = await Promise.all([

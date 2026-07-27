@@ -157,10 +157,10 @@ test("シールド戦参加者は共通対戦パスを作成できる", async ()
     phase: "lobby",
     host: { id: "p1", ownerUid: "shield-owner", ready: false },
   });
-  await assertSucceeds(set(ref(db("shield-owner"), "sessions/SHLD01/battle/shield/protocol"), {
+  await assertSucceeds(set(ref(db("shield-owner"), "battleTables/SHLD01/shield/protocol"), {
     buildVersion: "1.15.59", createdAt: Date.now(),
   }));
-  await assertFails(set(ref(db("outsider"), "sessions/SHLD01/battle/shield/state"), { turn: 1 }));
+  await assertFails(set(ref(db("outsider"), "battleTables/SHLD01/shield/state"), { turn: 1 }));
 });
 
 test("星紡ぎ戦と理念構築戦は両参加者が数値席で盤面を同期できる", async () => {
@@ -179,7 +179,7 @@ test("星紡ぎ戦と理念構築戦は両参加者が数値席で盤面を同�
     await assertSucceeds(update(ref(clientB, `${item.roomRoot}/${item.code}`), {
       guest: { id: "b", ownerUid: item.b, name: "B", ready: false, deckCount: 35 },
     }));
-    const base = `sessions/${item.code}/battle/${item.table}`;
+    const base = `battleTables/${item.code}/${item.table}`;
     await assertSucceeds(set(ref(clientA, `${base}/protocol`), { buildVersion: item.version, createdAt: Date.now() }));
     const first = { writer: 1, activeSeat: 1, turn: 1, sides: { 1: { life: 10 }, 2: { life: 10 } }, buildVersion: item.version, revision: 1, stateHash: "a", ts: Date.now() };
     await assertSucceeds(set(ref(clientA, `${base}/state`), first));
@@ -223,13 +223,13 @@ test("共有盤面は座席所有者・連番・プロトコルを検証する",
   });
   await update(ref(db("guest-b"), "sessions/SYNC01"), { "seats/2": { id: "p2", ownerUid: "guest-b", name: "B" } });
   await update(ref(owner, "sessions/SYNC01"), { phase: "battle" });
-  await set(ref(owner, "sessions/SYNC01/battle/1/protocol"), { buildVersion: "1.15.80", createdAt: Date.now() });
+  await set(ref(owner, "battleTables/SYNC01/1/protocol"), { buildVersion: "1.15.80", createdAt: Date.now() });
   const state1 = { writer: 1, activeSeat: 1, turn: 1, sides: { 1: { life: 10 }, 2: { life: 10 } }, buildVersion: "1.15.80", revision: 1, stateHash: "h1", ts: Date.now() };
-  await assertSucceeds(set(ref(owner, "sessions/SYNC01/battle/1/state"), state1));
-  await assertFails(set(ref(db("guest-b"), "sessions/SYNC01/battle/1/state"), { ...state1, writer: 1, revision: 2, prevHash: "h1", stateHash: "h2" }));
-  await assertFails(set(ref(owner, "sessions/SYNC01/battle/1/state"), { ...state1, revision: 3, prevHash: "h1", stateHash: "h3" }));
-  await assertSucceeds(set(ref(owner, "sessions/SYNC01/battle/1/state"), { ...state1, revision: 2, prevHash: "h1", stateHash: "h2", ts: Date.now() }));
-  await assertFails(set(ref(db("guest-b"), "sessions/SYNC01/battle/1/notice"), {
+  await assertSucceeds(set(ref(owner, "battleTables/SYNC01/1/state"), state1));
+  await assertFails(set(ref(db("guest-b"), "battleTables/SYNC01/1/state"), { ...state1, writer: 1, revision: 2, prevHash: "h1", stateHash: "h2" }));
+  await assertFails(set(ref(owner, "battleTables/SYNC01/1/state"), { ...state1, revision: 3, prevHash: "h1", stateHash: "h3" }));
+  await assertSucceeds(set(ref(owner, "battleTables/SYNC01/1/state"), { ...state1, revision: 2, prevHash: "h1", stateHash: "h2", ts: Date.now() }));
+  await assertFails(set(ref(db("guest-b"), "battleTables/SYNC01/1/notice"), {
     writer: 1, title: "fake", message: "fake", cardNos: [], ts: Date.now(),
   }));
 });
@@ -247,7 +247,7 @@ test("4人対戦の席3・席4もラウンド別の卓へ同期できる", async
   await assertSucceeds(update(ref(seat3, "sessions/FOUR01"), { "seats/3": { id: "c", ownerUid: "four-c", name: "C" } }));
   await assertSucceeds(update(ref(seat4, "sessions/FOUR01"), { "seats/4": { id: "d", ownerUid: "four-d", name: "D" } }));
   await assertSucceeds(update(ref(host, "sessions/FOUR01"), { phase: "battle" }));
-  const base = "sessions/FOUR01/battle/star_r1_t2";
+  const base = "battleTables/FOUR01/star_r1_t2";
   await assertSucceeds(set(ref(seat3, `${base}/protocol`), { buildVersion: "1.15.104", createdAt: Date.now() }));
   const first = { writer: 3, activeSeat: 3, turn: 1, sides: { 3: { life: 10 }, 4: { life: 10 } }, buildVersion: "1.15.104", revision: 1, stateHash: "c", ts: Date.now() };
   await assertSucceeds(set(ref(seat3, `${base}/state`), first));
@@ -267,20 +267,20 @@ test("対戦中の確認依頼・回答・在席情報は本人の座席だけ�
     "seats/2": { id: "p2", ownerUid: "guest-b", name: "B" },
   });
   await update(ref(owner, "sessions/INPUT1"), { phase: "battle" });
-  await assertSucceeds(set(ref(owner, "sessions/INPUT1/battle/1/pendingConfirm"), {
+  await assertSucceeds(set(ref(owner, "battleTables/INPUT1/1/pendingConfirm"), {
     id: "q1", writer: 1, forSeat: 2, kind: "守護", prompt: "使用しますか？", ts: Date.now(),
   }));
-  await assertSucceeds(set(ref(guest, "sessions/INPUT1/battle/1/pendingConfirmAnswer/q1"), {
+  await assertSucceeds(set(ref(guest, "battleTables/INPUT1/1/pendingConfirmAnswer/q1"), {
     writer: 2, answer: true, ts: Date.now(),
   }));
-  await assertFails(set(ref(owner, "sessions/INPUT1/battle/1/presence/2"), {
+  await assertFails(set(ref(owner, "battleTables/INPUT1/1/presence/2"), {
     online: false, ts: Date.now(),
   }));
-  await assertSucceeds(set(ref(guest, "sessions/INPUT1/battle/1/presence/2"), {
+  await assertSucceeds(set(ref(guest, "battleTables/INPUT1/1/presence/2"), {
     online: true, ts: Date.now(),
   }));
-  await assertFails(set(ref(guest, "sessions/INPUT1/battle/1/mulligan/1"), true));
-  await assertSucceeds(set(ref(owner, "sessions/INPUT1/battle/1/mulligan/1"), true));
+  await assertFails(set(ref(guest, "battleTables/INPUT1/1/mulligan/1"), true));
+  await assertSucceeds(set(ref(owner, "battleTables/INPUT1/1/mulligan/1"), true));
 });
 
 test("観戦者は自分の在席情報だけ登録・削除できる", async () => {
@@ -288,12 +288,12 @@ test("観戦者は自分の在席情報だけ登録・削除できる", async ()
     phase: "battle",
     seats: { 1: { id: "p1", ownerUid: "owner-a" } },
   });
-  const ownPresence = ref(db("viewer-a"), "sessions/WATCH1/battle/test/spectators/client-a");
+  const ownPresence = ref(db("viewer-a"), "battleTables/WATCH1/test/spectators/client-a");
   await assertFails(get(ref(db("viewer-a"), "sessions/WATCH1")));
   await assertSucceeds(set(ref(db("viewer-a"), "spectatorAccess/WATCH1/viewer-a"), true));
   await assertSucceeds(get(ref(db("viewer-a"), "sessions/WATCH1")));
   await assertSucceeds(set(ownPresence, { ownerUid: "viewer-a", joinedAt: 1 }));
-  await assertFails(remove(ref(db("viewer-b"), "sessions/WATCH1/battle/test/spectators/client-a")));
+  await assertFails(remove(ref(db("viewer-b"), "battleTables/WATCH1/test/spectators/client-a")));
   await assertSucceeds(remove(ownPresence));
 });
 
@@ -308,7 +308,7 @@ test("2クライアントで作成・参加・対戦同期・再接続・再戦�
     "seats/2": { id: "b", ownerUid: "e2e-b", name: "B" },
   }));
   await assertSucceeds(update(ref(clientA, "sessions/E2E001"), { phase: "battle" }));
-  const base = "sessions/E2E001/battle/test";
+  const base = "battleTables/E2E001/test";
   await assertSucceeds(set(ref(clientA, `${base}/protocol`), { buildVersion: "1.15.91", createdAt: Date.now() }));
   const state1 = { writer: 1, activeSeat: 1, turn: 1, sides: { 1: { life: 10 }, 2: { life: 10 } }, buildVersion: "1.15.91", revision: 1, stateHash: "s1", ts: Date.now() };
   await assertSucceeds(set(ref(clientA, `${base}/state`), state1));
@@ -325,21 +325,21 @@ test("2クライアントで作成・参加・対戦同期・再接続・再戦�
   assert.equal(finalState.rematch[2], true);
 });
 
-// 対戦テストは他モードと違い、ロビー（phase/seats）を作らずいきなり
-// battle/test/seatClaims から始まる。クライアントは席の二重確保を防ぐため
-// transaction を使う＝まず読み取りが必要だが、セッションがまだ存在しない間は
+// 対戦テストは他モードと違い、ロビー（sessions側のphase/seats）を作らず
+// いきなり卓の seatClaims から始まる。クライアントは席の二重確保を防ぐため
+// transaction を使う＝まず読み取りが必要だが、卓がまだ存在しない間は
 // 読み取り条件のどれにも当てはまらず permission_denied で作成できなかった。
-test("対戦テストの作成者は存在しないセッションに座席を確保できる", async () => {
+test("対戦テストの作成者は存在しない卓に座席を確保できる", async () => {
   const creator = db("bt-a");
   const joiner = db("bt-b");
-  const claim1 = "sessions/BTEST1/battle/test/seatClaims/1";
-  const claim2 = "sessions/BTEST1/battle/test/seatClaims/2";
+  const claim1 = "battleTables/BTEST1/test/seatClaims/1";
+  const claim2 = "battleTables/BTEST1/test/seatClaims/2";
   // 作成側：セッション未作成の状態で読み取り（transactionの前提）→確保
   await assertSucceeds(get(ref(creator, claim1)));
   await assertSucceeds(set(ref(creator, claim1), { clientId: "c-a", ownerUid: "bt-a", ts: Date.now() }));
   // 作成側はそのまま卓のプロトコルと初期盤面まで進められる
-  await assertSucceeds(set(ref(creator, "sessions/BTEST1/battle/test/protocol"), { buildVersion: "1.15.105", createdAt: Date.now() }));
-  await assertSucceeds(set(ref(creator, "sessions/BTEST1/battle/test/state"), {
+  await assertSucceeds(set(ref(creator, "battleTables/BTEST1/test/protocol"), { buildVersion: "1.15.105", createdAt: Date.now() }));
+  await assertSucceeds(set(ref(creator, "battleTables/BTEST1/test/state"), {
     writer: 1, activeSeat: 1, turn: 1, sides: { 1: { life: 10 }, 2: { life: 10 } },
     buildVersion: "1.15.105", revision: 1, stateHash: "h1", ts: Date.now(),
   }));
@@ -348,6 +348,44 @@ test("対戦テストの作成者は存在しないセッションに座席を�
   await assertSucceeds(set(ref(joiner, claim2), { clientId: "c-b", ownerUid: "bt-b", ts: Date.now() }));
   // 他人が確保済みの席1は奪えない
   await assertFails(set(ref(joiner, claim1), { clientId: "c-b", ownerUid: "bt-b", ts: Date.now() }));
+});
+
+// セッション更新（結果記録・中断・ラウンド2以降のドラフト等）は sessions/{code} 全体を
+// transaction で読み書きする。対戦同期データが同じ配下にあった頃は、星戦を1度でも行うと
+//   state           … revision は必ず +1
+//   operationLog 等 … 追記のみ（既存の書き換え禁止）
+// の検証に必ず抵触し、以降のセッション更新が全て permission_denied になっていた。
+// 同期データを battleTables へ分離したので、対戦後もセッション本体を更新できること。
+test("星戦の同期データがあってもセッション本体を丸ごと更新できる", async () => {
+  const host = db("mix-a");
+  const guest = db("mix-b");
+  await assertSucceeds(set(ref(host, "sessions/MIX001"), {
+    phase: "lobby", buildVersion: "1.15.106", createdAt: Date.now(), round: 1,
+    seats: { 1: { id: "a", ownerUid: "mix-a", name: "A" } },
+  }));
+  await assertSucceeds(update(ref(guest, "sessions/MIX001"), { "seats/2": { id: "b", ownerUid: "mix-b", name: "B" } }));
+  await assertSucceeds(update(ref(host, "sessions/MIX001"), { phase: "battle" }));
+
+  // 星戦を1回行った状態を作る（盤面＋操作ログ＝どちらも書き換え禁止の対象）
+  const base = "battleTables/MIX001/star_r1_t1";
+  await assertSucceeds(set(ref(host, `${base}/protocol`), { buildVersion: "1.15.106", createdAt: Date.now() }));
+  await assertSucceeds(set(ref(host, `${base}/state`), {
+    writer: 1, activeSeat: 1, turn: 1, sides: { 1: { life: 10 }, 2: { life: 10 } },
+    buildVersion: "1.15.106", revision: 1, stateHash: "h1", ts: Date.now(),
+  }));
+  await assertSucceeds(set(ref(host, `${base}/operationLog/0000000001_1`), {
+    revision: 1, writer: 1, stateHash: "h1", buildVersion: "1.15.106", ts: Date.now(),
+  }));
+
+  // 対戦後のセッション更新（recordBattleResult / abortSession 相当の全体書き戻し）
+  const body = (await get(ref(host, "sessions/MIX001"))).val();
+  body.battles = { 1: { t1Winner: 1, t2Winner: 3 } };
+  await assertSucceeds(set(ref(host, "sessions/MIX001"), body));
+  body.phase = "aborted";
+  await assertSucceeds(set(ref(host, "sessions/MIX001"), body));
+
+  // 分離した同期データは巻き添えで消えていない
+  assert.equal((await get(ref(host, `${base}/state/revision`))).val(), 1);
 });
 
 test("ストラクチャーデッキは管理者だけ更新できる", async () => {

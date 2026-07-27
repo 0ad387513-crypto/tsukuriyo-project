@@ -11866,7 +11866,7 @@ new Vue({
       const oppSeat = this.cb.role === 'host' ? 2 : 1;
       let firstSeat = mySeat;
       try {
-        const ref = getDb().ref(`sessions/${code}/battle/${table}/firstSeat`);
+        const ref = getDb().ref(`battleTables/${code}/${table}/firstSeat`);
         const res = await ref.transaction(cur => (cur != null ? cur : (Math.random() < 0.5 ? mySeat : oppSeat)));
         firstSeat = res.snapshot.val();
       } catch (e) {}
@@ -11913,7 +11913,7 @@ new Vue({
       const oppSeat = this.sb.role === 'host' ? 2 : 1;
       let firstSeat = mySeat;
       try {
-        const ref = getDb().ref(`sessions/${code}/battle/${table}/firstSeat`);
+        const ref = getDb().ref(`battleTables/${code}/${table}/firstSeat`);
         const res = await ref.transaction(cur => (cur != null ? cur : (Math.random() < 0.5 ? mySeat : oppSeat)));
         firstSeat = res.snapshot.val();
       } catch (e) {}
@@ -11966,7 +11966,7 @@ new Vue({
       // 先攻をトランザクションで1回だけ決定して両者で共有
       let firstSeat = mySeat;
       try {
-        const ref = getDb().ref(`sessions/${code}/battle/${table}/firstSeat`);
+        const ref = getDb().ref(`battleTables/${code}/${table}/firstSeat`);
         const res = await ref.transaction(cur => (cur != null ? cur : (Math.random() < 0.5 ? mySeat : oppSeat)));
         firstSeat = res.snapshot.val();
       } catch (e) {}
@@ -12184,7 +12184,7 @@ new Vue({
       // 既に別の参加者が座っている席には入れないようにする
       try {
         const clientId = this._battleClientId();
-        const seatRef = getDb().ref(`sessions/${code}/battle/${table}/seatClaims/${mySeat}`);
+        const seatRef = getDb().ref(`battleTables/${code}/${table}/seatClaims/${mySeat}`);
         const res = await seatRef.transaction(cur => (cur == null || cur.clientId === clientId) ? { clientId, ownerUid: authUser.uid, ts: Date.now() } : cur);
         const claimed = res.snapshot.val();
         if (!claimed || claimed.clientId !== clientId) {
@@ -12198,7 +12198,7 @@ new Vue({
       }
       let firstSeat = mySeat;
       try {
-        const ref = getDb().ref(`sessions/${code}/battle/${table}/firstSeat`);
+        const ref = getDb().ref(`battleTables/${code}/${table}/firstSeat`);
         const res = await ref.transaction(cur => (cur != null ? cur : (Math.random() < 0.5 ? mySeat : oppSeat)));
         firstSeat = res.snapshot.val();
       } catch (e) {}
@@ -12262,7 +12262,7 @@ new Vue({
     _battleScheduleRematchCleanup(code, table, mySeat) {
       if (mySeat !== 1) return;
       setTimeout(() => {
-        getDb().ref(`sessions/${code}/battle/${table}/rematch`).remove().catch(() => {});
+        getDb().ref(`battleTables/${code}/${table}/rematch`).remove().catch(() => {});
       }, 3000);
     },
     async _battleRestartTestBattle() {
@@ -12271,7 +12271,7 @@ new Vue({
       const { mySeat, oppSeat, code, table } = n;
       let firstSeat = mySeat;
       try {
-        const ref = getDb().ref(`sessions/${code}/battle/${table}/rematch/firstSeat`);
+        const ref = getDb().ref(`battleTables/${code}/${table}/rematch/firstSeat`);
         const res = await ref.transaction(cur => (cur != null ? cur : (Math.random() < 0.5 ? mySeat : oppSeat)));
         firstSeat = res.snapshot.val();
       } catch (e) { /* 失敗しても自分視点で続行 */ }
@@ -12300,7 +12300,7 @@ new Vue({
       const { mySeat, oppSeat, code, table } = n;
       let firstSeat = mySeat;
       try {
-        const ref = getDb().ref(`sessions/${code}/battle/${table}/rematch/firstSeat`);
+        const ref = getDb().ref(`battleTables/${code}/${table}/rematch/firstSeat`);
         const res = await ref.transaction(cur => (cur != null ? cur : (Math.random() < 0.5 ? mySeat : oppSeat)));
         firstSeat = res.snapshot.val();
       } catch (e) { /* 失敗しても自分視点で続行 */ }
@@ -12354,7 +12354,7 @@ new Vue({
       const { mySeat, oppSeat, code, table } = n;
       let firstSeat = mySeat;
       try {
-        const ref = getDb().ref(`sessions/${code}/battle/${table}/rematch/firstSeat`);
+        const ref = getDb().ref(`battleTables/${code}/${table}/rematch/firstSeat`);
         const res = await ref.transaction(cur => (cur != null ? cur : (Math.random() < 0.5 ? mySeat : oppSeat)));
         firstSeat = res.snapshot.val();
       } catch (e) { /* 失敗しても自分視点で続行 */ }
@@ -12419,7 +12419,7 @@ new Vue({
       catch (e) { alert('オンライン認証に失敗しました。通信状態を確認してください。'); return; }
       const code = (window.prompt('観戦したい部屋のコードを入力してください（対戦者の画面上部に表示されているコード）') || '').trim().toUpperCase();
       if (!code) return;
-      // 対戦テスト/シールド戦/創世決戦のいずれも sessions/{code}/battle/{table}/state を
+      // 対戦テスト/シールド戦/創世決戦のいずれも battleTables/{code}/{table}/state を
       // 共通の同期経路として使っているため、モードに応じてtableだけを切り替えれば観戦できる。
       const modeInput = (window.prompt(
         '観戦するモードを番号で選んでください：\n1 = 対戦テスト\n2 = 星紡ぎ戦（シールド戦）\n3 = 創世決戦・卓1\n4 = 創世決戦・卓2\n5 = 理念構築戦',
@@ -13217,7 +13217,7 @@ new Vue({
         });
         return;
       }
-      const path = `sessions/${code}/battle/${table}/state`;
+      const path = `battleTables/${code}/${table}/state`;
       this.battleNet = {
         on: true, code, table, mySeat, oppSeat, statePath: path,
         oppReady: false, _unsub: null, _wasActive: this.battleSample.activeSide === 'self',
@@ -13398,7 +13398,7 @@ new Vue({
     // 観戦モード開始：書き込みは一切行わず、盤面状態を読み取り専用で購読・鏡映する
     async _battleSpectateStart(code, table, mySeat, oppSeat) {
       this._battleSyncStop();
-      const path = `sessions/${code}/battle/${table}/state`;
+      const path = `battleTables/${code}/${table}/state`;
       this.battleNet = {
         on: true, code, table, mySeat, oppSeat, statePath: path,
         oppReady: false, _unsub: null, _wasActive: false,
@@ -18618,8 +18618,8 @@ new Vue({
     async _battleDelegateEffectDisableHand(criteria, untilTurn) {
       const n = this.battleNet;
       const reqId = 'd' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
-      const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
-      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
+      const reqPath = `battleTables/${n.code}/${n.table}/pendingDelegate`;
+      const ansPath = `battleTables/${n.code}/${n.table}/pendingDelegateAnswer/${reqId}`;
       this._battleDelegatePendingBegin('相手の手札への効果適用を処理中…');
       try {
         try {
@@ -18650,7 +18650,7 @@ new Vue({
         this.$set(card, '_effectDisableUntilSide', 'self'); // 自分の視点：自分のターン終了時に解除
         this.$set(card, '_effectDisableUntilTurn', data.untilTurn);
       });
-      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${data.id}`;
+      const ansPath = `battleTables/${n.code}/${n.table}/pendingDelegateAnswer/${data.id}`;
       try {
         await getDb().ref(ansPath).set({ writer: n.mySeat, count: matches.length, ts: Date.now() });
       } catch (e) {
@@ -19186,8 +19186,8 @@ new Vue({
         return this.dslAskOptional(card, kind, promptText);
       }
       const reqId = 'q' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
-      const reqPath = `sessions/${n.code}/battle/${n.table}/pendingConfirm`;
-      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingConfirmAnswer/${reqId}`;
+      const reqPath = `battleTables/${n.code}/${n.table}/pendingConfirm`;
+      const ansPath = `battleTables/${n.code}/${n.table}/pendingConfirmAnswer/${reqId}`;
       this._battleDelegatePendingBegin(`相手が「${kind || '判断'}」を検討中…`);
       try {
         try {
@@ -19223,7 +19223,7 @@ new Vue({
       this.battleRemoteConfirm = null;
       const n = this.battleNet;
       if (!n || !n.on) return;
-      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingConfirmAnswer/${rc.id}`;
+      const ansPath = `battleTables/${n.code}/${n.table}/pendingConfirmAnswer/${rc.id}`;
       try {
         await getDb().ref(ansPath).set({ writer: n.mySeat, answer: !!answer, ts: Date.now() });
       } catch (e) {
@@ -19242,8 +19242,8 @@ new Vue({
         return this.dslAskCustomTargets(promptLabel, pool, need, sourceCard);
       }
       const reqId = 'p' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
-      const reqPath = `sessions/${n.code}/battle/${n.table}/pendingPick`;
-      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingPickAnswer/${reqId}`;
+      const reqPath = `battleTables/${n.code}/${n.table}/pendingPick`;
+      const ansPath = `battleTables/${n.code}/${n.table}/pendingPickAnswer/${reqId}`;
       this._battleDelegatePendingBegin(`相手が「${promptLabel || '選択'}」を選択中…`);
       try {
         try {
@@ -19280,7 +19280,7 @@ new Vue({
       this._battleLastPickId = data.id;
       const candidates = (data.cardNos || []).map(no => this.cardByNo[String(no)]).filter(Boolean);
       this.dslAskCustomTargets(data.prompt, candidates, data.need, null).then(picked => {
-        const ansPath = `sessions/${n.code}/battle/${n.table}/pendingPickAnswer/${data.id}`;
+        const ansPath = `battleTables/${n.code}/${n.table}/pendingPickAnswer/${data.id}`;
         getDb().ref(ansPath).set({ writer: n.mySeat, cardNos: picked.map(c => String(c.no)), ts: Date.now() }).catch(e => {
           console.error('[sync] 選択回答の送信失敗:', e);
         });
@@ -19292,8 +19292,8 @@ new Vue({
     async _battleDelegateOpponentDiscard(need, handOnly) {
       const n = this.battleNet;
       const reqId = 'g' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
-      const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
-      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
+      const reqPath = `battleTables/${n.code}/${n.table}/pendingDelegate`;
+      const ansPath = `battleTables/${n.code}/${n.table}/pendingDelegateAnswer/${reqId}`;
       this._battleDelegatePendingBegin('相手が手札から選択中…');
       try {
         try {
@@ -19353,7 +19353,7 @@ new Vue({
       this._battleSyncSideCounts('self');
       this.dslRefreshStaticAbilities();
       destroyed.forEach(card => this.battleRunDeathKeywordEffects(card));
-      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${data.id}`;
+      const ansPath = `battleTables/${n.code}/${n.table}/pendingDelegateAnswer/${data.id}`;
       try {
         await getDb().ref(ansPath).set({ writer: n.mySeat, cardNos: moved.map(c => String(c.no)), ts: Date.now() });
       } catch (e) {
@@ -19381,7 +19381,7 @@ new Vue({
         this._battleSyncSideCounts('self');
         this.dslRefreshStaticAbilities();
       }
-      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${data.id}`;
+      const ansPath = `battleTables/${n.code}/${n.table}/pendingDelegateAnswer/${data.id}`;
       try {
         await getDb().ref(ansPath).set({ writer: n.mySeat, ok, ts: Date.now() });
       } catch (e) {
@@ -19413,8 +19413,8 @@ new Vue({
     async _battleDelegateReturnToOppHand(card) {
       const n = this.battleNet;
       const reqId = 'r' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
-      const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
-      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
+      const reqPath = `battleTables/${n.code}/${n.table}/pendingDelegate`;
+      const ansPath = `battleTables/${n.code}/${n.table}/pendingDelegateAnswer/${reqId}`;
       this._battleDelegatePendingBegin('相手の手札に戻す処理を実行中…');
       try {
         try {
@@ -20103,8 +20103,8 @@ new Vue({
     async _battleDelegateDeathTrigger(card) {
       const n = this.battleNet;
       const reqId = 't' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
-      const reqPath = `sessions/${n.code}/battle/${n.table}/pendingDelegate`;
-      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${reqId}`;
+      const reqPath = `battleTables/${n.code}/${n.table}/pendingDelegate`;
+      const ansPath = `battleTables/${n.code}/${n.table}/pendingDelegateAnswer/${reqId}`;
       // 破壊による場からの除去は既に完了しているので、応答を待たずにまず今の状態を公開する
       this._battlePublishState();
       try {
@@ -20148,7 +20148,7 @@ new Vue({
       } finally {
         this._battleExecutingDelegatedAbility = false;
       }
-      const ansPath = `sessions/${n.code}/battle/${n.table}/pendingDelegateAnswer/${data.id}`;
+      const ansPath = `battleTables/${n.code}/${n.table}/pendingDelegateAnswer/${data.id}`;
       try {
         await getDb().ref(ansPath).set({ writer: n.mySeat, ok: !!card, ts: Date.now() });
       } catch (e) {

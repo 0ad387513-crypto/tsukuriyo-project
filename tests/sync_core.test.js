@@ -92,7 +92,13 @@ test("database rules deny root access and require authentication", () => {
   assert.match(rules.rooms.$code[".write"], /ownerUid/);
   assert.match(rules.constructRooms.$code[".write"], /ownerUid/);
   assert.deepEqual(rules.publicRooms[".indexOn"], ["kind", "sortKey"]);
-  assert.equal(rules.sessions.$code.battle.$table.state[".write"], undefined);
+  // 対戦同期データは sessions の外（battleTables）に置く。セッション本体の更新は
+  // sessions/{code} 全体の書き戻しで行うため、同じ配下に「revisionは+1」「ログは追記のみ」
+  // という同期用の検証があると、星戦後のセッション更新が全て弾かれてしまう。
+  assert.equal(rules.sessions.$code.battle, undefined);
+  assert.equal(rules.battleTables.$code.$table.state[".write"], undefined);
+  assert.match(rules.battleTables.$code[".write"], /auth != null/);
+  assert.match(rules.battleTables.$code[".read"], /spectatorAccess/);
   assert.equal(rules.globalStats[".write"], false);
   assert.equal(rules.battleReports[".read"], false);
   assert.equal(rules.battleReports[".write"], false);
@@ -118,7 +124,7 @@ test("database rules deny root access and require authentication", () => {
   assert.match(rules.publicRooms.$code.code[".validate"], /length == 6/);
   assert.match(rules.publicRooms.$code[".validate"], /createdAt.*isNumber/);
   assert.match(rules.sessions.$code.seats.$seat.name[".validate"], /matches/);
-  const battleRules = rules.sessions.$code.battle.$table;
+  const battleRules = rules.battleTables.$code.$table;
   assert.match(battleRules.state[".validate"], /revision.*\+ 1/);
   assert.match(battleRules.state[".validate"], /prevHash/);
   assert.match(battleRules.state[".validate"], /seatClaims/);
