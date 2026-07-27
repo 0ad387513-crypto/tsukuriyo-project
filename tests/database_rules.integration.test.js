@@ -325,6 +325,31 @@ test("2クライアントで作成・参加・対戦同期・再接続・再戦�
   assert.equal(finalState.rematch[2], true);
 });
 
+// 対戦テストは他モードと違い、ロビー（phase/seats）を作らずいきなり
+// battle/test/seatClaims から始まる。クライアントは席の二重確保を防ぐため
+// transaction を使う＝まず読み取りが必要だが、セッションがまだ存在しない間は
+// 読み取り条件のどれにも当てはまらず permission_denied で作成できなかった。
+test("対戦テストの作成者は存在しないセッションに座席を確保できる", async () => {
+  const creator = db("bt-a");
+  const joiner = db("bt-b");
+  const claim1 = "sessions/BTEST1/battle/test/seatClaims/1";
+  const claim2 = "sessions/BTEST1/battle/test/seatClaims/2";
+  // 作成側：セッション未作成の状態で読み取り（transactionの前提）→確保
+  await assertSucceeds(get(ref(creator, claim1)));
+  await assertSucceeds(set(ref(creator, claim1), { clientId: "c-a", ownerUid: "bt-a", ts: Date.now() }));
+  // 作成側はそのまま卓のプロトコルと初期盤面まで進められる
+  await assertSucceeds(set(ref(creator, "sessions/BTEST1/battle/test/protocol"), { buildVersion: "1.15.105", createdAt: Date.now() }));
+  await assertSucceeds(set(ref(creator, "sessions/BTEST1/battle/test/state"), {
+    writer: 1, activeSeat: 1, turn: 1, sides: { 1: { life: 10 }, 2: { life: 10 } },
+    buildVersion: "1.15.105", revision: 1, stateHash: "h1", ts: Date.now(),
+  }));
+  // 参加側：コードを知っていれば空席2を確保できる
+  await assertSucceeds(get(ref(joiner, claim2)));
+  await assertSucceeds(set(ref(joiner, claim2), { clientId: "c-b", ownerUid: "bt-b", ts: Date.now() }));
+  // 他人が確保済みの席1は奪えない
+  await assertFails(set(ref(joiner, claim1), { clientId: "c-b", ownerUid: "bt-b", ts: Date.now() }));
+});
+
 test("ストラクチャーデッキは管理者だけ更新できる", async () => {
   await assertFails(set(ref(db(null), "structureDecks/sample"), { name: "sample" }));
   await assertFails(set(ref(db("editor"), "structureDecks/sample"), { name: "sample" }));
