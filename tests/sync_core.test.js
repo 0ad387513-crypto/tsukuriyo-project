@@ -28,6 +28,26 @@ test("Firebase-empty values hash the same before and after persistence", () => {
   assert.equal(syncStateHash(before), syncStateHash(after));
 });
 
+// RTDB は配列と整数キーのオブジェクトを同じ形で保存し、読み戻し時は
+// maxKey < 2 * numKeys のときだけ配列へ変換して返す（ChildrenNode.val）。
+// 席番号をキーにした sides は席の組み合わせによって配列にもオブジェクトにもなるため、
+// 両者が同じハッシュにならないと受信側の整合性チェックが必ず失敗する。
+test("seat-keyed maps hash the same whether Firebase returns an array or an object", () => {
+  const side = seat => ({ life: 10, legacies: [{ no: "51" }] });
+  // Firebaseが配列化して返す組み合わせ（席1と席2 → [ , 席1, 席2 ]）
+  const asObject = { revision: 1, sides: { 1: side(1), 2: side(2) } };
+  const asArray = { revision: 1, sides: [] };
+  asArray.sides[1] = side(1);
+  asArray.sides[2] = side(2);
+  assert.equal(syncStateHash(asObject), syncStateHash(asArray));
+  // 配列化されない組み合わせ（席3と席4）も同じ規則で一致すること
+  const highObject = { revision: 1, sides: { 3: side(3), 4: side(4) } };
+  const highArray = { revision: 1, sides: [] };
+  highArray.sides[3] = side(3);
+  highArray.sides[4] = side(4);
+  assert.equal(syncStateHash(highObject), syncStateHash(highArray));
+});
+
 test("version matching rejects missing and different builds", () => {
   assert.equal(syncVersionsMatch(TSUKURIYO_BUILD_VERSION, TSUKURIYO_BUILD_VERSION), true);
   assert.equal(syncVersionsMatch(TSUKURIYO_BUILD_VERSION, "1.15.55"), false);
