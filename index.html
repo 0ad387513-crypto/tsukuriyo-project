@@ -7742,7 +7742,7 @@
             {{ battleWaitingForRematch ? '相手の応答を待っています…' : ((battleContext.returnView === 'shield' || battleContext.returnView === 'construct') ? '🔁 同じデッキで再戦する' : '🔁 もう一度対戦する') }}
           </button>
           <button v-if="battleContext.returnView === 'shield'" @click="battleReturn">🎴 パック選択からやり直す（シールド戦のトップへ）</button>
-          <button v-else @click="battleReturn">{{ battleContext.returnView === 'top' ? 'トップへ戻る' : (battleContext.returnView === 'game' ? '星戦へ戻る（結果を記録して次の準備へ）' : battleReturnLabel + 'へ戻る') }}</button>
+          <button v-else @click="battleReturn">{{ battleContext.returnView === 'top' ? 'トップへ戻る' : (battleContext.returnView === 'game' ? '次へ進む' : battleReturnLabel + 'へ戻る') }}</button>
         </div>
       </div>
     </div>
@@ -13006,8 +13006,9 @@ new Vue({
         // このターンにまだ引いていなければ改めてドローする。
         if (!options.suppressDraw && activeSide === 'self' && !wasActiveBefore && this._battleLastDrawnTurn !== this.battleSample.turn) {
           this._battleLastDrawnTurn = this.battleSample.turn;
-          const isFirstTurnOfGame = (this.battleSample.turn === 1);
-          if (!isFirstTurnOfGame) this._battleDrawForTurn('self');
+          // 引かないのは「先攻の1ターン目」だけ。turn は両プレイヤー共通のラウンド番号なので、
+          // turn===1 だけで判定すると後攻の1ターン目のドローまで消えてしまう。
+          if (!this._battleIsFirstPlayerOpeningTurn('self')) this._battleDrawForTurn('self');
         }
         // 受信後に静的バフを再評価（DSL常在/進化中 効果が相手側にもある場合）
         if (typeof this.dslRefreshStaticAbilities === 'function') this.dslRefreshStaticAbilities();
@@ -15826,7 +15827,10 @@ new Vue({
       // 自分フィールドのカードを全てアンタップ
       this._battleUntapField(side);
       // 初期手札はマリガン時点で4枚。各プレイヤーは自分のターン開始時に1枚引く。
-      this._battleDrawForTurn(side);
+      // ただし先攻の1ターン目だけは引かない（後攻の1ターン目は引く）。
+      // turn は両プレイヤー共通のラウンド番号（後攻が終えて先攻へ戻るときに+1）なので、
+      // 「turn===1」だけで判定すると後攻の1ターン目まで巻き込んで引けなくなる。
+      if (!this._battleIsFirstPlayerOpeningTurn(side)) this._battleDrawForTurn(side);
       // 疲労ダメージ：ターン11以降に発生（11→1, 12→2, ...）
       // ※自分のターン番号に基づく。相手も同じ番号でダメージを受ける想定。
       const turn = this.battleSample.turn;
@@ -15910,6 +15914,11 @@ new Vue({
       }
     },
     /* ターン開始ドロー（山札があれば1枚。同期で秘匿された相手山札はスキップ） */
+    /* 「先攻プレイヤーの1ターン目」か（＝ターン開始ドローを行わない唯一のケース）。
+       turn は両プレイヤー共通のラウンド番号なので、side が先攻側かどうかまで見る必要がある。 */
+    _battleIsFirstPlayerOpeningTurn(side) {
+      return this.battleSample.turn === 1 && side === this.battleContext.firstSide;
+    },
     _battleDrawForTurn(side) {
       const target = this.battleSample[side];
       if (!target || !Array.isArray(target.deck) || !target.deck.length) return;
@@ -21319,6 +21328,9 @@ new Vue({
     },
     battleFieldDragStart(side, zone, index, e) {
       if (this.battleSample.result || side !== 'self' || !['legacies', 'relics'].includes(zone)) { e.preventDefault(); return; }
+      // 相手ターン中はそもそも掴めないようにする（実行側の battleResolve* でも弾いているが、
+      // 掴めてしまうと攻撃できるように見えてしまうため入口でも止める）
+      if (this.battleSample.activeSide !== 'self') { e.preventDefault(); return; }
       const card = this.battleSample.self[zone][index];
       if (!card) { e.preventDefault(); return; }
       const rect = e.currentTarget && e.currentTarget.getBoundingClientRect ? e.currentTarget.getBoundingClientRect() : null;
@@ -21431,6 +21443,8 @@ new Vue({
     battleFieldPointerDown(side, zone, index, e) {
       if (e.button !== 0) return; // 左クリックのみ
       if (this.battleSample.result || side !== 'self' || !['legacies', 'relics'].includes(zone)) return;
+      // 相手ターン中は掴めないようにする（battleFieldDragStart と同じ理由）
+      if (this.battleSample.activeSide !== 'self') return;
       const player = this.battleSample[side];
       if (!player || !player[zone] || !player[zone][index]) return;
       const rect = e.currentTarget && e.currentTarget.getBoundingClientRect ? e.currentTarget.getBoundingClientRect() : null;
@@ -21680,6 +21694,10 @@ new Vue({
     async battleResolveLegacyBattle(attackerSide, attackerIndex, defenderSide, defenderIndex, opts = {}) {
       if (this.battleNet && this.battleNet.spectating) return;
       if (this.battleSample.result || attackerSide !== 'self') return;
+      // 相手ターン中は戦闘できない（死亡時・守護などの誘発は攻撃側のターン内で解決されるため、
+      // それらは activeSide が攻撃側のままで到達しここには引っかからない）。
+      // CPUのターンは _dslSwapSelfOpp で activeSide ごと入れ替わるので同様に通過する。
+      if (!this.battleEnsureSelfTurn('レガシーでの戦闘')) return;
       const attackerPlayer = this.battleSample[attackerSide];
       const defenderPlayer = this.battleSample[defenderSide];
       const attacker = attackerPlayer && attackerPlayer.legacies[attackerIndex];
@@ -21791,6 +21809,8 @@ new Vue({
     async battleResolveDivineAttack(attackerSide, attackerIndex, attackVisual) {
       if (this.battleNet && this.battleNet.spectating) return;
       if (this.battleSample.result || attackerSide !== 'self') return;
+      // 相手ターン中は神攻できない（戦闘と同じ扱い）
+      if (!this.battleEnsureSelfTurn('神攻')) return;
       const attacker = this.battleSample.self.legacies[attackerIndex];
       if (!attacker) return;
       const can = this.battleLegacyCanAct(attacker, 'divine');
