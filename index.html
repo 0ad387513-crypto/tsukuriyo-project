@@ -1172,29 +1172,49 @@
     /* 全画面いっぱいに敷き詰める。キービジュアルは横長（約2.37:1）のため画面比によって
        左右（山・竹）が切れるが、ロゴと人物は中央にあるので中央基準で拡大する。 */
     background-size: cover; background-position: center; background-repeat: no-repeat;
+    /* 起動演出：わずかに寄った状態から静かに引きながら現れる。1.0倍より縮めないので、
+       引き切ったときに画面の端が余ることはない。 */
+    animation: titleArtRevealKf 2.8s cubic-bezier(.22,.61,.36,1) both;
+  }
+  @keyframes titleArtRevealKf {
+    0%   { opacity: 0; transform: scale(1.06); }
+    100% { opacity: 1; transform: scale(1); }
   }
   .title-screen-start {
     position: relative; z-index: 1;
     margin-bottom: clamp(28px, 7vh, 84px);
     pointer-events: none;
+    /* キービジュアルが現れ切ってから、少し下から浮かび上がる */
+    animation: titleStartAppearKf 1.2s ease-out 1.6s both;
+  }
+  @keyframes titleStartAppearKf {
+    0%   { opacity: 0; transform: translateY(14px); }
+    100% { opacity: 1; transform: translateY(0); }
   }
   .title-screen-start-text {
     display: inline-block;
-    font-size: clamp(15px, 1.7vw, 24px); font-weight: 700;
+    /* 墨絵の雰囲気に合わせて明朝体。ゲーム内の演出テキスト（カミ紹介・終戦カットイン）と
+       同じ指定に揃えている。 */
+    font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'MS PMincho', serif;
+    font-size: clamp(16px, 1.8vw, 26px); font-weight: 600;
     letter-spacing: 0.42em; text-indent: 0.42em; /* 字間ぶんの右寄りを打ち消して中央に揃える */
     color: #23262c;
     text-shadow: 0 1px 10px rgba(255,255,255,0.85), 0 0 2px rgba(255,255,255,0.9);
-    animation: titleStartPulseKf 2.1s ease-in-out infinite;
+    /* 浮かび上がり終えてから明滅を始める。始点・終点を不透明にして継ぎ目を作らない。 */
+    animation: titleStartPulseKf 2.6s ease-in-out 2.8s infinite;
   }
   @keyframes titleStartPulseKf {
-    0%, 100% { opacity: 0.32; }
-    50%      { opacity: 1; }
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.35; }
   }
   /* 退場中はクリックを通す。バックグラウンドタブで開いた等でフェードが完了しないまま
      要素が残っても、画面を操作できなくならないようにするための保険。 */
   .title-screen-fade-leave-active { transition: opacity 0.7s ease; pointer-events: none; }
   .title-screen-fade-leave-to { opacity: 0; }
   @media (prefers-reduced-motion: reduce) {
+    /* 動きを抑える設定では、入場演出も明滅も行わず最初から静止した状態で見せる */
+    .title-screen-art { animation: none; opacity: 1; transform: none; }
+    .title-screen-start { animation: none; opacity: 1; transform: none; }
     .title-screen-start-text { animation: none; opacity: 0.9; }
     .title-screen-fade-leave-active { transition: none; }
   }
@@ -4880,7 +4900,7 @@
          @keydown.enter.prevent="startFromTitle" @keydown.space.prevent="startFromTitle">
       <div class="title-screen-art" aria-hidden="true"></div>
       <div class="title-screen-start">
-        <span class="title-screen-start-text">CLICK TO START</span>
+        <span class="title-screen-start-text">ー CLICK TO START ー</span>
       </div>
     </div>
   </transition>
