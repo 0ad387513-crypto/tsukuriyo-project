@@ -1282,7 +1282,13 @@
   .top-mode-thumb {
     display: block; width: 100%; flex: none; min-height: 0; border-radius: 10px;
     background-color: #10131c; background-size: cover; background-position: center;
-    border: 1px solid rgba(255,255,255,0.12);
+    /* 既定の background-clip:border-box では絵柄が半透明の枠線の下まで回り込み、
+       枠の色と絵柄が混ざって縁だけ色が変わって見える（切れ目のような線の原因）。
+       padding-box で絵柄を枠の内側で止め、枠は不透明の実線にして額縁として見せる。
+       内側の暗いリングは角丸のアンチエイリアスで出る隙間を目立たなくするためのもの。 */
+    background-clip: padding-box;
+    border: 1px solid #3a4258;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.45);
   }
   .top-mode-card.game .top-mode-thumb,
   .top-mode-card.cardlist .top-mode-thumb { aspect-ratio: 1 / 1; }
