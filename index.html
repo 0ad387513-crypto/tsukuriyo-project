@@ -1158,6 +1158,46 @@
   ::-webkit-scrollbar-thumb { background: #3a3f4d; border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: #4a4f5d; }
 
+  /* ===== タイトル画面（起動直後） ===== */
+  .title-screen {
+    position: fixed; inset: 0; z-index: 12100;
+    /* キービジュアルは横長（約2.37:1）。cover だと画面比によって山や竹が大きく切れるため、
+       contain で必ず全体を見せ、余白は和紙の地色で埋めて額装のように見せる。 */
+    background: #efe9df;
+    display: flex; align-items: flex-end; justify-content: center;
+    cursor: pointer; user-select: none;
+  }
+  .title-screen-art {
+    position: absolute; inset: 0;
+    background-image: url('ui_decorations/title-key-visual.webp');
+    background-size: contain; background-position: center; background-repeat: no-repeat;
+  }
+  .title-screen-start {
+    position: relative; z-index: 1;
+    margin-bottom: clamp(28px, 7vh, 84px);
+    pointer-events: none;
+  }
+  .title-screen-start-text {
+    display: inline-block;
+    font-size: clamp(15px, 1.7vw, 24px); font-weight: 700;
+    letter-spacing: 0.42em; text-indent: 0.42em; /* 字間ぶんの右寄りを打ち消して中央に揃える */
+    color: #23262c;
+    text-shadow: 0 1px 10px rgba(255,255,255,0.85), 0 0 2px rgba(255,255,255,0.9);
+    animation: titleStartPulseKf 2.1s ease-in-out infinite;
+  }
+  @keyframes titleStartPulseKf {
+    0%, 100% { opacity: 0.32; }
+    50%      { opacity: 1; }
+  }
+  /* 退場中はクリックを通す。バックグラウンドタブで開いた等でフェードが完了しないまま
+     要素が残っても、画面を操作できなくならないようにするための保険。 */
+  .title-screen-fade-leave-active { transition: opacity 0.7s ease; pointer-events: none; }
+  .title-screen-fade-leave-to { opacity: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    .title-screen-start-text { animation: none; opacity: 0.9; }
+    .title-screen-fade-leave-active { transition: none; }
+  }
+
   /* ===== ツクリヨオンライン トップメニュー ===== */
   .top-menu {
     position: fixed; inset: 0;
@@ -4830,6 +4870,19 @@
 <body>
 <div id="app-loading"><div class="app-loading-spinner"></div><div>読み込み中…</div></div>
 <div id="app" v-cloak class="app" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek }">
+
+  <!-- ===== タイトル画面：起動直後に一度だけ表示し、クリックでトップメニューへ入る =====
+       クリックを挟むことで、ブラウザの自動再生制限で止まっているオーディオも同時に解禁できる。 -->
+  <transition name="title-screen-fade">
+    <div v-if="titleScreenOpen" class="title-screen" @click="startFromTitle"
+         role="button" tabindex="0" aria-label="クリックして開始"
+         @keydown.enter.prevent="startFromTitle" @keydown.space.prevent="startFromTitle">
+      <div class="title-screen-art" aria-hidden="true"></div>
+      <div class="title-screen-start">
+        <span class="title-screen-start-text">CLICK TO START</span>
+      </div>
+    </div>
+  </transition>
 
   <!-- ===== 狭い画面（スマホ等）向けのPC推奨案内：ドラッグ操作中心のため操作しづらいことを伝える ===== -->
   <div v-if="showMobileNotice" class="mobile-notice-banner">
@@ -9716,6 +9769,7 @@ new Vue({
 
     /* ===== トップメニュー（ツクリヨオンライン） ===== */
     appView: 'top',    // 'top' | 'cardlist' | 'shield' | 'game' | 'battle'
+    titleScreenOpen: true, // 起動直後のタイトル画面（クリックでトップメニューへ）
 
     /* ===== 対戦画面（Phase 3：手動対戦操作＋Undo） ===== */
     battleSample: {
@@ -11724,6 +11778,18 @@ new Vue({
       this._sfxPlay('menuselect');
       this.appView = 'cardlist';
       this.sbPreBattleReturn = false;
+    },
+    /* タイトル画面 → トップメニュー。
+       ブラウザは初回のユーザー操作があるまで音を鳴らせないため、この最初のクリックで
+       AudioContext を解除しておく（以降のBGM/SEが確実に鳴るようになる）。 */
+    startFromTitle() {
+      if (!this.titleScreenOpen) return;
+      this.titleScreenOpen = false;
+      try {
+        const ctx = this._bgmAudioCtx && this._bgmAudioCtx();
+        if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+      } catch (e) { /* 解除できなくても表示は進める */ }
+      this._sfxPlay('decision');
     },
     // TOP画面のモードタイルをクリック → 画像＋説明＋開始ボタンの詳細画面へ
     openModeDetail(key) {
