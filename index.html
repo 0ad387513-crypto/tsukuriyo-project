@@ -5626,7 +5626,10 @@
     <div class="header">
       <div class="title-row">
         <button v-if="appView === 'cardlist'" class="back-to-top-btn" @click="goToTop">◀ トップ</button>
-        <h1>ツクリヨ デッキビルダー</h1>
+        <!-- この画面は「カードリスト」以外に、星紡ぎ戦・創世決戦のデッキ確認や
+             理念構築戦のデッキ構築でも使い回している。デッキを組む文脈では
+             従来どおり「デッキビルダー」と名乗る。 -->
+        <h1>{{ appView === 'cardlist' ? 'カードリスト' : 'ツクリヨ デッキビルダー' }}</h1>
         <span class="total">全 {{ filteredCards.length }} 枚<span v-if="driveError" style="color:#fb7"> / Drive読込失敗</span></span>
         <button class="glossary-open-btn" @click="_sfxPlay('decision'); glossaryModalOpen = true" title="キーワード集を開く">📚 キーワード集</button>
         <div class="spacer"></div>
