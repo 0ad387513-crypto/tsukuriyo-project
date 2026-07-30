@@ -1230,6 +1230,10 @@
     justify-content: flex-start; padding: clamp(16px, 2.4vh, 30px) clamp(18px, 2vw, 38px);
     overflow-y: auto; overflow-x: hidden;
   }
+  /* 見出し（ツクリヨオンライン）をタイトル画面へ移したぶん内容が上端に張り付くため、
+     上に余白を足して上下のバランスを取る。画面が低いときは余白を詰め、
+     入り切らない場合は従来どおりスクロールで見られる。 */
+  .top-menu.top-menu-home > .top-mode-grid { margin-top: clamp(0px, 11vh, 130px); }
   /* TOP画面から他画面へ遷移する際、ゆっくりフェードアウトさせる（leave中は最前面に固定して
      4人対戦/シールド戦のような高z-indexのオーバーレイの上からでも確実にフェードが見えるようにする） */
   .top-menu-fade-enter-active { transition: opacity .5s ease; }
@@ -4990,10 +4994,8 @@
           :style="{ left: ((i*61)%100) + '%', animationDelay: ((i%7)*0.9) + 's', animationDuration: (9 + (i%5)*1.6) + 's' }"></span>
     <img class="higanbana-corner higanbana-corner-left" src="ui_decorations/higanbana-left.png" alt="" aria-hidden="true" draggable="false">
     <img class="higanbana-corner higanbana-corner-right" src="ui_decorations/higanbana-right.png" alt="" aria-hidden="true" draggable="false">
-    <div class="top-menu-hero">
-      <div class="top-menu-title">ツクリヨオンライン</div>
-      <div class="top-menu-subtitle">— TSUKURIYO ONLINE —</div>
-    </div>
+    <!-- 起動時のタイトル画面でロゴを見せるようになったため、ここの見出しは表示しない
+         （.top-menu-hero / .top-menu-title は動作確認用ツール画面で引き続き使用する） -->
     <div v-if="resumeSession" class="top-resume-banner">
       <span>進行中のセッションがあります（{{ resumeSession.kind === 'game' ? '創世決戦' : resumeSession.kind === 'shield' ? '星紡ぎ戦' : resumeSession.kind === 'construct' ? '理念構築戦' : '対戦テスト' }} / コード: {{ resumeSession.code }}）</span>
       <button class="top-resume-btn" @click="resumeActiveSession">↩ 戻る</button>
