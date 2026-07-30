@@ -1161,8 +1161,7 @@
   /* ===== タイトル画面（起動直後） ===== */
   .title-screen {
     position: fixed; inset: 0; z-index: 12100;
-    /* キービジュアルは横長（約2.37:1）。cover だと画面比によって山や竹が大きく切れるため、
-       contain で必ず全体を見せ、余白は和紙の地色で埋めて額装のように見せる。 */
+    /* 読み込み中や、万一画像が表示できない場合に備えた和紙の地色 */
     background: #efe9df;
     display: flex; align-items: flex-end; justify-content: center;
     cursor: pointer; user-select: none;
@@ -1170,7 +1169,9 @@
   .title-screen-art {
     position: absolute; inset: 0;
     background-image: url('ui_decorations/title-key-visual.webp');
-    background-size: contain; background-position: center; background-repeat: no-repeat;
+    /* 全画面いっぱいに敷き詰める。キービジュアルは横長（約2.37:1）のため画面比によって
+       左右（山・竹）が切れるが、ロゴと人物は中央にあるので中央基準で拡大する。 */
+    background-size: cover; background-position: center; background-repeat: no-repeat;
   }
   .title-screen-start {
     position: relative; z-index: 1;
