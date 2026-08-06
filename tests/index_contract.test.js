@@ -326,7 +326,7 @@ test("four-player pick arrival and numeric battle seats are explicit", () => {
 });
 
 test("problem reports and replays exclude private battle resources", () => {
-  const replayMethod = html.match(/async battleDownloadReplay\(\)[\s\S]*?\n    },\n    async battleSubmitProblemReport/);
+  const replayMethod = html.match(/async battleDownloadReplay\(\)[\s\S]*?\r?\n    },\r?\n    async battleSubmitProblemReport/);
   assert.ok(replayMethod);
   assert.doesNotMatch(replayMethod[0], /\.hand|\.deck/);
   assert.match(replayMethod[0], /roomCodeMasked/);
@@ -396,6 +396,73 @@ test("summoning sickness uses circling chicks and Orochi has the requested skill
   assert.match(html, /\.summon-piyopiyo i::before \{ content:'🐥'/);
   assert.match(html, /@keyframes piyopiyoChickOrbitKf/);
   assert.match(html, /skill1: "終焉の刻は近づいているぞ"/);
+});
+
+test("Genesis mode opens an eight-scene illustrated world prologue", () => {
+  assert.match(html, /const GENESIS_STORY_SCENES = Object\.freeze/);
+  assert.match(html, /else if \(key === 'game'\) this\.openGenesisStory\(\)/);
+  assert.match(html, /class="genesis-story-overlay"/);
+  assert.match(html, /finishGenesisStory\(\)/);
+  assert.match(html, /genesisStoryKeydown\(event\)/);
+  assert.match(html, /toggleGenesisStoryPlayback\(\)/);
+  assert.match(html, /_genesisStorySchedule\(\)/);
+  assert.match(html, /this\._genesisStoryTimer = setTimeout/);
+  assert.match(html, /genesisStoryPlaying \? '一時停止' : '再生'/);
+  assert.match(html, /width: min\(1760px, calc\(100vw - 8px\)\)/);
+  assert.match(html, /word-break: auto-phrase/);
+  assert.match(html, /text-wrap: balance/);
+  assert.match(html, /genesis-story-auto-label/);
+  assert.match(html, /genesis-story-timeline-fill/);
+  assert.match(html, /class="genesis-story-next"/);
+  assert.match(html, /'次の絵へ'/);
+  assert.doesNotMatch(html, /八つ首の龍/);
+  assert.match(html, /aria-label="クリックして次の絵へ進む"/);
+  assert.match(html, /@click="genesisStoryStep\(1\)"/);
+  assert.match(html, /const GENESIS_STORY_SCENE_DURATION_MS = 10000/);
+  assert.match(html, /const GENESIS_STORY_SCENE_DURATIONS_MS = Object\.freeze\(\[12000, 10000, 12000, 14000, 10000, 10000, 10000, 12000\]\)/);
+  assert.match(html, /const GENESIS_STORY_TOTAL_DURATION_MS = GENESIS_STORY_SCENE_DURATIONS_MS\.reduce/);
+  assert.equal((html.match(/duration: GENESIS_STORY_SCENE_DURATIONS_MS\[\d\]/g) || []).length, 8);
+  assert.match(html, /preload" as="image" href="genesis_story\/01-five-regions\.webp"/);
+  assert.match(html, /width: 110%; max-width: none/);
+  assert.match(html, /translate3d\(-9\.091%,0,0\)/);
+  assert.doesNotMatch(html, /class="genesis-story-nav/);
+  assert.doesNotMatch(html, /第一景|第二景|第三景|第四景|第五景|第六景|第七景|第八景/);
+  assert.match(html, /\u540c\u3058\u8a00\u8449\u3092\u4ea4\u308f\u3057\u306a\u304c\u3089\u3082/);
+  assert.match(html, /\u7121\u6570\u306e\u9f8d/);
+  assert.match(html, /\u4e5d\u67f1\u306e\u30ab\u30df/);
+  assert.match(html, /\u4f55\u306e\u524d\u89e6\u308c\u3082\u306a\u304f/);
+  assert.match(html, /\u53e4\u3044\u4f1d\u627f\u306e\u4e2d\u3060\u3051\u306b\u5b58\u5728\u3059\u308b/);
+  assert.doesNotMatch(html, /\u7570\u306a\u308b\u8a00\u8449|\u516b\u3064\u306e\u9996|\u59cb\u539f\u306e\u9f8d/);
+  const root = path.join(__dirname, "..", "genesis_story");
+  const assets = [
+    "01-five-regions.webp",
+    "02-dragon-awakens.webp",
+    "03-world-falls.webp",
+    "04-kami-battle.webp",
+    "05-empty-victory.webp",
+    "06-legacy-found.webp",
+    "07-legacy-council.webp",
+    "08-genesis-decision.webp",
+  ];
+  for (const asset of assets) {
+    assert.equal(fs.existsSync(path.join(root, asset)), true, `${asset} is missing`);
+    assert.match(html, new RegExp(`genesis_story/${asset.replace('.', '\\.')}`));
+  }
+});
+
+test("Genesis prologue synchronizes its dedicated non-looping BGM", () => {
+  assert.match(html, /genesisOp:\s*\{[^}]*file:\s*'genesis-op\.mp3'[^}]*category:\s*'story'[^}]*loop:\s*false/);
+  assert.match(html, /!\['result', 'story'\]\.includes\(BGM_FILES\[key\]\.category\)/);
+  assert.match(html, /async _bgmPlay\(key, options = \{\}\)/);
+  assert.match(html, /source\.start\(startAt, shouldLoop \? 0 : Math\.min\(requestedOffsetSec, maxOffsetSec\)\)/);
+  assert.match(html, /_genesisStorySceneStartMs\(index\)/);
+  assert.match(html, /_genesisStoryCurrentOffsetMs\(\)/);
+  assert.match(html, /_genesisStoryPlayBgmAt\(0\)/);
+  assert.match(html, /_bgmPlay\('genesisOp', \{ offsetSec:/);
+  assert.match(html, /if \(this\.genesisStoryPlaying && !silent\) this\._genesisStoryPlayBgmAt/);
+  assert.match(html, /_genesisStoryStopBgm\(\)/);
+  assert.match(html, /_genesisStoryRestorePreviousBgm\(\)/);
+  assert.equal(fs.existsSync(path.join(__dirname, "..", "bgm", "genesis-op.mp3")), true);
 });
 
 test("Kashima disables choices whose required targets do not exist", () => {

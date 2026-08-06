@@ -1385,6 +1385,119 @@
     .top-guide-stack { grid-template-columns: 1fr; }
   }
   .genesis-globe-icon { display: inline-block; vertical-align: -0.15em; } /* 創世決戦ロビー見出し等で使用 */
+  /* ===== 創世決戦・世界観導入（絵巻） ===== */
+  .genesis-story-overlay {
+    position: fixed; inset: 0; z-index: 12000;
+    display: grid; place-items: center;
+    padding: clamp(4px, .7vw, 10px);
+    color: #f7edcf;
+    background:
+      radial-gradient(circle at 50% 15%, rgba(117,78,31,.24), transparent 44%),
+      rgba(4,5,7,.96);
+    overflow: auto;
+  }
+  .genesis-story-shell {
+    position: relative;
+    width: min(1760px, calc(100vw - 8px));
+    height: min(1080px, calc(100dvh - 8px));
+    min-height: 520px;
+    display: grid; grid-template-rows: auto minmax(0, 1fr);
+    border: 1px solid rgba(212,177,105,.62);
+    border-radius: 10px;
+    background: linear-gradient(180deg, #0b0c0f 0%, #101014 100%);
+    box-shadow: 0 24px 90px #000, inset 0 0 70px rgba(169,117,43,.08);
+    overflow: hidden;
+  }
+  .genesis-story-header {
+    min-height: 46px; display: flex; align-items: center; gap: 10px;
+    padding: 7px 12px 7px 16px; border-bottom: 1px solid rgba(212,177,105,.27);
+    background: rgba(4,5,7,.88);
+  }
+  .genesis-story-mark { color: #d8b464; font-family: serif; font-weight: 800; letter-spacing: .18em; }
+  .genesis-story-header-spacer { margin-left: auto; }
+  .genesis-story-auto-status {
+    display: flex; align-items: center; gap: 8px; min-width: min(340px, 30vw);
+    color: #ead9ad; font: 700 12px/1.2 serif; letter-spacing: .08em;
+  }
+  .genesis-story-auto-light {
+    width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%;
+    background: #efc45f; box-shadow: 0 0 10px #e9b93f;
+    animation: genesisStoryAutoPulse 1.35s ease-in-out infinite;
+  }
+  .genesis-story-timeline {
+    position: relative; flex: 1 1 120px; height: 4px; overflow: hidden;
+    border-radius: 999px; background: rgba(255,255,255,.15);
+  }
+  .genesis-story-timeline-fill {
+    position: absolute; inset: 0; transform-origin: left center;
+    background: linear-gradient(90deg, #9a6d22, #f4cf73);
+    animation: genesisStoryTimeline linear both;
+  }
+  .genesis-story-timeline-fill.paused, .genesis-story-auto-light.paused { animation-play-state: paused; }
+  @keyframes genesisStoryTimeline { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  @keyframes genesisStoryAutoPulse { 0%,100% { opacity: .42; } 50% { opacity: 1; } }
+  .genesis-story-play-toggle {
+    min-height: 34px; padding: 6px 12px; border: 1px solid #74684f; border-radius: 6px;
+    color: #f1e5c6; background: #242118; cursor: pointer; font-weight: 700;
+  }
+  .genesis-story-next {
+    min-height: 34px; padding: 6px 13px; border: 1px solid #a9823e; border-radius: 6px;
+    color: #fff1c8; background: linear-gradient(180deg, #6d4d1d, #3b2b17); cursor: pointer; font-weight: 800;
+  }
+  .genesis-story-next:hover, .genesis-story-next:focus-visible { filter: brightness(1.18); }
+  .genesis-story-skip {
+    min-height: 34px; padding: 6px 13px; border: 1px solid #626779; border-radius: 6px;
+    color: #dfe3ed; background: #20232c; cursor: pointer;
+  }
+  .genesis-story-skip:hover, .genesis-story-skip:focus-visible { border-color: #d8b464; color: #fff4cf; }
+  .genesis-story-media { position: relative; min-height: 0; overflow: hidden; background: #050505; cursor: pointer; }
+  .genesis-story-media:focus-visible { outline: 3px solid #d8b464; outline-offset: -3px; }
+  .genesis-story-figure { position: absolute; inset: 0; margin: 0; overflow: hidden; }
+  .genesis-story-image {
+    width: 110%; max-width: none; height: 100%; display: block; object-fit: cover; object-position: center;
+    will-change: transform;
+    animation: genesisStoryPan linear both;
+  }
+  .genesis-story-image.paused { animation-play-state: paused; }
+  .genesis-story-figure::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    box-shadow: inset 0 0 90px 26px rgba(0,0,0,.58);
+    background: linear-gradient(180deg, rgba(0,0,0,.05) 55%, rgba(0,0,0,.44));
+  }
+  @keyframes genesisStoryPan {
+    from { transform: translate3d(0,0,0) scale(1.005); }
+    to { transform: translate3d(-9.091%,0,0) scale(1.005); }
+  }
+  .genesis-story-copy {
+    position: absolute; z-index: 3; left: 0; right: 0; bottom: 0;
+    padding: clamp(56px, 8vh, 92px) clamp(40px, 8vw, 150px) clamp(42px, 6vh, 68px);
+    text-align: center;
+    background: linear-gradient(180deg, transparent 0%, rgba(4,4,6,.62) 24%, rgba(4,4,6,.94) 100%);
+    pointer-events: none;
+  }
+  .genesis-story-text {
+    max-width: 1320px; min-height: 3.8em; margin: 0 auto;
+    color: #fff4dc; font: 600 clamp(17px, 1.5vw, 24px)/1.85 serif;
+    letter-spacing: .035em; line-break: strict; word-break: auto-phrase; overflow-wrap: normal;
+    text-wrap: balance; text-shadow: 0 2px 5px #000, 0 0 18px #000;
+  }
+  .genesis-story-scene-enter-active, .genesis-story-scene-leave-active { transition: opacity .55s ease, transform .55s ease; }
+  .genesis-story-scene-enter-from { opacity: 0; transform: translateX(22px); }
+  .genesis-story-scene-leave-to { opacity: 0; transform: translateX(-22px); }
+  @media (max-width: 700px) {
+    .genesis-story-overlay { padding: 0; }
+    .genesis-story-shell { width: 100vw; height: 100dvh; min-height: 440px; border: 0; border-radius: 0; }
+    .genesis-story-header { flex-wrap: wrap; }
+    .genesis-story-mark { font-size: 12px; letter-spacing: .12em; }
+    .genesis-story-copy { padding: 70px 34px 32px; }
+    .genesis-story-text { min-height: 6.8em; font-size: clamp(15px, 3.8vw, 18px); line-height: 1.72; }
+    .genesis-story-auto-status { order: 2; flex: 1 0 100%; min-width: 120px; }
+    .genesis-story-play-toggle, .genesis-story-next, .genesis-story-skip { padding-inline: 9px; font-size: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .genesis-story-image { animation: none; }
+    .genesis-story-scene-enter-active, .genesis-story-scene-leave-active { transition-duration: .01ms; }
+  }
   /* ===== モード詳細画面：TOPのモードタイルをクリックした遷移先（画像＋説明＋開始ボタン） ===== */
   .mode-detail-back {
     position: absolute; top: 18px; left: 18px; z-index: 2;
@@ -4889,6 +5002,7 @@
 <!-- TOP の4枚は Vue の初期化や音声処理より先に読み込みを開始する。 -->
 <link rel="preload" as="image" href="top_mode_icons/cardlist.webp" fetchpriority="high">
 <link rel="preload" as="image" href="top_mode_icons/genesis4p.webp" fetchpriority="high">
+<link rel="preload" as="image" href="genesis_story/01-five-regions.webp">
 <link rel="preload" as="image" href="top_mode_icons/construct2p-oblong.webp" fetchpriority="high">
 <link rel="preload" as="image" href="top_mode_icons/shield2p-oblong.webp" fetchpriority="high">
 </head>
@@ -5105,6 +5219,66 @@
         <div class="mode-detail-desc-heading">詳しい説明</div>
         <div class="mode-detail-desc-body">{{ modeDetailInfo.desc }}</div>
         <button class="mode-detail-start-btn" @click="modeDetailStart">{{ modeDetailInfo.startLabel }}</button>
+      </div>
+    </div>
+  </div>
+  </transition>
+
+  <!-- ===== 創世決戦・世界観導入 ===== -->
+  <transition name="top-menu-fade">
+  <div v-if="genesisStoryOpen && genesisStoryScene"
+       ref="genesisStoryDialog"
+       class="genesis-story-overlay"
+       role="dialog"
+       aria-modal="true"
+       aria-label="創世決戦 世界観導入"
+       tabindex="-1"
+       @keydown="genesisStoryKeydown">
+    <div class="genesis-story-shell">
+      <header class="genesis-story-header">
+        <span class="genesis-story-mark">星の記憶</span>
+        <span class="genesis-story-header-spacer"></span>
+        <div class="genesis-story-auto-status" aria-live="polite">
+          <span class="genesis-story-auto-light" :class="{ paused: !genesisStoryPlaying }" aria-hidden="true"></span>
+          <span class="genesis-story-auto-label">{{ genesisStoryPlaying ? '自動再生中' : '一時停止中' }}</span>
+          <span class="genesis-story-timeline" aria-hidden="true">
+            <span class="genesis-story-timeline-fill"
+                  :key="'genesisStoryTimeline' + genesisStoryScene.id"
+                  :class="{ paused: !genesisStoryPlaying }"
+                  :style="{ animationDuration: genesisStoryScene.duration + 'ms' }"></span>
+          </span>
+        </div>
+        <button class="genesis-story-play-toggle"
+                :aria-pressed="!genesisStoryPlaying"
+                @click="toggleGenesisStoryPlayback">
+          {{ genesisStoryPlaying ? '一時停止' : '再生' }}
+        </button>
+        <button class="genesis-story-next" @click="genesisStoryStep(1)">
+          {{ genesisStoryIndex === genesisStoryScenes.length - 1 ? '創世決戦へ' : '次の絵へ' }} ›
+        </button>
+        <button class="genesis-story-skip" @click="finishGenesisStory">物語をスキップ</button>
+      </header>
+      <div class="genesis-story-media"
+           role="button"
+           tabindex="0"
+           aria-label="クリックして次の絵へ進む"
+           title="クリックして次の絵へ"
+           @click="genesisStoryStep(1)"
+           @keydown.enter.prevent="genesisStoryStep(1)"
+           @keydown.space.prevent="genesisStoryStep(1)">
+        <transition name="genesis-story-scene" mode="out-in">
+          <figure class="genesis-story-figure" :key="genesisStoryScene.id">
+            <img class="genesis-story-image"
+                 :class="{ paused: !genesisStoryPlaying }"
+                 :style="{ animationDuration: genesisStoryScene.duration + 'ms' }"
+                 :src="genesisStoryScene.image"
+                 :alt="genesisStoryScene.alt"
+                 draggable="false">
+          </figure>
+        </transition>
+        <section class="genesis-story-copy" aria-live="polite" aria-atomic="true">
+          <p class="genesis-story-text">{{ genesisStoryScene.text }}</p>
+        </section>
       </div>
     </div>
   </div>
@@ -9073,6 +9247,7 @@ function loadStoredChoice(storageKey, choices, defaultValue) {
 // BGM：画面カテゴリごとの候補曲一覧（otherは対戦以外の全画面、battleは対戦画面用）
 // roundは4人対戦の星戦（1〜3回目）専用のBGM群を分けるためのタグ（4人対戦以外ではbattleカテゴリとして通常通り扱う）
 const BGM_FILES = {
+  genesisOp:    { name: '創世決戦OP',   file: 'genesis-op.mp3',       category: 'story', loop: false },
   ryu:          { name: '龍の舞う和都', file: '龍の舞う和都.mp3', category: 'other', loopStartSec: 101.00, loopEndSec: 169.50 },
   kazakiri:     { name: '風切',         file: '風切.mp3',         category: 'battle', round: 1 },
   kakeraSaki:   { name: 'カケラ咲キ乱レテ', file: 'カケラ咲キ乱レテ.mp3', category: 'battle', round: 1, loopStartSec: 6.40, loopEndSec: 208.00 },
@@ -9466,6 +9641,61 @@ const MODE_DETAIL_INFO = {
     startLabel: '星紡ぎ戦を開始する',
   },
 };
+
+/* 創世決戦を始める前に自動再生する、約90秒・8枚の紙芝居形式の世界観導入。 */
+const GENESIS_STORY_SCENE_DURATION_MS = 10000;
+const GENESIS_STORY_SCENE_DURATIONS_MS = Object.freeze([12000, 10000, 12000, 14000, 10000, 10000, 10000, 12000]);
+const GENESIS_STORY_TOTAL_DURATION_MS = GENESIS_STORY_SCENE_DURATIONS_MS.reduce((total, duration) => total + duration, 0);
+const GENESIS_STORY_SCENES = Object.freeze([
+  Object.freeze({
+    id: 'five-regions', duration: GENESIS_STORY_SCENE_DURATIONS_MS[0],
+    image: 'genesis_story/01-five-regions.webp',
+    alt: '忍者、侍、人獣、神使、妖怪の五種族が別々の土地で暮らす世界を描いた水墨画',
+    text: 'かつて、この星には五つの種族が暮らしていた。忍者は山奥の不知火の里に、侍は御剣城とその城下町に、人獣は森の木漏郷に、神使は神聖な天根ノ社に、妖怪は地底の逢魔ヶ淵に、それぞれの邦を築いた。同じ言葉を交わしながらも、五つの種族は隔たった土地で、それぞれの暮らしを営んでいた。'
+  }),
+  Object.freeze({
+    id: 'dragon-awakens', duration: GENESIS_STORY_SCENE_DURATIONS_MS[1],
+    image: 'genesis_story/02-dragon-awakens.webp',
+    alt: '何の前触れもなく、空と大地と海を埋めるように突然現れた多種多様な龍群の水墨画',
+    text: 'しかし、その穏やかな時代は突然終わりを告げる。何の前触れもなく、どこからともなく、無数の龍が世界に姿を現した。翼で空を覆う龍、波間を進む龍、大地を踏み破る龍。その姿も大きさもさまざまで、重なり合う咆哮が星全体を震わせた。'
+  }),
+  Object.freeze({
+    id: 'world-falls', duration: GENESIS_STORY_SCENE_DURATIONS_MS[2],
+    image: 'genesis_story/03-world-falls.webp',
+    alt: '空と海と大地を埋め尽くす龍群が、五種族の邦を滅ぼす様子を描いた水墨画',
+    text: '突如として現れた龍群は、空と海と大地のすべてから五つの邦へ押し寄せた。炎を吐く龍が町を焼き、海龍が津波を起こし、巨大な龍が森も城も社も踏み破った。離れた土地で暮らしていた五つの種族は、抗う間もないまま、同じ滅びの中へと呑み込まれていった。'
+  }),
+  Object.freeze({
+    id: 'kami-battle', duration: GENESIS_STORY_SCENE_DURATIONS_MS[3],
+    image: 'genesis_story/04-kami-battle.webp',
+    alt: '異なる色と力をまとう九柱のカミが、世界を覆う龍群に立ち向かう水墨画',
+    text: '五つの種族が滅びの淵へ追い詰められたそのとき、九つの人影がどこからともなく戦場に現れた。それは、人々が古い伝承の中だけに存在すると信じていた、カミと呼ばれる者たちだった。九柱のカミは人々の前に立ち、天地を埋め尽くす龍群を退けるため、長く苛烈な戦いへ身を投じた。'
+  }),
+  Object.freeze({
+    id: 'empty-victory', duration: GENESIS_STORY_SCENE_DURATIONS_MS[4],
+    image: 'genesis_story/05-empty-victory.webp',
+    alt: '滅びた邦々を見下ろし、勝利の空しさに立ち尽くす九柱のカミを描いた水墨画',
+    text: '長い死闘の末、九柱のカミはついに龍群を討ち滅ぼした。しかし、焼け落ちた邦々を見渡しても、勝利を分かち合う声はどこからも聞こえなかった。守ろうとした人々も、帰るべき町も、未来を託された子どもたちも、すべて失われていた。静まり返った星には、傷ついたカミたちだけが残された。'
+  }),
+  Object.freeze({
+    id: 'legacy-found', duration: GENESIS_STORY_SCENE_DURATIONS_MS[5],
+    image: 'genesis_story/06-legacy-found.webp',
+    alt: '廃墟の中で輝く巨大な結晶と、それを取り囲む九柱のカミを描いた水墨画',
+    text: 'それでも、終わりきったはずの大地に、消えない光が残っていた。廃墟をさまようカミたちが見つけたのは、失われた命の姿、五つの文明が築いた知恵、そして人々が未来へ託した願いを宿す結晶だった。星そのものが抱え続けたその記憶を、カミたちは――レガシーと名付けた。'
+  }),
+  Object.freeze({
+    id: 'legacy-council', duration: GENESIS_STORY_SCENE_DURATIONS_MS[6],
+    image: 'genesis_story/07-legacy-council.webp',
+    alt: '円形の議事場に集い、星の記憶の使い道を議論する九柱のカミを描いた水墨画',
+    text: 'カミたちはレガシーを集め、その力で失われた星に新たな世界を創ろうと考えた。だが、どのような世界を創るべきかという問いに、九柱が同じ答えを出すことはできなかった。誰を、何を、どのように蘇らせるのか。言葉を重ねるほど、共通の敵を前に並び立っていた九柱の考えは、少しずつ異なる道へと分かれていった。'
+  }),
+  Object.freeze({
+    id: 'genesis-decision', duration: GENESIS_STORY_SCENE_DURATIONS_MS[7],
+    image: 'genesis_story/08-genesis-decision.webp',
+    alt: '廃墟を背にそれぞれの理念を掲げ、別々の高台で向かい合う九柱のカミを描いた水墨画',
+    text: '人々が失われた今、次の世界の形を決められるのはカミたちだけだった。九柱はそれぞれの理念こそ星を救う道だと信じ、レガシーに宿る記憶と力を掲げた。言葉で譲れないのなら、次の創世を担う者を戦いで定める。こうしてカミたちは、かつて共に龍群と戦った仲間と再び向かい合った。星の未来と創世を懸けた決戦が、今始まろうとしていた。'
+  }),
+]);
 
 /* ================================================================== */
 /* キーワード能力辞書（クリックでポップアップ表示）                     */
@@ -10018,6 +10248,10 @@ new Vue({
     manualModalOpen: false, // TOP画面のプレイガイド（説明書）モーダル
     howToPlayModalOpen: false, // TOP画面のカミ別ピックガイドモーダル
     modeDetailKey: null, // TOP画面のモード詳細画面（appView==='modeDetail'）：'game'|'construct'|'shield'。MODE_DETAIL_INFOのキー
+    genesisStoryOpen: false, // 創世決戦開始前の世界観導入
+    genesisStoryIndex: 0,
+    genesisStoryPlaying: false,
+    genesisStoryRemainingMs: GENESIS_STORY_SCENE_DURATION_MS,
     battleHistoryModalOpen: false, // TOP画面の戦績・対戦履歴モーダル
     battleHistoryList: [],          // 表示中の対戦履歴一覧（localStorageから読み込み）
     battleHistoryFilter: 'all',     // all / win / loss
@@ -10046,7 +10280,7 @@ new Vue({
   computed: {
     /* BGM選択メニュー用：{key, name} の配列（BGM_FILESそのものではなく整形して渡す） */
     bgmTrackOptions() {
-      return Object.keys(BGM_FILES).filter(key => BGM_FILES[key].category !== 'result').map(key => ({ key, name: BGM_FILES[key].name }));
+      return Object.keys(BGM_FILES).filter(key => !['result', 'story'].includes(BGM_FILES[key].category)).map(key => ({ key, name: BGM_FILES[key].name }));
     },
     /* デッキビルダー本体（pool/deck）の表示可否
        - カードリスト画面
@@ -10436,6 +10670,12 @@ new Vue({
     // TOP画面のモード詳細画面：現在選択中のモードの表示内容（MODE_DETAIL_INFO参照）
     modeDetailInfo() {
       return MODE_DETAIL_INFO[this.modeDetailKey] || null;
+    },
+    genesisStoryScenes() {
+      return GENESIS_STORY_SCENES;
+    },
+    genesisStoryScene() {
+      return GENESIS_STORY_SCENES[this.genesisStoryIndex] || GENESIS_STORY_SCENES[0];
     },
     // エモートホイール：EMOTE_TYPES（6件）を中心から均等な円状に配置するための座標を計算
     emoteWheelItems() {
@@ -11827,9 +12067,150 @@ new Vue({
     modeDetailStart() {
       const key = this.modeDetailKey;
       if (key === 'cardlist') this.goToCardlist();
-      else if (key === 'game') this.goToGame();
+      else if (key === 'game') this.openGenesisStory();
       else if (key === 'shield') this.goToShield();
       else if (key === 'construct') this.goToConstruct();
+    },
+    openGenesisStory() {
+      this._sfxPlay('decision');
+      this._genesisStoryClearTimer();
+      this._genesisStoryPreviousBgmKey = this.bgmCurrentKey;
+      this.genesisStoryIndex = 0;
+      this.genesisStoryRemainingMs = Number(GENESIS_STORY_SCENES[0].duration) || GENESIS_STORY_SCENE_DURATION_MS;
+      this.genesisStoryPlaying = true;
+      this.genesisStoryOpen = true;
+      this._genesisStoryPlayBgmAt(0);
+      // 表示後に残りの絵を読み込み、最初の一枚を待たせず場面転換を滑らかにする。
+      this.$nextTick(() => {
+        if (this.$refs.genesisStoryDialog) this.$refs.genesisStoryDialog.focus();
+        GENESIS_STORY_SCENES.slice(1).forEach(scene => {
+          const image = new Image();
+          image.src = scene.image;
+        });
+        this._genesisStorySchedule();
+      });
+    },
+    _genesisStoryClearTimer() {
+      if (this._genesisStoryTimer) clearTimeout(this._genesisStoryTimer);
+      this._genesisStoryTimer = null;
+      this._genesisStoryStartedAt = 0;
+    },
+    _genesisStorySceneStartMs(index) {
+      const end = Math.max(0, Math.min(GENESIS_STORY_SCENES.length, Number(index) || 0));
+      return GENESIS_STORY_SCENES.slice(0, end).reduce((sum, scene) => {
+        return sum + (Number(scene.duration) || GENESIS_STORY_SCENE_DURATION_MS);
+      }, 0);
+    },
+    _genesisStoryCurrentOffsetMs() {
+      const scene = GENESIS_STORY_SCENES[this.genesisStoryIndex] || GENESIS_STORY_SCENES[0];
+      const duration = Number(scene.duration) || GENESIS_STORY_SCENE_DURATION_MS;
+      let remaining = Math.max(0, Math.min(duration, Number(this.genesisStoryRemainingMs) || duration));
+      if (this.genesisStoryPlaying && this._genesisStoryStartedAt) {
+        remaining = Math.max(0, remaining - (Date.now() - this._genesisStoryStartedAt));
+      }
+      return this._genesisStorySceneStartMs(this.genesisStoryIndex) + (duration - remaining);
+    },
+    _genesisStoryStopBgm() {
+      // Decode中でも、この後に遅れて再生が始まらないように読み込みを無効化する。
+      this._bgmLoadSeq = (this._bgmLoadSeq || 0) + 1;
+      this._bgmStopCurrentSource();
+      if (this.bgmCurrentKey === 'genesisOp') this.bgmCurrentKey = null;
+    },
+    _genesisStoryPlayBgmAt(offsetMs) {
+      if (!this.genesisStoryOpen || !this.genesisStoryPlaying) return;
+      this._bgmPlay('genesisOp', { offsetSec: Math.max(0, Number(offsetMs) || 0) / 1000 });
+    },
+    _genesisStoryRestorePreviousBgm() {
+      const previous = this._genesisStoryPreviousBgmKey;
+      this._genesisStoryPreviousBgmKey = null;
+      if (previous && BGM_FILES[previous] && previous !== 'genesisOp') {
+        this._bgmPlay(previous);
+      } else if (this.bgmAuto) {
+        this._bgmAutoPickForView(this.appView);
+      }
+    },
+    _genesisStorySchedule() {
+      this._genesisStoryClearTimer();
+      if (!this.genesisStoryOpen || !this.genesisStoryPlaying) return;
+      const scene = GENESIS_STORY_SCENES[this.genesisStoryIndex] || GENESIS_STORY_SCENES[0];
+      const fallback = Number(scene.duration) || GENESIS_STORY_SCENE_DURATION_MS;
+      const wait = Math.max(800, Number(this.genesisStoryRemainingMs) || fallback);
+      this.genesisStoryRemainingMs = wait;
+      this._genesisStoryStartedAt = Date.now();
+      this._genesisStoryTimer = setTimeout(() => {
+        this._genesisStoryTimer = null;
+        this.genesisStoryStep(1, true);
+      }, wait);
+    },
+    toggleGenesisStoryPlayback() {
+      if (!this.genesisStoryOpen) return;
+      if (this.genesisStoryPlaying) {
+        const elapsed = this._genesisStoryStartedAt ? Date.now() - this._genesisStoryStartedAt : 0;
+        this.genesisStoryRemainingMs = Math.max(800, this.genesisStoryRemainingMs - elapsed);
+        this.genesisStoryPlaying = false;
+        this._genesisStoryClearTimer();
+        this._genesisStoryStopBgm();
+      } else {
+        this.genesisStoryPlaying = true;
+        this._genesisStoryPlayBgmAt(this._genesisStoryCurrentOffsetMs());
+        this._genesisStorySchedule();
+      }
+    },
+    genesisStoryGoTo(index, silent = false) {
+      const next = Math.max(0, Math.min(GENESIS_STORY_SCENES.length - 1, Number(index) || 0));
+      if (next === this.genesisStoryIndex) return;
+      if (!silent) this._sfxPlay('menuselect');
+      this._genesisStoryClearTimer();
+      this.genesisStoryIndex = next;
+      this.genesisStoryRemainingMs = Number(GENESIS_STORY_SCENES[next].duration) || GENESIS_STORY_SCENE_DURATION_MS;
+      // 時間経過による自動進行ではBGMを通して流し、手動移動のときだけ場面の先頭へシークする。
+      if (this.genesisStoryPlaying && !silent) this._genesisStoryPlayBgmAt(this._genesisStorySceneStartMs(next));
+      this.$nextTick(() => this._genesisStorySchedule());
+    },
+    genesisStoryStep(delta, automatic = false) {
+      if (delta > 0 && this.genesisStoryIndex >= GENESIS_STORY_SCENES.length - 1) {
+        this.finishGenesisStory();
+        return;
+      }
+      this.genesisStoryGoTo(this.genesisStoryIndex + delta, automatic);
+    },
+    genesisStoryKeydown(event) {
+      if (!event) return;
+      if (event.key === 'ArrowRight' || event.key === 'PageDown') {
+        event.preventDefault();
+        this.genesisStoryStep(1);
+      } else if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+        event.preventDefault();
+        this.genesisStoryStep(-1);
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        this.genesisStoryGoTo(0);
+      } else if (event.key === 'End') {
+        event.preventDefault();
+        this.genesisStoryGoTo(GENESIS_STORY_SCENES.length - 1);
+      } else if (event.key === ' ' || event.key === 'Spacebar') {
+        event.preventDefault();
+        this.toggleGenesisStoryPlayback();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        this._sfxPlay('cancel');
+        this._genesisStoryClearTimer();
+        this._genesisStoryStopBgm();
+        this.genesisStoryPlaying = false;
+        this.genesisStoryOpen = false;
+        this._genesisStoryRestorePreviousBgm();
+      }
+    },
+    finishGenesisStory() {
+      this._genesisStoryClearTimer();
+      this._genesisStoryStopBgm();
+      this.genesisStoryPlaying = false;
+      this.genesisStoryOpen = false;
+      this.modeDetailKey = null;
+      this.goToGame();
+      const previous = this._genesisStoryPreviousBgmKey;
+      this._genesisStoryPreviousBgmKey = null;
+      if (!this.bgmAuto && previous && BGM_FILES[previous] && previous !== 'genesisOp') this._bgmPlay(previous);
     },
     modeDetailBack() {
       this._sfxPlay('cancel');
@@ -13917,7 +14298,7 @@ new Vue({
     /* 指定キーのBGMをループ再生に切り替える（非同期：デコード・解析完了後に再生開始）。
        ループ対象の曲は「頭からloopEndSecまでを1回だけ再生（イントロ含む）」→
        「loopEndSecに達した瞬間にクロスフェード済みループバッファへ引き継いで無限ループ」の2段構成。 */
-    async _bgmPlay(key) {
+    async _bgmPlay(key, options = {}) {
       const entry = BGM_FILES[key];
       if (!entry) return;
       const loadToken = (this._bgmLoadSeq = (this._bgmLoadSeq || 0) + 1);
@@ -13935,6 +14316,7 @@ new Vue({
       if (loadToken !== this._bgmLoadSeq) return;
       this._bgmStopCurrentSource();
       const shouldLoop = entry.loop !== false;
+      const requestedOffsetSec = Math.max(0, Number(options.offsetSec) || 0);
       const nodes = [];
       const startAt = ctx.currentTime;
       if (shouldLoop && media.loopBuffer) {
@@ -13963,7 +14345,8 @@ new Vue({
           source.loopEnd = media.silenceBounds.loopEnd;
         }
         source.connect(this._bgmGain);
-        source.start(startAt);
+        const maxOffsetSec = Math.max(0, media.buffer.duration - 0.01);
+        source.start(startAt, shouldLoop ? 0 : Math.min(requestedOffsetSec, maxOffsetSec));
         nodes.push(source);
       }
       this._bgmSourceNodes = nodes;
@@ -27260,6 +27643,8 @@ new Vue({
     window.removeEventListener("beforeunload", this._battleBeforeUnload);
     this._battleStopTurnTimer();
     this._battleStopTurnTitleFlash();
+    this._genesisStoryClearTimer();
+    if (this.genesisStoryOpen || this.bgmCurrentKey === 'genesisOp') this._genesisStoryStopBgm();
     this._gsUnsubscribePublicList();
     this._sbUnsubscribePublicList();
     this._cbUnsubscribePublicList();
