@@ -1397,6 +1397,16 @@
     .top-mode-guide-btn { min-height: 52px; }
     .top-guide-stack { grid-template-columns: 1fr; }
   }
+  /* ===== 再生中のBGM名：左下に小さく出して数秒で消す（操作の邪魔にならないようクリックは素通り） ===== */
+  .bgm-now-playing {
+    position: fixed; left: 12px; bottom: 12px; z-index: 12200; pointer-events: none;
+    display: flex; align-items: center; gap: 6px; padding: 5px 12px 5px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 700; color: #f1e6cf; letter-spacing: .04em;
+    background: rgba(12, 12, 20, .78); border: 1px solid rgba(226, 184, 92, .55); box-shadow: 0 4px 14px rgba(0, 0, 0, .5);
+  }
+  .bgm-now-note { color: #f2cd7a; font-size: 13px; }
+  .bgm-now-fade-enter-active, .bgm-now-fade-leave-active { transition: opacity .5s, transform .5s; }
+  .bgm-now-fade-enter, .bgm-now-fade-leave-to { opacity: 0; transform: translateY(6px); }
   /* ===== チュートリアル外伝：練習用ピック画面（選別の儀の見た目を流用） ===== */
   .tutorial-pick-overlay {
     position: fixed; inset: 0; z-index: 200; overflow-y: auto;
@@ -3189,6 +3199,22 @@
   }
   /* 自分側は下から積む（カミ→ステータスは縦並びだが画面下に近いほど Stats は下） */
 
+  /* ===== フィールド背景（種族の里） ===== */
+  .battle-main.has-field { isolation: isolate; }
+  .battle-field-bg {
+    position: absolute; inset: -2px; z-index: -1; pointer-events: none; border-radius: 6px; overflow: hidden;
+    background-color: #07080d; background-size: cover; background-position: center;
+  }
+  .battle-field-name {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    font-size: 11px; font-weight: 800; letter-spacing: .3em; color: rgba(232, 214, 176, .28); white-space: nowrap;
+  }
+  /* 背景が見えるよう置き場を半透明にする（枠線は残して位置が分かるように） */
+  .battle-main.has-field .battle-zone {
+    background: rgba(8, 10, 18, .3);
+    border-color: rgba(170, 180, 210, .42);
+  }
+  .battle-main.has-field .battle-zone-label { text-shadow: 0 1px 4px #000, 0 0 8px #000; }
   /* ===== ゾーン共通 ===== */
   .battle-zone {
     background: #1a2030; border: 1px solid #2a3548; border-radius: 5px;
@@ -7232,7 +7258,12 @@
 
     <div class="battle-board">
       <!-- ========== Main エリア（4行） ========== -->
-      <div class="battle-main" :class="{ 'battle-shake': battleShakeActive, 'battle-shake-final': battleShakeFinal }">
+      <div class="battle-main" :class="{ 'battle-shake': battleShakeActive, 'battle-shake-final': battleShakeFinal, 'has-field': !!battleFieldTheme }">
+        <!-- フィールド背景（各種族の里）。置き場の枠は半透明にして、位置はそのまま分かるようにする -->
+        <div v-if="battleFieldTheme" class="battle-field-bg" :class="'field-' + battleFieldTheme.key" aria-hidden="true"
+             :style="{ backgroundImage: 'url(' + battleFieldTheme.file + ')' }">
+          <span class="battle-field-name">{{ battleFieldTheme.label }}</span>
+        </div>
         <div v-if="battleHitFlashActive" class="battle-hit-flash" :class="{ final: battleShakeFinal }"></div>
         <div v-if="battleOpponentSelecting" class="battle-opponent-selecting">相手が選択中です。攻撃をお待ちください。</div>
         <div v-if="battleLifeWarning('self')" class="battle-main-life-critical-vignette"></div>
@@ -8250,6 +8281,13 @@
     </div>
 
   </div>
+
+  <!-- ===== 再生中のBGM名（切り替わったときに数秒だけ表示） ===== -->
+  <transition name="bgm-now-fade">
+    <div v-if="bgmNowPlaying" :key="bgmNowPlaying.id" class="bgm-now-playing" role="status" aria-live="polite">
+      <span class="bgm-now-note" aria-hidden="true">♪</span>{{ bgmNowPlaying.name }}
+    </div>
+  </transition>
 
   <!-- ===== チュートリアル外伝：選別の儀（練習用のピック画面） ===== -->
   <div v-if="appView === 'tutorialPick' && tutorialPick" class="tutorial-pick-overlay">
@@ -9623,6 +9661,16 @@ const BGM_FILES = {
   victory:      { name: '勝利',         file: 'victory.mp3',           category: 'result', loop: false },
   defeat:       { name: '敗北',         file: 'defeat.mp3',            category: 'result', loop: false },
 };
+/* 対戦画面のフィールド背景：各種族の里の雰囲気（人物は描かない）。対戦ごとにランダム、ヤマタノオロチがいれば必ず龍。
+   画像を差し替える場合は file を置き換えるだけでよい（webp等のイラストにしても可）。 */
+const BATTLE_FIELD_THEMES = Object.freeze([
+  { key: 'ninja',   label: '忍者の隠れ里',     file: 'battle_fields/ninja.svg' },
+  { key: 'samurai', label: '侍の城',           file: 'battle_fields/samurai.svg' },
+  { key: 'beast',   label: '人獣の森の郷',     file: 'battle_fields/beast.svg' },
+  { key: 'shinshi', label: '神使の神殿',       file: 'battle_fields/shinshi.svg' },
+  { key: 'yokai',   label: '妖怪の洞と沼',     file: 'battle_fields/yokai.svg' },
+  { key: 'dragon',  label: '龍の荒れ果てた台地', file: 'battle_fields/dragon.svg' },
+]);
 const BATTLE_TURN_LIMIT_SEC = 90; // 通常の警告開始
 const BATTLE_ONLINE_TURN_LIMIT_SEC = 180; // オンライン対戦では3分で自動的にターンを終了する
 const BATTLE_HAND_LIMIT = 8; // エンドフェイズ終了時の手札上限
@@ -10387,7 +10435,8 @@ const TUTORIAL_LESSONS = Object.freeze([
       { say: 'カードの右上にある、★のついた数字が「変換値」。0から2まであります。強さだけでなく、この数字もよく見てくださいね。', focus: 'pickReturn' },
       { say: '「平穏の祈り手」のような銀枠のカードは「基本カード」。カードプールに同じカードが2枚ずつあります。ユニークほど強くはありませんが、変換値は2。星魂をしっかり稼いでくれます。', cards: ['pack:平穏の祈り手'] },
       { say: '「慈愛の忍・イロハ」のような金枠のカードは「ユニークカード」。カードプールに1枚しかない、強力なカードです。そのかわり、変換値は1しかありません。', cards: ['pack:慈愛の忍・イロハ'] },
-      { say: 'そして「猛き赤の眷属」のような「龍」のレガシー。とても強力ですが、変換値は0。それに龍は、私たちカミの誰の理念とも合わない存在なのです。（ヤマタノオロチさんだけは別ですけれど……）', cards: ['pack:猛き赤の眷属'] },
+      { say: 'そして「猛き赤の眷属」のような「龍」のレガシー。とても強力で、星戦の勝利に大きく貢献してくれます。ですが変換値は0。星魂を1つも生まない、代償の大きな危険なカードなのです。', cards: ['pack:猛き赤の眷属'] },
+      { say: 'とはいえ、星戦に勝てば星魂10。どうしても勝ちたい星戦の前や、相手に渡したくないときなど、龍を選ぶべき場面もありますよ。', cards: ['pack:猛き赤の眷属'] },
       { say: 'カードを選ぶときに、もう1つ大切なのが、あなたのカミの「理念」。私の場合は【守護】を持つレガシー。理念に同調してくれるカードを集めるほど天力が溜まり、神技を使えるのです。', focus: 'pickKami' },
       { say: '強さか、星魂か、理念との同調か……。どのカードを選ぶかが、創世決戦の勝負の分かれ目です。さあ、選んでみましょう。', focus: 'pickPack' },
       { task: 'この束では、私の理念に同調する【守護】を持ち、変換値も2の「平穏の祈り手」を選んでみましょう。', focus: 'pickPack', allow: { pick: ['平穏の祈り手'] },
@@ -10400,7 +10449,7 @@ const TUTORIAL_LESSONS = Object.freeze([
       { task: '今回は、星戦を勝ち抜くために「平和を願う剣・アヤト」を選んでみましょう。', focus: 'pickPack', allow: { pick: ['平和を願う剣・アヤト'] },
         done: vm => vm.tutorialPick && vm.tutorialPick.picks.some(c => vm.fullName(c).includes('平和を願う剣・アヤト')) },
       { action: 'nextPack' },
-      { say: '最後の束です。龍の「昏き紫の眷属」は強力ですが、変換値は0で、私の理念とも合いません。選ぶなら、星魂よりも星戦の勝利を狙う覚悟が必要ですね。', cards: ['pack:昏き紫の眷属'] },
+      { say: '最後の束です。龍の「昏き紫の眷属」は強力ですが、変換値は0。選ぶなら、星魂を手放してでも星戦の勝利を取りにいく覚悟が必要ですね。', cards: ['pack:昏き紫の眷属'] },
       { say: 'それから、ほかの方の理念も考えてみましょう。自分には必要なくても、相手に渡すと困るカードを先に取ってしまう……そんな選び方もあるのですよ。', focus: 'pickPack' },
       { task: '最後は、あなたの考えで好きなカードを1枚選んでみてください。', focus: 'pickPack', allow: { pick: true },
         done: vm => vm.tutorialPick && vm.tutorialPick.picks.length >= 3 },
@@ -10979,6 +11028,7 @@ new Vue({
     soundSettingsOpen: false,   // SE/BGM音量設定ポップオーバーの開閉（全画面共通）
     turnTimerSettingsOpen: false, // ターン経過時間設定ポップオーバーの開閉（対戦画面ヘッダー）
     bgmVolume: loadStoredVolume(BGM_VOLUME_STORAGE_KEY), // BGM音量（0〜1）。既定50%
+    bgmNowPlaying: null, // 曲名の一時表示 { id, name }
     bgmCurrentKey: null, // 現在再生中のBGMキー（BGM_FILESのキー）。null=未再生
     bgmAuto: true,       // true=画面カテゴリに応じて自動選曲、false=手動選択中
     battleDestroySucks: [],     // 撃破時に墓地/崩壊アイコンへ吸い込まれる演出：[{ id, x1, y1, x2, y2 }]
@@ -11179,6 +11229,10 @@ new Vue({
     },
     /* 対戦画面の描画用。CPUの手番代行中は内部的に self/opp が入れ替わっているため、
        画面上は常に「自分が下・相手が上」のまま見えるよう、ここで元の向きに戻して渡す。 */
+    battleFieldTheme() {
+      const key = this.battleContext && this.battleContext.fieldTheme;
+      return BATTLE_FIELD_THEMES.find(t => t.key === key) || null;
+    },
     battleView() {
       const bs = this.battleSample;
       if (!bs || !this.battleViewSwapped) return bs;
@@ -13465,7 +13519,9 @@ new Vue({
       } finally {
         if (this.tutorial) this.tutorial.running = false;
       }
-      if (this.tutorial && this.tutorial.index === index && !this.battleSample.result) this._tutorialGo(index + 1);
+      // 前の対戦レッスンの勝敗（battleSample.result）が残っていても、外伝のピック画面では進行を止めない
+      const battleOver = this.appView === 'battle' && this.battleSample && this.battleSample.result;
+      if (this.tutorial && this.tutorial.index === index && !battleOver) this._tutorialGo(index + 1);
     },
     async _tutorialWaitIdle(limitMs = 60000) {
       const until = Date.now() + limitMs;
@@ -14388,6 +14444,18 @@ new Vue({
         cardPlaysThisTurn: 0,    // このターン中にこの側が使用したカード枚数（オラクル/レガシー/レリック合算）
       };
     },
+    /* フィールド背景を決める。ヤマタノオロチが卓にいれば龍、オンライン対戦は部屋・卓から決まる値にして双方で同じ背景にする */
+    _battlePickFieldTheme(config, self, opp) {
+      if ((self && this._battleIsOrochiCard(self.kami)) || (opp && this._battleIsOrochiCard(opp.kami))) return 'dragon';
+      const keys = BATTLE_FIELD_THEMES.map(t => t.key);
+      if (config.syncGame && config.code) {
+        const seed = String(config.code) + ':' + String(config.table || '') + ':' + String(config.round || '');
+        let h = 0;
+        for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+        return keys[h % keys.length];
+      }
+      return keys[Math.floor(Math.random() * keys.length)];
+    },
     _battleInitialize(config) {
       const life = config.life || 10;
       const firstSide = config.firstSide === 'opp' ? 'opp' : 'self';
@@ -14412,6 +14480,7 @@ new Vue({
         selfMulligans: config.selfMulligans || 1, oppMulligans: config.oppMulligans || 1,
         oppIsCpu: !!config.oppIsCpu, // 相手席がCPU（駆動する2人目のクライアントが実在しない）場合、マリガン/ターンをこちらの1クライアントで自動進行する
         oppCpuAutoPlay: this.cpuAutoPlayEnabled, // CPUが自律してカードプレイ・攻撃を行うか（開始時点の設定を対戦中固定で使う。OFF＝従来通り待機のみ）
+        fieldTheme: this._battlePickFieldTheme(config, self, opp),
       };
       this.battleUndoStack = [];
       this._battleGlowQueue = [];
@@ -15741,6 +15810,15 @@ new Vue({
     /* 指定キーのBGMをループ再生に切り替える（非同期：デコード・解析完了後に再生開始）。
        ループ対象の曲は「頭からloopEndSecまでを1回だけ再生（イントロ含む）」→
        「loopEndSecに達した瞬間にクロスフェード済みループバッファへ引き継いで無限ループ」の2段構成。 */
+    /* 曲が切り替わったとき、曲名を画面の隅に数秒だけ表示する（勝敗・物語の演出用の曲と、音量0のときは出さない） */
+    _bgmAnnounce(key) {
+      const entry = BGM_FILES[key];
+      if (!entry || entry.category === 'result' || entry.category === 'story' || !(Number(this.bgmVolume) > 0)) return;
+      const id = (this._bgmAnnounceSeq = (this._bgmAnnounceSeq || 0) + 1);
+      this.bgmNowPlaying = { id, name: entry.name };
+      clearTimeout(this._bgmAnnounceTimer);
+      this._bgmAnnounceTimer = setTimeout(() => { if (this.bgmNowPlaying && this.bgmNowPlaying.id === id) this.bgmNowPlaying = null; }, 4000);
+    },
     async _bgmPlay(key, options = {}) {
       const entry = BGM_FILES[key];
       if (!entry) return;
@@ -15758,6 +15836,7 @@ new Vue({
       if (ctx.state === 'suspended') { try { await ctx.resume(); } catch (e) { /* 次のユーザー操作で再試行される */ } }
       if (loadToken !== this._bgmLoadSeq) return;
       this._bgmStopCurrentSource();
+      this._bgmAnnounce(key);
       const shouldLoop = entry.loop !== false;
       const requestedOffsetSec = Math.max(0, Number(options.offsetSec) || 0);
       const nodes = [];
