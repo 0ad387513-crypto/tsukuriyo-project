@@ -1380,9 +1380,79 @@
   }
   .top-mode-guide-btn.manual { border-color: #9d7a3d; background: linear-gradient(160deg, #4a3822, #271d16); }
   .top-mode-guide-btn.pick { border-color: #536d91; background: linear-gradient(160deg, #293d59, #192538); }
+  /* チュートリアル追加で右列が伸びないよう、ガイド2つは少し低くする */
+  .top-mode-guide-btn.manual, .top-mode-guide-btn.pick { min-height: 44px; }
+  .top-mode-guide-btn.tutorial {
+    grid-column: 1 / -1; min-height: 52px; justify-content: flex-start; gap: 12px; padding: 4px 14px; text-align: left;
+    border-color: #c79a4a; background: linear-gradient(160deg, #6a4a22, #2d1f14);
+  }
+  .top-mode-guide-btn.tutorial small { display: block; margin-top: 2px; font-size: 11px; font-weight: 600; color: #e8d3a8; letter-spacing: 0; }
+  .top-mode-guide-btn.tutorial:disabled { opacity: .7; cursor: wait; transform: none; }
+  .top-tutorial-face {
+    flex: none; width: 38px; height: 38px; border-radius: 50%;
+    background: url(kami_cutin/8.webp) center 18% / cover; border: 2px solid #e2c07a;
+    box-shadow: 0 0 12px rgba(255, 210, 120, .45);
+  }
   @media (max-width: 700px) {
     .top-mode-guide-btn { min-height: 52px; }
     .top-guide-stack { grid-template-columns: 1fr; }
+  }
+  /* ===== チュートリアル（対戦画面内。モーダル(390〜)より下、盤面より上） ===== */
+  .tutorial-layer { position: fixed; inset: 0; z-index: 380; pointer-events: none; }
+  .tutorial-layer.finale { z-index: 760; } /* 勝利後は結果画面(700)の上で締めの台詞を出す */
+  .tutorial-catcher { position: absolute; inset: 0; pointer-events: auto; cursor: pointer; }
+  .tutorial-dim { position: absolute; inset: 0; background: rgba(4, 6, 12, .6); }
+  .tutorial-spot {
+    position: absolute; border-radius: 12px; border: 2px solid #f2cd7a;
+    box-shadow: 0 0 18px rgba(255, 208, 110, .7), inset 0 0 14px rgba(255, 208, 110, .35);
+    animation: tutorialSpotPulse 1.6s ease-in-out infinite;
+    transition: left .2s ease, top .2s ease, width .2s ease, height .2s ease;
+  }
+  .tutorial-spot.dim { box-shadow: 0 0 0 200vmax rgba(4, 6, 12, .6), 0 0 18px rgba(255, 208, 110, .7), inset 0 0 14px rgba(255, 208, 110, .35); }
+  @keyframes tutorialSpotPulse { 50% { border-color: #fff1c4; } }
+  .tutorial-panel {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    width: min(760px, calc(100vw - 32px)); box-sizing: border-box;
+    display: flex; gap: 14px; align-items: stretch; padding: 12px 14px 12px 12px;
+    pointer-events: auto; color: #f6ecd8;
+    background: linear-gradient(170deg, rgba(48, 32, 20, .96), rgba(20, 16, 22, .96));
+    border: 1px solid #c79a4a; border-radius: 14px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 220, 150, .12) inset;
+  }
+  .tutorial-panel.at-bottom { bottom: 22px; }
+  .tutorial-panel.at-top { top: 52px; }
+  .mode-say .tutorial-panel { cursor: pointer; }
+  .mode-task .tutorial-panel { border-color: #e2b85c; box-shadow: 0 14px 40px rgba(0, 0, 0, .7), 0 0 16px rgba(226, 184, 92, .35); }
+  .tutorial-panel.shake { animation: tutorialShake .45s ease; }
+  @keyframes tutorialShake { 20%, 60% { transform: translateX(calc(-50% - 7px)); } 40%, 80% { transform: translateX(calc(-50% + 7px)); } }
+  .tutorial-portrait {
+    flex: none; width: 104px; min-height: 104px; border-radius: 10px;
+    background: url(kami_cutin/8.webp) center 16% / cover;
+    border: 1px solid #e2c07a; box-shadow: 0 0 14px rgba(255, 210, 120, .35);
+  }
+  .mode-task .tutorial-portrait { width: 72px; min-height: 72px; }
+  .tutorial-body { position: relative; flex: 1; min-width: 0; padding-right: 58px; }
+  .tutorial-name { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 13px; font-weight: 800; color: #f2cd7a; letter-spacing: .08em; }
+  .tutorial-task-tag { padding: 2px 9px; border-radius: 999px; background: #e2b85c; color: #2a1a0a; font-size: 11px; letter-spacing: .04em; }
+  .tutorial-text { min-height: 3.4em; font-size: 16px; line-height: 1.7; font-weight: 600; white-space: pre-wrap; }
+  .mode-task .tutorial-text { min-height: 0; font-size: 15px; }
+  .tutorial-hint { margin-top: 6px; padding: 5px 10px; border-radius: 8px; background: rgba(200, 80, 60, .25); border: 1px solid rgba(240, 130, 110, .5); color: #ffd9cf; font-size: 13px; font-weight: 700; }
+  .tutorial-next { position: absolute; right: 0; bottom: -2px; color: #f2cd7a; font-size: 12px; font-weight: 800; animation: tutorialNextBlink 1s steps(2, start) infinite; }
+  @keyframes tutorialNextBlink { to { opacity: .25; } }
+  .tutorial-quit {
+    position: absolute; top: 8px; right: 10px; padding: 3px 10px; border-radius: 999px; cursor: pointer;
+    border: 1px solid #6b5a44; background: rgba(0, 0, 0, .35); color: #cdbb9a; font-size: 11px; font-weight: 700;
+  }
+  .tutorial-quit:hover { color: #fff; border-color: #c79a4a; }
+  @media (max-width: 700px) {
+    .tutorial-panel { gap: 10px; padding: 10px; }
+    .tutorial-panel.at-top { top: 8px; }
+    .tutorial-panel.at-bottom { bottom: 64px; }
+    .tutorial-portrait, .mode-task .tutorial-portrait { width: 56px; min-height: 56px; }
+    .tutorial-text { font-size: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tutorial-spot, .tutorial-next, .tutorial-panel.shake { animation: none; }
   }
   .genesis-globe-icon { display: inline-block; vertical-align: -0.15em; } /* 創世決戦ロビー見出し等で使用 */
   /* ===== 創世決戦・世界観導入（絵巻） ===== */
@@ -5137,6 +5207,10 @@
           <span class="top-mode-label">カードリスト</span>
         </button>
         <div class="top-guide-stack">
+          <button class="top-mode-guide-btn tutorial" :disabled="tutorialLoading" @click.stop="startTutorial">
+            <span class="top-tutorial-face" aria-hidden="true"></span>
+            <span>{{ tutorialLoading ? '準備しています…' : 'チュートリアル' }}<small v-if="!tutorialCleared">アマテラスと<wbr>遊び方を<wbr>学ぶ</small><small v-else>クリア済み・<wbr>もう一度学ぶ</small></span>
+          </button>
           <button class="top-mode-guide-btn manual" @click.stop="_sfxPlay('decision'); manualModalOpen = true">
             📖 プレイガイド
           </button>
@@ -8007,6 +8081,31 @@
         </div>
       </div>
     </div>
+
+    <!-- ===== チュートリアル：アマテラスの案内（台詞中は盤面を暗くし、操作手順中は吹き出しだけ残す） ===== -->
+    <div v-if="tutorial && tutorialMode !== 'wait'" class="tutorial-layer" :class="['mode-' + tutorialMode, { finale: tutorialStep && tutorialStep.finale }]">
+      <div v-if="tutorialMode === 'say'" class="tutorial-catcher" @click="tutorialAdvance"></div>
+      <div v-if="tutorial.rect" key="tutorialSpot" class="tutorial-spot" :class="{ dim: tutorialMode === 'say' && !(tutorialStep && tutorialStep.finale) }"
+           :style="{ left: tutorial.rect.x + 'px', top: tutorial.rect.y + 'px', width: tutorial.rect.w + 'px', height: tutorial.rect.h + 'px' }"></div>
+      <div v-else-if="tutorialMode === 'say'" key="tutorialDim" class="tutorial-dim"></div>
+      <div class="tutorial-panel" :class="['at-' + tutorial.panelPos, { shake: tutorial.hintShake }]"
+           role="dialog" aria-live="polite" :aria-label="'アマテラス：' + tutorialFullText"
+           @click="tutorialMode === 'say' && tutorialAdvance()">
+        <div class="tutorial-portrait" aria-hidden="true"></div>
+        <div class="tutorial-body">
+          <div class="tutorial-name">
+            <span>アマテラス</span>
+            <span v-if="tutorialMode === 'task'" class="tutorial-task-tag">やってみましょう</span>
+          </div>
+          <div class="tutorial-text">{{ tutorialTypedText }}</div>
+          <div v-if="tutorial.hint" class="tutorial-hint">{{ tutorial.hint }}</div>
+          <div v-if="tutorialMode === 'say'" class="tutorial-next" aria-hidden="true">
+            {{ tutorial.typed >= tutorialFullText.length ? (tutorialStep.last ? 'クリックでトップへ戻る' : '▼') : '' }}
+          </div>
+        </div>
+        <button v-if="!(tutorialStep && tutorialStep.finale)" class="tutorial-quit" @click.stop="battleReturn">やめる</button>
+      </div>
+    </div>
   </div>
 
   <!-- ===== 手番切替演出（画面中央に一瞬表示） ===== -->
@@ -9642,6 +9741,110 @@ const MODE_DETAIL_INFO = {
   },
 };
 
+/* ===== チュートリアル：アマテラスが案内する固定盤面の星戦 =====
+   手札・山札は上から順に固定（シャッフルしない）。カード名は fullName の部分一致で探す。 */
+const TUTORIAL_SETUP = Object.freeze({
+  selfKamiNo: '8',   // アマテラス
+  oppKamiNo: '1',    // スサノオ
+  selfLife: 10,
+  oppLife: 3,
+  selfHand: ['鐘鳴らしの童', '札遊びの座敷童', '瞬速の死闘', '平穏の祈り手'],
+  selfDeck: ['平和を願う剣・アヤト', '猛き赤の眷属', '眩き黄の眷属', '深き青の眷属', '荒き緑の眷属', '昏き紫の眷属', '拒絶の守衛・イズモ', '慈愛の忍・イロハ'],
+  oppHand: ['飄々たる諜報員', '猛き赤の眷属', '荒き緑の眷属', '熾烈なる戦役'],
+  oppDeck: ['深き青の眷属', '昏き紫の眷属', '眩き黄の眷属', '先駆けの修羅', '名刀集めの豪族', '忠義の侍・ソウリュウ'],
+});
+/* 照らす場所（CSSセレクタ。@n は n 番目の一致） */
+const TUTORIAL_FOCUS = Object.freeze({
+  oppKami: '.battle-row-opp-top .kami-portrait',
+  oppLife: '.battle-row-opp-top .orb-disc.life',
+  oppLegacy: '.battle-row-legacy@0',
+  selfLegacy: '.battle-row-legacy@1',
+  selfRelic: '.self-relic-drop',
+  selfKami: '.battle-row-self-bot .kami-hud',
+  selfLife: '.battle-row-self-bot .orb-disc.life',
+  selfTenryoku: '.battle-row-self-bot .orb-disc.tenryoku',
+  skill: '.kami-skill-btn',
+  hand: '.battle-zone.hand-self',
+  selfMana: '.battle-side .mana-panel@1',
+  endTurn: '.battle-end-turn-btn',
+});
+/* 進行手順。上から順に進む。
+   - say    : 台詞。クリックで次へ（focus で盤面の一部を照らす）
+   - task   : 実際に操作してもらう。allow で許す操作を限定し、done(vm) が真になったら次へ
+              allow のキー：play（手札のカード名）/ divine（神攻するレガシー名）/ battle / skill / endTurn、all:true で全操作
+   - action : 盤面を進める内部処理（startFirstTurn / oppTurn）
+   when(vm) を持つ手順は、偽なら飛ばす。id:'victory' は勝利時にここへ飛ぶ。 */
+const TUTORIAL_STEPS = Object.freeze([
+  // ---- 導入 ----
+  { say: 'ようこそ、ツクリヨの世界へ。私はアマテラス。これから「星戦（せいせん）」の戦い方を、一緒に学んでいきましょうね。' },
+  { say: '今日の練習相手は、弟のスサノオです。少し乱暴な子ですけれど、手加減するよう言い聞かせてありますから安心してくださいね。', focus: 'oppKami' },
+  { say: 'まずは勝利条件から。相手のカミのライフを0にすれば、あなたの勝ちです。', focus: 'oppLife' },
+  { say: '今回は練習なので、スサノオのライフは3にしてあります。反対に、あなたのライフが0になると負けてしまいますから気をつけて。', focus: 'selfLife' },
+  { say: 'それと、デッキが0枚のときにカードを引かなければならなくなっても負けです。覚えておいてくださいね。' },
+  { say: '今回はスサノオが先攻、あなたが後攻です。まずはスサノオのターンを見てみましょう。' },
+  { action: 'startFirstTurn' },
+  { action: 'oppTurn', script: [] },
+  // ---- あなたのターン1：マナ・カードの使用・天力 ----
+  { say: 'スサノオは様子見のようですね。さあ、あなたのターンです。ターンの始めには、デッキからカードを1枚引きます。（先攻の最初のターンだけは引けません）', focus: 'hand' },
+  { say: 'カードを使うには「マナ」が必要です。カードの左上の数字がコスト、つまり必要なマナの量ですよ。', focus: 'hand' },
+  { say: 'マナの最大値は、自分のターンが来るたびに1ずつ増えて、そのたびに満タンまで回復します。最大は10。今はまだ1ですね。', focus: 'selfMana' },
+  { say: '後攻のあなたには、最初に「社の施し」というレリックが配られています。これを破壊すると、そのターンだけマナを1増やせるのです。', focus: 'selfRelic' },
+  { say: '手札の「鐘鳴らしの童」はコスト2。マナが1足りませんが、社の施しを使えば出せますね。', focus: 'hand' },
+  { task: '「鐘鳴らしの童」を手札からレガシー欄へドラッグしましょう。社の施しを使うか聞かれたら「破壊してマナを増やす」を、効果を発動するか聞かれたら「発動する」を選んでくださいね。',
+    focus: 'selfLegacy', allow: { play: ['鐘鳴らしの童'] },
+    done: vm => vm._tutorialHas('self', 'legacies', '鐘鳴らしの童') && vm._tutorialIdle() },
+  { say: '出したカードは画面の真ん中に大きく表示されます。「閉じる」を押せば盤面に戻れますよ。' },
+  { say: '見てください、天力（てんりょく）が増えましたね。', focus: 'selfTenryoku' },
+  { say: '天力は、カミの必殺技「神技（しんぎ）」を使うための力。溜め方はカミごとに違って、私は【守護】を持つレガシーが出るたびに天力が1増えるのです。', focus: 'selfKami' },
+  { say: 'さらに鐘鳴らしの童は、出たときに天力を1くれる子。合わせて天力2になりました。', focus: 'selfTenryoku' },
+  { say: '場に出たばかりのレガシーは、そのターンは攻撃できません（【疾駆】などを持つ子は別ですよ）。今回はここまでにして、ターンを終わりましょう。', focus: 'endTurn' },
+  { task: '「ターン終了」ボタンを押しましょう。', focus: 'endTurn', allow: { endTurn: true },
+    done: vm => vm.battleSample.activeSide === 'opp' },
+  // ---- スサノオのターン2 ----
+  { action: 'oppTurn', script: [{ play: '飄々たる諜報員' }] },
+  { say: 'スサノオは「飄々たる諜報員」を出してきました。戦闘力2000、神攻力1のレガシーです。', focus: 'oppLegacy' },
+  // ---- あなたのターン2：神攻・タップ・守護・神技 ----
+  { say: 'あなたのターンです。マナの最大値が2に増えて、満タンまで回復していますね。', focus: 'selfMana' },
+  { say: 'では攻撃してみましょう。レガシーで相手のカミを直接攻撃することを「神攻（しんこう）」といいます。神攻力の分だけ、相手のライフが減りますよ。', focus: 'oppKami' },
+  { task: '場の「鐘鳴らしの童」をドラッグして、スサノオ（相手のカミ）の上で離しましょう。', focus: 'oppKami', allow: { divine: ['鐘鳴らしの童'] },
+    done: vm => vm.battleSample.opp.life < TUTORIAL_SETUP.oppLife && vm._tutorialIdle() },
+  { say: 'お見事です！スサノオのライフが減りました。攻撃したレガシーは横向きの「タップ」状態になります。', focus: 'selfLegacy' },
+  { say: 'ここで大事な決まりごと。レガシー同士で戦う「戦闘」は、タップ状態の相手レガシーにしか仕掛けられません。今の諜報員は縦向きなので、戦闘できないのです。', focus: 'oppLegacy' },
+  { say: 'つまり、攻撃してタップしたレガシーは、次の相手ターンに狙われやすくなる……今の鐘鳴らしの童のように。', focus: 'selfLegacy' },
+  { say: 'そこで守りを固めましょう。「札遊びの座敷童」も【守護】を持つレガシー。出せば、また私の天力が増えますよ。', focus: 'hand' },
+  { task: '「札遊びの座敷童」をレガシー欄へ出しましょう。（出たときのドローは、してもしなくても構いません）', focus: 'selfLegacy', allow: { play: ['札遊びの座敷童'] },
+    done: vm => vm._tutorialHas('self', 'legacies', '札遊びの座敷童') && vm._tutorialIdle() },
+  { say: '天力が3になりました。これで私の神技「照護（しょうご）」が使えます。', focus: 'selfTenryoku' },
+  { say: '照護は、自分のレガシー1枚を次の相手ターンの終わりまで【不可侵】にして、このターンの終わりにアンタップ（縦向き）に戻す技。攻撃した童を起こして、守りに回せますよ。', focus: 'skill' },
+  { task: '「神技」ボタンから「照護」を選び、タップ状態の「鐘鳴らしの童」を対象にしましょう。', focus: 'skill', allow: { skill: true },
+    done: vm => vm.tutorial.flags.skill && vm._tutorialIdle() },
+  { say: '神技はどちらか1つを、1ターンに1回だけ使えます。天力を7まで溜めれば、墓地のレガシーを呼び戻す2つめの神技「恩光・八咫神鏡」も使えるのですよ。', focus: 'selfKami' },
+  { say: '最後に【守護】のお話を。相手が攻撃してきたとき、縦向きの【守護】持ちレガシーをタップして、攻撃を代わりに受け止められます。', focus: 'selfLegacy' },
+  { say: '戦闘ではお互いの戦闘力を比べて、低い方が破壊されます。同じ値なら両方とも破壊。受け止めるなら、諜報員と同じ戦闘力2000の座敷童がおすすめです。', focus: 'selfLegacy' },
+  { task: 'ターンを終了しましょう。スサノオが攻撃してきたら、守護で受け止めるか選んでくださいね。', focus: 'endTurn', allow: { endTurn: true },
+    done: vm => vm.battleSample.activeSide === 'opp' },
+  // ---- スサノオのターン3 ----
+  { action: 'oppTurn', script: [{ divine: '飄々たる諜報員' }] },
+  { say: 'スサノオの攻撃をしのぎましたね。攻撃してきた諜報員は今、タップ状態です。',
+    when: vm => vm._tutorialHas('opp', 'legacies', '飄々たる諜報員'), focus: 'oppLegacy' },
+  { say: '座敷童が諜報員と相打ちになりましたね。戦闘力が同じなら、両方とも破壊されるのです。',
+    when: vm => !vm._tutorialHas('opp', 'legacies', '飄々たる諜報員') },
+  // ---- あなたのターン3：オラクル・選定・決着 ----
+  { say: 'スサノオのライフは残りわずか。このターンで決めてしまいましょう。', focus: 'oppLife' },
+  { say: '手札の「瞬速の死闘」はオラクル。使うとすぐに効果が発動して、そのあと墓地へ置かれるカードです。', focus: 'hand' },
+  { say: '【選定：1】は、いくつかの効果から1つを選んで使うという意味。今回は「相手ライフ-1」を選ぶのがおすすめですよ。', focus: 'hand' },
+  { task: '「瞬速の死闘」をレガシー欄へドラッグして使い、「相手ライフ-1」を選びましょう。', focus: 'hand', allow: { play: ['瞬速の死闘'] },
+    done: vm => !vm._tutorialHas('self', 'hand', '瞬速の死闘') && vm._tutorialIdle() },
+  { say: '仕上げです。縦向きのレガシーで、スサノオに神攻を！', focus: 'oppKami', when: vm => !vm.battleSample.result },
+  { task: 'レガシーで神攻して、スサノオのライフを0にしましょう。うまくいかなくても、ターンを終えてまた挑めますよ。', focus: 'oppKami', allow: { all: true }, free: true,
+    done: vm => !!vm.battleSample.result },
+  // ---- 決着 ----
+  { id: 'victory', say: 'おめでとうございます！スサノオのライフが0になり、あなたの勝利です。', finale: true },
+  { say: '今日学んだのは、勝利条件、マナとコスト、神攻と戦闘、タップと【守護】、そして天力と神技。星戦の基本はこれで全部ですよ。', finale: true },
+  { say: 'カードの細かな効果やキーワードは、トップ画面の「プレイガイド」でいつでも確かめられます。まずは「理念構築戦」のストラクチャーデッキで遊んでみてくださいね。', finale: true },
+  { say: 'あなたと共に創る世界を、楽しみにしていますね。', finale: true, last: true },
+]);
+
 /* 創世決戦を始める前に自動再生する、約90秒・8枚の紙芝居形式の世界観導入。 */
 const GENESIS_STORY_SCENE_DURATION_MS = 10000;
 const GENESIS_STORY_SCENE_DURATIONS_MS = Object.freeze([12000, 10000, 12000, 14000, 10000, 10000, 10000, 12000]);
@@ -10248,6 +10451,9 @@ new Vue({
     manualModalOpen: false, // TOP画面のプレイガイド（説明書）モーダル
     howToPlayModalOpen: false, // TOP画面のカミ別ピックガイドモーダル
     modeDetailKey: null, // TOP画面のモード詳細画面（appView==='modeDetail'）：'game'|'construct'|'shield'。MODE_DETAIL_INFOのキー
+    tutorial: null, // チュートリアル進行状態（null＝非実行）。TUTORIAL_STEPS を参照
+    tutorialCleared: loadStoredBool('tsukuriyo_tutorialCleared', false),
+    tutorialLoading: false,
     genesisStoryOpen: false, // 創世決戦開始前の世界観導入
     genesisStoryIndex: 0,
     genesisStoryPlaying: false,
@@ -10293,6 +10499,24 @@ new Vue({
       if (this.appView === 'game' && this.gsPeeking) return true;
       if (this.appView === 'construct' && this.cbBuilding) return true;
       return false;
+    },
+    tutorialStep() {
+      return this.tutorial ? (TUTORIAL_STEPS[this.tutorial.index] || null) : null;
+    },
+    /* say＝台詞（クリック待ち）／task＝操作待ち／wait＝相手の手番や決着演出中で吹き出しを出さない */
+    tutorialMode() {
+      const step = this.tutorialStep;
+      if (!step || step.action || this.battleCpuThinking) return 'wait';
+      if (this.battleSample && this.battleSample.result && !step.finale) return 'wait';
+      if (step.say) return 'say';
+      return step.task ? 'task' : 'wait';
+    },
+    tutorialFullText() {
+      const step = this.tutorialStep;
+      return step ? (step.say || step.task || '') : '';
+    },
+    tutorialTypedText() {
+      return this.tutorial ? this.tutorialFullText.slice(0, this.tutorial.typed) : '';
     },
     battleReturnLabel() {
       if (this.battleContext.returnView === 'shield') return 'シールド戦';
@@ -11996,6 +12220,7 @@ new Vue({
     },
     /* 目安時間切れ：強制効果はなく、警告表示（ロープ演出+文言）を出すためだけのフラグ */
     battleTurnTimeUp() {
+      if (this.battleContext && this.battleContext.source === 'tutorial') return false; // 説明を読む時間を急かさない
       return this.battleTurnTimerEnabled && this.battleTurnElapsedSec >= BATTLE_TURN_LIMIT_SEC && !this.battleSample.result;
     },
   },
@@ -12311,6 +12536,252 @@ new Vue({
     battleCancelAlphaSetup() {
       this.battleAlphaSetup = null;
       this._sfxPlay('cancel');
+    },
+    /* ===== チュートリアル：アマテラスが案内する固定盤面の星戦 =====
+       盤面・手札・山札は TUTORIAL_SETUP で固定し、進行は TUTORIAL_STEPS を上から順に進める。
+       スサノオ（相手）の手番はCPU思考を使わず、手順ごとの台本（script）どおりに動かす。 */
+    async startTutorial() {
+      if (this.tutorialLoading) return;
+      this._sfxPlay('decision');
+      this.tutorialLoading = true;
+      try {
+        await this.ensureBattleAssetsLoaded();
+      } catch (e) {
+        alert(e.message || 'チュートリアルの準備に失敗しました');
+        return;
+      } finally {
+        this.tutorialLoading = false;
+      }
+      const S = TUTORIAL_SETUP;
+      const pick = name => this.allCards.find(c => !c.isKami && this.fullName(c).includes(name));
+      const cardsOf = names => names.map(pick).filter(Boolean);
+      const findKami = no => this.allKamiCards.find(k => String(k.no) === no) || null;
+      this._battleInitialize({
+        source: 'tutorial', modeLabel: 'チュートリアル', returnView: 'tutorial',
+        selfName: 'あなた', oppName: 'スサノオ', firstSide: 'opp', life: S.selfLife,
+        selfDeck: [], oppDeck: [], selfKami: findKami(S.selfKamiNo), oppKami: findKami(S.oppKamiNo),
+        syncGame: false, oppIsCpu: true, skipOpening: true,
+      });
+      const bs = this.battleSample;
+      const setup = (player, hand, deck, life) => {
+        player.hand = cardsOf(hand);
+        player.deck = cardsOf(deck);
+        player.handCount = player.hand.length;
+        player.deckCount = player.deck.length;
+        player.life = life;
+        player.lifeMax = life;
+      };
+      setup(bs.self, S.selfHand, S.selfDeck, S.selfLife);
+      setup(bs.opp, S.oppHand, S.oppDeck, S.oppLife);
+      this._battleInitStatDisplay();
+      this.tutorial = { index: -1, typed: 0, rect: null, panelPos: 'bottom', hint: '', hintShake: false, flags: {}, running: false };
+      clearInterval(this._tutorialTickTimer);
+      clearInterval(this._tutorialTypeTimer);
+      this._tutorialTickTimer = setInterval(() => this._tutorialTick(), 200);
+      this._tutorialTypeTimer = setInterval(() => {
+        const t = this.tutorial;
+        if (t && t.typed < this.tutorialFullText.length) t.typed += 1;
+      }, 28);
+      this._tutorialGo(0);
+    },
+    _tutorialStop() {
+      clearInterval(this._tutorialTickTimer);
+      clearInterval(this._tutorialTypeTimer);
+      clearTimeout(this._tutorialHintTimer);
+      this._tutorialTickTimer = null;
+      this._tutorialTypeTimer = null;
+      this.tutorial = null;
+    },
+    _tutorialFinish() {
+      this.tutorialCleared = true;
+      try { localStorage.setItem('tsukuriyo_tutorialCleared', 'true'); } catch (e) { /* 保存できなくても続行 */ }
+      this._tutorialStop();
+      this.battleReturnNow();
+    },
+    /* i 番目の手順へ進む（when が偽の手順は飛ばす） */
+    _tutorialGo(i) {
+      const t = this.tutorial;
+      if (!t) return;
+      while (i < TUTORIAL_STEPS.length && TUTORIAL_STEPS[i].when && !TUTORIAL_STEPS[i].when(this)) i++;
+      if (i < 0 || i >= TUTORIAL_STEPS.length) { this._tutorialFinish(); return; }
+      t.index = i;
+      t.typed = 0;
+      t.hint = '';
+      this._tutorialUpdateRect();
+      const step = TUTORIAL_STEPS[i];
+      if (step.action) this._tutorialRunAction(step, i);
+    },
+    async _tutorialRunAction(step, index) {
+      const t = this.tutorial;
+      t.running = true;
+      try {
+        if (step.action === 'startFirstTurn') {
+          const first = this.battleContext.firstSide;
+          this._battleFlashTurn(first);
+          this._battleStartTurnFor(first);
+          await this._battleCpuThinkPause(700);
+        } else if (step.action === 'oppTurn') {
+          await this._tutorialWaitIdle();
+          await this._tutorialRunOppTurn(step.script || []);
+          await this._tutorialWaitIdle();
+          await this._battleCpuThinkPause(500);
+        }
+      } catch (e) {
+        console.warn('[tutorial] 進行処理でエラー:', e);
+      } finally {
+        if (this.tutorial) this.tutorial.running = false;
+      }
+      if (this.tutorial && this.tutorial.index === index && !this.battleSample.result) this._tutorialGo(index + 1);
+    },
+    async _tutorialWaitIdle(limitMs = 60000) {
+      const until = Date.now() + limitMs;
+      while (this.tutorial && !this._tutorialIdle() && Date.now() < until) {
+        await new Promise(resolve => setTimeout(resolve, 150));
+      }
+    },
+    /* 効果解決・確認モーダル・演出が残っていない（次の説明へ進んでよい）状態か */
+    _tutorialIdle() {
+      return !this._battleHasBlockingModal() && !this.battleSkillCloseup && !this.battleCpuThinking
+        && !this._dslSwapped && !(this.battlePendingEffects || []).length;
+    },
+    _tutorialHas(side, zone, name) {
+      const player = this.battleSample && this.battleSample[side];
+      return !!(player && (player[zone] || []).some(c => c && this.fullName(c).includes(name)));
+    },
+    _tutorialUpdateRect() {
+      const t = this.tutorial;
+      if (!t) return;
+      const step = this.tutorialStep;
+      const spec = step && step.focus && TUTORIAL_FOCUS[step.focus];
+      let rect = null;
+      if (spec && this.tutorialMode !== 'wait') {
+        const [selector, nth] = spec.split('@');
+        const el = document.querySelectorAll(selector)[Number(nth || 0)];
+        const r = el && el.getBoundingClientRect();
+        if (r && r.width && r.height) rect = { x: Math.round(r.left - 6), y: Math.round(r.top - 6), w: Math.round(r.width + 12), h: Math.round(r.height + 12) };
+      }
+      const same = (a, b) => (!a && !b) || (a && b && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h);
+      if (!same(t.rect, rect)) t.rect = rect;
+      // 照らす場所が画面の下半分なら吹き出しは上へ、上半分なら下へ置いて重ならないようにする
+      const pos = rect && rect.y + rect.h / 2 > window.innerHeight * 0.5 ? 'top' : 'bottom';
+      if (t.panelPos !== pos) t.panelPos = pos;
+    },
+    _tutorialTick() {
+      const t = this.tutorial;
+      if (!t) return;
+      if (this.appView !== 'battle' || !this.battleContext || this.battleContext.source !== 'tutorial') { this._tutorialStop(); return; }
+      if (this._dslSwapped) return; // 相手の手番を代行中は self/opp が入れ替わっているため判定しない
+      this._tutorialUpdateRect();
+      const step = this.tutorialStep;
+      const bs = this.battleSample;
+      if (!step || t.running) return;
+      if (bs.result && !step.finale) {
+        if (bs.result.outcome !== 'win') { this._tutorialStop(); return; } // 降参などで負けた場合は通常の結果画面に任せる
+        if (this.battleResultRevealReady) this._tutorialGo(TUTORIAL_STEPS.findIndex(s => s.id === 'victory'));
+        return;
+      }
+      if (!step.task) return;
+      if (step.done && step.done(this)) {
+        this._sfxPlay('decision');
+        this._tutorialGo(t.index + 1);
+        return;
+      }
+      // 自由操作の手順でターンを終えた場合：スサノオは何もせずに手番を返す
+      if (step.free && bs.activeSide === 'opp' && this._tutorialIdle()) {
+        t.running = true;
+        this._tutorialRunOppTurn([]).finally(() => { if (this.tutorial) this.tutorial.running = false; });
+      }
+    },
+    tutorialAdvance() {
+      const t = this.tutorial;
+      const step = this.tutorialStep;
+      if (!t || !step || !step.say) return;
+      if (t.typed < this.tutorialFullText.length) { t.typed = this.tutorialFullText.length; return; }
+      this._sfxPlay('menuselect');
+      if (step.last) { this._tutorialFinish(); return; }
+      this._tutorialGo(t.index + 1);
+    },
+    /* 操作の可否。チュートリアル外・相手の手番の代行中は常に許可する。 */
+    _tutorialAllows(kind, name = '') {
+      const t = this.tutorial;
+      if (!t || !this.battleContext || this.battleContext.source !== 'tutorial') return true;
+      if (this._dslSwapped || this.battleCpuThinking) return true;
+      const step = this.tutorialStep;
+      const allow = step && step.task ? (step.allow || {}) : null;
+      const rule = allow && allow[kind];
+      const ok = !!allow && (allow.all || rule === true || (Array.isArray(rule) && rule.some(n => String(name).includes(n))));
+      if (!ok) this._tutorialNudge(allow ? 'いまは上に書いてある操作を試してみてくださいね。' : 'まずは私のお話を最後まで聞いてくださいね。');
+      return ok;
+    },
+    _tutorialNudge(message) {
+      const t = this.tutorial;
+      if (!t) return;
+      this._sfxPlay('cancel');
+      t.hint = message;
+      t.hintShake = false;
+      this.$nextTick(() => { if (this.tutorial) this.tutorial.hintShake = true; });
+      clearTimeout(this._tutorialHintTimer);
+      this._tutorialHintTimer = setTimeout(() => { if (this.tutorial) { this.tutorial.hint = ''; this.tutorial.hintShake = false; } }, 3200);
+    },
+    /* スサノオの手番を台本どおりに進める（_battleCpuTakeTurn と同じく self/opp を入れ替えて自分側の操作関数を使う）。
+       script: [{ play: 'カード名' } | { divine: 'レガシー名' }] */
+    async _tutorialRunOppTurn(script) {
+      const bs = this.battleSample;
+      if (!bs || bs.result || bs.activeSide !== 'opp') return;
+      const turnAtStart = bs.turn;
+      const undoDepthBefore = this.battleUndoStack.length;
+      const oppName = this.battleContext.oppName;
+      const indexByName = (list, name, pred = () => true) => (list || []).findIndex(c => c && this.fullName(c).includes(name) && pred(c));
+      this.battleCpuThinking = true;
+      this.battleCpuPhase = 'review';
+      this.battleCpuThinkingLabel = `${oppName}が手札を確認しています…`;
+      this._dslSwapSelfOpp();
+      this._battleCpuAutoResolving = true;
+      try {
+        await this._battleCpuThinkPause(800);
+        for (const act of script) {
+          if (this.battleSample.result) break;
+          const me = this.battleSample.self;
+          if (act.play) {
+            const idx = indexByName(me.hand, act.play);
+            if (idx < 0) continue;
+            const card = me.hand[idx];
+            this.battleCpuPhase = 'main';
+            this.battleCpuThinkingLabel = `${oppName}が「${this.fullName(card)}」を場に出しています…`;
+            await this._battleCpuThinkPause(700);
+            const zone = card.category === 'レガシー' ? 'legacies' : card.category === 'レリック' ? 'relics' : null;
+            await this.battlePlayFromHand(idx, zone, zone ? null : undefined);
+            if (this.battleOracleEffect) {
+              // 展開演出は _battleCpuTakeTurn と同じく、相手自身のプレイでは短時間で自動的に閉じる
+              const effRef = this.battleOracleEffect;
+              setTimeout(() => { if (this.battleOracleEffect === effRef) this.battleOracleEffect = null; }, 1800);
+            }
+          } else if (act.divine) {
+            const idx = indexByName(me.legacies, act.divine, c => !c._tapped);
+            if (idx < 0) continue;
+            this.battleCpuPhase = 'attack';
+            this.battleCpuThinkingLabel = `${oppName}が「${this.fullName(me.legacies[idx])}」で神攻しています…`;
+            await this._battleCpuThinkPause(700);
+            await this.battleResolveDivineAttack('self', idx);
+          }
+          await this._battleCpuThinkPause(700);
+        }
+        this.battleCpuPhase = 'end';
+        this.battleCpuThinkingLabel = `${oppName}がターンを終えようとしています…`;
+        await this._battleCpuThinkPause(400);
+      } catch (e) {
+        console.warn('[tutorial] 相手の手番でエラー:', e);
+      } finally {
+        this._battleCpuAutoResolving = false;
+        this._dslSwapSelfOpp();
+        this.battleCpuThinking = false;
+        this.battleCpuThinkingLabel = null;
+        this.battleCpuPhase = null;
+        if (this.battleUndoStack.length > undoDepthBefore) this.battleUndoStack.length = undoDepthBefore;
+      }
+      if (!this.battleSample.result && this.battleSample.activeSide === 'opp' && this.battleSample.turn === turnAtStart) {
+        await this.battleEndTurn();
+      }
     },
     openBattleLaunch(source) {
       if (source === 'shield' && this.sb.phase !== 'complete') return;
@@ -13015,7 +13486,8 @@ new Vue({
       if (config.syncGame) this._battleSyncStart(config.code, config.table, config.mySeat, config.oppSeat);
       else {
         this._battleSyncStop();
-        this._battleBeginOpeningSequence();
+        // チュートリアルはコイン演出・マリガンを省き、最初の手番の開始も進行側で行う
+        if (!config.skipOpening) this._battleBeginOpeningSequence();
       }
     },
     _battleBeginOpeningSequence() {
@@ -14387,6 +14859,7 @@ new Vue({
        この端末のlocalStorageに記録する。観戦中は記録しない。 */
     _battleRecordHistoryEntry(result) {
       if (!result || !result.outcome || (this.battleNet && this.battleNet.spectating)) return;
+      if (this.battleContext && this.battleContext.source === 'tutorial') return; // 練習なので戦績に残さない
       try {
         const ctx = this.battleContext || {};
         const bs = this.battleSample || {};
@@ -15319,6 +15792,7 @@ new Vue({
       });
     },
     battleReturnNow() {
+      if (this.tutorial) this._tutorialStop();
       // 4人対戦の星戦：自分が勝った対戦なら、戻る際に自動で勝者記録する
       // （host限定の手動クリックだけだと、戻った時点でまだ未記録に見えてしまうため）。
       // 両クライアントが二重に記録して統計が重複カウントされないよう、
@@ -15822,6 +16296,7 @@ new Vue({
     },
     battleRequestEndTurn() {
       if (!this.battleCanEndTurn) return;
+      if (!this._tutorialAllows('endTurn')) return;
       const warnings = this.battleEndTurnWarnings || [];
       if (!warnings.length) {
         this.battleEndTurn();
@@ -21197,6 +21672,7 @@ new Vue({
       const player = this.battleSample.self;
       const card = player.hand[index];
       if (!card) return;
+      if (!this._tutorialAllows('play', this.fullName(card))) return;
       // オラクル：中央発動演出 → 墓地。昇華持ちはコスト選択モーダルへ
       if (card.category === 'オラクル') {
         const tapDiscount = await this.battleResolveOptionalTapCost(card);
@@ -21258,6 +21734,7 @@ new Vue({
     async battleOfferReroll(playedCard) {
       const player = this.battleSample.self;
       if (!playedCard || !player) return;
+      if (this.tutorial) return; // チュートリアルでは基本の流れに集中してもらうため、リロールの確認は出さない
       const candidates = (player.hand || []).filter(c => c && this._dslColorsMatchForReroll(c.color, playedCard.color));
       if (!candidates.length) return;
       // 創属性は全属性のワイルドカードのため、使用カードが創の場合は「任意の色」と案内する
@@ -22186,6 +22663,7 @@ new Vue({
       const attacker = attackerPlayer && attackerPlayer.legacies[attackerIndex];
       let defender = defenderPlayer && defenderPlayer.legacies[defenderIndex];
       if (!attacker || !defender) return;
+      if (!(opts && opts.viaDivineGuard) && !this._tutorialAllows('battle', this.fullName(attacker))) return;
       // 神攻が守護により戦闘へ差し替えられた場合、攻撃側は既に神攻宣言時点でタップ済み・
       // 【神攻時】も発動済みのため、通常戦闘のタップ済みチェック／再タップ／【戦闘時】発動はスキップする
       // （スキップしないと battleLegacyCanAct の「タップされています」判定に引っかかり、守護戦闘そのものが不発になる）
@@ -22296,6 +22774,7 @@ new Vue({
       if (!this.battleEnsureSelfTurn('神攻')) return;
       const attacker = this.battleSample.self.legacies[attackerIndex];
       if (!attacker) return;
+      if (!this._tutorialAllows('divine', this.fullName(attacker))) return;
       const can = this.battleLegacyCanAct(attacker, 'divine');
       if (!can.ok) { this.battleShowNotice('神攻できません', can.reason, [attacker]); return; }
       // 「神攻したそれら」参照用（例：#59葛ノ葉亭の若女将）：守護で戦闘に差し替えられた場合も神攻の宣言自体は成立する
@@ -23159,6 +23638,7 @@ new Vue({
     openKamiSkills() {
       if (this.battleSample.result || this.battleSkillTone === 'disabled') return;
       if (this.battleSample.activeSide !== 'self') return;
+      if (!this._tutorialAllows('skill')) return;
       this._sfxPlay('decision');
       this.battleSkillModal = { side: 'self' };
     },
@@ -23175,6 +23655,7 @@ new Vue({
       this.battleSaveUndo();
       this.battleSample.self.tenryoku = Math.max(0, this.battleSample.self.tenryoku - skill.cost);
       this.battleSkillModal = null;
+      if (this.tutorial) this.$set(this.tutorial.flags, 'skill', true);
       // 神技2（必殺技）：カミの顔アップ＋技名アップの演出を挟んでから通常の通知・効果解決へ進む
       if (index === 2) {
         const closeupKami = this.battleSample.self.kami;
@@ -27601,7 +28082,8 @@ new Vue({
       }
       // 相手がCPU（駆動する2人目のクライアントが実在しない）場合、こちらのクライアントが
       // 代わりにCPUの手番（召喚・攻撃・ターン終了）を自動で実行する。
-      if (side === 'opp' && this.battleContext.oppIsCpu) {
+      // チュートリアルの相手は台本で動かす（_tutorialRunOppTurn）ため、ここでは自動実行しない。
+      if (side === 'opp' && this.battleContext.oppIsCpu && this.battleContext.source !== 'tutorial') {
         const turnAtSchedule = this.battleSample.turn;
         setTimeout(() => {
           if (this.battleSample.activeSide === 'opp' && this.battleSample.turn === turnAtSchedule && !this.battleSample.result) {
