@@ -1397,6 +1397,36 @@
     .top-mode-guide-btn { min-height: 52px; }
     .top-guide-stack { grid-template-columns: 1fr; }
   }
+  /* ===== チュートリアル外伝：練習用ピック画面（選別の儀の見た目を流用） ===== */
+  .tutorial-pick-overlay {
+    position: fixed; inset: 0; z-index: 200; overflow-y: auto;
+    background: radial-gradient(circle at 50% 30%, rgba(40, 32, 58, .96), rgba(8, 10, 16, .98));
+  }
+  .tutorial-pick-screen { max-width: 1180px; margin: 0 auto; padding-bottom: 200px; }
+  .tutorial-pick-main { display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: start; margin-top: 10px; }
+  .tutorial-pick-kami { padding: 12px; border-radius: 12px; border: 1px solid #5d4a33; background: rgba(0, 0, 0, .3); color: #eadfca; }
+  .tutorial-pick-kami-img { width: 100%; aspect-ratio: 744 / 1039; border-radius: 8px; background: #0a0c12 center / cover no-repeat; }
+  .tutorial-pick-kami-name { margin-top: 8px; font-weight: 800; font-size: 14px; }
+  .tutorial-pick-kami-world { margin-top: 4px; font-size: 13px; font-weight: 800; color: #f2cd7a; }
+  .tutorial-pick-kami-hints { margin: 8px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.6; color: #d8ccb4; }
+  .tutorial-pick-pack { min-height: 260px; }
+  .tutorial-pick-kind { margin: 0 6px 6px; padding: 2px 6px; border-radius: 999px; text-align: center; font-size: 11px; font-weight: 800; }
+  .gm-pack-card.kind-basic .tutorial-pick-kind { color: #1f2530; background: #cfd6e0; }
+  .gm-pack-card.kind-unique .tutorial-pick-kind { color: #2a1a0a; background: #e8c46a; }
+  .gm-pack-card.kind-dragon .tutorial-pick-kind { color: #fff; background: #9b3434; }
+  .tutorial-pick-passing { grid-column: 1 / -1; padding: 60px 0; text-align: center; color: #bfae8d; font-weight: 800; }
+  .tutorial-pick-pool {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding: 10px 12px;
+    border-radius: 10px; border: 1px solid #3a4258; background: rgba(0, 0, 0, .3); color: #d8ccb4; font-size: 13px;
+  }
+  .tutorial-pick-pool-label { font-weight: 800; color: #f2cd7a; margin-right: 4px; }
+  .tutorial-pick-pool-card { padding: 3px 10px; border-radius: 999px; border: 1px solid #5d4a33; background: rgba(199, 154, 74, .12); }
+  .tutorial-pick-pool-card b { margin-left: 6px; color: #fff2ad; }
+  @media (max-width: 760px) { .tutorial-pick-main { grid-template-columns: 1fr; } }
+  /* レッスン一覧：外伝は本編と区別して見せる */
+  .tutorial-menu-sub { margin: 14px 0 8px; font-size: 13px; font-weight: 800; color: #bfae8d; letter-spacing: .1em; }
+  .tutorial-lesson.side-story { border-style: dashed; }
+  .tutorial-lesson.side-story .tutorial-lesson-num { font-size: 14px; }
   /* ===== チュートリアル：レッスン選択 ===== */
   .tutorial-menu { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 16px; background: rgba(4, 6, 12, .72); }
   .tutorial-menu-panel {
@@ -1480,16 +1510,17 @@
   }
   /* モード紹介などの画像 */
   .tutorial-picture {
-    position: absolute; left: 50%; top: 48px; transform: translateX(-50%);
-    width: max-content; max-width: calc(100vw - 32px); display: grid; gap: 6px; justify-items: center;
+    position: absolute; left: 0; right: 0; top: 48px; margin: 0 auto;
+    width: fit-content; max-width: calc(100vw - 32px); display: grid; gap: 6px; justify-items: center;
     padding: 10px; box-sizing: border-box; border-radius: 14px;
     background: rgba(20, 14, 10, .92); border: 1px solid #c79a4a; box-shadow: 0 14px 40px rgba(0, 0, 0, .7);
     animation: tutorialPictureIn .35s ease;
   }
   /* 画像は切り取らずに全体を見せる（下の吹き出しと重ならない高さに収める） */
-  .tutorial-picture img { display: block; width: auto; height: auto; max-width: min(640px, calc(100vw - 52px)); max-height: calc(100vh - 330px); object-fit: contain; border-radius: 10px; }
+  /* 画像は読み込み前から枠の大きさを決めておき、読み込み後に幅が変わって位置がずれないようにする */
+  .tutorial-picture img { display: block; width: auto; height: min(calc(100vh - 330px), 360px); max-width: calc(100vw - 52px); object-fit: contain; border-radius: 10px; }
   .tutorial-picture span { font-size: 18px; font-weight: 800; color: #f2cd7a; letter-spacing: .12em; }
-  @keyframes tutorialPictureIn { from { opacity: 0; transform: translate(-50%, 8px); } }
+  @keyframes tutorialPictureIn { from { opacity: 0; } } /* 位置は動かさず、ふわっと出すだけ */
   @keyframes tutorialSpotPulse { 50% { border-color: #fff1c4; } }
   .tutorial-panel {
     position: absolute; left: 50%; transform: translateX(-50%);
@@ -1517,6 +1548,17 @@
   .tutorial-task-tag { padding: 2px 9px; border-radius: 999px; background: #e2b85c; color: #2a1a0a; font-size: 11px; letter-spacing: .04em; }
   .tutorial-text { min-height: 3.4em; font-size: 16px; line-height: 1.7; font-weight: 600; word-break: keep-all; overflow-wrap: anywhere; line-break: strict; }
   .tutorial-unshown { visibility: hidden; }
+  /* チュートリアルで選ぶべき選択肢（ボタン・選定・対象）を光らせ、選ばない方は控えめにする */
+  .tutorial-recommend { position: relative; outline: 3px solid #ffd978 !important; outline-offset: 2px; box-shadow: 0 0 18px rgba(255, 210, 110, .9) !important; animation: tutorialRecommendPulse 1.1s ease-in-out infinite; }
+  button.tutorial-recommend::after, .sentei-option.tutorial-recommend::after, .battle-deck-modal-card.tutorial-recommend::after {
+    content: 'おすすめ'; position: absolute; left: 50%; top: -12px; transform: translate(-50%, -100%); padding: 2px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 900; color: #2a1a0a; background: #ffd978; white-space: nowrap; pointer-events: none;
+  }
+  .tutorial-dimmed { opacity: .45; filter: grayscale(.4); }
+  .sentei-option.tutorial-recommend::after { left: auto; right: 10px; top: 50%; transform: translateY(-50%); }
+  @keyframes tutorialRecommendPulse { 50% { box-shadow: 0 0 30px rgba(255, 225, 150, 1) !important; } }
+  /* 重要語：金色・太字・少し大きく */
+  .tutorial-key { color: #ffd46b; font-weight: 900; font-size: 1.08em; text-shadow: 0 0 8px rgba(255, 196, 80, .35); }
   .mode-task .tutorial-text { min-height: 0; font-size: 15px; }
   .tutorial-hint { margin-top: 6px; padding: 5px 10px; border-radius: 8px; background: rgba(200, 80, 60, .25); border: 1px solid rgba(240, 130, 110, .5); color: #ffd9cf; font-size: 13px; font-weight: 700; }
   .tutorial-next { position: absolute; right: 0; bottom: -2px; color: #f2cd7a; font-size: 12px; font-weight: 800; animation: tutorialNextBlink 1s steps(2, start) infinite; }
@@ -1534,7 +1576,7 @@
     .tutorial-text { font-size: 14px; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .tutorial-spot, .tutorial-next, .tutorial-panel.shake, .tutorial-card-mark, .tutorial-picture { animation: none; }
+    .tutorial-spot, .tutorial-next, .tutorial-panel.shake, .tutorial-card-mark, .tutorial-picture, .tutorial-recommend { animation: none; }
   }
   .genesis-globe-icon { display: inline-block; vertical-align: -0.15em; } /* 創世決戦ロビー見出し等で使用 */
   /* ===== 創世決戦・世界観導入（絵巻） ===== */
@@ -5469,16 +5511,19 @@
         <button class="tutorial-menu-close" @click="_sfxPlay('cancel'); tutorialMenuOpen = false" aria-label="閉じる">✕</button>
       </div>
       <div class="tutorial-menu-list">
-        <button v-for="lesson in tutorialLessons" :key="lesson.id" class="tutorial-lesson"
-                :class="{ cleared: tutorialProgress[lesson.id] }" :disabled="tutorialLoading" @click="startTutorial(lesson.id)">
+        <template v-for="(lesson, li) in tutorialLessons">
+        <div v-if="lesson.sideStory && !(tutorialLessons[li - 1] && tutorialLessons[li - 1].sideStory)" :key="'sub' + lesson.id" class="tutorial-menu-sub">外伝</div>
+        <button :key="lesson.id" class="tutorial-lesson"
+                :class="{ cleared: tutorialProgress[lesson.id], 'side-story': lesson.sideStory }" :disabled="tutorialLoading" @click="startTutorial(lesson.id)">
           <span class="tutorial-lesson-num">{{ lesson.numeral }}</span>
           <span class="tutorial-lesson-body">
-            <span class="tutorial-lesson-title">{{ lesson.title }}<span class="tutorial-lesson-opp">相手：{{ lesson.oppName }}</span></span>
+            <span class="tutorial-lesson-title">{{ lesson.title }}<span class="tutorial-lesson-opp">{{ lesson.sideStory ? '舞台：創世決戦の選別の儀' : '相手：' + lesson.oppName }}</span></span>
             <span class="tutorial-lesson-summary">{{ lesson.summary }}</span>
             <span class="tutorial-lesson-tags"><span v-for="tag in lesson.learn" :key="tag">{{ tag }}</span></span>
           </span>
           <span class="tutorial-lesson-state">{{ tutorialProgress[lesson.id] ? 'クリア済み' : (tutorialLoading ? '準備中…' : 'はじめる') }}</span>
         </button>
+        </template>
       </div>
     </div>
   </div>
@@ -7949,7 +7994,7 @@
         <div v-else class="battle-zone-modal-grid">
           <div v-for="(c, i) in dslTargetModal.candidates" :key="'dt'+i" :data-dsl-target-index="i"
                class="battle-deck-modal-card"
-               :class="{ selected: dslTargetModal.selected.includes(c), unavailable: !!dslTargetUnavailableReason(c), available: !dslTargetUnavailableReason(c) }">
+               :class="{ selected: dslTargetModal.selected.includes(c), unavailable: !!dslTargetUnavailableReason(c), available: !dslTargetUnavailableReason(c), 'tutorial-recommend': tutorialChoiceHint('targets', fullName(c)) === true, 'tutorial-dimmed': tutorialChoiceHint('targets', fullName(c)) === false }">
             <div class="battle-card dsl-target-card"
                  :style="cardImageUrl(c) ? { backgroundImage: 'url(' + cardImageUrl(c) + ')' } : {}"
                  @click="openPreview(c)"
@@ -8003,7 +8048,7 @@
         <div class="sentei-options">
           <div v-for="(opt, i) in battleSenteiModal.options" :key="'so'+i"
                class="sentei-option"
-               :class="{ selected: battleSenteiModal.selected.includes(i), disabled: battleSenteiOptionDisabled(i) }"
+               :class="{ selected: battleSenteiModal.selected.includes(i), disabled: battleSenteiOptionDisabled(i), 'tutorial-recommend': tutorialChoiceHint('sentei', String(opt)) === true, 'tutorial-dimmed': tutorialChoiceHint('sentei', String(opt)) === false }"
                @click="battleToggleSenteiOption(i)">
             <div class="sentei-option-check">{{ battleSenteiModal.selected.includes(i) ? '✓' : '' }}</div>
             <div class="sentei-option-text">・{{ opt }}</div>
@@ -8079,7 +8124,7 @@
         </div>
         <div class="battle-action-buttons">
           <button @click="battleCancelConfirm">キャンセル</button>
-          <button class="battle-confirm-primary" @click="battleConfirmApply">{{ battleConfirmModal.confirmLabel || '実行' }}</button>
+          <button class="battle-confirm-primary" :class="{ 'tutorial-recommend': !!tutorial }" @click="battleConfirmApply">{{ battleConfirmModal.confirmLabel || '実行' }}</button>
         </div>
       </div>
     </div>
@@ -8190,50 +8235,107 @@
       </div>
     </div>
 
-    <!-- ===== チュートリアル：アマテラスの案内（台詞中は盤面を暗くし、操作手順中は吹き出しだけ残す） ===== -->
-    <!-- 相手の手番中は盤面を隠さず、何をしているかだけを帯で知らせる -->
-    <div v-if="tutorial && tutorial.oppLabel" class="tutorial-opp-banner" role="status" aria-live="polite">{{ tutorial.oppLabel }}</div>
-    <div v-if="tutorial && tutorialMode !== 'wait'" class="tutorial-layer" :class="['mode-' + tutorialMode, { finale: tutorialStep && tutorialStep.finale }]">
-      <div v-if="tutorialMode === 'say'" class="tutorial-catcher" @click="tutorialAdvance"></div>
-      <!-- 台詞中は照らす場所・強調カードだけを残して盤面を暗くする（複数の穴をあけるためSVGのマスクを使う） -->
-      <svg v-if="tutorialMode === 'say' && !(tutorialStep && tutorialStep.finale)" class="tutorial-dim" aria-hidden="true">
-        <defs>
-          <mask id="tutorialDimMask">
-            <rect x="0" y="0" width="100%" height="100%" fill="#fff"></rect>
-            <rect v-for="(r, i) in tutorial.rects.concat(tutorial.marks)" :key="'tdm' + i" :x="r.x" :y="r.y" :width="r.w" :height="r.h" rx="10" fill="#000"></rect>
-          </mask>
-        </defs>
-        <rect x="0" y="0" width="100%" height="100%" fill="rgba(4, 6, 12, .7)" mask="url(#tutorialDimMask)"></rect>
-      </svg>
-      <div v-for="(r, i) in tutorial.rects" :key="'tspot' + i" class="tutorial-spot"
-           :style="{ left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px' }"></div>
-      <div v-for="m in tutorial.marks" :key="m.key" class="tutorial-card-mark"
-           :style="{ left: m.x + 'px', top: m.y + 'px', width: m.w + 'px', height: m.h + 'px' }">
-        <span class="tutorial-card-name" :class="{ below: m.y < 70 }">{{ m.label }}</span>
+  </div>
+
+  <!-- ===== チュートリアル外伝：選別の儀（練習用のピック画面） ===== -->
+  <div v-if="appView === 'tutorialPick' && tutorialPick" class="tutorial-pick-overlay">
+    <div class="tutorial-pick-screen gm-body gm-draft">
+      <div class="gm-draft-head">
+        <div class="gm-draft-title">
+          外伝 選別の儀（練習）<span class="gm-draft-set">束 {{ tutorialPick.packIndex + 1 }} / {{ tutorialPick.packs.length }}</span>
+        </div>
+        <div class="gm-draft-headright">
+          <span class="gm-draft-return-total tutorial-pick-soul" title="選んだカードの変換値の合計です">
+            <span class="gm-soul-icon">★</span>星魂の見込み <b>{{ tutorialPickSoul }}</b>
+          </span>
+          <span class="gm-draft-progress">あなたの取得 <b>{{ tutorialPick.picks.length }}</b> / {{ tutorialPick.packs.length }}</span>
+        </div>
       </div>
-      <div v-if="tutorialStep && tutorialStep.picture" class="tutorial-picture" :key="'tpic' + tutorialStep.picture">
-        <img :src="tutorialStep.picture" :alt="tutorialStep.pictureLabel || ''">
-        <span v-if="tutorialStep.pictureLabel">{{ tutorialStep.pictureLabel }}</span>
-      </div>
-      <div class="tutorial-panel" :class="['at-' + (tutorialStep && tutorialStep.picture ? 'bottom' : tutorial.panelPos), { shake: tutorial.hintShake }]"
-           role="dialog" aria-live="polite" :aria-label="'アマテラス：' + tutorialFullText"
-           @click="tutorialMode === 'say' && tutorialAdvance()">
-        <div class="tutorial-portrait" aria-hidden="true"></div>
-        <div class="tutorial-body">
-          <div class="tutorial-name">
-            <span>アマテラス</span>
-            <span v-if="tutorialMode === 'task'" class="tutorial-task-tag">やってみましょう</span>
+      <div class="tutorial-pick-main">
+        <aside class="tutorial-pick-kami">
+          <div class="tutorial-pick-kami-img"
+               @mouseenter="tutorialPick.kami && showCardHover(tutorialPick.kami, $event)" @mouseleave="hideCardHover"
+               :style="tutorialPick.kami && cardImageUrl(tutorialPick.kami) ? { backgroundImage: 'url(' + cardImageUrl(tutorialPick.kami) + ')' } : {}"></div>
+          <div class="tutorial-pick-kami-name">{{ tutorialPick.kami ? fullName(tutorialPick.kami) : 'アマテラス' }}</div>
+          <div v-if="tutorialPickGuide" class="tutorial-pick-kami-world">理念「{{ tutorialPickGuide.world }}」</div>
+          <ul v-if="tutorialPickGuide" class="tutorial-pick-kami-hints">
+            <li v-for="hint in tutorialPickGuide.pick" :key="hint">{{ hint }}</li>
+          </ul>
+        </aside>
+        <div class="tutorial-pick-center">
+          <div class="gm-draft-status mine">★ あなたのピックです — 束から1枚選んでください（残りは隣へ回ります）</div>
+          <div class="gm-pack-grid tutorial-pick-pack">
+            <div v-for="card in tutorialPick.pack" :key="'tpk' + card.no" class="gm-pack-card"
+                 :class="'kind-' + tutorialCardKind(card).key"
+                 :data-tcard="'pack:' + fullName(card)"
+                 @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
+                 @click="tutorialPickCard(card)">
+              <div class="gm-pack-img" :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}">
+                <span class="gm-pack-return-overlay" title="このカードの変換値">
+                  <span class="gm-soul-icon">★</span><span>×</span><b>{{ Number(card.return) || 0 }}</b>
+                </span>
+              </div>
+              <div class="gm-pack-name">{{ fullName(card) }}</div>
+              <div class="tutorial-pick-kind">{{ tutorialCardKind(card).label }}</div>
+            </div>
+            <div v-if="!tutorialPick.pack.length" class="tutorial-pick-passing">次の束が回ってきます…</div>
           </div>
-          <!-- 文節の途中で改行しないよう、文節ごとに区切って改行位置を<wbr>で示す。
-               まだ表示していない文字も透明で配置しておき、1文字ずつ出しても行がずれないようにする -->
-          <div class="tutorial-text"><template v-for="(p, i) in tutorialPhraseParts"><span :key="'tp' + i" class="tutorial-phrase">{{ p.shown }}<span class="tutorial-unshown">{{ p.rest }}</span></span><wbr :key="'tw' + i"></template></div>
-          <div v-if="tutorial.hint" class="tutorial-hint">{{ tutorial.hint }}</div>
-          <div v-if="tutorialMode === 'say'" class="tutorial-next" aria-hidden="true">
-            {{ tutorial.typed >= tutorialFullText.length ? (tutorialStep.last ? 'クリックでおわる' : '▼') : '' }}
+          <div class="tutorial-pick-pool">
+            <span class="tutorial-pick-pool-label">選んだカード</span>
+            <span v-if="!tutorialPick.picks.length" class="tutorial-pick-pool-empty">まだありません</span>
+            <span v-for="card in tutorialPick.picks" :key="'tpp' + card.no" class="tutorial-pick-pool-card"
+                  @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
+              {{ fullName(card) }}<b>★{{ Number(card.return) || 0 }}</b>
+            </span>
           </div>
         </div>
-        <button v-if="!(tutorialStep && tutorialStep.finale)" class="tutorial-quit" @click.stop="battleReturn">やめる</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== チュートリアル（対戦画面・外伝のピック画面で共通。ルート直下に置き、どの画面の上にも出せるようにする） ===== -->
+  <!-- 相手の手番中は盤面を隠さず、何をしているかだけを帯で知らせる -->
+  <div v-if="tutorial && tutorial.oppLabel" class="tutorial-opp-banner" role="status" aria-live="polite">{{ tutorial.oppLabel }}</div>
+  <div v-if="tutorial && tutorialMode !== 'wait'" class="tutorial-layer" :class="['mode-' + tutorialMode, { finale: tutorialStep && tutorialStep.finale }]">
+    <div v-if="tutorialMode === 'say'" class="tutorial-catcher" @click="tutorialAdvance"></div>
+    <!-- 台詞中は照らす場所・強調カードだけを残して盤面を暗くする（複数の穴をあけるためSVGのマスクを使う） -->
+    <svg v-if="tutorialMode === 'say' && !(tutorialStep && tutorialStep.finale && !tutorialStep.picture)" class="tutorial-dim" aria-hidden="true">
+      <defs>
+        <mask id="tutorialDimMask">
+          <rect x="0" y="0" width="100%" height="100%" fill="#fff"></rect>
+          <rect v-for="(r, i) in tutorial.rects.concat(tutorial.marks)" :key="'tdm' + i" :x="r.x" :y="r.y" :width="r.w" :height="r.h" rx="10" fill="#000"></rect>
+        </mask>
+      </defs>
+      <rect x="0" y="0" width="100%" height="100%" fill="rgba(4, 6, 12, .7)" mask="url(#tutorialDimMask)"></rect>
+    </svg>
+    <div v-for="(r, i) in tutorial.rects" :key="'tspot' + i" class="tutorial-spot"
+         :style="{ left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px' }"></div>
+    <div v-for="m in tutorial.marks" :key="m.key" class="tutorial-card-mark"
+         :style="{ left: m.x + 'px', top: m.y + 'px', width: m.w + 'px', height: m.h + 'px' }">
+      <span class="tutorial-card-name" :class="{ below: m.y < 70 }">{{ m.label }}</span>
+    </div>
+    <div v-if="tutorialStep && tutorialStep.picture" class="tutorial-picture" :key="'tpic' + tutorialStep.picture">
+      <img :src="tutorialStep.picture" :alt="tutorialStep.pictureLabel || ''">
+      <span v-if="tutorialStep.pictureLabel">{{ tutorialStep.pictureLabel }}</span>
+    </div>
+    <div class="tutorial-panel" :class="['at-' + (tutorialStep && tutorialStep.picture ? 'bottom' : tutorial.panelPos), { shake: tutorial.hintShake }]"
+         role="dialog" aria-live="polite" :aria-label="'アマテラス：' + tutorialFullText"
+         @click="tutorialMode === 'say' && tutorialAdvance()">
+      <div class="tutorial-portrait" aria-hidden="true"></div>
+      <div class="tutorial-body">
+        <div class="tutorial-name">
+          <span>アマテラス</span>
+          <span v-if="tutorialMode === 'task'" class="tutorial-task-tag">やってみましょう</span>
+        </div>
+        <!-- 文節の途中で改行しないよう、文節ごとに区切って改行位置を<wbr>で示す。
+             まだ表示していない文字も透明で配置しておき、1文字ずつ出しても行がずれないようにする -->
+        <div class="tutorial-text"><template v-for="(p, i) in tutorialPhraseParts"><span :key="'tp' + i" class="tutorial-phrase"><span v-for="(run, j) in p.runs" :key="j" :class="{ 'tutorial-key': run.key }">{{ run.shown }}<span class="tutorial-unshown">{{ run.rest }}</span></span></span><wbr :key="'tw' + i"></template></div>
+        <div v-if="tutorial.hint" class="tutorial-hint">{{ tutorial.hint }}</div>
+        <div v-if="tutorialMode === 'say'" class="tutorial-next" aria-hidden="true">
+          {{ tutorial.typed >= tutorialFullText.length ? (tutorialStep.last ? 'クリックでおわる' : '▼') : '' }}
+        </div>
+      </div>
+      <button v-if="!(tutorialStep && tutorialStep.finale)" class="tutorial-quit" @click.stop="tutorialQuit">やめる</button>
     </div>
   </div>
 
@@ -8361,8 +8463,8 @@
         </div>
       </template>
       <div class="battle-zone-modal-actions">
-        <button class="battle-back-btn" style="background:#2e7d4f;border-color:#7cf0a8;color:#fff;" @click="dslAnswerOptional(true)">{{ dslOptionalModal.kind === 'reroll' ? 'リロールする' : '発動する' }}</button>
-        <button class="battle-back-btn" style="background:#444;border-color:#666;" @click="dslAnswerOptional(false)">{{ dslOptionalModal.kind === 'reroll' ? 'リロールしない' : '発動しない' }}</button>
+        <button class="battle-back-btn" style="background:#2e7d4f;border-color:#7cf0a8;color:#fff;" :class="{ 'tutorial-recommend': tutorialAnswerHint(true) === true, 'tutorial-dimmed': tutorialAnswerHint(true) === false }" @click="dslAnswerOptional(true)">{{ dslOptionalModal.kind === 'reroll' ? 'リロールする' : '発動する' }}</button>
+        <button class="battle-back-btn" style="background:#444;border-color:#666;" :class="{ 'tutorial-recommend': tutorialAnswerHint(false) === true, 'tutorial-dimmed': tutorialAnswerHint(false) === false }" @click="dslAnswerOptional(false)">{{ dslOptionalModal.kind === 'reroll' ? 'リロールしない' : '発動しない' }}</button>
       </div>
     </div>
   </div>
@@ -9999,6 +10101,8 @@ const TUTORIAL_LESSONS = Object.freeze([
       { say: '見てください、天力が増えましたね。', focus: 'selfTenryoku' },
       { say: '天力は、カミの必殺技「神技」を使うための力。溜め方はカミごとに違って、私は【守護】を持つレガシーが出るたびに天力が1増えるのです。これを「天力トリガー」といいます。', focus: 'selfKami' },
       { say: 'さらに鐘鳴らしの童は、出たときに天力を1くれる子。合わせて天力2になりました。', focus: 'selfTenryoku', cards: ['self-field:鐘鳴らしの童'] },
+      { say: '天力が溜まる条件は、カミによってそれぞれ違います。私の理念は、慈愛の心をもって他者と接する「慈悲深厚の世界」。【守護】を持つレガシーは、そんな私の理念に同調してくれる子たちなのです。', focus: 'selfKami' },
+      { say: 'ですから、デッキを組むときは、自分のカミの理念に同調してくれるレガシーを集めることが大事ですよ。天力が溜まるほど、神技を使える機会も増えますから。', focus: 'selfTenryoku' },
       { task: 'ターンを終了しましょう。', focus: 'endTurn', allow: { endTurn: true },
         done: vm => vm.battleSample.activeSide === 'opp' },
       { action: 'oppTurn', script: [{ play: '飄々たる諜報員' }] },
@@ -10104,18 +10208,19 @@ const TUTORIAL_LESSONS = Object.freeze([
   {
     id: 'advanced', numeral: '肆', title: '応用ルール',
     summary: '進化・昇華で一気に攻め、手札の上限や疲労ダメージなど終盤の決まりごとを学びます。',
-    learn: ['進化', '昇華', '手札の上限', '疲労ダメージ', '山札切れ'],
+    learn: ['進化', '進化中の効果', '昇華', '手札の上限', '疲労ダメージ', '山札切れ'],
     oppName: 'ツクヨミ', bgm: 'gekkouKenkaku',
     setup: {
       selfKamiNo: '8', oppKamiNo: '9', firstSide: 'opp', activeSide: 'self', turn: 10,
       self: {
-        life: 5, lifeMax: 10, manaMax: 9, relics: [],
-        legacies: ['見習い忍者・アカマツ'],
-        hand: ['慈愛の忍・イロハ', '夜風の始末屋', '平穏の祈り手', '眩き黄の眷属', '深き青の眷属', '荒き緑の眷属', '昏き紫の眷属', '救済の手', '黄泉帰り', '忠臣の予感'],
+        life: 5, lifeMax: 10, manaMax: 9, relics: ['社の施し', '社の施し'],
+        legacies: [],
+        graveyard: ['音速の忍', '猛き赤の眷属'],
+        hand: ['鐘鳴らしの童', '慈愛の忍・イロハ', '夜風の始末屋', '平穏の祈り手', '眩き黄の眷属', '深き青の眷属', '荒き緑の眷属', '昏き紫の眷属', '救済の手', '黄泉帰り', '忠臣の予感'],
         deck: ['冥土送りの侍女', '札遊びの座敷童', '戦陣の旗手'],
       },
       opp: {
-        life: 4, lifeMax: 10, manaMax: 10, relics: [],
+        life: 5, lifeMax: 10, manaMax: 10, relics: [],
         hand: ['猛き赤の眷属', '荒き緑の眷属', '熾烈なる戦役'],
         deck: ['深き青の眷属', '昏き紫の眷属', '眩き黄の眷属', '先駆けの修羅'],
       },
@@ -10124,19 +10229,27 @@ const TUTORIAL_LESSONS = Object.freeze([
       { say: 'ようこそ。最後のチュートリアルでは、少し応用の決まりごとを学びましょう。' },
       { say: 'お相手はツクヨミさん。あなたが求める静けさの中にも、温もりを添えられたらと思っているのですけれど……。今回は対戦の終盤、10ターン目から始めますね。', focus: 'oppKami' },
       { action: 'startTurn' },
-      { say: 'あなたのターンです。手札が11枚もありますね。手札の上限は8枚。ターンの終わりに9枚以上あると、8枚になるまで選んで墓地に送らなければなりません。', focus: 'hand' },
-      { say: '「慈愛の忍・イロハ」には【進化：赤レガシー/忍者レガシー】と書かれています。条件に合うレガシーが場にいれば、その上に重ねて出せるということです。', focus: 'hand', cards: ['self-hand:慈愛の忍・イロハ'] },
-      { say: '場の「見習い忍者・アカマツ」は赤の忍者。イロハの進化元にぴったりです。進化したレガシーは【疾駆】を持ち、出たターンから神攻もできますよ。下になったレガシーの効果は失われ、タップ状態は引き継ぎます。', focus: 'selfLegacy', cards: ['self-field:見習い忍者・アカマツ'] },
-      { task: '「慈愛の忍・イロハ」を手札からドラッグして、場の「見習い忍者・アカマツ」の上で離しましょう。墓地からレガシーを出すか聞かれたら「発動しない」を選んでくださいね。' + TUTORIAL_TASK_CLOSE_NOTE,
-        focus: 'selfLegacy', cards: ['self-field:見習い忍者・アカマツ'], allow: { play: ['慈愛の忍・イロハ'] }, forceEvolve: true,
-        answers: [{ card: '慈愛の忍・イロハ', kind: 'ability', answer: false, hint: '今の墓地には出せるレガシーがいないので、「発動しない」を選びましょう。' }],
-        done: vm => vm.battleSample.self.legacies.some(c => c && c._evolved) && vm._tutorialIdle() },
-      { say: '進化できましたね。【進化中】と書かれた効果も使えるようになります。さっそく神攻してみましょう。', focus: 'selfLegacy', cards: ['self-field:慈愛の忍・イロハ'] },
-      { task: '「慈愛の忍・イロハ」で、ツクヨミさんに神攻しましょう。', focus: 'oppKami', allow: { divine: ['慈愛の忍・イロハ'] },
-        done: vm => vm.battleSample.opp.life < 4 && vm._tutorialIdle() },
+      { say: 'あなたのターンです。手札が12枚もありますね。手札の上限は8枚。ターンの終わりに9枚以上あると、8枚になるまで選んで墓地に送らなければなりません。', focus: 'hand' },
+      { say: 'まずは「進化」の準備から。「鐘鳴らしの童」を場に出してみましょう。', focus: 'hand', cards: ['self-hand:鐘鳴らしの童'] },
+      { task: '「鐘鳴らしの童」をレガシー欄へ出しましょう。効果を発動するか聞かれたら「発動する」を選んでくださいね。' + TUTORIAL_TASK_CLOSE_NOTE,
+        focus: 'selfLegacy', allow: { play: ['鐘鳴らしの童'] },
+        answers: [{ card: '鐘鳴らしの童', kind: 'ability', answer: true, hint: '今回は「発動する」を選びましょう。' }],
+        done: vm => vm._tutorialHas('self', 'legacies', '鐘鳴らしの童') && vm._tutorialIdle() },
+      { say: '出たばかりの童は、このターンは攻撃できません。……ところが、進化を使えば話は別なのです。', focus: 'selfLegacy', cards: ['self-field:鐘鳴らしの童'] },
+      { say: '「慈愛の忍・イロハ」には【進化：赤レガシー/忍者レガシー】と書かれています。条件に合うレガシーが場にいれば、その上に重ねて出せるということ。赤の童は、イロハの進化元にぴったりです。', focus: 'hand', cards: ['self-hand:慈愛の忍・イロハ', 'self-field:鐘鳴らしの童'] },
+      { say: '進化したレガシーは【疾駆】を持ちます。出たばかりの童の上に重ねても、そのターンのうちに神攻できるのです。下になったレガシーの効果は失われ、タップ状態は引き継ぎますよ。', focus: 'selfLegacy', cards: ['self-field:鐘鳴らしの童'] },
+      { say: 'さらにイロハには【進化中・出現時】の効果があります。進化して出たとき、墓地からコスト3以下のレガシーを1枚呼び戻せるのです。墓地には【疾駆】を持つ「音速の忍」がいますね。', focus: 'selfGraveyard' },
+      { task: '「慈愛の忍・イロハ」を手札からドラッグして、場の「鐘鳴らしの童」の上で離しましょう。墓地から出すか聞かれたら「発動する」を選び、「音速の忍」を選んでくださいね。' + TUTORIAL_TASK_CLOSE_NOTE,
+        focus: 'selfLegacy', cards: ['self-field:鐘鳴らしの童'], allow: { play: ['慈愛の忍・イロハ'] }, forceEvolve: true, targets: ['音速の忍'],
+        answers: [{ card: '慈愛の忍・イロハ', kind: 'ability', answer: true, hint: '「発動する」を選んで、墓地の音速の忍を呼び戻しましょう。' }],
+        done: vm => vm.battleSample.self.legacies.some(c => c && c._evolved) && vm._tutorialHas('self', 'legacies', '音速の忍') && vm._tutorialIdle() },
+      { say: '進化したイロハと、呼び戻した音速の忍。どちらも【疾駆】を持っているので、すぐに神攻できますよ。', focus: 'selfLegacy', cards: ['self-field:慈愛の忍・イロハ', 'self-field:音速の忍'] },
+      { task: '「慈愛の忍・イロハ」と「音速の忍」で、ツクヨミさんに神攻しましょう。', focus: 'oppKami', cards: ['self-field:慈愛の忍・イロハ', 'self-field:音速の忍'],
+        allow: { divine: ['慈愛の忍・イロハ', '音速の忍'] },
+        done: vm => vm.battleSample.opp.life <= 3 && vm._tutorialIdle() },
       { say: '次は「夜風の始末屋」。【昇華3】とは、コストを追加で3払うと、おまけの効果を得られるということ。始末屋は昇華すると【疾駆】を得ます。', focus: 'hand', cards: ['self-hand:夜風の始末屋'] },
-      { say: '昇華できるのは、手札から使うときだけです。マナはたっぷり10ありますから、コスト3に3を足して、6払いましょう。', focus: 'selfManaValue', cards: ['self-hand:夜風の始末屋'] },
-      { task: '「夜風の始末屋」をレガシー欄へドラッグし、支払うコストは昇華の「6」を選びましょう。' + TUTORIAL_TASK_CLOSE_NOTE,
+      { say: '昇華できるのは、手札から使うときだけです。コスト3に3を足して6。残りのマナは4なので、足りない分は「社の施し」2枚で補いましょう。', focus: 'selfManaValue', cards: ['self-hand:夜風の始末屋', 'self-relic:社の施し'] },
+      { task: '「夜風の始末屋」をレガシー欄へドラッグし、支払うコストは昇華の「6」を、社の施しを使うか聞かれたら「破壊してマナを増やす」を選びましょう。' + TUTORIAL_TASK_CLOSE_NOTE,
         focus: 'selfLegacy', allow: { play: ['夜風の始末屋'] }, requireSublim: true,
         done: vm => vm._tutorialHas('self', 'legacies', '夜風の始末屋') && vm.tutorial.flags.sublim && vm._tutorialIdle() },
       { say: '始末屋は神攻したとき、1ターンに1回だけ起き上がる子。続けて2回神攻できるのです。', focus: 'selfLegacy', cards: ['self-field:夜風の始末屋'] },
@@ -10165,6 +10278,49 @@ const TUTORIAL_LESSONS = Object.freeze([
       { say: 'カードの細かな効果やキーワードは、トップ画面の「プレイガイド」でいつでも確かめられます。あなたと共に創る世界を、楽しみにしていますね。', finale: true, last: true },
     ],
   },
+  {
+    id: 'draft', numeral: '外伝', title: '選別の心得', kind: 'pick', sideStory: true,
+    summary: '創世決戦の「選別の儀」で、どのカードを選ぶべきか。ユニークと基本カード、龍、星魂の考え方を、ピック画面で学びます。',
+    learn: ['選別の儀', '星魂', '変換値', 'ユニークと基本', '龍のカード', '理念との同調'],
+    oppName: '創世決戦', bgm: 'senjouNoMai',
+    setup: {
+      selfKamiNo: '8',
+      packs: [
+        ['平穏の祈り手', '慈愛の忍・イロハ', '猛き赤の眷属', '戦陣の旗手', '飄々たる諜報員', '冥土送りの侍女', '晴れ空の門出'],
+        ['平和を願う剣・アヤト', '逢魔ヶ淵の渡し守', '眩き黄の眷属', '救済の手', '大将軍の遺児・カシマ', '揺らぐ信仰'],
+        ['昏き紫の眷属', '鐘鳴らしの童', '聖女の巡礼', '白き閃刃・シラトリ', '二つ影の絡繰師'],
+      ],
+    },
+    steps: [
+      { say: 'ようこそ、外伝へ。今回は対戦ではなく、「創世決戦」の「選別の儀」──カードを選び合う時間についてお話ししますね。' },
+      { say: '選別の儀では、配られた束から1枚ずつカードを選び、残りを隣の方へ渡していきます。選んだカードが、そのままあなたのデッキになるのです。', focus: 'pickPack' },
+      { say: '創世決戦の順位は「星魂（せいこん）」で決まります。星戦に1回勝つごとに星魂10。それに加えて、集めたカードの「変換値」の合計も、終戦のときに星魂になるのです。', focus: 'pickSoul' },
+      { say: 'カードの右上にある、★のついた数字が「変換値」。0から2まであります。強さだけでなく、この数字もよく見てくださいね。', focus: 'pickReturn' },
+      { say: '「平穏の祈り手」のような銀枠のカードは「基本カード」。カードプールに同じカードが2枚ずつあります。ユニークほど強くはありませんが、変換値は2。星魂をしっかり稼いでくれます。', cards: ['pack:平穏の祈り手'] },
+      { say: '「慈愛の忍・イロハ」のような金枠のカードは「ユニークカード」。カードプールに1枚しかない、強力なカードです。そのかわり、変換値は1しかありません。', cards: ['pack:慈愛の忍・イロハ'] },
+      { say: 'そして「猛き赤の眷属」のような「龍」のレガシー。とても強力ですが、変換値は0。それに龍は、私たちカミの誰の理念とも合わない存在なのです。（ヤマタノオロチさんだけは別ですけれど……）', cards: ['pack:猛き赤の眷属'] },
+      { say: 'カードを選ぶときに、もう1つ大切なのが、あなたのカミの「理念」。私の場合は【守護】を持つレガシー。理念に同調してくれるカードを集めるほど天力が溜まり、神技を使えるのです。', focus: 'pickKami' },
+      { say: '強さか、星魂か、理念との同調か……。どのカードを選ぶかが、創世決戦の勝負の分かれ目です。さあ、選んでみましょう。', focus: 'pickPack' },
+      { task: 'この束では、私の理念に同調する【守護】を持ち、変換値も2の「平穏の祈り手」を選んでみましょう。', focus: 'pickPack', allow: { pick: ['平穏の祈り手'] },
+        done: vm => vm.tutorialPick && vm.tutorialPick.picks.some(c => vm.fullName(c).includes('平穏の祈り手')) },
+      { say: '変換値2が、そのまま星魂の見込みに加わりました。残りのカードは、隣の方へ渡されます。', focus: 'pickSoul' },
+      { action: 'nextPack' },
+      { say: '隣の方から、次の束が回ってきました。今度はユニークの「平和を願う剣・アヤト」がいますね。【守護】を持ち、戦闘力は4000。星戦でとても頼りになる1枚です。', cards: ['pack:平和を願う剣・アヤト'] },
+      { say: '変換値は1と少し低めです。でも星戦に勝てば星魂10。強いカードで星戦を勝ち抜くのも、立派な作戦ですよ。', focus: 'pickSoul', cards: ['pack:平和を願う剣・アヤト'] },
+      { say: '同じ【守護】を持つ基本カードの「逢魔ヶ淵の渡し守」なら、変換値は2。こちらを選ぶ考え方もあります。どちらが正解ということはないのです。', cards: ['pack:逢魔ヶ淵の渡し守'] },
+      { task: '今回は、星戦を勝ち抜くために「平和を願う剣・アヤト」を選んでみましょう。', focus: 'pickPack', allow: { pick: ['平和を願う剣・アヤト'] },
+        done: vm => vm.tutorialPick && vm.tutorialPick.picks.some(c => vm.fullName(c).includes('平和を願う剣・アヤト')) },
+      { action: 'nextPack' },
+      { say: '最後の束です。龍の「昏き紫の眷属」は強力ですが、変換値は0で、私の理念とも合いません。選ぶなら、星魂よりも星戦の勝利を狙う覚悟が必要ですね。', cards: ['pack:昏き紫の眷属'] },
+      { say: 'それから、ほかの方の理念も考えてみましょう。自分には必要なくても、相手に渡すと困るカードを先に取ってしまう……そんな選び方もあるのですよ。', focus: 'pickPack' },
+      { task: '最後は、あなたの考えで好きなカードを1枚選んでみてください。', focus: 'pickPack', allow: { pick: true },
+        done: vm => vm.tutorialPick && vm.tutorialPick.picks.length >= 3 },
+      { say: '選び終わりました。選んだカードの変換値の合計が、今の星魂の見込みです。', focus: 'pickSoul' },
+      { say: '選別の儀のあとには「深化の刻」があります。「見識」を使って、デッキのカードを星魂に変えたり、強力なジェネシスカードを手に入れたりできるのです。', focus: 'pickPool' },
+      { say: 'また、各ラウンドの選別が終わると、デッキから数枚を無料で返還できます。返還したカードの変換値も、ちゃんと星魂として残りますよ。', focus: 'pickPool' },
+      { say: '強さ、星魂、理念。3つの釣り合いを考えながら選ぶのが、創世決戦の醍醐味です。あなたらしい選び方を見つけてくださいね。', last: true },
+    ],
+  },
 ]);
 /* 照らす場所（CSSセレクタ。@n は n 番目の一致、@* は全ての一致） */
 const TUTORIAL_FOCUS = Object.freeze({
@@ -10190,6 +10346,11 @@ const TUTORIAL_FOCUS = Object.freeze({
   selfPower: '.self-legacy-drop .battle-card-power@*',
   endTurn: '.battle-end-turn-btn',
   mulligan: '.battle-mulligan .bm-inner',
+  pickPack: '.tutorial-pick-pack',
+  pickSoul: '.tutorial-pick-soul',
+  pickKami: '.tutorial-pick-kami',
+  pickPool: '.tutorial-pick-pool',
+  pickReturn: '.tutorial-pick-pack .gm-pack-return-overlay@*',
 });
 const TUTORIAL_PROGRESS_STORAGE_KEY = 'tsukuriyo_tutorialProgress';
 /* 台詞を文節ごとに区切る（改行はこの区切りでだけ起こす）。
@@ -10229,6 +10390,38 @@ function splitTutorialPhrases(text) {
   });
   if (cur) out.push(cur);
   return out;
+}
+/* 台詞の中で強調する重要語（長いものから照合する）。【】で囲まれた語も強調する。
+   「」の中は、中身がまるごと重要語のとき（例：「神攻（しんこう）」）だけ強調し、カード名やモード名の一部には反応させない。 */
+const TUTORIAL_KEYWORDS = Object.freeze([
+  '天力トリガー', '疲労ダメージ', '手札の上限', '山札切れ', '神攻力', '戦闘力', '神技2', '神技1', '神技', '神攻', '戦闘',
+  'ライフ', 'マナ', '天力', 'コスト', 'タップ', 'アンタップ', 'マリガン', 'リロール', '進化', '昇華', '選定', '疾駆', '奇襲',
+  '守護', '不可侵', '墓地', '崩壊', '変換値', '星魂', '理念', 'ユニークカード', '基本カード', '勝利', '社の施し', 'オラクル',
+  '選別の儀', '深化の刻', '見識',
+].sort((a, b) => b.length - a.length));
+function markTutorialKeywords(text) {
+  const chars = Array.from(String(text || ''));
+  const flags = chars.map(() => false);
+  const at = (i, word) => chars.slice(i, i + word.length).join('') === word;
+  for (let i = 0; i < chars.length;) {
+    if (chars[i] === '「') {
+      const close = chars.indexOf('」', i + 1);
+      if (close > i) {
+        const inner = chars.slice(i + 1, close).join('').replace(/（[^）]*）$/, '');
+        if (TUTORIAL_KEYWORDS.includes(inner)) for (let k = i; k <= close; k++) flags[k] = true;
+        i = close + 1;
+        continue;
+      }
+    }
+    if (chars[i] === '【') {
+      const close = chars.indexOf('】', i + 1);
+      if (close > i) { for (let k = i; k <= close; k++) flags[k] = true; i = close + 1; continue; }
+    }
+    const word = TUTORIAL_KEYWORDS.find(w => at(i, w));
+    if (word) { for (let k = i; k < i + word.length; k++) flags[k] = true; i += word.length; continue; }
+    i += 1;
+  }
+  return flags;
 }
 function loadTutorialProgress() {
   try {
@@ -10847,6 +11040,7 @@ new Vue({
     tutorialProgress: loadTutorialProgress(), // { レッスンid: true }＝クリア済み
     tutorialMenuOpen: false,
     tutorialLoading: false,
+    tutorialPick: null, // 外伝（ピック画面）の状態 { kami, packs, packIndex, pack, picks }
     genesisStoryOpen: false, // 創世決戦開始前の世界観導入
     genesisStoryIndex: 0,
     genesisStoryPlaying: false,
@@ -10900,6 +11094,14 @@ new Vue({
     tutorialLesson() {
       return this.tutorial ? (TUTORIAL_LESSONS.find(l => l.id === this.tutorial.lessonId) || null) : null;
     },
+    tutorialPickSoul() {
+      const p = this.tutorialPick;
+      return p ? p.picks.reduce((sum, c) => sum + (Number(c.return) || 0), 0) : 0;
+    },
+    tutorialPickGuide() {
+      const p = this.tutorialPick;
+      return p ? (GS_KAMI_SELECTION_GUIDES[p.kamiNo] || null) : null;
+    },
     tutorialLessons() {
       return TUTORIAL_LESSONS;
     },
@@ -10911,7 +11113,7 @@ new Vue({
       const step = this.tutorialStep;
       if (step && step.action === 'oppTurn' && step.guide && this.tutorial.running && !(this.battleSample && this.battleSample.result)) return 'task';
       if (!step || step.action || this.battleCpuThinking) return 'wait';
-      if (this.battleSample && this.battleSample.result && !step.finale) return 'wait';
+      if (this.appView === 'battle' && this.battleSample && this.battleSample.result && !step.finale) return 'wait';
       if (step.say) return 'say';
       return step.task ? 'task' : 'wait';
     },
@@ -10924,11 +11126,21 @@ new Vue({
     },
     /* 文節ごとに「表示済み」「未表示（透明）」の文字列へ分ける */
     tutorialPhraseParts() {
-      let remain = this.tutorial ? this.tutorial.typed : 0;
+      const typed = this.tutorial ? this.tutorial.typed : 0;
+      const flags = markTutorialKeywords(this.tutorialFullText);
+      let pos = 0;
       return splitTutorialPhrases(this.tutorialFullText).map(phrase => {
-        const n = Math.max(0, Math.min(phrase.length, remain));
-        remain -= phrase.length;
-        return { shown: phrase.slice(0, n), rest: phrase.slice(n) };
+        // 文節の中を、重要語かどうかで区切った「かたまり」に分ける
+        const runs = [];
+        Array.from(phrase).forEach(ch => {
+          const key = !!flags[pos];
+          const shownChar = pos < typed;
+          const last = runs[runs.length - 1];
+          const run = last && last.key === key ? last : (runs.push({ key, shown: '', rest: '' }), runs[runs.length - 1]);
+          if (shownChar) run.shown += ch; else run.rest += ch;
+          pos += 1;
+        });
+        return { runs };
       });
     },
     battleReturnLabel() {
@@ -12971,6 +13183,14 @@ new Vue({
       const pick = name => this.allCards.find(c => !c.isKami && this.fullName(c).includes(name));
       const cardsOf = names => (names || []).map(pick).filter(Boolean);
       const findKami = no => this.allKamiCards.find(k => String(k.no) === no) || null;
+      if (lesson.kind === 'pick') {
+        // 外伝：対戦画面ではなく、選別の儀を模した練習用のピック画面で進める
+        this.tutorialPick = { kami: findKami(S.selfKamiNo), kamiNo: S.selfKamiNo, packs: S.packs.map(cardsOf), packIndex: 0, pack: cardsOf(S.packs[0]), picks: [] };
+        this.appView = 'tutorialPick';
+        if (lesson.bgm && BGM_FILES[lesson.bgm] && this.bgmCurrentKey !== lesson.bgm) this._bgmPlay(lesson.bgm);
+        this._tutorialBegin(lessonId);
+        return;
+      }
       this._battleInitialize({
         source: 'tutorial', modeLabel: 'チュートリアル', returnView: 'tutorial',
         selfName: 'あなた', oppName: lesson.oppName, firstSide: S.firstSide, life: S.self.life,
@@ -13002,6 +13222,9 @@ new Vue({
       setupSide(bs.opp, S.opp);
       this._battleInitStatDisplay();
       if (typeof this.dslRefreshStaticAbilities === 'function') this.dslRefreshStaticAbilities();
+      this._tutorialBegin(lessonId);
+    },
+    _tutorialBegin(lessonId) {
       this.tutorial = { lessonId, index: -1, typed: 0, rects: [], marks: [], panelPos: 'bottom', hint: '', hintShake: false, flags: {}, running: false, oppLabel: '' };
       clearInterval(this._tutorialTickTimer);
       clearInterval(this._tutorialTypeTimer);
@@ -13011,6 +13234,49 @@ new Vue({
         if (t && t.typed < this.tutorialFullText.length) t.typed += 1;
       }, 28);
       this._tutorialGo(0);
+    },
+    /* 吹き出しの「やめる」：対戦画面は通常の「戻る」確認、ピック画面はそのまま一覧へ戻る */
+    tutorialQuit() {
+      if (this.tutorialLesson && this.tutorialLesson.kind === 'pick') {
+        this._sfxPlay('cancel');
+        this._tutorialLeavePick();
+        this.tutorialMenuOpen = true;
+        return;
+      }
+      this.battleReturn();
+    },
+    _tutorialLeavePick() {
+      this._tutorialStop();
+      this.tutorialPick = null;
+      this.hideCardHover();
+      this.appView = 'top';
+      if (!this.bgmAuto) this._bgmAutoPickForView('top');
+    },
+    /* 外伝：束からカードを1枚選ぶ（手順で指定したカード以外は案内して受け付けない） */
+    tutorialPickCard(card) {
+      const p = this.tutorialPick;
+      const step = this.tutorialStep;
+      if (!p || !card) return;
+      const rule = step && step.task && step.allow ? step.allow.pick : null;
+      const ok = rule === true || (Array.isArray(rule) && rule.some(n => this.fullName(card).includes(n)));
+      if (!ok) {
+        this._tutorialNudge(step && step.task ? 'いまは上に書いてあるカードを選んでくださいね。' : 'まずは私のお話を最後まで聞いてくださいね。');
+        return;
+      }
+      const idx = p.pack.indexOf(card);
+      if (idx < 0) return;
+      this._sfxPlay('cardpick');
+      this.hideCardHover();
+      p.pack.splice(idx, 1);
+      p.picks.push(card);
+    },
+    /* 外伝のカード区分：ユニーク（カードプールに1枚）／基本（2枚）／龍 */
+    tutorialCardKind(card) {
+      if (!card) return { key: '', label: '' };
+      if (card.type === '龍') return { key: 'dragon', label: '龍・ユニーク' };
+      const name = this.fullName(card);
+      const copies = this.allCards.filter(c => !c.isToken && !c.isKami && this.fullName(c) === name).length;
+      return copies >= 2 ? { key: 'basic', label: '基本（' + copies + '枚）' } : { key: 'unique', label: 'ユニーク（1枚）' };
     },
     _tutorialStop() {
       clearInterval(this._tutorialTickTimer);
@@ -13026,8 +13292,11 @@ new Vue({
         this.tutorialProgress = Object.assign({}, this.tutorialProgress, { [lesson.id]: true });
         try { localStorage.setItem(TUTORIAL_PROGRESS_STORAGE_KEY, JSON.stringify(this.tutorialProgress)); } catch (e) { /* 保存できなくても続行 */ }
       }
-      this._tutorialStop();
-      this.battleReturnNow();
+      if (lesson && lesson.kind === 'pick') this._tutorialLeavePick();
+      else {
+        this._tutorialStop();
+        this.battleReturnNow();
+      }
       this.tutorialMenuOpen = true; // 続けて次のレッスンを選べるよう一覧へ戻る
     },
     /* i 番目の手順へ進む（when が偽の手順は飛ばす） */
@@ -13053,7 +13322,17 @@ new Vue({
       const t = this.tutorial;
       t.running = true;
       try {
-        if (step.action === 'mulligan') {
+        if (step.action === 'nextPack') {
+          // 外伝：残りを隣へ渡し、次の束を受け取る
+          const p = this.tutorialPick;
+          if (p && p.packIndex + 1 < p.packs.length) {
+            p.pack = [];
+            await this._battleCpuThinkPause(350);
+            p.packIndex += 1;
+            p.pack = p.packs[p.packIndex].slice();
+            this._sfxPlay('cardpick');
+          }
+        } else if (step.action === 'mulligan') {
           // 引き直しが終わると battleFinishMulligan が先攻側の手番を開始する
           this.battleMulligan = { remaining: 1, selectedIdx: [], returnedCards: [] };
         } else if (step.action === 'startFirstTurn' || step.action === 'startTurn') {
@@ -13082,6 +13361,7 @@ new Vue({
     },
     /* 効果解決・確認モーダル・演出が残っていない（次の説明へ進んでよい）状態か */
     _tutorialIdle() {
+      if (this.appView === 'tutorialPick') return true;
       return !this._battleHasBlockingModal() && !this.battleSkillCloseup && !this.battleCpuThinking
         && !this._dslSwapped && !(this.battlePendingEffects || []).length;
     },
@@ -13094,7 +13374,7 @@ new Vue({
       const t = this.tutorial;
       if (!t) return;
       const step = this.tutorialStep;
-      const active = step && this.tutorialMode !== 'wait' && !(this.battleSample && this.battleSample.result);
+      const active = step && this.tutorialMode !== 'wait' && !(this.appView === 'battle' && this.battleSample && this.battleSample.result);
       const box = (el, pad) => {
         const r = el && el.getBoundingClientRect();
         return r && r.width && r.height ? { x: Math.round(r.left - pad), y: Math.round(r.top - pad), w: Math.round(r.width + pad * 2), h: Math.round(r.height + pad * 2) } : null;
@@ -13115,7 +13395,8 @@ new Vue({
         const wanted = [].concat(step.cards || [])
           .concat((allow.play || []).map(n => 'self-hand:' + n))
           .concat([].concat(allow.divine || [], allow.battle || []).map(n => 'self-field:' + n))
-          .concat((allow.mulligan || []).map(n => 'mulligan:' + n));
+          .concat((allow.mulligan || []).map(n => 'mulligan:' + n))
+          .concat(Array.isArray(allow.pick) ? allow.pick.map(n => 'pack:' + n) : []);
         if (wanted.length) {
           const seen = new Set();
           document.querySelectorAll('[data-tcard]').forEach(el => {
@@ -13143,13 +13424,17 @@ new Vue({
     _tutorialTick() {
       const t = this.tutorial;
       if (!t) return;
-      if (this.appView !== 'battle' || !this.battleContext || this.battleContext.source !== 'tutorial') { this._tutorialStop(); return; }
+      const pickLesson = !!(this.tutorialLesson && this.tutorialLesson.kind === 'pick');
+      const onScreen = pickLesson
+        ? this.appView === 'tutorialPick'
+        : (this.appView === 'battle' && this.battleContext && this.battleContext.source === 'tutorial');
+      if (!onScreen) { this._tutorialStop(); return; }
       if (this._dslSwapped) return; // 相手の手番を代行中は self/opp が入れ替わっているため判定しない
       this._tutorialUpdateRect();
       const step = this.tutorialStep;
       const bs = this.battleSample;
       if (!step || t.running) return;
-      if (bs.result && !step.finale) {
+      if (!pickLesson && bs.result && !step.finale) {
         if (bs.result.outcome !== 'win') { this._tutorialStop(); return; } // 降参などで負けた場合は通常の結果画面に任せる
         if (this.battleResultRevealReady) this._tutorialGo(this.tutorialLesson.steps.findIndex(s => s.id === 'victory'));
         return;
@@ -13207,6 +13492,21 @@ new Vue({
       if (!rule || rule.answer === yes) return true;
       this._tutorialNudge(rule.hint || (rule.answer ? '今回は「はい」の方を選んでみましょう。' : '今回は見送る方を選んでみましょう。'));
       return false;
+    },
+    /* 手順で決めた選び方に対して、この選択肢が「選ぶべき（true）」「選ばない（false）」か。決まりがなければ null */
+    tutorialChoiceHint(kind, name) {
+      const step = this.tutorial && this.tutorialStep;
+      const list = step && step[kind];
+      if (!Array.isArray(list) || !list.length) return null;
+      return list.some(n => String(name).includes(n));
+    },
+    tutorialAnswerHint(yes) {
+      const step = this.tutorial && this.tutorialStep;
+      const modal = this.dslOptionalModal;
+      if (!step || !Array.isArray(step.answers) || !modal) return null;
+      const name = modal.sourceCard ? this.fullName(modal.sourceCard) : '';
+      const rule = step.answers.find(r => name.includes(r.card) && (!r.trigger || String(modal.triggerLabel || '').includes(r.trigger)) && (!r.kind || r.kind === modal.kind));
+      return rule ? rule.answer === yes : null;
     },
     _tutorialNudge(message) {
       const t = this.tutorial;
@@ -15521,6 +15821,10 @@ new Vue({
        オンライン対戦中（battleNet.on）は各自バラバラに選ぶと同じ部屋なのに違う曲が聞こえてしまうため、
        Firebase上で部屋共通の1曲を決定・共有する（_bgmSyncPick）。 */
     _bgmAutoPickForView(view) {
+      if (view === 'tutorialPick' && this.tutorialLesson && BGM_FILES[this.tutorialLesson.bgm]) {
+        if (this.bgmCurrentKey !== this.tutorialLesson.bgm) this._bgmPlay(this.tutorialLesson.bgm);
+        return;
+      }
       // チュートリアル：レッスンごとに決めた曲で固定する（画面遷移の自動選曲で別の曲に上書きされないようにする）
       if (view === 'battle' && this.battleContext && this.battleContext.source === 'tutorial' && BGM_FILES[this.battleContext.tutorialBgm]) {
         if (this.bgmCurrentKey !== this.battleContext.tutorialBgm) this._bgmPlay(this.battleContext.tutorialBgm);
