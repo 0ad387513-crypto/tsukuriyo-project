@@ -1445,6 +1445,10 @@
   }
   /* ===== チュートリアル（対戦画面内。モーダル(390〜)より下、盤面より上） ===== */
   .tutorial-layer { position: fixed; inset: 0; z-index: 380; pointer-events: none; }
+  /* チュートリアル中はライフ・天力・マナを手で増減するボタンを隠す（battleStat 側でも受け付けない） */
+  .battle-overlay.tutorial-active .orb-value-controls,
+  .battle-overlay.tutorial-active .orb-max-controls,
+  .battle-overlay.tutorial-active .mana-controls { visibility: hidden; pointer-events: none; }
   .tutorial-layer.finale { z-index: 760; } /* 勝利後は結果画面(700)の上で締めの台詞を出す */
   .tutorial-catcher { position: absolute; inset: 0; pointer-events: auto; cursor: pointer; }
   .tutorial-dim { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -1468,15 +1472,22 @@
     box-shadow: 0 3px 10px rgba(0, 0, 0, .6);
   }
   .tutorial-card-name.below { bottom: auto; top: calc(100% + 6px); }
+  .tutorial-opp-banner {
+    position: fixed; left: 50%; top: 52px; transform: translateX(-50%); z-index: 385; pointer-events: none;
+    padding: 8px 20px; border-radius: 999px; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis;
+    font-size: 15px; font-weight: 800; color: #f6ecd8; background: rgba(60, 20, 20, .92); border: 1px solid #d9774f;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .6);
+  }
   /* モード紹介などの画像 */
   .tutorial-picture {
     position: absolute; left: 50%; top: 48px; transform: translateX(-50%);
-    width: min(520px, calc(100vw - 32px)); display: grid; gap: 6px; justify-items: center;
+    width: max-content; max-width: calc(100vw - 32px); display: grid; gap: 6px; justify-items: center;
     padding: 10px; box-sizing: border-box; border-radius: 14px;
     background: rgba(20, 14, 10, .92); border: 1px solid #c79a4a; box-shadow: 0 14px 40px rgba(0, 0, 0, .7);
     animation: tutorialPictureIn .35s ease;
   }
-  .tutorial-picture img { width: 100%; max-height: min(42vh, 320px); object-fit: cover; border-radius: 10px; }
+  /* 画像は切り取らずに全体を見せる（下の吹き出しと重ならない高さに収める） */
+  .tutorial-picture img { display: block; width: auto; height: auto; max-width: min(640px, calc(100vw - 52px)); max-height: calc(100vh - 330px); object-fit: contain; border-radius: 10px; }
   .tutorial-picture span { font-size: 18px; font-weight: 800; color: #f2cd7a; letter-spacing: .12em; }
   @keyframes tutorialPictureIn { from { opacity: 0; transform: translate(-50%, 8px); } }
   @keyframes tutorialSpotPulse { 50% { border-color: #fff1c4; } }
@@ -1495,12 +1506,12 @@
   .mode-task .tutorial-panel { border-color: #e2b85c; box-shadow: 0 14px 40px rgba(0, 0, 0, .7), 0 0 16px rgba(226, 184, 92, .35); }
   .tutorial-panel.shake { animation: tutorialShake .45s ease; }
   @keyframes tutorialShake { 20%, 60% { transform: translateX(calc(-50% - 7px)); } 40%, 80% { transform: translateX(calc(-50% + 7px)); } }
+  /* 顔のウィンドウは台詞・操作手順とも常に同じ大きさ（文章の行数で伸び縮みさせない） */
   .tutorial-portrait {
-    flex: none; width: 104px; min-height: 104px; border-radius: 10px;
+    flex: none; align-self: flex-start; width: 88px; height: 88px; border-radius: 10px;
     background: url(kami_cutin/8.webp) center 16% / cover;
     border: 1px solid #e2c07a; box-shadow: 0 0 14px rgba(255, 210, 120, .35);
   }
-  .mode-task .tutorial-portrait { width: 72px; min-height: 72px; }
   .tutorial-body { position: relative; flex: 1; min-width: 0; padding-right: 58px; }
   .tutorial-name { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 13px; font-weight: 800; color: #f2cd7a; letter-spacing: .08em; }
   .tutorial-task-tag { padding: 2px 9px; border-radius: 999px; background: #e2b85c; color: #2a1a0a; font-size: 11px; letter-spacing: .04em; }
@@ -1519,7 +1530,7 @@
     .tutorial-panel { gap: 10px; padding: 10px; }
     .tutorial-panel.at-top { top: 8px; }
     .tutorial-panel.at-bottom { bottom: 64px; }
-    .tutorial-portrait, .mode-task .tutorial-portrait { width: 56px; min-height: 56px; }
+    .tutorial-portrait { width: 56px; height: 56px; }
     .tutorial-text { font-size: 14px; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -6938,7 +6949,7 @@
 
   <!-- ===================== 4人対戦：ゲームセッション ===================== -->
   <!-- ===================== 対戦画面（Phase 3 手動対戦操作） ===================== -->
-    <div v-if="appView === 'battle'" class="battle-overlay" :class="'motion-' + battleAnimationSpeed">
+    <div v-if="appView === 'battle'" class="battle-overlay" :class="['motion-' + battleAnimationSpeed, { 'tutorial-active': !!tutorial }]">
       <div v-if="battleDragGuide"
            class="battle-drag-guide"
            :style="{
@@ -8180,6 +8191,8 @@
     </div>
 
     <!-- ===== チュートリアル：アマテラスの案内（台詞中は盤面を暗くし、操作手順中は吹き出しだけ残す） ===== -->
+    <!-- 相手の手番中は盤面を隠さず、何をしているかだけを帯で知らせる -->
+    <div v-if="tutorial && tutorial.oppLabel" class="tutorial-opp-banner" role="status" aria-live="polite">{{ tutorial.oppLabel }}</div>
     <div v-if="tutorial && tutorialMode !== 'wait'" class="tutorial-layer" :class="['mode-' + tutorialMode, { finale: tutorialStep && tutorialStep.finale }]">
       <div v-if="tutorialMode === 'say'" class="tutorial-catcher" @click="tutorialAdvance"></div>
       <!-- 台詞中は照らす場所・強調カードだけを残して盤面を暗くする（複数の穴をあけるためSVGのマスクを使う） -->
@@ -9874,6 +9887,10 @@ const MODE_DETAIL_INFO = {
               skillUse（使える神技の番号 '1'/'2'）/ mulligan（引き直しに選べるカード名）/ endTurn、all:true で全操作
               reroll:true … この手順だけリロール確認を出す / requireSublim … 昇華コストの支払いを必須にする /
               forceEvolve … 進化元へ重ねて出す / free … 自由操作（ターンを終えても相手は何もしない）
+              targets … 対象選択で選べるカード名 / sentei … 【選定】で選べる選択肢 /
+              answers … 任意効果・守護・リロールの確認の答えを固定 [{ card, trigger?, kind?, answer, hint? }] /
+              tenryokuAtLeast … この手順に入ったとき天力が足りなければ補う /
+              guide … oppTurn 中に出す案内（守護の選び方など）
      action … 盤面を進める内部処理（mulligan / startFirstTurn / startTurn / oppTurn）
               oppTurn の script：[{ play: 'カード名' } | { divine: 'レガシー名' } | { skill: 1|2 }]
    when(vm) を持つ手順は、偽なら飛ばす。id:'victory' は勝利時にここへ飛ぶ。 */
@@ -9977,6 +9994,7 @@ const TUTORIAL_LESSONS = Object.freeze([
       { say: 'あなたのターンです。手札の「鐘鳴らしの童」はコスト2。社の施しを使えば出せますね。', focus: 'selfManaValue', cards: ['self-hand:鐘鳴らしの童', 'self-relic:社の施し'] },
       { task: '「鐘鳴らしの童」をレガシー欄へ出しましょう。社の施しは「破壊してマナを増やす」を、効果を発動するか聞かれたら「発動する」を選んでくださいね。' + TUTORIAL_TASK_CLOSE_NOTE,
         focus: 'selfLegacy', allow: { play: ['鐘鳴らしの童'] },
+        answers: [{ card: '鐘鳴らしの童', kind: 'ability', answer: true, hint: '今回は「発動する」を選んで、天力を受け取りましょう。' }],
         done: vm => vm._tutorialHas('self', 'legacies', '鐘鳴らしの童') && vm._tutorialIdle() },
       { say: '見てください、天力が増えましたね。', focus: 'selfTenryoku' },
       { say: '天力は、カミの必殺技「神技」を使うための力。溜め方はカミごとに違って、私は【守護】を持つレガシーが出るたびに天力が1増えるのです。これを「天力トリガー」といいます。', focus: 'selfKami' },
@@ -9992,19 +10010,25 @@ const TUTORIAL_LESSONS = Object.freeze([
         done: vm => vm.battleSample.opp.life < 3 && vm._tutorialIdle() },
       { say: '攻撃してタップしたレガシーは、次の相手ターンに戦闘を仕掛けられやすくなります。今の鐘鳴らしの童のように……。', focus: 'selfLegacy', cards: ['self-field:鐘鳴らしの童'] },
       { say: 'そこで守りを固めましょう。「札遊びの座敷童」も【守護】を持つレガシー。出せば、また私の天力が増えますよ。', focus: 'hand', cards: ['self-hand:札遊びの座敷童'] },
-      { task: '「札遊びの座敷童」をレガシー欄へ出しましょう。（出たときのドローは、してもしなくても構いません）' + TUTORIAL_TASK_CLOSE_NOTE,
+      { task: '「札遊びの座敷童」をレガシー欄へ出しましょう。出たときのドローは、今回は「発動しない」を選んでくださいね。' + TUTORIAL_TASK_CLOSE_NOTE,
         focus: 'selfLegacy', allow: { play: ['札遊びの座敷童'] },
+        answers: [{ card: '札遊びの座敷童', kind: 'ability', answer: false, hint: '今回はドローせずに進めましょう。「発動しない」を選んでくださいね。' }],
         done: vm => vm._tutorialHas('self', 'legacies', '札遊びの座敷童') && vm._tutorialIdle() },
-      { say: '天力が3になりました。これで私の神技1「照護（しょうご）」が使えます。', focus: 'selfTenryoku' },
+      { say: '天力が3になりました。これで私の神技1「照護（しょうご）」が使えます。', focus: 'selfTenryoku', tenryokuAtLeast: 3 },
       { say: '照護は、自分のレガシー1枚を次の相手ターンの終わりまで【不可侵】にして、このターンの終わりにアンタップ（縦向き）に戻す技。攻撃した童を起こして、守りに回せますよ。', focus: 'skill', cards: ['self-field:鐘鳴らしの童'] },
-      { task: '「神技」ボタンから「照護」を選び、タップ状態の「鐘鳴らしの童」を対象にしましょう。', focus: 'skill', cards: ['self-field:鐘鳴らしの童'], allow: { skill: true, skillUse: ['1'] },
+      { task: '「神技」ボタンから「照護」を選び、タップ状態の「鐘鳴らしの童」を対象にしましょう。', focus: 'skill', cards: ['self-field:鐘鳴らしの童'], allow: { skill: true, skillUse: ['1'] }, targets: ['鐘鳴らしの童'],
         done: vm => vm.tutorial.flags.skill && vm._tutorialIdle() },
       { say: '神技は2つのうちどちらか1つを、1ターンに1回だけ使えます。もう1つの神技2は、次のチュートリアルで使ってみましょうね。', focus: 'selfKami' },
       { say: '次は【守護】のお話を。相手が攻撃してきたとき、縦向きの【守護】持ちレガシーをタップして、攻撃を代わりに受け止められるのです。', focus: 'selfLegacy', cards: ['self-field:鐘鳴らしの童', 'self-field:札遊びの座敷童'] },
       { say: '戦闘ではお互いの戦闘力を比べて、低い方が破壊されます。同じ値なら両方とも破壊。受け止めるなら、諜報員と同じ戦闘力2000の座敷童がおすすめです。', focus: ['oppPower', 'selfPower'], cards: ['self-field:札遊びの座敷童', 'opp-field:飄々たる諜報員'] },
-      { task: 'ターンを終了しましょう。タケミカヅチさんが攻撃してきたら、守護で受け止めるか選んでくださいね。', focus: 'endTurn', allow: { endTurn: true },
+      { task: 'ターンを終了しましょう。タケミカヅチさんが攻撃してきたら、座敷童で受け止めますよ。', focus: 'endTurn', allow: { endTurn: true },
         done: vm => vm.battleSample.activeSide === 'opp' },
-      { action: 'oppTurn', script: [{ divine: '飄々たる諜報員' }] },
+      { action: 'oppTurn', script: [{ divine: '飄々たる諜報員' }],
+        guide: '攻撃が来ました！　童で受けるか聞かれたら「発動しない」、座敷童で受けるか聞かれたら「発動する」を選んで、座敷童で受け止めましょう。',
+        answers: [
+          { card: '鐘鳴らしの童', trigger: '守護', answer: false, hint: '童（戦闘力1000）では負けてしまいます。ここは「発動しない」を選びましょう。' },
+          { card: '札遊びの座敷童', trigger: '守護', answer: true, hint: '座敷童で受け止めてみましょう。「発動する」を選んでくださいね。' },
+        ] },
       { say: '攻撃をしのぎましたね。攻撃してきた諜報員は今、タップ状態です。',
         when: vm => vm._tutorialHas('opp', 'legacies', '飄々たる諜報員'), focus: 'oppLegacy', cards: ['opp-field:飄々たる諜報員'] },
       { say: '座敷童が諜報員と相打ちになりましたね。戦闘力が同じなら、両方とも破壊されるのです。',
@@ -10013,8 +10037,9 @@ const TUTORIAL_LESSONS = Object.freeze([
       { say: '手札の「瞬速の死闘」はオラクル。使うとすぐに効果が発動して、そのあと墓地へ置かれるカードです。', focus: 'hand', cards: ['self-hand:瞬速の死闘'] },
       { say: '【選定：1】は、いくつかの効果から1つを選んで使うという意味。今回は「相手ライフ-1」を選ぶのがおすすめですよ。', focus: 'hand' },
       { say: 'それと「リロール」も覚えておきましょう。カードを使うとき、手札にある同じ色のカードを1枚見せると、そのカードをデッキに戻して1枚引き直せます。いらないカードを入れ替えられる、誰でも使える決まりごとです。', focus: 'hand', cards: ['self-hand:瞬速の死闘', 'self-hand:熾烈なる戦役'] },
-      { task: '「瞬速の死闘」をレガシー欄へドラッグして使いましょう。リロールするか聞かれたら「リロールする」で赤のカードを1枚選び、【選定】では「相手ライフ-1」を選んでくださいね。',
-        focus: 'hand', allow: { play: ['瞬速の死闘'] }, reroll: true,
+      { task: '「瞬速の死闘」をレガシー欄へドラッグして使いましょう。リロールするか聞かれたら「リロールする」で「熾烈なる戦役」を選び、【選定】では「相手ライフ-1」を選んでくださいね。',
+        focus: 'hand', allow: { play: ['瞬速の死闘'] }, reroll: true, targets: ['熾烈なる戦役'], sentei: ['相手ライフ'],
+        answers: [{ card: '瞬速の死闘', kind: 'reroll', answer: true, hint: '今回は「リロールする」を選んで、試してみましょう。' }],
         done: vm => !vm._tutorialHas('self', 'hand', '瞬速の死闘') && vm._tutorialIdle() },
       { say: '仕上げです。縦向きのレガシーで、タケミカヅチさんに神攻を！', focus: 'oppKami', when: vm => !vm.battleSample.result },
       { task: 'レガシーで神攻して、タケミカヅチさんのライフを0にしましょう。うまくいかなくても、ターンを終えてまた挑めますよ。', focus: 'oppKami', allow: { all: true }, free: true,
@@ -10026,20 +10051,20 @@ const TUTORIAL_LESSONS = Object.freeze([
   },
   {
     id: 'skill2', numeral: '参', title: '神技2の攻防',
-    summary: '天力をたっぷり使う必殺技「神技2」。相手の神技2を受け、自分の神技2で逆転します。',
+    summary: '天力をたっぷり使う必殺技「神技2」。相手の神技2で窮地に立たされ、自分の神技2で逆転します。',
     learn: ['神技2', '相手の天力', '墓地', '崩壊'],
     oppName: 'ヒノカグツチ', bgm: 'homuGarasu',
     setup: {
       selfKamiNo: '8', oppKamiNo: '7', firstSide: 'opp', turn: 6,
       self: {
         life: 5, lifeMax: 10, manaMax: 5, tenryoku: 5, relics: [],
-        legacies: ['平和を願う剣・アヤト', '飄々たる諜報員', '鐘鳴らしの童'],
+        legacies: ['音速の忍'],
         graveyard: ['見習い忍者・アカマツ'],
         hand: ['平穏の祈り手', '眩き黄の眷属', '救済の手'],
         deck: ['深き青の眷属', '荒き緑の眷属', '昏き紫の眷属', '拒絶の守衛・イズモ', '慈愛の忍・イロハ'],
       },
       opp: {
-        life: 2, lifeMax: 10, manaMax: 5, tenryoku: 8, relics: [],
+        life: 1, lifeMax: 10, manaMax: 5, tenryoku: 8, relics: [],
         hand: ['猛き赤の眷属', '荒き緑の眷属', '熾烈なる戦役'],
         deck: ['深き青の眷属', '昏き紫の眷属', '眩き黄の眷属', '先駆けの修羅'],
       },
@@ -10048,25 +10073,30 @@ const TUTORIAL_LESSONS = Object.freeze([
       { say: 'ようこそ。今回は「神技2」の攻防を学びましょう。神技2は天力をたくさん使うぶん、戦いの流れを一気に変える必殺技です。' },
       { say: 'お相手はヒノカグツチさん。自由を求めるあの方にも、優しさが宿っていると信じていますけれど……その神技2は、とても激しいのです。', focus: 'oppKami' },
       { say: '今回は対戦の途中から始めます。練習のため、お互いの天力を特別に多めにしてありますよ。', focus: 'selfTenryoku' },
-      { say: 'ヒノカグツチさんの天力は8。神技2「縛鎖焼尽・紅蓮焔月」に必要な量とちょうど同じです。相手の天力が溜まっているときは、神技2を警戒してくださいね。', focus: 'oppTenryoku' },
+      { say: 'あなたの場には、【疾駆】を持つ「音速の忍」。ヒノカグツチさんのライフは残り1ですから、次のあなたのターンに神攻すれば勝てますね。',
+        focus: 'oppLife', cards: ['self-field:音速の忍'] },
+      { say: 'ところが、ヒノカグツチさんの天力は8。神技2「縛鎖焼尽・紅蓮焔月」に必要な量とちょうど同じです。相手の天力が溜まっているときは、神技2を警戒してくださいね。', focus: 'oppTenryoku' },
       { say: 'さあ、ヒノカグツチさんのターンです。……来ますよ。' },
       { action: 'startTurn' },
-      { action: 'oppTurn', script: [{ skill: 2 }] },
-      { say: 'なんて激しい……。あなたのレガシーが1枚破壊され、ライフも3減ってしまいました。', focus: 'selfLife' },
-      { say: '破壊されたのは、一番戦闘力の高い「平和を願う剣・アヤト」。破壊されたカードは「墓地」へ置かれます。でも、まだ終わりではありませんよ。', focus: 'selfGraveyard' },
-      { say: 'あなたのターンです。私の天力は今5。神技2「恩光・八咫神鏡（おんこう・やたのかがみ）」には7必要です。', focus: 'selfTenryoku' },
+      { action: 'oppTurn', script: [{ skill: 2, destroy: '音速の忍', damage: 3 }] },
+      { say: 'なんて激しい……。音速の忍が破壊され、ライフも3減ってしまいました。', focus: 'selfLife' },
+      { say: 'あなたの場には、もう攻撃できるレガシーがいません。新しく出したレガシーは、出たターンには攻撃できませんものね。', focus: 'selfLegacy' },
+      { say: 'でも、あきらめるのはまだ早いですよ。破壊されたカードは「墓地」に置かれています。私の神技2「恩光・八咫神鏡（おんこう・やたのかがみ）」なら、墓地のレガシーを場に呼び戻せるのです。', focus: 'selfGraveyard' },
+      { say: 'ただ、今の天力は5。八咫神鏡には7必要です。', focus: 'selfTenryoku' },
       { say: '「平穏の祈り手」は【守護】を持つレガシー。出せば私の天力トリガーで1、祈り手自身の効果でさらに1、天力が増えます。ライフも1回復しますよ。', focus: 'hand', cards: ['self-hand:平穏の祈り手'] },
       { task: '「平穏の祈り手」をレガシー欄へ出しましょう。' + TUTORIAL_TASK_CLOSE_NOTE, focus: 'selfLegacy', allow: { play: ['平穏の祈り手'] },
+        answers: [{ card: '平穏の祈り手', kind: 'ability', answer: true, hint: '今回は「発動する」を選んで、天力を受け取りましょう。' }],
         done: vm => vm._tutorialHas('self', 'legacies', '平穏の祈り手') && vm._tutorialIdle() },
-      { say: '天力が7になりました。', focus: 'selfTenryoku' },
-      { say: '恩光・八咫神鏡は、墓地のレガシーを1枚、場に呼び戻す技。ただし呼び戻したレガシーは、場を離れるとき墓地ではなく「崩壊」──ゲームから取り除かれてしまいます。', focus: 'skill' },
-      { task: '「神技」ボタンから「恩光・八咫神鏡」を選び、墓地の「平和を願う剣・アヤト」を呼び戻しましょう。', focus: 'skill', allow: { skill: true, skillUse: ['2'] },
-        done: vm => vm.tutorial.flags.skill && vm._tutorialIdle() },
-      { say: '神技は1ターンに1回だけ。天力を溜めて、ここぞという場面で使いましょうね。', focus: 'selfKami' },
-      { say: '呼び戻したレガシーは場に出たばかりなので、このターンは攻撃できません。でも、場に残っていた諜報員と童なら攻撃できます。ヒノカグツチさんのライフは2です。', focus: 'oppLife', cards: ['self-field:飄々たる諜報員', 'self-field:鐘鳴らしの童'] },
-      { task: '諜報員と童で神攻して、ヒノカグツチさんのライフを0にしましょう。', focus: 'oppKami', cards: ['self-field:飄々たる諜報員', 'self-field:鐘鳴らしの童'], allow: { all: true }, free: true,
-        done: vm => !!vm.battleSample.result },
-      { id: 'victory', say: 'お見事です！　必殺技を受けても、神技で立て直して勝利をつかみましたね。', finale: true },
+      { say: '天力が7になりました。これで八咫神鏡が使えます。', focus: 'selfTenryoku', tenryokuAtLeast: 7 },
+      { say: '呼び戻したレガシーは、場を離れるとき墓地ではなく「崩壊」──ゲームから取り除かれてしまいます。それでも、ここぞという場面では頼もしい技ですよ。', focus: 'skill' },
+      { say: '【疾駆】を持つ音速の忍なら、呼び戻したそのターンに神攻できます。これで逆転です。', focus: 'selfGraveyard' },
+      { task: '「神技」ボタンから「恩光・八咫神鏡」を選び、墓地の「音速の忍」を呼び戻しましょう。', focus: 'skill',
+        allow: { skill: true, skillUse: ['2'] }, targets: ['音速の忍'],
+        done: vm => vm.tutorial.flags.skill && vm._tutorialHas('self', 'legacies', '音速の忍') && vm._tutorialIdle() },
+      { say: '音速の忍が戻ってきました！　神技は1ターンに1回だけ。天力を溜めて、ここぞという場面で使いましょうね。', focus: 'selfLegacy', cards: ['self-field:音速の忍'] },
+      { task: '「音速の忍」で神攻して、ヒノカグツチさんのライフを0にしましょう。', focus: 'oppKami', cards: ['self-field:音速の忍'],
+        allow: { divine: ['音速の忍'] }, done: vm => !!vm.battleSample.result },
+      { id: 'victory', say: 'お見事です！　神技で呼び戻した音速の忍が、そのまま勝負を決めましたね。', finale: true },
       { say: '神技2は、相手の天力が溜まっているかどうかで予測できます。自分の天力の溜め方と一緒に、相手のカミの天力トリガーも確かめておくと安心ですよ。', finale: true },
       { say: '最後のチュートリアルでは、進化や昇華、手札の上限など、少し応用の決まりごとをお話ししますね。', finale: true, last: true },
     ],
@@ -10077,7 +10107,7 @@ const TUTORIAL_LESSONS = Object.freeze([
     learn: ['進化', '昇華', '手札の上限', '疲労ダメージ', '山札切れ'],
     oppName: 'ツクヨミ', bgm: 'gekkouKenkaku',
     setup: {
-      selfKamiNo: '8', oppKamiNo: '9', firstSide: 'self', turn: 10,
+      selfKamiNo: '8', oppKamiNo: '9', firstSide: 'opp', activeSide: 'self', turn: 10,
       self: {
         life: 5, lifeMax: 10, manaMax: 9, relics: [],
         legacies: ['見習い忍者・アカマツ'],
@@ -10085,7 +10115,7 @@ const TUTORIAL_LESSONS = Object.freeze([
         deck: ['冥土送りの侍女', '札遊びの座敷童', '戦陣の旗手'],
       },
       opp: {
-        life: 4, lifeMax: 10, manaMax: 9, relics: [],
+        life: 4, lifeMax: 10, manaMax: 10, relics: [],
         hand: ['猛き赤の眷属', '荒き緑の眷属', '熾烈なる戦役'],
         deck: ['深き青の眷属', '昏き紫の眷属', '眩き黄の眷属', '先駆けの修羅'],
       },
@@ -10097,10 +10127,11 @@ const TUTORIAL_LESSONS = Object.freeze([
       { say: 'あなたのターンです。手札が11枚もありますね。手札の上限は8枚。ターンの終わりに9枚以上あると、8枚になるまで選んで墓地に送らなければなりません。', focus: 'hand' },
       { say: '「慈愛の忍・イロハ」には【進化：赤レガシー/忍者レガシー】と書かれています。条件に合うレガシーが場にいれば、その上に重ねて出せるということです。', focus: 'hand', cards: ['self-hand:慈愛の忍・イロハ'] },
       { say: '場の「見習い忍者・アカマツ」は赤の忍者。イロハの進化元にぴったりです。進化したレガシーは【疾駆】を持ち、出たターンから神攻もできますよ。下になったレガシーの効果は失われ、タップ状態は引き継ぎます。', focus: 'selfLegacy', cards: ['self-field:見習い忍者・アカマツ'] },
-      { task: '「慈愛の忍・イロハ」を手札からドラッグして、場の「見習い忍者・アカマツ」の上で離しましょう。墓地からレガシーを出すか聞かれたら、今は「発動しない」で大丈夫です。' + TUTORIAL_TASK_CLOSE_NOTE,
+      { task: '「慈愛の忍・イロハ」を手札からドラッグして、場の「見習い忍者・アカマツ」の上で離しましょう。墓地からレガシーを出すか聞かれたら「発動しない」を選んでくださいね。' + TUTORIAL_TASK_CLOSE_NOTE,
         focus: 'selfLegacy', cards: ['self-field:見習い忍者・アカマツ'], allow: { play: ['慈愛の忍・イロハ'] }, forceEvolve: true,
+        answers: [{ card: '慈愛の忍・イロハ', kind: 'ability', answer: false, hint: '今の墓地には出せるレガシーがいないので、「発動しない」を選びましょう。' }],
         done: vm => vm.battleSample.self.legacies.some(c => c && c._evolved) && vm._tutorialIdle() },
-      { say: '進化できましたね。【進化中】と書かれた効果も使えるようになります。さっそく神攻してみましょう。', focus: 'selfLegacy' },
+      { say: '進化できましたね。【進化中】と書かれた効果も使えるようになります。さっそく神攻してみましょう。', focus: 'selfLegacy', cards: ['self-field:慈愛の忍・イロハ'] },
       { task: '「慈愛の忍・イロハ」で、ツクヨミさんに神攻しましょう。', focus: 'oppKami', allow: { divine: ['慈愛の忍・イロハ'] },
         done: vm => vm.battleSample.opp.life < 4 && vm._tutorialIdle() },
       { say: '次は「夜風の始末屋」。【昇華3】とは、コストを追加で3払うと、おまけの効果を得られるということ。始末屋は昇華すると【疾駆】を得ます。', focus: 'hand', cards: ['self-hand:夜風の始末屋'] },
@@ -10108,20 +10139,22 @@ const TUTORIAL_LESSONS = Object.freeze([
       { task: '「夜風の始末屋」をレガシー欄へドラッグし、支払うコストは昇華の「6」を選びましょう。' + TUTORIAL_TASK_CLOSE_NOTE,
         focus: 'selfLegacy', allow: { play: ['夜風の始末屋'] }, requireSublim: true,
         done: vm => vm._tutorialHas('self', 'legacies', '夜風の始末屋') && vm.tutorial.flags.sublim && vm._tutorialIdle() },
-      { say: '始末屋は神攻したとき、1ターンに1回だけ起き上がる子。続けて2回神攻できるのです。', focus: 'selfLegacy' },
-      { task: '「夜風の始末屋」で、2回続けて神攻しましょう。', focus: 'oppKami', allow: { divine: ['夜風の始末屋'] },
+      { say: '始末屋は神攻したとき、1ターンに1回だけ起き上がる子。続けて2回神攻できるのです。', focus: 'selfLegacy', cards: ['self-field:夜風の始末屋'] },
+      { task: '「夜風の始末屋」で、2回続けて神攻しましょう。', focus: 'oppKami', cards: ['self-field:夜風の始末屋'], allow: { divine: ['夜風の始末屋'] },
         done: vm => vm.battleSample.opp.life <= 1 && vm._tutorialIdle() },
-      { say: 'ツクヨミさんのライフは残り1。今回はここでターンを終えて、手札の上限を体験してみましょう。', focus: 'hand' },
-      { task: 'ターンを終了しましょう。墓地に送るカードを選ぶよう言われたら、好きなカードを1枚選んでくださいね。', focus: 'endTurn', allow: { endTurn: true },
-        done: vm => vm.battleSample.activeSide === 'opp' },
-      { action: 'oppTurn', script: [] },
-      { say: 'あなたのターン……ですが、ライフが1減りましたね。これは「疲労ダメージ」。11ターン目からは、自分のターンの始めに1、2、3……と増えていくダメージを受けるのです。', focus: 'selfLife' },
+      { say: 'ツクヨミさんのライフは残り1。攻撃できるレガシーはもういませんが……ここで「疲労ダメージ」のお話をしましょう。', focus: 'oppLife' },
+      { say: '11ターン目からは、自分のターンの始めに1、2、3……と増えていくダメージを受けるのです。これが「疲労ダメージ」。いまは10ターン目ですね。', focus: 'turnNumber' },
+      { say: '次はツクヨミさんの11ターン目。ライフ1のツクヨミさんは、ターンの始めに疲労ダメージを受けることになりますね。', focus: 'oppLife' },
       { say: 'デッキの残りにも気をつけてください。デッキが0枚のときにカードを引かなければならなくなると、その時点で負けです。【誘】などで一時的に0枚になるだけなら大丈夫ですよ。', focus: 'selfDeck' },
-      { say: '長引くほど苦しくなるのが星戦。決められるときに、しっかり決めましょうね。', focus: 'oppLife' },
-      { task: 'レガシーで神攻して、ツクヨミさんのライフを0にしましょう。', focus: 'oppKami', cards: ['self-field:慈愛の忍・イロハ', 'self-field:夜風の始末屋'], allow: { all: true }, free: true,
-        done: vm => !!vm.battleSample.result },
-      { id: 'victory', say: 'おめでとうございます！　これで、すべてのチュートリアルを終えました。', finale: true },
-      { say: 'マリガン、マナ、神攻と戦闘、【守護】、天力と神技、リロール、進化と昇華、手札の上限、疲労ダメージ……たくさん覚えましたね。', finale: true },
+      { say: 'そして、今のあなたの手札は9枚。ターンの終わりに1枚、墓地に送らなければなりません。', focus: 'hand' },
+      { task: 'ターンを終了しましょう。墓地に送るカードは「救済の手」を選んでくださいね。', focus: 'endTurn', allow: { endTurn: true }, targets: ['救済の手'],
+        done: vm => vm.battleSample.activeSide === 'opp' || !!vm.battleSample.result },
+      { action: 'oppTurn', script: [], when: vm => !vm.battleSample.result },
+      { task: 'レガシーで神攻して、ツクヨミさんのライフを0にしましょう。', focus: 'oppKami', allow: { all: true }, free: true,
+        when: vm => !vm.battleSample.result, done: vm => !!vm.battleSample.result },
+      { id: 'victory', say: 'ツクヨミさんのターンの始めに、疲労ダメージ1。ライフが0になり……あなたの勝利です！', finale: true },
+      { say: '終盤は、疲労ダメージが勝負を決めることもあります。相手だけでなく、自分のライフにも気を配りましょうね。', finale: true },
+      { say: 'これで、すべてのチュートリアルを終えました。マリガン、マナ、神攻と戦闘、【守護】、天力と神技、リロール、進化と昇華、手札の上限、疲労ダメージ……たくさん覚えましたね。', finale: true },
       { say: '最後に、ツクリヨで遊べる3つの対戦モードをご紹介しますね。どのモードも、今日まで学んだ星戦のルールで戦います。', finale: true, bgm: 'ryu' },
       { say: '「創世決戦」は4人で遊ぶモード。CPUを加えれば、2人からでも始められます。まず「神託の儀」で、3枚の候補から自分のカミを選びます。', finale: true, picture: 'top_mode_icons/genesis4p.webp', pictureLabel: '創世決戦' },
       { say: 'カードを1枚ずつ選び合う「選別の儀」と、見識を使ってデッキを整える「深化の刻」を繰り返しながら、星戦を3回戦います。', finale: true, picture: 'top_mode_icons/genesis4p.webp', pictureLabel: '創世決戦' },
@@ -10150,6 +10183,7 @@ const TUTORIAL_FOCUS = Object.freeze({
   hand: '.battle-zone.hand-self',
   selfMana: '.battle-side .mana-panel@1',
   selfManaValue: '.battle-side .mana-panel@1 .mana-head',
+  turnNumber: '.turn-middle .turn-number',
   handCost: '.hand-self .hand-cost-badge@*',
   oppPower: '.opp-legacy-target .battle-card-power@*',
   oppAttack: '.opp-legacy-target .battle-card-attack@*',
@@ -10875,6 +10909,7 @@ new Vue({
     /* say＝台詞（クリック待ち）／task＝操作待ち／wait＝相手の手番や決着演出中で吹き出しを出さない */
     tutorialMode() {
       const step = this.tutorialStep;
+      if (step && step.action === 'oppTurn' && step.guide && this.tutorial.running && !(this.battleSample && this.battleSample.result)) return 'task';
       if (!step || step.action || this.battleCpuThinking) return 'wait';
       if (this.battleSample && this.battleSample.result && !step.finale) return 'wait';
       if (step.say) return 'say';
@@ -10882,7 +10917,7 @@ new Vue({
     },
     tutorialFullText() {
       const step = this.tutorialStep;
-      return step ? (step.say || step.task || '') : '';
+      return step ? (step.say || step.task || step.guide || '') : '';
     },
     tutorialTypedText() {
       return this.tutorial ? this.tutorialFullText.slice(0, this.tutorial.typed) : '';
@@ -12947,6 +12982,7 @@ new Vue({
       if (lesson.bgm && BGM_FILES[lesson.bgm] && this.bgmCurrentKey !== lesson.bgm) this._bgmPlay(lesson.bgm);
       const bs = this.battleSample;
       bs.turn = S.turn || 1;
+      if (S.activeSide) bs.activeSide = S.activeSide; // 途中盤面で、後攻側の手番から始める場合など
       const setupSide = (player, s) => {
         player.hand = cardsOf(s.hand);
         player.deck = cardsOf(s.deck);
@@ -12966,7 +13002,7 @@ new Vue({
       setupSide(bs.opp, S.opp);
       this._battleInitStatDisplay();
       if (typeof this.dslRefreshStaticAbilities === 'function') this.dslRefreshStaticAbilities();
-      this.tutorial = { lessonId, index: -1, typed: 0, rects: [], marks: [], panelPos: 'bottom', hint: '', hintShake: false, flags: {}, running: false };
+      this.tutorial = { lessonId, index: -1, typed: 0, rects: [], marks: [], panelPos: 'bottom', hint: '', hintShake: false, flags: {}, running: false, oppLabel: '' };
       clearInterval(this._tutorialTickTimer);
       clearInterval(this._tutorialTypeTimer);
       this._tutorialTickTimer = setInterval(() => this._tutorialTick(), 200);
@@ -13007,6 +13043,10 @@ new Vue({
       this._tutorialUpdateRect();
       const step = steps[i];
       if (step.bgm && BGM_FILES[step.bgm] && this.bgmCurrentKey !== step.bgm) this._bgmPlay(step.bgm);
+      // 選択次第で天力が足りなくなった場合でも先へ進めるよう、必要な分だけ補う
+      if (step.tenryokuAtLeast && this.battleSample && Number(this.battleSample.self.tenryoku) < step.tenryokuAtLeast) {
+        this.battleSample.self.tenryoku = step.tenryokuAtLeast;
+      }
       if (step.action) this._tutorialRunAction(step, i);
     },
     async _tutorialRunAction(step, index) {
@@ -13147,6 +13187,27 @@ new Vue({
       if (!ok) this._tutorialNudge(allow ? 'いまは上に書いてある操作を試してみてくださいね。' : 'まずは私のお話を最後まで聞いてくださいね。');
       return ok;
     },
+    /* 対象（targets）や【選定】の選択肢（sentei）を手順で指定している場合は、それ以外を選べないようにする */
+    _tutorialChoiceAllowed(kind, name) {
+      const step = this.tutorial && this.tutorialStep;
+      const list = step && step[kind];
+      if (!Array.isArray(list) || !list.length) return true;
+      if (list.some(n => String(name).includes(n))) return true;
+      this._tutorialNudge(`今は「${list.join('」か「')}」を選んでくださいね。`);
+      return false;
+    },
+    /* 任意効果・守護・リロールの確認で、手順が答えを決めている場合（answers）はそれ以外を選べないようにする。
+       answers: [{ card: 'カード名', trigger: '守護' など（省略可）, answer: true/false }] */
+    _tutorialAnswerAllowed(modal, yes) {
+      const step = this.tutorial && this.tutorialStep;
+      const rules = step && step.answers;
+      if (!Array.isArray(rules) || !modal) return true;
+      const name = modal.sourceCard ? this.fullName(modal.sourceCard) : '';
+      const rule = rules.find(r => name.includes(r.card) && (!r.trigger || String(modal.triggerLabel || '').includes(r.trigger)) && (!r.kind || r.kind === modal.kind));
+      if (!rule || rule.answer === yes) return true;
+      this._tutorialNudge(rule.hint || (rule.answer ? '今回は「はい」の方を選んでみましょう。' : '今回は見送る方を選んでみましょう。'));
+      return false;
+    },
     _tutorialNudge(message) {
       const t = this.tutorial;
       if (!t) return;
@@ -13157,71 +13218,122 @@ new Vue({
       clearTimeout(this._tutorialHintTimer);
       this._tutorialHintTimer = setTimeout(() => { if (this.tutorial) { this.tutorial.hint = ''; this.tutorial.hintShake = false; } }, 3200);
     },
-    /* スサノオの手番を台本どおりに進める（_battleCpuTakeTurn と同じく self/opp を入れ替えて自分側の操作関数を使う）。
-       script: [{ play: 'カード名' } | { divine: 'レガシー名' }] */
+    /* 相手の手番を台本どおりに進める。
+       CPU戦（_battleCpuTakeTurn）のように self/opp を入れ替えると盤面の表示まで入れ替わって見づらいため、
+       チュートリアルでは入れ替えずに相手側（opp）へ直接操作を適用する。
+       script: [{ play: 'カード名' } | { divine: 'レガシー名' } | { skill: 1|2, destroy: '破壊する自分のレガシー名', damage: 数 }] */
     async _tutorialRunOppTurn(script) {
       const bs = this.battleSample;
       if (!bs || bs.result || bs.activeSide !== 'opp') return;
       const turnAtStart = bs.turn;
-      const undoDepthBefore = this.battleUndoStack.length;
+      const t = this.tutorial;
       const oppName = this.battleContext.oppName;
-      const indexByName = (list, name, pred = () => true) => (list || []).findIndex(c => c && this.fullName(c).includes(name) && pred(c));
-      this.battleCpuThinking = true;
-      this.battleCpuPhase = 'review';
-      this.battleCpuThinkingLabel = `${oppName}が手札を確認しています…`;
-      this._dslSwapSelfOpp();
-      this._battleCpuAutoResolving = true;
+      const say = label => { if (this.tutorial) this.tutorial.oppLabel = `${oppName}のターン：${label}`; };
       try {
-        await this._battleCpuThinkPause(800);
+        say('手札を確認しています…');
+        await this._battleCpuThinkPause(900);
         for (const act of script) {
-          if (this.battleSample.result) break;
-          const me = this.battleSample.self;
-          if (act.play) {
-            const idx = indexByName(me.hand, act.play);
-            if (idx < 0) continue;
-            const card = me.hand[idx];
-            this.battleCpuPhase = 'main';
-            this.battleCpuThinkingLabel = `${oppName}が「${this.fullName(card)}」を場に出しています…`;
-            await this._battleCpuThinkPause(700);
-            const zone = card.category === 'レガシー' ? 'legacies' : card.category === 'レリック' ? 'relics' : null;
-            await this.battlePlayFromHand(idx, zone, zone ? null : undefined);
-            if (this.battleOracleEffect) {
-              // 展開演出は _battleCpuTakeTurn と同じく、相手自身のプレイでは短時間で自動的に閉じる
-              const effRef = this.battleOracleEffect;
-              setTimeout(() => { if (this.battleOracleEffect === effRef) this.battleOracleEffect = null; }, 1800);
-            }
-          } else if (act.divine) {
-            const idx = indexByName(me.legacies, act.divine, c => !c._tapped);
-            if (idx < 0) continue;
-            this.battleCpuPhase = 'attack';
-            this.battleCpuThinkingLabel = `${oppName}が「${this.fullName(me.legacies[idx])}」で神攻しています…`;
-            await this._battleCpuThinkPause(700);
-            await this.battleResolveDivineAttack('self', idx);
-          } else if (act.skill) {
-            const skill = this.battleSkillOptions.find(item => item.index === act.skill);
-            if (!skill || !skill.enabled) continue;
-            this.battleCpuPhase = 'main';
-            this.battleCpuThinkingLabel = `${oppName}が神技「${String(skill.name).split('\n')[0].trim()}」を放とうとしています…`;
-            await this._battleCpuThinkPause(900);
-            await this.battleUseKamiSkill(act.skill);
-          }
+          if (this.battleSample.result || !this.tutorial) break;
+          if (act.play) await this._tutorialOppPlay(act.play, say);
+          else if (act.divine) await this._tutorialOppDivine(act.divine, say);
+          else if (act.skill) await this._tutorialOppSkill(act, say);
+          await this._tutorialWaitIdle();
           await this._battleCpuThinkPause(700);
         }
-        this.battleCpuPhase = 'end';
-        this.battleCpuThinkingLabel = `${oppName}がターンを終えようとしています…`;
-        await this._battleCpuThinkPause(400);
+        if (!this.battleSample.result) {
+          say('ターンを終えようとしています…');
+          await this._battleCpuThinkPause(600);
+        }
       } catch (e) {
         console.warn('[tutorial] 相手の手番でエラー:', e);
       } finally {
-        this._battleCpuAutoResolving = false;
-        this._dslSwapSelfOpp();
-        this.battleCpuThinking = false;
-        this.battleCpuThinkingLabel = null;
-        this.battleCpuPhase = null;
-        if (this.battleUndoStack.length > undoDepthBefore) this.battleUndoStack.length = undoDepthBefore;
+        if (t) t.oppLabel = '';
       }
       if (!this.battleSample.result && this.battleSample.activeSide === 'opp' && this.battleSample.turn === turnAtStart) {
         await this.battleEndTurn();
+      }
+    },
+    _tutorialOppIndex(list, name, pred = () => true) {
+      return (list || []).findIndex(c => c && this.fullName(c).includes(name) && pred(c));
+    },
+    async _tutorialOppPlay(name, say) {
+      const opp = this.battleSample.opp;
+      const idx = this._tutorialOppIndex(opp.hand, name);
+      if (idx < 0) return;
+      const card = opp.hand[idx];
+      say(`「${this.fullName(card)}」を場に出しています…`);
+      await this._battleCpuThinkPause(800);
+      opp.hand.splice(idx, 1);
+      opp.handCount = opp.hand.length;
+      const cost = Number(card.cost) || 0;
+      opp.mana = Math.max(0, (Number(opp.mana) || 0) - cost);
+      const fieldCard = this._battlePrepareFieldCard(card);
+      opp[card.category === 'レリック' ? 'relics' : 'legacies'].push(fieldCard);
+      this._battlePlayPlacementSfx(fieldCard, cost);
+      // 展開演出は、相手自身のプレイなので短時間で自動的に閉じる
+      const effect = { card: fieldCard, kind: fieldCard.category, _shownAt: Date.now() };
+      this.battleOracleEffect = effect;
+      setTimeout(() => { if (this.battleOracleEffect === effect) this.battleOracleEffect = null; }, 1800);
+      if (card.category === 'レガシー') {
+        this.battleFireKamiEvent('opp', 'legacyEntered', { card: fieldCard });
+        if (this.battleCardHasKeyword(fieldCard, '守護')) this.battleFireKamiEvent('opp', 'guardLegacyPlayed', { card: fieldCard });
+      }
+      if (typeof this.dslRefreshStaticAbilities === 'function') this.dslRefreshStaticAbilities();
+      await this._battleCpuThinkPause(1900);
+    },
+    async _tutorialOppDivine(name, say) {
+      const bs = this.battleSample;
+      const idx = this._tutorialOppIndex(bs.opp.legacies, name, c => !c._tapped);
+      if (idx < 0) return;
+      const attacker = bs.opp.legacies[idx];
+      say(`「${this.fullName(attacker)}」で神攻しています…`);
+      await this._battleCpuThinkPause(800);
+      this.$set(attacker, '_tapped', true);
+      // 守護：守れる自分のレガシーがあれば、受け止めるかどうかを本人に確認する
+      const guard = await this._battleChooseGuard(attacker, 'self', null);
+      if (guard) {
+        const guardIdx = bs.self.legacies.indexOf(guard.card);
+        const ap = Number(attacker.power) || 0;
+        const gp = Number(guard.card.power) || 0;
+        this._sfxPlay('hit');
+        this.battleShowNotice('戦闘解決', `「${this.fullName(attacker)}」（戦闘力 ${ap}）と「${this.fullName(guard.card)}」（戦闘力 ${gp}）が戦闘しました。`, [attacker, guard.card]);
+        const destroyed = [];
+        if (ap >= gp && guardIdx >= 0) this.battleDestroyLegacy('self', guardIdx, destroyed);
+        if (gp >= ap) {
+          const attackerIdx = bs.opp.legacies.indexOf(attacker);
+          if (attackerIdx >= 0) this.battleDestroyLegacy('opp', attackerIdx, destroyed);
+        }
+        return;
+      }
+      const damage = Number(attacker.attack) || 0;
+      bs.self.life = Math.max(0, (Number(bs.self.life) || 0) - damage);
+      this._sfxPlay('hit');
+      this._battleShake && this._battleShake();
+      this.battleShowNotice('神攻', `「${this.fullName(attacker)}」の神攻で、あなたのライフが${damage}減りました。`, [attacker]);
+      this._battleCheckResult();
+    },
+    async _tutorialOppSkill(act, say) {
+      const bs = this.battleSample;
+      const opp = bs.opp;
+      const kami = opp.kami;
+      if (!kami) return;
+      const skillName = String(kami[`skill${act.skill}name`] || '').split('\n')[0].trim();
+      const cost = Number(String(kami[`skill${act.skill}cost`] || 0).match(/\d+/)) || 0;
+      say(`神技「${skillName}」を放とうとしています…`);
+      await this._battleCpuThinkPause(900);
+      opp.tenryoku = Math.max(0, (Number(opp.tenryoku) || 0) - cost);
+      if (act.skill === 2) await this._battleShowSkill2Closeup(kami, kami.skill2name);
+      else await this._battleShowSkill1Closeup(kami, kami.skill1name);
+      this.battleShowNotice(`${skillName}を発動`, `${this.battleContext.oppName}が神技「${skillName}」を発動し、天力を${cost}消費しました。`, [kami]);
+      if (act.destroy) {
+        const idx = this._tutorialOppIndex(bs.self.legacies, act.destroy);
+        if (idx >= 0) this.battleDestroyLegacy('self', idx, []);
+      }
+      if (act.damage) {
+        bs.self.life = Math.max(0, (Number(bs.self.life) || 0) - act.damage);
+        this._sfxPlay('hit');
+        this.battleShowNotice('ライフ変化', `あなたのライフが${act.damage}減りました。`, []);
+        this._battleCheckResult();
       }
     },
     openBattleLaunch(source) {
@@ -16324,6 +16436,7 @@ new Vue({
     },
     /* 対戦画面：ステータス±処理（手動調整＋Undo対応） */
     async battleStat(side, key, delta) {
+      if (this.tutorial) { this._tutorialNudge('チュートリアル中は、ライフや天力、マナを手で増やしたり減らしたりはできません。'); return; }
       if (this.battleNet && this.battleNet.spectating) return;
       if (this.battleSample.result) return;
       if (side !== 'self') return;
@@ -18656,6 +18769,7 @@ new Vue({
     dslToggleTarget(card) {
       const m = this.dslTargetModal;
       if (!m) return;
+      if (!this._tutorialChoiceAllowed('targets', card ? this.fullName(card) : '')) return;
       const idx = m.selected.indexOf(card);
       if (idx >= 0) { this._sfxPlay('cancel'); m.selected.splice(idx, 1); return; }
       if (m.distinctNames) {
@@ -20567,6 +20681,8 @@ new Vue({
       });
     },
     dslAnswerOptional(yes) {
+      const pending = this.dslOptionalModal;
+      if (pending && !this._tutorialAnswerAllowed(pending, !!yes)) return;
       this._sfxPlay(yes ? 'decision' : 'cancel');
       const m = this.dslOptionalModal;
       this.dslOptionalModal = null;
@@ -21803,6 +21919,8 @@ new Vue({
     battleToggleSenteiOption(index) {
       const modal = this.battleSenteiModal;
       if (!modal) return;
+      const option = (modal.options || [])[index];
+      if (!this._tutorialChoiceAllowed('sentei', option ? String(option.label || option.text || option) : '')) return;
       if (this.battleSenteiOptionDisabled(index)) return;
       const pos = modal.selected.indexOf(index);
       if (pos >= 0) {
