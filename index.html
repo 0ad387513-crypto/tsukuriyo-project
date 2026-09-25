@@ -1403,17 +1403,24 @@
     background: radial-gradient(circle at 50% 30%, rgba(40, 32, 58, .96), rgba(8, 10, 16, .98));
   }
   .tutorial-pick-screen { max-width: 1180px; margin: 0 auto; padding-bottom: 200px; }
-  .tutorial-pick-main { display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: start; margin-top: 10px; }
-  .tutorial-pick-kami { padding: 12px; border-radius: 12px; border: 1px solid #5d4a33; background: rgba(0, 0, 0, .3); color: #eadfca; }
-  .tutorial-pick-kami-img { width: 100%; aspect-ratio: 744 / 1039; border-radius: 8px; background: #0a0c12 center / cover no-repeat; }
-  .tutorial-pick-kami-name { margin-top: 8px; font-weight: 800; font-size: 14px; }
-  .tutorial-pick-kami-world { margin-top: 4px; font-size: 13px; font-weight: 800; color: #f2cd7a; }
-  .tutorial-pick-kami-hints { margin: 8px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.6; color: #d8ccb4; }
+  /* ピック画面（創世決戦の選別の儀・チュートリアル外伝で共通）：左にカミのピック方針、右にカード */
+  .pick-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; margin-top: 10px; }
+  .pick-policy {
+    position: sticky; top: 8px; padding: 12px; border-radius: 12px; border: 1px solid #5d4a33;
+    background: rgba(0, 0, 0, .3); color: #eadfca;
+  }
+  .pick-policy-img { width: 100%; aspect-ratio: 744 / 1039; border-radius: 8px; background: #0a0c12 center / cover no-repeat; }
+  .pick-policy-name { margin-top: 8px; font-weight: 800; font-size: 14px; }
+  .pick-policy-world { margin-top: 4px; font-size: 13px; font-weight: 800; color: #f2cd7a; }
+  .pick-policy-heading { margin-top: 10px; font-size: 12px; font-weight: 800; color: #bfae8d; letter-spacing: .08em; }
+  .pick-policy-hints { margin: 4px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.6; color: #d8ccb4; }
   .tutorial-pick-pack { min-height: 260px; }
-  .tutorial-pick-kind { margin: 0 6px 6px; padding: 2px 6px; border-radius: 999px; text-align: center; font-size: 11px; font-weight: 800; }
-  .gm-pack-card.kind-basic .tutorial-pick-kind { color: #1f2530; background: #cfd6e0; }
-  .gm-pack-card.kind-unique .tutorial-pick-kind { color: #2a1a0a; background: #e8c46a; }
-  .gm-pack-card.kind-dragon .tutorial-pick-kind { color: #fff; background: #9b3434; }
+  /* 基本／ユニーク／龍の区分 */
+  .pick-kind-tag { margin: 0 6px 6px; padding: 2px 6px; border-radius: 999px; text-align: center; font-size: 11px; font-weight: 800; }
+  .gm-pack-card.kind-basic .pick-kind-tag { color: #1f2530; background: #cfd6e0; }
+  .gm-pack-card.kind-unique .pick-kind-tag { color: #2a1a0a; background: #e8c46a; }
+  .gm-pack-card.kind-dragon .pick-kind-tag { color: #fff; background: #9b3434; }
+  .gm-pack-card.kind-genesis .pick-kind-tag { color: #fff; background: linear-gradient(90deg, #b0453f, #3f6fb0, #c9a93a, #3f9a5a, #7a4aa8); }
   .tutorial-pick-passing { grid-column: 1 / -1; padding: 60px 0; text-align: center; color: #bfae8d; font-weight: 800; }
   .tutorial-pick-pool {
     display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding: 10px 12px;
@@ -1422,7 +1429,11 @@
   .tutorial-pick-pool-label { font-weight: 800; color: #f2cd7a; margin-right: 4px; }
   .tutorial-pick-pool-card { padding: 3px 10px; border-radius: 999px; border: 1px solid #5d4a33; background: rgba(199, 154, 74, .12); }
   .tutorial-pick-pool-card b { margin-left: 6px; color: #fff2ad; }
-  @media (max-width: 760px) { .tutorial-pick-main { grid-template-columns: 1fr; } }
+  @media (max-width: 760px) {
+    .pick-layout { grid-template-columns: 1fr; }
+    .pick-policy { position: static; display: grid; grid-template-columns: 72px 1fr; gap: 0 10px; }
+    .pick-policy-img { grid-row: span 4; }
+  }
   /* レッスン一覧：外伝は本編と区別して見せる */
   .tutorial-menu-sub { margin: 14px 0 8px; font-size: 13px; font-weight: 800; color: #bfae8d; letter-spacing: .1em; }
   .tutorial-lesson.side-story { border-style: dashed; }
@@ -4455,7 +4466,7 @@
   /* CPU対戦AI実行中の目隠し：内部的にself/oppを入れ替えて処理する間、盤面の一時的な入れ替わりを隠す */
   .battle-cpu-thinking-overlay {
     position: fixed; inset: 0; z-index: 9999; pointer-events: auto;
-    background: rgba(10, 10, 16, .82);
+    background: rgba(10, 10, 16, .28); /* 盤面は入れ替わらないので、相手の動きが見えるよう薄く覆う（操作は受け付けない） */
     display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 14px;
   }
   .battle-cpu-thinking-label {
@@ -7022,7 +7033,7 @@
       <button class="battle-back-btn" @click="battleReturn">◀ {{ battleReturnLabel }}</button>
       <h2>⚔ 対戦画面</h2>
       <span class="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        {{ battleSample.result ? '対戦終了' : (battleSample.activeSide === 'self' ? 'あなたのターンです' : '相手のターンです') }}
+        {{ battleView.result ? '対戦終了' : (battleView.activeSide === 'self' ? 'あなたのターンです' : '相手のターンです') }}
       </span>
       <span class="battle-matchup">{{ battleContext.selfName }} vs {{ battleContext.oppName }}</span>
       <span class="battle-phase">{{ battleContext.round ? 'ラウンド' + battleContext.round : battleContext.modeLabel }}</span>
@@ -7120,7 +7131,7 @@
       </button>
       <button v-if="!battleNet.spectating" class="battle-surrender-btn" @click="battleSurrender" aria-label="対戦を降参する">降参</button>
     </div>
-    <nav v-if="!_battleHasBlockingModal() && !battleSample.result" class="battle-mobile-nav" aria-label="対戦盤面の横移動">
+    <nav v-if="!_battleHasBlockingModal() && !battleView.result" class="battle-mobile-nav" aria-label="対戦盤面の横移動">
       <button @click="battleMobileScroll('left')" aria-label="盤面の左側へ移動">◀ 左盤面</button>
       <button @click="battleMobileScroll('center')" aria-label="盤面の中央へ移動">◆ 中央</button>
       <button @click="battleMobileScroll('right')" aria-label="盤面右側のリソースへ移動">リソース ▶</button>
@@ -7199,7 +7210,7 @@
           <span class="bm-remain">残り {{ battleMulligan.remaining }} 回</span>
         </div>
         <div class="bm-hand">
-          <div v-for="(card, i) in battleSample.self.hand" :key="'bm'+i" :data-tcard="tutorial ? 'mulligan:' + fullName(card) : null"
+          <div v-for="(card, i) in battleView.self.hand" :key="'bm'+i" :data-tcard="tutorial ? 'mulligan:' + fullName(card) : null"
                class="bm-card" :class="{ selected: battleMulligan.selectedIdx.includes(i) }"
                @click="battleToggleMulliganCard(i)"
                @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
@@ -7227,7 +7238,7 @@
         <div v-if="battleLifeWarning('self')" class="battle-main-life-critical-vignette"></div>
         <!-- ターン経過時間の目安上限を超えた時の警告表示（強制効果なし） -->
         <div v-if="battleTurnTimeUp" class="battle-turn-rope-warning">
-          <div class="battle-turn-rope-text">⏳ {{ battleSample.activeSide === 'self' ? 'そろそろ' : '相手が' }}ターンを{{ battleSample.activeSide === 'self' ? '終了しましょう' : '終了するのを待っています' }}</div>
+          <div class="battle-turn-rope-text">⏳ {{ battleView.activeSide === 'self' ? 'そろそろ' : '相手が' }}ターンを{{ battleView.activeSide === 'self' ? '終了しましょう' : '終了するのを待っています' }}</div>
         </div>
 
         <!-- 相手 上段：手札 | カミ(中央)+ステータス | レリック -->
@@ -7235,7 +7246,7 @@
           <div class="battle-zone hand-opp">
             <span class="battle-zone-label">手札(相手)</span>
             <div class="battle-card-row opp-back">
-              <div v-for="n in battleSample.opp.handCount" :key="'oh'+n" class="battle-card-mini"
+              <div v-for="n in battleView.opp.handCount" :key="'oh'+n" class="battle-card-mini"
                  :style="cardBackUrl ? { backgroundImage: 'url(' + cardBackUrl + ')', backgroundSize: 'cover', backgroundPosition: 'center' } : {}"></div>
             </div>
           </div>
@@ -7243,24 +7254,24 @@
             <div class="kami-hud">
               <!-- 左：天力／封印 -->
               <div class="hud-orb">
-                <span class="orb-label">{{ battleIsOrochi('opp') ? '封印' : '天力' }}</span>
-                <div class="orb-disc stat-pop-wrap" :class="battleIsOrochi('opp') ? 'seal' : 'tenryoku'">
-                  {{ battleIsOrochi('opp') ? battleStatNum('opp','seal') : battleStatNum('opp','tenryoku') }}
-                  <span v-if="battleStatPops[battleIsOrochi('opp') ? 'oppSeal' : 'oppTenryoku']" class="stat-pop" :class="battleStatPops[battleIsOrochi('opp') ? 'oppSeal' : 'oppTenryoku'].cls">{{ battleStatPops[battleIsOrochi('opp') ? 'oppSeal' : 'oppTenryoku'].text }}</span>
+                <span class="orb-label">{{ battleViewIsOrochi('opp') ? '封印' : '天力' }}</span>
+                <div class="orb-disc stat-pop-wrap" :class="battleViewIsOrochi('opp') ? 'seal' : 'tenryoku'">
+                  {{ battleViewIsOrochi('opp') ? battleStatNum('opp','seal') : battleStatNum('opp','tenryoku') }}
+                  <span v-if="battleViewPops[battleViewIsOrochi('opp') ? 'oppSeal' : 'oppTenryoku']" class="stat-pop" :class="battleViewPops[battleViewIsOrochi('opp') ? 'oppSeal' : 'oppTenryoku'].cls">{{ battleViewPops[battleViewIsOrochi('opp') ? 'oppSeal' : 'oppTenryoku'].text }}</span>
                 </div>
               </div>
               <!-- 中央：カミ（X軸基準） -->
               <div class="kami-portrait"
-                   :class="['kami-tier-' + battleOpponentSkillTone, { 'orochi-awakened': battleIsOrochi('opp') && battleSample.opp.seal === 0, 'battle-target-kami': battleCanFieldDragToAttackTargets, 'kami-shattering': battleSample.result && battleSample.result.outcome === 'win' }]"
-                   :style="battleSample.opp.kami && kamiIllustrationUrl(battleSample.opp.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.opp.kami) + ')' } : {}"
+                   :class="['kami-tier-' + battleOpponentSkillTone, { 'orochi-awakened': battleViewIsOrochi('opp') && battleView.opp.seal === 0, 'battle-target-kami': battleCanFieldDragToAttackTargets, 'kami-shattering': battleView.result && battleView.result.outcome === 'win' }]"
+                   :style="battleView.opp.kami && kamiIllustrationUrl(battleView.opp.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleView.opp.kami) + ')' } : {}"
                    @click="battleOpponentKamiClick"
                    @dragover.prevent="battleUpdateFieldAttackTarget($event)"
                    @drop.prevent="battleFieldDragEnd($event)"
                    @mouseenter="battleOpponentKamiHover($event)"
                    @mouseleave="hideCardHover">
-                <div v-if="!battleSample.opp.kami" class="kami-placeholder">カミ(相手)</div>
-                <div v-else-if="!hasKamiIllustration(battleSample.opp.kami)" class="kami-illust-missing">イラスト未登録</div>
-                <svg v-if="battleSample.result && battleSample.result.outcome === 'win' && !battleResultRevealReady" class="kami-crack-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <div v-if="!battleView.opp.kami" class="kami-placeholder">カミ(相手)</div>
+                <div v-else-if="!hasKamiIllustration(battleView.opp.kami)" class="kami-illust-missing">イラスト未登録</div>
+                <svg v-if="battleView.result && battleView.result.outcome === 'win' && !battleResultRevealReady" class="kami-crack-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <path class="kami-crack-line" d="M50 0 L46 22 L58 34 L40 50 L54 66 L44 82 L50 100"/>
                   <path class="kami-crack-line" d="M50 30 L20 20 M50 30 L78 24 M58 55 L84 60 M40 50 L14 46 M44 82 L18 90 M54 66 L82 74"/>
                 </svg>
@@ -7272,17 +7283,17 @@
               <!-- 右：ライフ（赤丸 / 上：ライフラベル） -->
               <div class="hud-orb">
                 <span class="orb-label">ライフ</span>
-                <div class="orb-disc life stat-pop-wrap" :class="{ 'life-warning': battleLifeWarning('opp') }">{{ battleStatNum('opp','life') }}<small>/ {{ battleSample.opp.lifeMax }}</small>
-                  <span v-if="battleStatPops.oppLife" class="stat-pop" :class="battleStatPops.oppLife.cls">{{ battleStatPops.oppLife.text }}</span>
+                <div class="orb-disc life stat-pop-wrap" :class="{ 'life-warning': battleLifeWarning('opp') }">{{ battleStatNum('opp','life') }}<small>/ {{ battleView.opp.lifeMax }}</small>
+                  <span v-if="battleViewPops.oppLife" class="stat-pop" :class="battleViewPops.oppLife.cls">{{ battleViewPops.oppLife.text }}</span>
                 </div>
               </div>
             </div>
-            <div class="kami-name">{{ battleSample.opp.kami ? fullName(battleSample.opp.kami) : 'カミ未設定' }}</div>
+            <div class="kami-name">{{ battleView.opp.kami ? fullName(battleView.opp.kami) : 'カミ未設定' }}</div>
           </div>
           <div class="battle-zone field">
             <span class="battle-zone-label">レリック(相手)</span>
             <div class="battle-card-row">
-              <div v-for="(card, i) in battleSample.opp.relics" :key="'or'+i"
+              <div v-for="(card, i) in battleView.opp.relics" :key="'or'+i"
                    class="battle-card field-card"
                    :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
@@ -7300,7 +7311,7 @@
           <div class="battle-zone field legacy-field">
             <span class="battle-zone-label">レガシー(相手)</span>
             <div class="battle-card-row legacy-row">
-              <div v-for="(card, i) in battleSample.opp.legacies" :key="'ol'+i" :data-tcard="tutorial ? 'opp-field:' + fullName(card) : null"
+              <div v-for="(card, i) in battleView.opp.legacies" :key="'ol'+i" :data-tcard="tutorial ? 'opp-field:' + fullName(card) : null"
                    class="battle-card field-card opp-legacy-target"
                    :class="{ 'battle-target-legacy': battleCanFieldDragToAttackTargets, tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive, [battleSummonAuraClass(card, 'opp')]: !!battleSummonAuraClass(card, 'opp') }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
@@ -7333,7 +7344,7 @@
                     <path d="M1 7.5h4M0.5 11.5h4M1 15.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
                     <path fill="currentColor" d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
                   </svg>
-                  <svg v-if="battleCardIsBound(card, 'opp')" class="status-icon bind-icon" viewBox="0 0 24 24">
+                  <svg v-if="battleCardIsBound(card, battleViewSide('opp'))" class="status-icon bind-icon" viewBox="0 0 24 24">
                     <rect x="3" y="6.5" width="10" height="5" rx="2.5" transform="rotate(-15 8 9)" fill="none" stroke="currentColor" stroke-width="1.8"/>
                     <rect x="9.5" y="10" width="10" height="5" rx="2.5" transform="rotate(50 14.5 12.5)" fill="none" stroke="currentColor" stroke-width="1.8"/>
                     <rect x="4" y="13.5" width="9" height="4.6" rx="2.3" transform="rotate(-65 8.5 15.8)" fill="none" stroke="currentColor" stroke-width="1.7"/>
@@ -7353,7 +7364,7 @@
             <span class="battle-zone-label">レガシー</span>
             <div class="battle-card-row legacy-row"
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('legacies', $event)">
-              <div v-for="(card, i) in battleSample.self.legacies" :key="'sl'+i" :data-tcard="tutorial ? 'self-field:' + fullName(card) : null"
+              <div v-for="(card, i) in battleView.self.legacies" :key="'sl'+i" :data-tcard="tutorial ? 'self-field:' + fullName(card) : null"
                    class="battle-card field-card"
                    :class="{ tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i, 'evolve-target': battleHandDragOverBaseIdx === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive, [battleSummonAuraClass(card, 'self')]: !!battleSummonAuraClass(card, 'self') }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
@@ -7387,7 +7398,7 @@
                     <path d="M1 7.5h4M0.5 11.5h4M1 15.5h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
                     <path fill="currentColor" d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z"/>
                   </svg>
-                  <svg v-if="battleCardIsBound(card, 'self')" class="status-icon bind-icon" viewBox="0 0 24 24">
+                  <svg v-if="battleCardIsBound(card, battleViewSide('self'))" class="status-icon bind-icon" viewBox="0 0 24 24">
                     <rect x="3" y="6.5" width="10" height="5" rx="2.5" transform="rotate(-15 8 9)" fill="none" stroke="currentColor" stroke-width="1.8"/>
                     <rect x="9.5" y="10" width="10" height="5" rx="2.5" transform="rotate(50 14.5 12.5)" fill="none" stroke="currentColor" stroke-width="1.8"/>
                     <rect x="4" y="13.5" width="9" height="4.6" rx="2.3" transform="rotate(-65 8.5 15.8)" fill="none" stroke="currentColor" stroke-width="1.7"/>
@@ -7407,7 +7418,7 @@
             <span class="battle-zone-label">レリック</span>
             <div class="battle-card-row"
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('relics', $event)">
-              <div v-for="(card, i) in battleSample.self.relics" :key="'sr'+i" :data-tcard="tutorial ? 'self-relic:' + fullName(card) : null"
+              <div v-for="(card, i) in battleView.self.relics" :key="'sr'+i" :data-tcard="tutorial ? 'self-relic:' + fullName(card) : null"
                    class="battle-card field-card"
                    :class="{ tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
@@ -7424,29 +7435,29 @@
             <div class="kami-hud">
               <!-- 左：天力／封印 -->
               <div class="hud-orb">
-                <span class="orb-label">{{ battleIsOrochi('self') ? '封印' : '天力' }}</span>
-                <div class="orb-disc stat-pop-wrap" :class="battleIsOrochi('self') ? 'seal' : 'tenryoku'">
-                  {{ battleIsOrochi('self') ? battleStatNum('self','seal') : battleStatNum('self','tenryoku') }}
-                  <span v-if="battleStatPops[battleIsOrochi('self') ? 'selfSeal' : 'selfTenryoku']" class="stat-pop" :class="battleStatPops[battleIsOrochi('self') ? 'selfSeal' : 'selfTenryoku'].cls">{{ battleStatPops[battleIsOrochi('self') ? 'selfSeal' : 'selfTenryoku'].text }}</span>
+                <span class="orb-label">{{ battleViewIsOrochi('self') ? '封印' : '天力' }}</span>
+                <div class="orb-disc stat-pop-wrap" :class="battleViewIsOrochi('self') ? 'seal' : 'tenryoku'">
+                  {{ battleViewIsOrochi('self') ? battleStatNum('self','seal') : battleStatNum('self','tenryoku') }}
+                  <span v-if="battleViewPops[battleViewIsOrochi('self') ? 'selfSeal' : 'selfTenryoku']" class="stat-pop" :class="battleViewPops[battleViewIsOrochi('self') ? 'selfSeal' : 'selfTenryoku'].cls">{{ battleViewPops[battleViewIsOrochi('self') ? 'selfSeal' : 'selfTenryoku'].text }}</span>
                 </div>
                 <div class="orb-value-controls">
-                  <button @click="battleStat('self', battleIsOrochi('self') ? 'seal' : 'tenryoku', -1)">−</button>
-                  <button @click="battleStat('self', battleIsOrochi('self') ? 'seal' : 'tenryoku', 1)">+</button>
+                  <button @click="battleStat('self', battleViewIsOrochi('self') ? 'seal' : 'tenryoku', -1)">−</button>
+                  <button @click="battleStat('self', battleViewIsOrochi('self') ? 'seal' : 'tenryoku', 1)">+</button>
                 </div>
               </div>
               <!-- 中央：カミ（X軸基準、神技段階で枠色変化） -->
               <div class="kami-portrait"
-                   :class="['kami-tier-' + battleSkillTone, { 'orochi-awakened': battleIsOrochi('self') && battleSample.self.seal === 0, 'kami-shattering': battleSample.result && battleSample.result.outcome === 'loss' }]"
-                   :style="battleSample.self.kami && kamiIllustrationUrl(battleSample.self.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleSample.self.kami) + ')' } : {}"
+                   :class="['kami-tier-' + battleSkillTone, { 'orochi-awakened': battleViewIsOrochi('self') && battleView.self.seal === 0, 'kami-shattering': battleView.result && battleView.result.outcome === 'loss' }]"
+                   :style="battleView.self.kami && kamiIllustrationUrl(battleView.self.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleView.self.kami) + ')' } : {}"
                    @click="battleSelfKamiClick"
                    @mousedown="battleEmoteDragStart"
                    @touchstart="battleEmoteDragStart"
                    @contextmenu.prevent="battleEmoteContextMenu"
-                   @mouseenter="battleSample.self.kami && showCardHover(battleSample.self.kami, $event)"
+                   @mouseenter="battleView.self.kami && showCardHover(battleView.self.kami, $event)"
                    @mouseleave="hideCardHover">
-                <div v-if="!battleSample.self.kami" class="kami-placeholder">カミ</div>
-                <div v-else-if="!hasKamiIllustration(battleSample.self.kami)" class="kami-illust-missing">イラスト未登録</div>
-                <svg v-if="battleSample.result && battleSample.result.outcome === 'loss' && !battleResultRevealReady" class="kami-crack-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <div v-if="!battleView.self.kami" class="kami-placeholder">カミ</div>
+                <div v-else-if="!hasKamiIllustration(battleView.self.kami)" class="kami-illust-missing">イラスト未登録</div>
+                <svg v-if="battleView.result && battleView.result.outcome === 'loss' && !battleResultRevealReady" class="kami-crack-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <path class="kami-crack-line" d="M50 0 L46 22 L58 34 L40 50 L54 66 L44 82 L50 100"/>
                   <path class="kami-crack-line" d="M50 30 L20 20 M50 30 L78 24 M58 55 L84 60 M40 50 L14 46 M44 82 L18 90 M54 66 L82 74"/>
                 </svg>
@@ -7459,8 +7470,8 @@
               <div class="hud-orb">
                 <span class="orb-label">ライフ</span>
                 <div class="life-row">
-                  <div class="orb-disc life stat-pop-wrap" :class="{ 'life-warning': battleLifeWarning('self') }">{{ battleStatNum('self','life') }}<small>/ {{ battleSample.self.lifeMax }}</small>
-                    <span v-if="battleStatPops.selfLife" class="stat-pop" :class="battleStatPops.selfLife.cls">{{ battleStatPops.selfLife.text }}</span>
+                  <div class="orb-disc life stat-pop-wrap" :class="{ 'life-warning': battleLifeWarning('self') }">{{ battleStatNum('self','life') }}<small>/ {{ battleView.self.lifeMax }}</small>
+                    <span v-if="battleViewPops.selfLife" class="stat-pop" :class="battleViewPops.selfLife.cls">{{ battleViewPops.selfLife.text }}</span>
                   </div>
                   <div class="orb-max-controls">
                     <button title="最大ライフを増やす（上限10）" @click="battleStat('self','lifeMax',1)">△</button>
@@ -7474,8 +7485,8 @@
               </div>
             </div>
             <!-- カミの真下：神技ボタン と カミ名 のみ -->
-            <button class="kami-skill-btn kami-below" :class="battleSkillTone" :disabled="battleSkillTone === 'disabled' || battleSample.activeSide !== 'self'" @click="openKamiSkills">神技</button>
-            <div class="kami-name kami-below">{{ battleSample.self.kami ? fullName(battleSample.self.kami) : 'カミ未設定' }}</div>
+            <button class="kami-skill-btn kami-below" :class="battleSkillTone" :disabled="battleSkillTone === 'disabled' || battleView.activeSide !== 'self'" @click="openKamiSkills">神技</button>
+            <div class="kami-name kami-below">{{ battleView.self.kami ? fullName(battleView.self.kami) : 'カミ未設定' }}</div>
           </div>
           <div class="battle-zone hand-self self-hand-drop"
                :class="{ 'battle-target-hand': battleFieldDrag }"
@@ -7483,7 +7494,7 @@
                @drop.prevent="battleFieldDragEnd($event)">
             <span class="battle-zone-label">手札（場へドラッグで使用 / 墓地へドラッグで捨てる）</span>
             <div class="battle-card-row">
-              <div v-for="(card, i) in battleSample.self.hand" :key="'sh'+i" :data-tcard="tutorial ? 'self-hand:' + fullName(card) : null"
+              <div v-for="(card, i) in battleView.self.hand" :key="'sh'+i" :data-tcard="tutorial ? 'self-hand:' + fullName(card) : null"
                    class="battle-card hand-playable hand-tiltable"
                    :class="[{ 'hand-disabled': card.category !== 'レガシー' && card.category !== 'レリック' && card.category !== 'オラクル', 'hand-dragging': battleDragIndex === i, 'hand-card-drawn': card._justDrawn }, genesisEffectClass(card)]"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
@@ -7508,10 +7519,10 @@
       <div class="battle-side">
 
         <div class="mana-panel">
-          <div class="mana-head"><span>相手マナ</span><span class="mana-value stat-pop-wrap">{{ battleStatNum('opp','mana') }}/{{ battleSample.opp.manaMax }}<span v-if="battleStatPops.oppMana" class="stat-pop" :class="battleStatPops.oppMana.cls">{{ battleStatPops.oppMana.text }}</span></span></div>
+          <div class="mana-head"><span>相手マナ</span><span class="mana-value stat-pop-wrap">{{ battleStatNum('opp','mana') }}/{{ battleView.opp.manaMax }}<span v-if="battleViewPops.oppMana" class="stat-pop" :class="battleViewPops.oppMana.cls">{{ battleViewPops.oppMana.text }}</span></span></div>
           <div class="mana-orbs">
-            <span v-for="n in Math.max(battleSample.opp.manaMax, battleSample.opp.mana)" :key="'om'+n" class="mana-orb" :class="{ available: n <= battleSample.opp.mana, bonus: n > battleSample.opp.manaMax && n <= battleSample.opp.mana }"></span>
-            <span v-if="battleSample.opp.manaMax === 0 && battleSample.opp.mana === 0" class="mana-empty">0</span>
+            <span v-for="n in Math.max(battleView.opp.manaMax, battleView.opp.mana)" :key="'om'+n" class="mana-orb" :class="{ available: n <= battleView.opp.mana, bonus: n > battleView.opp.manaMax && n <= battleView.opp.mana }"></span>
+            <span v-if="battleView.opp.manaMax === 0 && battleView.opp.mana === 0" class="mana-empty">0</span>
           </div>
         </div>
 
@@ -7525,17 +7536,17 @@
             </div>
             <div class="dgc-info">
               <span class="dgc-name">デッキ</span>
-              <span class="dgc-count">{{ battleSample.opp.deckCount }}</span>
+              <span class="dgc-count">{{ battleView.opp.deckCount }}</span>
             </div>
           </div>
-          <div class="dgc-cell zone-graveyard opp-graveyard-drop" :class="{ 'graveyard-glow': battleSample.opp._glowActive }" title="相手の墓地は閲覧のみ" @click="battleOpenZone('opp','graveyard')">
+          <div class="dgc-cell zone-graveyard opp-graveyard-drop" :class="{ 'graveyard-glow': battleView.opp._glowActive }" title="相手の墓地は閲覧のみ" @click="battleOpenZone('opp','graveyard')">
             <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
               <path d="M 8 41 H 32 V 46 H 8 Z"/>
               <path d="M 12 41 V 19 a 8 8 0 0 1 16 0 V 41 Z"/>
             </svg>
             <div class="dgc-info">
               <span class="dgc-name">墓地</span>
-              <span class="dgc-count">{{ battleSample.opp.graveyard.length }}</span>
+              <span class="dgc-count">{{ battleView.opp.graveyard.length }}</span>
             </div>
           </div>
           <div class="dgc-cell zone-crumbled opp-crumbled-drop" title="相手の崩壊は閲覧のみ" @click="battleOpenZone('opp','crumbled')">
@@ -7553,19 +7564,19 @@
             </svg>
             <div class="dgc-info">
               <span class="dgc-name">崩壊</span>
-              <span class="dgc-count">{{ battleSample.opp.crumbled.length }}</span>
+              <span class="dgc-count">{{ battleView.opp.crumbled.length }}</span>
             </div>
           </div>
         </div>
 
         <!-- 相手のターン表示（相手DGCの直下） -->
-        <div class="turn-ind" :class="{ active: battleSample.activeSide === 'opp' }">{{ battleContext.oppName }}のターン</div>
+        <div class="turn-ind" :class="{ active: battleView.activeSide === 'opp' }">{{ battleContext.oppName }}のターン</div>
 
         <!-- 中央：ターン番号 + ターン終了ボタン（残り空間を埋めて縦中央配置） -->
         <div class="turn-middle">
           <div class="turn-number">
-            ターン<span class="tn-big" :class="{ fatigue: battleSample.turn >= 11 }">{{ battleSample.turn }}</span>
-            <div v-if="battleSample.turn >= 11" class="turn-fatigue-hint">疲労 -{{ battleSample.turn - 10 }}</div>
+            ターン<span class="tn-big" :class="{ fatigue: battleView.turn >= 11 }">{{ battleView.turn }}</span>
+            <div v-if="battleView.turn >= 11" class="turn-fatigue-hint">疲労 -{{ battleView.turn - 10 }}</div>
           </div>
           <button class="battle-end-turn-btn" :class="{ danger: battleTurnTimerEnabled && battleTurnTimerTier === 'danger' }"
                   :style="{ '--turn-pct': (battleTurnTimerEnabled ? (battleTurnRemainingRatio * 100) : 100) + '%' }"
@@ -7574,13 +7585,13 @@
         </div>
 
         <!-- 自分のターン表示（自分DGCの直上） -->
-        <div class="turn-ind" :class="{ active: battleSample.activeSide === 'self' }">{{ battleContext.selfName }}のターン</div>
+        <div class="turn-ind" :class="{ active: battleView.activeSide === 'self' }">{{ battleContext.selfName }}のターン</div>
 
         <div class="mana-panel">
-          <div class="mana-head"><span>自分マナ</span><span class="mana-value stat-pop-wrap">{{ battleStatNum('self','mana') }}/{{ battleSample.self.manaMax }}<span v-if="battleStatPops.selfMana" class="stat-pop" :class="battleStatPops.selfMana.cls">{{ battleStatPops.selfMana.text }}</span></span></div>
+          <div class="mana-head"><span>自分マナ</span><span class="mana-value stat-pop-wrap">{{ battleStatNum('self','mana') }}/{{ battleView.self.manaMax }}<span v-if="battleViewPops.selfMana" class="stat-pop" :class="battleViewPops.selfMana.cls">{{ battleViewPops.selfMana.text }}</span></span></div>
           <div class="mana-orbs">
-            <span v-for="n in Math.max(battleSample.self.manaMax, battleSample.self.mana)" :key="'sm'+n" class="mana-orb" :class="{ available: n <= battleSample.self.mana, bonus: n > battleSample.self.manaMax && n <= battleSample.self.mana }"></span>
-            <span v-if="battleSample.self.manaMax === 0 && battleSample.self.mana === 0" class="mana-empty">0</span>
+            <span v-for="n in Math.max(battleView.self.manaMax, battleView.self.mana)" :key="'sm'+n" class="mana-orb" :class="{ available: n <= battleView.self.mana, bonus: n > battleView.self.manaMax && n <= battleView.self.mana }"></span>
+            <span v-if="battleView.self.manaMax === 0 && battleView.self.mana === 0" class="mana-empty">0</span>
           </div>
           <div class="mana-controls">
             <div><span>最大</span><div class="mana-control-group"><button @click="battleStat('self','manaMax',-1)">▽</button><button @click="battleStat('self','manaMax',1)">△</button></div></div>
@@ -7600,11 +7611,11 @@
             </div>
             <div class="dgc-info">
               <span class="dgc-name">デッキ</span>
-              <span class="dgc-count">{{ battleSample.self.deckCount }}</span>
+              <span class="dgc-count">{{ battleView.self.deckCount }}</span>
             </div>
           </div>
           <div class="dgc-cell zone-graveyard self-graveyard-drop"
-               :class="{ 'graveyard-drop-ready': battleDragOverZone === 'graveyard', 'battle-target-graveyard': battleFieldDrag, 'graveyard-glow': battleSample.self._glowActive }"
+               :class="{ 'graveyard-drop-ready': battleDragOverZone === 'graveyard', 'battle-target-graveyard': battleFieldDrag, 'graveyard-glow': battleView.self._glowActive }"
                @dragover.prevent="battleUpdateDragOverZone($event); battleUpdateFieldAttackTarget($event)"
                @drop.prevent="battleFieldDragEnd($event)"
                @click="battleOpenZone('self','graveyard')">
@@ -7614,7 +7625,7 @@
             </svg>
             <div class="dgc-info">
               <span class="dgc-name">墓地</span>
-              <span class="dgc-count">{{ battleSample.self.graveyard.length }}</span>
+              <span class="dgc-count">{{ battleView.self.graveyard.length }}</span>
             </div>
           </div>
           <div class="dgc-cell zone-crumbled self-crumbled-drop"
@@ -7636,7 +7647,7 @@
             </svg>
             <div class="dgc-info">
               <span class="dgc-name">崩壊</span>
-              <span class="dgc-count">{{ battleSample.self.crumbled.length }}</span>
+              <span class="dgc-count">{{ battleView.self.crumbled.length }}</span>
             </div>
           </div>
         </div>
@@ -7649,19 +7660,22 @@
          :style="{ left: battleFieldMenu.x + 'px', top: battleFieldMenu.y + 'px' }"
          @click.stop>
       <template v-if="!battleFieldMenu.subMode">
-        <button @click="battleFieldMenuAction('toggleTap')">{{ battleFieldMenuTapLabel }}</button>
+        <button v-if="!tutorial" @click="battleFieldMenuAction('toggleTap')">{{ battleFieldMenuTapLabel }}</button>
         <button v-for="(ab, ai) in battleFieldMenuActivatedAbilities" :key="'act'+ai"
                 :disabled="!ab.payable"
                 :title="ab.payable ? '' : ab.unpayableReason"
+                :class="{ 'tutorial-recommend': !!tutorial && ab.payable }"
                 @click="battleFieldMenuActivate(ai)">
           {{ ab.label }}
         </button>
+        <template v-if="!tutorial">
         <button v-if="battleFieldMenu.zone === 'legacies'" @click="battleFieldMenuOpenSub('power')">戦闘力を変更…</button>
         <button v-if="battleFieldMenu.zone === 'legacies'" @click="battleFieldMenuOpenSub('attack')">神攻力を変更…</button>
         <button @click="battleFieldMenuAction('hand')">手札へ戻す</button>
         <button @click="battleFieldMenuAction('deckTop')">デッキ上へ戻す</button>
         <button @click="battleFieldMenuAction('graveyard')">墓地へ送る</button>
         <button @click="battleFieldMenuAction('crumbled')">崩壊へ送る</button>
+        </template>
       </template>
       <template v-else-if="battleFieldMenu.subMode === 'power'">
         <div class="field-menu-sub-title">戦闘力を選択（500刻み）</div>
@@ -7824,7 +7838,7 @@
             </p>
             <div class="battle-diagnostic-grid">
               <div class="battle-diagnostic-item"><span>ビルド</span><strong>v{{ BUILD_VERSION }}</strong></div>
-              <div class="battle-diagnostic-item"><span>ターン / 手番</span><strong>{{ battleSample.turn }} / {{ battleSample.activeSide === 'self' ? '自分' : '相手' }}</strong></div>
+              <div class="battle-diagnostic-item"><span>ターン / 手番</span><strong>{{ battleView.turn }} / {{ battleView.activeSide === 'self' ? '自分' : '相手' }}</strong></div>
               <div class="battle-diagnostic-item"><span>同期状態</span><strong>{{ battleNet.on ? battleNetHealth.label : 'ローカル対戦' }}</strong></div>
               <div class="battle-diagnostic-item"><span>リビジョン</span><strong>{{ battleNet.lastRevision || 0 }}</strong></div>
               <div class="battle-diagnostic-item"><span>記録済みログ</span><strong>{{ battleLog.length }}件</strong></div>
@@ -8138,8 +8152,8 @@
         <div class="sublim-cost-buttons">
           <button v-for="(c, idx) in battleSublimModal.options" :key="'sc'+idx"
                   class="sublim-cost-btn"
-                  :class="{ disabled: c > battleSample.self.mana }"
-                  :disabled="c > battleSample.self.mana"
+                  :class="{ disabled: c > battleView.self.mana }"
+                  :disabled="c > battleView.self.mana"
                   @click="battleSublimChoose(c)">
             マナ {{ c }}{{ idx === 0 ? '（通常）' : '（昇華 +' + (c - battleSublimModal.options[0]) + '）' }}
           </button>
@@ -8167,14 +8181,14 @@
     </div>
 
     <div v-if="battleSample.result && battleResultRevealReady && !battleLogModal" class="battle-result-overlay">
-      <template v-if="battleSample.result.outcome === 'win'">
+      <template v-if="battleView.result.outcome === 'win'">
         <span v-for="i in 16" :key="'petal'+i" class="victory-petal"
               :style="{ left: ((i*61)%100) + '%', animationDelay: (battleResultPetalDelay + (i%7)*0.35) + 's', animationDuration: (3.2 + (i%5)*0.4) + 's' }"></span>
       </template>
-      <div class="battle-result-panel" :class="battleSample.result.outcome">
-        <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s1">✦</span>
-        <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s2">✦</span>
-        <span v-if="battleSample.result.outcome === 'win'" class="victory-spark s3">✦</span>
+      <div class="battle-result-panel" :class="battleView.result.outcome">
+        <span v-if="battleView.result.outcome === 'win'" class="victory-spark s1">✦</span>
+        <span v-if="battleView.result.outcome === 'win'" class="victory-spark s2">✦</span>
+        <span v-if="battleView.result.outcome === 'win'" class="victory-spark s3">✦</span>
         <div class="battle-result-title">
           <span v-for="(ch, i) in battleResultTitleChars" :key="'rch'+i" class="result-char"
                 :style="{ animationDelay: (i * 0.15) + 's' }">{{ ch }}</span>
@@ -8251,14 +8265,15 @@
           <span class="gm-draft-progress">あなたの取得 <b>{{ tutorialPick.picks.length }}</b> / {{ tutorialPick.packs.length }}</span>
         </div>
       </div>
-      <div class="tutorial-pick-main">
-        <aside class="tutorial-pick-kami">
-          <div class="tutorial-pick-kami-img"
+      <div class="tutorial-pick-main pick-layout">
+        <aside class="tutorial-pick-kami pick-policy">
+          <div class="pick-policy-img"
                @mouseenter="tutorialPick.kami && showCardHover(tutorialPick.kami, $event)" @mouseleave="hideCardHover"
                :style="tutorialPick.kami && cardImageUrl(tutorialPick.kami) ? { backgroundImage: 'url(' + cardImageUrl(tutorialPick.kami) + ')' } : {}"></div>
-          <div class="tutorial-pick-kami-name">{{ tutorialPick.kami ? fullName(tutorialPick.kami) : 'アマテラス' }}</div>
-          <div v-if="tutorialPickGuide" class="tutorial-pick-kami-world">理念「{{ tutorialPickGuide.world }}」</div>
-          <ul v-if="tutorialPickGuide" class="tutorial-pick-kami-hints">
+          <div class="pick-policy-name">{{ tutorialPick.kami ? fullName(tutorialPick.kami) : 'アマテラス' }}</div>
+          <div v-if="tutorialPickGuide" class="pick-policy-world">理念「{{ tutorialPickGuide.world }}」</div>
+          <div v-if="tutorialPickGuide" class="pick-policy-heading">ピック方針</div>
+          <ul v-if="tutorialPickGuide" class="pick-policy-hints">
             <li v-for="hint in tutorialPickGuide.pick" :key="hint">{{ hint }}</li>
           </ul>
         </aside>
@@ -8266,7 +8281,7 @@
           <div class="gm-draft-status mine">★ あなたのピックです — 束から1枚選んでください（残りは隣へ回ります）</div>
           <div class="gm-pack-grid tutorial-pick-pack">
             <div v-for="card in tutorialPick.pack" :key="'tpk' + card.no" class="gm-pack-card"
-                 :class="'kind-' + tutorialCardKind(card).key"
+                 :class="'kind-' + cardPickKind(card).key"
                  :data-tcard="'pack:' + fullName(card)"
                  @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
                  @click="tutorialPickCard(card)">
@@ -8276,7 +8291,7 @@
                 </span>
               </div>
               <div class="gm-pack-name">{{ fullName(card) }}</div>
-              <div class="tutorial-pick-kind">{{ tutorialCardKind(card).label }}</div>
+              <div class="pick-kind-tag">{{ cardPickKind(card).label }}</div>
             </div>
             <div v-if="!tutorialPick.pack.length" class="tutorial-pick-passing">次の束が回ってきます…</div>
           </div>
@@ -8921,9 +8936,23 @@
             <div class="gm-draft-kami-name">P{{ s.seat }} {{ s.kamiCard ? fullName(s.kamiCard) : '—' }}</div>
           </div>
         </div>
+        <div class="pick-layout gm-draft-layout">
+        <aside v-if="gsMyKamiCard" class="pick-policy gm-draft-policy">
+          <div class="pick-policy-img"
+               @mouseenter="showCardHover(gsMyKamiCard, $event)" @mouseleave="hideCardHover"
+               :style="cardImageUrl(gsMyKamiCard) ? { backgroundImage: 'url(' + cardImageUrl(gsMyKamiCard) + ')' } : {}"></div>
+          <div class="pick-policy-name">{{ fullName(gsMyKamiCard) }}</div>
+          <template v-if="gsMyPickGuide">
+            <div class="pick-policy-world">理念「{{ gsMyPickGuide.world }}」</div>
+            <div class="pick-policy-heading">ピック方針</div>
+            <ul class="pick-policy-hints">
+              <li v-for="hint in gsMyPickGuide.pick" :key="hint">{{ hint }}</li>
+            </ul>
+          </template>
+        </aside>
         <div class="gm-pack-grid" :class="{ locked: gsIPickedThisStep }">
           <div v-for="(card, i) in gsMyPackCards" :key="i" class="gm-pack-card"
-               :class="{ 'pick-assist-recommended': gsDraftRecommendedCardNos.includes(String(card.no)), 'pick-assist-not-recommended': gsDraftNotRecommendedCardNos.includes(String(card.no)) }"
+               :class="['kind-' + cardPickKind(card).key, { 'pick-assist-recommended': gsDraftRecommendedCardNos.includes(String(card.no)), 'pick-assist-not-recommended': gsDraftNotRecommendedCardNos.includes(String(card.no)) }]"
                @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
                @click="gsDraftPick(card)">
             <div v-if="gsDraftRecommendedCardNos.includes(String(card.no))" class="pick-assist-recommend-overlay"
@@ -8940,7 +8969,9 @@
               </span>
             </div>
             <div class="gm-pack-name">{{ fullName(card) }}</div>
+            <div class="pick-kind-tag">{{ cardPickKind(card).label }}</div>
           </div>
+        </div>
         </div>
         <div v-if="gsGenesisPickFlash" class="genesis-pick-fly"
              :style="cardImageUrl(gsGenesisPickFlash) ? { backgroundImage: 'url(' + cardImageUrl(gsGenesisPickFlash) + ')' } : {}"></div>
@@ -10066,11 +10097,69 @@ const TUTORIAL_LESSONS = Object.freeze([
         done: vm => !!vm.battleSample.result },
       { id: 'victory', say: 'おめでとうございます！　スサノオさんのライフが0になり、あなたの勝利ですわ。', finale: true },
       { say: '今日学んだのは、勝ち方、マリガン、マナとコスト、神攻と戦闘、そしてタップのこと。星戦の土台はこれで大丈夫です。', finale: true },
+      { say: '次のチュートリアルでは、レガシー・レリック・オラクルといった、カードの種類についてお話ししますね。', finale: true, last: true },
+    ],
+  },
+  {
+    id: 'cards', numeral: '弐', title: 'カードの種類',
+    summary: 'レガシー・レリック・オラクル、そしてトークン。カードの種類ごとの役割と使い方を学びます。',
+    learn: ['カミ', 'レガシー', 'レリック', '常在効果・起動効果', 'オラクル', 'トークン'],
+    oppName: 'オオクニヌシ', bgm: 'moyuruSetsuna',
+    setup: {
+      selfKamiNo: '8', oppKamiNo: '3', firstSide: 'self', turn: 5,
+      self: {
+        life: 10, manaMax: 4, relics: ['社の施し'],
+        legacies: ['冥土送りの侍女', '飄々たる諜報員'],
+        hand: ['木漏れ日の道場', '救済の手', '深き青の眷属', '荒き緑の眷属'],
+        deck: ['昏き紫の眷属', '眩き黄の眷属', '拒絶の守衛・イズモ', '慈愛の忍・イロハ'],
+      },
+      opp: {
+        life: 1, lifeMax: 10, manaMax: 5, relics: [],
+        legacies: [{ name: '飄々たる諜報員', tapped: true }, 'おてんばクノイチ・ユズリハ'],
+        hand: ['猛き赤の眷属', '荒き緑の眷属', '熾烈なる戦役'],
+        deck: ['深き青の眷属', '昏き紫の眷属', '眩き黄の眷属', '先駆けの修羅'],
+      },
+    },
+    steps: [
+      { say: 'ようこそ。今回は、ツクリヨのカードの種類について学びましょう。カードには「カミ」「レガシー」「オラクル」「レリック」の4つの種類があります。' },
+      { say: 'お相手はオオクニヌシさん。平等を願うお心、私も同じ想いです。……練習ですので、ライフは1にしてもらいました。', focus: 'oppKami' },
+      { action: 'startTurn' },
+      { say: 'まずは「カミ」。あなたの分身で、ライフと天力を持ち、神技を使います。デッキには入らず、対戦の最初から場にいますよ。', focus: 'selfKami' },
+      { say: '次に「レガシー」。レガシー欄に出して戦うカードです。戦闘力と神攻力を持ち、戦闘や神攻を行います。レガシー欄に置けるのは7枚までです。',
+        focus: 'selfLegacy', cards: ['self-field:冥土送りの侍女', 'self-field:飄々たる諜報員'] },
+      { say: '「レリック」は、レリック欄に置かれて場に残り続けるカード。いつも効いている「常在効果」や、タップするなどして使う「起動効果」を持つものがあります。レリック欄も7枚までです。',
+        focus: 'hand', cards: ['self-hand:木漏れ日の道場'] },
+      { task: '「木漏れ日の道場」を手札からレリック欄へドラッグしましょう。' + TUTORIAL_TASK_CLOSE_NOTE, focus: 'selfRelic', allow: { play: ['木漏れ日の道場'] },
+        done: vm => vm._tutorialHas('self', 'relics', '木漏れ日の道場') && vm._tutorialIdle() },
+      { say: '木漏れ日の道場は、タップすることで、レガシー1枚の戦闘力を1000上げられます。これが「起動効果」です。', focus: 'selfRelic', cards: ['self-relic:木漏れ日の道場'] },
+      { say: '相手の諜報員はタップ状態で、戦闘力2000。あなたの侍女も2000ですから、このままでは相打ちです。道場で侍女を強くしてから戦いましょう。',
+        focus: ['oppPower', 'selfPower'], cards: ['opp-field:飄々たる諜報員', 'self-field:冥土送りの侍女'] },
+      { task: '場の「木漏れ日の道場」を右クリックして「起動能力を発動」を選び、「冥土送りの侍女」を対象にしましょう。',
+        focus: 'selfRelic', cards: ['self-relic:木漏れ日の道場'], allow: { activate: ['木漏れ日の道場'] }, targets: ['冥土送りの侍女'],
+        done: vm => vm.tutorial.flags.activated && vm._tutorialIdle() },
+      { say: '侍女の戦闘力が3000になりました。', focus: 'selfPower', cards: ['self-field:冥土送りの侍女'] },
+      { task: '「冥土送りの侍女」をドラッグして、タップ状態の相手の「飄々たる諜報員」の上で離し、戦闘しましょう。', focus: 'oppLegacy', cards: ['opp-field:飄々たる諜報員'],
+        allow: { battle: ['冥土送りの侍女'] },
+        done: vm => !vm._tutorialHas('opp', 'legacies', '飄々たる諜報員') && vm._tutorialIdle() },
+      { say: '勝ちましたね。道場のもう1つの効果「戦闘でレガシーを破壊したとき、1枚引く」も働いて、手札が1枚増えました。これが「常在効果」です。', focus: 'hand' },
+      { say: 'あとは神攻で決めたいところですが、相手には【守護】を持つ「おてんばクノイチ・ユズリハ」がいます。このままでは、神攻を受け止められてしまいます。',
+        focus: 'oppLegacy', cards: ['opp-field:おてんばクノイチ・ユズリハ'] },
+      { say: 'そこで「オラクル」。使うとすぐに効果が発動して、そのあと墓地へ置かれる使い切りのカードです。「救済の手」なら、戦闘力2000以下のレガシーを1枚破壊できます。',
+        focus: 'hand', cards: ['self-hand:救済の手'] },
+      { task: '「救済の手」をレガシー欄へドラッグして使い、「おてんばクノイチ・ユズリハ」を対象にしましょう。' + TUTORIAL_TASK_CLOSE_NOTE,
+        focus: 'hand', allow: { play: ['救済の手'] }, targets: ['おてんばクノイチ・ユズリハ'],
+        done: vm => !vm._tutorialHas('opp', 'legacies', 'おてんばクノイチ・ユズリハ') && vm._tutorialIdle() },
+      { say: '最後に「トークン」のお話を。「社の施し」のように、カードの効果で【招来】されて出てくるカードがトークンです。デッキには入っておらず、手札や墓地へ行くと消えてしまいます。',
+        focus: 'selfRelic', cards: ['self-relic:社の施し'] },
+      { say: '守護はいなくなりました。仕上げに、諜報員で神攻を！', focus: 'oppKami', cards: ['self-field:飄々たる諜報員'] },
+      { task: '「飄々たる諜報員」で神攻して、オオクニヌシさんのライフを0にしましょう。', focus: 'oppKami', cards: ['self-field:飄々たる諜報員'],
+        allow: { divine: ['飄々たる諜報員'] }, done: vm => !!vm.battleSample.result },
+      { id: 'victory', say: 'お見事です！　レリックで強くして戦闘に勝ち、オラクルで守りを崩して、レガシーで決める。カードの種類ごとの役割、分かっていただけましたか？', finale: true },
       { say: '次のチュートリアルでは、守りの要【守護】と、私たちカミの力「天力」と「神技」についてお話ししますね。', finale: true, last: true },
     ],
   },
   {
-    id: 'guard', numeral: '弐', title: '守護と天力',
+    id: 'guard', numeral: '参', title: '守護と天力',
     summary: 'カミの力「天力」の溜め方と神技、守りの【守護】、オラクルとリロールを学びます。',
     learn: ['守護', '天力トリガー', '神技', 'オラクル', '選定', 'リロール'],
     oppName: 'タケミカヅチ', bgm: 'kazakiri',
@@ -10154,7 +10243,7 @@ const TUTORIAL_LESSONS = Object.freeze([
     ],
   },
   {
-    id: 'skill2', numeral: '参', title: '神技2の攻防',
+    id: 'skill2', numeral: '肆', title: '神技2の攻防',
     summary: '天力をたっぷり使う必殺技「神技2」。相手の神技2で窮地に立たされ、自分の神技2で逆転します。',
     learn: ['神技2', '相手の天力', '墓地', '崩壊'],
     oppName: 'ヒノカグツチ', bgm: 'homuGarasu',
@@ -10206,7 +10295,7 @@ const TUTORIAL_LESSONS = Object.freeze([
     ],
   },
   {
-    id: 'advanced', numeral: '肆', title: '応用ルール',
+    id: 'advanced', numeral: '伍', title: '応用ルール',
     summary: '進化・昇華で一気に攻め、手札の上限や疲労ダメージなど終盤の決まりごとを学びます。',
     learn: ['進化', '進化中の効果', '昇華', '手札の上限', '疲労ダメージ', '山札切れ'],
     oppName: 'ツクヨミ', bgm: 'gekkouKenkaku',
@@ -11040,7 +11129,8 @@ new Vue({
     tutorialProgress: loadTutorialProgress(), // { レッスンid: true }＝クリア済み
     tutorialMenuOpen: false,
     tutorialLoading: false,
-    tutorialPick: null, // 外伝（ピック画面）の状態 { kami, packs, packIndex, pack, picks }
+    tutorialPick: null,
+    battleViewSwapped: false, // CPUの手番代行中（self/opp入れ替え中）か。画面は入れ替えずに表示するため、battleView で元に戻して描画する // 外伝（ピック画面）の状態 { kami, packs, packIndex, pack, picks }
     genesisStoryOpen: false, // 創世決戦開始前の世界観導入
     genesisStoryIndex: 0,
     genesisStoryPlaying: false,
@@ -11086,6 +11176,23 @@ new Vue({
       if (this.appView === 'game' && this.gsPeeking) return true;
       if (this.appView === 'construct' && this.cbBuilding) return true;
       return false;
+    },
+    /* 対戦画面の描画用。CPUの手番代行中は内部的に self/opp が入れ替わっているため、
+       画面上は常に「自分が下・相手が上」のまま見えるよう、ここで元の向きに戻して渡す。 */
+    battleView() {
+      const bs = this.battleSample;
+      if (!bs || !this.battleViewSwapped) return bs;
+      return Object.assign({}, bs, { self: bs.opp, opp: bs.self, activeSide: bs.activeSide === 'self' ? 'opp' : 'self' });
+    },
+    battleViewPops() {
+      const pops = this.battleStatPops || {};
+      if (!this.battleViewSwapped) return pops;
+      const out = {};
+      Object.keys(pops).forEach(key => {
+        const flipped = key.startsWith('self') ? 'opp' + key.slice(4) : key.startsWith('opp') ? 'self' + key.slice(3) : key;
+        out[flipped] = pops[key];
+      });
+      return out;
     },
     tutorialStep() {
       const lesson = this.tutorialLesson;
@@ -11476,6 +11583,7 @@ new Vue({
     },
     /* 枠の光る色（コストの充足のみで判定。相手ターン中に使用できない場合でも演出は維持する） */
     battleSkillTone() {
+      if (this.battleViewSwapped) return this._battleSkillToneFor(this.battleView && this.battleView.self);
       const skills = this.battleSkillOptions;
       if (!skills.length) return 'disabled';
       const skill2 = skills.find(skill => skill.index === 2);
@@ -11484,16 +11592,7 @@ new Vue({
       return skill1 && skill1.affordable ? 'silver' : 'disabled';
     },
     battleOpponentSkillTone() {
-      const kami = this.battleSample.opp && this.battleSample.opp.kami;
-      const tenryoku = Number(this.battleSample.opp && this.battleSample.opp.tenryoku) || 0;
-      if (!kami) return 'disabled';
-      const costOf = index => {
-        const m = String(kami[`skill${index}cost`] == null ? '' : kami[`skill${index}cost`]).match(/\d+/);
-        return m ? Number(m[0]) : Infinity;
-      };
-      if (kami.skill2name && tenryoku >= costOf(2)) return 'gold';
-      if (kami.skill1name && tenryoku >= costOf(1)) return 'silver';
-      return 'disabled';
+      return this._battleSkillToneFor(this.battleView && this.battleView.opp);
     },
     battleOpponentSelecting() {
       const n = this.battleNet;
@@ -12421,6 +12520,11 @@ new Vue({
         : Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k]);
       return nos.map(no => this.allKamiCards.find(k => String(k.no) === String(no))).filter(Boolean);
     },
+    /* 選別の儀で左に出す、自分のカミの理念とピック方針 */
+    gsMyPickGuide() {
+      const kami = this.gsMyKamiCard;
+      return kami ? (GS_KAMI_SELECTION_GUIDES[String(kami.no)] || null) : null;
+    },
     gsMyKamiCard() {
       const seats = (this.gs.data && this.gs.data.seats) || {};
       const info = seats[this.gs.seat];
@@ -13212,8 +13316,16 @@ new Vue({
         if (s.tenryoku != null) player.tenryoku = s.tenryoku;
         // 途中盤面の場のカードは前のターンから居た扱い（出たばかりの攻撃制限を受けない）
         const toField = card => Object.assign(this._battlePrepareFieldCard(card), { _summonedTurn: bs.turn - 1 });
-        if (s.legacies) player.legacies = cardsOf(s.legacies).map(toField);
-        if (s.relics) player.relics = cardsOf(s.relics).map(toField);
+        // 場のカードは 'カード名' か { name: 'カード名', tapped: true } で指定する
+        const fieldOf = list => (list || []).map(spec => {
+          const card = pick(typeof spec === 'string' ? spec : spec.name);
+          if (!card) return null;
+          const fieldCard = toField(card);
+          if (spec && spec.tapped) fieldCard._tapped = true;
+          return fieldCard;
+        }).filter(Boolean);
+        if (s.legacies) player.legacies = fieldOf(s.legacies);
+        if (s.relics) player.relics = fieldOf(s.relics);
         if (s.graveyard) player.graveyard = cardsOf(s.graveyard);
         player.handCount = player.hand.length;
         player.deckCount = player.deck.length;
@@ -13270,13 +13382,15 @@ new Vue({
       p.pack.splice(idx, 1);
       p.picks.push(card);
     },
-    /* 外伝のカード区分：ユニーク（カードプールに1枚）／基本（2枚）／龍 */
-    tutorialCardKind(card) {
+    /* ピック画面のカード区分：基本（カードプールに2枚ある銀枠）／ユニーク（1枚だけの金枠）／龍。
+       創世決戦の選別の儀とチュートリアル外伝で共通に使う（枚数はかえって分かりにくいので表示しない） */
+    cardPickKind(card) {
       if (!card) return { key: '', label: '' };
-      if (card.type === '龍') return { key: 'dragon', label: '龍・ユニーク' };
+      if (card.type === '龍') return { key: 'dragon', label: '龍' };
+      if (card.color === '創') return { key: 'genesis', label: 'ジェネシス' };
       const name = this.fullName(card);
       const copies = this.allCards.filter(c => !c.isToken && !c.isKami && this.fullName(c) === name).length;
-      return copies >= 2 ? { key: 'basic', label: '基本（' + copies + '枚）' } : { key: 'unique', label: 'ユニーク（1枚）' };
+      return copies >= 2 ? { key: 'basic', label: '基本' } : { key: 'unique', label: 'ユニーク' };
     },
     _tutorialStop() {
       clearInterval(this._tutorialTickTimer);
@@ -16137,6 +16251,7 @@ new Vue({
     /* 指定した場のカード（side/zone/index）の現在のDOM位置を取得する（撃破の吸い込まれ演出の起点用）。
        ゾーンごとに一意なコンテナ/カード自身のセレクタが必要なため側ごとに分岐する。 */
     _battleFieldCardRect(side, zone, index) {
+      side = this.battleViewSide(side);
       const root = this.$el;
       if (!root) return null;
       let els = null;
@@ -16149,6 +16264,7 @@ new Vue({
     },
     /* 墓地/崩壊アイコンの現在のDOM位置を取得する（撃破の吸い込まれ演出の着地点用） */
     _battleZoneIconRect(side, destZone) {
+      side = this.battleViewSide(side);
       const root = this.$el;
       if (!root) return null;
       const sel = destZone === 'crumbled'
@@ -16181,6 +16297,7 @@ new Vue({
       return el ? el.getBoundingClientRect() : null;
     },
     _battleZoneTargetRect(side, zone) {
+      side = this.battleViewSide(side);
       if (!this.$el) return null;
       const selectors = side === 'self'
         ? { deck: '.self-deck-drop', hand: '.self-hand-drop', graveyard: '.self-graveyard-drop', crumbled: '.self-crumbled-drop', legacies: '.self-legacy-drop', relics: '.self-relic-drop' }
@@ -16255,6 +16372,7 @@ new Vue({
     },
     /* ライフ/マナ/天力/封印のカウントアップ表示：テンプレートからは battleStatNum(side,key) で参照する */
     battleStatNum(side, key) {
+      side = this.battleViewSide(side); // 画面上の位置 → 内部のside（CPU手番代行中の入れ替えを打ち消す）
       const dispKey = side + key.charAt(0).toUpperCase() + key.slice(1);
       const disp = this.battleStatDisplay[dispKey];
       if (disp === undefined) {
@@ -17767,12 +17885,33 @@ new Vue({
     _battleIsOrochiCard(kami) {
       return !!(kami && (kami.type === 'ヤマタノオロチ' || this.fullName(kami).includes('ヤマタノオロチ')));
     },
+    /* 画面上の位置（self=下／opp=上）と内部のside（CPU手番代行中は入れ替わる）を相互に変換する */
+    battleViewSide(side) {
+      if (!this.battleViewSwapped) return side;
+      return side === 'self' ? 'opp' : side === 'opp' ? 'self' : side;
+    },
+    _battleSkillToneFor(player) {
+      const kami = player && player.kami;
+      const tenryoku = Number(player && player.tenryoku) || 0;
+      if (!kami) return 'disabled';
+      const costOf = index => {
+        const m = String(kami[`skill${index}cost`] == null ? '' : kami[`skill${index}cost`]).match(/\d+/);
+        return m ? Number(m[0]) : Infinity;
+      };
+      if (kami.skill2name && tenryoku >= costOf(2)) return 'gold';
+      if (kami.skill1name && tenryoku >= costOf(1)) return 'silver';
+      return 'disabled';
+    },
+    battleViewIsOrochi(side) {
+      return this.battleIsOrochi(this.battleViewSide(side));
+    },
     battleIsOrochi(side) {
       const player = this.battleSample[side];
       return !!(player && this._battleIsOrochiCard(player.kami));
     },
     /* ライフが少ない時の警告演出：残りライフが3以下、または最大値の25%以下なら危険域とみなす */
     battleLifeWarning(side) {
+      side = this.battleViewSide(side);
       const p = this.battleSample && this.battleSample[side];
       if (!p || p.life <= 0) return false;
       const lifeMax = Number(p.lifeMax) || 1;
@@ -19752,6 +19891,7 @@ new Vue({
       // 情報（補正・拘束の有効期限side等）を、入れ替えが解けた後の「本当のself/opp」で
       // 正しく突き合わせられるようにするため（_dslTrueActiveSide参照）。
       this._dslSwapped = !this._dslSwapped;
+      this.battleViewSwapped = !!this._dslSwapped;
       // self/oppはオブジェクト参照ごと入れ替わるため、ライフ/マナ/天力/封印のカウントアップ表示
       // watcher（battleSample.self.life等）も「値が変わった」と誤検知し、実際には起きていない
       // 変化をアニメーションしてしまう（例：CPU戦の入れ替え中に自分のライフ表示が一瞬相手の値になる）。
@@ -24870,6 +25010,7 @@ new Vue({
       const card = this.battleFieldMenuCurrentCard;
       this.battleFieldMenu = null;
       if (!entry || !card) return;
+      if (!this._tutorialAllows('activate', this.fullName(card))) return;
       if (!entry.payable) {
         this.battleShowNotice('起動不可', entry.unpayableReason || 'この起動能力は今は発動できません。', [card]);
         return;
@@ -24890,6 +25031,7 @@ new Vue({
       this.battleSaveUndo();
       const paid = await this.dslPayAbilityCost(cost, card, '起動コスト');
       if (!paid) return;
+      if (this.tutorial) this.$set(this.tutorial.flags, 'activated', true);
       this._sfxPlay('decision');
       // 備考付きのコスト（例：ヨリシロちゃんの「戦闘/神攻の代わり」）は通知のみ
       if (cost.備考) {
