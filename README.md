@@ -9,7 +9,8 @@ npm test
 pnpm test:rules
 ```
 
-画面はプロジェクト直下で静的サーバーを起動し、`http://localhost:8765/index.html` を開いて確認します。
+画面はプロジェクト直下で `npm run preview` を実行し、`http://localhost:8765/index.html` を開いて確認します。
+ローカル確認用URLは今後もこのURLに統一します。サーバーは作業フォルダの最新ファイルを直接配信し、キャッシュを無効にしています。WebP・SVG・音声も対応した形式で配信します。
 
 ## Firebase本番構成（Spark）
 

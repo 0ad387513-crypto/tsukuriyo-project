@@ -28,9 +28,37 @@ test("every static script and preload reference exists", () => {
     "ui_cinematics/bloom-lotus-closed.png",
     "ui_cinematics/bloom-lotus-open.png",
     "ui_cinematics/dies-irae-ritual.png",
+    "battle_fields/cosmic-pick.webp",
   ];
   assert.ok(refs.length > 10);
   for (const ref of refs) assert.equal(fs.existsSync(path.join(root, ref)), true, `missing asset: ${ref}`);
+});
+
+test("battle fields load raster art and preserve tutorial, Orochi and online selection", () => {
+  const themesSource = html.match(/const BATTLE_FIELD_THEMES = Object\.freeze\((\[[\s\S]*?\])\);/);
+  assert.ok(themesSource);
+  const themes = Function(`return ${themesSource[1]}`)();
+  assert.equal(themes.length, 6);
+  for (const theme of themes) {
+    assert.match(theme.file, /\.webp$/);
+    assert.ok(fs.existsSync(path.join(root, theme.file)), `missing field: ${theme.file}`);
+  }
+  const source = html.match(/_battlePickFieldTheme\(config, self, opp\) \{([\s\S]*?)\r?\n    \},/);
+  assert.ok(source);
+  const choose = Function('BATTLE_FIELD_THEMES', 'config', 'self', 'opp', source[1]).bind({
+    _battleIsOrochiCard: kami => kami && kami.no === '10',
+  }, themes);
+  for (const theme of themes) {
+    assert.equal(choose({ source: 'tutorial', fieldTheme: theme.key }), theme.key);
+  }
+  assert.equal(choose({ source: 'tutorial', fieldTheme: 'ninja' }, { kami: { no: '10' } }), 'dragon');
+  assert.equal(choose({}, null, { kami: { no: '10' } }), 'dragon');
+  const online = { syncGame: true, code: 'ROOM123', table: 1, round: 2 };
+  assert.equal(choose(online), choose(online));
+  for (let i = 0; i < 20; i++) {
+    const selected = choose({});
+    assert.ok(themes.some(t => t.key === selected));
+  }
 });
 
 test("shared battle serialization cannot include private hand or deck arrays", () => {

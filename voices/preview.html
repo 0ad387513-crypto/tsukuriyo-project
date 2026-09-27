@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>カミのボイス試聴</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 24px 16px 60px; background: #0c0d14; color: #eadfca; font-family: 'Hiragino Sans', 'Meiryo', sans-serif; }
+  h1 { margin: 0 0 4px; font-size: 22px; color: #f2cd7a; }
+  .lead { margin: 0 0 20px; font-size: 13px; color: #b9ad94; line-height: 1.7; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+  .kami { border: 1px solid #4a3b28; border-radius: 12px; padding: 14px; background: #15131a; }
+  .kami h2 { margin: 0 0 4px; font-size: 17px; color: #f2cd7a; }
+  .desc { margin: 0 0 10px; font-size: 12px; line-height: 1.6; color: #b9ad94; }
+  .row { display: grid; grid-template-columns: 104px 1fr; gap: 4px 10px; align-items: center; padding: 6px 0; border-top: 1px solid #2a2530; }
+  .key { font-size: 11px; font-weight: 800; color: #9c8f78; }
+  .text { font-size: 14px; }
+  .tts { font-size: 11px; color: #8a8070; }
+  audio { grid-column: 1 / -1; width: 100%; height: 32px; }
+  .missing { grid-column: 1 / -1; font-size: 11px; color: #7a6a5a; }
+  .sample { margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<h1>カミのボイス試聴（試作）</h1>
+<p class="lead">scripts/generate_voices.js で生成した音声を確認するページです。「声の見本」は声を作ったときの見本（voices/previews）、各台詞はゲームで使う音声（voices/{No}/）です。<br>作り直すときは voice_script.json の説明文や読みを直し、<code>node scripts/generate_voices.js lines --kami 番号 --force</code>（ElevenLabs 版は <code>generate_voices_elevenlabs.js</code>）を実行してください。</p>
+<div class="grid" id="grid"></div>
+<script>
+(async () => {
+  const labels = { greeting: 'あいさつ', confusion: '困惑', praise: '賞賛', surprise: '驚き', taunt: '挑発', boast: '大見栄', skill1: '神技1', skill2: '神技2' };
+  const script = await (await fetch('voice_script.json', { cache: 'no-store' })).json();
+  let manifest = { kami: {} };
+  try { manifest = await (await fetch('manifest.json', { cache: 'no-store' })).json(); } catch (e) { /* 未生成 */ }
+  let designs = {}, elIds = {};
+  try { const r = await fetch('previews/el_designs.json', { cache: 'no-store' }); if (r.ok) designs = await r.json(); } catch (e) { /* 未作成 */ }
+  try { const r = await fetch('elevenlabs_voice_ids.json', { cache: 'no-store' }); if (r.ok) elIds = await r.json(); } catch (e) { /* 未登録 */ }
+  const grid = document.getElementById('grid');
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  for (const [no, kami] of Object.entries(script.kami)) {
+    const files = manifest.kami[no] || {};
+    const el = document.createElement('section');
+    el.className = 'kami';
+    let html = `<h2>${esc(no)}．${esc(kami.name)}</h2><p class="desc">${esc(kami.voice.description)}</p>`;
+    html += `<div class="sample"><div class="key">声の見本（Gemini）</div><audio controls preload="none" src="previews/${esc(no)}.wav"></audio></div>`;
+    for (const c of designs[no] || []) {
+      const picked = elIds[no] && elIds[no].choice === c.choice;
+      html += `<div class="sample"><div class="key">ElevenLabs 候補${c.choice}${picked ? '（登録済み）' : ''}</div><audio controls preload="none" src="previews/${esc(c.file)}"></audio></div>`;
+    }
+    for (const [key, line] of Object.entries(kami.lines)) {
+      const label = key === 'win_gs' ? '創世決戦 優勝' : key.startsWith('win_') ? `勝利 vs ${(script.kami[key.slice(4)] || {}).name || key}` : (labels[key] || key);
+      html += `<div class="row"><span class="key">${esc(label)}</span><span><span class="text">${esc(line.text)}</span>${line.tts ? `<br><span class="tts">読み：${esc(line.tts)}</span>` : ''}${line.el ? `<br><span class="tts">ElevenLabs：${esc(line.el)}</span>` : ''}</span>`;
+      html += files[key] ? `<audio controls preload="none" src="../${esc(files[key])}"></audio>` : `<span class="missing">未生成</span>`;
+      html += `</div>`;
+    }
+    el.innerHTML = html;
+    grid.appendChild(el);
+  }
+})();
+</script>
+</body>
+</html>
