@@ -1409,11 +1409,14 @@
   }
   .top-mode-guide-btn.tutorial small { display: block; margin-top: 2px; font-size: 11px; font-weight: 600; color: #e8d3a8; letter-spacing: 0; }
   .top-mode-guide-btn.tutorial:disabled { opacity: .7; cursor: wait; transform: none; }
+  /* 案内役の立ち絵をボタンの上へはみ出させる（ボタンの高さは変えない） */
+  .top-mode-guide-btn.tutorial { position: relative; padding-left: 88px; }
   .top-tutorial-face {
-    flex: none; width: 38px; height: 38px; border-radius: 50%;
-    background: url(kami_cutin/8.webp) center 18% / cover; border: 2px solid #e2c07a;
-    box-shadow: 0 0 12px rgba(255, 210, 120, .45);
+    position: absolute; left: 6px; bottom: 0; width: 76px; height: 108px; pointer-events: none;
+    background: url(tutorial_guide/amaterasu-chibi.webp) center bottom / contain no-repeat;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .5)); transition: transform .15s;
   }
+  .top-mode-guide-btn.tutorial:hover:not(:disabled) .top-tutorial-face { transform: translateY(-3px) rotate(-3deg); }
   @media (max-width: 700px) {
     .top-mode-guide-btn { min-height: 52px; }
     .top-guide-stack { grid-template-columns: 1fr; }
@@ -1500,11 +1503,14 @@
   .tutorial-menu-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
   .tutorial-menu-head h3 { margin: 0 0 4px; font-size: 20px; color: #f2cd7a; letter-spacing: .08em; }
   .tutorial-menu-head p { margin: 0; font-size: 13px; line-height: 1.6; color: #e1d2b5; word-break: keep-all; overflow-wrap: anywhere; }
+  /* 案内役の全身を見出しの横に立たせる（一覧はスクロールするので、枠の外へははみ出させない） */
   .tutorial-menu-face {
-    flex: none; width: 64px; height: 64px; border-radius: 50%;
-    background: url(kami_cutin/8.webp) center 16% / cover; border: 2px solid #e2c07a;
-    box-shadow: 0 0 14px rgba(255, 210, 120, .4);
+    flex: none; width: 84px; height: 118px; margin: -8px 0 -6px;
+    background: url(tutorial_guide/amaterasu-chibi.webp) center bottom / contain no-repeat;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .5));
+    animation: tutorialGuideIdle 3.2s ease-in-out infinite;
   }
+  @media (prefers-reduced-motion: reduce) { .tutorial-menu-face { animation: none; } }
   .tutorial-menu-close {
     margin-left: auto; align-self: flex-start; width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
     border: 1px solid #6b5a44; background: rgba(0, 0, 0, .35); color: #e1d2b5; font-size: 14px;
@@ -1597,19 +1603,29 @@
     box-shadow: 0 14px 40px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 220, 150, .12) inset;
   }
   .tutorial-panel.at-bottom { bottom: 22px; }
-  .tutorial-panel.at-top { top: 52px; }
+  /* 上に出すときも下のときと同じ立ち姿にするため、吹き出しを下げて頭が上へはみ出す余白を空ける */
+  .tutorial-panel.at-top { top: 132px; }
   .mode-say .tutorial-panel { cursor: pointer; }
   .mode-task .tutorial-panel { border-color: #e2b85c; box-shadow: 0 14px 40px rgba(0, 0, 0, .7), 0 0 16px rgba(226, 184, 92, .35); }
   .tutorial-panel.shake { animation: tutorialShake .45s ease; }
   @keyframes tutorialShake { 20%, 60% { transform: translateX(calc(-50% - 7px)); } 40%, 80% { transform: translateX(calc(-50% + 7px)); } }
-  /* 顔のウィンドウは台詞・操作手順とも常に同じ大きさ（文章の行数で伸び縮みさせない） */
-  .tutorial-portrait {
-    flex: none; align-self: flex-start; width: 88px; height: 88px; border-radius: 10px;
-    background: url(kami_cutin/8.webp) center 16% / cover;
-    border: 1px solid #e2c07a; box-shadow: 0 0 14px rgba(255, 210, 120, .35);
+  /* 案内役の立ち絵：吹き出しの左に全身で立たせ、頭は吹き出しの上へはみ出させる。
+     大きさは文章の行数で変えない（立ち絵の位置がずれないように） */
+  .tutorial-panel { padding-left: 172px; }
+  .tutorial-portrait { position: absolute; left: 4px; bottom: 0; width: 164px; height: 232px; pointer-events: none; }
+  .tutorial-portrait img {
+    display: block; width: 100%; height: 100%; object-fit: contain; object-position: center bottom;
+    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .55)); transform-origin: 50% 100%;
+    animation: tutorialGuideIdle 3.2s ease-in-out infinite;
   }
+  /* 台詞を表示している間は、話しているように小さく弾ませる */
+  .mode-say .tutorial-panel.speaking .tutorial-portrait img { animation: tutorialGuideTalk .45s ease-in-out infinite; }
+  @keyframes tutorialGuideIdle { 50% { transform: translateY(-3px); } }
+  @keyframes tutorialGuideTalk { 50% { transform: scale(1.02, .98); } }
   .tutorial-body { position: relative; flex: 1; min-width: 0; padding-right: 58px; }
-  .tutorial-name { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 13px; font-weight: 800; color: #f2cd7a; letter-spacing: .08em; }
+  /* 名前は吹き出しの上辺に掛かる名札にする */
+  .tutorial-name { display: flex; align-items: center; gap: 10px; margin: -25px 0 8px; font-size: 13px; font-weight: 800; letter-spacing: .08em; }
+  .tutorial-name > span:first-child { padding: 3px 16px; border-radius: 999px; color: #2a1a0a; background: linear-gradient(180deg, #ffe7a8, #e2b85c); box-shadow: 0 3px 10px rgba(0, 0, 0, .5); }
   .tutorial-task-tag { padding: 2px 9px; border-radius: 999px; background: #e2b85c; color: #2a1a0a; font-size: 11px; letter-spacing: .04em; }
   .tutorial-text { min-height: 3.4em; font-size: 16px; line-height: 1.7; font-weight: 600; word-break: keep-all; overflow-wrap: anywhere; line-break: strict; }
   .tutorial-unshown { visibility: hidden; }
@@ -1639,13 +1655,14 @@
   .tutorial-quit:hover { color: #fff; border-color: #c79a4a; }
   @media (max-width: 700px) {
     .tutorial-panel { gap: 10px; padding: 10px; }
-    .tutorial-panel.at-top { top: 8px; }
+    .tutorial-panel.at-top { top: 56px; }
     .tutorial-panel.at-bottom { bottom: 64px; }
-    .tutorial-portrait { width: 56px; height: 56px; }
+    .tutorial-panel { padding-left: 96px; }
+    .tutorial-portrait { left: 2px; width: 92px; height: 128px; }
     .tutorial-text { font-size: 14px; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .tutorial-spot, .tutorial-next, .tutorial-panel.shake, .tutorial-card-mark, .tutorial-picture, .tutorial-recommend { animation: none; }
+    .tutorial-spot, .tutorial-next, .tutorial-panel.shake, .tutorial-card-mark, .tutorial-picture, .tutorial-recommend, .tutorial-portrait img { animation: none !important; }
   }
   .genesis-globe-icon { display: inline-block; vertical-align: -0.15em; } /* 創世決戦ロビー見出し等で使用 */
   /* ===== 創世決戦・世界観導入（絵巻） ===== */
@@ -8506,10 +8523,10 @@
       <img :src="tutorialStep.picture" :alt="tutorialStep.pictureLabel || ''">
       <span v-if="tutorialStep.pictureLabel">{{ tutorialStep.pictureLabel }}</span>
     </div>
-    <div class="tutorial-panel" :class="['at-' + (tutorialStep && tutorialStep.picture ? 'bottom' : tutorial.panelPos), { shake: tutorial.hintShake }]"
+    <div class="tutorial-panel" :class="['at-' + (tutorialStep && tutorialStep.picture ? 'bottom' : tutorial.panelPos), { shake: tutorial.hintShake, speaking: tutorial.typed < tutorialFullText.length }]"
          role="dialog" aria-live="polite" :aria-label="'アマテラス：' + tutorialFullText"
          @click="tutorialMode === 'say' && tutorialAdvance()">
-      <div class="tutorial-portrait" aria-hidden="true"></div>
+      <div class="tutorial-portrait" aria-hidden="true"><img src="tutorial_guide/amaterasu-chibi.webp" alt=""></div>
       <div class="tutorial-body">
         <div class="tutorial-name">
           <span>アマテラス</span>
@@ -14028,7 +14045,10 @@ new Vue({
       const overlap = (y1, y2) => rects.concat(marks).reduce((sum, r) => sum + Math.max(0, Math.min(y2, r.y + r.h + 30) - Math.max(y1, r.y - 30)) * r.w, 0);
       // 多い手札からの対象選択では、下の案内が「決定」を覆わないよう上へ寄せる。
       const choosingCards = !!(this.dslTargetModal || this.battleDeckModal);
-      const pos = choosingCards || overlap(h - 190, h) > overlap(40, 230) ? 'top' : 'bottom';
+      // 案内役の立ち絵は吹き出しの左端から上へはみ出すので、その範囲の重なりも数える（上に置くときは吹き出しを132pxまで下げている）
+      const guideLeft = (window.innerWidth - Math.min(760, window.innerWidth - 32)) / 2;
+      const overlapGuide = (y1, y2) => rects.concat(marks).reduce((sum, r) => sum + Math.max(0, Math.min(y2, r.y + r.h + 30) - Math.max(y1, r.y - 30)) * Math.max(0, Math.min(guideLeft + 170, r.x + r.w) - Math.max(guideLeft, r.x)), 0);
+      const pos = choosingCards || overlap(h - 190, h) + overlapGuide(h - 310, h - 190) > overlap(122, 302) + overlapGuide(20, 122) ? 'top' : 'bottom';
       if (t.panelPos !== pos) t.panelPos = pos;
     },
     _tutorialTick() {
