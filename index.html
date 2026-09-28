@@ -8574,7 +8574,8 @@
     <div class="tutorial-panel" :class="['at-' + (tutorialStep && tutorialStep.picture ? 'bottom' : tutorial.panelPos), { shake: tutorial.hintShake, speaking: tutorial.typed < tutorialFullText.length }]"
          role="dialog" aria-live="polite" :aria-label="'アマテラス：' + tutorialFullText"
          @click="tutorialMode === 'say' && tutorialAdvance()">
-      <div class="tutorial-portrait" aria-hidden="true"><img src="tutorial_guide/amaterasu-chibi.webp" alt=""></div>
+      <!-- 表情差分はすべて読み込んでおき、表示だけを切り替える（切り替え時に読み込み待ちで消えないように） -->
+      <div class="tutorial-portrait" aria-hidden="true"><img v-for="(src, face) in TUTORIAL_GUIDE_FACES" v-show="face === tutorialGuideFace" :key="face" :src="src" alt=""></div>
       <div class="tutorial-body">
         <div class="tutorial-name">
           <span>アマテラス</span>
@@ -10298,6 +10299,9 @@ const MODE_DETAIL_INFO = {
               cards：['self-hand:名前' | 'self-field:名前' | 'self-relic:名前' | 'opp-field:名前' | 'mulligan:名前'] のカードを枠と名札で強調
               picture / pictureLabel：台詞の上に画像を大きく表示（モード紹介など）
               bgm：この手順に入ったときに流す曲（BGM_FILES のキー）
+     face   … 案内役の表情（say・task 共通。TUTORIAL_GUIDE_FACES のキー）。省略時は通常の笑顔。
+              serious＝重要な説明・確認 / troubled＝失敗・警告 / surprised＝新しい要素・注意喚起 / joy＝成功・歓迎。
+              操作を間違えて注意（hint）を出している間は troubled になる
      task   … 実際に操作してもらう。allow で許す操作を限定し、done(vm) が真になったら次へ
               allow のキー：play（手札のカード名）/ divine・battle（攻撃するレガシー名）/ skill（神技ボタン）/
               skillUse（使える神技の番号 '1'/'2'）/ mulligan（引き直しに選べるカード名）/ endTurn、all:true で全操作
@@ -10311,6 +10315,14 @@ const MODE_DETAIL_INFO = {
               oppTurn の script：[{ play: 'カード名' } | { divine: 'レガシー名' } | { skill: 1|2 }]
    when(vm) を持つ手順は、偽なら飛ばす。id:'victory' は勝利時にここへ飛ぶ。 */
 const TUTORIAL_TASK_CLOSE_NOTE = '表示されたカードは「閉じる」で閉じられます。';
+// 案内役の表情差分（どれも同じ構図・同じ大きさで切り出してあるので、重ねて切り替えても位置がずれない）
+const TUTORIAL_GUIDE_FACES = Object.freeze({
+  normal: 'tutorial_guide/amaterasu-chibi.webp',
+  serious: 'tutorial_guide/amaterasu-chibi-serious.webp',
+  troubled: 'tutorial_guide/amaterasu-chibi-troubled.webp',
+  surprised: 'tutorial_guide/amaterasu-chibi-surprised.webp',
+  joy: 'tutorial_guide/amaterasu-chibi-joy.webp',
+});
 const TUTORIAL_PRACTICE = Object.freeze({
   "id": "draft",
   "numeral": "練習",
@@ -10365,11 +10377,11 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "say": "選別の儀では、配られた束から1枚ずつカードを選び、残りを隣の方へ渡していきます。選んだカードが、そのままあなたのデッキになるのです。",
       "focus": "pickPack"
     },
-    {
+    { "face": "serious",
       "say": "創世決戦の順位は「星魂（せいこん）」で決まります。星戦に1回勝つごとに星魂10。それに加えて、集めたカードの「変換値」の合計も、終戦のときに星魂になるのです。",
       "focus": "pickSoul"
     },
-    {
+    { "face": "serious",
       "say": "カードの右上にある、★のついた数字が「変換値」。0から2まであります。強さだけでなく、この数字もよく見てくださいね。",
       "focus": "pickReturn"
     },
@@ -10385,7 +10397,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
         "pack:慈愛の忍・イロハ"
       ]
     },
-    {
+    { "face": "troubled",
       "say": "そして「猛き赤の眷属」のような「龍」のレガシー。とても強力で、星戦の勝利に大きく貢献してくれます。ですが変換値は0。星魂を1つも生まない、代償の大きな危険なカードなのです。",
       "cards": [
         "pack:猛き赤の眷属"
@@ -10397,7 +10409,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
         "pack:猛き赤の眷属"
       ]
     },
-    {
+    { "face": "serious",
       "say": "カードを選ぶときに、もう1つ大切なのが、あなたのカミの「理念」。私の場合は【守護】を持つレガシー。理念に同調してくれるカードを集めるほど天力が溜まり、神技を使えるのです。",
       "focus": "pickKami"
     },
@@ -10415,14 +10427,14 @@ const TUTORIAL_PRACTICE = Object.freeze({
       },
       "done": vm => vm.tutorialPick && vm.tutorialPick.picks.some(c => vm.fullName(c).includes('平穏の祈り手'))
     },
-    {
+    { "face": "joy",
       "say": "変換値2が、そのまま星魂の見込みに加わりました。残りのカードは、隣の方へ渡されます。",
       "focus": "pickSoul"
     },
     {
       "action": "nextPack"
     },
-    {
+    { "face": "surprised",
       "say": "隣の方から、次の束が回ってきました。今度はユニークの「平和を願う剣・アヤト」がいますね。【守護】を持ち、戦闘力は4000。星戦でとても頼りになる1枚です。",
       "cards": [
         "pack:平和を願う剣・アヤト"
@@ -10454,7 +10466,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
     {
       "action": "nextPack"
     },
-    {
+    { "face": "serious",
       "say": "最後の束です。龍の「昏き紫の眷属」は強力ですが、変換値は0。選ぶなら、星魂を手放してでも星戦の勝利を取りにいく覚悟が必要ですね。",
       "cards": [
         "pack:昏き紫の眷属"
@@ -10472,11 +10484,11 @@ const TUTORIAL_PRACTICE = Object.freeze({
       },
       "done": vm => vm.tutorialPick && vm.tutorialPick.picks.length >= 3
     },
-    {
+    { "face": "joy",
       "say": "選び終わりました。選んだカードの変換値の合計が、今の星魂の見込みです。",
       "focus": "pickSoul"
     },
-    {
+    { "face": "surprised",
       "say": "選別の儀のあとには「深化の刻」があります。「見識」を使って、デッキのカードを星魂に変えたり、強力なジェネシスカードを手に入れたりできるのです。",
       "focus": "pickPool"
     },
@@ -10484,7 +10496,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "say": "また、各ラウンドの選別が終わると、デッキから数枚を無料で返還できます。返還したカードの変換値も、ちゃんと星魂として残りますよ。",
       "focus": "pickPool"
     },
-    {
+    { "face": "joy",
       "say": "強さ、星魂、理念。3つの釣り合いを考えながら選ぶのが、創世決戦の醍醐味です。あなたらしい選び方を見つけてくださいね。",
       "last": true
     }
@@ -10502,20 +10514,20 @@ const TUTORIAL_LESSONS = Object.freeze([
     "bgm": "moyuruSetsuna",
     "setup": { "selfKamiNo": "8", "oppKamiNo": "3", "firstSide": "self", "turn": 5, "self": { "life": 10, "manaMax": 2, "relics": ["社の施し"], "legacies": [], "hand": ["幼き守護者・ミナト"], "deck": ["昏き紫の眷属", "救済の手", "猛き赤の眷属", "荒き緑の眷属", "眩き黄の眷属", "拒絶の守衛・イズモ", "慈愛の忍・イロハ"] }, "opp": { "life": 10, "lifeMax": 10, "manaMax": 5, "relics": [], "legacies": [{ "name": "飄々たる諜報員", "tapped": true }], "hand": ["猛き赤の眷属", "荒き緑の眷属", "熾烈なる戦役"], "deck": ["深き青の眷属", "昏き紫の眷属", "眩き黄の眷属", "先駆けの修羅"] } },
     "steps": [
-      { "say": "ようこそ、ツクリヨの世界へ。私はアマテラス。まずは4種類のカードの役割から学びましょう。攻撃の仕方や細かな能力は、あとの練習で少しずつ覚えれば大丈夫ですよ。" },
+      { "face": "joy", "say": "ようこそ、ツクリヨの世界へ。私はアマテラス。まずは4種類のカードの役割から学びましょう。攻撃の仕方や細かな能力は、あとの練習で少しずつ覚えれば大丈夫ですよ。" },
       { "id": "greeting", "task": "対戦のはじめに、エモートで挨拶してみましょう。「あいさつをする」を押してくださいね。私の姿を右クリックするか、外へドラッグして「あいさつ」を選んでも使えますよ。", "focus": "selfKami", "emoteIntro": true, "done": vm => !!vm.tutorial.flags.greetingReplied },
-      { "say": "挨拶が返ってきましたね。エモートでは、挨拶や気持ちをカミのセリフで伝えられます。それでは、カードの種類を見ていきましょう。" },
+      { "face": "joy", "say": "挨拶が返ってきましたね。エモートでは、挨拶や気持ちをカミのセリフで伝えられます。それでは、カードの種類を見ていきましょう。" },
       { "action": "startTurn" },
       { "say": "まずは「カミ」。あなたの分身で、ライフと天力を持ち、神技を使います。デッキには入らず、対戦の最初から場にいますよ。", "focus": "selfKami" },
       { "say": "「レガシー」は、星の記憶から生み出された生命の残照。レガシー欄に出して戦うカードです。戦闘力と神攻力を持ち、戦闘や神攻を行います。レガシー欄に置けるのは7枚までです。", "focus": "selfLegacy", "cards": ["self-field:冥土送りの侍女", "self-field:飄々たる諜報員"] },
-      { "say": "手札の「幼き守護者・ミナト」はコスト1。カードの左上のコストと同じだけマナを払って出します。ミナトの【誘3】は、デッキの上から3枚を見て、条件に合うカードを1枚まで手札に加える能力です。黄カードか神使レガシーなら選べます。", "focus": "hand", "cards": ["self-hand:幼き守護者・ミナト"], "inspect": ["幼き守護者・ミナト"], "inspectFocus": { "幼き守護者・ミナト": { "section": "effect", "label": "【誘】", "terms": ["誘"] } } },
+      { "face": "serious", "say": "手札の「幼き守護者・ミナト」はコスト1。カードの左上のコストと同じだけマナを払って出します。ミナトの【誘3】は、デッキの上から3枚を見て、条件に合うカードを1枚まで手札に加える能力です。黄カードか神使レガシーなら選べます。", "focus": "hand", "cards": ["self-hand:幼き守護者・ミナト"], "inspect": ["幼き守護者・ミナト"], "inspectFocus": { "幼き守護者・ミナト": { "section": "effect", "label": "【誘】", "terms": ["誘"] } } },
       { "task": "「幼き守護者・ミナト」をレガシー欄へ出し、【誘】で「救済の手」を「手札に加える」で選びましょう。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["幼き守護者・ミナト"] }, "induce": ["救済の手"], "done": vm => vm._tutorialHas('self', 'legacies', '幼き守護者・ミナト') && vm._tutorialHas('self', 'hand', '救済の手') && vm._tutorialIdle() },
-      { "say": "必要なカードを探して、次の一手を整える。【誘】を持つ1コストのレガシーは、ツクリヨの基本になる大切なカードです。" },
+      { "face": "serious", "say": "必要なカードを探して、次の一手を整える。【誘】を持つ1コストのレガシーは、ツクリヨの基本になる大切なカードです。" },
       { "say": "「レリック」は、星の記憶に刻まれた象徴的なモノや場所。レリック欄に置いて、場に残るカードです。レガシー欄とレリック欄は、それぞれ7枚まで置けますよ。", "focus": "selfRelic", "cards": ["self-relic:社の施し"] },
       { "say": "「オラクル」は、星の記憶に残る情景や出来事を、ひととき呼び起こすカードなのです。使うと効果が働き、そのあと墓地へ置かれます。今は「救済の手」で、戦闘力2000以下のレガシーを1枚破壊してみましょう。", "focus": "hand", "cards": ["self-hand:救済の手", "opp-field:飄々たる諜報員"], "inspect": ["救済の手"], "inspectFocus": { "救済の手": { "section": "effect", "label": "レガシーを破壊する効果", "terms": [] } } },
       { "task": "「救済の手」を使い、相手の「飄々たる諜報員」を選びましょう。表示されたカードは「閉じる」で閉じられます。", "allow": { "play": ["救済の手"] }, "done": vm=>!vm._tutorialHas('opp','legacies','飄々たる諜報員')&&vm._tutorialHas('self','graveyard','救済の手')&&vm._tutorialIdle(), "targets": ["飄々たる諜報員"], "focus": "hand" },
       { "say": "オラクルは墓地へ、レガシーとレリックは場に残りましたね。種類ごとに置き場所と役割が違うのです。", "focus": "selfGraveyard" },
-      { "say": "これでカードの種類はおしまいです。次は、対戦を始める準備とマナを学びましょう。", "last": true }
+      { "face": "joy", "say": "これでカードの種類はおしまいです。次は、対戦を始める準備とマナを学びましょう。", "last": true }
     ],
     "category": "basic"
   },
@@ -10531,19 +10543,19 @@ const TUTORIAL_LESSONS = Object.freeze([
     "setup": { "selfKamiNo": "8", "oppKamiNo": "1", "firstSide": "opp", "mulligan": true, "self": { "life": 10, "lifeMax": 10, "hand": ["飄々たる諜報員", "先駆けの修羅", "猛き赤の眷属", "熾烈なる戦役"], "deck": ["戦陣の旗手", "札遊びの座敷童", "平穏の祈り手", "眩き黄の眷属", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "拒絶の守衛・イズモ"], "relics": ["社の施し"], "manaMax": 0 }, "opp": { "life": 10, "lifeMax": 10, "hand": ["飄々たる諜報員", "猛き赤の眷属", "荒き緑の眷属", "熾烈なる戦役"], "deck": ["深き青の眷属", "昏き紫の眷属", "眩き黄の眷属", "名刀集めの豪族", "忠義の侍・ソウリュウ", "慈愛の忍・イロハ"] } },
     "steps": [
       { "say": "今回は対戦の準備です。初手を引き直してから、マナを使って最初のカードを出すところまで、続けて練習しましょう。" },
-      { "say": "先攻も後攻も、最初は4枚。マリガンで選べるのもこの4枚です。後攻は自分の最初のターンに、さらに1枚引けますよ。" },
+      { "face": "serious", "say": "先攻も後攻も、最初は4枚。マリガンで選べるのもこの4枚です。後攻は自分の最初のターンに、さらに1枚引けますよ。" },
       { "action": "mulligan" },
-      { "say": "カードの左上の数字は「コスト」。使うのに必要な「マナ」の量です。序盤はマナが少ないので、コスト4の重いカードばかりでは困ってしまいますね。", "focus": "mulligan", "cards": ["mulligan:猛き赤の眷属", "mulligan:熾烈なる戦役"] },
+      { "face": "troubled", "say": "カードの左上の数字は「コスト」。使うのに必要な「マナ」の量です。序盤はマナが少ないので、コスト4の重いカードばかりでは困ってしまいますね。", "focus": "mulligan", "cards": ["mulligan:猛き赤の眷属", "mulligan:熾烈なる戦役"] },
       { "task": "「猛き赤の眷属」と「熾烈なる戦役」をクリックして選び、「引き直す」を押しましょう。", "focus": "mulligan", "allow": { "mulligan": ["猛き赤の眷属", "熾烈なる戦役"] }, "done": vm => !vm.battleMulligan },
-      { "say": "初手を引き直せましたね。相手が先攻ですから、そのターンを見送って、あなたの最初の手番へ進みましょう。", "focus": "hand" },
+      { "face": "joy", "say": "初手を引き直せましたね。相手が先攻ですから、そのターンを見送って、あなたの最初の手番へ進みましょう。", "focus": "hand" },
       { "action": "oppTurn", "script": [] },
-      { "say": "残した諜報員はコスト2。カードを使うには、左上の数字と同じだけマナを払います。", "focus": "handCost", "cards": ["self-hand:飄々たる諜報員"] },
+      { "face": "serious", "say": "残した諜報員はコスト2。カードを使うには、左上の数字と同じだけマナを払います。", "focus": "handCost", "cards": ["self-hand:飄々たる諜報員"] },
       { "say": "ターンの始めには、デッキからカードを1枚引きます。（先攻の最初のターンだけは引けません）", "focus": "hand" },
-      { "say": "マナの最大値は、自分のターンが来るたびに1ずつ増えて、そのたびに満タンまで回復します。上限は10。今はまだ1ですね。", "focus": "selfManaValue" },
-      { "say": "ここで「社の施し」の出番です。これを破壊すると、そのターンだけマナを1増やせます。これでコスト2のカードも出せますね。", "focus": "selfRelic", "cards": ["self-relic:社の施し", "self-hand:飄々たる諜報員"], "inspect": ["社の施し"], "inspectFocus": { "社の施し": { "section": "effect", "label": "マナを増やす効果", "terms": ["死亡時"] } } },
+      { "face": "serious", "say": "マナの最大値は、自分のターンが来るたびに1ずつ増えて、そのたびに満タンまで回復します。上限は10。今はまだ1ですね。", "focus": "selfManaValue" },
+      { "face": "surprised", "say": "ここで「社の施し」の出番です。これを破壊すると、そのターンだけマナを1増やせます。これでコスト2のカードも出せますね。", "focus": "selfRelic", "cards": ["self-relic:社の施し", "self-hand:飄々たる諜報員"], "inspect": ["社の施し"], "inspectFocus": { "社の施し": { "section": "effect", "label": "マナを増やす効果", "terms": ["死亡時"] } } },
       { "task": "「飄々たる諜報員」を手札からレガシー欄へドラッグしましょう。社の施しを使うか聞かれたら「破壊してマナを増やす」を選んでくださいね。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["飄々たる諜報員"] }, "done": vm => vm._tutorialHas('self', 'legacies', '飄々たる諜報員') && vm._tutorialIdle() },
-      { "say": "カードが出せましたね。社の施しは効果で生まれる「トークン」。場を離れると、手札や墓地には残らず消えます。マナの最大値は増えず、次の自分のターンには最大値まで回復しますよ。", "focus": "selfManaValue" },
-      { "say": "場に出たばかりのレガシーは、そのターンは攻撃できません。まずは場に出して、次のターンに備えるのです。", "focus": "selfLegacy" },
+      { "face": "joy", "say": "カードが出せましたね。社の施しは効果で生まれる「トークン」。場を離れると、手札や墓地には残らず消えます。マナの最大値は増えず、次の自分のターンには最大値まで回復しますよ。", "focus": "selfManaValue" },
+      { "face": "serious", "say": "場に出たばかりのレガシーは、そのターンは攻撃できません。まずは場に出して、次のターンに備えるのです。", "focus": "selfLegacy" },
       { "say": "マナはカードを出すための力。毎ターン最大値が1増えて回復し、足りないときは社の施しで補えます。次は、場に出したレガシーの攻撃を練習しましょう。", "last": true }
     ],
     "category": "basic"
@@ -10556,19 +10568,19 @@ const TUTORIAL_LESSONS = Object.freeze([
     "learn": ["神攻力", "戦闘力", "タップ・アンタップ"],
     "setup": { "selfKamiNo": "8", "oppKamiNo": "1", "firstSide": "self", "turn": 3, "self": { "life": 10, "manaMax": 2, "hand": [], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": ["冥土送りの侍女", "飄々たる諜報員"] }, "opp": { "life": 2, "manaMax": 2, "hand": [], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [{ "name": "鐘鳴らしの童", "tapped": true }] } },
     "steps": [
-      { "say": "今回は攻撃の練習です。前のターンから場にいるレガシーを用意しました。相手のライフを0にすれば勝ち。自分のライフが0になれば負けです。", "focus": "oppLife" },
+      { "face": "serious", "say": "今回は攻撃の練習です。前のターンから場にいるレガシーを用意しました。相手のライフを0にすれば勝ち。自分のライフが0になれば負けです。", "focus": "oppLife" },
       { "action": "startTurn" },
-      { "say": "相手のカミを攻撃することを「神攻（しんこう）」といいます。カードの剣の数字が神攻力。その分だけ相手のライフを減らしますよ。", "focus": "selfAttack", "cards": ["self-field:飄々たる諜報員"] },
+      { "face": "serious", "say": "相手のカミを攻撃することを「神攻（しんこう）」といいます。カードの剣の数字が神攻力。その分だけ相手のライフを減らしますよ。", "focus": "selfAttack", "cards": ["self-field:飄々たる諜報員"] },
       { "task": "「飄々たる諜報員」で、相手のカミに神攻しましょう。", "allow": { "divine": ["飄々たる諜報員"] }, "done": vm=>vm.battleSample.opp.life===1&&vm._tutorialIdle(), "focus": "oppKami" },
-      { "say": "攻撃した諜報員が横向きになりましたね。これが「タップ」。タップしたレガシーは、起き上がるまで攻撃できません。", "focus": "selfLegacy", "cards": ["self-field:飄々たる諜報員"] },
-      { "say": "レガシー同士の「戦闘」は、横向きの相手にだけ仕掛けられます。戦闘力が低い方が破壊され、同じなら両方とも破壊。侍女の2000なら、相手の童の1000に勝てますよ。", "focus": ["selfPower", "oppPower"], "cards": ["self-field:冥土送りの侍女", "opp-field:鐘鳴らしの童"] },
+      { "face": "surprised", "say": "攻撃した諜報員が横向きになりましたね。これが「タップ」。タップしたレガシーは、起き上がるまで攻撃できません。", "focus": "selfLegacy", "cards": ["self-field:飄々たる諜報員"] },
+      { "face": "serious", "say": "レガシー同士の「戦闘」は、横向きの相手にだけ仕掛けられます。戦闘力が低い方が破壊され、同じなら両方とも破壊。侍女の2000なら、相手の童の1000に勝てますよ。", "focus": ["selfPower", "oppPower"], "cards": ["self-field:冥土送りの侍女", "opp-field:鐘鳴らしの童"] },
       { "task": "「冥土送りの侍女」で、相手のタップした「鐘鳴らしの童」に戦闘を仕掛けましょう。", "allow": { "battle": ["冥土送りの侍女"] }, "done": vm=>!vm._tutorialHas('opp','legacies','鐘鳴らしの童')&&vm._tutorialIdle(), "focus": "oppLegacy" },
       { "task": "ターンを終了しましょう。相手は攻撃せずに手番を返してくれます。", "allow": { "endTurn": true }, "done": vm=>vm.battleSample.activeSide==='opp', "focus": "endTurn" },
       { "action": "oppTurn", "script": [] },
       { "say": "自分のターンが来ると、横向きのレガシーは縦向きに戻ります。「アンタップ」したので、また攻撃できますね。", "focus": "selfLegacy" },
       { "task": "「飄々たる諜報員」で神攻し、残りのライフ1を減らしましょう。", "allow": { "divine": ["飄々たる諜報員"] }, "done": vm=>!!vm.battleSample.result, "focus": "oppKami" },
-      { "id": "victory", "say": "お見事です。カミには神攻、横向きのレガシーには戦闘。攻撃したらタップ、次の自分のターンにアンタップです。", "finale": true },
-      { "say": "攻撃の基本はここまで。次は、カミの力である天力を学びましょう。", "finale": true, "last": true }
+      { "face": "joy", "id": "victory", "say": "お見事です。カミには神攻、横向きのレガシーには戦闘。攻撃したらタップ、次の自分のターンにアンタップです。", "finale": true },
+      { "face": "joy", "say": "攻撃の基本はここまで。次は、カミの力である天力を学びましょう。", "finale": true, "last": true }
     ],
     "fieldTheme": "ninja",
     "oppName": "スサノオ",
@@ -10583,14 +10595,14 @@ const TUTORIAL_LESSONS = Object.freeze([
     "learn": ["天力トリガー", "神技（じんぎ）", "天力の消費"],
     "setup": { "selfKamiNo": "8", "oppKamiNo": "4", "firstSide": "self", "turn": 3, "self": { "life": 10, "manaMax": 3, "hand": ["鐘鳴らしの童"], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [{ "name": "平穏の祈り手", "tapped": true }], "tenryoku": 1 }, "opp": { "life": 10, "manaMax": 2, "hand": [], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [] } },
     "steps": [
-      { "say": "今回は「天力（てんりょく）」と「神技（じんぎ）」です。天力を稼ぐことは、星戦の大切な基本。マナはカードに、天力はカミの技に使う、別々の力ですよ。", "focus": "selfTenryoku" },
+      { "face": "serious", "say": "今回は「天力（てんりょく）」と「神技（じんぎ）」です。天力を稼ぐことは、星戦の大切な基本。マナはカードに、天力はカミの技に使う、別々の力ですよ。", "focus": "selfTenryoku" },
       { "say": "天力が溜まる条件は、カミによって違います。これを「天力トリガー」といいます。私は【守護】を持つレガシーが出るたびに、天力を1もらえるのです。", "focus": "selfKami", "inspect": ["selfKami"], "inspectFocus": { "selfKami": { "section": "trigger", "label": "天力トリガー", "terms": ["守護"] } } },
       { "say": "今の天力1は、前のターンに祈り手を出して得たもの。「鐘鳴らしの童」にも【守護】があるので、もう1増えます。童自身の出現時効果も使えば、さらに1増えますね。", "focus": "hand", "cards": ["self-hand:鐘鳴らしの童"], "inspect": ["鐘鳴らしの童"], "inspectFocus": { "鐘鳴らしの童": { "section": "effect", "label": "【守護】と出現時効果", "terms": ["守護", "出現時"] } } },
       { "task": "「鐘鳴らしの童」をレガシー欄へ出しましょう。効果を発動するか聞かれたら「発動する」を選んでくださいね。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["鐘鳴らしの童"] }, "answers": [{ "card": "鐘鳴らしの童", "kind": "ability", "answer": true, "hint": "今回は「発動する」を選んで、天力を受け取りましょう。" }], "done": vm => vm._tutorialHas('self', 'legacies', '鐘鳴らしの童') && vm._tutorialIdle() },
-      { "say": "天力が3になりました。自分のカミの理念に合うカードを集めると、こうして力を溜めやすくなるのですよ。", "focus": "selfTenryoku" },
-      { "say": "私の神技「照護（しょうご）」は天力3を使い、自分のレガシーを【不可侵】にします。相手に選ばれなくなり、このターンの終わりには縦向きに戻ります。タップしている祈り手を守ってみましょう。", "focus": "skill", "cards": ["self-field:平穏の祈り手"], "inspect": ["selfKami"], "inspectFocus": { "selfKami": { "section": "skill1", "label": "神技「照護」", "terms": ["不可侵"] } } },
+      { "face": "joy", "say": "天力が3になりました。自分のカミの理念に合うカードを集めると、こうして力を溜めやすくなるのですよ。", "focus": "selfTenryoku" },
+      { "face": "serious", "say": "私の神技「照護（しょうご）」は天力3を使い、自分のレガシーを【不可侵】にします。相手に選ばれなくなり、このターンの終わりには縦向きに戻ります。タップしている祈り手を守ってみましょう。", "focus": "skill", "cards": ["self-field:平穏の祈り手"], "inspect": ["selfKami"], "inspectFocus": { "selfKami": { "section": "skill1", "label": "神技「照護」", "terms": ["不可侵"] } } },
       { "task": "「神技」から「照護」を選び、タップした「平穏の祈り手」を対象にしましょう。", "allow": { "skill": true, "skillUse": ["1"] }, "done": vm=>vm.tutorial.flags.skill&&vm._tutorialIdle(), "focus": "skill", "targets": ["平穏の祈り手"] },
-      { "say": "天力を使って、祈り手を守れましたね。神技と創世神技は、1ターンにどちらか1つだけ使えます。次は、天力をさらに溜めて「創世神技」を使ってみましょう。", "focus": "selfTenryoku" },
+      { "face": "joy", "say": "天力を使って、祈り手を守れましたね。神技と創世神技は、1ターンにどちらか1つだけ使えます。次は、天力をさらに溜めて「創世神技」を使ってみましょう。", "focus": "selfTenryoku" },
       { "task": "ターンを終了して、祈り手がアンタップするところを見ましょう。", "allow": { "endTurn": true }, "done": vm=>vm.battleSample.activeSide==='opp'&&vm._tutorialIdle(), "focus": "endTurn" },
       { "say": "祈り手が縦向きに戻りましたね。天力を溜め、必要な場面で神技を使う。この流れを覚えておきましょう。", "focus": "selfLegacy", "cards": ["self-field:平穏の祈り手"] },
       { "say": "天力を稼ぎ、神技を使うことが、星戦の大切な土台です。次はその力で、創世神技による逆転を体験しましょう。", "last": true }
@@ -10611,28 +10623,28 @@ const TUTORIAL_LESSONS = Object.freeze([
     "bgm": "homuGarasu",
     "setup": { "selfKamiNo": "8", "oppKamiNo": "7", "firstSide": "opp", "turn": 6, "self": { "life": 4, "lifeMax": 10, "manaMax": 5, "tenryoku": 5, "relics": [], "legacies": ["音速の忍"], "graveyard": ["紅翼龍・ルベル"], "hand": ["平穏の祈り手", "眩き黄の眷属", "救済の手"], "deck": ["深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "拒絶の守衛・イズモ", "慈愛の忍・イロハ"] }, "opp": { "life": 3, "lifeMax": 10, "manaMax": 6, "tenryoku": 8, "relics": [], "legacies": [], "hand": ["翠牙龍・ヴィリデ", "荒き緑の眷属", "熾烈なる戦役"], "deck": ["深き青の眷属", "昏き紫の眷属", "眩き黄の眷属", "先駆けの修羅"] } },
     "steps": [
-      { "say": "今回は「創世神技（そうせいじんぎ）」を使ってみましょう。いわば、私たちカミの必殺技のようなもの。天力をたくさん使うぶん、戦いの流れを一気に変える力があるのです。" },
-      { "say": "お相手はヒノカグツチさん。自由を求めるあの方にも、優しさが宿っていると信じていますけれど……その創世神技は、とても激しいのです。", "focus": "oppKami" },
+      { "face": "surprised", "say": "今回は「創世神技（そうせいじんぎ）」を使ってみましょう。いわば、私たちカミの必殺技のようなもの。天力をたくさん使うぶん、戦いの流れを一気に変える力があるのです。" },
+      { "face": "troubled", "say": "お相手はヒノカグツチさん。自由を求めるあの方にも、優しさが宿っていると信じていますけれど……その創世神技は、とても激しいのです。", "focus": "oppKami" },
       { "say": "今回は対戦の途中から始めます。練習のため、お互いの天力を特別に多めにしてありますよ。", "focus": "selfTenryoku" },
-      { "say": "あなたの場には「音速の忍」。お相手のライフは残り3ですが、忍の神攻力1だけでは届きません。墓地には、以前の戦いで倒れたコスト7の「紅翼龍・ルベル」が眠っています。", "focus": "oppLife", "cards": ["self-field:音速の忍"] },
-      { "say": "ところが、ヒノカグツチさんの天力は8。創世神技「縛鎖焼尽・紅蓮焔月」に必要な量とちょうど同じです。相手の天力が溜まっているときは、創世神技を警戒してくださいね。", "focus": "oppTenryoku", "inspect": ["oppKami"], "inspectFocus": { "oppKami": { "section": "skill2", "label": "創世神技", "terms": [] } } },
-      { "say": "さあ、ヒノカグツチさんのターンです。……来ますよ。" },
+      { "face": "serious", "say": "あなたの場には「音速の忍」。お相手のライフは残り3ですが、忍の神攻力1だけでは届きません。墓地には、以前の戦いで倒れたコスト7の「紅翼龍・ルベル」が眠っています。", "focus": "oppLife", "cards": ["self-field:音速の忍"] },
+      { "face": "serious", "say": "ところが、ヒノカグツチさんの天力は8。創世神技「縛鎖焼尽・紅蓮焔月」に必要な量とちょうど同じです。相手の天力が溜まっているときは、創世神技を警戒してくださいね。", "focus": "oppTenryoku", "inspect": ["oppKami"], "inspectFocus": { "oppKami": { "section": "skill2", "label": "創世神技", "terms": [] } } },
+      { "face": "surprised", "say": "さあ、ヒノカグツチさんのターンです。……来ますよ。" },
       { "action": "startTurn" },
       { "action": "oppTurn", "script": [{ "skill": 2, "destroy": "音速の忍", "damage": 3 }, { "play": "翠牙龍・ヴィリデ" }] },
-      { "say": "なんて激しい……。音速の忍が破壊され、ライフも3減ってしまいました。", "focus": "selfLife" },
-      { "say": "さらに、コスト7の「翠牙龍・ヴィリデ」まで……！　ライフは残り1。この龍の神攻力は3。次の攻撃をそのまま受ければ、負けてしまいます。", "focus": "selfLegacy" },
-      { "say": "でも、あきらめるのはまだ早いですよ。破壊されたカードは「墓地」に置かれています。私の創世神技「恩光・八咫神鏡（おんこう・やたのかがみ）」なら、墓地のレガシーを場に呼び戻せるのです。", "focus": "selfGraveyard", "inspect": ["selfKami"], "inspectFocus": { "selfKami": { "section": "skill2", "label": "創世神技", "terms": [] } } },
-      { "say": "ただ、今の天力は5。八咫神鏡には7必要です。", "focus": "selfTenryoku" },
+      { "face": "surprised", "say": "なんて激しい……。音速の忍が破壊され、ライフも3減ってしまいました。", "focus": "selfLife" },
+      { "face": "troubled", "say": "さらに、コスト7の「翠牙龍・ヴィリデ」まで……！　ライフは残り1。この龍の神攻力は3。次の攻撃をそのまま受ければ、負けてしまいます。", "focus": "selfLegacy" },
+      { "face": "serious", "say": "でも、あきらめるのはまだ早いですよ。破壊されたカードは「墓地」に置かれています。私の創世神技「恩光・八咫神鏡（おんこう・やたのかがみ）」なら、墓地のレガシーを場に呼び戻せるのです。", "focus": "selfGraveyard", "inspect": ["selfKami"], "inspectFocus": { "selfKami": { "section": "skill2", "label": "創世神技", "terms": [] } } },
+      { "face": "troubled", "say": "ただ、今の天力は5。八咫神鏡には7必要です。", "focus": "selfTenryoku" },
       { "say": "「平穏の祈り手」は【守護】を持つレガシー。出せば私の天力トリガーで1、祈り手自身の効果でさらに1、天力が増えます。ライフも1回復しますよ。", "focus": "hand", "cards": ["self-hand:平穏の祈り手"], "inspect": ["平穏の祈り手"], "inspectFocus": { "平穏の祈り手": { "section": "effect", "label": "【守護】と出現時効果", "terms": ["守護", "出現時"] } } },
       { "task": "「平穏の祈り手」をレガシー欄へ出しましょう。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["平穏の祈り手"] }, "answers": [{ "card": "平穏の祈り手", "kind": "ability", "answer": true, "hint": "今回は「発動する」を選んで、天力を受け取りましょう。" }], "done": vm => vm._tutorialHas('self', 'legacies', '平穏の祈り手') && vm._tutorialIdle() },
-      { "say": "天力が7になりました。これで八咫神鏡が使えます。", "focus": "selfTenryoku", "tenryokuAtLeast": 7 },
-      { "say": "呼び戻したレガシーは、場を離れるとき墓地ではなく「崩壊」──ゲームから取り除かれてしまいます。それでも、ここぞという場面では頼もしい技ですよ。", "focus": "skill" },
+      { "face": "joy", "say": "天力が7になりました。これで八咫神鏡が使えます。", "focus": "selfTenryoku", "tenryokuAtLeast": 7 },
+      { "face": "serious", "say": "呼び戻したレガシーは、場を離れるとき墓地ではなく「崩壊」──ゲームから取り除かれてしまいます。それでも、ここぞという場面では頼もしい技ですよ。", "focus": "skill" },
       { "say": "墓地の「紅翼龍・ルベル」はコスト7、戦闘力7000、神攻力3の大きな龍。マナではまだ出せない力を、八咫神鏡なら呼び戻せます。【疾駆】で、そのターンに勝利を決められますよ。", "focus": "selfGraveyard", "inspect": ["紅翼龍・ルベル"], "inspectFocus": { "紅翼龍・ルベル": { "section": "effect", "label": "【疾駆】", "terms": ["疾駆"] } } },
       { "task": "「神技」ボタンから「恩光・八咫神鏡」を選び、墓地の「紅翼龍・ルベル」を呼び戻しましょう。", "focus": "skill", "allow": { "skill": true, "skillUse": ["2"] }, "targets": ["紅翼龍・ルベル"], "done": vm => vm.tutorial.flags.skill && vm._tutorialHas('self', 'legacies', '紅翼龍・ルベル') && vm._tutorialIdle() },
-      { "say": "光の中からルベルが戻ってきました！　祈り手で一撃をしのぐだけだったところから、このターンに勝利を決められる戦局へ。創世神技が、窮地を逆転の好機に変えてくれたのですよ。", "focus": "selfLegacy", "cards": ["self-field:紅翼龍・ルベル"] },
+      { "face": "joy", "say": "光の中からルベルが戻ってきました！　祈り手で一撃をしのぐだけだったところから、このターンに勝利を決められる戦局へ。創世神技が、窮地を逆転の好機に変えてくれたのですよ。", "focus": "selfLegacy", "cards": ["self-field:紅翼龍・ルベル"] },
       { "task": "「紅翼龍・ルベル」で神攻して、ヒノカグツチさんのライフを0にしましょう。", "focus": "oppKami", "cards": ["self-field:紅翼龍・ルベル"], "allow": { "divine": ["紅翼龍・ルベル"] }, "done": vm => !!vm.battleSample.result },
-      { "id": "victory", "say": "お見事です！　コスト7のルベルを蘇らせ、敗北が迫っていた戦局から勝利へ。創世神技には、それほど大きな力があるのです。天力トリガーを意識して、逆転のための天力をこつこつ溜めていきましょうね。", "finale": true },
-      { "say": "創世神技は、相手の天力が溜まっているかどうかで予測できます。自分の天力の溜め方と一緒に、相手のカミの天力トリガーも確かめておくと安心ですよ。", "finale": true },
+      { "face": "joy", "id": "victory", "say": "お見事です！　コスト7のルベルを蘇らせ、敗北が迫っていた戦局から勝利へ。創世神技には、それほど大きな力があるのです。天力トリガーを意識して、逆転のための天力をこつこつ溜めていきましょうね。", "finale": true },
+      { "face": "serious", "say": "創世神技は、相手の天力が溜まっているかどうかで予測できます。自分の天力の溜め方と一緒に、相手のカミの天力トリガーも確かめておくと安心ですよ。", "finale": true },
       { "say": "天力を稼いでおけば、苦しい場面でも道を開けます。自分のカミの天力トリガーを意識して、ここぞという時に創世神技を使ってくださいね。最後に、手札と終盤のルールを確かめましょう。", "finale": true, "last": true }
     ],
     "category": "basic"
@@ -10645,15 +10657,15 @@ const TUTORIAL_LESSONS = Object.freeze([
     "learn": ["手札上限8枚", "デッキ切れ", "疲労ダメージ"],
     "setup": { "selfKamiNo": "8", "oppKamiNo": "9", "firstSide": "opp", "turn": 10, "self": { "life": 5, "manaMax": 10, "hand": ["救済の手", "鐘鳴らしの童", "慈愛の忍・イロハ", "夜風の始末屋", "平穏の祈り手", "眩き黄の眷属", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属"], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [] }, "opp": { "life": 1, "manaMax": 10, "hand": [], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [] }, "activeSide": "self" },
     "steps": [
-      { "say": "基本編の最後は、手札と終盤のルールです。手札の整理と、長い戦いで気をつけたい決まりをまとめて確かめましょう。" },
-      { "say": "手札の上限は8枚。今は9枚ありますから、ターンの終わりに1枚を選んで墓地へ送ります。", "focus": "hand" },
-      { "say": "デッキが0枚になっただけでは負けません。でも、ターン開始や効果でカードを引こうとして引けなければ、ライフが残っていても敗北です。デッキの残り枚数にも気を配りましょう。", "focus": "oppDeck" },
-      { "say": "11ターン目からは、ターンの始めに1、2、3……と増える疲労ダメージを受けます。長引くほど危険になる決まりです。", "focus": "turnNumber" },
+      { "face": "serious", "say": "基本編の最後は、手札と終盤のルールです。手札の整理と、長い戦いで気をつけたい決まりをまとめて確かめましょう。" },
+      { "face": "serious", "say": "手札の上限は8枚。今は9枚ありますから、ターンの終わりに1枚を選んで墓地へ送ります。", "focus": "hand" },
+      { "face": "troubled", "say": "デッキが0枚になっただけでは負けません。でも、ターン開始や効果でカードを引こうとして引けなければ、ライフが残っていても敗北です。デッキの残り枚数にも気を配りましょう。", "focus": "oppDeck" },
+      { "face": "serious", "say": "11ターン目からは、ターンの始めに1、2、3……と増える疲労ダメージを受けます。長引くほど危険になる決まりです。", "focus": "turnNumber" },
       { "say": "今は10ターン目。相手のライフは1なので、次の手番の疲労ダメージで0になります。手札を整理しながら、ターンを返してみましょう。", "focus": "oppLife" },
       { "task": "ターンを終了しましょう。手札を8枚にするため、墓地へ送るカードは「救済の手」を選んでくださいね。", "focus": "endTurn", "allow": { "endTurn": true }, "targets": ["救済の手"], "done": vm=>vm.battleSample.activeSide==='opp'||!!vm.battleSample.result },
       { "action": "oppTurn", "script": [], "when": vm=>!vm.battleSample.result },
-      { "id": "victory", "say": "手札は8枚に整理されましたね。そして相手の11ターン目、疲労ダメージ1でライフが0になりました。攻撃だけでなく、こうしたルールでも勝敗が決まるのです。", "finale": true },
-      { "say": "手札はターン終了時に8枚まで。デッキから引けないと敗北、11ターン目からは疲労ダメージです。基本編はこれでおしまい。応用編では、カードの能力を1つずつ練習しましょう。", "last": true, "finale": true }
+      { "face": "joy", "id": "victory", "say": "手札は8枚に整理されましたね。そして相手の11ターン目、疲労ダメージ1でライフが0になりました。攻撃だけでなく、こうしたルールでも勝敗が決まるのです。", "finale": true },
+      { "face": "joy", "say": "手札はターン終了時に8枚まで。デッキから引けないと敗北、11ターン目からは疲労ダメージです。基本編はこれでおしまい。応用編では、カードの能力を1つずつ練習しましょう。", "last": true, "finale": true }
     ],
     "fieldTheme": "yokai",
     "oppName": "ツクヨミ",
@@ -10668,25 +10680,25 @@ const TUTORIAL_LESSONS = Object.freeze([
     "learn": ["守護", "奇襲", "疾駆"],
     "setup": { "selfKamiNo": "8", "oppKamiNo": "1", "firstSide": "opp", "turn": 2, "self": { "life": 1, "manaMax": 2, "hand": ["先駆けの修羅"], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": ["社の施し"], "legacies": ["鐘鳴らしの童", "飄々たる諜報員"] }, "opp": { "life": 2, "manaMax": 2, "hand": [], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": ["飄々たる諜報員"] } },
     "steps": [
-      { "say": "今回は、攻撃の決まりを変えるキーワードです。ライフは残り1。まず【守護】で神攻を受け止め、そのあと【奇襲】で危険な相手を倒してみましょう。" },
+      { "face": "serious", "say": "今回は、攻撃の決まりを変えるキーワードです。ライフは残り1。まず【守護】で神攻を受け止め、そのあと【奇襲】で危険な相手を倒してみましょう。" },
       { "say": "縦向きの【守護】をタップすると、カミへの攻撃を代わりに受けられます。童の戦闘力は1000。相手の2000には負けますが、あなたのライフ1を守ってくれますよ。", "focus": "selfLegacy", "cards": ["self-field:鐘鳴らしの童", "opp-field:飄々たる諜報員"], "inspect": ["鐘鳴らしの童"], "inspectFocus": { "鐘鳴らしの童": { "section": "effect", "label": "【守護】", "terms": ["守護"] } } },
       { "action": "startTurn" },
       { "action": "oppTurn", "script": [{ "divine": "飄々たる諜報員" }], "guide": "神攻が来ました。【守護】を使うか聞かれたら「発動する」を選び、鐘鳴らしの童で受け止めましょう。", "answers": [{ "card": "鐘鳴らしの童", "trigger": "守護", "answer": true, "hint": "今回は「発動する」を選んで、残りライフ1を守りましょう。" }] },
-      { "say": "童は倒れましたが、あなたのライフは1のままです。相手を残すと次の神攻で負けてしまいます。今度は攻めのキーワードで、危険を取り除きましょう。", "focus": "selfLife" },
-      { "say": "でも見てください。攻撃してきた相手の諜報員は、今タップ状態。戦闘を仕掛けられますよ。", "focus": "oppLegacy", "cards": ["opp-field:飄々たる諜報員"] },
+      { "face": "troubled", "say": "童は倒れましたが、あなたのライフは1のままです。相手を残すと次の神攻で負けてしまいます。今度は攻めのキーワードで、危険を取り除きましょう。", "focus": "selfLife" },
+      { "face": "surprised", "say": "でも見てください。攻撃してきた相手の諜報員は、今タップ状態。戦闘を仕掛けられますよ。", "focus": "oppLegacy", "cards": ["opp-field:飄々たる諜報員"] },
       { "say": "手札の「先駆けの修羅」はコスト4。マナ3と社の施しを合わせれば出せますね。", "focus": "selfManaValue", "cards": ["self-hand:先駆けの修羅", "self-relic:社の施し"] },
-      { "say": "先駆けの修羅は、出たときに【奇襲】を持つレガシー。【奇襲】があれば、出たターンから戦闘ができるのです。自分のレリックがあれば、神攻もできる【疾駆】になりますよ。", "focus": "hand", "cards": ["self-hand:先駆けの修羅"], "inspect": ["先駆けの修羅"], "inspectFocus": { "先駆けの修羅": { "section": "effect", "label": "【奇襲】と【疾駆】", "terms": ["奇襲", "疾駆"] } } },
+      { "face": "serious", "say": "先駆けの修羅は、出たときに【奇襲】を持つレガシー。【奇襲】があれば、出たターンから戦闘ができるのです。自分のレリックがあれば、神攻もできる【疾駆】になりますよ。", "focus": "hand", "cards": ["self-hand:先駆けの修羅"], "inspect": ["先駆けの修羅"], "inspectFocus": { "先駆けの修羅": { "section": "effect", "label": "【奇襲】と【疾駆】", "terms": ["奇襲", "疾駆"] } } },
       { "task": "「先駆けの修羅」をレガシー欄へ出しましょう。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["先駆けの修羅"] }, "done": vm => vm._tutorialHas('self', 'legacies', '先駆けの修羅') && vm._tutorialIdle() },
-      { "say": "戦闘では、お互いの戦闘力を比べて低い方が破壊されます。同じ値なら両方とも破壊。修羅は戦闘するとき戦闘力が2000上がるので、諜報員には負けません。", "focus": ["oppPower", "selfPower"], "cards": ["opp-field:飄々たる諜報員", "self-field:先駆けの修羅"], "inspect": ["先駆けの修羅"], "inspectFocus": { "先駆けの修羅": { "section": "effect", "label": "戦闘時の強化", "terms": ["戦闘時"] } } },
+      { "face": "serious", "say": "戦闘では、お互いの戦闘力を比べて低い方が破壊されます。同じ値なら両方とも破壊。修羅は戦闘するとき戦闘力が2000上がるので、諜報員には負けません。", "focus": ["oppPower", "selfPower"], "cards": ["opp-field:飄々たる諜報員", "self-field:先駆けの修羅"], "inspect": ["先駆けの修羅"], "inspectFocus": { "先駆けの修羅": { "section": "effect", "label": "戦闘時の強化", "terms": ["戦闘時"] } } },
       { "task": "「先駆けの修羅」をドラッグして、タップ状態の相手の「飄々たる諜報員」の上で離し、戦闘しましょう。", "focus": "oppLegacy", "cards": ["opp-field:飄々たる諜報員"], "allow": { "battle": ["先駆けの修羅"] }, "done": vm => !vm._tutorialHas('opp', 'legacies', '飄々たる諜報員') && vm._tutorialIdle() },
-      { "say": "奇襲で相手の諜報員を倒し、次の神攻を防げました。これで、勝つための次のターンを迎えられます。縦向きに戻っているあなたの諜報員で神攻しましょう。", "focus": "oppKami", "cards": ["self-field:飄々たる諜報員"], "when": vm => !vm.battleSample.result },
+      { "face": "joy", "say": "奇襲で相手の諜報員を倒し、次の神攻を防げました。これで、勝つための次のターンを迎えられます。縦向きに戻っているあなたの諜報員で神攻しましょう。", "focus": "oppKami", "cards": ["self-field:飄々たる諜報員"], "when": vm => !vm.battleSample.result },
       { "task": "「飄々たる諜報員」で神攻して、スサノオさんのライフを1にしましょう。", "focus": "oppKami", "cards": ["self-field:飄々たる諜報員"], "allow": { "divine": ["飄々たる諜報員"] }, "done": vm => vm.battleSample.opp.life === 1 && vm._tutorialIdle() },
       { "say": "どちらもライフは1。でも相手のレガシーは倒してあります。ターンを返しても、諜報員から神攻されることはありません。", "focus": "oppLegacy" },
       { "task": "ターンを終了しましょう。", "focus": "endTurn", "allow": { "endTurn": true }, "done": vm => vm.battleSample.activeSide === 'opp' },
       { "action": "oppTurn", "script": [{ "divine": "飄々たる諜報員" }] },
-      { "say": "無事に次のターンを迎えました。奇襲で危険な相手を先に倒したことが、勝利につながりましたね。", "focus": "selfLife" },
+      { "face": "joy", "say": "無事に次のターンを迎えました。奇襲で危険な相手を先に倒したことが、勝利につながりましたね。", "focus": "selfLife" },
       { "task": "「飄々たる諜報員」で神攻して、スサノオさんのライフを0にしましょう。", "focus": "oppKami", "cards": ["self-field:飄々たる諜報員"], "allow": { "divine": ["飄々たる諜報員"] }, "done": vm => !!vm.battleSample.result },
-      { "id": "victory", "say": "おめでとうございます！　スサノオさんのライフが0になり、あなたの勝利ですわ。", "finale": true },
+      { "face": "joy", "id": "victory", "say": "おめでとうございます！　スサノオさんのライフが0になり、あなたの勝利ですわ。", "finale": true },
       { "say": "【守護】で一撃をしのぎ、【奇襲】で次の攻撃を止められました。【奇襲】は出たターンの戦闘、【疾駆】は神攻も可能。必要な場面で使い分けましょうね。", "finale": true, "last": true }
     ],
     "fieldTheme": "ninja",
@@ -10705,13 +10717,13 @@ const TUTORIAL_LESSONS = Object.freeze([
       { "say": "今回は、場に残るレリックの使い方です。手札の道場を出して、起動効果と常在効果を1つずつ試しましょう。" },
       { "action": "startTurn" },
       { "task": "「木漏れ日の道場」を手札からレリック欄へドラッグしましょう。表示されたカードは「閉じる」で閉じられます。", "focus": "selfRelic", "allow": { "play": ["木漏れ日の道場"] }, "done": vm => vm._tutorialHas('self', 'relics', '木漏れ日の道場') && vm._tutorialIdle() },
-      { "say": "木漏れ日の道場は、タップすることで、レガシー1枚の戦闘力を1000上げられます。これが「起動効果」です。", "focus": "selfRelic", "cards": ["self-relic:木漏れ日の道場"], "inspect": ["木漏れ日の道場"], "inspectFocus": { "木漏れ日の道場": { "section": "effect", "label": "起動効果", "terms": ["起動"] } } },
-      { "say": "レガシー同士の「戦闘」は、タップ状態（横向き）の相手に仕掛けます。戦闘力が低い方が破壊され、同じなら両方とも破壊。相手の諜報員はタップ状態で、戦闘力2000。あなたの侍女も2000ですから、このままでは相打ちです。道場で侍女を強くしてから戦いましょう。", "focus": ["oppPower", "selfPower"], "cards": ["opp-field:飄々たる諜報員", "self-field:冥土送りの侍女"] },
+      { "face": "serious", "say": "木漏れ日の道場は、タップすることで、レガシー1枚の戦闘力を1000上げられます。これが「起動効果」です。", "focus": "selfRelic", "cards": ["self-relic:木漏れ日の道場"], "inspect": ["木漏れ日の道場"], "inspectFocus": { "木漏れ日の道場": { "section": "effect", "label": "起動効果", "terms": ["起動"] } } },
+      { "face": "troubled", "say": "レガシー同士の「戦闘」は、タップ状態（横向き）の相手に仕掛けます。戦闘力が低い方が破壊され、同じなら両方とも破壊。相手の諜報員はタップ状態で、戦闘力2000。あなたの侍女も2000ですから、このままでは相打ちです。道場で侍女を強くしてから戦いましょう。", "focus": ["oppPower", "selfPower"], "cards": ["opp-field:飄々たる諜報員", "self-field:冥土送りの侍女"] },
       { "task": "場の「木漏れ日の道場」を右クリックして「起動能力を発動」を選び、「冥土送りの侍女」を対象にしましょう。", "focus": "selfRelic", "cards": ["self-relic:木漏れ日の道場"], "allow": { "activate": ["木漏れ日の道場"] }, "targets": ["冥土送りの侍女"], "done": vm => vm.tutorial.flags.activated && vm._tutorialIdle() },
-      { "say": "侍女の戦闘力が3000になりました。", "focus": "selfPower", "cards": ["self-field:冥土送りの侍女"] },
+      { "face": "joy", "say": "侍女の戦闘力が3000になりました。", "focus": "selfPower", "cards": ["self-field:冥土送りの侍女"] },
       { "task": "「冥土送りの侍女」をドラッグして、タップ状態の相手の「飄々たる諜報員」の上で離し、戦闘しましょう。", "focus": "oppLegacy", "cards": ["opp-field:飄々たる諜報員"], "allow": { "battle": ["冥土送りの侍女"] }, "done": vm => !vm._tutorialHas('opp', 'legacies', '飄々たる諜報員') && vm._tutorialIdle() },
-      { "say": "勝ちましたね。道場のもう1つの効果「戦闘でレガシーを破壊したとき、1枚引く」も働いて、手札が1枚増えました。これが「常在効果」です。", "focus": "hand", "inspect": ["木漏れ日の道場"], "inspectFocus": { "木漏れ日の道場": { "section": "effect", "label": "戦闘で破壊したときの効果", "terms": ["戦闘で", "ドロー"] } } },
-      { "say": "自分で操作して使うのが「起動効果」、条件に合うと働くのが「常在効果」。レリックだけでなく、こうした効果を持つレガシーもいます。カードを拡大して、使う条件を確かめてくださいね。", "focus": "selfRelic", "cards": ["self-relic:木漏れ日の道場"] },
+      { "face": "joy", "say": "勝ちましたね。道場のもう1つの効果「戦闘でレガシーを破壊したとき、1枚引く」も働いて、手札が1枚増えました。これが「常在効果」です。", "focus": "hand", "inspect": ["木漏れ日の道場"], "inspectFocus": { "木漏れ日の道場": { "section": "effect", "label": "戦闘で破壊したときの効果", "terms": ["戦闘で", "ドロー"] } } },
+      { "face": "serious", "say": "自分で操作して使うのが「起動効果」、条件に合うと働くのが「常在効果」。レリックだけでなく、こうした効果を持つレガシーもいます。カードを拡大して、使う条件を確かめてくださいね。", "focus": "selfRelic", "cards": ["self-relic:木漏れ日の道場"] },
       { "say": "社の施しの使い方は基本編で練習しましたね。マナを補うレリックと、戦いを支えるレリック。役割に合わせて使っていきましょう。", "last": true }
     ],
     "fieldTheme": "ninja",
@@ -10727,19 +10739,19 @@ const TUTORIAL_LESSONS = Object.freeze([
     "learn": ["同色のリロール", "選定", "キーカード"],
     "setup": { "selfKamiNo": "8", "oppKamiNo": "4", "firstSide": "self", "turn": 3, "self": { "life": 10, "manaMax": 4, "hand": ["瞬速の死闘", "熾烈なる戦役"], "deck": ["戦陣の旗手", "音速の忍", "慈愛の忍・イロハ", "猛き赤の眷属"], "relics": [], "legacies": ["鐘鳴らしの童"] }, "opp": { "life": 3, "manaMax": 2, "hand": [], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [] } },
     "steps": [
-      { "say": "今回は、手札を整える「リロール」です。相手のライフは3。童の神攻だけでは足りません。必要なカードを探して、今のターンに勝利を決めましょう。", "focus": "oppLife" },
+      { "face": "serious", "say": "今回は、手札を整える「リロール」です。相手のライフは3。童の神攻だけでは足りません。必要なカードを探して、今のターンに勝利を決めましょう。", "focus": "oppLife" },
       { "action": "startTurn" },
       { "say": "手札の「瞬速の死闘」はオラクル。使うとすぐに効果が発動して、そのあと墓地へ置かれるカードです。", "focus": "hand", "cards": ["self-hand:瞬速の死闘"] },
-      { "say": "【選定：1】は、いくつかの効果から1つを選んで使うという意味。今回は「相手ライフ-1」を選ぶのがおすすめですよ。", "focus": "hand", "inspect": ["瞬速の死闘"], "inspectFocus": { "瞬速の死闘": { "section": "effect", "label": "【選定】", "terms": ["選定"] } } },
-      { "say": "それと「リロール」も覚えておきましょう。カードを使うとき、手札にある同じ色のカードを1枚見せると、そのカードをデッキに戻して1枚引き直せます。使うカードと違う色のカードは戻せません。今すぐ必要でないカードを入れ替えられる、誰でも使える決まりごとです。", "focus": "hand", "cards": ["self-hand:瞬速の死闘", "self-hand:熾烈なる戦役"] },
+      { "face": "serious", "say": "【選定：1】は、いくつかの効果から1つを選んで使うという意味。今回は「相手ライフ-1」を選ぶのがおすすめですよ。", "focus": "hand", "inspect": ["瞬速の死闘"], "inspectFocus": { "瞬速の死闘": { "section": "effect", "label": "【選定】", "terms": ["選定"] } } },
+      { "face": "serious", "say": "それと「リロール」も覚えておきましょう。カードを使うとき、手札にある同じ色のカードを1枚見せると、そのカードをデッキに戻して1枚引き直せます。使うカードと違う色のカードは戻せません。今すぐ必要でないカードを入れ替えられる、誰でも使える決まりごとです。", "focus": "hand", "cards": ["self-hand:瞬速の死闘", "self-hand:熾烈なる戦役"] },
       { "say": "デッキを同じ色で揃えると、手札にリロールへ回せるカードが残りやすくなります。引き直せる機会が増えるぶん、勝ち筋になるキーカードにも出会いやすくなるのですよ。今回は赤のカードで、そのつながりを試してみましょう。", "focus": "hand", "cards": ["self-hand:瞬速の死闘", "self-hand:熾烈なる戦役"] },
       { "task": "「瞬速の死闘」をレガシー欄へドラッグして使いましょう。リロールするか聞かれたら「リロールする」で「熾烈なる戦役」を選び、【選定】では「相手ライフ-1」を選んでくださいね。表示されたカードは「閉じる」で閉じられます。", "focus": "hand", "allow": { "play": ["瞬速の死闘"] }, "reroll": true, "targets": ["熾烈なる戦役"], "sentei": ["相手ライフ"], "answers": [{ "card": "瞬速の死闘", "kind": "reroll", "answer": true, "hint": "今回は「リロールする」を選んで、試してみましょう。" }], "done": vm => !vm._tutorialHas('self', 'hand', '瞬速の死闘') && vm._tutorialHas('self', 'hand', '音速の忍') && vm.battleSample.opp.life === 2 && vm._tutorialIdle() },
-      { "say": "リロールで「音速の忍」が来ましたね！　【疾駆】を持つので、出したターンに神攻できます。死闘で相手のライフを2に減らし、残りのマナは2。童と音速の忍の神攻を合わせれば、今度こそ届きますよ。", "focus": "hand", "cards": ["self-hand:音速の忍"], "inspect": ["音速の忍"], "inspectFocus": { "音速の忍": { "section": "effect", "label": "【疾駆】", "terms": ["疾駆"] } } },
+      { "face": "surprised", "say": "リロールで「音速の忍」が来ましたね！　【疾駆】を持つので、出したターンに神攻できます。死闘で相手のライフを2に減らし、残りのマナは2。童と音速の忍の神攻を合わせれば、今度こそ届きますよ。", "focus": "hand", "cards": ["self-hand:音速の忍"], "inspect": ["音速の忍"], "inspectFocus": { "音速の忍": { "section": "effect", "label": "【疾駆】", "terms": ["疾駆"] } } },
       { "task": "「鐘鳴らしの童」で神攻して、タケミカヅチさんのライフを1にしましょう。", "focus": "oppKami", "cards": ["self-field:鐘鳴らしの童"], "allow": { "divine": ["鐘鳴らしの童"] }, "done": vm => vm.battleSample.opp.life === 1 && vm._tutorialIdle() },
       { "say": "童はタップして、もう神攻できません。ここで、リロールで引いた音速の忍の出番です。コスト2の通常の支払いで出し、【疾駆】で勝利を決めましょう。", "focus": "hand", "cards": ["self-hand:音速の忍"] },
       { "task": "リロールで引いた「音速の忍」をレガシー欄へ出しましょう。支払うマナは通常の「2」を選んでくださいね。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["音速の忍"] }, "done": vm => vm._tutorialHas('self', 'legacies', '音速の忍') && vm._tutorialIdle() },
       { "task": "「音速の忍」で神攻して、タケミカヅチさんのライフを0にしましょう。", "focus": "oppKami", "cards": ["self-field:音速の忍"], "allow": { "divine": ["音速の忍"] }, "done": vm => !!vm.battleSample.result },
-      { "id": "victory", "say": "おめでとうございます！　リロールで手にした音速の忍が、最後の神攻を決めてくれましたね。手札を整える一手が、勝利につながったのです。", "finale": true },
+      { "face": "joy", "id": "victory", "say": "おめでとうございます！　リロールで手にした音速の忍が、最後の神攻を決めてくれましたね。手札を整える一手が、勝利につながったのです。", "finale": true },
       { "say": "使うカードと同じ色だけを戻せるリロール、効果を選ぶ【選定】。今回は引き直した音速の忍が勝利を決めました。同じ色を軸にデッキを組むと、こうした一手を狙いやすくなりますよ。", "finale": true, "last": true }
     ],
     "fieldTheme": "samurai",
@@ -10762,19 +10774,19 @@ const TUTORIAL_LESSONS = Object.freeze([
       { "action": "startTurn" },
       { "say": "まずは「進化」の準備から。「鐘鳴らしの童」を場に出してみましょう。", "focus": "hand", "cards": ["self-hand:鐘鳴らしの童"] },
       { "task": "「鐘鳴らしの童」をレガシー欄へ出しましょう。効果を発動するか聞かれたら「発動する」を選んでくださいね。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["鐘鳴らしの童"] }, "answers": [{ "card": "鐘鳴らしの童", "kind": "ability", "answer": true, "hint": "今回は「発動する」を選びましょう。" }], "done": vm => vm._tutorialHas('self', 'legacies', '鐘鳴らしの童') && vm._tutorialIdle() },
-      { "say": "出たばかりの童は、このターンは攻撃できません。……ところが、進化を使えば話は別なのです。", "focus": "selfLegacy", "cards": ["self-field:鐘鳴らしの童"] },
-      { "say": "「慈愛の忍・イロハ」には【進化：赤レガシー/忍者レガシー】と書かれています。条件に合うレガシーが場にいれば、その上に重ねて出せるということ。赤の童は、イロハの進化元にぴったりです。", "focus": "hand", "cards": ["self-hand:慈愛の忍・イロハ", "self-field:鐘鳴らしの童"], "inspect": ["慈愛の忍・イロハ"], "inspectFocus": { "慈愛の忍・イロハ": { "section": "effect", "label": "【進化】の条件", "terms": ["進化："] } } },
-      { "say": "進化したレガシーは【疾駆】を持ちます。出たばかりの童の上に重ねても、そのターンのうちに神攻できるのです。下になったレガシーの効果は失われ、タップ状態は引き継ぎますよ。", "focus": "selfLegacy", "cards": ["self-field:鐘鳴らしの童"] },
-      { "say": "さらにイロハには【進化中・出現時】の効果があります。進化して出たとき、墓地からコスト3以下のレガシーを1枚呼び戻せるのです。墓地には【疾駆】を持つ「音速の忍」がいますね。", "focus": "selfGraveyard", "inspect": ["慈愛の忍・イロハ"], "inspectFocus": { "慈愛の忍・イロハ": { "section": "effect", "label": "【進化中】の出現時効果", "terms": ["進化中"] } } },
+      { "face": "surprised", "say": "出たばかりの童は、このターンは攻撃できません。……ところが、進化を使えば話は別なのです。", "focus": "selfLegacy", "cards": ["self-field:鐘鳴らしの童"] },
+      { "face": "serious", "say": "「慈愛の忍・イロハ」には【進化：赤レガシー/忍者レガシー】と書かれています。条件に合うレガシーが場にいれば、その上に重ねて出せるということ。赤の童は、イロハの進化元にぴったりです。", "focus": "hand", "cards": ["self-hand:慈愛の忍・イロハ", "self-field:鐘鳴らしの童"], "inspect": ["慈愛の忍・イロハ"], "inspectFocus": { "慈愛の忍・イロハ": { "section": "effect", "label": "【進化】の条件", "terms": ["進化："] } } },
+      { "face": "serious", "say": "進化したレガシーは【疾駆】を持ちます。出たばかりの童の上に重ねても、そのターンのうちに神攻できるのです。下になったレガシーの効果は失われ、タップ状態は引き継ぎますよ。", "focus": "selfLegacy", "cards": ["self-field:鐘鳴らしの童"] },
+      { "face": "surprised", "say": "さらにイロハには【進化中・出現時】の効果があります。進化して出たとき、墓地からコスト3以下のレガシーを1枚呼び戻せるのです。墓地には【疾駆】を持つ「音速の忍」がいますね。", "focus": "selfGraveyard", "inspect": ["慈愛の忍・イロハ"], "inspectFocus": { "慈愛の忍・イロハ": { "section": "effect", "label": "【進化中】の出現時効果", "terms": ["進化中"] } } },
       { "task": "「慈愛の忍・イロハ」を手札からドラッグして、場の「鐘鳴らしの童」の上で離しましょう。墓地から出すか聞かれたら「発動する」を選び、「音速の忍」を選んでくださいね。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "cards": ["self-field:鐘鳴らしの童"], "allow": { "play": ["慈愛の忍・イロハ"] }, "forceEvolve": true, "targets": ["音速の忍"], "answers": [{ "card": "慈愛の忍・イロハ", "kind": "ability", "answer": true, "hint": "「発動する」を選んで、墓地の音速の忍を呼び戻しましょう。" }], "done": vm => vm.battleSample.self.legacies.some(c => c && c._evolved) && vm._tutorialHas('self', 'legacies', '音速の忍') && vm._tutorialIdle() },
-      { "say": "進化したイロハと、呼び戻した音速の忍。どちらも【疾駆】を持っているので、すぐに神攻できますよ。", "focus": "selfLegacy", "cards": ["self-field:慈愛の忍・イロハ", "self-field:音速の忍"] },
+      { "face": "joy", "say": "進化したイロハと、呼び戻した音速の忍。どちらも【疾駆】を持っているので、すぐに神攻できますよ。", "focus": "selfLegacy", "cards": ["self-field:慈愛の忍・イロハ", "self-field:音速の忍"] },
       { "task": "「慈愛の忍・イロハ」と「音速の忍」で、ツクヨミさんに神攻しましょう。", "focus": "oppKami", "cards": ["self-field:慈愛の忍・イロハ", "self-field:音速の忍"], "allow": { "divine": ["慈愛の忍・イロハ", "音速の忍"] }, "done": vm=>vm.battleSample.opp.life===2&&vm._tutorialIdle() },
-      { "say": "次は「夜風の始末屋」。【昇華3】とは、コストを追加で3払うと、おまけの効果を得られるということ。始末屋は昇華すると【疾駆】を得ます。", "focus": "hand", "cards": ["self-hand:夜風の始末屋"], "inspect": ["夜風の始末屋"], "inspectFocus": { "夜風の始末屋": { "section": "effect", "label": "【昇華】と【疾駆】", "terms": ["昇華", "疾駆"] } } },
-      { "say": "昇華できるのは、手札から使うときだけです。コスト3に3を足して6。残りのマナは4なので、足りない分は「社の施し」2枚で補いましょう。", "focus": "selfManaValue", "cards": ["self-hand:夜風の始末屋", "self-relic:社の施し"] },
+      { "face": "serious", "say": "次は「夜風の始末屋」。【昇華3】とは、コストを追加で3払うと、おまけの効果を得られるということ。始末屋は昇華すると【疾駆】を得ます。", "focus": "hand", "cards": ["self-hand:夜風の始末屋"], "inspect": ["夜風の始末屋"], "inspectFocus": { "夜風の始末屋": { "section": "effect", "label": "【昇華】と【疾駆】", "terms": ["昇華", "疾駆"] } } },
+      { "face": "serious", "say": "昇華できるのは、手札から使うときだけです。コスト3に3を足して6。残りのマナは4なので、足りない分は「社の施し」2枚で補いましょう。", "focus": "selfManaValue", "cards": ["self-hand:夜風の始末屋", "self-relic:社の施し"] },
       { "task": "「夜風の始末屋」をレガシー欄へドラッグし、支払うコストは昇華の「6」を、社の施しを使うか聞かれたら「破壊してマナを増やす」を選びましょう。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["夜風の始末屋"] }, "requireSublim": true, "done": vm => vm._tutorialHas('self', 'legacies', '夜風の始末屋') && vm.tutorial.flags.sublim && vm._tutorialIdle() },
-      { "say": "始末屋は神攻したとき、1ターンに1回だけ起き上がる子。続けて2回神攻できるのです。", "focus": "selfLegacy", "cards": ["self-field:夜風の始末屋"], "inspect": ["夜風の始末屋"], "inspectFocus": { "夜風の始末屋": { "section": "effect", "label": "神攻時のアンタップ", "terms": ["神攻時"] } } },
+      { "face": "surprised", "say": "始末屋は神攻したとき、1ターンに1回だけ起き上がる子。続けて2回神攻できるのです。", "focus": "selfLegacy", "cards": ["self-field:夜風の始末屋"], "inspect": ["夜風の始末屋"], "inspectFocus": { "夜風の始末屋": { "section": "effect", "label": "神攻時のアンタップ", "terms": ["神攻時"] } } },
       { "task": "「夜風の始末屋」で、2回続けて神攻しましょう。", "focus": "oppKami", "cards": ["self-field:夜風の始末屋"], "allow": { "divine": ["夜風の始末屋"] }, "done": vm=>!!vm.battleSample.result },
-      { "id": "victory", "say": "お見事です。進化したイロハと音速の忍、昇華した始末屋で、そのターンのうちに勝利を決められました。", "finale": true },
+      { "face": "joy", "id": "victory", "say": "お見事です。進化したイロハと音速の忍、昇華した始末屋で、そのターンのうちに勝利を決められました。", "finale": true },
       { "say": "進化は条件に合うレガシーの上に重ねること。昇華は追加のコストで効果を得ること。確認してから使えば、カードの力を大きく引き出せますね。", "finale": true, "last": true }
     ],
     "category": "advanced"
@@ -11445,6 +11457,7 @@ new Vue({
 
     /* ===== シールド戦 ===== */
     BUILD_VERSION: TSUKURIYO_BUILD_VERSION,
+    TUTORIAL_GUIDE_FACES,
     PACKS_PER_SIDE: 4,
     shieldOpen: false,
     shieldPeek: false,   // パックピック中にデッキ詳細をプレビュー表示中か
@@ -11627,6 +11640,12 @@ new Vue({
     tutorialStep() {
       const lesson = this.tutorialLesson;
       return lesson ? (lesson.steps[this.tutorial.index] || null) : null;
+    },
+    // 案内役の表情：操作の注意を出している間は困り顔、それ以外は手順ごとの指定（なければ通常の笑顔）
+    tutorialGuideFace() {
+      if (this.tutorial && this.tutorial.hint) return 'troubled';
+      const face = this.tutorialStep && this.tutorialStep.face;
+      return TUTORIAL_GUIDE_FACES[face] ? face : 'normal';
     },
     battlePreviewGraveyardEvolutionActive() {
       const card = this.previewCard, battle = this.battleSample;
