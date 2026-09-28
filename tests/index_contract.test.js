@@ -172,14 +172,15 @@ test("play manual is separated from the pick guide and contains the revised rule
   assert.doesNotMatch(html, /隠密/);
 });
 
-test("play guide reveals its secret Kami only after explicit confirmation and resets on reopening", () => {
+test("both guides reveal their secret Kami only after explicit confirmation and reset on reopening", () => {
   function guideMethod(name, params = '') {
     const match = html.match(new RegExp('    ' + name + '\\([^\\n]*\\) \\{([\\s\\S]*?)\\r?\\n    \\},'));
     assert.ok(match, name);
     return Function(params, match[1]);
   }
-  const vm = { manualModalOpen: false, manualOrochiRevealed: false, manualSpoilerConfirmOpen: false,
-    _sfxPlay() {}, $nextTick(fn) { fn(); }, $refs: {} };
+  let annotations = 0;
+  const vm = { manualModalOpen: false, howToPlayModalOpen: false, manualOrochiRevealed: false, manualSpoilerConfirmOpen: false,
+    _sfxPlay() {}, hideCardHover() {}, _howtoAnnotateCardRefs() { annotations++; }, $nextTick(fn) { fn(); }, $refs: {} };
   const open = guideMethod('openPlayManual'), close = guideMethod('closePlayManual');
   const request = guideMethod('manualRequestOrochi'), answer = guideMethod('manualAnswerOrochi', 'show');
   open.call(vm);
@@ -195,6 +196,21 @@ test("play guide reveals its secret Kami only after explicit confirmation and re
   close.call(vm); answer.call(vm, true); open.call(vm);
   assert.equal(vm.manualOrochiRevealed, false, 'closed or reopened guides do not retain approval');
   assert.equal(vm.manualSpoilerConfirmOpen, false);
+  const pickOpen = guideMethod('openPickGuide'), pickClose = guideMethod('closePickGuide');
+  pickOpen.call(vm);
+  assert.equal(vm.manualModalOpen, false, 'only one guide is open at a time');
+  assert.equal(vm.howToPlayModalOpen, true);
+  assert.equal(annotations, 1);
+  answer.call(vm, true);
+  assert.equal(vm.manualOrochiRevealed, false, 'the pick guide also requires confirmation');
+  request.call(vm); answer.call(vm, false);
+  assert.equal(vm.manualOrochiRevealed, false);
+  request.call(vm); answer.call(vm, true);
+  assert.equal(vm.manualOrochiRevealed, true);
+  assert.equal(annotations, 2, 'revealed advice keeps its card preview links');
+  pickClose.call(vm); pickOpen.call(vm);
+  assert.equal(vm.manualOrochiRevealed, false, 'reopening the pick guide hides spoilers');
+  pickClose.call(vm);
   const manual = html.split('<div v-if="manualModalOpen"')[1].split('<!-- ===== ピックガイド')[0];
   assert.match(manual, /v-if="manualOrochiRevealed"[^>]*class="manual-kami manual-kami-secret"/);
   assert.match(manual, /v-if="manualOrochiRevealed"[^>]*class="manual-callout blue"/);

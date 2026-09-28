@@ -1851,6 +1851,32 @@
   .howto-card-ref:hover { color: #fff2cc; border-bottom-color: #ffd86a; }
   .howto-open-btn { font-size: 15px; }
 
+  /* ピック指南は画面いっぱいの読書用ウィンドウにし、他のモーダルの寸法は変えない。 */
+  .battle-zone-modal.pick-guide-modal { padding: 12px; }
+  .battle-zone-modal-panel.pick-guide-panel { position: relative; box-sizing: border-box; width: 100%; max-width: none; height: calc(100vh - 24px); height: calc(100dvh - 24px); max-height: none; padding: 0; overflow: hidden; }
+  .pick-guide-panel > .manual-header, .pick-guide-nav { flex: none; }
+  .pick-guide-nav a { font-size: 14px; padding: 9px 14px; }
+  .howto-list.pick-guide-content { flex: 1 1 auto; min-height: 0; max-height: none; margin: 0; padding: 24px 32px; overflow: auto; overscroll-behavior: contain; scroll-behavior: smooth; }
+  .pick-guide-content .howto-section { box-sizing: border-box; width: 100%; max-width: 1320px; margin: 0 auto; padding: 26px 0; scroll-margin-top: 20px; }
+  .pick-guide-content .howto-heading { margin: 0 0 14px; font-size: 22px; line-height: 1.6; }
+  .pick-kami-copy .howto-heading small { display: block; margin-top: 6px; color: #a9c3e8; font-size: 16px; font-weight: 700; }
+  .pick-guide-content .howto-body { margin: 0; font-size: 16px; line-height: 1.95; }
+  .pick-guide-content .pick-kami-section { display: grid; grid-template-columns: 240px minmax(0,1fr); align-items: start; gap: 32px; }
+  .pick-kami-copy { min-width: 0; }
+  .pick-kami-image { position: sticky; top: 20px; display: block; width: 240px; height: 260px; object-fit: contain; object-position: center; }
+  .pick-kami-mystery { display: grid; place-items: center; width: 240px; height: 260px; border: 1px solid #78613d; border-radius: 12px; background: radial-gradient(ellipse, #383027, #1b2030 75%); color: #f5dda0; font-size: 100px; cursor: pointer; }
+  .pick-kami-mystery:hover, .pick-kami-mystery:focus-visible { border-color: #f5dda0; outline: 2px solid #f5dda0; outline-offset: 3px; }
+  @media (max-width: 760px) {
+    .battle-zone-modal.pick-guide-modal { padding: 0; }
+    .battle-zone-modal-panel.pick-guide-panel { width: 100vw; height: 100vh; height: 100dvh; border-radius: 0; }
+    .howto-list.pick-guide-content { padding: 18px 16px; overflow-x: hidden; }
+    .pick-guide-content .pick-kami-section { display: flow-root; }
+    .pick-kami-image, .pick-kami-mystery { position: static; float: right; width: 180px; height: 200px; margin: 0 -6px 16px 12px; }
+    .pick-kami-copy .howto-heading { min-height: 200px; margin-bottom: 16px; }
+    .pick-kami-copy .howto-body { clear: both; }
+    .pick-guide-content .howto-heading { font-size: 20px; }
+  }
+
   /* ===== プレイガイド（添付説明書をWeb向けに再構成） ===== */
   .battle-zone-modal.manual-modal { padding: 20px; }
   .battle-zone-modal-panel.manual-panel {
@@ -1920,10 +1946,11 @@
   .manual-chapter + .manual-chapter { border-top: 1px solid rgba(255,255,255,.09); padding-top: 38px; }
   .manual-chapter-tag { color: #caa75f; font-size: 10px; font-weight: 900; letter-spacing: .18em; }
   .manual-chapter h2 { margin: 7px 0 18px; color: #fff1c2; font-size: clamp(23px, 3vw, 34px); letter-spacing: .06em; }
-  .manual-chapter-heading { display: grid; grid-template-columns: minmax(0,1fr) 136px; gap: 20px; align-items: center; margin-bottom: 18px; }
+  .manual-chapter-heading { display: grid; grid-template-columns: minmax(0,1fr) 220px; gap: 20px; align-items: center; min-height: 200px; margin-bottom: 26px; }
   .manual-chapter-heading h2 { margin-bottom: 0; }
-  .manual-chapter-mascot { width: 136px; height: 100px; overflow: hidden; pointer-events: none; mask-image: linear-gradient(#000 0 85%, transparent 100%); }
-  .manual-chapter-mascot img { display: block; width: 136px; height: 136px; object-fit: contain; object-position: center top; }
+  /* 全身を見せ、枠の余白にはみ出しても説明文の列は覆わない。 */
+  .manual-chapter-mascot { position: relative; z-index: 1; justify-self: center; width: 240px; height: 240px; margin: -20px 0; overflow: visible; pointer-events: none; }
+  .manual-chapter-mascot img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
   .manual-chapter h3 { margin: 24px 0 9px; color: #f2d88d; font-size: 17px; }
   .manual-copy { color: #cbd1dc; font-size: 14px; line-height: 1.9; }
   .manual-copy p { margin: 0 0 13px; }
@@ -2020,16 +2047,16 @@
   .manual-answer { padding: 12px 14px; background: rgba(17,20,27,.88); color: #ccd3df; font-size: 12.5px; line-height: 1.75; }
   .manual-kami-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 11px; }
   .manual-kami {
-    display: grid; grid-template-columns: 120px minmax(0,1fr); gap: 14px; align-items: center;
+    display: grid; grid-template-columns: 170px minmax(0,1fr); gap: 14px; align-items: center;
     border: 1px solid #343a46; border-radius: 9px; padding: 10px; background: rgba(20,23,31,.8);
   }
-  .manual-kami img { display: block; width: 120px; height: 148px; object-fit: contain; object-position: center; }
+  .manual-kami img { position: relative; z-index: 1; display: block; width: 180px; height: 200px; margin: -8px -5px; object-fit: contain; object-position: center; }
   .manual-kami b { color: #f5dda0; font-size: 13px; }
   .manual-kami-difficulty { color: #e9b85c; font-size: 11px; margin: 2px 0 4px; }
   .manual-kami p { color: #aeb7c6; font-size: 11px; line-height: 1.55; margin: 0; }
   .manual-kami-hidden { color: inherit; font: inherit; text-align: left; cursor: pointer; }
   .manual-kami-hidden:hover, .manual-kami-hidden:focus-visible { border-color: #d5b46d; background: #27232c; }
-  .manual-kami-mystery { display: grid; place-items: center; width: 120px; height: 148px; color: #d9c49b; font-size: 74px; font-weight: 900; background: radial-gradient(ellipse, rgba(192,156,83,.13), transparent 70%); }
+  .manual-kami-mystery { display: grid; place-items: center; width: 180px; height: 200px; margin: -8px -5px; color: #d9c49b; font-size: 82px; font-weight: 900; background: radial-gradient(ellipse, rgba(192,156,83,.13), transparent 70%); }
   .manual-kami-hidden-copy > span { display: block; color: #aeb7c6; font-size: 11px; line-height: 1.6; margin-top: 5px; }
   .manual-kami-hide { margin-top: 7px; padding: 3px 9px; border: 1px solid #62513b; border-radius: 5px; background: #25211c; color: #ead9b7; font-size: 11px; cursor: pointer; }
   .manual-spoiler-layer { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; padding: 20px; background: rgba(4,6,12,.82); }
@@ -2059,12 +2086,10 @@
     .manual-quick-nav::-webkit-scrollbar { display: none; }
     .manual-main { padding: 22px 16px; }
     .manual-grid, .manual-mode-grid, .manual-keyword-grid, .manual-kami-grid, .manual-field-legend { grid-template-columns: 1fr; }
-    .manual-kami { grid-template-columns: 104px minmax(0,1fr); gap: 12px; }
-    .manual-kami img { width: 104px; height: 130px; }
-    .manual-kami-mystery { width: 104px; height: 130px; }
-    .manual-chapter-heading { grid-template-columns: minmax(0,1fr) 90px; gap: 12px; }
-    .manual-chapter-mascot { width: 90px; height: 78px; }
-    .manual-chapter-mascot img { width: 90px; height: 90px; }
+    .manual-kami { grid-template-columns: 144px minmax(0,1fr); gap: 12px; }
+    .manual-kami img, .manual-kami-mystery { width: 160px; height: 180px; margin: -8px; }
+    .manual-chapter-heading { grid-template-columns: minmax(0,1fr) 156px; gap: 12px; min-height: 164px; margin-bottom: 24px; }
+    .manual-chapter-mascot { width: 180px; height: 180px; margin: -8px 0; }
     .manual-card-figure { grid-template-columns: 1fr; }
     .manual-card-image-wrap { width: min(230px,75vw); margin: 0 auto; }
     .manual-flow { grid-template-columns: repeat(2,minmax(0,1fr)); }
@@ -5372,9 +5397,9 @@
   <!-- ===== SE/BGM音量設定（全画面共通のフローティングボタン。対戦画面は専用ヘッダーボタンと
        重なるため、対戦画面表示中はこちらを隠す。カードリスト画面ではBGM不要かつ他の
        ボタン群と重なるため非表示にする） ===== -->
-  <div v-if="appView !== 'battle' && appView !== 'cardlist' && !deckExpanded" class="global-sound-settings">
+  <div v-if="appView !== 'battle' && appView !== 'cardlist' && !deckExpanded && !manualModalOpen && !howToPlayModalOpen" class="global-sound-settings">
     <button class="global-sound-btn howto-open-btn" @click.stop="openPlayManual" title="プレイガイド（説明書）">📖</button>
-    <button class="global-sound-btn howto-open-btn" @click.stop="_sfxPlay('decision'); howToPlayModalOpen = true; $nextTick(_howtoAnnotateCardRefs)" title="ピックガイド">🧭</button>
+    <button class="global-sound-btn howto-open-btn" @click.stop="openPickGuide" title="ピックガイド">🧭</button>
     <button class="global-sound-btn howto-open-btn" @click.stop="openBattleHistory" title="戦績・対戦履歴">📜</button>
     <transition name="bgm-now-fade"><span v-if="bgmNowPlaying" :key="bgmNowPlaying.id" class="bgm-current-name" :title="bgmNowPlaying.name" role="status" aria-live="polite">♪ {{ bgmNowPlaying.name }}</span></transition>
     <button class="global-sound-btn" @click.stop="_sfxPlay('cancel'); soundSettingsOpen = !soundSettingsOpen" title="音量設定">🎵</button>
@@ -5490,7 +5515,7 @@
           <button class="top-mode-guide-btn manual" @click.stop="openPlayManual">
             📖 プレイガイド
           </button>
-          <button class="top-mode-guide-btn pick" @click.stop="_sfxPlay('decision'); howToPlayModalOpen = true; $nextTick(_howtoAnnotateCardRefs)">
+          <button class="top-mode-guide-btn pick" @click.stop="openPickGuide">
             🧭 ピックガイド
           </button>
         </div>
@@ -6009,42 +6034,47 @@
   </div>
 
   <!-- ===== ピックガイド（説明書から分離。既存のカミ別指南は内容を維持） ===== -->
-  <div v-if="howToPlayModalOpen" class="battle-zone-modal" @click.self="howToPlayModalOpen = false; hideCardHover()">
-    <div class="battle-zone-modal-panel">
-      <h3 class="battle-zone-modal-title">🧭 ピックガイド</h3>
-      <div class="howto-list">
+  <div v-if="howToPlayModalOpen" class="battle-zone-modal pick-guide-modal" role="dialog" aria-modal="true" aria-label="ピックガイド" @click.self="closePickGuide">
+    <div class="battle-zone-modal-panel pick-guide-panel">
+      <div class="manual-header" :inert="manualSpoilerConfirmOpen ? '' : null"><div class="manual-header-mark" aria-hidden="true">🧭</div><div class="manual-header-copy"><div class="manual-header-title">カミ別ピックガイド</div><div class="manual-header-sub">選別の儀・パック選択の参考に</div></div><button class="manual-close" @click="closePickGuide">閉じる</button></div>
+      <nav class="manual-quick-nav pick-guide-nav" aria-label="カミ別ピック指南" :inert="manualSpoilerConfirmOpen ? '' : null"><a href="#pick-susanoo">スサノオ</a><a href="#pick-yamato-takeru">ヤマトタケル</a><a href="#pick-okuninushi">オオクニヌシ</a><a href="#pick-takemikazuchi">タケミカヅチ</a><a href="#pick-omoikane">オモイカネ</a><a href="#pick-amenouzume">アメノウズメ</a><a href="#pick-hinokagutsuchi">ヒノカグツチ</a><a href="#pick-amaterasu">アマテラス</a><a href="#pick-tsukuyomi">ツクヨミ</a><a href="#pick-yamata-no-orochi">{{ manualOrochiRevealed ? 'ヤマタノオロチ' : '？？？' }}</a></nav>
+      <div class="howto-list pick-guide-content" :inert="manualSpoilerConfirmOpen ? '' : null">
         <div class="howto-section">
           <div class="howto-heading">カミ別ピック指南（選別の儀・パック選択の参考に）</div>
           <div class="howto-body">選んだカミによって狙いたいデッキの方向性は大きく変わります。以下は各カミの基本方針です（ドラフト補助の「おすすめ」もこの方針を踏まえて表示されます）。</div>
         </div>
-        <div class="howto-section">
-          <div class="howto-heading">スサノオ ― 進化・昇華</div>
+        <section id="pick-susanoo" class="howto-section pick-kami-section">
+          <img class="pick-kami-image" src="kami_chibi/susanoo-chibi.webp" alt="スサノオのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <div class="pick-kami-copy"><h2 class="howto-heading"><span>スサノオ</span><small>進化・昇華</small></h2>
           <div class="howto-body">・基本方針として、昇華・進化のカードを優先的にピックしましょう。特に進化は創世神技を使った後にも使える上ユニーク性も高いので、優先度は高いです。
 ・創世神技発動に必要な天力が少ないので、天力を固定値で上げるカード（約束の光・ミズホ、平穏の祈り手、鐘鳴らしの童など）との相性は最高です。神使が多いので、神使軸でデッキを組むのもありです。
 ・どのレガシーからでも進化できるカード（幽玄の面霊姫、葛ノ葉亭の若女将、千変万化の大妖狐）は最優先でピックしましょう。
-・昇華のコストを軽減するカード（厳格なる森の長・ハクレン、拒絶の守衛・イズモ）も強力です。種族は人獣のため、こちらに寄せるのもよいでしょう。</div>
-        </div>
-        <div class="howto-section">
-          <div class="howto-heading">ヤマトタケル ― 同名一切禁止</div>
+・昇華のコストを軽減するカード（厳格なる森の長・ハクレン、拒絶の守衛・イズモ）も強力です。種族は人獣のため、こちらに寄せるのもよいでしょう。</div></div>
+        </section>
+        <section id="pick-yamato-takeru" class="howto-section pick-kami-section">
+          <img class="pick-kami-image" src="kami_chibi/yamato-takeru-chibi.webp" alt="ヤマトタケルのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <div class="pick-kami-copy"><h2 class="howto-heading"><span>ヤマトタケル</span><small>同名一切禁止</small></h2>
           <div class="howto-body">・デッキのカードに1枚も被りがないようにする必要があるので、すでに入っているカードのピックは避けましょう。
 ・天力が毎ターン溜まっていくので、天力を固定値で上げるカード（約束の光・ミズホ、平穏の祈り手、鐘鳴らしの童など）との相性は比較的悪く、避けたほうがよいでしょう。
 ・神技で手札補充ができるので、軽めのカードを多くしても手札は尽きにくいです。
 ・創世神技で盤面干渉ができるので、マナ最大値を増やすカードを使う重量級の方針も強力です。
 ・創世神技は相手レガシーを1体残してしまうデメリットがあるので、単体除去のカード（冥土送りの侍女、静かなる謀殺など）を多めにピックしておくとよいでしょう。
-・同じ種族で固めることが難しく他種族寄りのデッキになりやすいので、「平和を願う剣・アヤト」「暁の盟約」「断禍の三重奏」の優先度は高くなります。</div>
-        </div>
-        <div class="howto-section">
-          <div class="howto-heading">オオクニヌシ ― 種族分散</div>
+・同じ種族で固めることが難しく他種族寄りのデッキになりやすいので、「平和を願う剣・アヤト」「暁の盟約」「断禍の三重奏」の優先度は高くなります。</div></div>
+        </section>
+        <section id="pick-okuninushi" class="howto-section pick-kami-section">
+          <img class="pick-kami-image" src="kami_chibi/okuninushi-chibi.webp" alt="オオクニヌシのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <div class="pick-kami-copy"><h2 class="howto-heading"><span>オオクニヌシ</span><small>種族分散</small></h2>
           <div class="howto-body">・他種族がフィールドにいると天力が増加するため、種族が分散するようにデッキを組むことが求められます。
 ・創世神技はレガシーを召喚する効果なので、デッキはレガシーの比率を多くし、強力なレガシーを優先的にピックしましょう。
 ・他種族で組むことに意義があるので、「平和を願う剣・アヤト」「暁の盟約」「断禍の三重奏」は最優先です。
 ・自身と異なる種族のトークンを招来するレガシー（無垢なる信徒・チフユ、約束の光・ミズホ、もふもふ探求者、決別の白槍・ミナト）も最優先でピックしましょう。
 ・自身の神技で人獣を招来できるので、人獣に偏ったピックは避けたほうがよいでしょう。
 ・複数の種族を並べる必要があるので、コスト7以上の重いカードは避け気味に。
-・手札切れに備え、「木漏れ日の道場」や「忠臣の予感」もピックしておくとよいでしょう。</div>
-        </div>
-        <div class="howto-section">
-          <div class="howto-heading">タケミカヅチ ― 最高戦闘力</div>
+・手札切れに備え、「木漏れ日の道場」や「忠臣の予感」もピックしておくとよいでしょう。</div></div>
+        </section>
+        <section id="pick-takemikazuchi" class="howto-section pick-kami-section">
+          <img class="pick-kami-image" src="kami_chibi/takemikazuchi-chibi.webp" alt="タケミカヅチのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <div class="pick-kami-copy"><h2 class="howto-heading"><span>タケミカヅチ</span><small>最高戦闘力</small></h2>
           <div class="howto-body">・戦闘力が最も高いレガシーが自分フィールドにいる必要があるので、【補正+】持ちや素の戦闘力が高いレガシーと相性がよいです。
 ・神技はアンタップしているレガシーとも戦闘できるので、【奇襲】持ち（戦陣の旗手、無貌の忍、白き閃刃・シラトリなど）と相性がよいです。
 ・神使は天力上昇や強力な出現時効果を持ちますが戦闘力は低めの傾向があるので、優先度は下がります。
@@ -6052,10 +6082,11 @@
 ・「覚悟の出陣」はレリックを多数採用していないと真価を発揮しませんが、侍とレリックを自然にピックできるタケミカヅチなら発揮しやすいので優先度は高いです。
 ・「刹那の救援」も戦闘力の高いレガシーを揃えるこのカミと好相性です。
 ・「木漏れ日の道場」は毎ターン【補正+1000】をかけられ、天力トリガーの条件を満たしやすくドローも優秀なので最優先です。
-・自身より戦闘力の高い相手レガシーを確実に除去するカード（冥土送りの侍女、静かなる謀殺など）もピックしましょう。</div>
-        </div>
-        <div class="howto-section">
-          <div class="howto-heading">オモイカネ ― オラクル・レリック</div>
+・自身より戦闘力の高い相手レガシーを確実に除去するカード（冥土送りの侍女、静かなる謀殺など）もピックしましょう。</div></div>
+        </section>
+        <section id="pick-omoikane" class="howto-section pick-kami-section">
+          <img class="pick-kami-image" src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <div class="pick-kami-copy"><h2 class="howto-heading"><span>オモイカネ</span><small>オラクル・レリック</small></h2>
           <div class="howto-body">・基本方針として、オラクル・レリックをピックすることになります。
 ・オラクルの使用コストを軽減できるヨリシロちゃんを招来できるカードは優先的にピックしましょう。
 ・「社の施し」を招来できるカードも優先度が高いです。レリックを招来するので天力が溜まります。「社の施し」を多くピックできれば、レリックとシナジーがある侍カード（名刀集めの豪族、算盤弾きの刀剣商、千刃の破戒僧、妖刀を抱く乙女など）とも相性がよくなります。
@@ -6064,20 +6095,22 @@
 ・レガシーが少なくボードアドバンテージを取られやすいので、全体除去（恐怖の手記、熾烈なる戦役、禍ツ撃など）は優先してピックしましょう。
 ・「晴れ空の門出」はオラクルでありながらレリックの「社の施し」を招来できるため、最優先でピックすべきカードです。
 ・オラクル/レリックのコストを下げる「誇り高き名工」「史を紡ぐ語り部」も優先度が高く、場合によっては本体より優先してよいです。
-・レガシーの割合が少ないと勝つのが難しいので、最低限レガシーもピックしましょう。</div>
-        </div>
-        <div class="howto-section">
-          <div class="howto-heading">アメノウズメ ― マナ最大値・ライフ</div>
+・レガシーの割合が少ないと勝つのが難しいので、最低限レガシーもピックしましょう。</div></div>
+        </section>
+        <section id="pick-amenouzume" class="howto-section pick-kami-section">
+          <img class="pick-kami-image" src="kami_chibi/amenouzume-chibi.webp" alt="アメノウズメのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <div class="pick-kami-copy"><h2 class="howto-heading"><span>アメノウズメ</span><small>マナ最大値・ライフ</small></h2>
           <div class="howto-body">・基本方針として、ライフ回復、マナ最大値上昇、「社の施し」を招来できるカードを優先的にピックしましょう。
 ・「冒険譚の始まり」は最優先です。マナ最大値を上昇させ、最大値7以上なら天力も増えるため非常に強力です。
 ・「平穏の祈り手」も最優先です。召喚するだけで天力が2増加します。
 ・マナを増やす都合上、場にレガシーを出すタイミングが少ないことがあるので、除去カード（瞬速の死闘、禁忌の祭壇、式神奏術・一目連など）をピックしておきましょう。特に後者2つはライフ回復も伴うため優先度はさらに高めです。
 ・マナを増やして戦う都合上、高コストで場を大きく動かすカード（陰陽かぶれの犬神、紅翼龍・ルベル、偽りの聖女・サナエなど）とも相性がよいです。
 ・「もふもふ探求者」は低コストでも使える上、マナが増えた後半でも昇華で使えるため最優先です。
-・上記の他、昇華のカード全般はマナ最大値が増えた後でも使いやすいため優先度は高めです。</div>
-        </div>
-        <div class="howto-section">
-          <div class="howto-heading">ヒノカグツチ ― 破壊・【補正-】</div>
+・上記の他、昇華のカード全般はマナ最大値が増えた後でも使いやすいため優先度は高めです。</div></div>
+        </section>
+        <section id="pick-hinokagutsuchi" class="howto-section pick-kami-section">
+          <img class="pick-kami-image" src="kami_chibi/hinokagutsuchi-chibi.webp" alt="ヒノカグツチのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <div class="pick-kami-copy"><h2 class="howto-heading"><span>ヒノカグツチ</span><small>破壊・【補正-】</small></h2>
           <div class="howto-body">・基本方針として、相手を破壊するカード、もしくは【補正-】をつけるカードを多くピックしましょう。
 ・「蠢く陰謀」は神技で墓地を肥やせるため、【補正-】効果を活かしやすく優先度が高いです。
 ・「妖刀を抱く乙女」「二尾の猫女」は最優先です。相手レガシーと相打ちするだけで天力を2得られます。
@@ -6090,19 +6123,21 @@
 ・「昏き紫の眷属」は墓地を肥やすデッキだと真価を発揮します。ユニークを取り過ぎていなければピックしたいカードです。
 ・「神出鬼没の小鼠」は青/人獣寄りのカードで、このカミの基本方針とはあまり噛み合わないため優先度は低めです。
 ・「黄泉帰り」は墓地から回収＋除去という基本方針に大きく合致するため最優先級です。
-・「瞬速の死闘」は強力な選定除去で、天力を大きく稼げる可能性があるため最優先でピックしたいカードです。</div>
-        </div>
-        <div class="howto-section">
-          <div class="howto-heading">アマテラス ― 守護</div>
+・「瞬速の死闘」は強力な選定除去で、天力を大きく稼げる可能性があるため最優先でピックしたいカードです。</div></div>
+        </section>
+        <section id="pick-amaterasu" class="howto-section pick-kami-section">
+          <img class="pick-kami-image" src="tutorial_guide/amaterasu-chibi.webp" alt="アマテラスのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <div class="pick-kami-copy"><h2 class="howto-heading"><span>アマテラス</span><small>守護</small></h2>
           <div class="howto-body">・基本方針として、守護を持つレガシーをピックするとよいです。守護を持つトークン（ヨリシロちゃん、巨躯なる獣霊）を招来するカードの優先度も上がります。「獣霊」を招来できるカードは、文言が「いずれかの獣霊」「異なる獣霊N種」等どのような形であっても、選択肢の中に守護持ちの巨躯なる獣霊が含まれ得るため優先度は高いです（厳格なる森の長・ハクレン、晴れ空の門出、もふもふ探求者など）。
 ・創世神技は墓地からカードを蘇生する効果なので、自然と墓地が増える霊視持ちのカードの優先度が少し上がります。
 ・「平穏の祈り手」「鐘鳴らしの童」は召喚するだけで天力が2上がるため優先度がかなり高いです。
 ・ヨリシロちゃんを招来できるカードは相性がよく、その中でも複数招来できる「無垢なる信徒・チフユ」「決別の白槍・ミナト」「陰陽かぶれの犬神」は特に相性がよいです。
 ・神使には守護が多く、ヨリシロちゃんを招来するカードもあるので相性がよく、神使を中心にデッキを組むのもよいでしょう。
-・創世神技はなんでも墓地から蘇生できる破格の効果なので、なるべくコストの高いカードを蘇生したいです。コストの重いカード全般の優先度は高く、特に守護を持つ「黄角龍・フラウス」は最高の相性です。</div>
-        </div>
-        <div class="howto-section">
-          <div class="howto-heading">ツクヨミ ― トークン</div>
+・創世神技はなんでも墓地から蘇生できる破格の効果なので、なるべくコストの高いカードを蘇生したいです。コストの重いカード全般の優先度は高く、特に守護を持つ「黄角龍・フラウス」は最高の相性です。</div></div>
+        </section>
+        <section id="pick-tsukuyomi" class="howto-section pick-kami-section">
+          <img class="pick-kami-image" src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <div class="pick-kami-copy"><h2 class="howto-heading"><span>ツクヨミ</span><small>トークン</small></h2>
           <div class="howto-body">・基本方針として、トークンを招来できるカードを集めましょう。「社の施し」はレリックでありながらトークンなので、これを招来できるカードも相性がよいです。
 ・「月見草の修行場」はかなり優先度が高いです。1枚で2回天力が溜められます。
 ・「晴れ空の門出」は最優先です。昇華をすることで天力を溜められます。
@@ -6110,10 +6145,11 @@
 ・天力トリガーの対象となるカードが多いので、天力を固定値で上げるカードとはあまり相性がよくなく、優先度は少し下がります。
 ・ヨリシロちゃんを生成するカードを多くピックできているなら、ヨリシロちゃんのオラクル軽減効果によりオラクルの優先度が上がります。
 ・「聖女の巡礼」は最優先です。1枚で天力を3得られます。
-・「落日の子守唄」「歓喜の凱旋」は毎ターントークンを招来できる最高の相性のカードなので、最優先でピックしましょう。</div>
-        </div>
-        <div class="howto-section">
-          <div class="howto-heading">ヤマタノオロチ ― 龍</div>
+・「落日の子守唄」「歓喜の凱旋」は毎ターントークンを招来できる最高の相性のカードなので、最優先でピックしましょう。</div></div>
+        </section>
+        <section v-if="manualOrochiRevealed" id="pick-yamata-no-orochi" class="howto-section pick-kami-section">
+          <img class="pick-kami-image" src="kami_chibi/yamata-no-orochi-chibi.webp" alt="ヤマタノオロチのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <div class="pick-kami-copy"><h2 ref="pickOrochiTitle" tabindex="-1" class="howto-heading"><span>ヤマタノオロチ</span><small>龍</small></h2>
           <div class="howto-body">・基本方針として、龍のカードを最優先でピックしましょう。
 ・龍のカードは龍を複数集めた時にシナジーする効果が多いので、何よりも龍を複数集めることが最優先です。龍があるパックでそれ以外を優先することはほとんどありません。
 ・「夜風の始末屋」「名刀集めの豪族」は、「隷属の龍血」「天喰らう咆哮」と組み合わせることで疾駆を得られ、創世神技の効果で【神威+2】も得られるため大ダメージが狙えて相性がよいです。
@@ -6124,12 +6160,14 @@
 ・天力を扱わないカミなので、天力を固定値で上げるだけのカードはほぼ無駄になります。優先度をかなり下げましょう。
 ・「黄泉帰り」は墓地の貴重な龍を手札に戻して使い回せるため優先度が高いです。
 ・「謀略の囁き」のような除去カードは汎用性が高く、序盤を支えられるのでピックしてよいカードです。
-・「天喰らう咆哮」は墓地に揃った属性の種類数で真価を発揮します。特定の属性に偏らず、なるべく色のバランスを取りながらピックしましょう。</div>
-        </div>
+・「天喰らう咆哮」は墓地に揃った属性の種類数で真価を発揮します。特定の属性に偏らず、なるべく色のバランスを取りながらピックしましょう。</div></div>
+        </section>
+        <section v-else id="pick-yamata-no-orochi" class="howto-section pick-kami-section">
+          <button ref="pickOrochiReveal" class="pick-kami-mystery" aria-label="隠しカミのピック指南を表示" @click="manualRequestOrochi">？</button>
+          <div class="pick-kami-copy"><h2 class="howto-heading"><span>？？？</span><small>隠しカミ</small></h2><p class="howto-body">隠しカミの姿とピック方針は、警告を確認すると表示できます。</p></div>
+        </section>
       </div>
-      <div class="battle-zone-modal-actions">
-        <button class="battle-back-btn" @click="_sfxPlay('cancel'); howToPlayModalOpen = false; hideCardHover()">閉じる</button>
-      </div>
+      <div v-if="manualSpoilerConfirmOpen" class="manual-spoiler-layer" @click.self="manualAnswerOrochi(false)"><div class="manual-spoiler-dialog" role="dialog" aria-modal="true" aria-labelledby="pick-spoiler-title" aria-describedby="pick-spoiler-description"><h2 id="pick-spoiler-title">隠しカミを表示しますか？</h2><p id="pick-spoiler-description">隠しカミに関するネタバレを含みます。名前・姿・ピック方針を表示してもよろしいですか？</p><div class="manual-spoiler-actions"><button ref="manualSpoilerNo" @click="manualAnswerOrochi(false)">いいえ</button><button class="manual-spoiler-yes" @click="manualAnswerOrochi(true)">はい</button></div></div></div>
     </div>
   </div>
 
@@ -13445,6 +13483,7 @@ new Vue({
   methods: {
     openPlayManual() {
       this._sfxPlay('decision');
+      this.howToPlayModalOpen = false;
       this.manualOrochiRevealed = false;
       this.manualSpoilerConfirmOpen = false;
       this.manualModalOpen = true;
@@ -13455,20 +13494,38 @@ new Vue({
       this.manualOrochiRevealed = false;
       this.manualModalOpen = false;
     },
+    openPickGuide() {
+      this._sfxPlay('decision');
+      this.manualModalOpen = false;
+      this.manualOrochiRevealed = false;
+      this.manualSpoilerConfirmOpen = false;
+      this.howToPlayModalOpen = true;
+      this.$nextTick(this._howtoAnnotateCardRefs);
+    },
+    closePickGuide() {
+      this._sfxPlay('cancel');
+      this.manualSpoilerConfirmOpen = false;
+      this.manualOrochiRevealed = false;
+      this.howToPlayModalOpen = false;
+      this.hideCardHover();
+    },
     manualRequestOrochi() {
-      if (!this.manualModalOpen || this.manualOrochiRevealed) return;
+      if ((!this.manualModalOpen && !this.howToPlayModalOpen) || this.manualOrochiRevealed) return;
       this._sfxPlay('decision');
       this.manualSpoilerConfirmOpen = true;
       // 表示の意思を確認するまでは、画像・名前を描画しない。初期フォーカスも「いいえ」。
       this.$nextTick(() => { if (this.$refs.manualSpoilerNo) this.$refs.manualSpoilerNo.focus({ preventScroll: true }); });
     },
     manualAnswerOrochi(show) {
-      if (!this.manualModalOpen || !this.manualSpoilerConfirmOpen) return;
+      if ((!this.manualModalOpen && !this.howToPlayModalOpen) || !this.manualSpoilerConfirmOpen) return;
       this.manualOrochiRevealed = show === true;
       this.manualSpoilerConfirmOpen = false;
       this._sfxPlay(show === true ? 'decision' : 'cancel');
       this.$nextTick(() => {
-        const target = this.manualOrochiRevealed ? this.$refs.manualOrochiTitle : this.$refs.manualOrochiReveal;
+        if (this.howToPlayModalOpen && this.manualOrochiRevealed) this._howtoAnnotateCardRefs();
+        const target = this.howToPlayModalOpen
+          ? (this.manualOrochiRevealed ? this.$refs.pickOrochiTitle : this.$refs.pickOrochiReveal)
+          : (this.manualOrochiRevealed ? this.$refs.manualOrochiTitle : this.$refs.manualOrochiReveal);
         if (target) target.focus({ preventScroll: true });
       });
     },
@@ -28781,11 +28838,12 @@ new Vue({
       return warnings;
     },
     onKeyDown(e) {
-      if (this.manualModalOpen) {
+      if (this.manualModalOpen || this.howToPlayModalOpen) {
         if (e.key === 'Escape') {
           e.preventDefault();
           if (this.manualSpoilerConfirmOpen) this.manualAnswerOrochi(false);
-          else this.closePlayManual();
+          else if (this.manualModalOpen) this.closePlayManual();
+          else this.closePickGuide();
         } else if (e.key === 'Tab') this._battleTrapModalFocus(e);
         return;
       }
@@ -28832,7 +28890,7 @@ new Vue({
       if (e.key === "Escape") {
         // 上に重なっているものから順に閉じる
         if (this.manualModalOpen) this.closePlayManual();
-        else if (this.howToPlayModalOpen) { this.howToPlayModalOpen = false; this.hideCardHover(); }
+        else if (this.howToPlayModalOpen) this.closePickGuide();
         else if (this.battleFieldMenu)     this.battleFieldMenu = null;
         else if (this.battleFieldZoneMenu) this.battleFieldZoneMenu = null;
         else if (this.battleTokenPickModal) this.battleTokenPickModal = null;
