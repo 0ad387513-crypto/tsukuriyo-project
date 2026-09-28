@@ -9,6 +9,19 @@ const crypto = require("node:crypto");
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 
+test("each genesis skill selects its own optimized art while skill 1 keeps the eye cut-in", () => {
+  const {DIVINE_SKILL_CUTINS,divineSkillTheme,divineSkillAssetUrls}=require('../divine_effects.js');
+  assert.equal(Object.keys(DIVINE_SKILL_CUTINS).length,10);
+  assert.equal(new Set(Object.values(DIVINE_SKILL_CUTINS)).size,10);
+  for(let no=1;no<=10;no++){
+    const theme=divineSkillTheme({no},2),file=theme.cutin;
+    assert.equal(file,DIVINE_SKILL_CUTINS[no]);assert.equal(theme.kamiNo,String(no));
+    assert.ok(divineSkillAssetUrls({no}).includes(file));
+    assert.ok(fs.statSync(path.join(root,file)).size<600000,file);
+    assert.equal(divineSkillTheme({no},1).cutin,null);
+  }
+});
+
 function localReferences(pattern) {
   return Array.from(html.matchAll(pattern), match => match[1])
     .filter(value => value && !/^(?:https?:|data:|#)/i.test(value))

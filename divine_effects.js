@@ -12,9 +12,21 @@ const DIVINE_SKILL_THEMES = Object.freeze({
   '9': { motif: 'moon', color: '#86d3ff', accent: '#e5d6ff', skills: ['月影へと還る', '凍てつく月が時を止める'] },
   '10': { motif: 'dragon', color: '#e66379', accent: '#ffbf69', skills: ['龍血が封印から溢れる', '八つの影が天を喰らう'] },
 });
+const DIVINE_SKILL_CUTINS = Object.freeze({
+  "1": "kami_cutin/susanoo-resolve-9f4617c3bdb5.webp",
+  "2": "kami_cutin/yamato-takeru-genesis-8973e1681dc1.webp",
+  "3": "kami_cutin/okuninushi-genesis-720a374de6f8.webp",
+  "4": "kami_cutin/takemikazuchi-genesis-14e2af2e60a2.webp",
+  "5": "kami_cutin/omoikane-genesis-edcac629cf30.webp",
+  "6": "kami_cutin/amenouzume-genesis-0ac8f9344349.webp",
+  "7": "kami_cutin/hinokagutsuchi-genesis-ce4ccac1d073.webp",
+  "8": "kami_cutin/amaterasu-genesis-e9f958b952f9.webp",
+  "9": "kami_cutin/tsukuyomi-genesis-f7c1bebfd8e1.webp",
+  "10": "kami_cutin/yamata-no-orochi-genesis-4759df52c6f3.webp"
+});
 function divineSkillTheme(kami, index) {
   const theme = DIVINE_SKILL_THEMES[String(kami && kami.no)] || DIVINE_SKILL_THEMES['8'];
-  return { motif: theme.motif, color: index === 2 && String(kami && kami.no) === '1' ? '#dd354b' : theme.color, accent: theme.accent, label: theme.skills[index === 2 ? 1 : 0], index };
+  return { kamiNo: String(kami && kami.no), cutin: index === 2 ? DIVINE_SKILL_CUTINS[String(kami && kami.no)] : null, motif: theme.motif, color: index === 2 && String(kami && kami.no) === '1' ? '#dd354b' : theme.color, accent: theme.accent, label: theme.skills[index === 2 ? 1 : 0], index };
 }
 
 // Atlas cells are native painted sprites; movements and lighting stay code-driven.
@@ -48,7 +60,7 @@ function divineSkillAssetUrls(kami) {
     '9': ['divine_assets/lunar-relics-ac681e76d45f.webp'],
     '10': ['divine_assets/orochi-awakening-frames-f2d43817643d.webp', 'divine_assets/orochi-seal-paper-8e9e3864d744.webp', 'divine_assets/orochi-torn-seal-29d8da98451b.webp'],
   };
-  return assets[String(kami && kami.no)] || [];
+  return [...new Set([...(assets[String(kami && kami.no)] || []), DIVINE_SKILL_CUTINS[String(kami && kami.no)]].filter(Boolean))];
 }
 function divineTransferStyle(transfer, duration) {
   const from = transfer.from, to = transfer.to;
@@ -159,11 +171,23 @@ if (typeof Vue !== 'undefined') {
     template: '<div class="divine-sprite" :class="\'sprite-\'+name" :style="spriteStyle" aria-hidden="true"></div>',
   });
   Vue.component('divine-skill-art', {
+    methods: { artError(event) { if (!event.target.dataset.fallback) { event.target.dataset.fallback = '1'; event.target.src = 'kami_cutin/' + this.effect.kamiNo + '.webp'; } } },
     props: { effect: Object, layout:Object, targets:Array, survivors:Array, stage: { type: String, default: 'closeup' }, duration: { type: Number, default: 3000 } },
     computed: { volley(){return divineBladeVolley(this.layout,this.survivors || [])}, beastManifestations(){return divineBeastManifestations()},orochiSeals(){return divineOrochiSeals()},thunderBranches(){return divineThunderBranches()},fieldScrolls(){return divineFieldScrolls(this.layout)},thunderSwordStyle(){return divineThunderSwordStyle(this.targets && this.targets[0])} },
     template: `<div class="divine-art divine-painted" :class="['divine-'+effect.motif,'divine-level-'+effect.index,'divine-stage-'+stage]" :style="{'--divine-color':effect.color,'--divine-accent':effect.accent,'--fx-duration':duration+'ms'}" aria-hidden="true">
       <div class="divine-mist"></div><div class="divine-ground"></div>
-      <div class="divine-scene">
+      <div v-if="stage === 'closeup' && effect.index === 2 && effect.cutin" class="genesis-scene">
+        <div class="genesis-horizon"></div>
+        <img class="genesis-hero" :src="effect.cutin" alt="" @error="artError">
+        <div class="genesis-aura-ring"></div>
+        <i v-for="i in 18" :key="'genesis-mote'+i" class="genesis-mote" :style="{'--i':i,'--mote-x':((i*43)%100)+'%','--mote-y':((i*29)%100)+'%','--mote-turn':(i*37)+'deg'}"></i>
+        <div v-if="effect.motif === 'blade' || effect.motif === 'thunder'" class="genesis-slash"></div>
+        <div v-if="effect.motif === 'script'" class="genesis-fate-thread"></div>
+        <div v-if="effect.motif === 'sun'" class="genesis-sunrays"></div>
+        <div v-if="effect.motif === 'moon'" class="genesis-frozen-halo"></div>
+        <template v-if="effect.motif === 'dragon'"><div class="genesis-eclipse"></div><i v-for="i in 8" :key="'seal'+i" class="genesis-broken-seal" :style="{'--i':i}"></i></template>
+      </div>
+      <div v-else class="divine-scene">
         <template v-if="effect.motif === 'storm'">
           <div class="susanoo-resolve-scene"></div><div class="resolve-blade-current"></div><div class="resolve-storm-burst"></div>
           <div v-for="i in 5" :key="'wind'+i" class="scarlet-vortex" :style="{'--i':i}"></div>
@@ -226,4 +250,4 @@ if (typeof Vue !== 'undefined') {
     </div>`,
   });
 }
-if (typeof module !== 'undefined') module.exports = { DIVINE_SKILL_THEMES, divineSkillTheme, divineSkillAssetUrls, DIVINE_SPRITES, divineSpriteStyle, divineTransferStyle, divineBladeVolley, divineThunderBranches, divineFieldScrolls, divineThunderSwordStyle, divineBeastManifestations };
+if (typeof module !== 'undefined') module.exports = { DIVINE_SKILL_THEMES, DIVINE_SKILL_CUTINS, divineSkillTheme, divineSkillAssetUrls, DIVINE_SPRITES, divineSpriteStyle, divineTransferStyle, divineBladeVolley, divineThunderBranches, divineFieldScrolls, divineThunderSwordStyle, divineBeastManifestations };

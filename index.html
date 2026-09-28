@@ -509,13 +509,6 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .deck-controls button:hover { background: #3a3f4d; }
-  .udon-import-btn {
-    flex: 1; padding: 5px; font-size: 12px; cursor: pointer;
-    background: #2a2f3d; border: 1px solid #444; color: #ccc;
-    border-radius: 3px; text-align: center;
-  }
-  .udon-import-btn:hover { background: #3a3f4d; color: #ccc; }
-
   .deck-info-collapse-btn {
     padding: 5px 8px; font-size: 11px; white-space: nowrap;
     color: #9aa; background: #22262f; border: 1px solid #333846; border-radius: 3px; cursor: pointer;
@@ -936,6 +929,7 @@
 
   /* ===== カード画像ホバープレビュー ===== */
   .card-hover-preview {
+    box-sizing: border-box;
     position: fixed; z-index: 900; /* ガイド等のモーダル(400)より上 */
     width: 360px; max-width: calc(100vw - 20px);
     pointer-events: none;
@@ -1439,12 +1433,12 @@
   }
   .game-overlay.cosmic-pick-bg { padding: 12px; }
   .gm-modal.cosmic-pick-panel { box-sizing: border-box; width: 100%; height: calc(100vh - 24px); height: calc(100dvh - 24px); max-height: none; overflow: hidden; background: rgba(12, 16, 32, .48); }
-  .cosmic-pick-panel > .gm-header { flex: none; padding-block: 8px; }
+  .cosmic-pick-panel > .gm-header { flex: none; padding-block: 8px; padding-right: 190px; }
   .cosmic-pick-panel > .gm-draft { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 12px; }
   .gm-draft .gm-draft-head { flex: none; gap: 6px; margin-bottom: 6px; }
   .gm-draft .gm-draft-status { flex: none; padding: 6px; margin-bottom: 6px; }
-  .gm-draft .gm-draft-layout { flex: 1 1 auto; min-height: 0; margin-top: 0; grid-template-columns: 220px minmax(0, 1fr); gap: 14px; align-items: stretch; }
-  .gm-draft .gm-draft-policy { position: static; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .gm-draft .gm-draft-layout { flex: 1 1 auto; min-height: 0; margin-top: 0; grid-template-columns: 280px minmax(0, 1fr); gap: 14px; align-items: stretch; }
+  .gm-draft .gm-draft-policy { position: static; min-height: 0; overflow: visible; padding: 10px; }
   /* 画像は縦横比を保ち、5列×2段の残り高さと列幅の小さい方へ合わせる。 */
   .gm-draft .gm-pack-grid { container-type: size; min-width: 0; min-height: 0; margin: 0; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .gm-draft .gm-pack-card { box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; height: 100%; width: min(100%, calc((100cqh - 66px) * 372 / 1039)); justify-self: center; }
@@ -1452,18 +1446,51 @@
   .gm-draft .gm-pack-caption { flex: none; display: flex; align-items: center; height: 24px; gap: 4px; padding: 0 4px; }
   .gm-draft .gm-pack-name { flex: 1; min-width: 0; padding: 0; font-size: 11px; line-height: 24px; white-space: nowrap; }
   .gm-draft .pick-kind-tag { flex: none; margin: 0; padding: 1px 4px; font-size: 10px; }
-  .gm-draft-policy .gm-draft-kami-strip { grid-template-columns: 1fr; margin-top: 14px; }
-  .gm-draft-policy .gm-draft-kami-mini { grid-template-columns: 54px minmax(0, 1fr); }
-  .gm-draft-policy .gm-draft-kami-thumb { width: 54px; height: 60px; }
+  .gm-draft-policy .gm-draft-kami-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; }
+  .gm-draft-policy .gm-draft-kami-mini { grid-template-columns: 48px minmax(0, 1fr); gap: 4px; padding: 5px; }
+  .gm-draft-policy .gm-draft-kami-name { white-space: normal; overflow: visible; font-size: 12px; line-height: 1.35; word-break: normal; }
+  .gm-draft-kami-seat { font-size: 10px; color: #a9b5ca; }
+  .gm-draft-kami-progress { margin-top: 5px; font-size: 11px; color: #ffdb87; }
+  .gm-draft-kami-mini.done { background: #19302b; box-shadow: inset 0 0 0 1px #5abb8a; }
+  .gm-draft-kami-mini.done .gm-draft-kami-progress { color: #9ce3b3; }
+  .gm-draft-policy .gm-draft-kami-thumb { width: 48px; height: clamp(68px, 11vh, 100px); }
+  .gm-draft-policy .gm-draft-kami-copy { display: contents; }
+  .gm-draft-policy .gm-draft-kami-thumb { grid-column: 1; grid-row: 1 / 3; }
+  .gm-draft-policy .gm-draft-kami-seat { grid-column: 2; grid-row: 1; align-self: end; }
+  .gm-draft-policy .gm-draft-kami-progress { grid-column: 2; grid-row: 2; align-self: start; margin-top: 2px; }
+  .gm-draft-policy .gm-draft-kami-name { grid-column: 1 / -1; grid-row: 3; text-align: center; white-space: nowrap; }
   .gm-draft-policy .gm-pick-status { grid-template-columns: 1fr; gap: 6px; margin-bottom: 0; }
   .draft-kami-figure { margin: 0; }
   .draft-kami-chibi { display: block; width: 100%; height: 170px; object-fit: contain; }
   .guide-chibi-note { display: block; margin: 8px 0 0; color: #b9c6dc; font-size: 12px; line-height: 1.55; text-align: center; }
+  @media (min-width: 761px) and (max-height: 680px) {
+    .gm-draft-policy .gm-draft-kami-strip { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .gm-draft-policy .gm-draft-kami-mini { grid-template-columns: 1fr; justify-items: center; padding: 4px; text-align: center; gap: 2px; }
+    .gm-draft-policy .gm-draft-kami-thumb { grid-column: 1; grid-row: 1; width: 40px; height: 48px; }
+    .gm-draft-policy .gm-draft-kami-seat { grid-column: 1; grid-row: 2; font-size: 9px; }
+    .gm-draft-policy .gm-draft-kami-name { grid-column: 1; grid-row: 3; white-space: normal; font-size: 10px; }
+    .gm-draft-policy .gm-draft-kami-progress { grid-column: 1; grid-row: 4; font-size: 10px; }
+    .gm-draft-policy .draft-strip-note { display: none; }
+    .gm-draft-policy .pick-policy-heading { margin-top: 5px; }
+    .gm-draft-policy .pick-policy-hints { font-size: 11px; line-height: 1.4; }
+  }
   .guide-chibi { width: 170px; margin: 0; }
-  .draft-strip-note { text-align: left; margin: -6px 0 12px; }
+  .draft-strip-note { text-align: left; margin: 8px 0 12px; }
   @media (max-width: 760px) {
-    .gm-draft .gm-draft-layout { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) 150px; gap: 8px; }
+    .cosmic-pick-panel > .gm-header { padding: 46px 10px 8px; gap: 6px; }
+    .gm-draft .gm-draft-layout { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; gap: 8px; }
     .gm-draft .gm-draft-policy { display: block; grid-row: 2; }
+    .gm-draft-policy .gm-draft-kami-strip { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    .gm-draft-policy .gm-draft-kami-mini { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+    .gm-draft-policy .gm-draft-kami-thumb { height: 52px; width: 44px; }
+    .gm-draft-policy .gm-draft-kami-thumb { grid-column: 1; grid-row: 1; }
+    .gm-draft-policy .gm-draft-kami-seat { grid-column: 1; grid-row: 2; }
+    .gm-draft-policy .gm-draft-kami-progress { grid-column: 1; grid-row: 4; }
+    .gm-draft-policy .gm-draft-kami-name { white-space: normal; }
+    .gm-draft-policy .gm-draft-kami-name { font-size: 10px; }
+    .gm-draft-policy .pick-policy-heading { margin-top: 4px; }
+    .gm-draft-policy .pick-policy-hints { font-size: 11px; line-height: 1.4; }
+    .gm-draft-policy .draft-strip-note { display: none; }
     .cosmic-pick-panel > .gm-draft { padding: 8px; }
     .gm-draft .gm-pack-grid { grid-row: 1; gap: 6px; }
     .gm-draft .gm-pack-caption { height: 36px; flex-direction: column; justify-content: center; gap: 0; padding: 0 2px; }
@@ -1829,26 +1856,29 @@
   .mode-detail-back:hover { border-color: #8a95b5; background: rgba(30,36,52,0.85); }
   .mode-detail-panel {
     position: relative; z-index: 1;
-    display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; justify-content: center;
-    width: min(1500px, 96vw); margin-top: 8px;
+    display: grid; grid-template-columns: minmax(0, 620px) minmax(0, 660px); gap: 16px 32px; align-items: start; justify-content: center;
+    width: min(1340px, 96vw); margin-top: 8px;
   }
-  .mode-detail-left { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(620px, 46vw); }
+  .mode-detail-left { display: contents; }
+  .mode-detail-title { grid-column: 1; grid-row: 1; }
   .mode-detail-title { font-size: 22px; font-weight: 800; color: #ffe9a8; letter-spacing: 0.04em; text-align: center; }
   .mode-detail-image {
-    width: min(100%, 62vh); aspect-ratio: 1 / 1; border-radius: 14px;
+    grid-column: 1; grid-row: 2; justify-self: center; width: min(100%, 62vh); aspect-ratio: 1 / 1; border-radius: 14px;
     background-color: #10131c; background-size: cover; background-position: center;
     border: 1px solid rgba(255,255,255,0.15);
     box-shadow: 0 10px 30px rgba(0,0,0,.5);
   }
   .mode-detail-right {
-    flex: 1 1 420px; min-width: 320px; max-width: 660px;
-    display: flex; flex-direction: column; gap: 14px; padding-top: 8px;
+    grid-column: 2; grid-row: 2; min-width: 0; max-width: 660px;
+    display: flex; flex-direction: column; gap: 14px;
   }
   .mode-detail-desc-heading { font-size: 20px; font-weight: 800; color: #fff; }
   .mode-detail-desc-body {
     font-size: clamp(15px, 1.05vw, 18px); line-height: 1.9; color: #cdd3e0;
-    white-space: pre-line; word-break: keep-all; overflow-wrap: normal; line-break: strict;
+    white-space: normal; word-break: normal; overflow-wrap: break-word; line-break: strict;
   }
+  .mode-detail-desc-body p { margin: 0 0 1em; }
+  .mode-detail-desc-body p:last-child { margin-bottom: 0; }
   .mode-detail-start-btn {
     margin-top: auto; padding: 16px 20px; border-radius: 10px; cursor: pointer;
     font-size: 16px; font-weight: 800; letter-spacing: 0.04em; color: #fff;
@@ -1857,8 +1887,8 @@
   }
   .mode-detail-start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(90,187,138,.35); }
   @media (max-width: 700px) {
-    .mode-detail-panel { flex-direction: column; align-items: center; }
-    .mode-detail-right { max-width: min(420px, 90vw); }
+    .mode-detail-panel { grid-template-columns: minmax(0, 1fr); width: min(480px, 90vw); }
+    .mode-detail-right { grid-column: 1; grid-row: 3; max-width: none; }
   }
   /* トップ画面：開発者・動作確認用ツール（折りたたみ） */
   .top-devtools { position: relative; z-index: 1; width: min(420px, 92vw); }
@@ -1892,7 +1922,7 @@
 
   /* ピック指南は画面いっぱいの読書用ウィンドウにし、他のモーダルの寸法は変えない。 */
   .battle-zone-modal.pick-guide-modal { padding: 12px; }
-  .battle-zone-modal-panel.pick-guide-panel { position: relative; box-sizing: border-box; width: 100%; max-width: none; height: calc(100vh - 24px); height: calc(100dvh - 24px); max-height: none; padding: 0; overflow: hidden; }
+  .battle-zone-modal-panel.pick-guide-panel { position: relative; box-sizing: border-box; width: 100%; max-width: none; height: calc(100vh - 24px); height: calc(100dvh - 24px); max-height: none; padding: 0; overflow: hidden; border-color: #765e35; }
   .pick-guide-panel > .manual-header, .pick-guide-nav { flex: none; }
   .pick-guide-nav a { font-size: 14px; padding: 9px 14px; }
   .howto-list.pick-guide-content { flex: 1 1 auto; min-height: 0; max-height: none; margin: 0; padding: 24px 32px; overflow: auto; overscroll-behavior: contain; scroll-behavior: smooth; }
@@ -2815,16 +2845,6 @@
   .gm-battle-hint { margin-top: 10px; font-size: 11px; color: #889; }
   @media (max-width: 640px) { .gm-battle-tables { grid-template-columns: 1fr; } }
 
-  /* ===== ユドナリウム出力ボタン ===== */
-  .udon-export-btn {
-    flex: 1; padding: 5px; font-size: 12px; cursor: pointer;
-    background: #2a3a5a; border: 1px solid #4a6aaa; color: #ace;
-    border-radius: 3px; text-align: center;
-    transition: background 0.12s ease;
-  }
-  .udon-export-btn:hover { background: #3a5080; color: #fff; }
-  .udon-export-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
   /* ===== シールド戦モーダル オーバーレイ ===== */
   .shield-overlay {
     position: fixed; inset: 0; z-index: 200;
@@ -3043,6 +3063,7 @@
 
   /* シールド戦ホバープレビュー（オーバーレイ内部に配置してz-index競合を回避） */
   .sb-hover-popup {
+    box-sizing: border-box;
     position: fixed; z-index: 9999; pointer-events: none;
     width: 440px;
     border-radius: 8px; overflow: hidden;
@@ -5413,7 +5434,7 @@
 <link rel="preload" as="image" href="top_mode_icons/cardlist.webp" fetchpriority="high">
 <link rel="preload" as="image" href="top_mode_icons/genesis4p.webp" fetchpriority="high">
 <link rel="preload" as="image" href="genesis_story/01-five-regions.webp">
-<link rel="preload" as="image" href="top_mode_icons/construct2p-battle-a0853b628972.webp" fetchpriority="high">
+<link rel="preload" as="image" href="top_mode_icons/construct2p-duel-1b931109957b.webp" fetchpriority="high">
 <link rel="preload" as="image" href="top_mode_icons/shield2p-oblong.webp" fetchpriority="high">
 <link rel="stylesheet" href="divine_effects.css">
 </head>
@@ -5540,7 +5561,7 @@
       </div>
       <div class="top-mode-column top-mode-column-center">
         <button class="top-mode-card construct" @click="openModeDetail('construct')">
-          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/construct2p-battle-a0853b628972.webp)' }"></span>
+          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/construct2p-duel-1b931109957b.webp)' }"></span>
           <span class="top-mode-label">理念構築戦</span>
         </button>
         <button class="top-mode-card shield" @click="openModeDetail('shield')">
@@ -5638,7 +5659,7 @@
       </div>
       <div class="mode-detail-right">
         <div class="mode-detail-desc-heading">詳しい説明</div>
-        <div class="mode-detail-desc-body">{{ modeDetailInfo.desc }}</div>
+        <div class="mode-detail-desc-body"><p v-for="(paragraph, i) in modeDetailInfo.desc.split('\n').filter(Boolean)" :key="i">{{ paragraph }}</p></div>
         <button class="mode-detail-start-btn" @click="modeDetailStart">{{ modeDetailInfo.startLabel }}</button>
       </div>
     </div>
@@ -5815,7 +5836,7 @@
           <section id="manual-world" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 01</div><h2>終焉の先に、次の世を</h2></div>
-              <figure class="manual-chapter-mascot"><img src="tutorial_guide/amaterasu-chibi.webp" alt="アマテラスのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(8, $event)" @focus="showGuideKami(8, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
+              <figure class="manual-chapter-mascot"><img src="tutorial_guide/amaterasu-chibi.webp" alt="アマテラスのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
             <p>突如飛来した無数の巨龍は文明を蹂躙し、生命を滅亡の淵へ追いやりました。古き神々は永い死闘の末に巨龍を打ち倒しましたが、その代償として星から生命の息吹は失われます。</p>
             <p>神々が星の深淵で見つけたのは、かつて存在した生命の記憶の残滓――<strong>「レガシー」</strong>。神秘のエネルギー<strong>「星魂」</strong>によってレガシーに命を吹き込めば、新たな世界を創ることができます。</p>
@@ -5825,7 +5846,7 @@
           <section id="manual-goal" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 02</div><h2>ゲームの目的</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/susanoo-chibi.webp" alt="スサノオのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(1, $event)" @focus="showGuideKami(1, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/susanoo-chibi.webp" alt="スサノオのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
             <p>プレイヤーはカミの1人となり、ドラフト形式でカードを集め、自らの理念を体現するデッキを作ります。3回の星戦を終えた時、最も多くの<strong>星魂</strong>を持つプレイヤーが、次の世を創る勝者です。</p>
             <div class="manual-grid">
@@ -5846,7 +5867,7 @@
           <section id="manual-modes" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 03</div><h2>3つの対戦モード</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/okuninushi-chibi.webp" alt="オオクニヌシのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(3, $event)" @focus="showGuideKami(3, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/okuninushi-chibi.webp" alt="オオクニヌシのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
             <p>共通の星戦ルールを、カードの集め方が異なる3つのモードで遊べます。初めて遊ぶ場合は、すぐ対戦できるストラクチャーデッキを使った理念構築戦がおすすめです。</p>
             <div class="manual-mode-grid">
@@ -5860,7 +5881,7 @@
           <section id="manual-cards" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 04</div><h2>カードの種類と見方</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(5, $event)" @focus="showGuideKami(5, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
             <div class="manual-grid">
               <article class="manual-card"><div class="manual-card-icon">👑</div><h3>カミ</h3><p>プレイヤーの分身です。固有の天力トリガーと、神技・創世神技（そうせいじんぎ）を持ちます。メインフェイズ中、1ターンにどちらか1回だけ使用できます。</p></article>
@@ -5896,7 +5917,7 @@
           <section id="manual-flow" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 05</div><h2>創世決戦の流れ</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/yamato-takeru-chibi.webp" alt="ヤマトタケルのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(2, $event)" @focus="showGuideKami(2, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/yamato-takeru-chibi.webp" alt="ヤマトタケルのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
             <div class="manual-flow">
               <div class="manual-flow-step"><span>壱</span><b>神託の儀</b>3枚の候補から、自分のカミを1体選びます。</div>
@@ -5914,7 +5935,7 @@
           <section id="manual-draft" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 06</div><h2>神託・選別・深化</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/amenouzume-chibi.webp" alt="アメノウズメのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(6, $event)" @focus="showGuideKami(6, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/amenouzume-chibi.webp" alt="アメノウズメのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
             <h3>神託の儀</h3>
             <p>プレイヤー1から順に、ランダムに提示された3枚のカミカードから1枚を選びます。選ばなかった2枚は候補へ戻り、次のプレイヤーへ進みます。</p>
@@ -5943,7 +5964,7 @@
           <section id="manual-battle" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 07</div><h2>星戦のルール</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/takemikazuchi-chibi.webp" alt="タケミカヅチのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(4, $event)" @focus="showGuideKami(4, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/takemikazuchi-chibi.webp" alt="タケミカヅチのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
             <h3>組み合わせ</h3>
             <p>創世決戦の星戦は、セッション開始時にランダムな組み合わせが決まります。3ラウンドを通して同じ相手とは重複せず、4人全員が一度ずつ対戦します。各ラウンドの対戦相手は星戦画面で確認できます。</p>
@@ -5995,7 +6016,7 @@
           <section id="manual-keywords" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 08</div><h2>カード用語・キーワード</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/hinokagutsuchi-chibi.webp" alt="ヒノカグツチのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(7, $event)" @focus="showGuideKami(7, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/hinokagutsuchi-chibi.webp" alt="ヒノカグツチのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
             <div class="manual-table-wrap"><table class="manual-table">
               <tbody><tr><th>破壊</th><td>対象のカードをフィールドから墓地へ置きます。</td></tr><tr><th>崩壊</th><td>対象のカードをゲームから取り除き、崩壊エリアへ置きます。</td></tr><tr><th>タップ／アンタップ</th><td>カードを使用済みの横向き状態／使用可能な縦向き状態にします。</td></tr><tr><th>出現時／死亡時</th><td>フィールドに出た時／レガシーがフィールドから墓地へ送られた時に発動します。崩壊では死亡時は発動しません。</td></tr></tbody>
@@ -6022,7 +6043,7 @@
           <section id="manual-faq" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 09</div><h2>細則（Q&amp;A）</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(5, $event)" @focus="showGuideKami(5, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
             <div class="manual-qa"><div class="manual-question">【出現時】などの効果が同時に発生した場合、どのような処理順になりますか。</div><div class="manual-answer">同時に発生した効果は、<strong>ターンプレイヤーから好きな順番</strong>で処理してください。</div></div>
             <div class="manual-qa"><div class="manual-question">傀儡化されたレガシーの【死亡時】効果は、どちらのフィールドで発動しますか。</div><div class="manual-answer">傀儡化したプレイヤー側のフィールドで発動します。手札へ戻す効果を受けた場合は、元々使用していたプレイヤーの手札へ戻ります。</div></div>
@@ -6039,7 +6060,7 @@
           <section id="manual-score" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 10</div><h2>終戦・星魂の集計</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(9, $event)" @focus="showGuideKami(9, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
             <p><strong>星魂 ＝ 星戦の勝利点（1勝につき10）＋ 集めた全カードの変換値</strong>です。デッキに残したカードと、無料返還／省察で星魂に変換したカードをすべて合計します。</p>
             <p>星魂が最も多いプレイヤーが勝者です。同点なら星戦の勝利数が多いプレイヤー、勝利数も同じなら該当プレイヤー同士の星戦に勝ったプレイヤーが上位です。</p>
@@ -6049,16 +6070,16 @@
             <div class="manual-chapter-tag">CHAPTER 11</div>
             <h2>カミと難易度</h2>
             <div class="manual-kami-grid">
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/susanoo-chibi.webp" alt="スサノオのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(1, $event)" @focus="showGuideKami(1, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>スサノオ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>変化を受け入れる、変幻自在の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/yamato-takeru-chibi.webp" alt="ヤマトタケルのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(2, $event)" @focus="showGuideKami(2, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>ヤマトタケル</b><div class="manual-kami-difficulty">難易度 ★★★★★</div><p>他者に依らない、孤高利己の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/okuninushi-chibi.webp" alt="オオクニヌシのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(3, $event)" @focus="showGuideKami(3, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>オオクニヌシ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>すべての生命と繁栄する、他種共存の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/takemikazuchi-chibi.webp" alt="タケミカヅチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(4, $event)" @focus="showGuideKami(4, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>タケミカヅチ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>絶対的な力が支配する、武威震天の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(5, $event)" @focus="showGuideKami(5, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>オモイカネ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>知識を求め理解を深める、温故知新の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/amenouzume-chibi.webp" alt="アメノウズメのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(6, $event)" @focus="showGuideKami(6, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>アメノウズメ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>困難より快楽を求める、悦楽至上の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/hinokagutsuchi-chibi.webp" alt="ヒノカグツチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(7, $event)" @focus="showGuideKami(7, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>ヒノカグツチ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>欲望に素直に生きる、天衣無縫の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="tutorial_guide/amaterasu-chibi.webp" alt="アマテラスのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(8, $event)" @focus="showGuideKami(8, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>アマテラス</b><div class="manual-kami-difficulty">難易度 ★</div><p>慈愛をもって接する、慈悲深厚の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(9, $event)" @focus="showGuideKami(9, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>ツクヨミ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>統制された生命だけの、静寂閑雅の世界を目指すカミ。</p></div></article>
-              <article v-if="manualOrochiRevealed" class="manual-kami manual-kami-secret"><figure class="guide-chibi"><img src="kami_chibi/yamata-no-orochi-chibi.webp" alt="ヤマタノオロチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(10, $event)" @focus="showGuideKami(10, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b ref="manualOrochiTitle" tabindex="-1">ヤマタノオロチ</b><div class="manual-kami-difficulty">難易度 ★</div><p>龍こそ真の支配者とする、龍の世界を目指す邪なる存在。</p><button class="manual-kami-hide" @click="manualHideOrochi">隠す</button></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/susanoo-chibi.webp" alt="スサノオのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>スサノオ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>変化を受け入れる、変幻自在の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/yamato-takeru-chibi.webp" alt="ヤマトタケルのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>ヤマトタケル</b><div class="manual-kami-difficulty">難易度 ★★★★★</div><p>他者に依らない、孤高利己の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/okuninushi-chibi.webp" alt="オオクニヌシのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>オオクニヌシ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>すべての生命と繁栄する、他種共存の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/takemikazuchi-chibi.webp" alt="タケミカヅチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>タケミカヅチ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>絶対的な力が支配する、武威震天の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>オモイカネ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>知識を求め理解を深める、温故知新の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/amenouzume-chibi.webp" alt="アメノウズメのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>アメノウズメ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>困難より快楽を求める、悦楽至上の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/hinokagutsuchi-chibi.webp" alt="ヒノカグツチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>ヒノカグツチ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>欲望に素直に生きる、天衣無縫の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="tutorial_guide/amaterasu-chibi.webp" alt="アマテラスのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>アマテラス</b><div class="manual-kami-difficulty">難易度 ★</div><p>慈愛をもって接する、慈悲深厚の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>ツクヨミ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>統制された生命だけの、静寂閑雅の世界を目指すカミ。</p></div></article>
+              <article v-if="manualOrochiRevealed" class="manual-kami manual-kami-secret"><figure class="guide-chibi"><img src="kami_chibi/yamata-no-orochi-chibi.webp" alt="ヤマタノオロチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b ref="manualOrochiTitle" tabindex="-1">ヤマタノオロチ</b><div class="manual-kami-difficulty">難易度 ★</div><p>龍こそ真の支配者とする、龍の世界を目指す邪なる存在。</p><button class="manual-kami-hide" @click="manualHideOrochi">隠す</button></div></article>
               <button v-else ref="manualOrochiReveal" type="button" class="manual-kami manual-kami-hidden" aria-label="隠しカミを表示" @click="manualRequestOrochi"><span class="manual-kami-mystery" aria-hidden="true">？</span><span class="manual-kami-hidden-copy"><b>？？？</b><span>隠しカミ<br>クリックして表示</span></span></button>
             </div>
             <h3>オンライン操作のショートカット</h3>
@@ -6472,23 +6493,6 @@
           <button @click="saveDeckImage" :disabled="capturing">{{ capturing ? '保存中…' : '画像で保存' }}</button>
           <button @click="clearDeck">デッキをクリア</button>
           <button v-if="!gsPeeking && !shieldPeek" @click="openDeckManager">💾 デッキ管理</button>
-        </div>
-        <div class="deck-controls" style="margin-top:6px;" v-if="!deckDenseView">
-          <button class="udon-import-btn"
-                  @click="$refs.udonFileInput.click()"
-                  :disabled="importing">
-            {{ importing ? '読込中…' : 'ユドナリウム読込' }}
-          </button>
-          <input ref="udonFileInput" type="file" accept=".zip,.xml"
-                 @change="onUdonImport" :disabled="importing" style="display:none;">
-          <button class="udon-export-btn"
-                  @click="onUdonExport"
-                  :disabled="udonExporting || deckEntriesGrouped.length === 0"
-                  title="デッキ40枚＋カミをユドナリウム用zipで出力">
-            {{ udonExporting
-              ? `画像取得中 ${udonProgress.current}/${udonProgress.total}…`
-              : 'ユドナリウム出力' }}
-          </button>
         </div>
       </div>
 
@@ -7112,7 +7116,7 @@
     <!-- シールド戦ホバープレビュー（オーバーレイ内部：z-index競合なし） -->
     <div v-if="sbHoverCard && cardImageUrl(sbHoverCard)"
          class="sb-hover-popup"
-         :style="{ left: sbHoverLeft + 'px', top: sbHoverTop + 'px' }">
+         :style="{ left: sbHoverLeft + 'px', top: sbHoverTop + 'px', width: sbHoverWidth + 'px' }">
       <div class="sb-hp-img"
            :style="{ backgroundImage: 'url(' + cardImageUrl(sbHoverCard) + ')' }">
       </div>
@@ -8719,14 +8723,14 @@
     </div>
   </div>
   <transition name="battle-skill-closeup-fade">
-    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :style="{ zIndex: battleCpuThinking ? 10001 : null, '--fx-duration': _battleMotionMs(battleSkillCloseup.phase === 'animation' ? (battleSkillCloseup.animationDuration || 2400) : 1800)+'ms' }" :class="{ 'divine-cinematic-mode': battleSkillCloseup.phase === 'animation', 'divine-transfer-mode': battleSkillCloseup.phase === 'animation' && battleSkillCloseup.transfers && battleSkillCloseup.transfers.length > 0, 'divine-portrait-mode': battleSkillCloseup.phase === 'portrait', 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }"
+    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :style="{ zIndex: battleCpuThinking ? 10001 : null, '--fx-duration': _battleMotionMs(battleSkillCloseup.phase === 'animation' ? (battleSkillCloseup.animationDuration || 2400) : 1800)+'ms' }" :class="{ 'genesis-dedicated-mode': battleSkillCloseup.dedicatedArt, 'divine-cinematic-mode': battleSkillCloseup.phase === 'animation', 'divine-transfer-mode': battleSkillCloseup.phase === 'animation' && battleSkillCloseup.transfers && battleSkillCloseup.transfers.length > 0, 'divine-portrait-mode': battleSkillCloseup.phase === 'portrait', 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }"
          @click="battleSkillCloseupClickDismiss">
       <divine-skill1-sigil v-if="battleSkillCloseup.mode === 'skill1' && battleSkillCloseup.sigil && battleAnimationSpeed !== 'minimal'" :theme="battleSkillCloseup.sigil" :duration="_battleMotionMs(1800)"></divine-skill1-sigil>
       <divine-skill-art v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'" :effect="battleSkillCloseup.effect" :layout="battleSkillCloseup.layout" :survivors="battleSkillCloseup.survivors" :targets="battleSkillCloseup.targets" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-skill-art>
       <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'"><divine-scroll-transfer v-for="(transfer,i) in battleSkillCloseup.transfers" :key="'scroll-transfer'+i" :transfer="transfer" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-scroll-transfer></template>
       <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'"><divine-target-impact v-for="(rect,i) in battleSkillCloseup.targets" :key="'impact'+i" :rect="rect" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-target-impact></template>
-      <div v-if="battleSkillCloseup.phase === 'animation' && battleSkillCloseup.effect.motif !== 'script'" class="divine-cinematic-title">{{ battleSkillCloseupNameParts.main }}</div>
-      <div v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation' && battleSkillCloseup.effect.motif !== 'script'" class="divine-effect-caption">{{ battleSkillCloseup.effect.label }}</div>
+      <div v-if="battleSkillCloseup.phase === 'animation' && battleSkillCloseup.effect" class="divine-cinematic-title">{{ battleSkillCloseupNameParts.main }}</div>
+      <div v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation' && battleSkillCloseup.effect" class="divine-effect-caption">{{ battleSkillCloseup.effect.label }}</div>
       <div v-if="battleSkillCloseup.phase !== 'animation'" class="battle-skill-closeup-card" :class="{ 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }">
         <div class="battle-skill-closeup-skillname">
           <div class="battle-skill-closeup-skillname-main"
@@ -9278,30 +9282,24 @@
         </div>
         <div class="pick-layout gm-draft-layout">
         <aside v-if="gsMyKamiCard" class="pick-policy gm-draft-policy">
-          <figure class="draft-kami-figure"><img class="draft-kami-chibi" :src="kamiChibiUrl(gsMyKamiCard)" :alt="gsMyKamiCard.name + 'のちびキャラ'" draggable="false" tabindex="0" @mouseenter="showCardHover(gsMyKamiCard, $event, true)" @focus="showCardHover(gsMyKamiCard, $event, true)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
-          <div class="pick-policy-name">{{ fullName(gsMyKamiCard) }}</div>
+          <div class="gm-draft-kami-strip">
+            <div v-for="s in gsDraftKamiSeats" :key="'draftkami'+s.seat" class="gm-draft-kami-mini"
+                 :class="{ me: s.isMe, cpu: s.info && s.info.isCpu, done: s.picked }">
+              <img v-if="s.kamiCard" class="gm-draft-kami-thumb" :src="kamiChibiUrl(s.kamiCard)" :alt="s.kamiCard.name + 'のちびキャラ'" draggable="false" tabindex="0" @mouseenter="showCardHover(s.kamiCard, $event, true)" @focus="showCardHover(s.kamiCard, $event, true)" @mouseleave="hideCardHover" @blur="hideCardHover">
+              <div class="gm-draft-kami-copy">
+                <div class="gm-draft-kami-seat">P{{ s.seat }}<span v-if="s.isMe">（あなた）</span></div>
+                <div class="gm-draft-kami-name">{{ s.kamiCard ? s.kamiCard.name : '—' }}</div>
+                <div class="gm-draft-kami-progress" role="status">{{ s.picked ? '選択済み ✓' : '選択中…' }}</div>
+              </div>
+            </div>
+          </div>
+          <p class="guide-chibi-note draft-strip-note">ちびキャラにカーソルを合わせると<br>カミのカードを表示します。</p>
+          <div class="pick-policy-name">{{ gsMyKamiCard.name }}</div>
           <template v-if="gsMyPickGuide">
             <div class="pick-policy-world">理念「{{ gsMyPickGuide.world }}」</div>
             <div class="pick-policy-heading">ピック方針</div>
-            <ul class="pick-policy-hints">
-              <li v-for="hint in gsMyPickGuide.pick" :key="hint">{{ hint }}</li>
-            </ul>
+            <ul class="pick-policy-hints"><li v-for="hint in gsMyPickGuide.pick" :key="hint">{{ hint }}</li></ul>
           </template>
-          <div class="gm-draft-kami-strip">
-            <div v-for="s in gsSeats" :key="'draftkami'+s.seat" class="gm-draft-kami-mini"
-                 :class="{ me: s.isMe, cpu: s.info && s.info.isCpu }">
-              <img v-if="s.kamiCard" class="gm-draft-kami-thumb" :src="kamiChibiUrl(s.kamiCard)" :alt="s.kamiCard.name + 'のちびキャラ'" draggable="false" tabindex="0" @mouseenter="showCardHover(s.kamiCard, $event, true)" @focus="showCardHover(s.kamiCard, $event, true)" @mouseleave="hideCardHover" @blur="hideCardHover">
-              <div class="gm-draft-kami-name">P{{ s.seat }} {{ s.kamiCard ? fullName(s.kamiCard) : '—' }}</div>
-            </div>
-          </div>
-          <p class="guide-chibi-note draft-strip-note">ちびキャラにカーソルを合わせると、カミのカードを表示します。</p>
-          <div class="gm-pick-status">
-            <div v-for="st in gsDraftSeatStatus" :key="st.seat" class="gm-pick-seat"
-                 :class="{ me: st.isMe, done: st.picked }">
-              <div class="gm-pick-no">P{{ st.seat }} {{ st.name }}<span v-if="st.isMe"> (あなた)</span></div>
-              <div class="gm-pick-kami">{{ st.picked ? '選択済み ✓' : '選択中…' }}</div>
-            </div>
-          </div>
         </aside>
         <div class="gm-pack-grid" :class="{ locked: gsIPickedThisStep }">
           <div v-for="(card, i) in gsMyPackCards" :key="i" class="gm-pack-card"
@@ -9656,7 +9654,7 @@
   <div v-if="hoverCard && cardImageUrl(hoverCard) && !previewCard && !battleCardHoverBlocked()"
        class="card-hover-preview"
        :class="{ 'chp-evolved': hoverCard._evolvedBase && cardImageUrl(hoverCard._evolvedBase) }"
-       :style="{ left: hoverLeft + 'px', top: hoverTop + 'px' }">
+       :style="{ left: hoverLeft + 'px', top: hoverTop + 'px', width: hoverWidth + 'px' }">
     <div class="chp-col">
       <div v-if="hoverCard._evolvedBase && cardImageUrl(hoverCard._evolvedBase)" class="chp-label">進化</div>
       <div class="chp-img" :style="{ backgroundImage: 'url(' + cardImageUrl(hoverCard) + ')' }"></div>
@@ -9832,7 +9830,6 @@
 <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <!-- Firebase SDK（シールド戦 / ゲームセッション用） -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -9845,7 +9842,6 @@
 <script src="firebase.js"></script>
 <script src="sync_core.js"></script>
 <script src="pack_generator.js"></script>
-<script src="udonarium_export.js"></script>
 <script src="shield_battle.js"></script>
 <script src="construct_battle.js"></script>
 <script src="session.js"></script>
@@ -9876,12 +9872,6 @@ const DRIVE_KAMI_FOLDER_NAME  = "カミ";    // カミカード画像フォル�
 const KAMI_ILLUST_MANIFEST_URL = "kami_illustrations/manifest.json";
 // 対戦画面で相手手札に使う「カード裏.png」が入っているフォルダID
 const DRIVE_CARD_BACK_FOLDER_ID = "1IlBk7WDrbhDi1U1sD9ByAesuNLrIxdSH";
-
-// ユドナリウム出力用：カード裏面画像のURL
-// DriveフォルダにカードBACK画像がある場合はそのURL、なければ空欄でOK（裏面なしで出力される）
-// 例: "https://lh3.googleusercontent.com/d/XXXXXX=w600"
-const UDON_CARD_BACK_URL      = "card_back.png";       // 通常カード裏面
-const UDON_KAMI_BACK_URL      = "card_back_kami.png";  // カミカード裏面
 
 // カミ設定シート
 const KAMI_SHEET_RANGE = "カミ設定!A2:O50"; // O列:ぼかしフラグ
@@ -10364,25 +10354,25 @@ const MODE_DETAIL_INFO = {
   cardlist: {
     title: 'カードリスト',
     image: 'top_mode_icons/cardlist.webp',
-    desc: '収録されているカードを、\n画像とカード情報を見ながら確認できます。\n\n色・カード種別・種族・コストなどで絞り込みます。\n目的のカードを素早く探せます。\n\nカードにカーソルを合わせると、\n大きな画像で内容を確認できます。\n\n画面内の「キーワード集」では、\n【疾駆】【守護】【誘】【招来】など、共通能力の詳しい意味を確認できます。',
+    desc: '収録されているカードを、画像とカード情報を見ながら確認できます。\n\n色・カード種別・種族・コストなどで絞り込みます。目的のカードを素早く探せます。\n\nカードにカーソルを合わせると、大きな画像で内容を確認できます。\n\n画面内の「キーワード集」では、【疾駆】【守護】【誘】【招来】など、共通能力の詳しい意味を確認できます。',
     startLabel: 'カードリストを見る',
   },
   game: {
     title: '創世決戦（4人対戦）',
     image: 'top_mode_icons/genesis4p.webp',
-    desc: '4人でロビーに集まって遊ぶ対戦モードです。\nCPUを交えれば、2人からでも開始できます。\n\n① 神託の儀：対戦で使用するカミを選びます。\n② 選別の儀：パックを順番に取り、\n　 デッキ候補を集めます。\n③ 深化の刻：集めたカードから、\n　 使用するデッキを完成させます。\n④ 星戦：組み合わせを変えながら、\n　 3回の対戦を行います。\n⑤ 終戦：獲得した星魂を集計し、\n　 最終順位を決定します。',
+    desc: '4人でロビーに集まって遊ぶ対戦モードです。CPUを交えれば、2人からでも開始できます。\n\n① 神託の儀：対戦で使用するカミを選びます。\n② 選別の儀：パックを順番に取り、デッキ候補を集めます。\n③ 深化の刻：集めたカードから、使用するデッキを完成させます。\n④ 星戦：組み合わせを変えながら、3回の対戦を行います。\n⑤ 終戦：獲得した星魂を集計し、最終順位を決定します。',
     startLabel: '創世決戦を開始する',
   },
   construct: {
     title: '理念構築戦（2人対戦）',
-    image: 'top_mode_icons/construct2p-battle-a0853b628972.webp',
-    desc: '2人で、自由に構築したデッキを使って\n対戦するモードです。\n\nパックのドラフトは行わず、\n全カードプールから35枚を選んでデッキを作ります。\n\n自分で一から構築するほか、\nあらかじめ用意されたストラクチャーデッキを使って、\nすぐに対戦することもできます。',
+    image: 'top_mode_icons/construct2p-duel-1b931109957b.webp',
+    desc: '2人で、自由に構築したデッキを使って対戦するモードです。\n\nパックのドラフトは行わず、全カードプールから35枚を選んでデッキを作ります。\n\n自分で一から構築するほか、あらかじめ用意されたストラクチャーデッキを使って、すぐに対戦することもできます。',
     startLabel: '理念構築戦を開始する',
   },
   shield: {
     title: '星紡ぎ戦（2人対戦）',
     image: 'top_mode_icons/shield2p.webp',
-    desc: '2人でパックを選び、その場で作ったデッキを使って\n対戦するモードです。\n\n① パックを交互に選び、カードを48枚集めます。\n② 対戦で使用するカミを選びます。\n③ 集めた48枚をそのままデッキとして使い、対戦します。\n\n対戦後は、同じデッキで再戦するか、\nパック選択からやり直すかを選べます。',
+    desc: '2人でパックを選び、その場で作ったデッキを使って対戦するモードです。\n\n① パックを交互に選び、カードを48枚集めます。\n② 対戦で使用するカミを選びます。\n③ 集めた48枚をそのままデッキとして使い、対戦します。\n\n対戦後は、同じデッキで再戦するか、パック選択からやり直すかを選べます。',
     startLabel: '星紡ぎ戦を開始する',
   },
 };
@@ -11442,12 +11432,13 @@ new Vue({
     poolSortOpen: false,     // カードプールソートドロップダウンの開閉
     hoverCard: null,         // ホバー中のカード
     hoverLeft: 0,            // ホバープレビューのX座標(px)
+    hoverZoom: 1,
+    hoverWidth: 360,
+    sbHoverZoom: 1,
+    sbHoverWidth: 440,
     hoverTop: 0,             // ホバープレビューのY座標(px)
     baseDevicePixelRatio: window.devicePixelRatio || 1, // 起動時のDPR（ズーム検知の基準）
     revealedSpoilers: {},    // ぼかし解除済みカード { no: true }
-    importing: false,        // ユドナリウムデッキ読込中フラグ
-    udonExporting: false,    // ユドナリウム出力中フラグ
-    udonProgress: { current: 0, total: 0 }, // 出力進捗
 
     /* ===== トップメニュー（ツクリヨオンライン） ===== */
     appView: 'top',    // 'top' | 'cardlist' | 'shield' | 'game' | 'battle'
@@ -13223,6 +13214,9 @@ new Vue({
         picked: !!(d && d.picks && d.picks[n] != null),
         isMe: this.gs.seat === n,
       }));
+    },
+    gsDraftKamiSeats() {
+      return this.gsSeats.map(seat => Object.assign({}, seat, { picked: this.gsDraftSeatStatus.some(status => status.seat === seat.seat && status.picked) }));
     },
     gsPickTimeLimits() {
       const l = (this.gs.data && this.gs.data.pickTimeLimits) || {};
@@ -17463,10 +17457,11 @@ new Vue({
       return cues;
     },
     async _battleShowSkill2Closeup(kami, skillName, remoteTransfers = null, writerSide = 'self', remoteTargets = null) {
-      // 顔だけアップの専用カットイン画像（kami_cutin/{No}.webp|png）があればそれを最優先で使い、
-      // 用意されていなければ .webp→.png→従来の対戦画面用イラストの順にフォールバックする
+      // 創世神技専用の姿と神器を描いたカットインを使う。通常の神技とは別の素材。
+      const effect = divineSkillTheme(kami, 2);
       this.battleSkillCloseup = {
-        effect: divineSkillTheme(kami, 2),
+        effect,
+        dedicatedArt: true,
         phase: 'portrait',
         animationDuration: String(kami && kami.no) === '10' ? 4200 : 2400,
         layout: typeof this._battleDivineStageLayout === 'function' ? this._battleDivineStageLayout(writerSide) : null,
@@ -17474,7 +17469,7 @@ new Vue({
         survivors: String(kami && kami.no) === '2' && typeof this._battleDivineSurvivorCues === 'function' ? this._battleRemoteDivineTargets(this._battleDivineSurvivorCues(),'self') : [],
         transfers: String(kami && kami.no) === '5' && this._battleDivineContext ? (this._battleDivineContext.transfers || []).map(t => Object.assign({},t,{image:this.cardImageUrl(t.card)})) : [],
         mode: kami && String(kami.no) === '10' ? 'orochi-skill2' : 'skill2',
-        imgUrl: kami ? (String(kami.no) === '10' ? 'kami_cutin_eyes/10.png' : `kami_cutin/${kami.no}.webp`) : null,
+        imgUrl: kami ? effect.cutin : null,
         fallbackStage: 0, // 0=カットイン(webp)試行中 1=カットイン(png)試行中 2=従来イラストにフォールバック済み
         kami,
         kamiNickname: kami ? (kami.nickname || '') : '',
@@ -17583,7 +17578,7 @@ new Vue({
     battleSkillCloseupImgError() {
       const c = this.battleSkillCloseup;
       if (!c || !c.kami) return;
-      if (c.mode === 'skill1' || c.mode === 'orochi-seal-four' || c.mode === 'orochi-skill2') {
+      if (c.dedicatedArt || c.mode === 'skill1' || c.mode === 'orochi-seal-four' || c.mode === 'orochi-skill2') {
         if (c.fallbackStage === 0) { c.fallbackStage = 1; c.imgUrl = `kami_cutin/${c.kami.no}.webp`; return; }
         if (c.fallbackStage === 1) { c.fallbackStage = 2; c.imgUrl = `kami_cutin/${c.kami.no}.png`; return; }
         if (c.fallbackStage === 2) { c.fallbackStage = 3; c.imgUrl = this.kamiIllustrationUrl(c.kami); return; }
@@ -28690,10 +28685,12 @@ new Vue({
       if (this.appView !== 'battle' && this.isSpoilerHidden(card) && !(allowKamiSpoiler && card.isKami)) return;
       if (!this.cardImageUrl(card)) return;
       this.hoverCard = card;
+      this.hoverZoom = 1;
       const el = event.currentTarget.closest('.card') || event.currentTarget;
       const rect = el.getBoundingClientRect();
+      this._hoverSourceRect = rect;
       const evolved = !!(card && card._evolvedBase && this.cardImageUrl(card._evolvedBase));
-      const pw = Math.min(evolved ? 484 : 360, Math.max(120, window.innerWidth - 20)); // 小画面でも画面内に収める。
+      const pw = Math.min(evolved ? 484 : 360, Math.max(120, window.innerWidth - 20), (window.innerHeight - 44) * 744 / 1039 * (evolved ? 2 : 1)); // 小画面でも画面内に収める。
       const ph = evolved ? Math.round(240 * 1039 / 744) + 22 : Math.round(pw * 1039 / 744); // カード縦横比
       const margin = 10;
       // 右に出す → 右端が画面外なら左に
@@ -28703,11 +28700,43 @@ new Vue({
       // 縦はカードの中央に合わせる → はみ出したらクランプ
       let top = rect.top + (rect.height - ph) / 2;
       top = Math.max(margin, Math.min(window.innerHeight - ph - margin, top));
+      this.hoverWidth = pw;
       this.hoverLeft = left;
       this.hoverTop = top;
     },
+    cardHoverGeometry(rect, baseWidth, zoom, evolved) {
+      const margin = 10, extra = evolved ? 28 : 4, ratio = 1039 / 744 / (evolved ? 2 : 1);
+      const maxWidth = Math.min(window.innerWidth - 2 * margin, (window.innerHeight - 2 * margin - extra) / ratio);
+      const width = Math.max(40, Math.min(baseWidth * zoom, maxWidth)), height = width * ratio + extra;
+      let left = rect.right + margin;
+      if (left + width > window.innerWidth - margin) left = rect.left - width - margin;
+      left = Math.max(margin, Math.min(window.innerWidth - width - margin, left));
+      const top = Math.max(margin, Math.min(window.innerHeight - height - margin, rect.top + (rect.height - height) / 2));
+      return { width, left, top, zoom: width / baseWidth };
+    },
+    onCardPreviewWheel(event) {
+      if (!event.deltaY || event.ctrlKey || event.metaKey || !this.$el) return;
+      const shield = !!(this.sbHoverCard && this.$el.querySelector('.sb-hover-popup'));
+      const normal = !!(this.hoverCard && !this.previewCard && !this.battleCardHoverBlocked() && this.$el.querySelector('.card-hover-preview'));
+      const rect = shield ? this._sbHoverSourceRect : this._hoverSourceRect;
+      if ((!shield && !normal) || !rect) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const key = shield ? 'sbHover' : 'hover', card = shield ? this.sbHoverCard : this.hoverCard;
+      const evolved = !shield && !!(card._evolvedBase && this.cardImageUrl(card._evolvedBase));
+      const base = shield ? 440 : (evolved ? 484 : 360);
+      const current = this[key + 'Width'] / base;
+      const zoom = Math.max(.5, Math.min(2, current * (event.deltaY < 0 ? 1.12 : 1 / 1.12)));
+      const layout = this.cardHoverGeometry(rect, base, zoom, evolved);
+      this[key + 'Zoom'] = layout.zoom;
+      this[key + 'Width'] = layout.width;
+      this[key + 'Left'] = layout.left;
+      this[key + 'Top'] = layout.top;
+    },
     hideCardHover() {
       this.hoverCard = null;
+      this.hoverZoom = 1;
+      this._hoverSourceRect = null;
     },
     /* 遊び方ガイド内の静的テキストに含まれるカード名を自動検出し、カーソルを当てると
        カードリストと同じホバープレビューが出るようにする。ガイド本文はVueバインディングの
@@ -29242,103 +29271,6 @@ new Vue({
       this.deckManagerOpen = false;
       if (parsed.unresolved) alert(`${parsed.unresolved}件のカードは現在のカードデータに見つからなかったため読み込みから除外しました`);
     },
-    // ユドナリウムのエクスポート（zip/xml）からデッキを読み込む
-    async onUdonImport(ev) {
-      const file = ev.target.files && ev.target.files[0];
-      ev.target.value = ""; // 同じファイル再選択を許可
-      if (!file) return;
-      if (this.allCards.length === 0) {
-        alert("カード情報の読み込みが完了していません。少し待ってから再度お試しください。");
-        return;
-      }
-      this.importing = true;
-      try {
-        // 1) data.xml のテキストを取得（zip なら JSZip で展開）
-        let xmlText = "";
-        if (/\.zip$/i.test(file.name)) {
-          if (typeof JSZip !== "function") throw new Error("zip展開ライブラリの読み込みに失敗しました");
-          const zip = await JSZip.loadAsync(file);
-          const entry = zip.file("data.xml") || zip.file(/data\.xml$/i)[0];
-          if (!entry) throw new Error("zip内に data.xml が見つかりません");
-          xmlText = await entry.async("string");
-        } else {
-          xmlText = await file.text();
-        }
-
-        // 2) XML を解析してカード名を集計
-        const doc = new DOMParser().parseFromString(xmlText, "text/xml");
-        const cardEls = doc.querySelectorAll("card");
-        if (!cardEls.length) throw new Error("デッキ内にカードが見つかりません");
-
-        const nameCounts = {}; // 表示名 -> 枚数
-        cardEls.forEach(cardEl => {
-          // card > data[name=common] > data[name=name]
-          let nm = "";
-          cardEl.querySelectorAll('data[name="name"]').forEach(d => {
-            if (!nm) nm = (d.textContent || "").trim();
-          });
-          if (nm) nameCounts[nm] = (nameCounts[nm] || 0) + 1;
-        });
-
-        // 3) 名前→カード照合用マップ（カード名 と フルネーム の両方をキーに）
-        const clean = s => (s || "").replace(/[​-‍﻿­‎‏]/g, "").trim();
-        const byKey = {};
-        const groupByFull = {}; // フルネーム -> 同名カードNo配列（No昇順）
-        for (const c of this.allCards) {
-          const nameKey = clean(c.name);
-          const fullKey = clean(this.fullName(c));
-          if (!byKey[nameKey]) byKey[nameKey] = c;
-          if (!byKey[fullKey]) byKey[fullKey] = c;
-          (groupByFull[fullKey] = groupByFull[fullKey] || []).push(c);
-        }
-        for (const k in groupByFull) {
-          groupByFull[k].sort((a, b) => parseInt(a.no, 10) - parseInt(b.no, 10));
-        }
-
-        // 4) 照合してデッキを構築（デッキビルダーの上限ルールを適用）
-        //    ・No単位は1枚まで（同名異Noに1枚ずつ分配）
-        //    ・名前グループ合計は返還値ベースの上限（返還値2→2枚、それ以外1枚）
-        //    ・トークン / 上限超過分は除外
-        const newDeck = {};
-        const unmatched = [];
-        let excludedTokens = 0;
-        let excludedOverLimit = 0;
-        for (const dispName in nameCounts) {
-          const rep = byKey[clean(dispName)];
-          if (!rep) { unmatched.push(dispName); continue; }
-          if (rep.isToken) { excludedTokens += nameCounts[dispName]; continue; }
-          const want = nameCounts[dispName];
-          const groupCards = groupByFull[clean(this.fullName(rep))] || [rep];
-          const groupMax = this.maxCopiesFor(rep);          // 返還値ベース上限
-          const allowed = Math.min(want, groupMax, groupCards.length); // 1 No=1枚
-          for (let i = 0; i < allowed; i++) {
-            newDeck[String(groupCards[i].no)] = 1;
-          }
-          if (want > allowed) excludedOverLimit += (want - allowed);
-        }
-
-        const matchedTotal = Object.values(newDeck).reduce((a, b) => a + b, 0);
-        if (matchedTotal === 0) {
-          alert("照合できるカードがありませんでした。\nカード名がスプレッドシートと一致しているか確認してください。");
-          return;
-        }
-
-        // 5) 確認のうえデッキを置き換え
-        let msg = `${matchedTotal}枚のカードを読み込みます。現在のデッキを置き換えますか？`;
-        if (excludedTokens > 0) msg += `\n（トークン ${excludedTokens}枚を除外）`;
-        if (excludedOverLimit > 0) msg += `\n（投入上限超過 ${excludedOverLimit}枚を除外）`;
-        if (unmatched.length) msg += `\n\n照合できなかったカード:\n・${unmatched.join("\n・")}`;
-        if (!confirm(msg)) return;
-
-        this.deck = newDeck;
-        this.returned = {};
-      } catch (e) {
-        console.error("ユドナリウム読込エラー", e);
-        alert("デッキの読み込みに失敗しました。\n" + e.message);
-      } finally {
-        this.importing = false;
-      }
-    },
     categoryCount(cat) {
       return this.deckEntries.filter(e => e.card.category === cat).reduce((s, e) => s + e.count, 0);
     },
@@ -29456,32 +29388,6 @@ new Vue({
         }
       }
     },
-    /* ===== ユドナリウム出力（通常デッキビルダーから） ===== */
-    async onUdonExport() {
-      if (this.udonExporting) return;
-      this._sfxPlay('decision');
-      this.udonExporting = true;
-      this.udonProgress = { current: 0, total: 0 };
-      try {
-        const mainDeck = this.deckEntries.flatMap(e =>
-          Array.from({ length: e.count }, () => e.card)
-        );
-        await exportToUdonarium(
-          mainDeck,
-          this.selectedKami,
-          (card) => this.cardImageUrl(card),
-          null,
-          (cur, tot) => { this.udonProgress = { current: cur, total: tot }; },
-          UDON_CARD_BACK_URL,
-          UDON_KAMI_BACK_URL,
-        );
-      } catch (e) {
-        alert('ユドナリウム出力に失敗しました。\n' + e.message);
-      } finally {
-        this.udonExporting = false;
-      }
-    },
-
     /* ===== シールド戦 ===== */
     openShield() {
       this.shieldOpen = true;
@@ -29493,12 +29399,16 @@ new Vue({
     showSbHover(card, event) {
       if (!this.cardImageUrl(card)) return;
       this.sbHoverCard = card;
+      this.sbHoverZoom = 1;
       const rect   = event.currentTarget.getBoundingClientRect();
-      const pw     = 440;
+      this._sbHoverSourceRect = rect;
+      const pw     = Math.min(440, window.innerWidth - 20, (window.innerHeight - 44) * 744 / 1039);
+      this.sbHoverWidth = pw;
       const ph     = Math.round(pw * 1039 / 744);
       const margin = 10;
       let left = rect.right + margin;
       if (left + pw > window.innerWidth - margin) left = rect.left - pw - margin;
+      left = Math.max(margin, Math.min(window.innerWidth - pw - margin, left));
       let top = rect.top + (rect.height - ph) / 2;
       top = Math.max(margin, Math.min(window.innerHeight - ph - margin, top));
       this.sbHoverLeft = left;
@@ -29506,6 +29416,8 @@ new Vue({
     },
     hideSbHover() {
       this.sbHoverCard = null;
+      this.sbHoverZoom = 1;
+      this._sbHoverSourceRect = null;
     },
     /* パックピック中：取得済みカードをデッキ詳細ビューで確認（可逆）
        returnModeActive = true にして事前返還を可能にする */
@@ -30161,28 +30073,6 @@ new Vue({
       await selectKami(this.sb.roomCode, this.sb.role, String(this.sb.tempKami.no));
     },
 
-    /* シールド戦完了後：ユドナリウム出力 */
-    async onShieldExportUdon() {
-      if (this.udonExporting) return;
-      this.udonExporting = true;
-      this.udonProgress = { current: 0, total: 0 };
-      try {
-        await exportToUdonarium(
-          this.sbMyFinalDeck,
-          this.sbMySelectedKami,
-          (card) => this.cardImageUrl(card),
-          `シールド戦_${this.sb.myName || this.sb.role}`,
-          (cur, tot) => { this.udonProgress = { current: cur, total: tot }; },
-          UDON_CARD_BACK_URL,
-          UDON_KAMI_BACK_URL,
-        );
-      } catch (e) {
-        alert('ユドナリウム出力に失敗しました。\n' + e.message);
-      } finally {
-        this.udonExporting = false;
-      }
-    },
-
     /* シールド戦完了後：通常デッキビルダーに48枚を反映して閉じる */
     onLoadShieldDeckToBuilder() {
       this._sfxPlay('decision');
@@ -30222,6 +30112,7 @@ new Vue({
   },  // /methods
 
   mounted() {
+    window.addEventListener('wheel', this.onCardPreviewWheel, { passive: false, capture: true });
     window.addEventListener('resize', this._battleUpdateNoticeBounds);
     window.addEventListener('scroll', this._battleUpdateNoticeBounds, true);
     this.$watch(() => [this.appView, this.battleToasts.length].join(':'), () => this.$nextTick(this._battleUpdateNoticeBounds), { immediate: true });
@@ -30502,6 +30393,7 @@ new Vue({
     document.addEventListener('visibilitychange', this._onVisibilityChangeForTurnFlash);
   },
   beforeDestroy() {
+    window.removeEventListener('wheel', this.onCardPreviewWheel, true);
     window.removeEventListener('resize', this._battleUpdateNoticeBounds);
     window.removeEventListener('scroll', this._battleUpdateNoticeBounds, true);
     if (this._battleNoticeBoundsObserver) this._battleNoticeBoundsObserver.disconnect();
