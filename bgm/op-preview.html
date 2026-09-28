@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OP曲の試聴</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 20px 16px 48px; background: #0c0d14; color: #eadfca; font-family: 'Hiragino Sans', 'Meiryo', sans-serif; }
+  h1 { margin: 0 0 4px; font-size: 22px; color: #f2cd7a; }
+  .lead { margin: 0 0 16px; font-size: 13px; color: #b9ad94; line-height: 1.7; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  select, button { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid #74684f; background: #242118; color: #f1e5c6; cursor: pointer; }
+  button.primary { border-color: #a9823e; background: linear-gradient(180deg, #6d4d1d, #3b2b17); font-weight: 800; }
+  .stage { position: relative; max-width: 960px; aspect-ratio: 16 / 9; background: #050505; overflow: hidden; border-radius: 8px; }
+  .stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
+  .stage img.on { opacity: 1; animation: hit .5s ease-out; }
+  @keyframes hit { from { filter: brightness(1.8); } to { filter: brightness(1); } }
+  .caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 18px; background: linear-gradient(180deg, transparent, rgba(0,0,0,.85)); font-size: 15px; line-height: 1.6; }
+  .time { font-variant-numeric: tabular-nums; font-size: 14px; color: #f2cd7a; }
+  .timeline { position: relative; max-width: 960px; height: 26px; margin: 10px 0 4px; background: #1c1a22; border-radius: 4px; cursor: pointer; }
+  .timeline .seg { position: absolute; top: 0; bottom: 0; border-left: 2px solid #d8b464; font-size: 10px; padding-left: 3px; color: #b9ad94; overflow: hidden; white-space: nowrap; }
+  .timeline .head { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #ff5a5a; }
+  table { border-collapse: collapse; margin-top: 14px; font-size: 13px; }
+  th, td { border-bottom: 1px solid #2a2530; padding: 5px 10px; text-align: left; }
+  .good { color: #8fe08f; } .weak { color: #e0b060; } .bad { color: #ff7a7a; }
+  .info { font-size: 13px; color: #b9ad94; margin-top: 8px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<h1>創世決戦OP：曲と場面の試聴</h1>
+<p class="lead">候補の曲に合わせて、ゲームと同じ長さで8枚の絵を切り替えます。場面の切り替え（金の線）で音の変化が起きているかを確かめてください。下の表は、各境目で音がどれくらい強く立ち上がっているか（音ハメの目安）を曲から計測したものです。</p>
+<div class="bar">
+  <select id="pick"></select>
+  <button id="play" class="primary">再生</button>
+  <button id="stop">停止</button>
+  <span class="time" id="time">0.00 秒</span>
+</div>
+<div class="stage" id="stage"><div class="caption" id="caption"></div></div>
+<div class="timeline" id="timeline"><div class="head" id="head"></div></div>
+<div class="info" id="info">曲を選んでください。</div>
+<table id="table"></table>
+<script>
+(async () => {
+  const IMAGES = ['01-five-regions', '02-dragon-awakens', '03-world-falls', '04-kami-battle', '05-empty-victory', '06-legacy-found', '07-legacy-council', '08-genesis-decision'];
+  const LABELS = ['五つの種族', '龍の出現', '世界の崩壊', '九柱の戦い', '空しい勝利', 'レガシーの発見', 'カミの議論', '創世決戦へ'];
+  const plan = await (await fetch('genesis-op-elevenlabs-plan.json', { cache: 'no-store' })).json();
+  const durations = plan.composition_plan.sections.map(s => s.duration_ms / 1000);
+  const starts = durations.map((_, i) => durations.slice(0, i).reduce((a, b) => a + b, 0));
+  const total = starts[starts.length - 1] + durations[durations.length - 1];
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), imgs = IMAGES.map(name => { const im = new Image(); im.src = `../genesis_story/${name}.webp`; stage.insertBefore(im, $('caption')); return im; });
+  const tl = $('timeline');
+  starts.forEach((s, i) => { const d = document.createElement('div'); d.className = 'seg'; d.style.left = (s / total * 100) + '%'; d.textContent = `${i + 1} ${LABELS[i]}`; tl.appendChild(d); });
+
+  // 候補の一覧：今のOP曲、元の曲（差し替え済みなら）、作った候補
+  const options = [{ label: '今のOP曲（genesis-op.mp3）', src: 'genesis-op.mp3' }];
+  if ((await fetch('genesis-op.original.mp3', { method: 'HEAD' })).ok) options.push({ label: '差し替え前の元の曲', src: 'genesis-op.original.mp3' });
+  try {
+    const list = await (await fetch('op-candidates/index.json', { cache: 'no-store' })).json();
+    list.slice().reverse().forEach(c => options.push({ label: `候補 ${c.file}（${c.mode === 'prompt' ? 'プロンプト' : '構成プラン'}）`, src: `op-candidates/${c.file}` }));
+  } catch (e) { /* 候補なし */ }
+  options.forEach((o, i) => { const op = document.createElement('option'); op.value = i; op.textContent = o.label; $('pick').appendChild(op); });
+
+  const ctx = new AudioContext();
+  let buffer = null, source = null, startedAt = 0, offset = 0, beatOffset = 0, raf = 0, scene = -1;
+  const pos = () => source ? offset + (ctx.currentTime - startedAt) : offset;
+
+  function analyze(buf) {
+    // 20ms刻みの音量の立ち上がり（オンセット）から、テンポと最初の拍の位置、各境目の強さを測る
+    const sr = buf.sampleRate, hop = Math.round(sr * 0.02), n = Math.floor(buf.length / hop);
+    const chs = Array.from({ length: buf.numberOfChannels }, (_, c) => buf.getChannelData(c));
+    const le = new Float32Array(n);
+    for (let f = 0; f < n; f++) { let s = 0; for (let i = f * hop; i < (f + 1) * hop; i++) { let v = 0; for (const d of chs) v += d[i]; v /= chs.length; s += v * v; } le[f] = Math.log(1e-6 + Math.sqrt(s / hop)); }
+    const on = Array.from(le, (v, i) => i ? Math.max(0, v - le[i - 1]) : 0);
+    const at = t => { const i = Math.round(t / 0.02); return Math.max(on[i - 1] || 0, on[i] || 0, on[i + 1] || 0); };
+    let best = { score: 0 };
+    for (let period = 0.4; period <= 1.2; period += 0.0025) for (let ph = 0; ph < period; ph += 0.01) {
+      let s = 0; for (let t = ph; t < buf.duration - 1; t += period) s += at(t);
+      if (s > best.score) best = { score: s, period, ph };
+    }
+    const mean = on.reduce((a, b) => a + b, 0) / on.length;
+    const rows = starts.slice(1).map((s, i) => { let m = 0, mt = s; for (let t = s - 0.25; t <= s + 0.25; t += 0.02) { const v = at(t); if (v > m) { m = v; mt = t; } } return { scene: i + 2, at: s, peak: mt, ratio: m / mean }; });
+    return { bpm: 60 / best.period, phase: best.ph, rows };
+  }
+
+  async function load() {
+    stop();
+    const o = options[$('pick').value];
+    $('info').textContent = '読み込み・解析中…';
+    buffer = await ctx.decodeAudioData(await (await fetch(o.src, { cache: 'no-store' })).arrayBuffer());
+    const a = analyze(buffer);
+    beatOffset = a.phase % (60 / a.bpm);
+    $('info').innerHTML = `長さ ${buffer.duration.toFixed(2)} 秒 ／ 推定テンポ 約${a.bpm.toFixed(1)} BPM ／ 最初の拍の位置 ${beatOffset.toFixed(2)} 秒（ゲームの GENESIS_STORY_BEAT_OFFSET_SEC の目安）<br>場面の長さの合計は ${total} 秒です。`;
+    $('table').innerHTML = '<tr><th>場面</th><th>切り替え</th><th>いちばん強い音の位置</th><th>強さ（平均比）</th></tr>' + a.rows.map(r => {
+      const cls = r.ratio >= 6 ? 'good' : r.ratio >= 3 ? 'weak' : 'bad';
+      return `<tr><td>${r.scene} ${LABELS[r.scene - 1]}</td><td>${r.at.toFixed(2)} 秒</td><td>${r.peak.toFixed(2)} 秒（${(r.peak - r.at >= 0 ? '+' : '') + (r.peak - r.at).toFixed(2)}）</td><td class="${cls}">${r.ratio.toFixed(1)} 倍</td></tr>`;
+    }).join('');
+    offset = 0; scene = -1; draw();
+  }
+  function play() {
+    if (!buffer || source) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    source = ctx.createBufferSource(); source.buffer = buffer; source.connect(ctx.destination);
+    startedAt = ctx.currentTime; source.start(0, offset);
+    source.onended = () => { if (source) { offset = 0; source = null; } };
+    raf = requestAnimationFrame(loop);
+  }
+  function stop() { if (source) { offset = pos(); const s = source; source = null; s.stop(); } cancelAnimationFrame(raf); }
+  function draw() {
+    const t = pos();
+    // ゲームと同じく「場面の開始秒＋最初の拍の位置」で切り替える
+    let i = 0; while (i + 1 < starts.length && t >= starts[i + 1] + beatOffset) i++;
+    if (i !== scene) { scene = i; imgs.forEach((im, k) => { im.classList.remove('on'); if (k === i) { void im.offsetWidth; im.classList.add('on'); } }); $('caption').textContent = `${i + 1}．${LABELS[i]}`; }
+    $('time').textContent = t.toFixed(2) + ' 秒';
+    $('head').style.left = Math.min(100, t / total * 100) + '%';
+  }
+  function loop() { draw(); if (source) raf = requestAnimationFrame(loop); }
+  tl.addEventListener('click', e => { const r = tl.getBoundingClientRect(); const was = !!source; stop(); offset = Math.max(0, (e.clientX - r.left) / r.width * total); scene = -1; draw(); if (was) play(); });
+  $('pick').addEventListener('change', load);
+  $('play').addEventListener('click', play);
+  $('stop').addEventListener('click', () => { stop(); draw(); });
+  await load();
+})();
+</script>
+</body>
+</html>
