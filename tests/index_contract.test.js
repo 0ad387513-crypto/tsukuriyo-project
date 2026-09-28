@@ -448,7 +448,7 @@ test("Genesis mode opens an eight-scene illustrated world prologue", () => {
   assert.match(html, /aria-label="クリックして次の絵へ進む"/);
   assert.match(html, /@click="genesisStoryStep\(1\)"/);
   assert.match(html, /const GENESIS_STORY_SCENE_DURATION_MS = 10000/);
-  assert.match(html, /const GENESIS_STORY_SCENE_DURATIONS_MS = Object\.freeze\(\[12000, 10000, 12000, 14000, 10000, 10000, 10000, 12000\]\)/);
+  assert.match(html, /const GENESIS_STORY_SCENE_DURATIONS_MS = Object\.freeze\(\[12000, 8000, 16000, 16000, 8000, 8000, 8000, 14000\]\)/);
   assert.match(html, /const GENESIS_STORY_TOTAL_DURATION_MS = GENESIS_STORY_SCENE_DURATIONS_MS\.reduce/);
   assert.equal((html.match(/duration: GENESIS_STORY_SCENE_DURATIONS_MS\[\d\]/g) || []).length, 8);
   assert.match(html, /preload" as="image" href="genesis_story\/01-five-regions\.webp"/);
@@ -483,7 +483,7 @@ test("Genesis prologue synchronizes its dedicated non-looping BGM", () => {
   assert.match(html, /genesisOp:\s*\{[^}]*file:\s*'genesis-op\.mp3'[^}]*category:\s*'story'[^}]*loop:\s*false/);
   assert.match(html, /!\['result', 'story'\]\.includes\(BGM_FILES\[key\]\.category\)/);
   assert.match(html, /async _bgmPlay\(key, options = \{\}\)/);
-  assert.match(html, /source\.start\(startAt, shouldLoop \? 0 : Math\.min\(requestedOffsetSec, maxOffsetSec\)\)/);
+  assert.match(html, /const playedOffsetSec = shouldLoop \? 0 : Math\.min\(requestedOffsetSec, maxOffsetSec\);[\s\S]*source\.start\(startAt, playedOffsetSec\)/);
   assert.match(html, /_genesisStorySceneStartMs\(index\)/);
   assert.match(html, /_genesisStoryCurrentOffsetMs\(\)/);
   assert.match(html, /_genesisStoryPlayBgmAt\(0\)/);

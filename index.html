@@ -1761,9 +1761,11 @@
     letter-spacing: .035em; line-break: strict; word-break: auto-phrase; overflow-wrap: normal;
     text-wrap: balance; text-shadow: 0 2px 5px #000, 0 0 18px #000;
   }
-  .genesis-story-scene-enter-active, .genesis-story-scene-leave-active { transition: opacity .55s ease, transform .55s ease; }
-  .genesis-story-scene-enter-from { opacity: 0; transform: translateX(22px); }
-  .genesis-story-scene-leave-to { opacity: 0; transform: translateX(-22px); }
+  /* 場面は曲の拍で切り替わるので、新しい絵はすぐ前面に出し、前の絵は後ろでゆっくり消す */
+  .genesis-story-scene-enter-active { z-index: 1; transition: opacity .12s ease-out, filter .5s ease-out; }
+  .genesis-story-scene-enter, .genesis-story-scene-enter-from { opacity: 0; filter: brightness(1.8); }
+  .genesis-story-scene-leave-active { z-index: 0; transition: opacity .6s ease; }
+  .genesis-story-scene-leave-to { opacity: 0; }
   @media (max-width: 700px) {
     .genesis-story-overlay { padding: 0; }
     .genesis-story-shell { width: 100vw; height: 100dvh; min-height: 440px; border: 0; border-radius: 0; }
@@ -5614,7 +5616,7 @@
            @click="genesisStoryStep(1)"
            @keydown.enter.prevent="genesisStoryStep(1)"
            @keydown.space.prevent="genesisStoryStep(1)">
-        <transition name="genesis-story-scene" mode="out-in">
+        <transition name="genesis-story-scene">
           <figure class="genesis-story-figure" :key="genesisStoryScene.id">
             <img class="genesis-story-image"
                  :class="{ paused: !genesisStoryPlaying }"
@@ -10909,7 +10911,13 @@ function loadTutorialProgress() {
 
 /* 創世決戦を始める前に自動再生する、約90秒・8枚の紙芝居形式の世界観導入。 */
 const GENESIS_STORY_SCENE_DURATION_MS = 10000;
-const GENESIS_STORY_SCENE_DURATIONS_MS = Object.freeze([12000, 10000, 12000, 14000, 10000, 10000, 10000, 12000]);
+/* 場面の長さは OP曲（bgm/genesis-op.mp3・60BPM・1小節4秒）の展開の切れ目に合わせてある。
+   曲の構成：0〜4秒 導入、4〜20秒 静かな序盤、20〜36秒 低音の厚い展開、36〜52秒 明るく激しい展開、
+   52〜60秒 静かなブレイク、60〜68秒 盛り上げ、68〜84秒 最高潮、84秒〜 締め。
+   場面の切り替えは Web Audio の再生位置で「曲の頭からの秒数＋拍のずれ」に合わせる（_genesisStorySchedule）。
+   曲を差し替えたら、この配列と GENESIS_STORY_BEAT_OFFSET_SEC を曲の小節に合わせて直すこと。 */
+const GENESIS_STORY_SCENE_DURATIONS_MS = Object.freeze([12000, 8000, 16000, 16000, 8000, 8000, 8000, 14000]);
+const GENESIS_STORY_BEAT_OFFSET_SEC = 0.03; // 曲の最初の拍が鳴る位置（音声ファイルの先頭の無音）
 const GENESIS_STORY_TOTAL_DURATION_MS = GENESIS_STORY_SCENE_DURATIONS_MS.reduce((total, duration) => total + duration, 0);
 const GENESIS_STORY_SCENES = Object.freeze([
   Object.freeze({
@@ -13580,7 +13588,23 @@ new Vue({
       }
       return this._genesisStorySceneStartMs(this.genesisStoryIndex) + (duration - remaining);
     },
+    _genesisStoryAudioPosSec() {
+      const clock = this._genesisOpClock;
+      if (!clock || this._bgmPlayingKey !== 'genesisOp' || !this._bgmSourceNodes || !this._bgmSourceNodes.length) return null;
+      return clock.offsetSec + (clock.ctx.currentTime - clock.startAt);
+    },
+    // 次の場面へ切り替えるまでの残り時間。曲が鳴っていれば曲の再生位置から、鳴っていなければ経過時間から求める
+    _genesisStoryRemainingNowMs() {
+      const pos = this._genesisStoryAudioPosSec();
+      if (pos != null) {
+        const nextSec = this._genesisStorySceneStartMs(this.genesisStoryIndex + 1) / 1000 + GENESIS_STORY_BEAT_OFFSET_SEC;
+        return (nextSec - pos) * 1000;
+      }
+      const elapsed = this._genesisStoryStartedAt ? Date.now() - this._genesisStoryStartedAt : 0;
+      return (Number(this.genesisStoryRemainingMs) || 0) - elapsed;
+    },
     _genesisStoryStopBgm() {
+      this._genesisOpClock = null;
       // Decode中でも、この後に遅れて再生が始まらないように読み込みを無効化する。
       this._bgmLoadSeq = (this._bgmLoadSeq || 0) + 1;
       this._bgmStopCurrentSource();
@@ -13607,16 +13631,21 @@ new Vue({
       const wait = Math.max(800, Number(this.genesisStoryRemainingMs) || fallback);
       this.genesisStoryRemainingMs = wait;
       this._genesisStoryStartedAt = Date.now();
-      this._genesisStoryTimer = setTimeout(() => {
+      const tick = () => {
         this._genesisStoryTimer = null;
-        this.genesisStoryStep(1, true);
-      }, wait);
+        if (!this.genesisStoryOpen || !this.genesisStoryPlaying) return;
+        const remaining = this._genesisStoryRemainingNowMs();
+        if (remaining <= 4) { this.genesisStoryStep(1, true); return; }
+        // 曲の読み込み中は短い間隔で様子を見て、再生が始まったら曲の時計に乗り換える
+        const hasAudio = this._genesisStoryAudioPosSec() != null;
+        this._genesisStoryTimer = setTimeout(tick, hasAudio ? Math.max(4, remaining > 60 ? remaining - 40 : remaining) : Math.min(remaining, 100));
+      };
+      this._genesisStoryTimer = setTimeout(tick, Math.min(wait, 100));
     },
     toggleGenesisStoryPlayback() {
       if (!this.genesisStoryOpen) return;
       if (this.genesisStoryPlaying) {
-        const elapsed = this._genesisStoryStartedAt ? Date.now() - this._genesisStoryStartedAt : 0;
-        this.genesisStoryRemainingMs = Math.max(800, this.genesisStoryRemainingMs - elapsed);
+        this.genesisStoryRemainingMs = Math.max(800, this._genesisStoryRemainingNowMs());
         this.genesisStoryPlaying = false;
         this._genesisStoryClearTimer();
         this._genesisStoryStopBgm();
@@ -16552,8 +16581,11 @@ new Vue({
         }
         source.connect(trackGain);
         const maxOffsetSec = Math.max(0, media.buffer.duration - 0.01);
-        source.start(startAt, shouldLoop ? 0 : Math.min(requestedOffsetSec, maxOffsetSec));
+        const playedOffsetSec = shouldLoop ? 0 : Math.min(requestedOffsetSec, maxOffsetSec);
+        source.start(startAt, playedOffsetSec);
         nodes.push(source);
+        // 創世決戦OPは場面の切り替えを曲の拍に合わせるため、再生位置の基準を覚えておく
+        this._genesisOpClock = key === 'genesisOp' ? { ctx, startAt, offsetSec: playedOffsetSec } : null;
       }
       this._bgmSourceNodes = nodes;
     },
