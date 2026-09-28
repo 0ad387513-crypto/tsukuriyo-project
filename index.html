@@ -1439,25 +1439,37 @@
   }
   .game-overlay.cosmic-pick-bg { padding: 12px; }
   .gm-modal.cosmic-pick-panel { box-sizing: border-box; width: 100%; height: calc(100vh - 24px); height: calc(100dvh - 24px); max-height: none; overflow: hidden; background: rgba(12, 16, 32, .48); }
-  .cosmic-pick-panel > .gm-header { flex: none; }
-  .cosmic-pick-panel > .gm-draft { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 24px; }
-  .gm-draft .gm-draft-layout { grid-template-columns: 240px minmax(0, 1fr); gap: 24px; }
-  .gm-draft .gm-draft-policy { position: static; }
-  .gm-draft .gm-pack-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
-  .gm-draft .gm-pack-name { font-size: 13px; line-height: 1.5; white-space: normal; min-height: 39px; }
+  .cosmic-pick-panel > .gm-header { flex: none; padding-block: 8px; }
+  .cosmic-pick-panel > .gm-draft { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 12px; }
+  .gm-draft .gm-draft-head { flex: none; gap: 6px; margin-bottom: 6px; }
+  .gm-draft .gm-draft-status { flex: none; padding: 6px; margin-bottom: 6px; }
+  .gm-draft .gm-draft-layout { flex: 1 1 auto; min-height: 0; margin-top: 0; grid-template-columns: 220px minmax(0, 1fr); gap: 14px; align-items: stretch; }
+  .gm-draft .gm-draft-policy { position: static; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  /* 画像は縦横比を保ち、5列×2段の残り高さと列幅の小さい方へ合わせる。 */
+  .gm-draft .gm-pack-grid { container-type: size; min-width: 0; min-height: 0; margin: 0; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .gm-draft .gm-pack-card { box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; height: 100%; width: min(100%, calc((100cqh - 66px) * 372 / 1039)); justify-self: center; }
+  .gm-draft .gm-pack-img { flex: 1 1 auto; min-height: 0; aspect-ratio: auto; background-size: contain; }
+  .gm-draft .gm-pack-caption { flex: none; display: flex; align-items: center; height: 24px; gap: 4px; padding: 0 4px; }
+  .gm-draft .gm-pack-name { flex: 1; min-width: 0; padding: 0; font-size: 11px; line-height: 24px; white-space: nowrap; }
+  .gm-draft .pick-kind-tag { flex: none; margin: 0; padding: 1px 4px; font-size: 10px; }
+  .gm-draft-policy .gm-draft-kami-strip { grid-template-columns: 1fr; margin-top: 14px; }
+  .gm-draft-policy .gm-draft-kami-mini { grid-template-columns: 54px minmax(0, 1fr); }
+  .gm-draft-policy .gm-draft-kami-thumb { width: 54px; height: 60px; }
+  .gm-draft-policy .gm-pick-status { grid-template-columns: 1fr; gap: 6px; margin-bottom: 0; }
   .draft-kami-figure { margin: 0; }
-  .draft-kami-chibi { display: block; width: 100%; height: 230px; object-fit: contain; }
+  .draft-kami-chibi { display: block; width: 100%; height: 170px; object-fit: contain; }
   .guide-chibi-note { display: block; margin: 8px 0 0; color: #b9c6dc; font-size: 12px; line-height: 1.55; text-align: center; }
   .guide-chibi { width: 170px; margin: 0; }
   .draft-strip-note { text-align: left; margin: -6px 0 12px; }
   @media (max-width: 760px) {
-    .gm-draft .gm-draft-layout { grid-template-columns: 1fr; }
-    .gm-draft .gm-draft-policy { grid-template-columns: 160px minmax(0, 1fr); }
-    .draft-kami-figure { grid-row: span 4; }
-    .draft-kami-chibi { height: 180px; }
-    .gm-draft .gm-pack-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .cosmic-pick-panel > .gm-draft { padding: 16px; }
-    .gm-draft .gm-draft-kami-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .gm-draft .gm-draft-layout { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) 150px; gap: 8px; }
+    .gm-draft .gm-draft-policy { display: block; grid-row: 2; }
+    .cosmic-pick-panel > .gm-draft { padding: 8px; }
+    .gm-draft .gm-pack-grid { grid-row: 1; gap: 6px; }
+    .gm-draft .gm-pack-caption { height: 36px; flex-direction: column; justify-content: center; gap: 0; padding: 0 2px; }
+    .gm-draft .gm-pack-card { width: min(100%, calc((100cqh - 86px) * 372 / 1039)); }
+    .gm-draft .gm-pack-name { flex: none; width: 100%; line-height: 18px; font-size: 10px; }
+    .gm-draft .pick-kind-tag { font-size: 9px; }
   }
   /* ピック画面（創世決戦の選別の儀・チュートリアル外伝で共通）：左にカミのピック方針、右にカード */
   .pick-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; margin-top: 10px; }
@@ -5750,7 +5762,7 @@
         <div class="tutorial-menu-sub">創世決戦で遊ぶ前に · 任意の練習</div>
         <button class="tutorial-lesson side-story" data-tutorial-lesson="draft" :class="{ cleared: tutorialProgress.draft, stamping: tutorialCompletion && tutorialCompletion.stage === 'menuStamp' && tutorialCompletion.lessonId === 'draft' }" :disabled="tutorialLoading" @click="startTutorial('draft')">
           <span class="tutorial-lesson-num">練習</span>
-          <span class="tutorial-lesson-body"><span class="tutorial-lesson-title">選別の練習</span><span class="tutorial-lesson-summary">カードを選ぶ基準を、実際の束から3枚選びながら学びます。</span></span>
+          <span class="tutorial-lesson-body"><span class="tutorial-lesson-title">選別の練習</span><span class="tutorial-lesson-summary">カードを選ぶ基準と、おすすめ表示の意味を、実際に3枚選びながら学びます。</span></span>
           <span v-if="tutorialProgress.draft" class="tutorial-lesson-seal" :class="{ pressing: tutorialCompletion && tutorialCompletion.stage === 'menuStamp' && tutorialCompletion.lessonId === 'draft' }" role="img" aria-label="クリア済み：済の判子">済</span>
           <span v-else class="tutorial-lesson-state">はじめる</span>
         </button>
@@ -8563,7 +8575,7 @@
 
   <!-- ===== チュートリアル外伝：選別の儀（練習用のピック画面） ===== -->
   <div v-if="appView === 'tutorialPick' && tutorialPick" class="tutorial-pick-overlay cosmic-pick-bg">
-    <div class="tutorial-pick-screen gm-body gm-draft">
+    <div class="tutorial-pick-screen gm-body">
       <div class="gm-draft-head">
         <div class="gm-draft-title">
           外伝 選別の儀（練習）<span class="gm-draft-set">束 {{ tutorialPick.packIndex + 1 }} / {{ tutorialPick.packs.length }}</span>
@@ -8591,10 +8603,15 @@
           <div class="gm-draft-status mine">★ あなたのピックです — 束から1枚選んでください（残りは隣へ回ります）</div>
           <div class="gm-pack-grid tutorial-pick-pack">
             <div v-for="card in tutorialPick.pack" :key="'tpk' + card.no" class="gm-pack-card"
-                 :class="'kind-' + cardPickKind(card).key"
+                 :class="['kind-' + cardPickKind(card).key, { 'pick-assist-recommended': tutorialPickRecommendations.nos.includes(String(card.no)) }]"
                  :data-tcard="'pack:' + fullName(card)"
                  @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
                  @click="tutorialPickCard(card)">
+              <div v-if="tutorialPickRecommendations.nos.includes(String(card.no))" class="pick-assist-recommend-overlay"
+                   :title="'おすすめ理由: ' + tutorialPickRecommendations.reasons[String(card.no)].join('・')">
+                <span class="pick-assist-badge">👍</span>
+                <span v-for="reason in tutorialPickRecommendations.reasons[String(card.no)]" :key="reason" class="pick-assist-reason">{{ reason }}</span>
+              </div>
               <div class="gm-pack-img" :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}">
                 <span class="gm-pack-return-overlay" title="このカードの変換値">
                   <span class="gm-soul-icon">★</span><span>×</span><b>{{ Number(card.return) || 0 }}</b>
@@ -9259,14 +9276,6 @@
           <template v-if="!gsIPickedThisStep">★ あなたのピックです — パックから1枚選んでください（残りは隣へ回ります）</template>
           <template v-else>選択しました。他のプレイヤーを待っています…（{{ gsDraftPickedCount }}/4）</template>
         </div>
-        <div class="gm-draft-kami-strip">
-          <div v-for="s in gsSeats" :key="'draftkami'+s.seat" class="gm-draft-kami-mini"
-               :class="{ me: s.isMe, cpu: s.info && s.info.isCpu }">
-            <img v-if="s.kamiCard" class="gm-draft-kami-thumb" :src="kamiChibiUrl(s.kamiCard)" :alt="s.kamiCard.name + 'のちびキャラ'" draggable="false" tabindex="0" @mouseenter="showCardHover(s.kamiCard, $event, true)" @focus="showCardHover(s.kamiCard, $event, true)" @mouseleave="hideCardHover" @blur="hideCardHover">
-            <div class="gm-draft-kami-name">P{{ s.seat }} {{ s.kamiCard ? fullName(s.kamiCard) : '—' }}</div>
-          </div>
-        </div>
-        <p class="guide-chibi-note draft-strip-note">ちびキャラにカーソルを合わせると、カミのカードを表示します。</p>
         <div class="pick-layout gm-draft-layout">
         <aside v-if="gsMyKamiCard" class="pick-policy gm-draft-policy">
           <figure class="draft-kami-figure"><img class="draft-kami-chibi" :src="kamiChibiUrl(gsMyKamiCard)" :alt="gsMyKamiCard.name + 'のちびキャラ'" draggable="false" tabindex="0" @mouseenter="showCardHover(gsMyKamiCard, $event, true)" @focus="showCardHover(gsMyKamiCard, $event, true)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
@@ -9278,6 +9287,21 @@
               <li v-for="hint in gsMyPickGuide.pick" :key="hint">{{ hint }}</li>
             </ul>
           </template>
+          <div class="gm-draft-kami-strip">
+            <div v-for="s in gsSeats" :key="'draftkami'+s.seat" class="gm-draft-kami-mini"
+                 :class="{ me: s.isMe, cpu: s.info && s.info.isCpu }">
+              <img v-if="s.kamiCard" class="gm-draft-kami-thumb" :src="kamiChibiUrl(s.kamiCard)" :alt="s.kamiCard.name + 'のちびキャラ'" draggable="false" tabindex="0" @mouseenter="showCardHover(s.kamiCard, $event, true)" @focus="showCardHover(s.kamiCard, $event, true)" @mouseleave="hideCardHover" @blur="hideCardHover">
+              <div class="gm-draft-kami-name">P{{ s.seat }} {{ s.kamiCard ? fullName(s.kamiCard) : '—' }}</div>
+            </div>
+          </div>
+          <p class="guide-chibi-note draft-strip-note">ちびキャラにカーソルを合わせると、カミのカードを表示します。</p>
+          <div class="gm-pick-status">
+            <div v-for="st in gsDraftSeatStatus" :key="st.seat" class="gm-pick-seat"
+                 :class="{ me: st.isMe, done: st.picked }">
+              <div class="gm-pick-no">P{{ st.seat }} {{ st.name }}<span v-if="st.isMe"> (あなた)</span></div>
+              <div class="gm-pick-kami">{{ st.picked ? '選択済み ✓' : '選択中…' }}</div>
+            </div>
+          </div>
         </aside>
         <div class="gm-pack-grid" :class="{ locked: gsIPickedThisStep }">
           <div v-for="(card, i) in gsMyPackCards" :key="i" class="gm-pack-card"
@@ -9297,20 +9321,13 @@
                 <span class="gm-soul-icon">★</span><span>×</span><b>{{ gsDraftCardReturnValue(card) }}</b>
               </span>
             </div>
-            <div class="gm-pack-name">{{ fullName(card) }}</div>
-            <div class="pick-kind-tag">{{ cardPickKind(card).label }}</div>
+            <div class="gm-pack-caption" :title="fullName(card)"><div class="gm-pack-name">{{ fullName(card) }}</div><div class="pick-kind-tag">{{ cardPickKind(card).label }}</div></div>
           </div>
         </div>
         </div>
         <div v-if="gsGenesisPickFlash" class="genesis-pick-fly"
              :style="cardImageUrl(gsGenesisPickFlash) ? { backgroundImage: 'url(' + cardImageUrl(gsGenesisPickFlash) + ')' } : {}"></div>
-        <div class="gm-pick-status">
-          <div v-for="st in gsDraftSeatStatus" :key="st.seat" class="gm-pick-seat"
-               :class="{ me: st.isMe, done: st.picked }">
-            <div class="gm-pick-no">P{{ st.seat }} {{ st.name }}<span v-if="st.isMe"> (あなた)</span></div>
-            <div class="gm-pick-kami">{{ st.picked ? '選択済み ✓' : '選択中…' }}</div>
-          </div>
-        </div>
+
       </div>
 
       <!-- ===== 選別の儀 完了 ===== -->
@@ -10412,14 +10429,15 @@ const TUTORIAL_PRACTICE = Object.freeze({
   "title": "選別の練習",
   "kind": "pick",
   "sideStory": true,
-  "summary": "創世決戦の「選別の儀」で、どのカードを選ぶべきか。ユニークと基本カード、龍、星魂の考え方を、ピック画面で学びます。",
+  "summary": "創世決戦の「選別の儀」で、どのカードを選ぶべきか。カードの種類、星魂、おすすめ表示の読み方を、ピック画面で学びます。",
   "learn": [
     "選別の儀",
     "星魂",
     "変換値",
     "ユニークと基本",
     "龍のカード",
-    "理念との同調"
+    "理念との同調",
+    "おすすめの理由"
   ],
   "oppName": "創世決戦",
   "bgm": "senjouNoMai",
@@ -10465,7 +10483,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "focus": "pickSoul"
     },
     { "face": "serious",
-      "say": "カードの右上にある、★のついた数字が「変換値」。0から2まであります。強さだけでなく、この数字もよく見てくださいね。",
+      "say": "カードにある、★のついた数字が「変換値」。0から2まであります。強さだけでなく、この数字もよく見てくださいね。",
       "focus": "pickReturn"
     },
     {
@@ -10495,6 +10513,21 @@ const TUTORIAL_PRACTICE = Object.freeze({
     { "face": "serious",
       "say": "カードを選ぶときに、もう1つ大切なのが、あなたのカミの「理念」。私の場合は【守護】を持つレガシー。理念に同調してくれるカードを集めるほど天力が溜まり、神技を使えるのです。",
       "focus": "pickKami"
+    },
+    {
+      "id": "pick-recommend-kami",
+      "say": "カードの右上にある👍は、今のあなたにおすすめのカード。その隣の言葉は、おすすめする理由です。「カミ」は、選んだカミの天力トリガーや神技、ピック方針と相性がよいことを表していますよ。",
+      "focus": "pickRecommend"
+    },
+    {
+      "id": "pick-recommend-synergy",
+      "say": "「属性」は、すでに集めたカードの色との相性。「種族」は、集めたレガシーの種族や、種族に関わる効果との相性です。これから集めるカードによって、おすすめの理由も変わっていくのですね。",
+      "focus": "pickRecommend"
+    },
+    {
+      "id": "pick-recommend-other",
+      "say": "「コスト」は、デッキに不足しているコスト帯を補えること。「その他」は、カード自体の強さや効果同士の相性などを表します。理由がいくつか並ぶこともありますよ。おすすめは目安ですから、星魂や相手に渡したくないカードも考えて選びましょう。",
+      "focus": "pickRecommend"
     },
     {
       "say": "強さか、星魂か、理念との同調か……。どのカードを選ぶかが、創世決戦の勝負の分かれ目です。さあ、選んでみましょう。",
@@ -10906,6 +10939,7 @@ const TUTORIAL_FOCUS = Object.freeze({
   pickKami: '.tutorial-pick-kami',
   pickPool: '.tutorial-pick-pool',
   pickReturn: '.tutorial-pick-pack .gm-pack-return-overlay@*',
+  pickRecommend: '.tutorial-pick-pack .pick-assist-recommend-overlay@*',
 });
 const TUTORIAL_PROGRESS_STORAGE_KEY = 'tsukuriyo_tutorialProgress';
 /* 台詞を文節ごとに区切る（改行はこの区切りでだけ起こす）。
@@ -11767,6 +11801,14 @@ new Vue({
     tutorialPickGuide() {
       const p = this.tutorialPick;
       return p ? (GS_KAMI_SELECTION_GUIDES[p.kamiNo] || null) : null;
+    },
+    tutorialPickRecommendations() {
+      const p = this.tutorialPick;
+      if (!p || !p.pack.length) return { nos: [], reasons: {} };
+      const ctx = { seat: 1, kamiTags: this.gsCpuKamiAffinityTags(p.kamiNo), pickedCards: p.picks };
+      const scored = p.pack.map(c => { const parts = this.gsCpuScoreBreakdown(c, ctx); return { c, s: parts.total, parts }; });
+      const nos = this.draftRecommendedNos(scored);
+      return { nos, reasons: this.draftRecommendationReasons(scored, nos) };
     },
     tutorialLessons() {
       return TUTORIAL_LESSONS;
@@ -13138,45 +13180,12 @@ new Vue({
        提示枚数は束の残り枚数に応じて可変：7枚以上=3枚、6〜5枚=2枚、4枚以下=1枚、1枚なら0枚。
        さらに、束の平均スコアより十分に優れたカードが無い（＝どれも大差ない）場合はおすすめ自体を出さない。 */
     gsDraftRecommendedCardNos() {
-      if (!this.pickAssistEnabled) return [];
-      const { scored, avg } = this.gsDraftPackScored;
-      if (!scored.length) return [];
-      const total = scored.length;
-      const count = total <= 1 ? 0 : total <= 4 ? 1 : total <= 6 ? 2 : 3;
-      if (count <= 0) return [];
-      const QUALITY_MARGIN = 8; // 平均よりこれだけ優れていなければ「おすすめ」を表示しない
-      const ranked = scored
-        .slice()
-        .sort((a, b) => b.s - a.s)
-        .slice(0, count)
-        .filter(r => (r.s - avg) >= QUALITY_MARGIN);
-      return ranked.map(r => String(r.c.no));
+      return this.pickAssistEnabled ? this.draftRecommendedNos(this.gsDraftPackScored.scored) : [];
     },
     /* おすすめ理由：総合点を「カミ・種族・属性・コスト・その他」に分け、
        同じ束の平均より実際に優先度を押し上げた要素を表示する。 */
     gsDraftRecommendationReasons() {
-      if (!this.pickAssistEnabled) return {};
-      const { scored } = this.gsDraftPackScored;
-      if (!scored.length) return {};
-      const recommended = new Set(this.gsDraftRecommendedCardNos);
-      const keys = ['kami', 'tribe', 'color', 'curve', 'other'];
-      const labels = { kami: 'カミ', tribe: '種族', color: '属性', curve: 'コスト', other: 'その他' };
-      const averages = {};
-      for (const key of keys) {
-        averages[key] = scored.reduce((sum, row) => sum + (row.parts[key] || 0), 0) / scored.length;
-      }
-      const out = {};
-      for (const row of scored) {
-        const no = String(row.c.no);
-        if (!recommended.has(no)) continue;
-        const reasons = keys.filter(key => {
-          const value = row.parts[key] || 0;
-          const raisedAbovePack = value - averages[key] >= 1;
-          return raisedAbovePack && (key === 'other' || value > 0);
-        }).map(key => labels[key]);
-        out[no] = reasons.length ? reasons : ['その他'];
-      }
-      return out;
+      return this.pickAssistEnabled ? this.draftRecommendationReasons(this.gsDraftPackScored.scored, this.gsDraftRecommendedCardNos) : {};
     },
     /* ピック補助：非おすすめ（👎）。束の平均より著しくスコアが低いカードのうち、
        最もスコアが低い1枚にだけ付ける（表示するとしても常に最大1枚）。選択肢が少ない
@@ -14010,6 +14019,43 @@ new Vue({
       this.hideCardHover();
       this.appView = 'top';
       if (!this.bgmAuto) this._bgmAutoPickForView('top');
+    },
+    // 本番と練習で、おすすめの判定と理由を共用する。
+    draftRecommendedNos(scored) {
+      const avg = scored.length ? scored.reduce((sum, row) => sum + row.s, 0) / scored.length : 0;
+      if (!scored.length) return [];
+      const total = scored.length;
+      const count = total <= 1 ? 0 : total <= 4 ? 1 : total <= 6 ? 2 : 3;
+      if (count <= 0) return [];
+      const QUALITY_MARGIN = 8; // 平均よりこれだけ優れていなければ「おすすめ」を表示しない
+      const ranked = scored
+        .slice()
+        .sort((a, b) => b.s - a.s)
+        .slice(0, count)
+        .filter(r => (r.s - avg) >= QUALITY_MARGIN);
+      return ranked.map(r => String(r.c.no));
+    },
+    draftRecommendationReasons(scored, recommendedNos) {
+      if (!scored.length) return {};
+      const recommended = new Set(recommendedNos);
+      const keys = ['kami', 'tribe', 'color', 'curve', 'other'];
+      const labels = { kami: 'カミ', tribe: '種族', color: '属性', curve: 'コスト', other: 'その他' };
+      const averages = {};
+      for (const key of keys) {
+        averages[key] = scored.reduce((sum, row) => sum + (row.parts[key] || 0), 0) / scored.length;
+      }
+      const out = {};
+      for (const row of scored) {
+        const no = String(row.c.no);
+        if (!recommended.has(no)) continue;
+        const reasons = keys.filter(key => {
+          const value = row.parts[key] || 0;
+          const raisedAbovePack = value - averages[key] >= 1;
+          return raisedAbovePack && (key === 'other' || value > 0);
+        }).map(key => labels[key]);
+        out[no] = reasons.length ? reasons : ['その他'];
+      }
+      return out;
     },
     /* 外伝：束からカードを1枚選ぶ（手順で指定したカード以外は案内して受け付けない） */
     tutorialPickCard(card) {

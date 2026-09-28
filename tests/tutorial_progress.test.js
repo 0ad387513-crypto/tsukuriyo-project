@@ -491,6 +491,29 @@ test("generated hand tokens enlarge during battle without revealing spoilers in 
   }
 });
 
+test("pick practice uses current picks for recommendations and shares the real draft reason labels", () => {
+  const guard={no:'1'},synergy={no:'2'},other={no:'3'};
+  const p={kamiNo:'8',pack:[guard,synergy,other],picks:[]};
+  const vm={tutorialPick:p,pickAssistEnabled:false,gsCpuKamiAffinityTags:no=>{assert.equal(no,'8');return ['guard']},
+    draftRecommendedNos:method('draftRecommendedNos','scored'),draftRecommendationReasons:method('draftRecommendationReasons','scored,recommendedNos'),
+    gsCpuScoreBreakdown(card,ctx){
+      assert.equal(ctx.pickedCards,p.picks);assert.deepEqual(ctx.kamiTags,['guard']);
+      const kami=card===guard?24:0,tribe=card===synergy&&ctx.pickedCards.length?18:0,color=tribe?14:0;
+      return {total:10+kami+tribe+color,kami,tribe,color,curve:0,other:10};
+    }};
+  const recommendations=method('tutorialPickRecommendations');
+  let result=recommendations.call(vm);assert.deepEqual(result.nos,['1']);assert.deepEqual(result.reasons['1'],['カミ']);
+  p.picks.push({no:'4',type:'神使',color:'黄'});result=recommendations.call(vm);
+  assert.deepEqual(result.nos,['2']);assert.deepEqual(result.reasons['2'],['種族','属性'],'reasons adapt to cards already picked');
+  p.pack=[];assert.deepEqual(recommendations.call(vm),{nos:[],reasons:{}});
+  assert.deepEqual(vm.draftRecommendedNos([{c:guard,s:100,parts:{}}]),[],'the last card is not recommended by default');
+  vm.gsDraftPackScored={scored:[]};assert.deepEqual(method('gsDraftRecommendedCardNos').call(vm),[],'normal draft still respects disabled assistance');
+  const practice=Function('return '+html.match(/const TUTORIAL_PRACTICE = Object.freeze\(([\s\S]*?)\);\r?\nconst TUTORIAL_LESSONS/)[1])();
+  const explanations=practice.steps.filter(s=>s.id&&s.id.startsWith('pick-recommend-'));
+  assert.equal(explanations.length,3);assert.ok(explanations.every(s=>s.focus==='pickRecommend'));
+  for(const label of ['カミ','属性','種族','コスト','その他'])assert.ok(explanations.some(s=>s.say.includes('「'+label+'」')),label);
+});
+
 test("chibi hover resolves Kami cards and guide approval cannot unlock card-list spoilers", () => {
   const kami={no:'10',isKami:true,spoiler:true},ordinary={no:'10',spoiler:true};
   const screen={innerWidth:390,innerHeight:844};
