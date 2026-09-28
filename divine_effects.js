@@ -24,13 +24,31 @@ const DIVINE_SPRITES = Object.freeze({
   mirror: [0, 2], magatama: [1, 2], dragons: [2, 2], ofuda: [3, 2],
 });
 function divineSpriteStyle(name) {
-  if (name === 'futsunomitama') return { backgroundImage: "url('divine_assets/futsunomitama-seven.png')", backgroundPosition: 'center', backgroundSize: 'contain' };
+  if (name === 'futsunomitama') return { backgroundImage: "url('divine_assets/futsunomitama-seven-453501cd77c5.webp')", backgroundPosition: 'center', backgroundSize: 'contain' };
   if (name === 'kusanagi' || name === 'spiritSword') return {
-    backgroundImage: `url('divine_assets/${name === 'kusanagi' ? 'totsuka-sword' : 'spirit-sword'}.png')`,
+    backgroundImage: name === 'kusanagi' ? "url('divine_assets/totsuka-sword-d380260b8deb.webp')" : "url('divine_assets/spirit-sword-08a642135453.webp')",
     backgroundPosition: 'center', backgroundSize: 'contain',
   };
   const cell = DIVINE_SPRITES[name] || [0, 0];
   return { backgroundPosition: `${cell[0] * 100 / 3}% ${cell[1] * 50}%` };
+}
+
+// 実際に登場するカミの素材だけ先読みするための一覧。演出の内容・タイミングは変えない。
+function divineSkillAssetUrls(kami) {
+  const atlas = 'divine_assets/relic-atlas-0fd1e7d6f3dc.webp';
+  const assets = {
+    '1': ['kami_cutin/susanoo-resolve-9f4617c3bdb5.webp'],
+    '2': ['divine_assets/spirit-sword-08a642135453.webp'],
+    '3': [atlas, 'divine_assets/beast-light-forms-5bdddec3647d.webp'],
+    '4': ['divine_assets/futsunomitama-seven-453501cd77c5.webp'],
+    '5': ['divine_assets/mystic-purple-scroll-bd45e7325132.webp'],
+    '6': [atlas],
+    '7': ['divine_assets/inferno-wave-959a2a61584f.webp', 'divine_assets/flame-slash-frames-f34adc73079d.webp'],
+    '8': [atlas],
+    '9': ['divine_assets/lunar-relics-ac681e76d45f.webp'],
+    '10': ['divine_assets/orochi-awakening-frames-f2d43817643d.webp', 'divine_assets/orochi-seal-paper-8e9e3864d744.webp', 'divine_assets/orochi-torn-seal-29d8da98451b.webp'],
+  };
+  return assets[String(kami && kami.no)] || [];
 }
 function divineTransferStyle(transfer, duration) {
   const from = transfer.from, to = transfer.to;
@@ -208,4 +226,4 @@ if (typeof Vue !== 'undefined') {
     </div>`,
   });
 }
-if (typeof module !== 'undefined') module.exports = { DIVINE_SKILL_THEMES, divineSkillTheme, DIVINE_SPRITES, divineSpriteStyle, divineTransferStyle, divineBladeVolley, divineThunderBranches, divineFieldScrolls, divineThunderSwordStyle, divineBeastManifestations };
+if (typeof module !== 'undefined') module.exports = { DIVINE_SKILL_THEMES, divineSkillTheme, divineSkillAssetUrls, DIVINE_SPRITES, divineSpriteStyle, divineTransferStyle, divineBladeVolley, divineThunderBranches, divineFieldScrolls, divineThunderSwordStyle, divineBeastManifestations };

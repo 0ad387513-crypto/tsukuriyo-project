@@ -92,10 +92,10 @@ test("four-player draft exposes return values and recommendation reasons", () =>
 
 test("four-player milestone cinematics are wired to shared and personal events", () => {
   for (const asset of [
-    "ui_cinematics/kami-summoning-shrine.png",
-    "ui_cinematics/bloom-lotus-closed.png",
-    "ui_cinematics/bloom-lotus-open.png",
-    "ui_cinematics/dies-irae-ritual.png",
+    "ui_cinematics/kami-summoning-shrine-d842e6e43a24.webp",
+    "ui_cinematics/bloom-lotus-closed-3379d5c7ca0c.webp",
+    "ui_cinematics/bloom-lotus-open-0335f0a29407.webp",
+    "ui_cinematics/dies-irae-ritual-706184ae25c0.webp",
   ]) assert.match(html, new RegExp(asset.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(html, /_gsPlayKamiCinematic\(\)/);
   assert.match(html, /_gsPlayBloomCinematic\(\)/);
