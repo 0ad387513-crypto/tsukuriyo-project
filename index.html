@@ -1499,7 +1499,13 @@
   .tutorial-completion.menu-shield { background:transparent; }
   .tutorial-result-overlay { position:fixed; inset:0; z-index:700; display:grid; place-items:center; background:#080a10; }
   .tutorial-ending-art { width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:radial-gradient(ellipse at 50% 45%,#6c492635,#080a10 70%); }
-  .tutorial-ending-image { display:block; width:min(68vh,640px,88vw); height:min(68vh,640px,88vw); object-fit:contain; border-radius:10px; box-shadow:0 0 75px #e9c27825; animation:tutorialEndingIn .5s ease-out both; }
+  /* 祝福の立ち絵：透過画像なので枠は付けず、後ろに金色の光を置く。弾むように現れてから小さく揺れる */
+  .tutorial-ending-figure { position:relative; display:grid; place-items:center; }
+  .tutorial-ending-figure::before { content:''; position:absolute; inset:6% 10%; border-radius:50%; background:radial-gradient(circle, rgba(255,214,130,.34), rgba(255,190,90,.12) 45%, transparent 70%); animation:tutorialEndingGlow 3.2s ease-in-out .6s infinite; pointer-events:none; }
+  .tutorial-ending-image { position:relative; display:block; width:min(68vh,640px,88vw); height:min(68vh,640px,88vw); object-fit:contain; filter:drop-shadow(0 12px 26px rgba(0,0,0,.55)); transform-origin:50% 90%; animation:tutorialEndingPop .6s cubic-bezier(.3,1.5,.5,1) both, tutorialEndingSway 3.2s ease-in-out .6s infinite; }
+  @keyframes tutorialEndingPop { from { opacity:0; transform:translateY(24px) scale(.72); } to { opacity:1; transform:none; } }
+  @keyframes tutorialEndingSway { 25% { transform:translateY(-6px) rotate(-1.5deg); } 50% { transform:none; } 75% { transform:translateY(-6px) rotate(1.5deg); } }
+  @keyframes tutorialEndingGlow { 50% { opacity:.6; transform:scale(1.05); } }
   .tutorial-ending-caption { text-align:center; color:#efce88; font-family:'Yu Mincho',serif; }
   .tutorial-ending-caption strong { display:block; font-size:clamp(18px,3vw,26px); letter-spacing:.16em; }
   .tutorial-ending-caption span { display:block; margin-top:7px; color:#cabda6; font-size:14px; }
@@ -1513,7 +1519,7 @@
   .tutorial-result-overlay .tutorial-ending-image { width:min(58vh,570px,85vw); height:min(58vh,570px,85vw); }
   @keyframes tutorialEndingIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
   @keyframes tutorialSealPress { 0% { opacity:0; transform:translateY(-35px) rotate(-17deg) scale(2.1); filter:blur(2px); } 40% { opacity:1; transform:translateY(2px) rotate(-9deg) scale(.94); filter:blur(0); } 60% { transform:translateY(0) rotate(-9deg) scale(1.05); } 100% { opacity:1; transform:rotate(-9deg) scale(1); } }
-  @media (prefers-reduced-motion:reduce) { .tutorial-ending-image,.tutorial-lesson-seal.pressing { animation:none !important; } }
+  @media (prefers-reduced-motion:reduce) { .tutorial-ending-image,.tutorial-ending-figure::before,.tutorial-lesson-seal.pressing { animation:none !important; } }
   .tutorial-menu { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 16px; background: rgba(4, 6, 12, .72); }
   .tutorial-menu-panel {
     width: min(720px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; padding: 18px;
@@ -11153,12 +11159,12 @@ function buildTutorialFocusSegments(text, glossary, tokens, highlights) {
   });
 }
 
-// 練習終了時はアマテラスだけを映す。通常の勝敗画面とは共有しない。
+// 練習終了時はアマテラス（案内役のデフォルメ）がクラッカーで祝う。通常の勝敗画面とは共有しない。
 Vue.component("tutorial-ending-art", {
   props: { title: { type: String, default: "チュートリアル" }, build: { type: String, default: "" } },
-  computed: { imageUrl() { return "kami_illustrations/アマテラス.webp?v=" + this.build; } },
+  computed: { imageUrl() { return "tutorial_guide/amaterasu-chibi-celebrate.webp?v=" + this.build; } },
   template: '<section class="tutorial-ending-art" aria-label="チュートリアル終了画面">' +
-    '<img class="tutorial-ending-image" :src="imageUrl" alt="微笑むアマテラス">' +
+    '<div class="tutorial-ending-figure"><img class="tutorial-ending-image" :src="imageUrl" alt="クラッカーで祝うアマテラス"></div>' +
     '<div class="tutorial-ending-caption"><strong>よくできました</strong><span>{{ title }} · 練習完了</span></div><slot></slot></section>',
 });
 
