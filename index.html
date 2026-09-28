@@ -1085,7 +1085,7 @@
   .modal-info .mi-stats div { color: #ccc; }
   .modal-info .mi-stats div b { color: #fff; margin-left: 6px; font-size: 20px; }
   .modal-info .mi-text {
-    flex: 1; overflow-y: auto; white-space: pre-wrap;
+    flex: 1; overflow-y: auto; white-space: normal;
     background: #11141c; padding: 16px 18px; border-radius: 6px;
     font-size: 19px; line-height: 1.7; color: #eee;
     min-height: 130px;
@@ -1097,14 +1097,32 @@
   .kami-active-state strong { display: block; color: #ffe0a0; font-size: 15px; }
   .kami-active-state p { margin: 7px 0 0; font-size: 13px; line-height: 1.7; }
   .kami-section:last-child { margin-bottom: 0; }
+  .tutorial-detail-guide {
+    padding: 8px 12px; margin-bottom: 12px; border-left: 3px solid #edc46b;
+    background: #302719; color: #ffe3a0; font-size: 16px; font-weight: 700;
+  }
+  .tutorial-detail-guide span { display: block; color: #d3c3a5; font-size: 12px; font-weight: 400; }
+  .modal-card .tutorial-detail-target {
+    border: 2px solid #edc46b; border-radius: 8px; padding: 10px 12px;
+    background: linear-gradient(125deg, #44331e, #1e1a19);
+    box-shadow: 0 0 15px #edc46b35; box-sizing: border-box;
+  }
+  .modal-card .rt-tutorial-focus {
+    color: #fff3c6; background: #755421; border-bottom: 2px solid #f5d788;
+    border-radius: 0; font-weight: 800;
+    text-decoration-color: #fff3c6; box-decoration-break: clone; -webkit-box-decoration-break: clone;
+  }
+  .kami-skill-kind { color: #edc46b; font-size: 13px; margin-bottom: 4px; }
+  .skill-kind { color: #edc46b; margin-right: 5px; }
   .kami-section-label {
     font-size: 17px; color: #cde; font-weight: 700;
     letter-spacing: 0.04em; margin-bottom: 0;
   }
   .kami-section-body {
     font-size: 17px; line-height: 1.65; color: #eee;
-    white-space: pre-wrap;
+    white-space: normal;
   }
+  .modal-info .mi-text .rich-text { white-space: pre-wrap; }
   .kami-skill-header {
     display: flex; align-items: flex-end;
     justify-content: space-between; gap: 12px;
@@ -1453,6 +1471,25 @@
   .tutorial-lesson.side-story { border-style: dashed; }
   .tutorial-lesson.side-story .tutorial-lesson-num { font-size: 14px; }
   /* ===== チュートリアル：レッスン選択 ===== */
+  .tutorial-completion { position:fixed; inset:0; z-index:1200; display:grid; place-items:center; background:#080a10; touch-action:none; outline:none; }
+  .tutorial-completion.menu-shield { background:transparent; }
+  .tutorial-result-overlay { position:fixed; inset:0; z-index:700; display:grid; place-items:center; background:#080a10; }
+  .tutorial-ending-art { width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:radial-gradient(ellipse at 50% 45%,#6c492635,#080a10 70%); }
+  .tutorial-ending-image { display:block; width:min(68vh,640px,88vw); height:min(68vh,640px,88vw); object-fit:contain; border-radius:10px; box-shadow:0 0 75px #e9c27825; animation:tutorialEndingIn .5s ease-out both; }
+  .tutorial-ending-caption { text-align:center; color:#efce88; font-family:'Yu Mincho',serif; }
+  .tutorial-ending-caption strong { display:block; font-size:clamp(18px,3vw,26px); letter-spacing:.16em; }
+  .tutorial-ending-caption span { display:block; margin-top:7px; color:#cabda6; font-size:14px; }
+  .tutorial-ending-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; padding:0 16px; }
+  .tutorial-ending-actions button,.tutorial-greeting-button { padding:12px 22px; border:1px solid #d8ad58; border-radius:8px; background:#372713; color:#ffe1a0; font-size:15px; font-weight:800; cursor:pointer; }
+  .tutorial-ending-actions .tutorial-next-lesson { background:#e0b65e; color:#281c0b; }
+  .tutorial-ending-actions button:disabled,.tutorial-greeting-button:disabled { opacity:.45; cursor:default; }
+  .tutorial-completion .tutorial-ending-image { width:min(68vh,640px,88vw,calc(100vh - 230px)); height:min(68vh,640px,88vw,calc(100vh - 230px)); }
+  .tutorial-greeting-button { margin-top:10px; padding:8px 16px; }
+  .tutorial-result-overlay .tutorial-ending-art { padding-bottom:100px; box-sizing:border-box; }
+  .tutorial-result-overlay .tutorial-ending-image { width:min(58vh,570px,85vw); height:min(58vh,570px,85vw); }
+  @keyframes tutorialEndingIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes tutorialSealPress { 0% { opacity:0; transform:translateY(-35px) rotate(-17deg) scale(2.1); filter:blur(2px); } 40% { opacity:1; transform:translateY(2px) rotate(-9deg) scale(.94); filter:blur(0); } 60% { transform:translateY(0) rotate(-9deg) scale(1.05); } 100% { opacity:1; transform:rotate(-9deg) scale(1); } }
+  @media (prefers-reduced-motion:reduce) { .tutorial-ending-image,.tutorial-lesson-seal.pressing { animation:none !important; } }
   .tutorial-menu { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 16px; background: rgba(4, 6, 12, .72); }
   .tutorial-menu-panel {
     width: min(720px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; padding: 18px;
@@ -1493,6 +1530,9 @@
   .tutorial-lesson-tags { display: flex; flex-wrap: wrap; gap: 4px; }
   .tutorial-lesson-tags span { padding: 1px 8px; border-radius: 999px; font-size: 11px; color: #f2dca8; border: 1px solid rgba(226, 184, 92, .4); }
   .tutorial-lesson-state { flex: none; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; background: #e2b85c; color: #2a1a0a; }
+  .tutorial-lesson-seal { flex:none; display:grid; place-items:center; width:46px; height:46px; margin:2px 8px; box-sizing:border-box; border:4px double #de5c58; border-radius:4px; color:#eb7770; font-family:'Yu Mincho',serif; font-size:34px; font-weight:900; line-height:1; transform:rotate(-9deg); box-shadow:inset 0 0 0 1px #de5c5844; }
+  .tutorial-lesson-seal.pressing { animation:tutorialSealPress .7s .2s cubic-bezier(.2,.7,.15,1) both; }
+  .tutorial-lesson.stamping { border-color:#e1b761; box-shadow:0 0 18px #e1b76130; }
   .tutorial-lesson.cleared .tutorial-lesson-state { background: transparent; color: #e2b85c; border: 1px solid #e2b85c; }
   @media (max-width: 560px) {
     .tutorial-lesson { flex-wrap: wrap; }
@@ -4234,7 +4274,7 @@
     position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
     flex-direction: column; gap: 0; margin: 0;
   }
-  /* ===== カミ枠の段階表示（自分のみ）：通常=neutral, 神技1可=silver, 第二の神技可=gold点滅 ===== */
+  /* ===== カミ枠の段階表示（自分のみ）：通常=neutral, 神技可=silver, 創世神技可=gold点滅 ===== */
   .kami-portrait { border-color: #3a4258; box-shadow: 0 0 8px rgba(60,80,110,0.35); }
   .kami-portrait.kami-tier-disabled { border-color: #3a4258; box-shadow: 0 0 6px rgba(50,60,80,0.3); }
   .kami-portrait.kami-tier-silver {
@@ -4354,10 +4394,12 @@
   /* 成功報告・状態変化の自動消滅トースト：右上（ヘッダーのボタン行より下）・非ブロッキング・積み重ね表示 */
   .notice-toast-stack {
     position: fixed; top: 58px; right: 12px; z-index: 640;
-    display: flex; flex-direction: column; gap: 6px;
+    max-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
     pointer-events: none; /* 個々のトースト要素だけクリックを受け付ける */
   }
+  .notice-toast-list { display:flex; flex-direction:column; gap:6px; }
   .notice-toast {
+    box-sizing:border-box; flex-shrink:0;
     width: min(300px, 80vw); padding: 10px 14px; border-radius: 8px;
     background: rgba(23,30,45,.94); border: 1px solid #4a5877;
     box-shadow: 0 8px 24px rgba(0,0,0,.5);
@@ -4647,7 +4689,7 @@
     background: radial-gradient(ellipse at center, rgba(255,50,50,0) 40%, rgba(255,25,25,.7) 100%);
     animation-duration: 0.65s;
   }
-  /* 第二の神技（必殺技）発動：デッキビルダーのカミ選択画面を踏まえた、顔だけアップのカードがカットインする演出
+  /* 創世神技（必殺技）発動：デッキビルダーのカミ選択画面を踏まえた、顔だけアップのカードがカットインする演出
      （画面全体を覆う派手なズームではなく、コンパクトな1枚のカードとして中央に出す） */
   .battle-skill-closeup-overlay {
     position: fixed; inset: 0; z-index: 900; pointer-events: auto; cursor: pointer;
@@ -4722,7 +4764,7 @@
   .battle-skill-closeup-fade-leave-active { transition: opacity 0.3s ease; }
   .battle-skill-closeup-fade-leave-to { opacity: 0; }
 
-  /* ===== 神技1：目線だけアップの軽量カットイン（第二の神技と質感を分けるための専用スタイル） ===== */
+  /* ===== 神技：目線だけアップの軽量カットイン（創世神技と質感を分けるための専用スタイル） ===== */
   .battle-skill-closeup-overlay.skill1-mode { background: rgba(2, 3, 6, 0.4); }
   .battle-skill-closeup-card.skill1-mode {
     border-color: #7fd4ff;
@@ -5270,7 +5312,7 @@
 </head>
 <body>
 <div id="app-loading"><div class="app-loading-spinner"></div><div>読み込み中…</div></div>
-<div id="app" v-cloak class="app" @click.capture="tutorialSurfaceClick($event)" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek }">
+<div id="app" v-cloak class="app" @click.capture="tutorialSurfaceClick($event)" @pointerdown.capture="tutorialCompletionInput($event)" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek }">
 
   <!-- ===== タイトル画面：起動直後に一度だけ表示し、クリックでトップメニューへ入る =====
        クリックを挟むことで、ブラウザの自動再生制限で止まっているオーディオも同時に解禁できる。 -->
@@ -5574,35 +5616,48 @@
 
   <!-- ===== プレイガイド（添付説明書の構成を現行ルールとオンライン操作へ合わせて再構成） ===== -->
   <!-- ===== チュートリアル：レッスン選択 ===== -->
+  <!-- 完了の判子。連打が終わるまでは一覧への入力を受け渡さない -->
+  <div v-if="tutorialCompletion" ref="tutorialCompletion" class="tutorial-completion" :class="{ 'menu-shield': tutorialCompletion.stage !== 'ending' }"
+       role="dialog" aria-modal="true" aria-label="チュートリアル完了" tabindex="-1">
+    <tutorial-ending-art v-if="tutorialCompletion.stage === 'ending'" :title="tutorialCompletion.title" :build="BUILD_VERSION">
+      <div class="tutorial-ending-actions">
+        <button v-if="tutorialCompletion.nextLessonId" class="tutorial-next-lesson" data-tutorial-completion-action :disabled="!tutorialCompletion.ready" @click.stop="tutorialChooseCompletion('next')">次のチュートリアルへ：{{ tutorialCompletion.nextTitle }}</button>
+        <button data-tutorial-completion-action :disabled="!tutorialCompletion.ready" @click.stop="tutorialChooseCompletion('menu')">講座一覧へ戻る</button>
+      </div>
+    </tutorial-ending-art>
+  </div>
+
   <div v-if="tutorialMenuOpen" class="tutorial-menu" role="dialog" aria-modal="true" aria-label="チュートリアル" @click.self="_sfxPlay('cancel'); tutorialMenuOpen = false">
     <div class="tutorial-menu-panel">
       <div class="tutorial-menu-head">
         <span class="tutorial-menu-face" aria-hidden="true"></span>
         <div>
           <h3>チュートリアル</h3>
-          <p>基本9・応用4。<wbr>1つずつ短い練習で<wbr>学びましょう。<wbr>どこからでも始められます。</p>
+          <p>基本6・応用4。<wbr>1つずつ短い練習で<wbr>学びましょう。<wbr>どこからでも始められます。</p>
         </div>
         <button class="tutorial-menu-close" @click="_sfxPlay('cancel'); tutorialMenuOpen = false" aria-label="閉じる">✕</button>
       </div>
       <div class="tutorial-menu-list">
         <template v-for="(lesson, li) in tutorialLessons">
-        <div v-if="li === 0 || lesson.category !== tutorialLessons[li - 1].category" :key="'sub' + lesson.id" class="tutorial-menu-sub">{{ lesson.category === 'basic' ? '基本編 · 9つのレッスン' : '応用編 · 4つのレッスン' }}</div>
+        <div v-if="li === 0 || lesson.category !== tutorialLessons[li - 1].category" :key="'sub' + lesson.id" class="tutorial-menu-sub">{{ lesson.category === 'basic' ? '基本編 · 6つのレッスン' : '応用編 · 4つのレッスン' }}</div>
         <button :key="lesson.id" class="tutorial-lesson"
-                :class="{ cleared: tutorialProgress[lesson.id], 'side-story': lesson.sideStory }" :disabled="tutorialLoading" @click="startTutorial(lesson.id)">
+                :data-tutorial-lesson="lesson.id" :class="{ cleared: tutorialProgress[lesson.id], 'side-story': lesson.sideStory, stamping: tutorialCompletion && tutorialCompletion.stage === 'menuStamp' && tutorialCompletion.lessonId === lesson.id }" :disabled="tutorialLoading" @click="startTutorial(lesson.id)">
           <span class="tutorial-lesson-num">{{ lesson.numeral }}</span>
           <span class="tutorial-lesson-body">
             <span class="tutorial-lesson-title">{{ lesson.title }}<span class="tutorial-lesson-opp">{{ lesson.sideStory ? '舞台：創世決戦の選別の儀' : '相手：' + lesson.oppName }}</span></span>
             <span class="tutorial-lesson-summary">{{ lesson.summary }}</span>
             <span class="tutorial-lesson-tags"><span v-for="tag in lesson.learn" :key="tag">{{ tag }}</span></span>
           </span>
-          <span class="tutorial-lesson-state">{{ tutorialProgress[lesson.id] ? 'クリア済み' : (tutorialLoading ? '準備中…' : 'はじめる') }}</span>
+          <span v-if="tutorialProgress[lesson.id]" class="tutorial-lesson-seal" :class="{ pressing: tutorialCompletion && tutorialCompletion.stage === 'menuStamp' && tutorialCompletion.lessonId === lesson.id }" role="img" aria-label="クリア済み：済の判子">済</span>
+          <span v-else class="tutorial-lesson-state">{{ tutorialLoading ? '準備中…' : 'はじめる' }}</span>
         </button>
         </template>
         <div class="tutorial-menu-sub">創世決戦で遊ぶ前に · 任意の練習</div>
-        <button class="tutorial-lesson side-story" :class="{ cleared: tutorialProgress.draft }" :disabled="tutorialLoading" @click="startTutorial('draft')">
+        <button class="tutorial-lesson side-story" data-tutorial-lesson="draft" :class="{ cleared: tutorialProgress.draft, stamping: tutorialCompletion && tutorialCompletion.stage === 'menuStamp' && tutorialCompletion.lessonId === 'draft' }" :disabled="tutorialLoading" @click="startTutorial('draft')">
           <span class="tutorial-lesson-num">練習</span>
           <span class="tutorial-lesson-body"><span class="tutorial-lesson-title">選別の練習</span><span class="tutorial-lesson-summary">カードを選ぶ基準を、実際の束から3枚選びながら学びます。</span></span>
-          <span class="tutorial-lesson-state">{{ tutorialProgress.draft ? 'クリア済み' : 'はじめる' }}</span>
+          <span v-if="tutorialProgress.draft" class="tutorial-lesson-seal" :class="{ pressing: tutorialCompletion && tutorialCompletion.stage === 'menuStamp' && tutorialCompletion.lessonId === 'draft' }" role="img" aria-label="クリア済み：済の判子">済</span>
+          <span v-else class="tutorial-lesson-state">はじめる</span>
         </button>
       </div>
     </div>
@@ -5693,7 +5748,7 @@
             <div class="manual-chapter-tag">CHAPTER 04</div>
             <h2>カードの種類と見方</h2>
             <div class="manual-grid">
-              <article class="manual-card"><div class="manual-card-icon">👑</div><h3>カミ</h3><p>プレイヤーの分身です。固有の天力トリガーと2つの神技を持ちます。神技はメインフェイズ中、1ターンにどちらか1回だけ使用できます。</p></article>
+              <article class="manual-card"><div class="manual-card-icon">👑</div><h3>カミ</h3><p>プレイヤーの分身です。固有の天力トリガーと、神技・創世神技（そうせいじんぎ）を持ちます。メインフェイズ中、1ターンにどちらか1回だけ使用できます。</p></article>
               <article class="manual-card"><div class="manual-card-icon">⚔️</div><h3>レガシー</h3><p>レガシーフィールドに出て戦います。戦闘力で相手レガシーと戦い、神攻力で相手カミへダメージを与えます。</p></article>
               <article class="manual-card"><div class="manual-card-icon">✨</div><h3>オラクル</h3><p>使用すると効果を即座に解決し、その後は墓地へ置かれる使い切りのカードです。</p></article>
               <article class="manual-card"><div class="manual-card-icon">🏺</div><h3>レリック</h3><p>レリックフィールドに置かれ、常在効果や起動効果で戦いを支えます。</p></article>
@@ -5791,7 +5846,7 @@
                 <div><b>④ 自分のレガシー</b><br>手札からこの領域へドラッグして使用します。上限7枚です。</div>
                 <div><b>⑤ 自分のレリック</b><br>手札からこの領域へドラッグして使用します。上限7枚です。</div>
                 <div><b>⑥ 自分の手札</b><br>エンドフェイズ終了時の上限は8枚です。</div>
-                <div><b>⑦ カミとステータス</b><br>ライフ、天力／封印、カミ名、神技を確認します。</div>
+                <div><b>⑦ カミとステータス</b><br>ライフ、天力／封印、カミ名、神技・創世神技を確認します。</div>
                 <div><b>⑧ デッキ／墓地／崩壊</b><br>各領域の枚数を表示。墓地と崩壊はクリックして内容を確認できます。</div>
                 <div><b>⑨ マナとターン</b><br>現在マナ、最大マナ、ターン番号、ターン終了操作を表示します。</div>
               </div>
@@ -5801,7 +5856,7 @@
               <div class="manual-flow-step"><span>1</span><b>ドロー</b>デッキから1枚引く。先攻の第1ターンのみスキップ。</div>
               <div class="manual-flow-step"><span>2</span><b>スタンバイ</b>自分のレガシーとレリックをすべてアンタップ。</div>
               <div class="manual-flow-step"><span>3</span><b>マナ</b>マナ最大値を1増やし、マナを最大値まで回復（上限10）。</div>
-              <div class="manual-flow-step"><span>4</span><b>メイン</b>カード使用、戦闘・神攻、効果、神技を好きな順で行う。</div>
+              <div class="manual-flow-step"><span>4</span><b>メイン</b>カード使用、戦闘・神攻、効果、神技・創世神技を好きな順で行う。</div>
               <div class="manual-flow-step"><span>5</span><b>エンド</b>終了時効果を解決し、手札が9枚以上なら8枚になるまで選んで墓地へ送る。</div>
             </div>
             <h3>メインフェイズでできること</h3>
@@ -5809,7 +5864,7 @@
               <article class="manual-card"><h3>カードの使用</h3><p>コスト分のマナを支払います。レガシー／レリックの各フィールド上限は7枚。オラクルは効果解決後に墓地へ置きます。</p></article>
               <article class="manual-card"><h3>戦闘</h3><p>アンタップ状態のレガシーをタップし、タップ状態の相手レガシーを攻撃。戦闘力の低い側を破壊し、同値なら双方を破壊します。</p></article>
               <article class="manual-card"><h3>神攻</h3><p>レガシーをタップして相手カミを攻撃し、その神攻力だけ相手のライフを減らします。</p></article>
-              <article class="manual-card"><h3>効果・神技</h3><p>起動できるカード効果を使用できます。神技は天力を支払い、1ターンに2つのうちどちらか1回だけ使用できます。第二の神技は、戦局を大きく変える必殺技のようなものです。</p></article>
+              <article class="manual-card"><h3>効果・神技</h3><p>起動できるカード効果を使用できます。神技と創世神技（そうせいじんぎ）は天力を支払って使います。1ターンにどちらか1回だけ使用できます。創世神技は、戦局を大きく変える必殺技のようなものです。</p></article>
             </div>
             <div class="manual-callout blue"><strong>リロール：</strong>手札から使用したカードと同じ色のカード1枚を公開すると、効果解決前に1枚引き、公開したカードをデッキへ戻してシャッフルできます。</div>
             <h3>その他の勝敗ルール</h3>
@@ -5897,8 +5952,8 @@
         </div>
         <div class="howto-section">
           <div class="howto-heading">スサノオ ― 進化・昇華</div>
-          <div class="howto-body">・基本方針として、昇華・進化のカードを優先的にピックしましょう。特に進化は第二の神技を使った後にも使える上ユニーク性も高いので、優先度は高いです。
-・第二の神技発動に必要な天力が少ないので、天力を固定値で上げるカード（約束の光・ミズホ、平穏の祈り手、鐘鳴らしの童など）との相性は最高です。神使が多いので、神使軸でデッキを組むのもありです。
+          <div class="howto-body">・基本方針として、昇華・進化のカードを優先的にピックしましょう。特に進化は創世神技を使った後にも使える上ユニーク性も高いので、優先度は高いです。
+・創世神技発動に必要な天力が少ないので、天力を固定値で上げるカード（約束の光・ミズホ、平穏の祈り手、鐘鳴らしの童など）との相性は最高です。神使が多いので、神使軸でデッキを組むのもありです。
 ・どのレガシーからでも進化できるカード（幽玄の面霊姫、葛ノ葉亭の若女将、千変万化の大妖狐）は最優先でピックしましょう。
 ・昇華のコストを軽減するカード（厳格なる森の長・ハクレン、拒絶の守衛・イズモ）も強力です。種族は人獣のため、こちらに寄せるのもよいでしょう。</div>
         </div>
@@ -5906,25 +5961,25 @@
           <div class="howto-heading">ヤマトタケル ― 同名一切禁止</div>
           <div class="howto-body">・デッキのカードに1枚も被りがないようにする必要があるので、すでに入っているカードのピックは避けましょう。
 ・天力が毎ターン溜まっていくので、天力を固定値で上げるカード（約束の光・ミズホ、平穏の祈り手、鐘鳴らしの童など）との相性は比較的悪く、避けたほうがよいでしょう。
-・神技1で手札補充ができるので、軽めのカードを多くしても手札は尽きにくいです。
-・第二の神技で盤面干渉ができるので、マナ最大値を増やすカードを使う重量級の方針も強力です。
-・第二の神技は相手レガシーを1体残してしまうデメリットがあるので、単体除去のカード（冥土送りの侍女、静かなる謀殺など）を多めにピックしておくとよいでしょう。
+・神技で手札補充ができるので、軽めのカードを多くしても手札は尽きにくいです。
+・創世神技で盤面干渉ができるので、マナ最大値を増やすカードを使う重量級の方針も強力です。
+・創世神技は相手レガシーを1体残してしまうデメリットがあるので、単体除去のカード（冥土送りの侍女、静かなる謀殺など）を多めにピックしておくとよいでしょう。
 ・同じ種族で固めることが難しく他種族寄りのデッキになりやすいので、「平和を願う剣・アヤト」「暁の盟約」「断禍の三重奏」の優先度は高くなります。</div>
         </div>
         <div class="howto-section">
           <div class="howto-heading">オオクニヌシ ― 種族分散</div>
           <div class="howto-body">・他種族がフィールドにいると天力が増加するため、種族が分散するようにデッキを組むことが求められます。
-・第二の神技はレガシーを召喚する効果なので、デッキはレガシーの比率を多くし、強力なレガシーを優先的にピックしましょう。
+・創世神技はレガシーを召喚する効果なので、デッキはレガシーの比率を多くし、強力なレガシーを優先的にピックしましょう。
 ・他種族で組むことに意義があるので、「平和を願う剣・アヤト」「暁の盟約」「断禍の三重奏」は最優先です。
 ・自身と異なる種族のトークンを招来するレガシー（無垢なる信徒・チフユ、約束の光・ミズホ、もふもふ探求者、決別の白槍・ミナト）も最優先でピックしましょう。
-・自身の神技1で人獣を招来できるので、人獣に偏ったピックは避けたほうがよいでしょう。
+・自身の神技で人獣を招来できるので、人獣に偏ったピックは避けたほうがよいでしょう。
 ・複数の種族を並べる必要があるので、コスト7以上の重いカードは避け気味に。
 ・手札切れに備え、「木漏れ日の道場」や「忠臣の予感」もピックしておくとよいでしょう。</div>
         </div>
         <div class="howto-section">
           <div class="howto-heading">タケミカヅチ ― 最高戦闘力</div>
           <div class="howto-body">・戦闘力が最も高いレガシーが自分フィールドにいる必要があるので、【補正+】持ちや素の戦闘力が高いレガシーと相性がよいです。
-・神技1はアンタップしているレガシーとも戦闘できるので、【奇襲】持ち（戦陣の旗手、無貌の忍、白き閃刃・シラトリなど）と相性がよいです。
+・神技はアンタップしているレガシーとも戦闘できるので、【奇襲】持ち（戦陣の旗手、無貌の忍、白き閃刃・シラトリなど）と相性がよいです。
 ・神使は天力上昇や強力な出現時効果を持ちますが戦闘力は低めの傾向があるので、優先度は下がります。
 ・侍にはレリックの数に応じて戦闘力が向上するレガシー（名刀集めの豪族、算盤弾きの刀剣商、千刃の破戒僧、妖刀を抱く乙女など）がおり、強力なレリックと共にピックすると最高の相性です。
 ・「覚悟の出陣」はレリックを多数採用していないと真価を発揮しませんが、侍とレリックを自然にピックできるタケミカヅチなら発揮しやすいので優先度は高いです。
@@ -5957,13 +6012,13 @@
         <div class="howto-section">
           <div class="howto-heading">ヒノカグツチ ― 破壊・【補正-】</div>
           <div class="howto-body">・基本方針として、相手を破壊するカード、もしくは【補正-】をつけるカードを多くピックしましょう。
-・「蠢く陰謀」は神技1で墓地を肥やせるため、【補正-】効果を活かしやすく優先度が高いです。
+・「蠢く陰謀」は神技で墓地を肥やせるため、【補正-】効果を活かしやすく優先度が高いです。
 ・「妖刀を抱く乙女」「二尾の猫女」は最優先です。相手レガシーと相打ちするだけで天力を2得られます。
 ・全体除去カード（恐怖の手記、禁忌の祭壇、熾烈なる戦役、暗躍の妖将・カゲロウ、禍ツ撃、紫爪龍・プルプラなど）は最高の相性なので最優先でピックしましょう。
 ・「貪食の童女」も貴重な低コスト破壊レガシーで、墓地も増やせるため墓地関連カードとの組み合わせもよいです。
 ・総じて妖怪レガシーとの相性がよく、死亡時効果・墓地参照シナジーを活かせます。
 ・「不屈の武者」は墓地が増えることで強くなり、すぐ破壊されるため天力もすぐ溜まるので相性がよいです。
-・「妖界の禍主・マガツヒ」は最優先です。神技1で墓地を溜めやすい上、出現時効果で破壊も行います。
+・「妖界の禍主・マガツヒ」は最優先です。神技で墓地を溜めやすい上、出現時効果で破壊も行います。
 ・「水晶覗きの隠者」は霊視で墓地を肥やせる上、死亡時に紫カード・神使レガシー・除去オラクルを回収できます。紫や除去オラクルを既にピックできているなら優先度はかなり高いです。
 ・「昏き紫の眷属」は墓地を肥やすデッキだと真価を発揮します。ユニークを取り過ぎていなければピックしたいカードです。
 ・「神出鬼没の小鼠」は青/人獣寄りのカードで、このカミの基本方針とはあまり噛み合わないため優先度は低めです。
@@ -5973,11 +6028,11 @@
         <div class="howto-section">
           <div class="howto-heading">アマテラス ― 守護</div>
           <div class="howto-body">・基本方針として、守護を持つレガシーをピックするとよいです。守護を持つトークン（ヨリシロちゃん、巨躯なる獣霊）を招来するカードの優先度も上がります。「獣霊」を招来できるカードは、文言が「いずれかの獣霊」「異なる獣霊N種」等どのような形であっても、選択肢の中に守護持ちの巨躯なる獣霊が含まれ得るため優先度は高いです（厳格なる森の長・ハクレン、晴れ空の門出、もふもふ探求者など）。
-・第二の神技は墓地からカードを蘇生する効果なので、自然と墓地が増える霊視持ちのカードの優先度が少し上がります。
+・創世神技は墓地からカードを蘇生する効果なので、自然と墓地が増える霊視持ちのカードの優先度が少し上がります。
 ・「平穏の祈り手」「鐘鳴らしの童」は召喚するだけで天力が2上がるため優先度がかなり高いです。
 ・ヨリシロちゃんを招来できるカードは相性がよく、その中でも複数招来できる「無垢なる信徒・チフユ」「決別の白槍・ミナト」「陰陽かぶれの犬神」は特に相性がよいです。
 ・神使には守護が多く、ヨリシロちゃんを招来するカードもあるので相性がよく、神使を中心にデッキを組むのもよいでしょう。
-・第二の神技はなんでも墓地から蘇生できる破格の効果なので、なるべくコストの高いカードを蘇生したいです。コストの重いカード全般の優先度は高く、特に守護を持つ「黄角龍・フラウス」は最高の相性です。</div>
+・創世神技はなんでも墓地から蘇生できる破格の効果なので、なるべくコストの高いカードを蘇生したいです。コストの重いカード全般の優先度は高く、特に守護を持つ「黄角龍・フラウス」は最高の相性です。</div>
         </div>
         <div class="howto-section">
           <div class="howto-heading">ツクヨミ ― トークン</div>
@@ -5994,8 +6049,8 @@
           <div class="howto-heading">ヤマタノオロチ ― 龍</div>
           <div class="howto-body">・基本方針として、龍のカードを最優先でピックしましょう。
 ・龍のカードは龍を複数集めた時にシナジーする効果が多いので、何よりも龍を複数集めることが最優先です。龍があるパックでそれ以外を優先することはほとんどありません。
-・「夜風の始末屋」「名刀集めの豪族」は、「隷属の龍血」「天喰らう咆哮」と組み合わせることで疾駆を得られ、第二の神技の効果で【神威+2】も得られるため大ダメージが狙えて相性がよいです。
-・龍の中でも「紅翼龍・ルベル」は特に優先的にピックすべき1枚です。第二の神技の【神威+2】と最高の相性です。
+・「夜風の始末屋」「名刀集めの豪族」は、「隷属の龍血」「天喰らう咆哮」と組み合わせることで疾駆を得られ、創世神技の効果で【神威+2】も得られるため大ダメージが狙えて相性がよいです。
+・龍の中でも「紅翼龍・ルベル」は特に優先的にピックすべき1枚です。創世神技の【神威+2】と最高の相性です。
 ・龍は比較的コストが重いカードが多いため、マナ最大値を上げるカード（冒険譚の始まり、浮遊する相棒・コマなど）と相性がよいです。
 ・「荒き緑の眷属」もマナ最大値を上げるカードなので、龍の中で特に優先度が高いカードです。
 ・「瞬速の死闘」「熾烈なる戦役」「救済の手」「禍ツ撃」などの除去カードを抑えておくと、序盤が安定する上に相手がこちらの龍を除去する手段をかなり減らせるので、優先度はかなり高いです。
@@ -7360,13 +7415,13 @@
                   <span id="susanoo-ability-opp" class="kami-orochi-tooltip" role="tooltip"><strong>付与された能力：墓地からの進化</strong>進化条件を満たす、自分の墓地のレガシーも進化元に選べます。この効果は星戦が終わるまで続きます。タップで詳細を確認できます。</span>
                 </div>
                 <div v-if="battleViewIsOrochi('opp') && battleView.opp.seal === 0" class="kami-orochi-mark kami-orochi-mark-opp" tabindex="0" role="button"
-                     aria-label="第二の神技発動中：龍レガシーの神攻を強化" aria-describedby="orochi-ability-opp"
+                     aria-label="創世神技発動中：龍レガシーの神攻を強化" aria-describedby="orochi-ability-opp"
                      @mouseenter.stop="hideCardHover" @focus="hideCardHover"
                      @mousedown.stop @touchstart.stop
                      @click.stop="openPreview(battleView.opp.kami)"
                      @keydown.enter.stop.prevent="openPreview(battleView.opp.kami)" @keydown.space.stop.prevent="openPreview(battleView.opp.kami)">
                   <img src="divine_assets/orochi-torn-seal.png" alt="" draggable="false">
-                  <span id="orochi-ability-opp" class="kami-orochi-tooltip" role="tooltip"><strong>第二の神技発動中：龍の神攻を強化</strong>自分ターン中に1回、最初に神攻した龍レガシーに【神威：+2】を付与します。全ての封印が解けている間、この効果が有効です。</span>
+                  <span id="orochi-ability-opp" class="kami-orochi-tooltip" role="tooltip"><strong>創世神技発動中：龍の神攻を強化</strong>自分ターン中に1回、最初に神攻した龍レガシーに【神威：+2】を付与します。全ての封印が解けている間、この効果が有効です。</span>
                 </div>
                 <svg v-if="battleView.result && battleView.result.outcome === 'win' && !battleResultRevealReady" class="kami-crack-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <path class="kami-crack-line" d="M50 0 L46 22 L58 34 L40 50 L54 66 L44 82 L50 100"/>
@@ -7562,13 +7617,13 @@
                   <span id="susanoo-ability-self" class="kami-orochi-tooltip" role="tooltip"><strong>付与された能力：墓地からの進化</strong>進化条件を満たす、自分の墓地のレガシーも進化元に選べます。この効果は星戦が終わるまで続きます。タップで詳細を確認できます。</span>
                 </div>
                 <div v-if="battleViewIsOrochi('self') && battleView.self.seal === 0" class="kami-orochi-mark" tabindex="0" role="button"
-                     aria-label="第二の神技発動中：龍レガシーの神攻を強化" aria-describedby="orochi-ability-self"
+                     aria-label="創世神技発動中：龍レガシーの神攻を強化" aria-describedby="orochi-ability-self"
                      @mouseenter.stop="hideCardHover" @focus="hideCardHover"
                      @mousedown.stop @touchstart.stop
                      @click.stop="openPreview(battleView.self.kami)"
                      @keydown.enter.stop.prevent="openPreview(battleView.self.kami)" @keydown.space.stop.prevent="openPreview(battleView.self.kami)">
                   <img src="divine_assets/orochi-torn-seal.png" alt="" draggable="false">
-                  <span id="orochi-ability-self" class="kami-orochi-tooltip" role="tooltip"><strong>第二の神技発動中：龍の神攻を強化</strong>自分ターン中に1回、最初に神攻した龍レガシーに【神威：+2】を付与します。全ての封印が解けている間、この効果が有効です。</span>
+                  <span id="orochi-ability-self" class="kami-orochi-tooltip" role="tooltip"><strong>創世神技発動中：龍の神攻を強化</strong>自分ターン中に1回、最初に神攻した龍レガシーに【神威：+2】を付与します。全ての封印が解けている間、この効果が有効です。</span>
                 </div>
                 <svg v-if="battleView.result && battleView.result.outcome === 'loss' && !battleResultRevealReady" class="kami-crack-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <path class="kami-crack-line" d="M50 0 L46 22 L58 34 L40 50 L54 66 L44 82 L50 100"/>
@@ -8195,10 +8250,10 @@
 
     <div v-if="battleSkillModal" class="battle-action-modal" role="dialog" aria-modal="true" tabindex="-1" @click.self="_sfxPlay('cancel'); battleSkillModal = null">
       <div class="battle-action-panel">
-        <h3>神技を選択</h3>
+        <h3>神技・創世神技を選択</h3>
         <button v-for="skill in battleSkillOptions" :key="skill.index" class="skill-choice"
                 :disabled="!skill.enabled" @click="battleUseKamiSkill(skill.index)">
-          <strong>{{ skill.name }}　消費天力 {{ skill.cost }}</strong>
+          <strong><span class="skill-kind">{{ skill.index === 2 ? '創世神技' : '神技' }}</span> {{ skill.name }}　消費天力 {{ skill.cost }}</strong>
           <span>{{ skill.effect || '効果テキストはカミカードを確認してください。' }}</span>
         </button>
         <div class="battle-action-buttons">
@@ -8227,7 +8282,7 @@
 
     <!-- 成功報告・状態変化の通知：クリック不要の自動消滅トースト（右上・積み重ね表示） -->
     <div class="notice-toast-stack">
-      <transition-group name="notice-toast-fade">
+      <transition-group name="notice-toast-fade" tag="div" class="notice-toast-list">
         <div v-for="t in battleToasts" :key="t.id"
              class="notice-toast" :class="t.kind === 'error' ? 'notice-toast-error' : ''"
              @click="battleToasts = battleToasts.filter(x => x.id !== t.id)">
@@ -8293,7 +8348,10 @@
       </div>
     </div>
 
-    <div v-if="battleSample.result && battleResultRevealReady && !battleLogModal" class="battle-result-overlay">
+    <div v-if="battleSample.result && battleResultRevealReady && battleContext.source === 'tutorial'" class="tutorial-result-overlay" aria-label="チュートリアル終了">
+      <tutorial-ending-art :title="tutorialLesson ? tutorialLesson.title : 'チュートリアル'" :build="BUILD_VERSION"></tutorial-ending-art>
+    </div>
+    <div v-if="battleSample.result && battleResultRevealReady && battleContext.source !== 'tutorial' && !battleLogModal" class="battle-result-overlay">
       <template v-if="battleView.result.outcome === 'win'">
         <span v-for="i in 16" :key="'petal'+i" class="victory-petal"
               :style="{ left: ((i*61)%100) + '%', animationDelay: (battleResultPetalDelay + (i%7)*0.35) + 's', animationDuration: (3.2 + (i%5)*0.4) + 's' }"></span>
@@ -8425,7 +8483,7 @@
   <!-- 相手の手番中は盤面を隠さず、何をしているかだけを帯で知らせる -->
   <div v-if="tutorial && tutorial.oppLabel" class="tutorial-opp-banner" role="status" aria-live="polite">{{ tutorial.oppLabel }}</div>
   <div v-if="tutorial && tutorialMode !== 'wait' && !battleSkillCloseup" class="tutorial-layer" :class="['mode-' + tutorialMode, { finale: tutorialStep && tutorialStep.finale }]">
-    <div v-if="tutorialMode === 'say' && !tutorialInspectionCards.length" class="tutorial-catcher" @click="tutorialAdvance"></div>
+    <div v-if="tutorialMode === 'say' && !tutorialInspectionCards.length && !tutorialStep.emoteIntro && !_battleHasBlockingModal()" class="tutorial-catcher" @click="tutorialAdvance"></div>
     <!-- 台詞中は照らす場所・強調カードだけを残して盤面を暗くする（複数の穴をあけるためSVGのマスクを使う） -->
     <svg v-if="tutorialFieldHighlightsVisible && tutorialMode === 'say' && !(tutorialStep && tutorialStep.finale && !tutorialStep.picture)" class="tutorial-dim" aria-hidden="true">
       <defs>
@@ -8461,6 +8519,7 @@
              まだ表示していない文字も透明で配置しておき、1文字ずつ出しても行がずれないようにする -->
         <div class="tutorial-text"><template v-for="(p, i) in tutorialPhraseParts"><span :key="'tp' + i" class="tutorial-phrase"><span v-for="(run, j) in p.runs" :key="j" :class="{ 'tutorial-key': run.key }">{{ run.shown }}<span class="tutorial-unshown">{{ run.rest }}</span></span></span><wbr :key="'tw' + i"></template></div>
         <div v-if="tutorial.hint" class="tutorial-hint">{{ tutorial.hint }}</div>
+        <button v-if="tutorialStep && tutorialStep.id === 'greeting'" class="tutorial-greeting-button" :disabled="!!tutorial.flags.greetingSent" @click.stop="battleSendEmote('greeting')">{{ tutorial.flags.greetingSent ? '相手のあいさつを聞きましょう' : '👋 あいさつをする' }}</button>
         <div v-if="tutorialMode === 'say' && tutorialInspectionCards.length" class="tutorial-card-checks">
           <span>説明をクリックするとカードが拡大します。「効果を確認して閉じる」で戻れます。</span>
           <button v-for="card in tutorialInspectionCards" :key="tutorialInspectionKey(card)" @click.stop="tutorialInspectCard(card)">
@@ -8495,7 +8554,7 @@
     </div>
   </div>
 
-  <!-- ===== 神技1/2発動時のカットイン：第二の神技は顔アップの大きなカード、神技1は目線だけアップの軽量演出 ===== -->
+  <!-- ===== 神技/2発動時のカットイン：創世神技は顔アップの大きなカード、神技は目線だけアップの軽量演出 ===== -->
   <div v-if="battleFatigueEffect" :key="'fatigue'+battleFatigueEffect.id" class="battle-fatigue-effect" role="status" aria-live="polite">
     <div class="battle-fatigue-label"><strong>疲労ダメージ −{{ battleFatigueEffect.damage }}</strong>
       <span>{{ battleFatigueEffect.turn }}ターン目の開始 · {{ battleFatigueEffect.side === 'self' ? 'あなた' : '相手' }}のライフが減少</span>
@@ -8530,7 +8589,7 @@
     </div>
   </transition>
 
-  <!-- ===== カミの吹き出し（エモート／神技1・2のセリフ）：カミポートレートの真下に表示 ===== -->
+  <!-- ===== カミの吹き出し（エモート／神技・2のセリフ）：カミポートレートの真下に表示 ===== -->
   <transition name="emote-bubble-fade">
     <div v-if="emoteBubbles.self" :key="'self'+emoteBubbles.self.id" class="emote-bubble emote-bubble-self"
          :style="emoteBubbles.self.pos ? { left: emoteBubbles.self.pos.x + 'px', top: emoteBubbles.self.pos.y + 'px' } : {}">{{ emoteBubbles.self.text }}</div>
@@ -8799,11 +8858,11 @@
                 <div class="gs-kami-effect-text">{{ gsKamiInfoCard.trigger }}</div>
               </div>
               <div v-if="gsKamiInfoCard.skill1name || gsKamiInfoCard.skill1effect" class="gs-kami-effect-row">
-                <span class="gs-kami-effect-label">神技1 {{ gsKamiInfoCard.skill1name }}<template v-if="gsKamiInfoCard.type !== 'ヤマタノオロチ' && gsKamiInfoCard.skill1cost != null"> ／ 消費天力{{ gsKamiInfoCard.skill1cost }}</template></span>
+                <span class="gs-kami-effect-label">神技 {{ gsKamiInfoCard.skill1name }}<template v-if="gsKamiInfoCard.type !== 'ヤマタノオロチ' && gsKamiInfoCard.skill1cost != null"> ／ 消費天力{{ gsKamiInfoCard.skill1cost }}</template></span>
                 <div class="gs-kami-effect-text">{{ gsKamiInfoCard.skill1effect }}</div>
               </div>
               <div v-if="gsKamiInfoCard.skill2name || gsKamiInfoCard.skill2effect" class="gs-kami-effect-row">
-                <span class="gs-kami-effect-label">第二の神技 {{ gsKamiInfoCard.skill2name }}<template v-if="gsKamiInfoCard.type !== 'ヤマタノオロチ' && gsKamiInfoCard.skill2cost != null"> ／ 消費天力{{ gsKamiInfoCard.skill2cost }}</template></span>
+                <span class="gs-kami-effect-label">創世神技 {{ gsKamiInfoCard.skill2name }}<template v-if="gsKamiInfoCard.type !== 'ヤマタノオロチ' && gsKamiInfoCard.skill2cost != null"> ／ 消費天力{{ gsKamiInfoCard.skill2cost }}</template></span>
                 <div class="gs-kami-effect-text">{{ gsKamiInfoCard.skill2effect }}</div>
               </div>
             </div>
@@ -9467,14 +9526,16 @@
           <span v-if="previewCard.type">{{ previewCard.type }}</span>
           <span v-if="!previewCard.isKami">コスト {{ previewCard.cost }}</span>
         </div>
+        <div v-if="tutorialPreviewFocus" class="tutorial-detail-guide" role="status">↓ 注目：{{ tutorialPreviewFocus.label }}<span>金色の目印が、今説明している箇所です</span></div>
         <div class="mi-stats" v-if="previewCard.category === 'レガシー'">
           <div v-if="previewCard.power !== ''">戦闘力<b>{{ previewCard.power }}</b></div>
           <div v-if="previewCard.attack !== ''">神攻力<b>{{ previewCard.attack }}</b></div>
         </div>
         <!-- 通常カード：効果テキスト（キーワード/トークンをクリック可能に） -->
-        <div v-if="!previewCard.isKami" class="mi-text">
+        <div v-if="!previewCard.isKami" class="mi-text" :class="{ 'tutorial-detail-target': tutorialPreviewFocus && tutorialPreviewFocus.section === 'effect' }">
           <rich-text v-if="previewCard.text"
                      :text="previewCard.text"
+                     :highlights="tutorialPreviewFocus ? tutorialPreviewFocus.terms : []"
                      :glossary="keywordGlossary"
                      :tokens="tokenNameMap"
                      @kw="openKeywordPopup"
@@ -9488,19 +9549,20 @@
             <p>進化条件を満たす、自分の墓地のレガシーも進化元に選べます。この効果は星戦が終わるまで続きます。</p>
           </div>
           <div v-if="battlePreviewOrochiAwakened" class="kami-active-state" role="status">
-            <strong>第二の神技発動中：龍レガシーの神攻を強化します</strong>
+            <strong>創世神技発動中：龍レガシーの神攻を強化します</strong>
             <p>自分ターン中に1回、最初に神攻した龍レガシーに【神威：+2】を付与します。全ての封印が解けている間、この効果が有効です。</p>
           </div>
           <!-- 天力トリガー（ヤマタノオロチはラベル非表示） -->
-          <div v-if="previewCard.trigger" class="kami-section">
+          <div v-if="previewCard.trigger" class="kami-section" :class="{ 'tutorial-detail-target': tutorialPreviewFocus && tutorialPreviewFocus.section === 'trigger' }">
             <div class="kami-section-label" v-if="previewCard.type !== 'ヤマタノオロチ'">天力トリガー</div>
             <div class="kami-section-body">
-              <rich-text :text="previewCard.trigger" :glossary="keywordGlossary" :tokens="tokenNameMap"
+              <rich-text :text="previewCard.trigger" :highlights="tutorialPreviewFocus && tutorialPreviewFocus.section === 'trigger' ? tutorialPreviewFocus.terms : []" :glossary="keywordGlossary" :tokens="tokenNameMap"
                          @kw="openKeywordPopup" @token="openTokenPopup"></rich-text>
             </div>
           </div>
-          <!-- 神技1 -->
-          <div v-if="previewCard.skill1name" class="kami-section">
+          <!-- 神技 -->
+          <div v-if="previewCard.skill1name" class="kami-section" :class="{ 'tutorial-detail-target': tutorialPreviewFocus && tutorialPreviewFocus.section === 'skill1' }">
+            <div class="kami-section-label kami-skill-kind">神技</div>
             <div class="kami-skill-header">
               <div class="kami-skill-names">
                 <div class="kami-skill-furigana" v-if="kamiSkillFurigana(previewCard.skill1name)">{{ kamiSkillFurigana(previewCard.skill1name) }}</div>
@@ -9509,12 +9571,13 @@
               <div class="kami-skill-cost" v-if="previewCard.type !== 'ヤマタノオロチ'">消費天力{{ previewCard.skill1cost }}</div>
             </div>
             <div v-if="previewCard.skill1effect" class="kami-section-body">
-              <rich-text :text="previewCard.skill1effect" :glossary="keywordGlossary" :tokens="tokenNameMap"
+              <rich-text :text="previewCard.skill1effect" :highlights="tutorialPreviewFocus && tutorialPreviewFocus.section === 'skill1' ? tutorialPreviewFocus.terms : []" :glossary="keywordGlossary" :tokens="tokenNameMap"
                          @kw="openKeywordPopup" @token="openTokenPopup"></rich-text>
             </div>
           </div>
-          <!-- 第二の神技 -->
-          <div v-if="previewCard.skill2name" class="kami-section">
+          <!-- 創世神技 -->
+          <div v-if="previewCard.skill2name" class="kami-section" :class="{ 'tutorial-detail-target': tutorialPreviewFocus && tutorialPreviewFocus.section === 'skill2' }">
+            <div class="kami-section-label kami-skill-kind">創世神技（そうせいじんぎ）</div>
             <div class="kami-skill-header">
               <div class="kami-skill-names">
                 <div class="kami-skill-furigana" v-if="kamiSkillFurigana(previewCard.skill2name)">{{ kamiSkillFurigana(previewCard.skill2name) }}</div>
@@ -9523,7 +9586,7 @@
               <div class="kami-skill-cost" v-if="previewCard.type !== 'ヤマタノオロチ'">消費天力{{ previewCard.skill2cost }}</div>
             </div>
             <div v-if="previewCard.skill2effect" class="kami-section-body">
-              <rich-text :text="previewCard.skill2effect" :glossary="keywordGlossary" :tokens="tokenNameMap"
+              <rich-text :text="previewCard.skill2effect" :highlights="tutorialPreviewFocus && tutorialPreviewFocus.section === 'skill2' ? tutorialPreviewFocus.terms : []" :glossary="keywordGlossary" :tokens="tokenNameMap"
                          @kw="openKeywordPopup" @token="openTokenPopup"></rich-text>
             </div>
           </div>
@@ -9670,8 +9733,8 @@ const UDON_KAMI_BACK_URL      = "card_back_kami.png";  // カミカード裏面
 const KAMI_SHEET_RANGE = "カミ設定!A2:O50"; // O列:ぼかしフラグ
 // カミ設定シート列インデックス:
 // [0]No., [1]二つ名, [2]名称, [3]種別, [4]天力トリガー,
-// [5]神技1名称, [6]神技1消費天力, [7]神技1効果,
-// [8]第二の神技名称, [9]第二の神技消費天力, [10]第二の神技効果
+// [5]神技名称, [6]神技消費天力, [7]神技効果,
+// [8]創世神技名称, [9]創世神技消費天力, [10]創世神技効果
 
 const SHEET_URL =
   `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/` +
@@ -9686,8 +9749,8 @@ const SFX_FILES = {
   crumble: 'crumble.mp3',
   delete: 'delete.mp3',     // 勝敗確定：カミが粒子となって砕け散る演出に合わせて鳴らす
   endofwar: 'endofwar.mp3', // 終戦画面：「今回の勝者は…」の黒背景演出に合わせて鳴らす
-  skill: 'skill.mp3',       // 神技1
-  skill2: 'skill2.mp3',     // 第二の神技（必殺技クローズアップ演出）
+  skill: 'skill.mp3',       // 神技
+  skill2: 'skill2.mp3',     // 創世神技（必殺技クローズアップ演出）
   emote: 'emote.mp3',       // エモート送信時（吹き出し表示に合わせて鳴らす）
   dragStart: 'drag_Start.mp3',
   dragDrop: 'drag_Drop.mp3',
@@ -10375,14 +10438,16 @@ const TUTORIAL_LESSONS = Object.freeze([
     "setup": { "selfKamiNo": "8", "oppKamiNo": "3", "firstSide": "self", "turn": 5, "self": { "life": 10, "manaMax": 2, "relics": ["社の施し"], "legacies": [], "hand": ["幼き守護者・ミナト"], "deck": ["昏き紫の眷属", "救済の手", "猛き赤の眷属", "荒き緑の眷属", "眩き黄の眷属", "拒絶の守衛・イズモ", "慈愛の忍・イロハ"] }, "opp": { "life": 10, "lifeMax": 10, "manaMax": 5, "relics": [], "legacies": [{ "name": "飄々たる諜報員", "tapped": true }], "hand": ["猛き赤の眷属", "荒き緑の眷属", "熾烈なる戦役"], "deck": ["深き青の眷属", "昏き紫の眷属", "眩き黄の眷属", "先駆けの修羅"] } },
     "steps": [
       { "say": "ようこそ、ツクリヨの世界へ。私はアマテラス。まずは4種類のカードの役割から学びましょう。攻撃の仕方や細かな能力は、あとの練習で少しずつ覚えれば大丈夫ですよ。" },
+      { "id": "greeting", "task": "対戦のはじめに、エモートで挨拶してみましょう。「あいさつをする」を押してくださいね。私の姿を右クリックするか、外へドラッグして「あいさつ」を選んでも使えますよ。", "focus": "selfKami", "emoteIntro": true, "done": vm => !!vm.tutorial.flags.greetingReplied },
+      { "say": "挨拶が返ってきましたね。エモートでは、挨拶や気持ちをカミのセリフで伝えられます。それでは、カードの種類を見ていきましょう。" },
       { "action": "startTurn" },
       { "say": "まずは「カミ」。あなたの分身で、ライフと天力を持ち、神技を使います。デッキには入らず、対戦の最初から場にいますよ。", "focus": "selfKami" },
       { "say": "「レガシー」は、星の記憶から生み出された生命の残照。レガシー欄に出して戦うカードです。戦闘力と神攻力を持ち、戦闘や神攻を行います。レガシー欄に置けるのは7枚までです。", "focus": "selfLegacy", "cards": ["self-field:冥土送りの侍女", "self-field:飄々たる諜報員"] },
-      { "say": "手札の「幼き守護者・ミナト」はコスト1。カードの左上のコストと同じだけマナを払って出します。ミナトの【誘3】は、デッキの上から3枚を見て、条件に合うカードを1枚まで手札に加える能力です。黄カードか神使レガシーなら選べます。", "focus": "hand", "cards": ["self-hand:幼き守護者・ミナト"], "inspect": ["幼き守護者・ミナト"] },
+      { "say": "手札の「幼き守護者・ミナト」はコスト1。カードの左上のコストと同じだけマナを払って出します。ミナトの【誘3】は、デッキの上から3枚を見て、条件に合うカードを1枚まで手札に加える能力です。黄カードか神使レガシーなら選べます。", "focus": "hand", "cards": ["self-hand:幼き守護者・ミナト"], "inspect": ["幼き守護者・ミナト"], "inspectFocus": { "幼き守護者・ミナト": { "section": "effect", "label": "【誘】", "terms": ["誘"] } } },
       { "task": "「幼き守護者・ミナト」をレガシー欄へ出し、【誘】で「救済の手」を「手札に加える」で選びましょう。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["幼き守護者・ミナト"] }, "induce": ["救済の手"], "done": vm => vm._tutorialHas('self', 'legacies', '幼き守護者・ミナト') && vm._tutorialHas('self', 'hand', '救済の手') && vm._tutorialIdle() },
       { "say": "必要なカードを探して、次の一手を整える。【誘】を持つ1コストのレガシーは、ツクリヨの基本になる大切なカードです。" },
       { "say": "「レリック」は、星の記憶に刻まれた象徴的なモノや場所。レリック欄に置いて、場に残るカードです。レガシー欄とレリック欄は、それぞれ7枚まで置けますよ。", "focus": "selfRelic", "cards": ["self-relic:社の施し"] },
-      { "say": "「オラクル」は、星の記憶に残る情景や出来事を、ひととき呼び起こすカードなのです。使うと効果が働き、そのあと墓地へ置かれます。今は「救済の手」で、戦闘力2000以下のレガシーを1枚破壊してみましょう。", "focus": "hand", "cards": ["self-hand:救済の手", "opp-field:飄々たる諜報員"], "inspect": ["救済の手"] },
+      { "say": "「オラクル」は、星の記憶に残る情景や出来事を、ひととき呼び起こすカードなのです。使うと効果が働き、そのあと墓地へ置かれます。今は「救済の手」で、戦闘力2000以下のレガシーを1枚破壊してみましょう。", "focus": "hand", "cards": ["self-hand:救済の手", "opp-field:飄々たる諜報員"], "inspect": ["救済の手"], "inspectFocus": { "救済の手": { "section": "effect", "label": "レガシーを破壊する効果", "terms": [] } } },
       { "task": "「救済の手」を使い、相手の「飄々たる諜報員」を選びましょう。表示されたカードは「閉じる」で閉じられます。", "allow": { "play": ["救済の手"] }, "done": vm=>!vm._tutorialHas('opp','legacies','飄々たる諜報員')&&vm._tutorialHas('self','graveyard','救済の手')&&vm._tutorialIdle(), "targets": ["飄々たる諜報員"], "focus": "hand" },
       { "say": "オラクルは墓地へ、レガシーとレリックは場に残りましたね。種類ごとに置き場所と役割が違うのです。", "focus": "selfGraveyard" },
       { "say": "これでカードの種類はおしまいです。次は、対戦を始める準備とマナを学びましょう。", "last": true }
@@ -10390,43 +10455,27 @@ const TUTORIAL_LESSONS = Object.freeze([
     "category": "basic"
   },
   {
-    "id": "basic",
+    "id": "preparation",
     "numeral": "弐",
-    "title": "初手とマリガン",
+    "title": "対戦準備とマナ",
     "fieldTheme": "ninja",
-    "summary": "初手4枚から、序盤に使いにくいカードを引き直します。",
-    "learn": ["初手4枚", "マリガンは1回", "低コストを残す"],
+    "summary": "初手を引き直し、マナとコストを確かめて最初のカードを出します。",
+    "learn": ["初手とマリガン", "マナとコスト", "社の施し"],
     "oppName": "スサノオ",
     "bgm": "kakeraSaki",
-    "setup": { "selfKamiNo": "8", "oppKamiNo": "1", "firstSide": "opp", "mulligan": true, "self": { "life": 10, "lifeMax": 10, "hand": ["飄々たる諜報員", "先駆けの修羅", "猛き赤の眷属", "熾烈なる戦役"], "deck": ["戦陣の旗手", "札遊びの座敷童", "平穏の祈り手", "眩き黄の眷属", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "拒絶の守衛・イズモ"] }, "opp": { "life": 10, "lifeMax": 10, "hand": ["飄々たる諜報員", "猛き赤の眷属", "荒き緑の眷属", "熾烈なる戦役"], "deck": ["深き青の眷属", "昏き紫の眷属", "眩き黄の眷属", "名刀集めの豪族", "忠義の侍・ソウリュウ", "慈愛の忍・イロハ"] } },
+    "setup": { "selfKamiNo": "8", "oppKamiNo": "1", "firstSide": "opp", "mulligan": true, "self": { "life": 10, "lifeMax": 10, "hand": ["飄々たる諜報員", "先駆けの修羅", "猛き赤の眷属", "熾烈なる戦役"], "deck": ["戦陣の旗手", "札遊びの座敷童", "平穏の祈り手", "眩き黄の眷属", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "拒絶の守衛・イズモ"], "relics": ["社の施し"], "manaMax": 0 }, "opp": { "life": 10, "lifeMax": 10, "hand": ["飄々たる諜報員", "猛き赤の眷属", "荒き緑の眷属", "熾烈なる戦役"], "deck": ["深き青の眷属", "昏き紫の眷属", "眩き黄の眷属", "名刀集めの豪族", "忠義の侍・ソウリュウ", "慈愛の忍・イロハ"] } },
     "steps": [
-      { "say": "今回は、対戦の初手と「マリガン」です。最初の4枚を見て、序盤に使いやすい手札を整えましょう。" },
+      { "say": "今回は対戦の準備です。初手を引き直してから、マナを使って最初のカードを出すところまで、続けて練習しましょう。" },
       { "say": "先攻も後攻も、最初は4枚。マリガンで選べるのもこの4枚です。後攻は自分の最初のターンに、さらに1枚引けますよ。" },
       { "action": "mulligan" },
-      { "say": "対戦の始めには、デッキから4枚引きます。気に入らないカードがあれば、1回だけ好きな枚数を引き直せるのです。これを「マリガン」といいます。", "focus": "mulligan" },
       { "say": "カードの左上の数字は「コスト」。使うのに必要な「マナ」の量です。序盤はマナが少ないので、コスト4の重いカードばかりでは困ってしまいますね。", "focus": "mulligan", "cards": ["mulligan:猛き赤の眷属", "mulligan:熾烈なる戦役"] },
       { "task": "「猛き赤の眷属」と「熾烈なる戦役」をクリックして選び、「引き直す」を押しましょう。", "focus": "mulligan", "allow": { "mulligan": ["猛き赤の眷属", "熾烈なる戦役"] }, "done": vm => !vm.battleMulligan },
-      { "say": "初手を引き直せましたね。マリガンは1回だけ。低コストのカードを残すと、序盤に動きやすくなりますよ。次はマナを使って、カードを出してみましょう。", "last": true }
-    ],
-    "category": "basic"
-  },
-  {
-    "id": "mana",
-    "numeral": "参",
-    "title": "マナとコスト",
-    "fieldTheme": "ninja",
-    "summary": "マナの増え方と回復、後攻の社の施しを使ってカードを出します。",
-    "learn": ["マナとコスト", "社の施し", "召喚したターン"],
-    "oppName": "スサノオ",
-    "bgm": "kakeraSaki",
-    "setup": { "selfKamiNo": "8", "oppKamiNo": "1", "firstSide": "opp", "self": { "life": 10, "lifeMax": 10, "hand": ["飄々たる諜報員"], "deck": ["戦陣の旗手", "札遊びの座敷童", "平穏の祈り手", "眩き黄の眷属", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "拒絶の守衛・イズモ"], "relics": ["社の施し"], "manaMax": 0 }, "opp": { "life": 10, "lifeMax": 10, "hand": ["飄々たる諜報員", "猛き赤の眷属", "荒き緑の眷属", "熾烈なる戦役"], "deck": ["深き青の眷属", "昏き紫の眷属", "眩き黄の眷属", "名刀集めの豪族", "忠義の侍・ソウリュウ", "慈愛の忍・イロハ"] }, "turn": 1, "activeSide": "self" },
-    "steps": [
-      { "say": "今回は、カードを使うためのマナです。後攻の最初のターンから練習しましょう。", "focus": "selfManaValue" },
-      { "action": "startTurn" },
-      { "say": "カードの左上の数字が「コスト」。使うには、その数と同じだけマナを払います。今の手札の諜報員はコスト2です。", "focus": "handCost", "cards": ["self-hand:飄々たる諜報員"] },
+      { "say": "初手を引き直せましたね。相手が先攻ですから、そのターンを見送って、あなたの最初の手番へ進みましょう。", "focus": "hand" },
+      { "action": "oppTurn", "script": [] },
+      { "say": "残した諜報員はコスト2。カードを使うには、左上の数字と同じだけマナを払います。", "focus": "handCost", "cards": ["self-hand:飄々たる諜報員"] },
       { "say": "ターンの始めには、デッキからカードを1枚引きます。（先攻の最初のターンだけは引けません）", "focus": "hand" },
       { "say": "マナの最大値は、自分のターンが来るたびに1ずつ増えて、そのたびに満タンまで回復します。上限は10。今はまだ1ですね。", "focus": "selfManaValue" },
-      { "say": "ここで「社の施し」の出番です。これを破壊すると、そのターンだけマナを1増やせます。これでコスト2のカードも出せますね。", "focus": "selfRelic", "cards": ["self-relic:社の施し", "self-hand:飄々たる諜報員"], "inspect": ["社の施し"] },
+      { "say": "ここで「社の施し」の出番です。これを破壊すると、そのターンだけマナを1増やせます。これでコスト2のカードも出せますね。", "focus": "selfRelic", "cards": ["self-relic:社の施し", "self-hand:飄々たる諜報員"], "inspect": ["社の施し"], "inspectFocus": { "社の施し": { "section": "effect", "label": "マナを増やす効果", "terms": ["死亡時"] } } },
       { "task": "「飄々たる諜報員」を手札からレガシー欄へドラッグしましょう。社の施しを使うか聞かれたら「破壊してマナを増やす」を選んでくださいね。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["飄々たる諜報員"] }, "done": vm => vm._tutorialHas('self', 'legacies', '飄々たる諜報員') && vm._tutorialIdle() },
       { "say": "カードが出せましたね。社の施しは効果で生まれる「トークン」。場を離れると、手札や墓地には残らず消えます。マナの最大値は増えず、次の自分のターンには最大値まで回復しますよ。", "focus": "selfManaValue" },
       { "say": "場に出たばかりのレガシーは、そのターンは攻撃できません。まずは場に出して、次のターンに備えるのです。", "focus": "selfLegacy" },
@@ -10459,7 +10508,7 @@ const TUTORIAL_LESSONS = Object.freeze([
     "fieldTheme": "ninja",
     "oppName": "スサノオ",
     "bgm": "kazakiri",
-    "numeral": "肆"
+    "numeral": "参"
   },
   {
     "id": "guard",
@@ -10470,117 +10519,81 @@ const TUTORIAL_LESSONS = Object.freeze([
     "setup": { "selfKamiNo": "8", "oppKamiNo": "4", "firstSide": "self", "turn": 3, "self": { "life": 10, "manaMax": 3, "hand": ["鐘鳴らしの童"], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [{ "name": "平穏の祈り手", "tapped": true }], "tenryoku": 1 }, "opp": { "life": 10, "manaMax": 2, "hand": [], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [] } },
     "steps": [
       { "say": "今回は「天力（てんりょく）」と「神技（じんぎ）」です。天力を稼ぐことは、星戦の大切な基本。マナはカードに、天力はカミの技に使う、別々の力ですよ。", "focus": "selfTenryoku" },
-      { "say": "天力が溜まる条件は、カミによって違います。これを「天力トリガー」といいます。私は【守護】を持つレガシーが出るたびに、天力を1もらえるのです。", "focus": "selfKami", "inspect": ["selfKami"] },
-      { "say": "今の天力1は、前のターンに祈り手を出して得たもの。「鐘鳴らしの童」にも【守護】があるので、もう1増えます。童自身の出現時効果も使えば、さらに1増えますね。", "focus": "hand", "cards": ["self-hand:鐘鳴らしの童"], "inspect": ["鐘鳴らしの童"] },
+      { "say": "天力が溜まる条件は、カミによって違います。これを「天力トリガー」といいます。私は【守護】を持つレガシーが出るたびに、天力を1もらえるのです。", "focus": "selfKami", "inspect": ["selfKami"], "inspectFocus": { "selfKami": { "section": "trigger", "label": "天力トリガー", "terms": ["守護"] } } },
+      { "say": "今の天力1は、前のターンに祈り手を出して得たもの。「鐘鳴らしの童」にも【守護】があるので、もう1増えます。童自身の出現時効果も使えば、さらに1増えますね。", "focus": "hand", "cards": ["self-hand:鐘鳴らしの童"], "inspect": ["鐘鳴らしの童"], "inspectFocus": { "鐘鳴らしの童": { "section": "effect", "label": "【守護】と出現時効果", "terms": ["守護", "出現時"] } } },
       { "task": "「鐘鳴らしの童」をレガシー欄へ出しましょう。効果を発動するか聞かれたら「発動する」を選んでくださいね。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["鐘鳴らしの童"] }, "answers": [{ "card": "鐘鳴らしの童", "kind": "ability", "answer": true, "hint": "今回は「発動する」を選んで、天力を受け取りましょう。" }], "done": vm => vm._tutorialHas('self', 'legacies', '鐘鳴らしの童') && vm._tutorialIdle() },
       { "say": "天力が3になりました。自分のカミの理念に合うカードを集めると、こうして力を溜めやすくなるのですよ。", "focus": "selfTenryoku" },
-      { "say": "私の神技「照護（しょうご）」は天力3を使い、自分のレガシーを【不可侵】にします。相手に選ばれなくなり、このターンの終わりには縦向きに戻ります。タップしている祈り手を守ってみましょう。", "focus": "skill", "cards": ["self-field:平穏の祈り手"], "inspect": ["selfKami"] },
+      { "say": "私の神技「照護（しょうご）」は天力3を使い、自分のレガシーを【不可侵】にします。相手に選ばれなくなり、このターンの終わりには縦向きに戻ります。タップしている祈り手を守ってみましょう。", "focus": "skill", "cards": ["self-field:平穏の祈り手"], "inspect": ["selfKami"], "inspectFocus": { "selfKami": { "section": "skill1", "label": "神技「照護」", "terms": ["不可侵"] } } },
       { "task": "「神技」から「照護」を選び、タップした「平穏の祈り手」を対象にしましょう。", "allow": { "skill": true, "skillUse": ["1"] }, "done": vm=>vm.tutorial.flags.skill&&vm._tutorialIdle(), "focus": "skill", "targets": ["平穏の祈り手"] },
-      { "say": "天力を使って、祈り手を守れましたね。神技は2つのうちどちらか1つを、1ターンに1回だけ使えます。次は、天力をさらに溜めて「第二の神技」を使ってみましょう。", "focus": "selfTenryoku" },
+      { "say": "天力を使って、祈り手を守れましたね。神技と創世神技は、1ターンにどちらか1つだけ使えます。次は、天力をさらに溜めて「創世神技」を使ってみましょう。", "focus": "selfTenryoku" },
       { "task": "ターンを終了して、祈り手がアンタップするところを見ましょう。", "allow": { "endTurn": true }, "done": vm=>vm.battleSample.activeSide==='opp'&&vm._tutorialIdle(), "focus": "endTurn" },
       { "say": "祈り手が縦向きに戻りましたね。天力を溜め、必要な場面で神技を使う。この流れを覚えておきましょう。", "focus": "selfLegacy", "cards": ["self-field:平穏の祈り手"] },
-      { "say": "天力を稼ぎ、神技を使うことが、星戦の大切な土台です。次はその力で、第二の神技による逆転を体験しましょう。", "last": true }
+      { "say": "天力を稼ぎ、神技を使うことが、星戦の大切な土台です。次はその力で、創世神技による逆転を体験しましょう。", "last": true }
     ],
     "fieldTheme": "samurai",
     "oppName": "タケミカヅチ",
     "bgm": "byakko",
-    "numeral": "伍"
+    "numeral": "肆"
   },
   {
     "id": "skill2",
-    "numeral": "陸",
-    "title": "第二の神技で逆転",
+    "numeral": "伍",
+    "title": "創世神技で逆転",
     "fieldTheme": "shinshi",
-    "summary": "天力をたっぷり使う必殺技「第二の神技」。相手の第二の神技で窮地に立たされ、自分の第二の神技で逆転します。",
-    "learn": ["第二の神技", "相手の天力", "墓地", "崩壊"],
+    "summary": "天力をたっぷり使う必殺技「創世神技」。相手の創世神技で窮地に立たされ、自分の創世神技で逆転します。",
+    "learn": ["創世神技", "相手の天力", "墓地", "崩壊"],
     "oppName": "ヒノカグツチ",
     "bgm": "homuGarasu",
     "setup": { "selfKamiNo": "8", "oppKamiNo": "7", "firstSide": "opp", "turn": 6, "self": { "life": 4, "lifeMax": 10, "manaMax": 5, "tenryoku": 5, "relics": [], "legacies": ["音速の忍"], "graveyard": ["紅翼龍・ルベル"], "hand": ["平穏の祈り手", "眩き黄の眷属", "救済の手"], "deck": ["深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "拒絶の守衛・イズモ", "慈愛の忍・イロハ"] }, "opp": { "life": 3, "lifeMax": 10, "manaMax": 6, "tenryoku": 8, "relics": [], "legacies": [], "hand": ["翠牙龍・ヴィリデ", "荒き緑の眷属", "熾烈なる戦役"], "deck": ["深き青の眷属", "昏き紫の眷属", "眩き黄の眷属", "先駆けの修羅"] } },
     "steps": [
-      { "say": "今回は「第二の神技」を使ってみましょう。いわば、私たちカミの必殺技のようなもの。天力をたくさん使うぶん、戦いの流れを一気に変える力があるのです。" },
-      { "say": "お相手はヒノカグツチさん。自由を求めるあの方にも、優しさが宿っていると信じていますけれど……その第二の神技は、とても激しいのです。", "focus": "oppKami" },
+      { "say": "今回は「創世神技（そうせいじんぎ）」を使ってみましょう。いわば、私たちカミの必殺技のようなもの。天力をたくさん使うぶん、戦いの流れを一気に変える力があるのです。" },
+      { "say": "お相手はヒノカグツチさん。自由を求めるあの方にも、優しさが宿っていると信じていますけれど……その創世神技は、とても激しいのです。", "focus": "oppKami" },
       { "say": "今回は対戦の途中から始めます。練習のため、お互いの天力を特別に多めにしてありますよ。", "focus": "selfTenryoku" },
       { "say": "あなたの場には「音速の忍」。お相手のライフは残り3ですが、忍の神攻力1だけでは届きません。墓地には、以前の戦いで倒れたコスト7の「紅翼龍・ルベル」が眠っています。", "focus": "oppLife", "cards": ["self-field:音速の忍"] },
-      { "say": "ところが、ヒノカグツチさんの天力は8。第二の神技「縛鎖焼尽・紅蓮焔月」に必要な量とちょうど同じです。相手の天力が溜まっているときは、第二の神技を警戒してくださいね。", "focus": "oppTenryoku", "inspect": ["oppKami"] },
+      { "say": "ところが、ヒノカグツチさんの天力は8。創世神技「縛鎖焼尽・紅蓮焔月」に必要な量とちょうど同じです。相手の天力が溜まっているときは、創世神技を警戒してくださいね。", "focus": "oppTenryoku", "inspect": ["oppKami"], "inspectFocus": { "oppKami": { "section": "skill2", "label": "創世神技", "terms": [] } } },
       { "say": "さあ、ヒノカグツチさんのターンです。……来ますよ。" },
       { "action": "startTurn" },
       { "action": "oppTurn", "script": [{ "skill": 2, "destroy": "音速の忍", "damage": 3 }, { "play": "翠牙龍・ヴィリデ" }] },
       { "say": "なんて激しい……。音速の忍が破壊され、ライフも3減ってしまいました。", "focus": "selfLife" },
       { "say": "さらに、コスト7の「翠牙龍・ヴィリデ」まで……！　ライフは残り1。この龍の神攻力は3。次の攻撃をそのまま受ければ、負けてしまいます。", "focus": "selfLegacy" },
-      { "say": "でも、あきらめるのはまだ早いですよ。破壊されたカードは「墓地」に置かれています。私の第二の神技「恩光・八咫神鏡（おんこう・やたのかがみ）」なら、墓地のレガシーを場に呼び戻せるのです。", "focus": "selfGraveyard", "inspect": ["selfKami"] },
+      { "say": "でも、あきらめるのはまだ早いですよ。破壊されたカードは「墓地」に置かれています。私の創世神技「恩光・八咫神鏡（おんこう・やたのかがみ）」なら、墓地のレガシーを場に呼び戻せるのです。", "focus": "selfGraveyard", "inspect": ["selfKami"], "inspectFocus": { "selfKami": { "section": "skill2", "label": "創世神技", "terms": [] } } },
       { "say": "ただ、今の天力は5。八咫神鏡には7必要です。", "focus": "selfTenryoku" },
-      { "say": "「平穏の祈り手」は【守護】を持つレガシー。出せば私の天力トリガーで1、祈り手自身の効果でさらに1、天力が増えます。ライフも1回復しますよ。", "focus": "hand", "cards": ["self-hand:平穏の祈り手"], "inspect": ["平穏の祈り手"] },
+      { "say": "「平穏の祈り手」は【守護】を持つレガシー。出せば私の天力トリガーで1、祈り手自身の効果でさらに1、天力が増えます。ライフも1回復しますよ。", "focus": "hand", "cards": ["self-hand:平穏の祈り手"], "inspect": ["平穏の祈り手"], "inspectFocus": { "平穏の祈り手": { "section": "effect", "label": "【守護】と出現時効果", "terms": ["守護", "出現時"] } } },
       { "task": "「平穏の祈り手」をレガシー欄へ出しましょう。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["平穏の祈り手"] }, "answers": [{ "card": "平穏の祈り手", "kind": "ability", "answer": true, "hint": "今回は「発動する」を選んで、天力を受け取りましょう。" }], "done": vm => vm._tutorialHas('self', 'legacies', '平穏の祈り手') && vm._tutorialIdle() },
       { "say": "天力が7になりました。これで八咫神鏡が使えます。", "focus": "selfTenryoku", "tenryokuAtLeast": 7 },
       { "say": "呼び戻したレガシーは、場を離れるとき墓地ではなく「崩壊」──ゲームから取り除かれてしまいます。それでも、ここぞという場面では頼もしい技ですよ。", "focus": "skill" },
-      { "say": "墓地の「紅翼龍・ルベル」はコスト7、戦闘力7000、神攻力3の大きな龍。マナではまだ出せない力を、八咫神鏡なら呼び戻せます。【疾駆】で、そのターンに勝利を決められますよ。", "focus": "selfGraveyard", "inspect": ["紅翼龍・ルベル"] },
+      { "say": "墓地の「紅翼龍・ルベル」はコスト7、戦闘力7000、神攻力3の大きな龍。マナではまだ出せない力を、八咫神鏡なら呼び戻せます。【疾駆】で、そのターンに勝利を決められますよ。", "focus": "selfGraveyard", "inspect": ["紅翼龍・ルベル"], "inspectFocus": { "紅翼龍・ルベル": { "section": "effect", "label": "【疾駆】", "terms": ["疾駆"] } } },
       { "task": "「神技」ボタンから「恩光・八咫神鏡」を選び、墓地の「紅翼龍・ルベル」を呼び戻しましょう。", "focus": "skill", "allow": { "skill": true, "skillUse": ["2"] }, "targets": ["紅翼龍・ルベル"], "done": vm => vm.tutorial.flags.skill && vm._tutorialHas('self', 'legacies', '紅翼龍・ルベル') && vm._tutorialIdle() },
-      { "say": "光の中からルベルが戻ってきました！　祈り手で一撃をしのぐだけだったところから、このターンに勝利を決められる戦局へ。第二の神技が、窮地を逆転の好機に変えてくれたのですよ。", "focus": "selfLegacy", "cards": ["self-field:紅翼龍・ルベル"] },
+      { "say": "光の中からルベルが戻ってきました！　祈り手で一撃をしのぐだけだったところから、このターンに勝利を決められる戦局へ。創世神技が、窮地を逆転の好機に変えてくれたのですよ。", "focus": "selfLegacy", "cards": ["self-field:紅翼龍・ルベル"] },
       { "task": "「紅翼龍・ルベル」で神攻して、ヒノカグツチさんのライフを0にしましょう。", "focus": "oppKami", "cards": ["self-field:紅翼龍・ルベル"], "allow": { "divine": ["紅翼龍・ルベル"] }, "done": vm => !!vm.battleSample.result },
-      { "id": "victory", "say": "お見事です！　コスト7のルベルを蘇らせ、敗北が迫っていた戦局から勝利へ。第二の神技には、それほど大きな力があるのです。天力トリガーを意識して、逆転のための天力をこつこつ溜めていきましょうね。", "finale": true },
-      { "say": "第二の神技は、相手の天力が溜まっているかどうかで予測できます。自分の天力の溜め方と一緒に、相手のカミの天力トリガーも確かめておくと安心ですよ。", "finale": true },
-      { "say": "天力を稼いでおけば、苦しい場面でも道を開けます。自分のカミの天力トリガーを意識して、ここぞという時に第二の神技を使ってくださいね。次は、手札の上限を確かめましょう。", "finale": true, "last": true }
+      { "id": "victory", "say": "お見事です！　コスト7のルベルを蘇らせ、敗北が迫っていた戦局から勝利へ。創世神技には、それほど大きな力があるのです。天力トリガーを意識して、逆転のための天力をこつこつ溜めていきましょうね。", "finale": true },
+      { "say": "創世神技は、相手の天力が溜まっているかどうかで予測できます。自分の天力の溜め方と一緒に、相手のカミの天力トリガーも確かめておくと安心ですよ。", "finale": true },
+      { "say": "天力を稼いでおけば、苦しい場面でも道を開けます。自分のカミの天力トリガーを意識して、ここぞという時に創世神技を使ってくださいね。最後に、手札と終盤のルールを確かめましょう。", "finale": true, "last": true }
     ],
     "category": "basic"
   },
   {
-    "id": "hand-limit",
-    "title": "手札の上限",
+    "id": "endgame",
+    "title": "手札と終盤のルール",
     "category": "basic",
-    "summary": "ターン終了時に、9枚の手札を8枚へ整理します。",
-    "learn": ["手札上限8枚", "超過分を墓地へ"],
-    "setup": { "selfKamiNo": "8", "oppKamiNo": "9", "firstSide": "opp", "turn": 3, "self": { "life": 5, "manaMax": 10, "hand": ["救済の手", "鐘鳴らしの童", "慈愛の忍・イロハ", "夜風の始末屋", "平穏の祈り手", "眩き黄の眷属", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属"], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [] }, "opp": { "life": 10, "manaMax": 10, "hand": [], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [] }, "activeSide": "self" },
+    "summary": "手札を8枚へ整理し、デッキ切れと長期戦の疲労ダメージを確かめます。",
+    "learn": ["手札上限8枚", "デッキ切れ", "疲労ダメージ"],
+    "setup": { "selfKamiNo": "8", "oppKamiNo": "9", "firstSide": "opp", "turn": 10, "self": { "life": 5, "manaMax": 10, "hand": ["救済の手", "鐘鳴らしの童", "慈愛の忍・イロハ", "夜風の始末屋", "平穏の祈り手", "眩き黄の眷属", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属"], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [] }, "opp": { "life": 1, "manaMax": 10, "hand": [], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [] }, "activeSide": "self" },
     "steps": [
-      { "say": "今回は手札の上限だけを練習しましょう。今の手札は9枚。上限は8枚なので、ターンの終わりに1枚を選んで墓地へ送ります。", "focus": "hand" },
-      { "task": "ターンを終了しましょう。墓地に送るカードは「救済の手」を選んでくださいね。", "focus": "endTurn", "allow": { "endTurn": true }, "targets": ["救済の手"], "done": vm => vm.battleSample.activeSide === 'opp' || !!vm.battleSample.result },
-      { "say": "手札が8枚になり、選んだ「救済の手」は墓地へ移りましたね。カードを使う前だけでなく、ターンの終わりにも手札の枚数を確かめてくださいね。", "focus": "selfGraveyard" },
-      { "say": "手札の整理はここまでです。次は、デッキから引けなくなったときの決まりを見ていきましょう。", "last": true }
-    ],
-    "fieldTheme": "yokai",
-    "oppName": "ツクヨミ",
-    "bgm": "gekkouKenkaku",
-    "numeral": "漆"
-  },
-  {
-    "id": "deck-out",
-    "title": "デッキ切れ",
-    "category": "basic",
-    "summary": "デッキが空のままカードを引くと敗北することを、相手の手番で確かめます。",
-    "learn": ["ドローできないと敗北", "残り枚数"],
-    "setup": { "selfKamiNo": "8", "oppKamiNo": "9", "firstSide": "opp", "turn": 3, "self": { "life": 5, "manaMax": 10, "hand": [], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [] }, "opp": { "life": 10, "manaMax": 10, "hand": [], "deck": [], "relics": [], "legacies": [] }, "activeSide": "self" },
-    "steps": [
-      { "say": "今回はデッキの残り枚数です。相手のデッキを0枚にしてあります。0枚になっただけでは、まだ負けではありません。", "focus": "oppDeck" },
-      { "say": "デッキが0枚のとき、カードを引かなければならなくなると負けです。次は相手のターン開始のドロー。引けないとどうなるか、確かめましょう。", "focus": "oppDeck" },
-      { "task": "ターンを終了して、相手のターン開始を見ましょう。", "focus": "endTurn", "allow": { "endTurn": true }, "done": vm=>vm.battleSample.activeSide==='opp'||!!vm.battleSample.result },
+      { "say": "基本編の最後は、手札と終盤のルールです。手札の整理と、長い戦いで気をつけたい決まりをまとめて確かめましょう。" },
+      { "say": "手札の上限は8枚。今は9枚ありますから、ターンの終わりに1枚を選んで墓地へ送ります。", "focus": "hand" },
+      { "say": "デッキが0枚になっただけでは負けません。でも、ターン開始や効果でカードを引こうとして引けなければ、ライフが残っていても敗北です。デッキの残り枚数にも気を配りましょう。", "focus": "oppDeck" },
+      { "say": "11ターン目からは、ターンの始めに1、2、3……と増える疲労ダメージを受けます。長引くほど危険になる決まりです。", "focus": "turnNumber" },
+      { "say": "今は10ターン目。相手のライフは1なので、次の手番の疲労ダメージで0になります。手札を整理しながら、ターンを返してみましょう。", "focus": "oppLife" },
+      { "task": "ターンを終了しましょう。手札を8枚にするため、墓地へ送るカードは「救済の手」を選んでくださいね。", "focus": "endTurn", "allow": { "endTurn": true }, "targets": ["救済の手"], "done": vm=>vm.battleSample.activeSide==='opp'||!!vm.battleSample.result },
       { "action": "oppTurn", "script": [], "when": vm=>!vm.battleSample.result },
-      { "id": "victory", "say": "相手はカードを引けず、デッキ切れで敗北しました。ライフが残っていても、ドローできなければ負けてしまうのです。", "finale": true },
-      { "say": "必要なカードを探すときも、デッキの残り枚数に気を配りましょう。次は、ターンが長引いたときの疲労ダメージです。", "last": true, "finale": true }
+      { "id": "victory", "say": "手札は8枚に整理されましたね。そして相手の11ターン目、疲労ダメージ1でライフが0になりました。攻撃だけでなく、こうしたルールでも勝敗が決まるのです。", "finale": true },
+      { "say": "手札はターン終了時に8枚まで。デッキから引けないと敗北、11ターン目からは疲労ダメージです。基本編はこれでおしまい。応用編では、カードの能力を1つずつ練習しましょう。", "last": true, "finale": true }
     ],
     "fieldTheme": "yokai",
     "oppName": "ツクヨミ",
     "bgm": "gekkouKenkaku",
-    "numeral": "捌"
-  },
-  {
-    "id": "fatigue",
-    "title": "疲労ダメージ",
-    "category": "basic",
-    "summary": "11ターン目からのターン開始ダメージを見て、敗北の理由を確かめます。",
-    "learn": ["11ターン目からの疲労", "増えるダメージ"],
-    "setup": { "selfKamiNo": "8", "oppKamiNo": "9", "firstSide": "opp", "turn": 10, "self": { "life": 5, "manaMax": 10, "hand": [], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [] }, "opp": { "life": 1, "manaMax": 10, "hand": [], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": [] }, "activeSide": "self" },
-    "steps": [
-      { "say": "基本編の最後は、長い戦いで受ける「疲労ダメージ」です。今は10ターン目、相手のライフは残り1。攻撃せずにターンを返して、何が起こるか見てみましょう。", "focus": "turnNumber" },
-      { "say": "11ターン目からは、自分のターンの始めに1、2、3……と増えていくダメージを受けるのです。これが「疲労ダメージ」。いまは10ターン目ですね。", "focus": "turnNumber" },
-      { "say": "次はツクヨミさんの11ターン目。ライフ1のツクヨミさんは、ターンの始めに疲労ダメージを受けることになりますね。", "focus": "oppLife" },
-      { "task": "ターンを終了して、相手の11ターン目を迎えましょう。", "focus": "endTurn", "allow": { "endTurn": true }, "done": vm=>vm.battleSample.activeSide==='opp'||!!vm.battleSample.result },
-      { "action": "oppTurn", "script": [], "when": vm => !vm.battleSample.result },
-      { "id": "victory", "say": "ツクヨミさんのターンの始めに、疲労ダメージ1。ライフが0になり……あなたの勝利です！", "finale": true },
-      { "say": "ターン開始の疲労ダメージで、相手は敗北しました。長引くほどダメージが増えるので、自分のライフにも注意しましょう。基本編はこれでおしまいです。", "last": true, "finale": true }
-    ],
-    "fieldTheme": "yokai",
-    "oppName": "ツクヨミ",
-    "bgm": "gekkouKenkaku",
-    "numeral": "玖"
+    "numeral": "陸"
   },
   {
     "id": "keywords",
@@ -10591,15 +10604,15 @@ const TUTORIAL_LESSONS = Object.freeze([
     "setup": { "selfKamiNo": "8", "oppKamiNo": "1", "firstSide": "opp", "turn": 2, "self": { "life": 1, "manaMax": 2, "hand": ["先駆けの修羅"], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": ["社の施し"], "legacies": ["鐘鳴らしの童", "飄々たる諜報員"] }, "opp": { "life": 2, "manaMax": 2, "hand": [], "deck": ["戦陣の旗手", "深き青の眷属", "荒き緑の眷属", "昏き紫の眷属", "眩き黄の眷属"], "relics": [], "legacies": ["飄々たる諜報員"] } },
     "steps": [
       { "say": "今回は、攻撃の決まりを変えるキーワードです。ライフは残り1。まず【守護】で神攻を受け止め、そのあと【奇襲】で危険な相手を倒してみましょう。" },
-      { "say": "縦向きの【守護】をタップすると、カミへの攻撃を代わりに受けられます。童の戦闘力は1000。相手の2000には負けますが、あなたのライフ1を守ってくれますよ。", "focus": "selfLegacy", "cards": ["self-field:鐘鳴らしの童", "opp-field:飄々たる諜報員"], "inspect": ["鐘鳴らしの童"] },
+      { "say": "縦向きの【守護】をタップすると、カミへの攻撃を代わりに受けられます。童の戦闘力は1000。相手の2000には負けますが、あなたのライフ1を守ってくれますよ。", "focus": "selfLegacy", "cards": ["self-field:鐘鳴らしの童", "opp-field:飄々たる諜報員"], "inspect": ["鐘鳴らしの童"], "inspectFocus": { "鐘鳴らしの童": { "section": "effect", "label": "【守護】", "terms": ["守護"] } } },
       { "action": "startTurn" },
       { "action": "oppTurn", "script": [{ "divine": "飄々たる諜報員" }], "guide": "神攻が来ました。【守護】を使うか聞かれたら「発動する」を選び、鐘鳴らしの童で受け止めましょう。", "answers": [{ "card": "鐘鳴らしの童", "trigger": "守護", "answer": true, "hint": "今回は「発動する」を選んで、残りライフ1を守りましょう。" }] },
       { "say": "童は倒れましたが、あなたのライフは1のままです。相手を残すと次の神攻で負けてしまいます。今度は攻めのキーワードで、危険を取り除きましょう。", "focus": "selfLife" },
       { "say": "でも見てください。攻撃してきた相手の諜報員は、今タップ状態。戦闘を仕掛けられますよ。", "focus": "oppLegacy", "cards": ["opp-field:飄々たる諜報員"] },
       { "say": "手札の「先駆けの修羅」はコスト4。マナ3と社の施しを合わせれば出せますね。", "focus": "selfManaValue", "cards": ["self-hand:先駆けの修羅", "self-relic:社の施し"] },
-      { "say": "先駆けの修羅は、出たときに【奇襲】を持つレガシー。【奇襲】があれば、出たターンから戦闘ができるのです。自分のレリックがあれば、神攻もできる【疾駆】になりますよ。", "focus": "hand", "cards": ["self-hand:先駆けの修羅"], "inspect": ["先駆けの修羅"] },
+      { "say": "先駆けの修羅は、出たときに【奇襲】を持つレガシー。【奇襲】があれば、出たターンから戦闘ができるのです。自分のレリックがあれば、神攻もできる【疾駆】になりますよ。", "focus": "hand", "cards": ["self-hand:先駆けの修羅"], "inspect": ["先駆けの修羅"], "inspectFocus": { "先駆けの修羅": { "section": "effect", "label": "【奇襲】と【疾駆】", "terms": ["奇襲", "疾駆"] } } },
       { "task": "「先駆けの修羅」をレガシー欄へ出しましょう。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["先駆けの修羅"] }, "done": vm => vm._tutorialHas('self', 'legacies', '先駆けの修羅') && vm._tutorialIdle() },
-      { "say": "戦闘では、お互いの戦闘力を比べて低い方が破壊されます。同じ値なら両方とも破壊。修羅は戦闘するとき戦闘力が2000上がるので、諜報員には負けません。", "focus": ["oppPower", "selfPower"], "cards": ["opp-field:飄々たる諜報員", "self-field:先駆けの修羅"], "inspect": ["先駆けの修羅"] },
+      { "say": "戦闘では、お互いの戦闘力を比べて低い方が破壊されます。同じ値なら両方とも破壊。修羅は戦闘するとき戦闘力が2000上がるので、諜報員には負けません。", "focus": ["oppPower", "selfPower"], "cards": ["opp-field:飄々たる諜報員", "self-field:先駆けの修羅"], "inspect": ["先駆けの修羅"], "inspectFocus": { "先駆けの修羅": { "section": "effect", "label": "戦闘時の強化", "terms": ["戦闘時"] } } },
       { "task": "「先駆けの修羅」をドラッグして、タップ状態の相手の「飄々たる諜報員」の上で離し、戦闘しましょう。", "focus": "oppLegacy", "cards": ["opp-field:飄々たる諜報員"], "allow": { "battle": ["先駆けの修羅"] }, "done": vm => !vm._tutorialHas('opp', 'legacies', '飄々たる諜報員') && vm._tutorialIdle() },
       { "say": "奇襲で相手の諜報員を倒し、次の神攻を防げました。これで、勝つための次のターンを迎えられます。縦向きに戻っているあなたの諜報員で神攻しましょう。", "focus": "oppKami", "cards": ["self-field:飄々たる諜報員"], "when": vm => !vm.battleSample.result },
       { "task": "「飄々たる諜報員」で神攻して、スサノオさんのライフを1にしましょう。", "focus": "oppKami", "cards": ["self-field:飄々たる諜報員"], "allow": { "divine": ["飄々たる諜報員"] }, "done": vm => vm.battleSample.opp.life === 1 && vm._tutorialIdle() },
@@ -10614,7 +10627,7 @@ const TUTORIAL_LESSONS = Object.freeze([
     "fieldTheme": "ninja",
     "oppName": "スサノオ",
     "bgm": "kakeraSaki",
-    "numeral": "拾"
+    "numeral": "漆"
   },
   {
     "id": "relics",
@@ -10627,19 +10640,19 @@ const TUTORIAL_LESSONS = Object.freeze([
       { "say": "今回は、場に残るレリックの使い方です。手札の道場を出して、起動効果と常在効果を1つずつ試しましょう。" },
       { "action": "startTurn" },
       { "task": "「木漏れ日の道場」を手札からレリック欄へドラッグしましょう。表示されたカードは「閉じる」で閉じられます。", "focus": "selfRelic", "allow": { "play": ["木漏れ日の道場"] }, "done": vm => vm._tutorialHas('self', 'relics', '木漏れ日の道場') && vm._tutorialIdle() },
-      { "say": "木漏れ日の道場は、タップすることで、レガシー1枚の戦闘力を1000上げられます。これが「起動効果」です。", "focus": "selfRelic", "cards": ["self-relic:木漏れ日の道場"], "inspect": ["木漏れ日の道場"] },
+      { "say": "木漏れ日の道場は、タップすることで、レガシー1枚の戦闘力を1000上げられます。これが「起動効果」です。", "focus": "selfRelic", "cards": ["self-relic:木漏れ日の道場"], "inspect": ["木漏れ日の道場"], "inspectFocus": { "木漏れ日の道場": { "section": "effect", "label": "起動効果", "terms": ["起動"] } } },
       { "say": "レガシー同士の「戦闘」は、タップ状態（横向き）の相手に仕掛けます。戦闘力が低い方が破壊され、同じなら両方とも破壊。相手の諜報員はタップ状態で、戦闘力2000。あなたの侍女も2000ですから、このままでは相打ちです。道場で侍女を強くしてから戦いましょう。", "focus": ["oppPower", "selfPower"], "cards": ["opp-field:飄々たる諜報員", "self-field:冥土送りの侍女"] },
       { "task": "場の「木漏れ日の道場」を右クリックして「起動能力を発動」を選び、「冥土送りの侍女」を対象にしましょう。", "focus": "selfRelic", "cards": ["self-relic:木漏れ日の道場"], "allow": { "activate": ["木漏れ日の道場"] }, "targets": ["冥土送りの侍女"], "done": vm => vm.tutorial.flags.activated && vm._tutorialIdle() },
       { "say": "侍女の戦闘力が3000になりました。", "focus": "selfPower", "cards": ["self-field:冥土送りの侍女"] },
       { "task": "「冥土送りの侍女」をドラッグして、タップ状態の相手の「飄々たる諜報員」の上で離し、戦闘しましょう。", "focus": "oppLegacy", "cards": ["opp-field:飄々たる諜報員"], "allow": { "battle": ["冥土送りの侍女"] }, "done": vm => !vm._tutorialHas('opp', 'legacies', '飄々たる諜報員') && vm._tutorialIdle() },
-      { "say": "勝ちましたね。道場のもう1つの効果「戦闘でレガシーを破壊したとき、1枚引く」も働いて、手札が1枚増えました。これが「常在効果」です。", "focus": "hand", "inspect": ["木漏れ日の道場"] },
+      { "say": "勝ちましたね。道場のもう1つの効果「戦闘でレガシーを破壊したとき、1枚引く」も働いて、手札が1枚増えました。これが「常在効果」です。", "focus": "hand", "inspect": ["木漏れ日の道場"], "inspectFocus": { "木漏れ日の道場": { "section": "effect", "label": "戦闘で破壊したときの効果", "terms": ["戦闘で", "ドロー"] } } },
       { "say": "自分で操作して使うのが「起動効果」、条件に合うと働くのが「常在効果」。レリックだけでなく、こうした効果を持つレガシーもいます。カードを拡大して、使う条件を確かめてくださいね。", "focus": "selfRelic", "cards": ["self-relic:木漏れ日の道場"] },
       { "say": "社の施しの使い方は基本編で練習しましたね。マナを補うレリックと、戦いを支えるレリック。役割に合わせて使っていきましょう。", "last": true }
     ],
     "fieldTheme": "ninja",
     "oppName": "スサノオ",
     "bgm": "moyuruSetsuna",
-    "numeral": "拾壱"
+    "numeral": "捌"
   },
   {
     "id": "reroll",
@@ -10652,11 +10665,11 @@ const TUTORIAL_LESSONS = Object.freeze([
       { "say": "今回は、手札を整える「リロール」です。相手のライフは3。童の神攻だけでは足りません。必要なカードを探して、今のターンに勝利を決めましょう。", "focus": "oppLife" },
       { "action": "startTurn" },
       { "say": "手札の「瞬速の死闘」はオラクル。使うとすぐに効果が発動して、そのあと墓地へ置かれるカードです。", "focus": "hand", "cards": ["self-hand:瞬速の死闘"] },
-      { "say": "【選定：1】は、いくつかの効果から1つを選んで使うという意味。今回は「相手ライフ-1」を選ぶのがおすすめですよ。", "focus": "hand", "inspect": ["瞬速の死闘"] },
+      { "say": "【選定：1】は、いくつかの効果から1つを選んで使うという意味。今回は「相手ライフ-1」を選ぶのがおすすめですよ。", "focus": "hand", "inspect": ["瞬速の死闘"], "inspectFocus": { "瞬速の死闘": { "section": "effect", "label": "【選定】", "terms": ["選定"] } } },
       { "say": "それと「リロール」も覚えておきましょう。カードを使うとき、手札にある同じ色のカードを1枚見せると、そのカードをデッキに戻して1枚引き直せます。使うカードと違う色のカードは戻せません。今すぐ必要でないカードを入れ替えられる、誰でも使える決まりごとです。", "focus": "hand", "cards": ["self-hand:瞬速の死闘", "self-hand:熾烈なる戦役"] },
       { "say": "デッキを同じ色で揃えると、手札にリロールへ回せるカードが残りやすくなります。引き直せる機会が増えるぶん、勝ち筋になるキーカードにも出会いやすくなるのですよ。今回は赤のカードで、そのつながりを試してみましょう。", "focus": "hand", "cards": ["self-hand:瞬速の死闘", "self-hand:熾烈なる戦役"] },
       { "task": "「瞬速の死闘」をレガシー欄へドラッグして使いましょう。リロールするか聞かれたら「リロールする」で「熾烈なる戦役」を選び、【選定】では「相手ライフ-1」を選んでくださいね。表示されたカードは「閉じる」で閉じられます。", "focus": "hand", "allow": { "play": ["瞬速の死闘"] }, "reroll": true, "targets": ["熾烈なる戦役"], "sentei": ["相手ライフ"], "answers": [{ "card": "瞬速の死闘", "kind": "reroll", "answer": true, "hint": "今回は「リロールする」を選んで、試してみましょう。" }], "done": vm => !vm._tutorialHas('self', 'hand', '瞬速の死闘') && vm._tutorialHas('self', 'hand', '音速の忍') && vm.battleSample.opp.life === 2 && vm._tutorialIdle() },
-      { "say": "リロールで「音速の忍」が来ましたね！　【疾駆】を持つので、出したターンに神攻できます。死闘で相手のライフを2に減らし、残りのマナは2。童と音速の忍の神攻を合わせれば、今度こそ届きますよ。", "focus": "hand", "cards": ["self-hand:音速の忍"], "inspect": ["音速の忍"] },
+      { "say": "リロールで「音速の忍」が来ましたね！　【疾駆】を持つので、出したターンに神攻できます。死闘で相手のライフを2に減らし、残りのマナは2。童と音速の忍の神攻を合わせれば、今度こそ届きますよ。", "focus": "hand", "cards": ["self-hand:音速の忍"], "inspect": ["音速の忍"], "inspectFocus": { "音速の忍": { "section": "effect", "label": "【疾駆】", "terms": ["疾駆"] } } },
       { "task": "「鐘鳴らしの童」で神攻して、タケミカヅチさんのライフを1にしましょう。", "focus": "oppKami", "cards": ["self-field:鐘鳴らしの童"], "allow": { "divine": ["鐘鳴らしの童"] }, "done": vm => vm.battleSample.opp.life === 1 && vm._tutorialIdle() },
       { "say": "童はタップして、もう神攻できません。ここで、リロールで引いた音速の忍の出番です。コスト2の通常の支払いで出し、【疾駆】で勝利を決めましょう。", "focus": "hand", "cards": ["self-hand:音速の忍"] },
       { "task": "リロールで引いた「音速の忍」をレガシー欄へ出しましょう。支払うマナは通常の「2」を選んでくださいね。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["音速の忍"] }, "done": vm => vm._tutorialHas('self', 'legacies', '音速の忍') && vm._tutorialIdle() },
@@ -10667,11 +10680,11 @@ const TUTORIAL_LESSONS = Object.freeze([
     "fieldTheme": "samurai",
     "oppName": "タケミカヅチ",
     "bgm": "byakko",
-    "numeral": "拾弐"
+    "numeral": "玖"
   },
   {
     "id": "advanced",
-    "numeral": "拾参",
+    "numeral": "拾",
     "title": "進化と昇華",
     "fieldTheme": "yokai",
     "summary": "進化でレガシーを重ね、昇華で追加コストを払い、そのターンに攻撃します。",
@@ -10685,16 +10698,16 @@ const TUTORIAL_LESSONS = Object.freeze([
       { "say": "まずは「進化」の準備から。「鐘鳴らしの童」を場に出してみましょう。", "focus": "hand", "cards": ["self-hand:鐘鳴らしの童"] },
       { "task": "「鐘鳴らしの童」をレガシー欄へ出しましょう。効果を発動するか聞かれたら「発動する」を選んでくださいね。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["鐘鳴らしの童"] }, "answers": [{ "card": "鐘鳴らしの童", "kind": "ability", "answer": true, "hint": "今回は「発動する」を選びましょう。" }], "done": vm => vm._tutorialHas('self', 'legacies', '鐘鳴らしの童') && vm._tutorialIdle() },
       { "say": "出たばかりの童は、このターンは攻撃できません。……ところが、進化を使えば話は別なのです。", "focus": "selfLegacy", "cards": ["self-field:鐘鳴らしの童"] },
-      { "say": "「慈愛の忍・イロハ」には【進化：赤レガシー/忍者レガシー】と書かれています。条件に合うレガシーが場にいれば、その上に重ねて出せるということ。赤の童は、イロハの進化元にぴったりです。", "focus": "hand", "cards": ["self-hand:慈愛の忍・イロハ", "self-field:鐘鳴らしの童"], "inspect": ["慈愛の忍・イロハ"] },
+      { "say": "「慈愛の忍・イロハ」には【進化：赤レガシー/忍者レガシー】と書かれています。条件に合うレガシーが場にいれば、その上に重ねて出せるということ。赤の童は、イロハの進化元にぴったりです。", "focus": "hand", "cards": ["self-hand:慈愛の忍・イロハ", "self-field:鐘鳴らしの童"], "inspect": ["慈愛の忍・イロハ"], "inspectFocus": { "慈愛の忍・イロハ": { "section": "effect", "label": "【進化】の条件", "terms": ["進化："] } } },
       { "say": "進化したレガシーは【疾駆】を持ちます。出たばかりの童の上に重ねても、そのターンのうちに神攻できるのです。下になったレガシーの効果は失われ、タップ状態は引き継ぎますよ。", "focus": "selfLegacy", "cards": ["self-field:鐘鳴らしの童"] },
-      { "say": "さらにイロハには【進化中・出現時】の効果があります。進化して出たとき、墓地からコスト3以下のレガシーを1枚呼び戻せるのです。墓地には【疾駆】を持つ「音速の忍」がいますね。", "focus": "selfGraveyard", "inspect": ["慈愛の忍・イロハ"] },
+      { "say": "さらにイロハには【進化中・出現時】の効果があります。進化して出たとき、墓地からコスト3以下のレガシーを1枚呼び戻せるのです。墓地には【疾駆】を持つ「音速の忍」がいますね。", "focus": "selfGraveyard", "inspect": ["慈愛の忍・イロハ"], "inspectFocus": { "慈愛の忍・イロハ": { "section": "effect", "label": "【進化中】の出現時効果", "terms": ["進化中"] } } },
       { "task": "「慈愛の忍・イロハ」を手札からドラッグして、場の「鐘鳴らしの童」の上で離しましょう。墓地から出すか聞かれたら「発動する」を選び、「音速の忍」を選んでくださいね。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "cards": ["self-field:鐘鳴らしの童"], "allow": { "play": ["慈愛の忍・イロハ"] }, "forceEvolve": true, "targets": ["音速の忍"], "answers": [{ "card": "慈愛の忍・イロハ", "kind": "ability", "answer": true, "hint": "「発動する」を選んで、墓地の音速の忍を呼び戻しましょう。" }], "done": vm => vm.battleSample.self.legacies.some(c => c && c._evolved) && vm._tutorialHas('self', 'legacies', '音速の忍') && vm._tutorialIdle() },
       { "say": "進化したイロハと、呼び戻した音速の忍。どちらも【疾駆】を持っているので、すぐに神攻できますよ。", "focus": "selfLegacy", "cards": ["self-field:慈愛の忍・イロハ", "self-field:音速の忍"] },
       { "task": "「慈愛の忍・イロハ」と「音速の忍」で、ツクヨミさんに神攻しましょう。", "focus": "oppKami", "cards": ["self-field:慈愛の忍・イロハ", "self-field:音速の忍"], "allow": { "divine": ["慈愛の忍・イロハ", "音速の忍"] }, "done": vm=>vm.battleSample.opp.life===2&&vm._tutorialIdle() },
-      { "say": "次は「夜風の始末屋」。【昇華3】とは、コストを追加で3払うと、おまけの効果を得られるということ。始末屋は昇華すると【疾駆】を得ます。", "focus": "hand", "cards": ["self-hand:夜風の始末屋"], "inspect": ["夜風の始末屋"] },
+      { "say": "次は「夜風の始末屋」。【昇華3】とは、コストを追加で3払うと、おまけの効果を得られるということ。始末屋は昇華すると【疾駆】を得ます。", "focus": "hand", "cards": ["self-hand:夜風の始末屋"], "inspect": ["夜風の始末屋"], "inspectFocus": { "夜風の始末屋": { "section": "effect", "label": "【昇華】と【疾駆】", "terms": ["昇華", "疾駆"] } } },
       { "say": "昇華できるのは、手札から使うときだけです。コスト3に3を足して6。残りのマナは4なので、足りない分は「社の施し」2枚で補いましょう。", "focus": "selfManaValue", "cards": ["self-hand:夜風の始末屋", "self-relic:社の施し"] },
       { "task": "「夜風の始末屋」をレガシー欄へドラッグし、支払うコストは昇華の「6」を、社の施しを使うか聞かれたら「破壊してマナを増やす」を選びましょう。表示されたカードは「閉じる」で閉じられます。", "focus": "selfLegacy", "allow": { "play": ["夜風の始末屋"] }, "requireSublim": true, "done": vm => vm._tutorialHas('self', 'legacies', '夜風の始末屋') && vm.tutorial.flags.sublim && vm._tutorialIdle() },
-      { "say": "始末屋は神攻したとき、1ターンに1回だけ起き上がる子。続けて2回神攻できるのです。", "focus": "selfLegacy", "cards": ["self-field:夜風の始末屋"], "inspect": ["夜風の始末屋"] },
+      { "say": "始末屋は神攻したとき、1ターンに1回だけ起き上がる子。続けて2回神攻できるのです。", "focus": "selfLegacy", "cards": ["self-field:夜風の始末屋"], "inspect": ["夜風の始末屋"], "inspectFocus": { "夜風の始末屋": { "section": "effect", "label": "神攻時のアンタップ", "terms": ["神攻時"] } } },
       { "task": "「夜風の始末屋」で、2回続けて神攻しましょう。", "focus": "oppKami", "cards": ["self-field:夜風の始末屋"], "allow": { "divine": ["夜風の始末屋"] }, "done": vm=>!!vm.battleSample.result },
       { "id": "victory", "say": "お見事です。進化したイロハと音速の忍、昇華した始末屋で、そのターンのうちに勝利を決められました。", "finale": true },
       { "say": "進化は条件に合うレガシーの上に重ねること。昇華は追加のコストで効果を得ること。確認してから使えば、カードの力を大きく引き出せますね。", "finale": true, "last": true }
@@ -10776,7 +10789,7 @@ function splitTutorialPhrases(text) {
 /* 台詞の中で強調する重要語（長いものから照合する）。【】で囲まれた語も強調する。
    「」の中は、中身がまるごと重要語のとき（例：「神攻（しんこう）」）だけ強調し、カード名やモード名の一部には反応させない。 */
 const TUTORIAL_KEYWORDS = Object.freeze([
-  '天力トリガー', '疲労ダメージ', '手札の上限', '山札切れ', '神攻力', '戦闘力', '第二の神技', '神技1', '神技', '神攻', '戦闘',
+  '天力トリガー', '疲労ダメージ', '手札の上限', '山札切れ', '神攻力', '戦闘力', '創世神技', '神技', '神技', '神攻', '戦闘',
   'ライフ', 'マナ', '天力', 'コスト', 'タップ', 'アンタップ', 'マリガン', 'リロール', '進化', '昇華', '選定', '疾駆', '奇襲',
   '守護', '不可侵', '墓地', '崩壊', '変換値', '星魂', '理念', 'ユニークカード', '基本カード', '勝利', '社の施し', 'オラクル',
   '選別の儀', '深化の刻', '見識',
@@ -10808,7 +10821,12 @@ function markTutorialKeywords(text) {
 function loadTutorialProgress() {
   try {
     const saved = JSON.parse(localStorage.getItem(TUTORIAL_PROGRESS_STORAGE_KEY) || '{}');
-    return saved && typeof saved === 'object' ? saved : {};
+    if (!saved || typeof saved !== 'object') return {};
+    const progress = Object.assign({}, saved);
+    // 統合前の内容をすべて終えている場合だけ、統合後の講座へクリアを引き継ぐ。
+    if (saved.basic && saved.mana) progress.preparation = true;
+    if (saved['hand-limit'] && saved['deck-out'] && saved.fatigue) progress.endgame = true;
+    return progress;
   } catch (e) { return {}; }
 }
 
@@ -10948,15 +10966,53 @@ function buildRichSegments(text, glossary, tokens) {
   return out;
 }
 
+// 元のリンク情報を保ったまま、説明対象の語句だけを強調する。
+function buildTutorialFocusSegments(text, glossary, tokens, highlights) {
+  const segments = buildRichSegments(text, glossary, tokens);
+  const terms = [...new Set((highlights || []).filter(term => typeof term === 'string' && term.length))];
+  if (!terms.length || !text) return segments;
+  const ranges = [];
+  for (const term of terms) {
+    let start = 0, index;
+    while ((index = text.indexOf(term, start)) !== -1) {
+      ranges.push([index, index + term.length]);
+      start = index + term.length;
+    }
+  }
+  // 【疾駆】や【誘3】は括弧と値を含め、能力のまとまりを囲う。
+  for (const match of text.matchAll(/【[^】]*】/g)) {
+    const start = match.index, end = start + match[0].length;
+    if (ranges.some(([a, b]) => a < end && b > start)) ranges.push([start, end]);
+  }
+  let offset = 0;
+  return segments.flatMap(segment => {
+    const start = offset, end = offset + segment.s.length;
+    offset = end;
+    const cuts = [...new Set([start, end, ...ranges.flat().filter(point => point > start && point < end)])].sort((a, b) => a - b);
+    return cuts.slice(0, -1).map((a, i) => ({ ...segment, s: segment.s.slice(a - start, cuts[i + 1] - start),
+      focus: ranges.some(([x, y]) => a >= x && cuts[i + 1] <= y) }));
+  });
+}
+
+// 練習終了時はアマテラスだけを映す。通常の勝敗画面とは共有しない。
+Vue.component("tutorial-ending-art", {
+  props: { title: { type: String, default: "チュートリアル" }, build: { type: String, default: "" } },
+  computed: { imageUrl() { return "kami_illustrations/アマテラス.webp?v=" + this.build; } },
+  template: '<section class="tutorial-ending-art" aria-label="チュートリアル終了画面">' +
+    '<img class="tutorial-ending-image" :src="imageUrl" alt="微笑むアマテラス">' +
+    '<div class="tutorial-ending-caption"><strong>よくできました</strong><span>{{ title }} · 練習完了</span></div><slot></slot></section>',
+});
+
 /* リッチテキスト表示コンポーネント（キーワード/トークンをクリック可能に） */
 Vue.component("rich-text", {
   props: {
     text:     { type: String, default: "" },
     glossary: { type: Object, default: () => ({}) },
     tokens:   { type: Object, default: () => ({}) },
+    highlights: { type: Array, default: () => [] },
   },
   computed: {
-    segs() { return buildRichSegments(this.text, this.glossary, this.tokens); },
+    segs() { return buildTutorialFocusSegments(this.text, this.glossary, this.tokens, this.highlights); },
   },
   methods: {
     onClick(seg) {
@@ -10967,9 +11023,9 @@ Vue.component("rich-text", {
   template:
     '<span class="rich-text">' +
       '<template v-for="(seg, i) in segs">' +
-        '<span v-if="seg.t === \'kw\'" :key="i" class="rt-kw" @click.stop="onClick(seg)">{{ seg.s }}</span>' +
-        '<span v-else-if="seg.t === \'token\'" :key="i" class="rt-token" @click.stop="onClick(seg)">{{ seg.s }}</span>' +
-        '<span v-else :key="i">{{ seg.s }}</span>' +
+        '<span v-if="seg.t === \'kw\'" :key="i" class="rt-kw" :class="{\'rt-tutorial-focus\': seg.focus}" @click.stop="onClick(seg)">{{ seg.s }}</span>' +
+        '<span v-else-if="seg.t === \'token\'" :key="i" class="rt-token" :class="{\'rt-tutorial-focus\': seg.focus}" @click.stop="onClick(seg)">{{ seg.s }}</span>' +
+        '<span v-else :key="i" :class="{\'rt-tutorial-focus\': seg.focus}">{{ seg.s }}</span>' +
       '</template>' +
     '</span>',
 });
@@ -11024,14 +11080,14 @@ const GS_CPU_NAMED_CARD_BONUS = {
   evolveSublim: {
     '幽玄の面霊姫': 30, '葛ノ葉亭の若女将': 30, '千変万化の大妖狐': 30, // どのレガシーからでも進化できる＝最優先
     '厳格なる森の長・ハクレン': 20, '拒絶の守衛・イズモ': 20,           // 昇華コスト軽減
-    '約束の光・ミズホ': 22, '平穏の祈り手': 22, '鐘鳴らしの童': 22,     // 天力を固定値で上げる（第二の神技との相性◎）
+    '約束の光・ミズホ': 22, '平穏の祈り手': 22, '鐘鳴らしの童': 22,     // 天力を固定値で上げる（創世神技との相性◎）
     '月見草の修行場': -10, // K4/K5/K7/K9以外では選定効果のどれもこの軸と直結しないため優先度は控えめでよい
   },
   // K2 ヤマトタケル：同名一切禁止軸
   unique: {
     '約束の光・ミズホ': -18, '平穏の祈り手': -18, '鐘鳴らしの童': -18,  // 天力が毎ターン溜まるため固定値上昇と相性が悪い
     '平和を願う剣・アヤト': 20, '暁の盟約': 20, '断禍の三重奏': 20,     // 他種族混成デッキになりやすい方針と好相性
-    '冥土送りの侍女': 14, '静かなる謀殺': 14,                          // 第二の神技の取りこぼし処理
+    '冥土送りの侍女': 14, '静かなる謀殺': 14,                          // 創世神技の取りこぼし処理
     '月見草の修行場': -10,
   },
   // K3 オオクニヌシ：種族分散軸
@@ -11044,11 +11100,11 @@ const GS_CPU_NAMED_CARD_BONUS = {
   },
   // K4 タケミカヅチ：最高戦闘力軸
   highPower: {
-    '戦陣の旗手': 20, '無貌の忍': 20, '白き閃刃・シラトリ': 20,          // 【奇襲】×神技1
+    '戦陣の旗手': 20, '無貌の忍': 20, '白き閃刃・シラトリ': 20,          // 【奇襲】×神技
     '名刀集めの豪族': 24, '算盤弾きの刀剣商': 24, '千刃の破戒僧': 24, '妖刀を抱く乙女': 24, // レリック数依存の侍
     '覚悟の出陣': 22, '忠臣の予感': 12, '刹那の救援': 22, '木漏れ日の道場': 26,
     '冥土送りの侍女': 12, '静かなる謀殺': 12,
-    '月見草の修行場': 18, // 影分身に【奇襲】を付与できるため神技1で即戦力になる
+    '月見草の修行場': 18, // 影分身に【奇襲】を付与できるため神技で即戦力になる
   },
   // K5 オモイカネ：オラクル・レリック軸
   oracleRelic: {
@@ -11070,8 +11126,8 @@ const GS_CPU_NAMED_CARD_BONUS = {
   // K7 ヒノカグツチ：破壊・【補正-】軸
   destroy: {
     '妖刀を抱く乙女': 30, '二尾の猫女': 30,         // 相打ちするだけで天力+2
-    '妖界の禍主・マガツヒ': 32,                       // 自身の神技1で墓地を溜めやすい上、出現時効果で破壊も行う＝最優先
-    '蠢く陰謀': 20,                                   // 神技1で墓地を肥やせるため【補正-】と好相性
+    '妖界の禍主・マガツヒ': 32,                       // 自身の神技で墓地を溜めやすい上、出現時効果で破壊も行う＝最優先
+    '蠢く陰謀': 20,                                   // 神技で墓地を肥やせるため【補正-】と好相性
     '恐怖の手記': 26, '禁忌の祭壇': 26, '熾烈なる戦役': 26, '暗躍の妖将・カゲロウ': 26, '禍ツ撃': 26, '紫爪龍・プルプラ': 26, // 全体除去は最高の相性
     '貪食の童女': 18,   // 貴重な低コスト破壊レガシー。墓地も増やせる
     '不屈の武者': 16,   // 墓地が増えるほど強くなり、すぐ破壊されるため天力も早く溜まる
@@ -11085,7 +11141,7 @@ const GS_CPU_NAMED_CARD_BONUS = {
   guard: {
     '平穏の祈り手': 30, '鐘鳴らしの童': 30,           // 召喚するだけで天力+2
     '無垢なる信徒・チフユ': 26, '決別の白槍・ミナト': 26, '陰陽かぶれの犬神': 26, // ヨリシロちゃんを複数招来
-    '黄角龍・フラウス': 30,                           // 守護持ちの重量級＝第二の神技の蘇生先として最高
+    '黄角龍・フラウス': 30,                           // 守護持ちの重量級＝創世神技の蘇生先として最高
     '月見草の修行場': -10,
   },
   // K9 ツクヨミ：トークン軸
@@ -11098,7 +11154,7 @@ const GS_CPU_NAMED_CARD_BONUS = {
   // K10 ヤマタノオロチ：龍軸
   dragon: {
     '夜風の始末屋': 18, '名刀集めの豪族': 18, // 隷属の龍血・天喰らう咆哮との疾駆コンボ
-    '紅翼龍・ルベル': 28,                     // 第二の神技【神威+2】と最高の相性
+    '紅翼龍・ルベル': 28,                     // 創世神技【神威+2】と最高の相性
     '冒険譚の始まり': 22, '浮遊する相棒・コマ': 22, '荒き緑の眷属': 26, // マナ最大値上昇。荒き緑の眷属は龍の中でも特に優先
     '瞬速の死闘': 16, '熾烈なる戦役': 16, '救済の手': 16, '禍ツ撃': 16, // 序盤の安定・龍を守る除去
     '黄泉帰り': 24,   // 墓地の貴重な龍を手札に戻して使い回せる
@@ -11265,7 +11321,7 @@ new Vue({
     battleHitFlashActive: false, // ヒット時の画面フラッシュ中か
     battleDivineEffects: [],
     battleFatigueEffect: null,
-    battleSkillCloseup: null,   // 第二の神技発動時の顔アップ演出：{ imgUrl, kamiName, skillName }
+    battleSkillCloseup: null,   // 創世神技発動時の顔アップ演出：{ imgUrl, kamiName, skillName }
     battleStatDisplay: {},      // ライフ/マナ/天力/封印のカウントアップ表示用（実データとは別に保持）
     battleStatPops: {},         // ライフ/マナ等の増減ポップ表示：{ dispKey: { id, text, cls } }
     battleDragTrail: [],        // ドラッグ中に追従する光の尾：[{ id, x, y, color }]
@@ -11427,6 +11483,7 @@ new Vue({
     tutorial: null, // チュートリアル進行状態（null＝非実行）。TUTORIAL_LESSONS[].steps を参照
     tutorialProgress: loadTutorialProgress(), // { レッスンid: true }＝クリア済み
     tutorialMenuOpen: false,
+    tutorialCompletion: null, // 判子演出と一覧へのクリック持ち越し防止
     tutorialLoading: false,
     tutorialPick: null,
     battleViewSwapped: false, // CPUの手番代行中（self/opp入れ替え中）か。画面は入れ替えずに表示するため、battleView で元に戻して描画する // 外伝（ピック画面）の状態 { kami, packs, packIndex, pack, picks }
@@ -11543,6 +11600,9 @@ new Vue({
       return TUTORIAL_LESSONS.filter(l => this.tutorialProgress[l.id]).length;
     },
     /* say＝台詞（クリック待ち）／task＝操作待ち／wait＝相手の手番や決着演出中で吹き出しを出さない */
+    tutorialPreviewFocus() {
+      return this._tutorialPreviewFocusFor(this.previewCard);
+    },
     tutorialInspectionCards() {
       return this._tutorialInspectionCards(this.tutorialStep);
     },
@@ -11895,12 +11955,12 @@ new Vue({
         const rawCost = kami[`skill${index}cost`];
         const matched = String(rawCost == null ? '' : rawCost).match(/\d+/);
         const cost = matched ? Number(matched[0]) : 0;
-        const name = kami[`skill${index}name`] || `神技${index}`;
+        const name = kami[`skill${index}name`] || (index === 2 ? '創世神技' : '神技');
         const effect = kami[`skill${index}effect`] || '';
         const exists = !!(kami[`skill${index}name`] || effect || rawCost !== '');
         const isSelfTurn = this.battleSample.activeSide === 'self';
         let hasCost = this.battleSample.self.tenryoku >= cost;
-        // K2ヤマトタケル第二の神技「孤影刃・天翔」：自分・相手フィールドに最低1体ずつレガシーがいないと
+        // K2ヤマトタケル創世神技「孤影刃・天翔」：自分・相手フィールドに最低1体ずつレガシーがいないと
         // 「各1枚選び、それ以外を破壊する」効果が成立しないため使用不可にする
         if (hasCost && this._battleKamiNo('self') === 'K2' && index === 2) {
           const selfLegacies = (this.battleSample.self.legacies || []).length;
@@ -11930,7 +11990,7 @@ new Vue({
       const map = this.battleSample.selectionBySeat || {};
       return !!map[String(n.oppSeat)];
     },
-    /* 第二の神技クローズアップ：技名（例：「封神・終極八岐（ほうしん・しゅうきょくやまた）」）を
+    /* 創世神技クローズアップ：技名（例：「封神・終極八岐（ほうしん・しゅうきょくやまた）」）を
        本文とふりがなに分割する。ふりがなが長く1行に収まらず数文字だけ折り返ると見た目が
        崩れるため、本文とは別行にした上でCSS側で長さに応じてフォントサイズを縮める。 */
     battleSkillCloseupNameParts() {
@@ -13604,16 +13664,16 @@ new Vue({
     /* ===== チュートリアル：アマテラスが案内する固定盤面の星戦 =====
        盤面・手札・山札はレッスンの setup で固定し、進行は steps を上から順に進める。
        相手の手番はCPU思考を使わず、手順ごとの台本（script）どおりに動かす。 */
-    async startTutorial(lessonId) {
+    async startTutorial(lessonId, completion = null) {
       const lesson = [...TUTORIAL_LESSONS, TUTORIAL_PRACTICE].find(l => l.id === lessonId);
-      if (!lesson || this.tutorialLoading) return;
+      if (!lesson || this.tutorialLoading || (this.tutorialCompletion && this.tutorialCompletion !== completion)) return false;
       this._sfxPlay('decision');
       this.tutorialLoading = true;
       try {
         await this.ensureBattleAssetsLoaded();
       } catch (e) {
         alert(e.message || 'チュートリアルの準備に失敗しました');
-        return;
+        return false;
       } finally {
         this.tutorialLoading = false;
       }
@@ -13628,7 +13688,7 @@ new Vue({
         this.appView = 'tutorialPick';
         if (lesson.bgm && BGM_FILES[lesson.bgm] && this.bgmCurrentKey !== lesson.bgm) this._bgmPlay(lesson.bgm);
         this._tutorialBegin(lessonId);
-        return;
+        return true;
       }
       this._battleInitialize({
         source: 'tutorial', modeLabel: 'チュートリアル', returnView: 'tutorial',
@@ -13671,6 +13731,7 @@ new Vue({
       this._battleInitStatDisplay();
       if (typeof this.dslRefreshStaticAbilities === 'function') this.dslRefreshStaticAbilities();
       this._tutorialBegin(lessonId);
+      return true;
     },
     _tutorialBegin(lessonId) {
       this.tutorial = { lessonId, index: -1, typed: 0, rects: [], marks: [], panelPos: 'bottom', hint: '', hintShake: false, flags: {}, running: false, oppLabel: '' };
@@ -13737,17 +13798,109 @@ new Vue({
       this.tutorial = null;
     },
     _tutorialFinish() {
+      if (this.tutorialCompletion) return;
       const lesson = this.tutorialLesson;
+      // 基本編・応用編の最後の未クリア講座を終えたら、編の修了ボイスに切り替える（再クリアでは通常の終了ボイス）
+      const categoryCleared = progress => !!(lesson && lesson.category) &&
+        TUTORIAL_LESSONS.filter(l => l.category === lesson.category).every(l => progress[l.id]);
+      const categoryWasCleared = categoryCleared(this.tutorialProgress || {});
       if (lesson) {
         this.tutorialProgress = Object.assign({}, this.tutorialProgress, { [lesson.id]: true });
         try { localStorage.setItem(TUTORIAL_PROGRESS_STORAGE_KEY, JSON.stringify(this.tutorialProgress)); } catch (e) { /* 保存できなくても続行 */ }
       }
-      if (lesson && lesson.kind === 'pick') this._tutorialLeavePick();
-      else {
-        this._tutorialStop();
-        this.battleReturnNow();
+      this._tutorialStop();
+      this.hideCardHover();
+      this.tutorialMenuOpen = false;
+      const now = Date.now();
+      const lessonIndex = TUTORIAL_LESSONS.findIndex(l => lesson && l.id === lesson.id);
+      const nextLesson = lessonIndex >= 0 ? TUTORIAL_LESSONS[lessonIndex + 1] : null;
+      this.tutorialCompletion = { title: lesson ? lesson.title : 'チュートリアル', lessonId: lesson && lesson.id, kind: lesson && lesson.kind, nextLessonId: nextLesson && nextLesson.id, nextTitle: nextLesson && nextLesson.title, ready: false, stage: 'ending', notBefore: now + 1900, lastInput: now };
+      this._sfxPlay('decision');
+      if (this.bgmCurrentKey !== 'victory') this._bgmPlay('victory');
+      // チュートリアルは常にアマテラス（No.8）が案内役なので、終了時のボイスは固定で鳴らす
+      const amaterasu = (this.allKamiCards || []).find(k => String(k.no) === '8');
+      let endVoiceKey = 'tutorial_end';
+      if (!categoryWasCleared && categoryCleared(this.tutorialProgress)) {
+        const key = 'tutorial_' + lesson.category + '_complete'; // tutorial_basic_complete / tutorial_advanced_complete
+        const files = this.kamiVoiceManifest && this.kamiVoiceManifest.kami['8'];
+        if (files && files[key]) endVoiceKey = key;
       }
-      this.tutorialMenuOpen = true; // 続けて次のレッスンを選べるよう一覧へ戻る
+      if (amaterasu && this.playKamiVoice) this.playKamiVoice(amaterasu, endVoiceKey);
+      this.$nextTick(() => { if (this.$refs.tutorialCompletion) this.$refs.tutorialCompletion.focus(); });
+      this._tutorialQueueCompletion();
+    },
+    tutorialCompletionInput(event) {
+      const completion = this.tutorialCompletion;
+      if (!completion) return;
+      if (completion.stage === 'ending' && completion.ready && event.target && event.target.closest('[data-tutorial-completion-action]')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (completion.stage === 'ending' && completion.ready) return;
+      completion.lastInput = Date.now();
+      this._tutorialQueueCompletion();
+    },
+    async tutorialChooseCompletion(action) {
+      const completion = this.tutorialCompletion;
+      if (!completion || completion.stage !== 'ending' || !completion.ready || !['next', 'menu'].includes(action)) return;
+      if (action === 'next' && !completion.nextLessonId) return;
+      completion.ready = false;
+      this._sfxPlay('decision');
+      if (completion.kind === 'pick') this._tutorialLeavePick();
+      else this.battleReturnNow();
+      if (action === 'next') {
+        this.tutorialMenuOpen = false;
+        const started = await this.startTutorial(completion.nextLessonId, completion);
+        if (started) this.tutorialCompletion = null;
+        else completion.ready = true;
+        return;
+      }
+      this.tutorialMenuOpen = true;
+      completion.stage = 'menuStamp';
+      completion.notBefore = Date.now() + 1400;
+      completion.lastInput = Date.now();
+      this.$nextTick(() => this._tutorialScrollCompletedLesson());
+      this._tutorialQueueCompletion();
+    },
+    _tutorialQueueCompletion() {
+      clearTimeout(this._tutorialCompletionTimer);
+      const completion = this.tutorialCompletion;
+      if (!completion) return;
+      if (completion.stage === 'ending' && completion.ready) return;
+      // 連打が落ち着いてから一覧を開き、開いた直後も入力を吸収する。
+      const delay = Math.max(16, completion.notBefore - Date.now(), completion.lastInput + 500 - Date.now());
+      this._tutorialCompletionTimer = setTimeout(() => {
+        if (this.tutorialCompletion !== completion) return;
+        if (completion.stage === 'ending') {
+          completion.ready = true;
+          this._tutorialCompletionTimer = null;
+          this.$nextTick(() => {
+            const button = this.$el && this.$el.querySelector('[data-tutorial-completion-action]');
+            if (button) button.focus({ preventScroll: true });
+          });
+        } else if (completion.stage === 'menuStamp') {
+          completion.stage = 'menuShield';
+          completion.notBefore = Date.now() + 600;
+          completion.lastInput = Date.now();
+          this._tutorialQueueCompletion();
+        } else {
+          this.tutorialCompletion = null;
+          this._tutorialCompletionTimer = null;
+          this._bgmRestoreAfterBattle(this.appView);
+          this.$nextTick(() => {
+            const close = this.$el && this.$el.querySelector('.tutorial-menu-close');
+            if (close) close.focus({ preventScroll: true });
+          });
+        }
+      }, delay);
+    },
+    _tutorialScrollCompletedLesson() {
+      const c = this.tutorialCompletion, root = this.$el;
+      if (!c || !root) return;
+      const panel = root.querySelector('.tutorial-menu-panel');
+      const row = root.querySelector('[data-tutorial-lesson="' + c.lessonId + '"]');
+      if (!panel || !row) return;
+      const p = panel.getBoundingClientRect(), r = row.getBoundingClientRect();
+      panel.scrollTop = Math.max(0, panel.scrollTop + r.top - p.top - (panel.clientHeight - r.height) / 2);
     },
     /* i 番目の手順へ進む（when が偽の手順は飛ばす） */
     _tutorialGo(i) {
@@ -13909,7 +14062,9 @@ new Vue({
       }
     },
     tutorialSurfaceClick(event) {
+      if (this.tutorialCompletion) { this.tutorialCompletionInput(event); return; }
       if (!this.tutorial || this.tutorialMode !== 'say' || this.previewCard || this.battleSkillCloseup || this._battleHasBlockingModal()) return;
+      if (this.tutorialStep && this.tutorialStep.emoteIntro && (this._suppressNextKamiClick || event.target.closest('.emote-wheel, .emote-wheel-backdrop'))) return;
       // パネル内の確認ボタン・終了ボタンは既存の操作に任せる。
       if (event.target.closest('.tutorial-panel, .tutorial-quit')) return;
       event.stopPropagation();
@@ -14090,10 +14245,10 @@ new Vue({
       if (!kami) return;
       const skillName = String(kami[`skill${act.skill}name`] || '').split('\n')[0].trim();
       const cost = Number(String(kami[`skill${act.skill}cost`] || 0).match(/\d+/)) || 0;
-      say(`神技「${skillName}」を放とうとしています…`);
+      say(`${act.skill === 2 ? '創世神技' : '神技'}「${skillName}」を放とうとしています…`);
       await this._battleCpuThinkPause(900);
       opp.tenryoku = Math.max(0, (Number(opp.tenryoku) || 0) - cost);
-      this.battleShowNotice(`${skillName}を発動`, `${this.battleContext.oppName}が神技「${skillName}」を発動し、天力を${cost}消費しました。`, [kami]);
+      this.battleShowNotice(`${skillName}を発動`, `${this.battleContext.oppName}が${act.skill === 2 ? '創世神技' : '神技'}「${skillName}」を発動し、天力を${cost}消費しました。`, [kami]);
       this._battleDivineContext = { kami, index: act.skill, targets: [], transfers: [], presented: false };
       try {
       if (act.destroy) {
@@ -15606,7 +15761,7 @@ new Vue({
         const delegateRef = getDb().ref(delegatePath);
         const delegateHandler = snap => this._battleHandleRemoteDelegateRequest(snap.val());
         delegateRef.on('value', delegateHandler);
-        // 第二の神技（必殺技）の顔アップ演出も同期：相手の必殺技発動も自分の画面で見られるようにする
+        // 創世神技（必殺技）の顔アップ演出も同期：相手の必殺技発動も自分の画面で見られるようにする
         const skill2Path = path.replace(/\/state$/, '/skill2');
         const skill2Ref = getDb().ref(skill2Path);
         const skill2Handler = snap => this._battleApplyRemoteSkill2(snap.val());
@@ -15758,7 +15913,7 @@ new Vue({
     },
     /* ===================================================================
        ジュース感（game feel）：SE再生・ヒットストップ・カメラシェイク・
-       数値カウントアップ・第二の神技クローズアップ
+       数値カウントアップ・創世神技クローズアップ
        =================================================================== */
     /* 効果音：sfx/ 配下の音源ファイル（mp3、SFX_FILES参照）をその都度 Audio インスタンスを
        作って再生する（同じ音が連続しても前の再生を止めずに重ねて鳴らせるよう、使い回さず毎回生成する）。
@@ -15785,7 +15940,7 @@ new Vue({
       const urls = [];
       for (let i = 1; i <= 10; i++) {
         urls.push(`kami_cutin/${i}.webp`);
-        urls.push(`kami_cutin_eyes/${i}.png`); // 神技1の目アップカットイン用（従来ここが先読み対象外だった）
+        urls.push(`kami_cutin_eyes/${i}.png`); // 神技の目アップカットイン用（従来ここが先読み対象外だった）
       }
       const CONCURRENCY = 4; // 帯域を独占しない程度に並列数を抑える
       let nextIndex = 0;
@@ -16013,12 +16168,31 @@ new Vue({
       }
       return this._bgmCtx;
     },
-    _bgmStopCurrentSource() {
-      (this._bgmSourceNodes || []).forEach(node => {
-        try { node.stop(); } catch (e) { /* 既に停止済みでも無視 */ }
-        try { node.disconnect(); } catch (e) { /* noop */ }
-      });
+    _bgmStopCurrentSource(fadeSec = 0) {
+      const nodes = this._bgmSourceNodes || [], gain = this._bgmTrackGain;
+      const dispose = () => {
+        nodes.forEach(node => {
+          try { node.stop(); } catch (e) { /* 既に停止済みでも無視 */ }
+          try { node.disconnect(); } catch (e) { /* noop */ }
+        });
+        if (gain) gain.disconnect();
+      };
+      if (fadeSec > 0 && gain && nodes.length && this._bgmCtx) {
+        const now = this._bgmCtx.currentTime;
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(gain.gain.value, now);
+        gain.gain.linearRampToValueAtTime(0, now + fadeSec);
+        this._bgmRetiringTracks = this._bgmRetiringTracks || new Set();
+        const retiring = { dispose, timer: null };
+        this._bgmRetiringTracks.add(retiring);
+        retiring.timer = setTimeout(() => { dispose(); this._bgmRetiringTracks.delete(retiring); }, fadeSec * 1000);
+      } else {
+        dispose();
+        (this._bgmRetiringTracks || []).forEach(track => { clearTimeout(track.timer); track.dispose(); });
+        if (this._bgmRetiringTracks) this._bgmRetiringTracks.clear();
+      }
       this._bgmSourceNodes = [];
+      this._bgmTrackGain = null;
     },
     async _bgmLoadBuffer(key) {
       this._bgmBufferCache = this._bgmBufferCache || {};
@@ -16209,12 +16383,21 @@ new Vue({
       const ctx = this._bgmAudioCtx();
       if (ctx.state === 'suspended') { try { await ctx.resume(); } catch (e) { /* 次のユーザー操作で再試行される */ } }
       if (loadToken !== this._bgmLoadSeq) return;
-      this._bgmStopCurrentSource();
+      const fadeSec = this._bgmPlayingKey === 'victory' && key !== 'victory' ? .65 : 0;
+      this._bgmStopCurrentSource(fadeSec);
       this._bgmAnnounce(key);
       const shouldLoop = entry.loop !== false;
       const requestedOffsetSec = Math.max(0, Number(options.offsetSec) || 0);
       const nodes = [];
       const startAt = ctx.currentTime;
+      const trackGain = ctx.createGain();
+      trackGain.connect(this._bgmGain);
+      if (fadeSec) {
+        trackGain.gain.setValueAtTime(0, startAt);
+        trackGain.gain.linearRampToValueAtTime(1, startAt + fadeSec);
+      }
+      this._bgmTrackGain = trackGain;
+      this._bgmPlayingKey = key;
       if (shouldLoop && media.loopBuffer) {
         // イントロは「ループ区間に入る前（0〜loopStartSec）」だけを1回再生する。
         // ここを誤ってloopEndSecまで再生すると、ループ区間（loopStart〜loopEnd）を
@@ -16223,13 +16406,13 @@ new Vue({
         // （調整ツールは境目の接続だけを試聴するためこの重複には気づけない）。
         const introSource = ctx.createBufferSource();
         introSource.buffer = media.buffer;
-        introSource.connect(this._bgmGain);
+        introSource.connect(trackGain);
         introSource.start(startAt, 0, media.loopStartSec);
         nodes.push(introSource);
         const loopSource = ctx.createBufferSource();
         loopSource.buffer = media.loopBuffer;
         loopSource.loop = true;
-        loopSource.connect(this._bgmGain);
+        loopSource.connect(trackGain);
         loopSource.start(startAt + media.loopStartSec);
         nodes.push(loopSource);
       } else {
@@ -16240,7 +16423,7 @@ new Vue({
           source.loopStart = media.silenceBounds.loopStart;
           source.loopEnd = media.silenceBounds.loopEnd;
         }
-        source.connect(this._bgmGain);
+        source.connect(trackGain);
         const maxOffsetSec = Math.max(0, media.buffer.duration - 0.01);
         source.start(startAt, shouldLoop ? 0 : Math.min(requestedOffsetSec, maxOffsetSec));
         nodes.push(source);
@@ -16379,6 +16562,7 @@ new Vue({
        bgmAuto（自動選曲）中は通常通り自動選曲すればよいが、手動選択中でも「今鳴っている（鳴り終わった）
        のがresultカテゴリの曲」なら、無音のまま放置しないよう自動選曲側にフォールバックする。 */
     _bgmRestoreAfterBattle(view) {
+      if (this.tutorialCompletion) return; // 完了画面と一覧の判子演出では勝利曲を保つ
       const current = this.bgmCurrentKey && BGM_FILES[this.bgmCurrentKey];
       const stuckOnResultTrack = !!(current && current.category === 'result');
       if (this.bgmAuto || stuckOnResultTrack) this._bgmAutoPickForView(view);
@@ -16388,6 +16572,7 @@ new Vue({
        オンライン対戦中（battleNet.on）は各自バラバラに選ぶと同じ部屋なのに違う曲が聞こえてしまうため、
        Firebase上で部屋共通の1曲を決定・共有する（_bgmSyncPick）。 */
     _bgmAutoPickForView(view) {
+      if (this.tutorialCompletion) return;
       if (view === 'tutorialPick' && this.tutorialLesson && BGM_FILES[this.tutorialLesson.bgm]) {
         if (this.bgmCurrentKey !== this.tutorialLesson.bgm) this._bgmPlay(this.tutorialLesson.bgm);
         return;
@@ -16942,7 +17127,7 @@ new Vue({
       this._battleShowFatigueEffect(side, turn, damage);
       this._battleCheckResult({ side, reason: `fatigue:${turn}:${damage}` });
     },
-    /* 第二の神技（必殺技）発動：カミの顔アップ＋技名アップを一定時間表示してから消える */
+    /* 創世神技（必殺技）発動：カミの顔アップ＋技名アップを一定時間表示してから消える */
     _battleDivineStageLayout(writerSide) {
       const root=this.$el;
       if (!root) return null;
@@ -17022,15 +17207,15 @@ new Vue({
         this.battleSkillCloseup = null;
       }
     },
-    /* 神技1：目線だけアップの軽量カットイン。専用画像（kami_cutin_eyes/{No}.png、目元中心の
+    /* 神技：目線だけアップの軽量カットイン。専用画像（kami_cutin_eyes/{No}.png、目元中心の
        横長トリミング推奨。例：1920x540程度、顔全体ではなく目のあたりだけが写るように用意）が
-       あればそれを使い、無ければ第二の神技用の顔アップ（webp→png）→従来イラストの順にフォールバックする */
+       あればそれを使い、無ければ創世神技用の顔アップ（webp→png）→従来イラストの順にフォールバックする */
     async _battleShowSkill1Closeup(kami, skillName) {
       this.battleSkillCloseup = {
         sigil: divineSkillTheme(kami, 1),
         mode: 'skill1',
         imgUrl: kami ? `kami_cutin_eyes/${kami.no}.png` : null,
-        fallbackStage: 0, // 0=目アップ専用画像 1=第二の神技用の顔アップ(webp) 2=同(png) 3=従来イラスト
+        fallbackStage: 0, // 0=目アップ専用画像 1=創世神技用の顔アップ(webp) 2=同(png) 3=従来イラスト
         kami,
         kamiNickname: kami ? (kami.nickname || '') : '',
         kamiName: kami ? kami.name : '',
@@ -17061,8 +17246,8 @@ new Vue({
       this._battleSkillCloseupResolve = null;
       resolve();
     },
-    /* 神技カットイン画像の読み込み失敗時のフォールバック。第二の神技は webp→png→従来イラストの順、
-       神技1は 目アップ専用→第二の神技用の顔アップ(webp→png)→従来イラストの順に試す */
+    /* 神技カットイン画像の読み込み失敗時のフォールバック。創世神技は webp→png→従来イラストの順、
+       神技は 目アップ専用→創世神技用の顔アップ(webp→png)→従来イラストの順に試す */
     async _battleShowOrochiSealFourCutin(kami) {
       this.battleSkillCloseup = {
         effect: divineSkillTheme(kami, 1),
@@ -17153,8 +17338,8 @@ new Vue({
         img.src = this.kamiIllustrationUrl(kami) || '';
       }
     },
-    /* 神技1/2演出を相手クライアントにも同期（相手の神技も見られるように）。
-       同じ同期チャネル（/skill2パス）をindexで使い分ける：index省略時は従来通り第二の神技として送る */
+    /* 神技/2演出を相手クライアントにも同期（相手の神技も見られるように）。
+       同じ同期チャネル（/skill2パス）をindexで使い分ける：index省略時は従来通り創世神技として送る */
     _battleRemoteDivineTransfers(cues, writerSide) {
       const destination = writerSide === 'self' ? 'self' : 'opp';
       const source = destination === 'self' ? 'opp' : 'self';
@@ -17213,9 +17398,9 @@ new Vue({
       const index = Number(payload.index) === 1 ? 1 : 2;
       const cutin = index === 1 ? this._battleShowSkill1Closeup(kami, payload.skillName) : this._battleShowSkill2Closeup(kami, payload.skillName, payload.transfers, String(payload.writer) === String(n.mySeat) ? 'self' : 'opp', payload.targets);
     },
-    /* ===== カミのエモート（あいさつ・困惑・賞賛・驚き・疑問・大見栄）＋神技1/2のセリフ ===== */
+    /* ===== カミのエモート（あいさつ・困惑・賞賛・驚き・疑問・大見栄）＋神技/2のセリフ ===== */
     // カミポートレートの下/上あたりに吹き出しを一定時間表示する（自分/相手それぞれ独立に管理）
-    _battleShowEmoteBubble(side, text, voice = null) {
+    _battleShowEmoteBubble(side, text, voice = null, onDone = null) {
       if (!text) return;
       this._emoteBubbleSeq = (this._emoteBubbleSeq || 0) + 1;
       const id = this._emoteBubbleSeq;
@@ -17230,6 +17415,7 @@ new Vue({
       this._emoteSpeechHolds[side] = this._battleHoldSpeech(text, voice, () => {
         if (this.emoteBubbles[side] && this.emoteBubbles[side].id === id) {
           this.$set(this.emoteBubbles, side, null);
+          if (onDone) onDone();
         }
       });
     },
@@ -17241,11 +17427,24 @@ new Vue({
     },
     // エモートホイールで選んだ種類を自分側に表示し、相手クライアントにも同期する
     battleSendEmote(key) {
+      const greetingLesson = this.tutorial && this.tutorialStep && this.tutorialStep.id === 'greeting' ? this.tutorial : null;
+      if (greetingLesson && (key !== 'greeting' || greetingLesson.flags.greetingSent)) {
+        if (!greetingLesson.flags.greetingSent) this._tutorialNudge('まずは「あいさつ」を選んでみましょう。');
+        return;
+      }
       const kami = this.battleSample.self && this.battleSample.self.kami;
       const text = this._battleEmoteLineFor(kami, key);
       if (!text) return;
       this._sfxPlay('emote');
-      this._battleShowEmoteBubble('self', text, this.playKamiVoice(kami, key));
+      if (greetingLesson) this.$set(greetingLesson.flags, 'greetingSent', true);
+      this._battleShowEmoteBubble('self', text, this.playKamiVoice(kami, key), greetingLesson ? () => {
+        if (this.tutorial !== greetingLesson || !this.tutorialStep || this.tutorialStep.id !== 'greeting') return;
+        const opponent = this.battleSample.opp.kami;
+        const reply = this._battleEmoteLineFor(opponent, 'greeting');
+        this._battleShowEmoteBubble('opp', reply, this.playKamiVoice(opponent, 'greeting'), () => {
+          if (this.tutorial === greetingLesson) this.$set(greetingLesson.flags, 'greetingReplied', true);
+        });
+      } : null);
       this._battlePublishEmote(key);
     },
     _battlePublishEmote(key) {
@@ -18204,7 +18403,7 @@ new Vue({
         this.battleShowNotice('常在効果でアンタップ', `${untapped.map(c => `「${this.fullName(c)}」`).join('、')}がターン終了時の常在効果でアンタップされました。`, untapped);
       }
     },
-    /* 「期間:このターン終了時」で予約されたアンタップ（例：K8アマテラス神技1「照護」）を解決する */
+    /* 「期間:このターン終了時」で予約されたアンタップ（例：K8アマテラス神技「照護」）を解決する */
     _battleApplyPendingTurnEndUntap() {
       const pending = this._dslPendingTurnEndUntap;
       this._dslPendingTurnEndUntap = [];
@@ -18767,6 +18966,28 @@ new Vue({
         // 自動消滅トースト：積み重ね表示。それぞれ独立したタイマーで自分だけ消える
         // （連続発火しても他のトーストの表示時間が延びたり巻き込まれて消えたりしない）。
         this._battlePushToast(title, message, this._battleNoticeToastKind(title, message));
+      }
+    },
+    _battleUpdateNoticeBounds() {
+      const root = this.$el;
+      const stack = root && root.querySelector('.notice-toast-stack');
+      const button = root && root.querySelector('.battle-end-turn-btn');
+      if (!stack || !button) {
+        if (this._battleNoticeBoundsObserver) this._battleNoticeBoundsObserver.disconnect();
+        this._battleNoticeBoundsButton = null;
+        return;
+      }
+      const header = root.querySelector('.battle-header');
+      const top = Math.max(8, header ? header.getBoundingClientRect().bottom + 8 : 58);
+      const bottom = Math.min(window.innerHeight - 8, button.getBoundingClientRect().top - 10);
+      stack.style.top = top + 'px';
+      stack.style.maxHeight = Math.max(0, bottom - top) + 'px';
+      if (this._battleNoticeBoundsButton !== button && typeof ResizeObserver !== 'undefined') {
+        if (this._battleNoticeBoundsObserver) this._battleNoticeBoundsObserver.disconnect();
+        this._battleNoticeBoundsButton = button;
+        this._battleNoticeBoundsObserver = new ResizeObserver(() => this._battleUpdateNoticeBounds());
+        this._battleNoticeBoundsObserver.observe(button);
+        if (header) this._battleNoticeBoundsObserver.observe(header);
       }
     },
     _battlePushToast(title, message, kind = 'success') {
@@ -19828,7 +20049,7 @@ new Vue({
       }
       return '';
     },
-    /* 対象選択モーダル：候補カードが場/墓地のどちらにあるか（例：#K1スサノオ第二の神技で墓地からの進化元選択時） */
+    /* 対象選択モーダル：候補カードが場/墓地のどちらにあるか（例：#K1スサノオ創世神技で墓地からの進化元選択時） */
     dslCandidateZoneLabel(card) {
       const loc = this._dslFindCardLocation(card);
       if (!loc) return '';
@@ -20220,7 +20441,7 @@ new Vue({
           this.$set(card, '_kwGrant', list);
           // 期間が明示されているキーワード付与は、対応するターン終了時に自動で消えるよう記録しておく
           // （例：シラトリ・暴食たる牙の竜人・月見草の修行場・K4タケミカヅチ神技＝このターン、
-          // 　　狂乱の幻霧・忠義の一刀・鎮魂の花畑・K8アマテラス神技1＝次の相手ターン終了時まで）
+          // 　　狂乱の幻霧・忠義の一刀・鎮魂の花畑・K8アマテラス神技＝次の相手ターン終了時まで）
           // 期間未指定の場合は従来通りカードが場を離れるまで持続する（追跡しない）。
           const target = this._dslGrantExpireTarget(period, false);
           if (target) {
@@ -20279,7 +20500,7 @@ new Vue({
        ※ dslClearStaticFromCard は静的再計算でも毎フレーム呼ばれるので、こちらは退場時のみ使う。 */
     _battleResetCardBuffs(card) {
       if (!card) return;
-      // 「場を離れるとき崩壊」付与（例：K8アマテラス第二の神技）はここでキーワードが失われる前に判定を保持しておく
+      // 「場を離れるとき崩壊」付与（例：K8アマテラス創世神技）はここでキーワードが失われる前に判定を保持しておく
       this.$set(card, '_crumbleOnLeaveGrant', this.battleCardHasKeyword(card, '場を離れるとき崩壊'));
       this.dslClearStaticFromCard(card);
       const buf = Number(card._buf) || 0;
@@ -20302,7 +20523,7 @@ new Vue({
        トークン（無属性カード）は手札・墓地に置かれると崩壊する＝崩壊ゾーンへ送る。 */
     _battleLeaveZone(card, intendedZone) {
       if (!card) return intendedZone;
-      // 「場を離れるとき崩壊」付与（例：K8アマテラス第二の神技「恩光・八咫神鏡」）：
+      // 「場を離れるとき崩壊」付与（例：K8アマテラス創世神技「恩光・八咫神鏡」）：
       // _battleResetCardBuffs 実行前ならキーワードが残っている、実行後は _crumbleOnLeaveGrant に退避済み
       const crumbleGrant = this.battleCardHasKeyword(card, '場を離れるとき崩壊') || card._crumbleOnLeaveGrant;
       if ((card.isToken || crumbleGrant) && (intendedZone === 'graveyard' || intendedZone === 'hand')) return 'crumbled';
@@ -20612,7 +20833,7 @@ new Vue({
         }
         this._dslLastChosenOwnLegacies = picked.slice();
       }
-      // 「自分と相手が各1枚選び、それ以外の全レガシーを破壊」（例：K2ヤマトタケル第二の神技）
+      // 「自分と相手が各1枚選び、それ以外の全レガシーを破壊」（例：K2ヤマトタケル創世神技）
       if (act && act.対象 && /自分と相手が各1枚選び、それ以外の全レガシーを破壊/.test(String(act.対象.備考 || ''))) {
         return this._dslOpDestroyExceptOnePerSide(sourceCard);
       }
@@ -20655,13 +20876,13 @@ new Vue({
       this.battleShowNotice('破壊', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を破壊しました。`, targets);
       // 死亡時トリガー：場から墓地に行ったもののみ発火（手札からの破壊などには発火しない）
       // 死亡時効果は持ち主の視点へ一時的に入れ替えることがある。
-      // 復元前に後続（例：ヒノカグツチ第二の神技の相手への3ダメージ）へ進まない。
+      // 復元前に後続（例：ヒノカグツチ創世神技の相手への3ダメージ）へ進まない。
       for (const card of movedFromField) await this.battleRunDeathKeywordEffects(card);
       if (Array.isArray(act.後続) && act.後続.length) {
         await this.dslRunActions(act.後続, sourceCard);
       }
     },
-    /* 自分と相手がそれぞれ自分のレガシー1枚を選んで残し、それ以外の全レガシーを破壊する（例：K2ヤマトタケル第二の神技） */
+    /* 自分と相手がそれぞれ自分のレガシー1枚を選んで残し、それ以外の全レガシーを破壊する（例：K2ヤマトタケル創世神技） */
     async _dslOpDestroyExceptOnePerSide(sourceCard) {
       const self = this.battleSample.self;
       const opp = this.battleSample.opp;
@@ -20788,7 +21009,7 @@ new Vue({
       // タップ（妨害）は相手のカードを優先。アンタップは基本的に自分の利益になる行動のため優先付けしない
       const targets = await this.dslChooseTargets(tapSel, doTap ? 'タップする対象を選択' : 'アンタップする対象を選択', doTap ? { preferOpponent: true } : {});
       if (!targets.length) { this._dslLastActionSucceeded = false; return; }
-      // 期間:このターン終了時 のアンタップ（例：K8アマテラス神技1「照護」）は即時実行せず、このターンの終了時まで予約する
+      // 期間:このターン終了時 のアンタップ（例：K8アマテラス神技「照護」）は即時実行せず、このターンの終了時まで予約する
       if (!doTap && act.期間 === 'このターン終了時') {
         this._dslPendingTurnEndUntap = this._dslPendingTurnEndUntap || [];
         targets.forEach(c => {
@@ -21218,7 +21439,7 @@ new Vue({
       });
       if (this._battleDivineContext) this._battleIlluminateSkillTargets(cards);
       // 相手の手札を含む場合、手札は非公開情報のためカード名・画像を公開せず、発動側視点の一般的な通知にする
-      // （例：K9ツクヨミ第二の神技「凍刻・八尺瓊勾月」）
+      // （例：K9ツクヨミ創世神技「凍刻・八尺瓊勾月」）
       if (includesOppHand) {
         this.battleShowNotice(
           '効果無効化',
@@ -22165,7 +22386,7 @@ new Vue({
           placed.push(fieldCard);
         }
       });
-      // 「場に出す」アクション自体への付与（例：K8アマテラス第二の神技「恩光・八咫神鏡」場を離れるとき崩壊）
+      // 「場に出す」アクション自体への付与（例：K8アマテラス創世神技「恩光・八咫神鏡」場を離れるとき崩壊）
       if (Array.isArray(act.付与) && act.付与.length) {
         placed.forEach(fc => this._dslApplyGrant(fc, act.付与, false));
       }
@@ -22225,7 +22446,7 @@ new Vue({
         }
       });
     },
-    /* デッキの上からN枚を公開し、種族が異なるカードを条件内で場に出す（例：#174誓いの契り、K3オオクニヌシ第二の神技） */
+    /* デッキの上からN枚を公開し、種族が異なるカードを条件内で場に出す（例：#174誓いの契り、K3オオクニヌシ創世神技） */
     async _dslOpSearchTopNPlaceDistinctSpecies(act, sourceCard, config) {
       const p = this.battleSample.self;
       if (!p || !Array.isArray(p.deck)) return;
@@ -22277,7 +22498,7 @@ new Vue({
       });
     },
     /* 「異なる種族のコストX以下カードY枚を場に出す」「異なる種族のカードY枚まで合計コストX以下で場に出す」を解析する
-       （例：#174誓いの契り、K3オオクニヌシ第二の神技） */
+       （例：#174誓いの契り、K3オオクニヌシ創世神技） */
     _dslParseDistinctSpeciesFieldPlacement(note) {
       const s = String(note || '');
       let m = s.match(/異なる種族のコスト(\d+)以下(レガシー|レリック|カード)(\d+)枚(?:まで)?を?場に出す/);
@@ -23936,7 +24157,7 @@ new Vue({
        レガシーとも戦闘可能」等カードごとに揺れがある（固定の1文と完全一致でしか判定して
        いなかったため、該当するどのカードも実際には発動していなかった）。文言の揺れに
        決め打ちせず、「アンタップ」の後に「戦闘」＋「できる/可能」が続くという意味的な
-       パターンで判定する（例：#67ヴィリデ②、#80アヤト、忠義の一刀、K4タケミカヅチ神技1）。 */
+       パターンで判定する（例：#67ヴィリデ②、#80アヤト、忠義の一刀、K4タケミカヅチ神技）。 */
     _battleCanAttackUntappedTargets(card) {
       if (!card) return false;
       const grants = []
@@ -24406,7 +24627,7 @@ new Vue({
       const dp = Number(defender.power || 0);
       // 破壊で場を離れると付与キーワードが失われるため、破壊前に判定しておく（例：#172忠義の一刀）
       const attackerDrawsOnKill = this.battleCardHasKeyword(attacker, '戦闘でレガシー破壊時1ドロー');
-      // K4タケミカヅチ第二の神技：戦闘でレガシー破壊時に一度だけアンタップ（このターン中、未消費の場合のみ）
+      // K4タケミカヅチ創世神技：戦闘でレガシー破壊時に一度だけアンタップ（このターン中、未消費の場合のみ）
       const attackerUntapsOnKill = this.battleCardHasKeyword(attacker, 'このターン:戦闘でレガシー破壊時に一度だけアンタップ')
         && !attacker._onceUntapConsumed;
       // 打撃感：ヒットストップ＋カメラシェイク＋効果音を戦闘解決の瞬間に発生させる。
@@ -24454,7 +24675,7 @@ new Vue({
           );
         }
       }
-      // K4タケミカヅチ第二の神技：戦闘でレガシーを破壊できていれば、攻撃側が場に残っている場合のみ一度だけアンタップ
+      // K4タケミカヅチ創世神技：戦闘でレガシーを破壊できていれば、攻撃側が場に残っている場合のみ一度だけアンタップ
       if (attackerUntapsOnKill && destroyed.some(d => d.card === defender) && !destroyed.some(d => d.card === attacker)) {
         this.$set(attacker, '_tapped', false);
         this.$set(attacker, '_onceUntapConsumed', true);
@@ -25346,7 +25567,7 @@ new Vue({
       this.battleSample.self.tenryoku = Math.max(0, this.battleSample.self.tenryoku - skill.cost);
       this.battleSkillModal = null;
       if (this.tutorial && !this._dslSwapped) this.$set(this.tutorial.flags, 'skill', true);
-      this.battleShowNotice(`${skill.name}を発動`, `${this._dslSwapped ? this.battleContext.oppName : this.battleContext.selfName}が神技「${skill.name}」を発動し、天力を${skill.cost}消費しました。`, []);
+      this.battleShowNotice(`${skill.name}を発動`, `${this._dslSwapped ? this.battleContext.oppName : this.battleContext.selfName}が${index === 2 ? '創世神技' : '神技'}「${skill.name}」を発動し、天力を${skill.cost}消費しました。`, []);
       // DSL：神技spec を実行（index は 1/2 → spec 内の神技契機を順番で対応付け）
       const kami = this.battleSample.self.kami;
       if (!kami || !this.effectSpecsReady) return;
@@ -25364,7 +25585,7 @@ new Vue({
       if (!target) {
         this.battleShowNotice(
           '神技spec未登録',
-          `神技「${skill.name}」の効果定義が見つかりませんでした。手動で処理してください。`,
+          `${index === 2 ? '創世神技' : '神技'}「${skill.name}」の効果定義が見つかりませんでした。手動で処理してください。`,
           [kami]
         );
         return;
@@ -25380,7 +25601,7 @@ new Vue({
       if (target.条件 && !this.dslEvalCond(target.条件)) {
         this.battleShowNotice(
           '神技：条件未達',
-          `神技「${skill.name}」の発動条件を満たしていません。効果は不発となります。`,
+          `${index === 2 ? '創世神技' : '神技'}「${skill.name}」の発動条件を満たしていません。効果は不発となります。`,
           [kami]
         );
         return;
@@ -25388,7 +25609,7 @@ new Vue({
       this._battleDivineContext = { kami, index, skillName: skill.name, targets: [], transfers: [], presented: false };
       try {
         await this.dslRunActions(target.処理 || [], kami);
-        // ヤマトタケル第二の神技は対象決定後・破壊前に演出済み。他の神技は効果解決後に再生。
+        // ヤマトタケル創世神技は対象決定後・破壊前に演出済み。他の神技は効果解決後に再生。
         if (!this._battleDivineContext.presented) {
           this._battlePublishSkill2(kami.no, skill.name, index);
           if (index === 2) await this._battleShowSkill2Closeup(kami, skill.name);
@@ -25399,7 +25620,7 @@ new Vue({
         console.warn('[DSL] 神技処理エラー:', e);
         this.battleShowNotice(
           '神技処理エラー',
-          `神技「${skill.name}」の自動処理中にエラーが発生しました。手動で処理してください。`,
+          `${index === 2 ? '創世神技' : '神技'}「${skill.name}」の自動処理中にエラーが発生しました。手動で処理してください。`,
           [kami]
         );
       } finally {
@@ -26036,7 +26257,7 @@ new Vue({
       return true;
     },
     /* このモーダルは「選択」のみ行い、実際の場への配置（＋召喚時効果）は選び終えてから
-       選択した順に同時処理する（例：#174誓いの契り・#191調和・K3オオクニヌシ第二の神技）。 */
+       選択した順に同時処理する（例：#174誓いの契り・#191調和・K3オオクニヌシ創世神技）。 */
     async battleGokugoPlaceDistinct(modalIndex) {
       const modal = this.battleDeckModal;
       if (!modal || modal.action !== 'gokugoPlaceDistinct' || this.battleSample.result) return;
@@ -26590,7 +26811,7 @@ new Vue({
       const text = String(card.text || '');
       const fullNm = this.fullName(card);
       // 天力を固定値で上げる効果（約束の光・ミズホ、平穏の祈り手、鐘鳴らしの童 等）：
-      // スサノオ（第二の神技の必要天力が少ない）とは好相性、ヤマトタケル（天力が毎ターン自然に貯まる）とは相性が悪い
+      // スサノオ（創世神技の必要天力が少ない）とは好相性、ヤマトタケル（天力が毎ターン自然に貯まる）とは相性が悪い
       const grantsFixedTenryoku = /天力.{0,10}(増える|得る|上がる|＋|\+)/.test(text);
       for (const tag of tags) {
         // 名指しカードの直接加減点（キーワード判定では拾いにくい固有の噛み合わせ）
@@ -26602,7 +26823,7 @@ new Vue({
         }
         switch (tag) {
           case 'evolveSublim':
-            // 進化は第二の神技使用後も使え、ユニーク性も高いため昇華よりさらに優先度を上げる
+            // 進化は創世神技使用後も使え、ユニーク性も高いため昇華よりさらに優先度を上げる
             if (/【進化/.test(text)) s += 26;
             else if (/【昇華/.test(text)) s += 20;
             if (grantsFixedTenryoku) s += 16;
@@ -26610,8 +26831,8 @@ new Vue({
           case 'unique':
             // 同名重複ペナルティはgsCpuScoreCard側で処理。ここではヤマトタケルならではの追加相性のみ加点
             if (grantsFixedTenryoku) s -= 14; // 天力が自然に貯まるため恩恵が薄い
-            if (/マナ最大値/.test(text)) s += 8; // 第二の神技の盤面干渉と両立できる重量級デッキも成立する
-            if (card.category === 'レガシー' && (Number(card.cost) || 0) <= 2) s += 4; // 神技1のドローで息切れしにくい軽量構成
+            if (/マナ最大値/.test(text)) s += 8; // 創世神技の盤面干渉と両立できる重量級デッキも成立する
+            if (card.category === 'レガシー' && (Number(card.cost) || 0) <= 2) s += 4; // 神技のドローで息切れしにくい軽量構成
             break;
           case 'tribeDiversity': {
             // 「誓いの契り」は多種族のレガシーを並べるほど強く、オオクニヌシの方針と特に噛み合う。
@@ -26620,9 +26841,9 @@ new Vue({
             if (card.category === 'レガシー' && card.type) {
               const types = new Set(pickedCards.filter(c => c.category === 'レガシー').map(c => c.type).filter(Boolean));
               s += types.has(card.type) ? 4 : 14;
-              // 神技1で人獣は自前調達できるため、人獣への偏りはやや控えめに評価
+              // 神技で人獣は自前調達できるため、人獣への偏りはやや控えめに評価
               if (card.type === '人獣') s -= 6;
-              // 第二の神技でレガシーを召喚するため、強力なレガシー自体もやや優先
+              // 創世神技でレガシーを召喚するため、強力なレガシー自体もやや優先
               s += Math.min(10, (Number(card.power) || 0) / 200);
             }
             // 本体と異なる種族のトークンを招来する効果（例：約束の光・ミズホ等）は種族多様化に直結するため高評価
@@ -26641,7 +26862,7 @@ new Vue({
             s += Math.min(28, (Number(card.power) || 0) / 120);
             // 戦闘力を上げる補正効果（【補正+】等）を持つカードも高評価
             if (/【補正[+＋]|戦闘力.{0,6}(上が|増え|＋|\+)/.test(text)) s += 18;
-            // 【奇襲】：神技1でアンタップ状態のレガシーとも戦闘できるため好相性
+            // 【奇襲】：神技でアンタップ状態のレガシーとも戦闘できるため好相性
             if (/【奇襲】/.test(text)) s += 12;
             // レリックの数に応じて戦闘力が伸びる侍レガシー：強力なレリックと合わせて評価
             if (card.type === '侍' && /レリック.{0,10}(数|枚数).{0,10}(戦闘力|上が|＋|\+)/.test(text)) s += 14;
@@ -26706,7 +26927,7 @@ new Vue({
             // 特定の言い回しに決め打ちせず、獣霊トークンに触れるカード全般を対象にする
             // （選択肢や種数指定の中に守護持ちの巨躯なる獣霊が含まれ得るため）
             if (/ヨリシロちゃん|獣霊/.test(text)) s += 20;
-            // 第二の神技（墓地から蘇生）と好相性：霊視で自然に墓地を肥やせるカード、蘇生先として価値の高い重量級カード
+            // 創世神技（墓地から蘇生）と好相性：霊視で自然に墓地を肥やせるカード、蘇生先として価値の高い重量級カード
             if (/【霊視/.test(text)) s += 8;
             if ((Number(card.cost) || 0) >= 6) s += 10;
             // 神使は守護・ヨリシロちゃん招来が多く総じて好相性
@@ -28231,6 +28452,7 @@ new Vue({
       if (this.tutorial && this.tutorialInspectionCards.includes(card)) {
         this.$set(this.tutorial, 'inspectOpening', { index: this.tutorial.index, key: this.tutorialInspectionKey(card) });
       }
+      if (this.tutorialPreviewFocus) this.$nextTick(() => this._tutorialScrollPreviewFocus());
     },
     battleOpenKamiAbility(side) {
       const player = this.battleView && this.battleView[side];
@@ -28256,6 +28478,27 @@ new Vue({
           && this.tutorialInspectionCards.every(card => this.tutorialInspectionChecked(card))) {
         this.tutorial.typed = this.tutorialFullText.length;
         this.tutorialAdvance();
+      }
+    },
+    _tutorialPreviewFocusFor(card) {
+      const t = this.tutorial, step = this.tutorialStep;
+      const opening = t && t.inspectOpening;
+      if (!card || this.appView !== 'battle' || this.tutorialMode !== 'say' || !opening || opening.index !== t.index
+          || opening.key !== this.tutorialInspectionKey(card) || !step || !step.inspectFocus) return null;
+      const battle = this.battleView || this.battleSample;
+      const ref = (step.inspect || []).find(name => name === 'selfKami' || name === 'oppKami'
+        ? battle && battle[name === 'selfKami' ? 'self' : 'opp'] && battle[name === 'selfKami' ? 'self' : 'opp'].kami === card
+        : this.fullName(card).includes(name));
+      return ref ? (step.inspectFocus[ref] || null) : null;
+    },
+    _tutorialScrollPreviewFocus() {
+      if (!this.tutorialPreviewFocus || !this.$el) return;
+      const panel = this.$el.querySelector('.modal-card .mi-text');
+      if (!panel) return;
+      const target = panel.querySelector('.rt-tutorial-focus') || panel.querySelector('.tutorial-detail-target')
+        || (panel.classList.contains('tutorial-detail-target') ? panel : null);
+      if (target && target !== panel) {
+        panel.scrollTop = Math.max(0, panel.scrollTop + target.getBoundingClientRect().top - panel.getBoundingClientRect().top - 14);
       }
     },
     _tutorialInspectionCards(step) {
@@ -28372,6 +28615,7 @@ new Vue({
       return warnings;
     },
     onKeyDown(e) {
+      if (this.tutorialCompletion) { this.tutorialCompletionInput(e); return; }
       const key = String(e.key || '').toLowerCase();
       if (key === 'tab' && this._battleTrapModalFocus(e)) return;
       const tag = e.target && e.target.tagName;
@@ -29640,6 +29884,9 @@ new Vue({
   },  // /methods
 
   mounted() {
+    window.addEventListener('resize', this._battleUpdateNoticeBounds);
+    window.addEventListener('scroll', this._battleUpdateNoticeBounds, true);
+    this.$watch(() => [this.appView, this.battleToasts.length].join(':'), () => this.$nextTick(this._battleUpdateNoticeBounds), { immediate: true });
     ensureFirebaseAuth()
       .then(() => firebaseCurrentUserIsAdmin())
       .then(isAdmin => { this.firebaseAdmin = isAdmin; this.firebaseAdminChecked = true; })
@@ -29844,13 +30091,13 @@ new Vue({
         this._battleResultRevealT = setTimeout(() => {
           this.battleResultRevealReady = true;
           this.battleShatterParticles = null;
-          this._battlePlayResultSound(v);
+          this._battlePlayResultSound(this.battleContext.source === 'tutorial' ? { outcome: 'win' } : v);
           // 勝者のカミが敗者へ語りかける勝利ボイス（manifest に win_敗者No がある組み合わせだけ鳴る）
           clearTimeout(this._battleVictoryVoiceT);
           this._battleVictoryVoiceT = setTimeout(() => {
             const winner = this.battleResultWinnerKami;
             const loser = this.battleResultLoserKami;
-            if (this.battleSample.result === v && winner && loser) this.playKamiVoice(winner, 'win_' + parseInt(loser.no, 10));
+            if (this.battleContext.source !== 'tutorial' && this.battleSample.result === v && winner && loser) this.playKamiVoice(winner, 'win_' + parseInt(loser.no, 10));
           }, this._battleMotionMs(700));
         }, 2900 + skillDelay);
       } else {
@@ -29913,6 +30160,10 @@ new Vue({
     document.addEventListener('visibilitychange', this._onVisibilityChangeForTurnFlash);
   },
   beforeDestroy() {
+    window.removeEventListener('resize', this._battleUpdateNoticeBounds);
+    window.removeEventListener('scroll', this._battleUpdateNoticeBounds, true);
+    if (this._battleNoticeBoundsObserver) this._battleNoticeBoundsObserver.disconnect();
+    clearTimeout(this._tutorialCompletionTimer);
     document.removeEventListener('visibilitychange', this._onVisibilityChangeForTurnFlash);
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("click", this.onWindowClick);

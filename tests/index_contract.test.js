@@ -278,7 +278,7 @@ test("battle effect guidance and motion preferences are available", () => {
   assert.match(html, /battleResultSummaryStats/);
   assert.match(html, /battleResultReasonText/);
   assert.match(html, /battle-result-review-actions/);
-  assert.match(html, /battleSample\.result && battleResultRevealReady && !battleLogModal/);
+  assert.match(html, /battleSample\.result && battleResultRevealReady && battleContext\.source !== 'tutorial' && !battleLogModal/);
   assert.match(html, /battleHistoryFilteredList/);
   assert.match(html, /battleHistoryStats/);
   assert.match(html, /downloadBattleHistory/);

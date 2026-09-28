@@ -12,6 +12,46 @@ function method(name, params = "", async = false) {
   return new (async ? Object.getPrototypeOf(async function(){}).constructor : Function)(params, body[1]);
 }
 
+test("tutorial inspection targets identify the current ability and never retain a previous focus", () => {
+  const focus = method('_tutorialPreviewFocusFor', 'card');
+  for (const lesson of lessons) for (const step of lesson.steps) {
+    for (const ref of step.inspect || []) {
+      assert.ok(step.inspectFocus[ref], `${lesson.id}: ${ref}`);
+      assert.ok(['effect', 'trigger', 'skill1', 'skill2'].includes(step.inspectFocus[ref].section));
+    }
+  }
+  const kami={no:8,isKami:true},legacy={no:67,name:'紅翼龍・ルベル'};
+  const step=lessons.find(l=>l.id==='skill2').steps[10];
+  const vm={appView:'battle',tutorialMode:'say',tutorial:{index:10,inspectOpening:{index:10,key:'kami:8'}},
+    tutorialStep:step,battleView:{self:{kami}},tutorialInspectionKey:method('tutorialInspectionKey','card'),fullName:c=>c.name||'アマテラス'};
+  assert.equal(focus.call(vm,kami).section,'skill2');
+  assert.equal(focus.call(vm,legacy),null,'unrelated previews have no tutorial focus');
+  vm.tutorial.index=11;assert.equal(focus.call(vm,kami),null,'a previous explanation cannot persist');
+  vm.tutorial.index=10;vm.tutorialMode='task';assert.equal(focus.call(vm,kami),null);
+  vm.tutorialMode='say';vm.appView='cards';assert.equal(focus.call(vm,kami),null);
+  assert.equal(html.includes('第二の神技'),false);
+  assert.equal(html.includes('神技1'),false);
+  assert.match(html,/創世神技（そうせいじんぎ）/);
+  assert.match(html,/class="kami-section-label kami-skill-kind">神技<\/div>/);
+});
+
+test("tutorial keyword highlights wrap the exact ability while preserving keyword and token links", () => {
+  const source=html.slice(html.indexOf('function _richLinkifyTokens'),html.indexOf('// 練習終了時はアマテラス'));
+  const split=Function(source+'; return buildTutorialFocusSegments;')();
+  const text='①【疾駆】\n②【守護】\n③【誘3：黄カード】→社の施しを招来する';
+  const glossary={疾駆:'haste',守護:'guard',誘:'induce',招来:'token'};
+  const tokens={'社の施し':{no:201}};
+  for (const term of ['疾駆','守護','誘']) {
+    const parts=split(text,glossary,tokens,[term]);
+    assert.equal(parts.map(p=>p.s).join(''),text);
+    assert.equal(parts.filter(p=>p.focus).map(p=>p.s).join(''),term==='誘'?'【誘3：黄カード】':`【${term}】`);
+    assert.ok(parts.some(p=>p.t==='kw'&&p.kw===term&&p.focus));
+    assert.ok(parts.some(p=>p.t==='token'&&p.name==='社の施し'&&!p.focus));
+  }
+  assert.ok(split(text,glossary,tokens,[]).every(p=>!p.focus));
+  assert.ok(split(text,glossary,tokens,['存在しない能力']).every(p=>!p.focus));
+});
+
 function speechClock(vm) {
   let now=100;const timers=[];
   const clock={now:()=>now};
@@ -41,7 +81,7 @@ test("speech stays readable without audio, waits for voice completion, and cance
 
 test("both emote sides keep their own speech timer when another emote replaces one", async () => {
   const vm={emoteBubbles:{self:null,opp:null},$set:(object,key,value)=>{object[key]=value}};
-  const clock=speechClock(vm),show=method('_battleShowEmoteBubble','side,text,voice=null');
+  const clock=speechClock(vm),show=method('_battleShowEmoteBubble','side,text,voice=null,onDone=null');
   let finishVoice;const voice={done:new Promise(r=>{finishVoice=r})};
   show.call(vm,'self','最初の台詞',voice);show.call(vm,'opp','相手の台詞');
   clock.advance(1000);show.call(vm,'self','次の台詞');
@@ -166,9 +206,61 @@ test("tutorial card inspection gates explanations and returns safely to the same
  assert.deepEqual(cards.call(vm,{task:'カードを使用してください',cards:['self-field:鐘鳴らしの童']}),[],'target tasks cannot be blocked by a new inspection');
 });
 
+test("completion waits for an explicit choice and shields the menu stamp from repeated clicks", async () => {
+ let now=100,returned=0,pickReturned=0,saved=0;const timers=[];
+ const clock={now:()=>now};
+ const set=(cb,delay)=>{const timer={cb,at:now+delay,cancelled:false};timers.push(timer);return timer};
+ const clear=timer=>{if(timer)timer.cancelled=true};
+ const advance=ms=>{now+=ms;for(const timer of timers)if(!timer.cancelled&&timer.at<=now){timer.cancelled=true;timer.cb()}};
+ const queue=method('_tutorialQueueCompletion','setTimeout,clearTimeout,Date');
+ const vm={tutorialLesson:{id:'cards',title:'カードの種類'},tutorial:{},tutorialProgress:{basic:true},tutorialMenuOpen:false,tutorialCompletion:null,
+ _tutorialStop(){this.tutorial=null},hideCardHover(){},_sfxPlay(){},_bgmPlay(key){assert.equal(key,'victory')},_tutorialScrollCompletedLesson(){},$refs:{},$nextTick:fn=>fn(),
+ _bgmRestoreAfterBattle(){},battleReturnNow(){returned++},_tutorialLeavePick(){pickReturned++},startTutorial(id){assert.ok(this.tutorialCompletion,'victory music stays protected while the next lesson loads');this.started=id;return true},
+ _tutorialQueueCompletion(){queue.call(this,set,clear,clock)}};
+ const finishMethod=method('_tutorialFinish','localStorage,TUTORIAL_PROGRESS_STORAGE_KEY,Date,TUTORIAL_LESSONS');
+ const finish=(...args)=>finishMethod.call(vm,...args,lessons);
+ const chooseMethod=method('tutorialChooseCompletion','action,Date',true);
+ const choose=function(action){return chooseMethod.call(this,action,clock)};
+ const storage={setItem(k,v){saved++;assert.equal(k,'progress');assert.deepEqual(JSON.parse(v),{basic:true,cards:true})}};
+ finish(storage,'progress',clock);
+ assert.equal(saved,1);assert.equal(vm.tutorialCompletion.stage,'ending');assert.equal(returned,0);assert.equal(vm.tutorialMenuOpen,false);
+ finish(storage,'progress',clock);assert.equal(saved,1,'repeated finishing cannot start a second animation');
+ await choose.call(vm,'next');assert.equal(vm.started,undefined,'early clicks cannot launch the next tutorial');
+ const input=method('tutorialCompletionInput','event,Date');let stopped=0;
+ const event={preventDefault(){},stopPropagation(){stopped++}};
+ advance(1800);input.call(vm,event,clock);advance(100);assert.equal(returned,0,'a late click keeps the ending screen above the board');
+ advance(399);assert.equal(returned,0);advance(1);assert.equal(returned,0);assert.equal(vm.tutorialCompletion.ready,true);
+ advance(10000);assert.equal(vm.tutorialCompletion.stage,'ending','the ending does not dismiss itself');
+ await choose.call(vm,'menu');assert.equal(returned,1);assert.equal(vm.tutorialMenuOpen,true);assert.equal(vm.tutorialCompletion.stage,'menuStamp');
+ advance(1400);assert.equal(vm.tutorialCompletion.stage,'menuShield');
+ advance(500);input.call(vm,event,clock);advance(100);assert.ok(vm.tutorialCompletion,'menu input stays shielded after a carried click');
+ advance(400);assert.equal(vm.tutorialCompletion,null);assert.equal(returned,1);assert.equal(stopped,2);
+ vm.tutorialLesson={id:'draft',title:'選別の練習',kind:'pick'};finish({setItem(){}},'progress',clock);advance(1900);
+ assert.equal(vm.tutorialCompletion.nextLessonId,null);await choose.call(vm,'menu');
+ assert.equal(pickReturned,1);assert.equal(returned,1,'pick practice uses its own return route');advance(1400);assert.equal(vm.tutorialCompletion.stage,'menuShield');advance(600);assert.equal(vm.tutorialCompletion,null);
+ assert.match(html,/this.tutorialCompletion && this.tutorialCompletion !== completion/);
+ assert.match(html,/@pointerdown.capture="tutorialCompletionInput\(\$event\)"/);
+ assert.match(html,/tutorial-lesson-seal[\s\S]*?済<\/span>/);
+ assert.match(html,/battleContext.source !== 'tutorial' && !battleLogModal/);
+ assert.match(html,/class="tutorial-result-overlay"/);
+ vm.tutorialLesson=lessons[0];finish({setItem(){}},'progress',clock);advance(1900);await choose.call(vm,'next');
+ assert.equal(vm.started,'preparation');assert.equal(vm.tutorialCompletion,null);assert.equal(vm.tutorialMenuOpen,false);
+ vm.tutorialLesson=lessons.at(-1);finish({setItem(){}},'progress',clock);advance(1900);await choose.call(vm,'next');
+ assert.equal(vm.tutorialCompletion.stage,'ending','the final lesson has no nonexistent next lesson');
+ assert.match(html,/data-tutorial-completion-action[^>]*:disabled="!tutorialCompletion.ready"/);
+});
+
+test("the completion overlay captures clicks and keys before tutorial or battle actions", () => {
+ const completion={};let absorbed=0;
+ const vm={tutorialCompletion:completion,tutorialCompletionInput(){absorbed++},tutorialAdvance(){assert.fail('no advancement during the stamp')}};
+ method('tutorialSurfaceClick','event').call(vm,{});
+ method('onKeyDown','e').call(vm,{});
+ assert.equal(absorbed,2);
+});
+
 test("confirming an ability immediately enables its following play task on the first drop", async () => {
- const lesson=lessons.find(l=>l.id==='cards'),card={no:128,name:'救済の手',category:'オラクル'},step=lesson.steps[8];
- const vm={tutorial:{index:8,typed:0,inspectedCards:[],inspectOpening:{index:8,key:'card:128'}},tutorialLesson:lesson,
+ const lesson=lessons.find(l=>l.id==='cards'),card={no:128,name:'救済の手',category:'オラクル'},index=lesson.steps.findIndex(s=>s.inspect&&s.inspect.includes('救済の手')),step=lesson.steps[index];
+ const vm={tutorial:{index,typed:0,inspectedCards:[],inspectOpening:{index,key:'card:128'}},tutorialLesson:lesson,
  tutorialStep:step,tutorialFullText:step.say,tutorialInspectionCards:[card],previewCard:card,
  battleContext:{source:'tutorial'},battleSample:{self:{hand:[card]},activeSide:'self'},
  $set:(o,k,v)=>{o[k]=v},_sfxPlay(){},hideCardHover(){},fullName:c=>c.name,
@@ -179,12 +271,12 @@ test("confirming an ability immediately enables its following play task on the f
  battleEnsureSelfTurn:()=>true,battleResolveOptionalTapCost:async()=>0,battleSublimCostOptions:()=>[2],
  _battlePlayOracle(i,cost){this.played={i,cost}}};
  method('closePreview','confirmed').call(vm,true);
- assert.equal(vm.tutorial.index,9);assert.equal(vm.tutorialStep,lesson.steps[9]);assert.equal(vm.previewCard,null);
+ assert.equal(vm.tutorial.index,index+1);assert.equal(vm.tutorialStep,lesson.steps[index+1]);assert.equal(vm.previewCard,null);
  await method('battlePlayFromHand','index,expectedZone,evolveBaseHint',true).call(vm,0,'legacies');
  assert.deepEqual(vm.played,{i:0,cost:2});
- vm.tutorial.index=8;vm.tutorialStep=step;vm.previewCard=card;vm.tutorial.inspectedCards=[];
- vm.tutorial.inspectOpening={index:8,key:'card:128'};vm.tutorialInspectionCards=[card,{no:21}];
- method('closePreview','confirmed').call(vm,true);assert.equal(vm.tutorial.index,8,'all required cards must be confirmed before the task');
+ vm.tutorial.index=index;vm.tutorialStep=step;vm.previewCard=card;vm.tutorial.inspectedCards=[];
+ vm.tutorial.inspectOpening={index,key:'card:128'};vm.tutorialInspectionCards=[card,{no:21}];
+ method('closePreview','confirmed').call(vm,true);assert.equal(vm.tutorial.index,index,'all required cards must be confirmed before the task');
  vm.tutorialLesson={steps:[step,{say:'another explanation'}]};vm.tutorial.index=0;vm.tutorial.inspectOpening={index:0,key:'card:128'};
  vm.tutorialInspectionCards=[card];vm.previewCard=card;
  method('closePreview','confirmed').call(vm,true);assert.equal(vm.tutorial.index,0,'confirmation does not skip another explanation');
@@ -192,9 +284,7 @@ test("confirming an ability immediately enables its following play task on the f
 
 test("tutorial inspection targets belong only to the current ability explanation", () => {
  const cardLesson=lessons.find(l=>l.id==='cards');
- assert.deepEqual(cardLesson.steps[4].inspect,['幼き守護者・ミナト']);
- assert.deepEqual(cardLesson.steps[8].inspect,['救済の手']);
- for(const i of [2,3,7,10,11])assert.equal(cardLesson.steps[i].inspect,undefined,'card kinds, locations and the closing phase do not request another preview');
+ assert.deepEqual(cardLesson.steps.filter(s=>s.inspect).map(s=>s.inspect),[['幼き守護者・ミナト'],['救済の手']]);
  const reroll=lessons.find(l=>l.id==='reroll');
  assert.deepEqual(reroll.steps[7].inspect,['音速の忍']);
  assert.equal(reroll.steps[9].inspect,undefined,'playing the previously explained legacy does not reopen its detail');
@@ -213,6 +303,57 @@ test("clicking anywhere in explanation mode advances once without firing battle 
  vm.previewCard=null;vm._battleHasBlockingModal=()=>true;click.call(vm,event);assert.equal(advanced,1,'required dialogs remain usable');
  vm._battleHasBlockingModal=()=>false;vm.tutorial=null;click.call(vm,event);assert.equal(advanced,1,'ordinary battles are unaffected');
  assert.match(html,/<div id="app"[^>]*@click.capture="tutorialSurfaceClick\(\$event\)"/);
+ assert.match(html,/<div v-if="[^"]*!_battleHasBlockingModal\(\)[^"]*" class="tutorial-catcher"/,'explanation clicks cannot cover return confirmations or other battle dialogs');
+});
+
+test("the first lesson waits for greeting and the opponent reply, without overlapping speech or stale replies", () => {
+ const lesson=lessons[0],step=lesson.steps.find(s=>s.id==='greeting');
+ assert.ok(lesson.steps.indexOf(step)<lesson.steps.findIndex(s=>s.action==='startTurn'));
+ const bubbles=[],published=[];
+ const vm={tutorial:{flags:{}},tutorialStep:step,battleSample:{self:{kami:{no:8}},opp:{kami:{no:3}}},
+ $set:(o,k,v)=>o[k]=v,_sfxPlay(){},_tutorialNudge(){},playKamiVoice:(kami,key)=>({kami,key}),
+ _battleEmoteLineFor:(kami,key)=>kami.no+':'+key,_battlePublishEmote:key=>published.push(key),
+ _battleShowEmoteBubble(side,text,voice,onDone){bubbles.push({side,text,voice,onDone})}};
+ const send=method('battleSendEmote','key');
+ send.call(vm,'praise');assert.equal(bubbles.length,0);assert.equal(step.done(vm),false);
+ send.call(vm,'greeting');assert.equal(bubbles.length,1);assert.equal(bubbles[0].side,'self');
+ send.call(vm,'greeting');assert.equal(bubbles.length,1,'repeated greetings cannot cancel the pending response');
+ bubbles[0].onDone();assert.equal(bubbles.length,2);assert.equal(bubbles[1].side,'opp');assert.equal(bubbles[1].voice.kami.no,3);
+ assert.equal(step.done(vm),false,'the reply is read before the card explanation');
+ bubbles[1].onDone();assert.equal(step.done(vm),true);assert.deepEqual(published,['greeting']);
+ vm.tutorial={flags:{}};send.call(vm,'greeting');vm.tutorial=null;bubbles[2].onDone();assert.equal(bubbles.length,3,'leaving the lesson cancels its reply');
+ send.call(vm,'praise');assert.equal(bubbles[3].side,'self');assert.equal(bubbles[3].onDone,null,'ordinary emotes have no scripted reply');
+});
+
+test("completion buttons become usable only after the input shield, and victory music stays through the stamp", () => {
+ let blocked=0,picked=0;
+ const vm={tutorialCompletion:{stage:'ending',ready:true},_tutorialQueueCompletion(){assert.fail('ready endings need no timer')}};
+ const input=method('tutorialCompletionInput','event');
+ const event={target:{closest:()=>({})},preventDefault(){blocked++},stopPropagation(){blocked++}};
+ input.call(vm,event);assert.equal(blocked,0);
+ event.target.closest=()=>null;input.call(vm,event);assert.equal(blocked,2);
+ vm._bgmAutoPickForView=()=>picked++;
+ method('_bgmRestoreAfterBattle','view,BGM_FILES').call(vm,'top',{victory:{category:'result'}});assert.equal(picked,0);
+ method('_bgmAutoPickForView','view').call(vm,'top');
+ vm.tutorialCompletion=null;vm.bgmCurrentKey='victory';
+ method('_bgmRestoreAfterBattle','view,BGM_FILES').call(vm,'top',{victory:{category:'result'}});assert.equal(picked,1);
+});
+
+test("leaving victory music fades the old track while the new track rises without muting master volume", async () => {
+ const ramps=[],sources=[],timers=[];let oldStopped=0,oldDisconnected=0;
+ const makeGain=()=>({gain:{value:1,cancelScheduledValues(){},setValueAtTime(v,t){ramps.push(['set',v,t])},linearRampToValueAtTime(v,t){ramps.push(['ramp',v,t])}},connect(){},disconnect(){}});
+ const ctx={state:'running',currentTime:10,createGain:makeGain,createBufferSource(){const n={connect(){},start(){},stop(){},disconnect(){}};sources.push(n);return n}};
+ const vm={_bgmCtx:ctx,_bgmPlayingKey:'victory',_bgmTrackGain:makeGain(),_bgmGain:{gain:{value:.3}},
+ _bgmSourceNodes:[{stop(){oldStopped++},disconnect(){oldDisconnected++}}],
+ _bgmLoadBuffer:async()=>({buffer:{duration:20}}),_bgmAudioCtx:()=>ctx,_bgmAnnounce(){}};
+ const stop=method('_bgmStopCurrentSource','fadeSec=0,setTimeout,clearTimeout');
+ vm._bgmStopCurrentSource=fade=>stop.call(vm,fade,(cb)=>{timers.push(cb);return cb},()=>{});
+ await method('_bgmPlay','key,options={},BGM_FILES',true).call(vm,'lesson',{}, {lesson:{}});
+ assert.equal(oldStopped,0);assert.equal(oldDisconnected,0);assert.equal(sources.length,1);
+ assert.ok(ramps.some(r=>r[0]==='ramp'&&r[1]===0&&r[2]===10.65));
+ assert.ok(ramps.some(r=>r[0]==='ramp'&&r[1]===1&&r[2]===10.65));
+ assert.equal(vm._bgmGain.gain.value,.3);
+ timers[0]();assert.equal(oldStopped,1);assert.equal(oldDisconnected,1);assert.equal(vm._bgmRetiringTracks.size,0);
 });
 
 test("explanation clicks open targets but only the confirm button can close them", () => {
@@ -818,7 +959,7 @@ test("evolution lesson can select sublimation with four mana and two shrine toke
 });
 
 test("card types lesson obtains its oracle through induce and leaves relic activation to its own lesson", () => {
-  assert.deepEqual(lessons.slice(0, 2).map(l => [l.id, l.numeral]), [["cards", "壱"], ["basic", "弐"]]);
+  assert.deepEqual(lessons.slice(0, 2).map(l => [l.id, l.numeral]), [["cards", "壱"], ["preparation", "弐"]]);
   const lesson = lessons[0];
   assert.ok(lesson.setup.self.hand.includes("幼き守護者・ミナト"));
   assert.ok(!lesson.setup.self.hand.includes("救済の手"));
@@ -917,13 +1058,13 @@ test("reroll lesson rerolls a red card into the haste legacy that delivers the f
 });
 
 
-test("nine basic lessons and four advanced lessons keep independent exercises", () => {
-  assert.equal(lessons.length,13);
-  assert.equal(new Set(lessons.map(l=>l.id)).size,13);
-  assert.deepEqual(lessons.map(l=>l.category),[...Array(9).fill('basic'),...Array(4).fill('advanced')]);
+test("six basic lessons and four advanced lessons keep focused exercises", () => {
+  assert.equal(lessons.length,10);
+  assert.equal(new Set(lessons.map(l=>l.id)).size,10);
+  assert.deepEqual(lessons.map(l=>l.category),[...Array(6).fill('basic'),...Array(4).fill('advanced')]);
   assert.ok(lessons.every(l=>l.steps.length<=23),'no lesson retains the former 40-plus-step sequence');
   for(const l of lessons){assert.ok(l.steps.at(-1).last,l.id);assert.ok(l.steps.every(s=>!s.task||typeof s.done==='function'),l.id);}
-  const opening=lessons.find(l=>l.id==='basic');
+  const opening=lessons.find(l=>l.id==='preparation');
   assert.equal(opening.setup.self.hand.length,4);
   assert.ok(opening.steps.some(s=>s.action==='mulligan'));
   assert.ok(!opening.steps.some(s=>s.allow?.battle||s.allow?.divine||s.allow?.skill));
@@ -937,28 +1078,58 @@ test("nine basic lessons and four advanced lessons keep independent exercises", 
   assert.ok(!power.steps.some(s=>s.reroll||s.sentei));
   const second=lessons.find(l=>l.id==='skill2');
   assert.equal(second.category,'basic');
-  assert.deepEqual(lessons.slice(4,7).map(l=>l.id),['guard','skill2','hand-limit']);
-  assert.match(power.steps.at(-1).say,/第二の神技/);
-  assert.match(second.steps.at(-1).say,/次は、手札の上限/);
+  assert.deepEqual(lessons.slice(3,6).map(l=>l.id),['guard','skill2','endgame']);
+  assert.match(power.steps.at(-1).say,/創世神技/);
+  assert.match(second.steps.at(-1).say,/手札と終盤のルール/);
   assert.ok(!power.steps.some(s=>s.say?.includes('応用編')));
   const evolution=lessons.find(l=>l.id==='advanced');
   assert.ok(evolution.steps.some(s=>s.forceEvolve));assert.ok(evolution.steps.some(s=>s.requireSublim));
   assert.ok(!evolution.steps.some(s=>s.allow?.endTurn),'fatigue and hand cleanup have their own lesson');
-  const hand=lessons.find(l=>l.id==='hand-limit');
-  assert.equal(hand.setup.self.hand.length,9);assert.equal(hand.setup.turn,3);
-  const deck=lessons.find(l=>l.id==='deck-out');
-  assert.equal(deck.setup.opp.deck.length,0);assert.equal(deck.setup.opp.life,10);
-  const limits=lessons.find(l=>l.id==='fatigue');
-  assert.equal(limits.setup.self.hand.length,0);assert.equal(limits.setup.turn,10);
+  assert.deepEqual(opening.setup.self.relics,['社の施し']);
+  assert.equal(opening.setup.self.manaMax,0);
+  assert.ok(opening.steps.some(s=>s.action==='oppTurn'),'the already started first-player turn ends once, starting the follower turn');
+  assert.ok(!opening.steps.some(s=>s.action==='startTurn'),'do not start the follower turn twice');
+  assert.ok(opening.steps.some(s=>s.allow?.play?.includes('飄々たる諜報員')));
+  const limits=lessons.find(l=>l.id==='endgame');
+  assert.equal(limits.setup.self.hand.length,9);assert.equal(limits.setup.turn,10);
   assert.equal(limits.setup.firstSide,'opp');assert.equal(limits.setup.activeSide,'self');
-  assert.equal(limits.setup.opp.life,1,'the next first-side turn is turn 11 and fatigue decides the match');
+  assert.equal(limits.setup.opp.life,1);
+  assert.ok(limits.setup.opp.deck.length>0,'fatigue demonstration must not be pre-empted by an empty draw');
+  assert.ok(limits.steps.some(s=>s.say?.includes('引こうとして引けなければ')),'deck exhaustion remains explained');
+  assert.ok(limits.steps.some(s=>s.targets?.includes('救済の手')&&s.allow?.endTurn),'one turn end teaches hand cleanup and fatigue');
+  assert.ok(!lessons.some(l=>['basic','mana','hand-limit','deck-out','fatigue'].includes(l.id)));
   assert.equal(lessons.find(l=>l.id==='skill2').fieldTheme,'shinshi');
-  assert.match(html,/基本編 · 9つのレッスン/);assert.match(html,/応用編 · 4つのレッスン/);
+  assert.match(html,/基本編 · 6つのレッスン/);assert.match(html,/応用編 · 4つのレッスン/);
   assert.match(html,/const TUTORIAL_PRACTICE = Object.freeze/);
   const music=Function('return '+html.match(/const BGM_FILES = (\{[\s\S]*?\r?\n\});/)[1])();
   assert.ok(lessons.every(l=>music[l.bgm]),'each lesson retains an available BGM');
 });
 
+
+test("notice stacks stop above the end-turn button at desktop and short-screen sizes", () => {
+ const update=method('_battleUpdateNoticeBounds','window,ResizeObserver');
+ for(const geometry of [{header:46,button:400,viewport:720},{header:70,button:210,viewport:400},{header:90,button:85,viewport:320}]){
+  const stack={style:{}},button={getBoundingClientRect:()=>({top:geometry.button})},header={getBoundingClientRect:()=>({bottom:geometry.header})};
+  const vm={$el:{querySelector:s=>s==='.notice-toast-stack'?stack:s==='.battle-end-turn-btn'?button:header}};
+  update.call(vm,{innerHeight:geometry.viewport},undefined);
+  const top=parseFloat(stack.style.top),height=parseFloat(stack.style.maxHeight);
+  assert.ok(height>=0);
+  if(height)assert.ok(top+height<=geometry.button-10,'the final log cannot cover the end-turn button');
+ }
+ assert.match(html,/max-height: 0; overflow-y: auto; overflow-x: hidden/);
+});
+
+test("merged tutorials preserve completion only when all former sections were cleared", () => {
+ const body=html.match(/function loadTutorialProgress\(\) \{([\s\S]*?)\r?\n\}/)[1];
+ const load=Function('localStorage','TUTORIAL_PROGRESS_STORAGE_KEY',body);
+ const saved=p=>load({getItem:()=>JSON.stringify(p)},'progress');
+ assert.equal(saved({basic:true}).preparation,undefined);
+ assert.equal(saved({basic:true,mana:true}).preparation,true);
+ assert.equal(saved({'hand-limit':true,'deck-out':true}).endgame,undefined);
+ const complete=saved({'hand-limit':true,'deck-out':true,fatigue:true,cards:true,draft:true});
+ assert.equal(complete.endgame,true);assert.equal(complete.cards,true);assert.equal(complete.draft,true);
+ assert.equal(saved({preparation:true,endgame:true}).endgame,true);
+});
 
 test("required turn and effect draws lose only when an additional card cannot be drawn", () => {
   for(const side of ['self','opp'])for(const swapped of [false,true]) {
