@@ -937,7 +937,7 @@
   /* ===== カード画像ホバープレビュー ===== */
   .card-hover-preview {
     position: fixed; z-index: 900; /* ガイド等のモーダル(400)より上 */
-    width: 360px;
+    width: 360px; max-width: calc(100vw - 20px);
     pointer-events: none;
     border-radius: 8px; overflow: hidden;
     box-shadow: 0 8px 32px rgba(0,0,0,0.75);
@@ -1437,7 +1437,28 @@
   .shield-panel.cosmic-pick-bg {
     background: linear-gradient(rgba(8, 10, 24, .58), rgba(8, 10, 24, .72)), url('battle_fields/cosmic-pick.webp') center / cover no-repeat;
   }
-  .gm-modal.cosmic-pick-panel { background: rgba(12, 16, 32, .48); }
+  .game-overlay.cosmic-pick-bg { padding: 12px; }
+  .gm-modal.cosmic-pick-panel { box-sizing: border-box; width: 100%; height: calc(100vh - 24px); height: calc(100dvh - 24px); max-height: none; overflow: hidden; background: rgba(12, 16, 32, .48); }
+  .cosmic-pick-panel > .gm-header { flex: none; }
+  .cosmic-pick-panel > .gm-draft { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 24px; }
+  .gm-draft .gm-draft-layout { grid-template-columns: 240px minmax(0, 1fr); gap: 24px; }
+  .gm-draft .gm-draft-policy { position: static; }
+  .gm-draft .gm-pack-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+  .gm-draft .gm-pack-name { font-size: 13px; line-height: 1.5; white-space: normal; min-height: 39px; }
+  .draft-kami-figure { margin: 0; }
+  .draft-kami-chibi { display: block; width: 100%; height: 230px; object-fit: contain; }
+  .guide-chibi-note { display: block; margin: 8px 0 0; color: #b9c6dc; font-size: 12px; line-height: 1.55; text-align: center; }
+  .guide-chibi { width: 170px; margin: 0; }
+  .draft-strip-note { text-align: left; margin: -6px 0 12px; }
+  @media (max-width: 760px) {
+    .gm-draft .gm-draft-layout { grid-template-columns: 1fr; }
+    .gm-draft .gm-draft-policy { grid-template-columns: 160px minmax(0, 1fr); }
+    .draft-kami-figure { grid-row: span 4; }
+    .draft-kami-chibi { height: 180px; }
+    .gm-draft .gm-pack-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cosmic-pick-panel > .gm-draft { padding: 16px; }
+    .gm-draft .gm-draft-kami-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
   /* ピック画面（創世決戦の選別の儀・チュートリアル外伝で共通）：左にカミのピック方針、右にカード */
   .pick-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; margin-top: 10px; }
   .pick-policy {
@@ -1483,11 +1504,11 @@
   .tutorial-ending-caption strong { display:block; font-size:clamp(18px,3vw,26px); letter-spacing:.16em; }
   .tutorial-ending-caption span { display:block; margin-top:7px; color:#cabda6; font-size:14px; }
   .tutorial-ending-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; padding:0 16px; }
-  .tutorial-ending-actions button,.tutorial-greeting-button { padding:12px 22px; border:1px solid #d8ad58; border-radius:8px; background:#372713; color:#ffe1a0; font-size:15px; font-weight:800; cursor:pointer; }
+  .tutorial-ending-actions button { padding:12px 22px; border:1px solid #d8ad58; border-radius:8px; background:#372713; color:#ffe1a0; font-size:15px; font-weight:800; cursor:pointer; }
   .tutorial-ending-actions .tutorial-next-lesson { background:#e0b65e; color:#281c0b; }
-  .tutorial-ending-actions button:disabled,.tutorial-greeting-button:disabled { opacity:.45; cursor:default; }
+  .tutorial-ending-actions button:disabled { opacity:.45; cursor:default; }
   .tutorial-completion .tutorial-ending-image { width:min(68vh,640px,88vw,calc(100vh - 230px)); height:min(68vh,640px,88vw,calc(100vh - 230px)); }
-  .tutorial-greeting-button { margin-top:10px; padding:8px 16px; }
+  .tutorial-greeting-status { margin-top:10px; color:#ffe1a0; font-size:14px; font-weight:700; }
   .tutorial-result-overlay .tutorial-ending-art { padding-bottom:100px; box-sizing:border-box; }
   .tutorial-result-overlay .tutorial-ending-image { width:min(58vh,570px,85vw); height:min(58vh,570px,85vw); }
   @keyframes tutorialEndingIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
@@ -1863,7 +1884,8 @@
   .pick-guide-content .howto-body { margin: 0; font-size: 16px; line-height: 1.95; }
   .pick-guide-content .pick-kami-section { display: grid; grid-template-columns: 240px minmax(0,1fr); align-items: start; gap: 32px; }
   .pick-kami-copy { min-width: 0; }
-  .pick-kami-image { position: sticky; top: 20px; display: block; width: 240px; height: 260px; object-fit: contain; object-position: center; }
+  .pick-kami-figure { width: 240px; margin: 0; }
+  .pick-kami-image { display: block; width: 240px; height: 260px; object-fit: contain; object-position: center; }
   .pick-kami-mystery { display: grid; place-items: center; width: 240px; height: 260px; border: 1px solid #78613d; border-radius: 12px; background: radial-gradient(ellipse, #383027, #1b2030 75%); color: #f5dda0; font-size: 100px; cursor: pointer; }
   .pick-kami-mystery:hover, .pick-kami-mystery:focus-visible { border-color: #f5dda0; outline: 2px solid #f5dda0; outline-offset: 3px; }
   @media (max-width: 760px) {
@@ -1871,8 +1893,10 @@
     .battle-zone-modal-panel.pick-guide-panel { width: 100vw; height: 100vh; height: 100dvh; border-radius: 0; }
     .howto-list.pick-guide-content { padding: 18px 16px; overflow-x: hidden; }
     .pick-guide-content .pick-kami-section { display: flow-root; }
-    .pick-kami-image, .pick-kami-mystery { position: static; float: right; width: 180px; height: 200px; margin: 0 -6px 16px 12px; }
-    .pick-kami-copy .howto-heading { min-height: 200px; margin-bottom: 16px; }
+    .pick-kami-figure, .pick-kami-mystery { float: right; width: 180px; margin: 0 -6px 16px 12px; }
+    .pick-kami-image { width: 180px; height: 200px; }
+    .pick-kami-mystery { height: 200px; }
+    .pick-kami-copy .howto-heading { min-height: 240px; margin-bottom: 16px; }
     .pick-kami-copy .howto-body { clear: both; }
     .pick-guide-content .howto-heading { font-size: 20px; }
   }
@@ -1946,11 +1970,11 @@
   .manual-chapter + .manual-chapter { border-top: 1px solid rgba(255,255,255,.09); padding-top: 38px; }
   .manual-chapter-tag { color: #caa75f; font-size: 10px; font-weight: 900; letter-spacing: .18em; }
   .manual-chapter h2 { margin: 7px 0 18px; color: #fff1c2; font-size: clamp(23px, 3vw, 34px); letter-spacing: .06em; }
-  .manual-chapter-heading { display: grid; grid-template-columns: minmax(0,1fr) 220px; gap: 20px; align-items: center; min-height: 200px; margin-bottom: 26px; }
+  .manual-chapter-heading { display: grid; grid-template-columns: minmax(0,1fr) 220px; gap: 20px; align-items: center; min-height: 238px; margin-bottom: 26px; }
   .manual-chapter-heading h2 { margin-bottom: 0; }
   /* 全身を見せ、枠の余白にはみ出しても説明文の列は覆わない。 */
-  .manual-chapter-mascot { position: relative; z-index: 1; justify-self: center; width: 240px; height: 240px; margin: -20px 0; overflow: visible; pointer-events: none; }
-  .manual-chapter-mascot img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
+  .manual-chapter-mascot { position: relative; z-index: 1; justify-self: center; width: 240px; height: 278px; margin: -20px 0; overflow: visible; }
+  .manual-chapter-mascot img { display: block; width: 100%; height: 240px; object-fit: contain; object-position: center; }
   .manual-chapter h3 { margin: 24px 0 9px; color: #f2d88d; font-size: 17px; }
   .manual-copy { color: #cbd1dc; font-size: 14px; line-height: 1.9; }
   .manual-copy p { margin: 0 0 13px; }
@@ -2088,8 +2112,10 @@
     .manual-grid, .manual-mode-grid, .manual-keyword-grid, .manual-kami-grid, .manual-field-legend { grid-template-columns: 1fr; }
     .manual-kami { grid-template-columns: 144px minmax(0,1fr); gap: 12px; }
     .manual-kami img, .manual-kami-mystery { width: 160px; height: 180px; margin: -8px; }
-    .manual-chapter-heading { grid-template-columns: minmax(0,1fr) 156px; gap: 12px; min-height: 164px; margin-bottom: 24px; }
-    .manual-chapter-mascot { width: 180px; height: 180px; margin: -8px 0; }
+    .guide-chibi { width: 144px; }
+    .manual-chapter-heading { grid-template-columns: minmax(0,1fr) 156px; gap: 12px; min-height: 202px; margin-bottom: 24px; }
+    .manual-chapter-mascot { width: 180px; height: 218px; margin: -8px 0; }
+    .manual-chapter-mascot img { height: 180px; }
     .manual-card-figure { grid-template-columns: 1fr; }
     .manual-card-image-wrap { width: min(230px,75vw); margin: 0 auto; }
     .manual-flow { grid-template-columns: repeat(2,minmax(0,1fr)); }
@@ -2725,14 +2751,13 @@
     gap: 8px; margin: 10px 0 12px;
   }
   .gm-draft-kami-mini {
-    display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 8px;
+    display: grid; grid-template-columns: 72px minmax(0, 1fr); align-items: center; gap: 8px;
     padding: 6px; border: 1px solid #32394a; background: #171c27; border-radius: 6px;
   }
   .gm-draft-kami-mini.me { border-color: #5abb8a; }
   .gm-draft-kami-mini.cpu { border-color: #7a6aa8; }
   .gm-draft-kami-thumb {
-    width: 36px; aspect-ratio: 744/1039; border-radius: 4px; background: #0c1018 center/cover no-repeat;
-    border: 1px solid #444c5d;
+    display: block; width: 72px; height: 80px; object-fit: contain;
   }
   .gm-draft-kami-name { min-width: 0; font-size: 12px; color: #d8dfec; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .gm-deck-card.locked { opacity: .55; cursor: default; filter: grayscale(.35); }
@@ -4902,6 +4927,8 @@
   .emote-wheel-item.active {
     background: rgba(255, 180, 60, 0.92); border-color: #fff2dc; color: #2a1a08;
   }
+  .emote-wheel-item.tutorial-emote-target { border: 3px solid #ffe1a0; box-shadow: 0 0 0 4px #eab75740, 0 0 22px #eab75780; }
+  .emote-wheel-item.tutorial-emote-other { opacity: .4; }
 
   /* ドロー時のカード送出演出：山札側からスライド＋フェードインしながら手札に収まる */
   .hand-card-drawn { animation: handCardDrawnKf 0.45s cubic-bezier(.2,.9,.3,1); }
@@ -5769,7 +5796,7 @@
           <section id="manual-world" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 01</div><h2>終焉の先に、次の世を</h2></div>
-              <div class="manual-chapter-mascot" aria-hidden="true"><img src="tutorial_guide/amaterasu-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+              <figure class="manual-chapter-mascot"><img src="tutorial_guide/amaterasu-chibi.webp" alt="アマテラスのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(8, $event)" @focus="showGuideKami(8, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
             </div>
             <p>突如飛来した無数の巨龍は文明を蹂躙し、生命を滅亡の淵へ追いやりました。古き神々は永い死闘の末に巨龍を打ち倒しましたが、その代償として星から生命の息吹は失われます。</p>
             <p>神々が星の深淵で見つけたのは、かつて存在した生命の記憶の残滓――<strong>「レガシー」</strong>。神秘のエネルギー<strong>「星魂」</strong>によってレガシーに命を吹き込めば、新たな世界を創ることができます。</p>
@@ -5779,7 +5806,7 @@
           <section id="manual-goal" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 02</div><h2>ゲームの目的</h2></div>
-              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/susanoo-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/susanoo-chibi.webp" alt="スサノオのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(1, $event)" @focus="showGuideKami(1, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
             </div>
             <p>プレイヤーはカミの1人となり、ドラフト形式でカードを集め、自らの理念を体現するデッキを作ります。3回の星戦を終えた時、最も多くの<strong>星魂</strong>を持つプレイヤーが、次の世を創る勝者です。</p>
             <div class="manual-grid">
@@ -5800,7 +5827,7 @@
           <section id="manual-modes" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 03</div><h2>3つの対戦モード</h2></div>
-              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/okuninushi-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/okuninushi-chibi.webp" alt="オオクニヌシのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(3, $event)" @focus="showGuideKami(3, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
             </div>
             <p>共通の星戦ルールを、カードの集め方が異なる3つのモードで遊べます。初めて遊ぶ場合は、すぐ対戦できるストラクチャーデッキを使った理念構築戦がおすすめです。</p>
             <div class="manual-mode-grid">
@@ -5814,7 +5841,7 @@
           <section id="manual-cards" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 04</div><h2>カードの種類と見方</h2></div>
-              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/omoikane-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(5, $event)" @focus="showGuideKami(5, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
             </div>
             <div class="manual-grid">
               <article class="manual-card"><div class="manual-card-icon">👑</div><h3>カミ</h3><p>プレイヤーの分身です。固有の天力トリガーと、神技・創世神技（そうせいじんぎ）を持ちます。メインフェイズ中、1ターンにどちらか1回だけ使用できます。</p></article>
@@ -5850,7 +5877,7 @@
           <section id="manual-flow" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 05</div><h2>創世決戦の流れ</h2></div>
-              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/yamato-takeru-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/yamato-takeru-chibi.webp" alt="ヤマトタケルのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(2, $event)" @focus="showGuideKami(2, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
             </div>
             <div class="manual-flow">
               <div class="manual-flow-step"><span>壱</span><b>神託の儀</b>3枚の候補から、自分のカミを1体選びます。</div>
@@ -5868,7 +5895,7 @@
           <section id="manual-draft" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 06</div><h2>神託・選別・深化</h2></div>
-              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/amenouzume-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/amenouzume-chibi.webp" alt="アメノウズメのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(6, $event)" @focus="showGuideKami(6, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
             </div>
             <h3>神託の儀</h3>
             <p>プレイヤー1から順に、ランダムに提示された3枚のカミカードから1枚を選びます。選ばなかった2枚は候補へ戻り、次のプレイヤーへ進みます。</p>
@@ -5897,7 +5924,7 @@
           <section id="manual-battle" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 07</div><h2>星戦のルール</h2></div>
-              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/takemikazuchi-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/takemikazuchi-chibi.webp" alt="タケミカヅチのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(4, $event)" @focus="showGuideKami(4, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
             </div>
             <h3>組み合わせ</h3>
             <p>創世決戦の星戦は、セッション開始時にランダムな組み合わせが決まります。3ラウンドを通して同じ相手とは重複せず、4人全員が一度ずつ対戦します。各ラウンドの対戦相手は星戦画面で確認できます。</p>
@@ -5949,7 +5976,7 @@
           <section id="manual-keywords" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 08</div><h2>カード用語・キーワード</h2></div>
-              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/hinokagutsuchi-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/hinokagutsuchi-chibi.webp" alt="ヒノカグツチのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(7, $event)" @focus="showGuideKami(7, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
             </div>
             <div class="manual-table-wrap"><table class="manual-table">
               <tbody><tr><th>破壊</th><td>対象のカードをフィールドから墓地へ置きます。</td></tr><tr><th>崩壊</th><td>対象のカードをゲームから取り除き、崩壊エリアへ置きます。</td></tr><tr><th>タップ／アンタップ</th><td>カードを使用済みの横向き状態／使用可能な縦向き状態にします。</td></tr><tr><th>出現時／死亡時</th><td>フィールドに出た時／レガシーがフィールドから墓地へ送られた時に発動します。崩壊では死亡時は発動しません。</td></tr></tbody>
@@ -5976,7 +6003,7 @@
           <section id="manual-faq" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 09</div><h2>細則（Q&amp;A）</h2></div>
-              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/omoikane-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(5, $event)" @focus="showGuideKami(5, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
             </div>
             <div class="manual-qa"><div class="manual-question">【出現時】などの効果が同時に発生した場合、どのような処理順になりますか。</div><div class="manual-answer">同時に発生した効果は、<strong>ターンプレイヤーから好きな順番</strong>で処理してください。</div></div>
             <div class="manual-qa"><div class="manual-question">傀儡化されたレガシーの【死亡時】効果は、どちらのフィールドで発動しますか。</div><div class="manual-answer">傀儡化したプレイヤー側のフィールドで発動します。手札へ戻す効果を受けた場合は、元々使用していたプレイヤーの手札へ戻ります。</div></div>
@@ -5993,7 +6020,7 @@
           <section id="manual-score" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 10</div><h2>終戦・星魂の集計</h2></div>
-              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/tsukuyomi-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false" tabindex="0" @mouseenter="showGuideKami(9, $event)" @focus="showGuideKami(9, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
             </div>
             <p><strong>星魂 ＝ 星戦の勝利点（1勝につき10）＋ 集めた全カードの変換値</strong>です。デッキに残したカードと、無料返還／省察で星魂に変換したカードをすべて合計します。</p>
             <p>星魂が最も多いプレイヤーが勝者です。同点なら星戦の勝利数が多いプレイヤー、勝利数も同じなら該当プレイヤー同士の星戦に勝ったプレイヤーが上位です。</p>
@@ -6003,16 +6030,16 @@
             <div class="manual-chapter-tag">CHAPTER 11</div>
             <h2>カミと難易度</h2>
             <div class="manual-kami-grid">
-              <article class="manual-kami"><img src="kami_chibi/susanoo-chibi.webp" alt="スサノオのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>スサノオ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>変化を受け入れる、変幻自在の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_chibi/yamato-takeru-chibi.webp" alt="ヤマトタケルのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>ヤマトタケル</b><div class="manual-kami-difficulty">難易度 ★★★★★</div><p>他者に依らない、孤高利己の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_chibi/okuninushi-chibi.webp" alt="オオクニヌシのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>オオクニヌシ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>すべての生命と繁栄する、他種共存の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_chibi/takemikazuchi-chibi.webp" alt="タケミカヅチのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>タケミカヅチ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>絶対的な力が支配する、武威震天の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>オモイカネ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>知識を求め理解を深める、温故知新の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_chibi/amenouzume-chibi.webp" alt="アメノウズメのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>アメノウズメ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>困難より快楽を求める、悦楽至上の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_chibi/hinokagutsuchi-chibi.webp" alt="ヒノカグツチのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>ヒノカグツチ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>欲望に素直に生きる、天衣無縫の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="tutorial_guide/amaterasu-chibi.webp" alt="アマテラスのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>アマテラス</b><div class="manual-kami-difficulty">難易度 ★</div><p>慈愛をもって接する、慈悲深厚の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>ツクヨミ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>統制された生命だけの、静寂閑雅の世界を目指すカミ。</p></div></article>
-              <article v-if="manualOrochiRevealed" class="manual-kami manual-kami-secret"><img src="kami_chibi/yamata-no-orochi-chibi.webp" alt="ヤマタノオロチのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b ref="manualOrochiTitle" tabindex="-1">ヤマタノオロチ</b><div class="manual-kami-difficulty">難易度 ★</div><p>龍こそ真の支配者とする、龍の世界を目指す邪なる存在。</p><button class="manual-kami-hide" @click="manualHideOrochi">隠す</button></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/susanoo-chibi.webp" alt="スサノオのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(1, $event)" @focus="showGuideKami(1, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>スサノオ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>変化を受け入れる、変幻自在の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/yamato-takeru-chibi.webp" alt="ヤマトタケルのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(2, $event)" @focus="showGuideKami(2, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>ヤマトタケル</b><div class="manual-kami-difficulty">難易度 ★★★★★</div><p>他者に依らない、孤高利己の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/okuninushi-chibi.webp" alt="オオクニヌシのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(3, $event)" @focus="showGuideKami(3, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>オオクニヌシ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>すべての生命と繁栄する、他種共存の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/takemikazuchi-chibi.webp" alt="タケミカヅチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(4, $event)" @focus="showGuideKami(4, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>タケミカヅチ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>絶対的な力が支配する、武威震天の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(5, $event)" @focus="showGuideKami(5, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>オモイカネ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>知識を求め理解を深める、温故知新の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/amenouzume-chibi.webp" alt="アメノウズメのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(6, $event)" @focus="showGuideKami(6, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>アメノウズメ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>困難より快楽を求める、悦楽至上の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/hinokagutsuchi-chibi.webp" alt="ヒノカグツチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(7, $event)" @focus="showGuideKami(7, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>ヒノカグツチ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>欲望に素直に生きる、天衣無縫の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="tutorial_guide/amaterasu-chibi.webp" alt="アマテラスのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(8, $event)" @focus="showGuideKami(8, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>アマテラス</b><div class="manual-kami-difficulty">難易度 ★</div><p>慈愛をもって接する、慈悲深厚の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(9, $event)" @focus="showGuideKami(9, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b>ツクヨミ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>統制された生命だけの、静寂閑雅の世界を目指すカミ。</p></div></article>
+              <article v-if="manualOrochiRevealed" class="manual-kami manual-kami-secret"><figure class="guide-chibi"><img src="kami_chibi/yamata-no-orochi-chibi.webp" alt="ヤマタノオロチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(10, $event)" @focus="showGuideKami(10, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure><div><b ref="manualOrochiTitle" tabindex="-1">ヤマタノオロチ</b><div class="manual-kami-difficulty">難易度 ★</div><p>龍こそ真の支配者とする、龍の世界を目指す邪なる存在。</p><button class="manual-kami-hide" @click="manualHideOrochi">隠す</button></div></article>
               <button v-else ref="manualOrochiReveal" type="button" class="manual-kami manual-kami-hidden" aria-label="隠しカミを表示" @click="manualRequestOrochi"><span class="manual-kami-mystery" aria-hidden="true">？</span><span class="manual-kami-hidden-copy"><b>？？？</b><span>隠しカミ<br>クリックして表示</span></span></button>
             </div>
             <h3>オンライン操作のショートカット</h3>
@@ -6044,7 +6071,7 @@
           <div class="howto-body">選んだカミによって狙いたいデッキの方向性は大きく変わります。以下は各カミの基本方針です（ドラフト補助の「おすすめ」もこの方針を踏まえて表示されます）。</div>
         </div>
         <section id="pick-susanoo" class="howto-section pick-kami-section">
-          <img class="pick-kami-image" src="kami_chibi/susanoo-chibi.webp" alt="スサノオのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/susanoo-chibi.webp" alt="スサノオのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(1, $event)" @focus="showGuideKami(1, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
           <div class="pick-kami-copy"><h2 class="howto-heading"><span>スサノオ</span><small>進化・昇華</small></h2>
           <div class="howto-body">・基本方針として、昇華・進化のカードを優先的にピックしましょう。特に進化は創世神技を使った後にも使える上ユニーク性も高いので、優先度は高いです。
 ・創世神技発動に必要な天力が少ないので、天力を固定値で上げるカード（約束の光・ミズホ、平穏の祈り手、鐘鳴らしの童など）との相性は最高です。神使が多いので、神使軸でデッキを組むのもありです。
@@ -6052,7 +6079,7 @@
 ・昇華のコストを軽減するカード（厳格なる森の長・ハクレン、拒絶の守衛・イズモ）も強力です。種族は人獣のため、こちらに寄せるのもよいでしょう。</div></div>
         </section>
         <section id="pick-yamato-takeru" class="howto-section pick-kami-section">
-          <img class="pick-kami-image" src="kami_chibi/yamato-takeru-chibi.webp" alt="ヤマトタケルのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/yamato-takeru-chibi.webp" alt="ヤマトタケルのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(2, $event)" @focus="showGuideKami(2, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
           <div class="pick-kami-copy"><h2 class="howto-heading"><span>ヤマトタケル</span><small>同名一切禁止</small></h2>
           <div class="howto-body">・デッキのカードに1枚も被りがないようにする必要があるので、すでに入っているカードのピックは避けましょう。
 ・天力が毎ターン溜まっていくので、天力を固定値で上げるカード（約束の光・ミズホ、平穏の祈り手、鐘鳴らしの童など）との相性は比較的悪く、避けたほうがよいでしょう。
@@ -6062,7 +6089,7 @@
 ・同じ種族で固めることが難しく他種族寄りのデッキになりやすいので、「平和を願う剣・アヤト」「暁の盟約」「断禍の三重奏」の優先度は高くなります。</div></div>
         </section>
         <section id="pick-okuninushi" class="howto-section pick-kami-section">
-          <img class="pick-kami-image" src="kami_chibi/okuninushi-chibi.webp" alt="オオクニヌシのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/okuninushi-chibi.webp" alt="オオクニヌシのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(3, $event)" @focus="showGuideKami(3, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
           <div class="pick-kami-copy"><h2 class="howto-heading"><span>オオクニヌシ</span><small>種族分散</small></h2>
           <div class="howto-body">・他種族がフィールドにいると天力が増加するため、種族が分散するようにデッキを組むことが求められます。
 ・創世神技はレガシーを召喚する効果なので、デッキはレガシーの比率を多くし、強力なレガシーを優先的にピックしましょう。
@@ -6073,7 +6100,7 @@
 ・手札切れに備え、「木漏れ日の道場」や「忠臣の予感」もピックしておくとよいでしょう。</div></div>
         </section>
         <section id="pick-takemikazuchi" class="howto-section pick-kami-section">
-          <img class="pick-kami-image" src="kami_chibi/takemikazuchi-chibi.webp" alt="タケミカヅチのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/takemikazuchi-chibi.webp" alt="タケミカヅチのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(4, $event)" @focus="showGuideKami(4, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
           <div class="pick-kami-copy"><h2 class="howto-heading"><span>タケミカヅチ</span><small>最高戦闘力</small></h2>
           <div class="howto-body">・戦闘力が最も高いレガシーが自分フィールドにいる必要があるので、【補正+】持ちや素の戦闘力が高いレガシーと相性がよいです。
 ・神技はアンタップしているレガシーとも戦闘できるので、【奇襲】持ち（戦陣の旗手、無貌の忍、白き閃刃・シラトリなど）と相性がよいです。
@@ -6085,7 +6112,7 @@
 ・自身より戦闘力の高い相手レガシーを確実に除去するカード（冥土送りの侍女、静かなる謀殺など）もピックしましょう。</div></div>
         </section>
         <section id="pick-omoikane" class="howto-section pick-kami-section">
-          <img class="pick-kami-image" src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(5, $event)" @focus="showGuideKami(5, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
           <div class="pick-kami-copy"><h2 class="howto-heading"><span>オモイカネ</span><small>オラクル・レリック</small></h2>
           <div class="howto-body">・基本方針として、オラクル・レリックをピックすることになります。
 ・オラクルの使用コストを軽減できるヨリシロちゃんを招来できるカードは優先的にピックしましょう。
@@ -6098,7 +6125,7 @@
 ・レガシーの割合が少ないと勝つのが難しいので、最低限レガシーもピックしましょう。</div></div>
         </section>
         <section id="pick-amenouzume" class="howto-section pick-kami-section">
-          <img class="pick-kami-image" src="kami_chibi/amenouzume-chibi.webp" alt="アメノウズメのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/amenouzume-chibi.webp" alt="アメノウズメのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(6, $event)" @focus="showGuideKami(6, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
           <div class="pick-kami-copy"><h2 class="howto-heading"><span>アメノウズメ</span><small>マナ最大値・ライフ</small></h2>
           <div class="howto-body">・基本方針として、ライフ回復、マナ最大値上昇、「社の施し」を招来できるカードを優先的にピックしましょう。
 ・「冒険譚の始まり」は最優先です。マナ最大値を上昇させ、最大値7以上なら天力も増えるため非常に強力です。
@@ -6109,7 +6136,7 @@
 ・上記の他、昇華のカード全般はマナ最大値が増えた後でも使いやすいため優先度は高めです。</div></div>
         </section>
         <section id="pick-hinokagutsuchi" class="howto-section pick-kami-section">
-          <img class="pick-kami-image" src="kami_chibi/hinokagutsuchi-chibi.webp" alt="ヒノカグツチのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/hinokagutsuchi-chibi.webp" alt="ヒノカグツチのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(7, $event)" @focus="showGuideKami(7, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
           <div class="pick-kami-copy"><h2 class="howto-heading"><span>ヒノカグツチ</span><small>破壊・【補正-】</small></h2>
           <div class="howto-body">・基本方針として、相手を破壊するカード、もしくは【補正-】をつけるカードを多くピックしましょう。
 ・「蠢く陰謀」は神技で墓地を肥やせるため、【補正-】効果を活かしやすく優先度が高いです。
@@ -6126,7 +6153,7 @@
 ・「瞬速の死闘」は強力な選定除去で、天力を大きく稼げる可能性があるため最優先でピックしたいカードです。</div></div>
         </section>
         <section id="pick-amaterasu" class="howto-section pick-kami-section">
-          <img class="pick-kami-image" src="tutorial_guide/amaterasu-chibi.webp" alt="アマテラスのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <figure class="pick-kami-figure"><img class="pick-kami-image" src="tutorial_guide/amaterasu-chibi.webp" alt="アマテラスのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(8, $event)" @focus="showGuideKami(8, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
           <div class="pick-kami-copy"><h2 class="howto-heading"><span>アマテラス</span><small>守護</small></h2>
           <div class="howto-body">・基本方針として、守護を持つレガシーをピックするとよいです。守護を持つトークン（ヨリシロちゃん、巨躯なる獣霊）を招来するカードの優先度も上がります。「獣霊」を招来できるカードは、文言が「いずれかの獣霊」「異なる獣霊N種」等どのような形であっても、選択肢の中に守護持ちの巨躯なる獣霊が含まれ得るため優先度は高いです（厳格なる森の長・ハクレン、晴れ空の門出、もふもふ探求者など）。
 ・創世神技は墓地からカードを蘇生する効果なので、自然と墓地が増える霊視持ちのカードの優先度が少し上がります。
@@ -6136,7 +6163,7 @@
 ・創世神技はなんでも墓地から蘇生できる破格の効果なので、なるべくコストの高いカードを蘇生したいです。コストの重いカード全般の優先度は高く、特に守護を持つ「黄角龍・フラウス」は最高の相性です。</div></div>
         </section>
         <section id="pick-tsukuyomi" class="howto-section pick-kami-section">
-          <img class="pick-kami-image" src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(9, $event)" @focus="showGuideKami(9, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
           <div class="pick-kami-copy"><h2 class="howto-heading"><span>ツクヨミ</span><small>トークン</small></h2>
           <div class="howto-body">・基本方針として、トークンを招来できるカードを集めましょう。「社の施し」はレリックでありながらトークンなので、これを招来できるカードも相性がよいです。
 ・「月見草の修行場」はかなり優先度が高いです。1枚で2回天力が溜められます。
@@ -6148,7 +6175,7 @@
 ・「落日の子守唄」「歓喜の凱旋」は毎ターントークンを招来できる最高の相性のカードなので、最優先でピックしましょう。</div></div>
         </section>
         <section v-if="manualOrochiRevealed" id="pick-yamata-no-orochi" class="howto-section pick-kami-section">
-          <img class="pick-kami-image" src="kami_chibi/yamata-no-orochi-chibi.webp" alt="ヤマタノオロチのちびキャラ" width="240" height="260" loading="lazy" decoding="async">
+          <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/yamata-no-orochi-chibi.webp" alt="ヤマタノオロチのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(10, $event)" @focus="showGuideKami(10, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
           <div class="pick-kami-copy"><h2 ref="pickOrochiTitle" tabindex="-1" class="howto-heading"><span>ヤマタノオロチ</span><small>龍</small></h2>
           <div class="howto-body">・基本方針として、龍のカードを最優先でピックしましょう。
 ・龍のカードは龍を複数集めた時にシナジーする効果が多いので、何よりも龍を複数集めることが最優先です。龍があるパックでそれ以外を優先することはほとんどありません。
@@ -8625,7 +8652,7 @@
              まだ表示していない文字も透明で配置しておき、1文字ずつ出しても行がずれないようにする -->
         <div class="tutorial-text"><template v-for="(p, i) in tutorialPhraseParts"><span :key="'tp' + i" class="tutorial-phrase"><span v-for="(run, j) in p.runs" :key="j" :class="{ 'tutorial-key': run.key }">{{ run.shown }}<span class="tutorial-unshown">{{ run.rest }}</span></span></span><wbr :key="'tw' + i"></template></div>
         <div v-if="tutorial.hint" class="tutorial-hint">{{ tutorial.hint }}</div>
-        <button v-if="tutorialStep && tutorialStep.id === 'greeting'" class="tutorial-greeting-button" :disabled="!!tutorial.flags.greetingSent" @click.stop="battleSendEmote('greeting')">{{ tutorial.flags.greetingSent ? '相手のあいさつを聞きましょう' : '👋 あいさつをする' }}</button>
+        <div v-if="tutorialStep && tutorialStep.id === 'greeting' && tutorial.flags.greetingSent" class="tutorial-greeting-status" role="status">挨拶と相手の返事を聞きましょう。</div>
         <div v-if="tutorialMode === 'say' && tutorialInspectionCards.length" class="tutorial-card-checks">
           <span>説明をクリックするとカードが拡大します。「効果を確認して閉じる」で戻れます。</span>
           <button v-for="card in tutorialInspectionCards" :key="tutorialInspectionKey(card)" @click.stop="tutorialInspectCard(card)">
@@ -8711,7 +8738,7 @@
   <div v-if="emoteWheel" class="emote-wheel" :style="{ left: emoteWheel.x + 'px', top: emoteWheel.y + 'px' }">
     <div class="emote-wheel-center"></div>
     <div v-for="(t, i) in emoteWheelItems" :key="t.key" class="emote-wheel-item"
-         :class="{ active: emoteWheel.hoverKey === t.key }" :style="t.style"
+         :class="{ active: emoteWheel.hoverKey === t.key, 'tutorial-emote-target': tutorialStep && tutorialStep.id === 'greeting' && t.key === 'greeting', 'tutorial-emote-other': tutorialStep && tutorialStep.id === 'greeting' && t.key !== 'greeting' }" :style="t.style"
          @mouseenter="emoteWheel.hoverKey = t.key" @mouseleave="emoteWheel.hoverKey = null"
          @click.stop="battleEmoteWheelItemClick(t.key)">
       <span class="emote-wheel-emoji">{{ t.emoji }}</span>
@@ -9228,17 +9255,14 @@
         <div class="gm-draft-kami-strip">
           <div v-for="s in gsSeats" :key="'draftkami'+s.seat" class="gm-draft-kami-mini"
                :class="{ me: s.isMe, cpu: s.info && s.info.isCpu }">
-            <div class="gm-draft-kami-thumb"
-                 @mouseenter="s.kamiCard && showCardHover(s.kamiCard, $event)" @mouseleave="hideCardHover"
-                 :style="(s.kamiCard && cardImageUrl(s.kamiCard)) ? { backgroundImage: 'url(' + cardImageUrl(s.kamiCard) + ')' } : {}"></div>
+            <img v-if="s.kamiCard" class="gm-draft-kami-thumb" :src="kamiChibiUrl(s.kamiCard)" :alt="s.kamiCard.name + 'のちびキャラ'" draggable="false" tabindex="0" @mouseenter="showCardHover(s.kamiCard, $event, true)" @focus="showCardHover(s.kamiCard, $event, true)" @mouseleave="hideCardHover" @blur="hideCardHover">
             <div class="gm-draft-kami-name">P{{ s.seat }} {{ s.kamiCard ? fullName(s.kamiCard) : '—' }}</div>
           </div>
         </div>
+        <p class="guide-chibi-note draft-strip-note">ちびキャラにカーソルを合わせると、カミのカードを表示します。</p>
         <div class="pick-layout gm-draft-layout">
         <aside v-if="gsMyKamiCard" class="pick-policy gm-draft-policy">
-          <div class="pick-policy-img"
-               @mouseenter="showCardHover(gsMyKamiCard, $event)" @mouseleave="hideCardHover"
-               :style="cardImageUrl(gsMyKamiCard) ? { backgroundImage: 'url(' + cardImageUrl(gsMyKamiCard) + ')' } : {}"></div>
+          <figure class="draft-kami-figure"><img class="draft-kami-chibi" :src="kamiChibiUrl(gsMyKamiCard)" :alt="gsMyKamiCard.name + 'のちびキャラ'" draggable="false" tabindex="0" @mouseenter="showCardHover(gsMyKamiCard, $event, true)" @focus="showCardHover(gsMyKamiCard, $event, true)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
           <div class="pick-policy-name">{{ fullName(gsMyKamiCard) }}</div>
           <template v-if="gsMyPickGuide">
             <div class="pick-policy-world">理念「{{ gsMyPickGuide.world }}」</div>
@@ -10057,6 +10081,18 @@ const GS_KAMI_SELECTION_GUIDES = Object.freeze({
 /* カミ別エモート・神技セリフ（対戦画面：カミアイコンからドラッグして送る） */
 /* キーはカミNo（kamiPositionMap等と同じ "1"〜"10"）。                  */
 /* ================================================================== */
+const KAMI_CHIBI_FILES = Object.freeze({
+  '1': 'kami_chibi/susanoo-chibi.webp',
+  '2': 'kami_chibi/yamato-takeru-chibi.webp',
+  '3': 'kami_chibi/okuninushi-chibi.webp',
+  '4': 'kami_chibi/takemikazuchi-chibi.webp',
+  '5': 'kami_chibi/omoikane-chibi.webp',
+  '6': 'kami_chibi/amenouzume-chibi.webp',
+  '7': 'kami_chibi/hinokagutsuchi-chibi.webp',
+  '8': 'tutorial_guide/amaterasu-chibi.webp',
+  '9': 'kami_chibi/tsukuyomi-chibi.webp',
+  '10': 'kami_chibi/yamata-no-orochi-chibi.webp'
+});
 const KAMI_EMOTE_LINES = {
   "1": { // スサノオ
     greeting: "よぉ！景気よくいこうぜ！",
@@ -10555,7 +10591,7 @@ const TUTORIAL_LESSONS = Object.freeze([
     "setup": { "selfKamiNo": "8", "oppKamiNo": "3", "firstSide": "self", "turn": 5, "self": { "life": 10, "manaMax": 2, "relics": ["社の施し"], "legacies": [], "hand": ["幼き守護者・ミナト"], "deck": ["昏き紫の眷属", "救済の手", "猛き赤の眷属", "荒き緑の眷属", "眩き黄の眷属", "拒絶の守衛・イズモ", "慈愛の忍・イロハ"] }, "opp": { "life": 10, "lifeMax": 10, "manaMax": 5, "relics": [], "legacies": [{ "name": "飄々たる諜報員", "tapped": true }], "hand": ["猛き赤の眷属", "荒き緑の眷属", "熾烈なる戦役"], "deck": ["深き青の眷属", "昏き紫の眷属", "眩き黄の眷属", "先駆けの修羅"] } },
     "steps": [
       { "face": "joy", "say": "ようこそ、ツクリヨの世界へ。私はアマテラス。まずは4種類のカードの役割から学びましょう。攻撃の仕方や細かな能力は、あとの練習で少しずつ覚えれば大丈夫ですよ。" },
-      { "id": "greeting", "task": "対戦のはじめに、エモートで挨拶してみましょう。「あいさつをする」を押してくださいね。私の姿を右クリックするか、外へドラッグして「あいさつ」を選んでも使えますよ。", "focus": "selfKami", "emoteIntro": true, "done": vm => !!vm.tutorial.flags.greetingReplied },
+      { "id": "greeting", "task": "対戦のはじめに、エモートで挨拶してみましょう。私のカミを外へドラッグして、現れたメニューの「あいさつ」を選んでください。右クリックでメニューを開き、選ぶこともできますよ。", "focus": "selfKami", "emoteIntro": true, "done": vm => !!vm.tutorial.flags.greetingReplied },
       { "face": "joy", "say": "挨拶が返ってきましたね。エモートでは、挨拶や気持ちをカミのセリフで伝えられます。それでは、カードの種類を見ていきましょう。" },
       { "action": "startTurn" },
       { "say": "まずは「カミ」。あなたの分身で、ライフと天力を持ち、神技を使います。デッキには入らず、対戦の最初から場にいますよ。", "focus": "selfKami" },
@@ -16288,9 +16324,9 @@ new Vue({
         // 読み上げ終了・中断・再生失敗を、台詞の表示側でも待てるようにする。
         let finish;
         const done = new Promise(resolve => {
-          finish = () => {
+          finish = event => {
             for (const event of ['ended', 'error', 'pause']) audio.removeEventListener(event, finish);
-            resolve();
+            resolve(!!event && event.type === 'ended');
           };
           for (const event of ['ended', 'error', 'pause']) audio.addEventListener(event, finish);
         });
@@ -16303,8 +16339,10 @@ new Vue({
     _battleSpeechReadMs(text) {
       return Math.max(4500, 1800 + Array.from(String(text || '')).length * 150);
     },
-    _battleHoldSpeech(text, voice, onDone) {
-      const deadline = Date.now() + this._battleSpeechReadMs(text);
+    _battleHoldSpeech(text, voice, onDone, options = {}) {
+      // 挨拶の練習は音声の終了を合図に会話をつなぐ。無音なら短い台詞を読める時間だけ待つ。
+      const readMs = options.endWithVoice ? Math.max(1200, 500 + Array.from(String(text || '')).length * 85) : this._battleSpeechReadMs(text);
+      const deadline = Date.now() + readMs;
       const hold = { timer: null, cancelled: false };
       const finish = () => {
         if (hold.cancelled) return;
@@ -16313,11 +16351,12 @@ new Vue({
         onDone();
       };
       hold.cancel = () => { hold.cancelled = true; clearTimeout(hold.timer); };
-      hold.timer = setTimeout(() => { if (!voice || !voice.done) finish(); }, this._battleSpeechReadMs(text));
-      if (voice && voice.done) voice.done.then(() => {
+      hold.timer = setTimeout(() => { if (!voice || !voice.done) finish(); }, readMs);
+      if (voice && voice.done) voice.done.then(played => {
         if (hold.cancelled) return;
+        if (options.endWithVoice && played !== false) { finish(); return; }
         clearTimeout(hold.timer);
-        hold.timer = setTimeout(finish, Math.max(800, deadline - Date.now()));
+        hold.timer = setTimeout(finish, Math.max(options.endWithVoice ? 0 : 800, deadline - Date.now()));
       });
       return hold;
     },
@@ -17623,7 +17662,7 @@ new Vue({
     },
     /* ===== カミのエモート（あいさつ・困惑・賞賛・驚き・疑問・大見栄）＋神技/2のセリフ ===== */
     // カミポートレートの下/上あたりに吹き出しを一定時間表示する（自分/相手それぞれ独立に管理）
-    _battleShowEmoteBubble(side, text, voice = null, onDone = null) {
+    _battleShowEmoteBubble(side, text, voice = null, onDone = null, speechOptions = {}) {
       if (!text) return;
       this._emoteBubbleSeq = (this._emoteBubbleSeq || 0) + 1;
       const id = this._emoteBubbleSeq;
@@ -17640,7 +17679,7 @@ new Vue({
           this.$set(this.emoteBubbles, side, null);
           if (onDone) onDone();
         }
-      });
+      }, speechOptions);
     },
     // 自分のカミのセリフを取得（kindは EMOTE_TYPES の key か 'skill1'/'skill2'）
     _battleEmoteLineFor(kami, kind) {
@@ -17665,9 +17704,11 @@ new Vue({
         const opponent = this.battleSample.opp.kami;
         const reply = this._battleEmoteLineFor(opponent, 'greeting');
         this._battleShowEmoteBubble('opp', reply, this.playKamiVoice(opponent, 'greeting'), () => {
-          if (this.tutorial === greetingLesson) this.$set(greetingLesson.flags, 'greetingReplied', true);
-        });
-      } : null);
+          if (this.tutorial !== greetingLesson || !this.tutorialStep || this.tutorialStep.id !== 'greeting') return;
+          this.$set(greetingLesson.flags, 'greetingReplied', true);
+          this._tutorialTick();
+        }, { endWithVoice: true });
+      } : null, greetingLesson ? { endWithVoice: true } : {});
       this._battlePublishEmote(key);
     },
     _battlePublishEmote(key) {
@@ -28574,7 +28615,18 @@ new Vue({
     battleCardHoverBlocked() {
       return this.appView === 'battle' && !this.battleModalPeek && this._battleHasBlockingModal();
     },
-    showCardHover(card, event) {
+    kamiChibiUrl(kami) {
+      return kami ? KAMI_CHIBI_FILES[String(parseInt(kami.no, 10))] || '' : '';
+    },
+    showGuideKami(no, event) {
+      // 通常カードとカミには同じ番号があるため、カミの一覧から解決する。
+      const kami = this.allKamiCards.find(card => Number(card.no) === Number(no));
+      if (!kami) return;
+      const approved = !!(this.manualOrochiRevealed && (this.manualModalOpen || this.howToPlayModalOpen));
+      if (Number(no) === 10 && !approved) return;
+      this.showCardHover(kami, event, approved);
+    },
+    showCardHover(card, event, allowKamiSpoiler = false) {
       if (this.battleCardHoverBlocked()) { this.hideCardHover(); return; }
       // 説明対象を初めて指した時だけ詳細を開く。確認後の再ホバーでは強制しない。
       if (this.tutorial && !this.previewCard && this.tutorialInspectionCards.includes(card) && !this.tutorialInspectionChecked(card)) {
@@ -28582,18 +28634,19 @@ new Vue({
         return;
       }
       // 対戦中に表示済みのカードは拡大できる。カードリスト等のネタバレ防止は維持。
-      if (this.appView !== 'battle' && this.isSpoilerHidden(card)) return;
+      if (this.appView !== 'battle' && this.isSpoilerHidden(card) && !(allowKamiSpoiler && card.isKami)) return;
       if (!this.cardImageUrl(card)) return;
       this.hoverCard = card;
       const el = event.currentTarget.closest('.card') || event.currentTarget;
       const rect = el.getBoundingClientRect();
       const evolved = !!(card && card._evolvedBase && this.cardImageUrl(card._evolvedBase));
-      const pw = evolved ? 484 : 360; // プレビュー幅（進化時は2枚並べ）
+      const pw = Math.min(evolved ? 484 : 360, Math.max(120, window.innerWidth - 20)); // 小画面でも画面内に収める。
       const ph = evolved ? Math.round(240 * 1039 / 744) + 22 : Math.round(pw * 1039 / 744); // カード縦横比
       const margin = 10;
       // 右に出す → 右端が画面外なら左に
       let left = rect.right + margin;
       if (left + pw > window.innerWidth - margin) left = rect.left - pw - margin;
+      left = Math.max(margin, Math.min(window.innerWidth - pw - margin, left));
       // 縦はカードの中央に合わせる → はみ出したらクランプ
       let top = rect.top + (rect.height - ph) / 2;
       top = Math.max(margin, Math.min(window.innerHeight - ph - margin, top));

@@ -79,8 +79,8 @@ function speechClock(vm) {
   const set=(callback,delay)=>{const t={callback,at:now+delay,cancelled:false};timers.push(t);return t};
   const clear=t=>{if(t)t.cancelled=true};
   vm._battleSpeechReadMs=method('_battleSpeechReadMs','text');
-  const hold=method('_battleHoldSpeech','text,voice,onDone,setTimeout,clearTimeout,Date');
-  vm._battleHoldSpeech=function(text,voice,onDone){return hold.call(this,text,voice,onDone,set,clear,clock)};
+  const hold=method('_battleHoldSpeech','text,voice,onDone,setTimeout,clearTimeout,Date,options={}');
+  vm._battleHoldSpeech=function(text,voice,onDone,options={}){return hold.call(this,text,voice,onDone,set,clear,clock,options)};
   return {advance(ms){now+=ms;for(const t of timers)if(!t.cancelled&&t.at<=now){t.cancelled=true;t.callback()}},timers,clear};
 }
 
@@ -102,7 +102,7 @@ test("speech stays readable without audio, waits for voice completion, and cance
 
 test("both emote sides keep their own speech timer when another emote replaces one", async () => {
   const vm={emoteBubbles:{self:null,opp:null},$set:(object,key,value)=>{object[key]=value}};
-  const clock=speechClock(vm),show=method('_battleShowEmoteBubble','side,text,voice=null,onDone=null');
+  const clock=speechClock(vm),show=method('_battleShowEmoteBubble','side,text,voice=null,onDone=null,speechOptions={}');
   let finishVoice;const voice={done:new Promise(r=>{finishVoice=r})};
   show.call(vm,'self','最初の台詞',voice);show.call(vm,'opp','相手の台詞');
   clock.advance(1000);show.call(vm,'self','次の台詞');
@@ -139,17 +139,17 @@ test("Kami voice completes its hold on playback failure or interruption", async 
     constructor(){this.listeners={};this.duration=9;}
     addEventListener(key,fn){this.listeners[key]=fn}
     removeEventListener(key){delete this.listeners[key]}
-    pause(){this.listeners.pause?.()}
+    pause(){this.listeners.pause?.({type:'pause'})}
     play(){return this.reject?Promise.reject(Error('autoplay blocked')):Promise.resolve()}
   }
   const play=method('playKamiVoice','kami,key,Audio');
   const vm={kamiVoiceManifest:{kami:{'1':{greeting:'voice.mp3'}}},voiceVolume:1,BUILD_VERSION:'test'};
   const first=play.call(vm,{no:1},'greeting',Voice);
   const second=play.call(vm,{no:1},'greeting',Voice);
-  await first.done;assert.deepEqual(first.audio.listeners,{});
-  second.audio.listeners.ended();await second.done;assert.deepEqual(second.audio.listeners,{});
+  assert.equal(await first.done,false);assert.deepEqual(first.audio.listeners,{});
+  second.audio.listeners.ended({type:'ended'});assert.equal(await second.done,true);assert.deepEqual(second.audio.listeners,{});
   class Rejected extends Voice {play(){return Promise.reject(Error('autoplay blocked'))}}
-  const failed=play.call(vm,{no:1},'greeting',Rejected);await failed.done;
+  const failed=play.call(vm,{no:1},'greeting',Rejected);assert.equal(await failed.done,false);
   assert.deepEqual(failed.audio.listeners,{});vm.voiceVolume=0;
   assert.equal(play.call(vm,{no:1},'greeting',Voice),undefined,'muted speech falls back to reading time');
 });
@@ -330,20 +330,51 @@ test("clicking anywhere in explanation mode advances once without firing battle 
 test("the first lesson waits for greeting and the opponent reply, without overlapping speech or stale replies", () => {
  const lesson=lessons[0],step=lesson.steps.find(s=>s.id==='greeting');
  assert.ok(lesson.steps.indexOf(step)<lesson.steps.findIndex(s=>s.action==='startTurn'));
- const bubbles=[],published=[];
+ const bubbles=[],published=[];let ticks=0;
  const vm={tutorial:{flags:{}},tutorialStep:step,battleSample:{self:{kami:{no:8}},opp:{kami:{no:3}}},
  $set:(o,k,v)=>o[k]=v,_sfxPlay(){},_tutorialNudge(){},playKamiVoice:(kami,key)=>({kami,key}),
  _battleEmoteLineFor:(kami,key)=>kami.no+':'+key,_battlePublishEmote:key=>published.push(key),
- _battleShowEmoteBubble(side,text,voice,onDone){bubbles.push({side,text,voice,onDone})}};
+ _tutorialTick(){ticks++},_battleShowEmoteBubble(side,text,voice,onDone,options){bubbles.push({side,text,voice,onDone,options})}};
  const send=method('battleSendEmote','key');
  send.call(vm,'praise');assert.equal(bubbles.length,0);assert.equal(step.done(vm),false);
- send.call(vm,'greeting');assert.equal(bubbles.length,1);assert.equal(bubbles[0].side,'self');
+ send.call(vm,'greeting');assert.equal(bubbles.length,1);assert.equal(bubbles[0].side,'self');assert.equal(bubbles[0].options.endWithVoice,true);
  send.call(vm,'greeting');assert.equal(bubbles.length,1,'repeated greetings cannot cancel the pending response');
  bubbles[0].onDone();assert.equal(bubbles.length,2);assert.equal(bubbles[1].side,'opp');assert.equal(bubbles[1].voice.kami.no,3);
  assert.equal(step.done(vm),false,'the reply is read before the card explanation');
- bubbles[1].onDone();assert.equal(step.done(vm),true);assert.deepEqual(published,['greeting']);
+ bubbles[1].onDone();assert.equal(step.done(vm),true);assert.equal(ticks,1,'the next explanation is updated immediately');assert.deepEqual(published,['greeting']);
  vm.tutorial={flags:{}};send.call(vm,'greeting');vm.tutorial=null;bubbles[2].onDone();assert.equal(bubbles.length,3,'leaving the lesson cancels its reply');
  send.call(vm,'praise');assert.equal(bubbles[3].side,'self');assert.equal(bubbles[3].onDone,null,'ordinary emotes have no scripted reply');
+});
+
+test("greeting playback starts the reply and releases the lesson immediately when each voice ends", async () => {
+ const step=lessons[0].steps.find(s=>s.id==='greeting'),voices=[];let ticks=0;
+ const vm={tutorial:{flags:{}},tutorialStep:step,emoteBubbles:{self:null,opp:null},
+ battleSample:{self:{kami:{no:8}},opp:{kami:{no:3}}},$set:(o,k,v)=>o[k]=v,
+ _sfxPlay(){},_tutorialNudge(){},_battlePublishEmote(){},_tutorialTick(){ticks++},
+ _battleEmoteLineFor:kami=>kami.no===8?'よろしくお願いしますね':'よろしく頼みます',
+ playKamiVoice(kami){let finish;const done=new Promise(r=>{finish=r});voices.push({kami,finish});return{done}}};
+ const clock=speechClock(vm),show=method('_battleShowEmoteBubble','side,text,voice=null,onDone=null,speechOptions={}');
+ vm._battleShowEmoteBubble=function(...args){return show.apply(this,args)};
+ method('battleSendEmote','key').call(vm,'greeting');
+ clock.advance(100);assert.equal(voices.length,1);
+ voices[0].finish(true);await Promise.resolve();
+ assert.equal(voices.length,2,'no 4.5-second reading timer delays the reply');
+ assert.equal(vm.emoteBubbles.self,null);assert.equal(vm.emoteBubbles.opp.text,'よろしく頼みます');
+ clock.advance(10000);assert.equal(ticks,0,'a long voice still plays in full');
+ voices[1].finish(true);await Promise.resolve();
+ assert.equal(vm.emoteBubbles.opp,null);assert.equal(step.done(vm),true);
+ assert.equal(ticks,1,'no timer or polling interval blocks progress after the reply');
+});
+
+test("muted or failed greeting voices use a short readable fallback and canceled speech stays canceled", async () => {
+ const vm={},clock=speechClock(vm),finished=[];
+ vm._battleHoldSpeech('よろしく',null,()=>finished.push('muted'),{endWithVoice:true});
+ clock.advance(1199);assert.deepEqual(finished,[]);clock.advance(1);assert.deepEqual(finished,['muted']);
+ vm._battleHoldSpeech('よろしく',{done:Promise.resolve(false)},()=>finished.push('failed'),{endWithVoice:true});
+ await Promise.resolve();clock.advance(1199);assert.deepEqual(finished,['muted']);clock.advance(1);assert.deepEqual(finished,['muted','failed']);
+ let finish;const canceled=vm._battleHoldSpeech('よろしく',{done:new Promise(r=>{finish=r})},()=>finished.push('canceled'),{endWithVoice:true});
+ canceled.cancel();finish(true);await Promise.resolve();clock.advance(5000);
+ assert.deepEqual(finished,['muted','failed']);
 });
 
 test("completion buttons become usable only after the input shield, and victory music stays through the stamp", () => {
@@ -405,7 +436,7 @@ test("tutorial target cards open once on hover and direct taps count as inspecti
  tutorialInspectionKey:method('tutorialInspectionKey','card'),tutorialInspectionChecked:method('tutorialInspectionChecked','card'),
  openPreview:method('openPreview','card'),closePreview:method('closePreview','confirmed'),tutorialInspectCard:method('tutorialInspectCard','card'),
  isSpoilerHidden:()=>false,cardImageUrl:()=>null};
- const hover=method('showCardHover','card,event');
+ const hover=method('showCardHover','card,event,allowKamiSpoiler=false');
  hover.call(vm,card,{});assert.equal(vm.previewCard,card);
  vm.closePreview(true);assert.equal(vm.tutorialInspectionChecked(card),true);
  hover.call(vm,card,{});assert.equal(vm.previewCard,null,'confirmed targets must not repeatedly open');
@@ -424,7 +455,7 @@ test("card detail closes before the required tutorial answer, and blocked hover 
  battleCardHoverBlocked:method('battleCardHoverBlocked'),dslAnswerOptional(){assert.fail('Escape must not answer the covered question')}};
  method('onKeyDown','e').call(vm,{key:'Escape',preventDefault(){}});
  assert.equal(vm.previewCard,null);assert.equal(vm.dslOptionalModal,pending);assert.equal(vm.hoverCard,null);
- method('showCardHover','card,event').call(vm,card,{});assert.equal(vm.hoverCard,null);
+ method('showCardHover','card,event,allowKamiSpoiler=false').call(vm,card,{});assert.equal(vm.hoverCard,null);
  vm.battleModalPeek=true;assert.equal(vm.battleCardHoverBlocked(),false,'intentional field peek permits card inspection');
  const watch=html.match(/this\.\$watch\(\(\) => this\._battleHasBlockingModal\(\), \(opened\) => \{([\s\S]*?)\n    \}\);/g).find(s=>s.includes('_battleDialogPreviousFocus'));
  assert.ok(watch);assert.doesNotMatch(watch,/key ===|e\.preventDefault/,'dialog close cannot reference an undefined key event');
@@ -445,7 +476,7 @@ test("generated hand tokens enlarge during battle without revealing spoilers in 
   const rect={left:400,right:470,top:500,height:100};
   const el={closest:()=>null,getBoundingClientRect:()=>rect},event={currentTarget:el};
   const screen={innerWidth:1280,innerHeight:900};
-  const hover=method('showCardHover','card,event,window');
+  const hover=method('showCardHover','card,event,window,allowKamiSpoiler=false');
   for (const no of ['187','188']) {
     const card={no,isToken:true,spoiler:true};
     const vm={appView:'battle',hoverCard:null,battleCardHoverBlocked:()=>false,isSpoilerHidden:c=>!!c.spoiler,cardImageUrl:()=>`cards/${no}.webp`};
@@ -458,6 +489,25 @@ test("generated hand tokens enlarge during battle without revealing spoilers in 
     card.spoiler=false;hover.call(vm,card,event,screen);
     assert.equal(vm.hoverCard,card,'ordinary cards still enlarge outside battle');
   }
+});
+
+test("chibi hover resolves Kami cards and guide approval cannot unlock card-list spoilers", () => {
+  const kami={no:'10',isKami:true,spoiler:true},ordinary={no:'10',spoiler:true};
+  const screen={innerWidth:390,innerHeight:844};
+  const event={currentTarget:{closest:()=>null,getBoundingClientRect:()=>({left:250,right:350,top:300,height:180})}};
+  const hover=method('showCardHover','card,event,window,allowKamiSpoiler=false');
+  const vm={appView:'cards',allKamiCards:[kami],allCards:[ordinary],hoverCard:null,
+    manualModalOpen:true,manualOrochiRevealed:false,battleCardHoverBlocked:()=>false,
+    isSpoilerHidden:c=>!!c.spoiler,cardImageUrl:c=>c.isKami?'kami/10.webp':'cards/10.webp',
+    showCardHover(card,e,allow){hover.call(this,card,e,screen,allow)}};
+  const show=method('showGuideKami','no,event');
+  show.call(vm,10,event);assert.equal(vm.hoverCard,null,'hidden guide portraits cannot reveal a Kami');
+  vm.manualOrochiRevealed=true;show.call(vm,10,event);
+  assert.equal(vm.hoverCard,kami,'overlapping card numbers resolve to the Kami');
+  assert.ok(vm.hoverLeft>=10 && vm.hoverLeft+360<=screen.innerWidth-10,'enlarged card stays on a narrow screen');
+  vm.hoverCard=null;hover.call(vm,kami,event,screen);assert.equal(vm.hoverCard,null,'guide consent is scoped, not a global spoiler unlock');
+  hover.call(vm,ordinary,event,screen,true);assert.equal(vm.hoverCard,null,'Kami permission cannot expose a hidden Legacy');
+  vm.manualModalOpen=false;show.call(vm,10,event);assert.equal(vm.hoverCard,null,'closed guide consent cannot be reused');
 });
 
 test("Kagutsuchi skill 2 waits for enemy death effects to restore perspective before damaging the enemy", async () => {
