@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>創世決戦OP：曲と場面の試聴</h1>
-<p class="lead">候補の曲に合わせて、ゲームと同じ長さで8枚の絵を切り替えます。場面の切り替え（金の線）で音の変化が起きているかを確かめてください。下の表は、各境目で音がどれくらい強く立ち上がっているか（音ハメの目安）を曲から計測したものです。</p>
+<p class="lead">候補の曲に合わせて、ゲームと同じ長さで8枚の絵を切り替えます。場面の切り替え（金の線）で音の変化が起きているかを確かめてください。下の表は、各境目で音がどれくらい強く立ち上がっているか、また前後で音量がどれだけ変わるか（急に静かになる「落とし」も含む）を曲から計測した音ハメの目安です。</p>
 <div class="bar">
   <select id="pick"></select>
   <button id="play" class="primary">再生</button>
@@ -80,7 +80,9 @@
       if (s > best.score) best = { score: s, period, ph };
     }
     const mean = on.reduce((a, b) => a + b, 0) / on.length;
-    const rows = starts.slice(1).map((s, i) => { let m = 0, mt = s; for (let t = s - 0.25; t <= s + 0.25; t += 0.02) { const v = at(t); if (v > m) { m = v; mt = t; } } return { scene: i + 2, at: s, peak: mt, ratio: m / mean }; });
+    // 境目の前後1秒の音量差（急に静かになる「落とし」も音ハメとして見るため）
+    const db = (a, z) => { let s = 0, c = 0; for (let i = Math.max(0, Math.floor(a * sr)); i < Math.min(buf.length, Math.floor(z * sr)); i++) { let v = 0; for (const d of chs) v += d[i]; v /= chs.length; s += v * v; c++; } return 10 * Math.log10(s / Math.max(1, c) + 1e-12); };
+    const rows = starts.slice(1).map((s, i) => { let m = 0, mt = s; for (let t = s - 0.25; t <= s + 0.25; t += 0.02) { const v = at(t); if (v > m) { m = v; mt = t; } } return { scene: i + 2, at: s, peak: mt, ratio: m / mean, change: db(s, s + 1) - db(s - 1, s) }; });
     return { bpm: 60 / best.period, phase: best.ph, rows };
   }
 
@@ -92,9 +94,9 @@
     const a = analyze(buffer);
     beatOffset = a.phase % (60 / a.bpm);
     $('info').innerHTML = `長さ ${buffer.duration.toFixed(2)} 秒 ／ 推定テンポ 約${a.bpm.toFixed(1)} BPM ／ 最初の拍の位置 ${beatOffset.toFixed(2)} 秒（ゲームの GENESIS_STORY_BEAT_OFFSET_SEC の目安）<br>場面の長さの合計は ${total} 秒です。`;
-    $('table').innerHTML = '<tr><th>場面</th><th>切り替え</th><th>いちばん強い音の位置</th><th>強さ（平均比）</th></tr>' + a.rows.map(r => {
+    $('table').innerHTML = '<tr><th>場面</th><th>切り替え</th><th>いちばん強い音の位置</th><th>立ち上がりの強さ（平均比）</th><th>前後1秒の音量差</th></tr>' + a.rows.map(r => {
       const cls = r.ratio >= 6 ? 'good' : r.ratio >= 3 ? 'weak' : 'bad';
-      return `<tr><td>${r.scene} ${LABELS[r.scene - 1]}</td><td>${r.at.toFixed(2)} 秒</td><td>${r.peak.toFixed(2)} 秒（${(r.peak - r.at >= 0 ? '+' : '') + (r.peak - r.at).toFixed(2)}）</td><td class="${cls}">${r.ratio.toFixed(1)} 倍</td></tr>`;
+      return `<tr><td>${r.scene} ${LABELS[r.scene - 1]}</td><td>${r.at.toFixed(2)} 秒</td><td>${r.peak.toFixed(2)} 秒（${(r.peak - r.at >= 0 ? '+' : '') + (r.peak - r.at).toFixed(2)}）</td><td class="${cls}">${r.ratio.toFixed(1)} 倍</td><td class="${Math.abs(r.change) >= 6 ? 'good' : Math.abs(r.change) >= 3 ? 'weak' : 'bad'}">${(r.change >= 0 ? '+' : '') + r.change.toFixed(1)} dB</td></tr>`;
     }).join('');
     offset = 0; scene = -1; draw();
   }
