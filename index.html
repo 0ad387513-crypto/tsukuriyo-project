@@ -1852,6 +1852,7 @@
   /* ===== プレイガイド（添付説明書をWeb向けに再構成） ===== */
   .battle-zone-modal.manual-modal { padding: 20px; }
   .battle-zone-modal-panel.manual-panel {
+    position: relative;
     width: min(1180px, 96vw); max-width: 1180px; height: min(92vh, 980px); max-height: 92vh;
     box-sizing: border-box; padding: 0; overflow: hidden; border-color: #765e35;
     background:
@@ -1917,6 +1918,10 @@
   .manual-chapter + .manual-chapter { border-top: 1px solid rgba(255,255,255,.09); padding-top: 38px; }
   .manual-chapter-tag { color: #caa75f; font-size: 10px; font-weight: 900; letter-spacing: .18em; }
   .manual-chapter h2 { margin: 7px 0 18px; color: #fff1c2; font-size: clamp(23px, 3vw, 34px); letter-spacing: .06em; }
+  .manual-chapter-heading { display: grid; grid-template-columns: minmax(0,1fr) 136px; gap: 20px; align-items: center; margin-bottom: 18px; }
+  .manual-chapter-heading h2 { margin-bottom: 0; }
+  .manual-chapter-mascot { width: 136px; height: 100px; overflow: hidden; pointer-events: none; mask-image: linear-gradient(#000 0 85%, transparent 100%); }
+  .manual-chapter-mascot img { display: block; width: 136px; height: 136px; object-fit: contain; object-position: center top; }
   .manual-chapter h3 { margin: 24px 0 9px; color: #f2d88d; font-size: 17px; }
   .manual-copy { color: #cbd1dc; font-size: 14px; line-height: 1.9; }
   .manual-copy p { margin: 0 0 13px; }
@@ -2013,13 +2018,26 @@
   .manual-answer { padding: 12px 14px; background: rgba(17,20,27,.88); color: #ccd3df; font-size: 12.5px; line-height: 1.75; }
   .manual-kami-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 11px; }
   .manual-kami {
-    display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: center;
+    display: grid; grid-template-columns: 120px minmax(0,1fr); gap: 14px; align-items: center;
     border: 1px solid #343a46; border-radius: 9px; padding: 10px; background: rgba(20,23,31,.8);
   }
-  .manual-kami img { width: 64px; height: 64px; object-fit: cover; object-position: top; border-radius: 8px; }
+  .manual-kami img { display: block; width: 120px; height: 148px; object-fit: contain; object-position: center; }
   .manual-kami b { color: #f5dda0; font-size: 13px; }
   .manual-kami-difficulty { color: #e9b85c; font-size: 11px; margin: 2px 0 4px; }
   .manual-kami p { color: #aeb7c6; font-size: 11px; line-height: 1.55; margin: 0; }
+  .manual-kami-hidden { color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .manual-kami-hidden:hover, .manual-kami-hidden:focus-visible { border-color: #d5b46d; background: #27232c; }
+  .manual-kami-mystery { display: grid; place-items: center; width: 120px; height: 148px; color: #d9c49b; font-size: 74px; font-weight: 900; background: radial-gradient(ellipse, rgba(192,156,83,.13), transparent 70%); }
+  .manual-kami-hidden-copy > span { display: block; color: #aeb7c6; font-size: 11px; line-height: 1.6; margin-top: 5px; }
+  .manual-kami-hide { margin-top: 7px; padding: 3px 9px; border: 1px solid #62513b; border-radius: 5px; background: #25211c; color: #ead9b7; font-size: 11px; cursor: pointer; }
+  .manual-spoiler-layer { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; padding: 20px; background: rgba(4,6,12,.82); }
+  .manual-spoiler-dialog { box-sizing: border-box; width: min(420px,100%); padding: 25px; border: 1px solid #b89653; border-radius: 12px; background: #1b1920; box-shadow: 0 16px 60px rgba(0,0,0,.6); }
+  .manual-spoiler-dialog h2 { margin: 0 0 13px; color: #ffe2a0; font-size: 20px; }
+  .manual-spoiler-dialog p { margin: 0; color: #d4ced6; font-size: 14px; line-height: 1.8; }
+  .manual-spoiler-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 22px; }
+  .manual-spoiler-actions button { min-width: 80px; padding: 9px 16px; border: 1px solid #6b6254; border-radius: 7px; background: #302d33; color: #f4eddf; font-size: 14px; cursor: pointer; }
+  .manual-spoiler-actions .manual-spoiler-yes { border-color: #bf9c51; background: #72562b; color: #fff4d0; }
+  .manual-spoiler-actions button:focus-visible, .manual-kami-hide:focus-visible { outline: 2px solid #ffe0a0; outline-offset: 3px; }
   @media (max-width: 760px) {
     .battle-zone-modal.manual-modal { padding: 0; }
     .battle-zone-modal-panel.manual-panel { width: 100vw; min-width: 0; max-width: 100vw; height: 100%; max-height: 100%; overflow-x: hidden; border-radius: 0; }
@@ -2039,6 +2057,12 @@
     .manual-quick-nav::-webkit-scrollbar { display: none; }
     .manual-main { padding: 22px 16px; }
     .manual-grid, .manual-mode-grid, .manual-keyword-grid, .manual-kami-grid, .manual-field-legend { grid-template-columns: 1fr; }
+    .manual-kami { grid-template-columns: 104px minmax(0,1fr); gap: 12px; }
+    .manual-kami img { width: 104px; height: 130px; }
+    .manual-kami-mystery { width: 104px; height: 130px; }
+    .manual-chapter-heading { grid-template-columns: minmax(0,1fr) 90px; gap: 12px; }
+    .manual-chapter-mascot { width: 90px; height: 78px; }
+    .manual-chapter-mascot img { width: 90px; height: 90px; }
     .manual-card-figure { grid-template-columns: 1fr; }
     .manual-card-image-wrap { width: min(230px,75vw); margin: 0 auto; }
     .manual-flow { grid-template-columns: repeat(2,minmax(0,1fr)); }
@@ -5347,7 +5371,7 @@
        重なるため、対戦画面表示中はこちらを隠す。カードリスト画面ではBGM不要かつ他の
        ボタン群と重なるため非表示にする） ===== -->
   <div v-if="appView !== 'battle' && appView !== 'cardlist' && !deckExpanded" class="global-sound-settings">
-    <button class="global-sound-btn howto-open-btn" @click.stop="_sfxPlay('decision'); manualModalOpen = true" title="プレイガイド（説明書）">📖</button>
+    <button class="global-sound-btn howto-open-btn" @click.stop="openPlayManual" title="プレイガイド（説明書）">📖</button>
     <button class="global-sound-btn howto-open-btn" @click.stop="_sfxPlay('decision'); howToPlayModalOpen = true; $nextTick(_howtoAnnotateCardRefs)" title="ピックガイド">🧭</button>
     <button class="global-sound-btn howto-open-btn" @click.stop="openBattleHistory" title="戦績・対戦履歴">📜</button>
     <transition name="bgm-now-fade"><span v-if="bgmNowPlaying" :key="bgmNowPlaying.id" class="bgm-current-name" :title="bgmNowPlaying.name" role="status" aria-live="polite">♪ {{ bgmNowPlaying.name }}</span></transition>
@@ -5461,7 +5485,7 @@
             <span class="top-tutorial-face" aria-hidden="true"></span>
             <span>{{ tutorialLoading ? '準備しています…' : 'チュートリアル' }}<small>初めての人は<wbr>まずここから</small><small v-if="!tutorialClearedCount">アマテラスと<wbr>遊び方を<wbr>学ぶ</small><small v-else>{{ tutorialClearedCount }}／{{ tutorialLessons.length }}<wbr>クリア</small></span>
           </button>
-          <button class="top-mode-guide-btn manual" @click.stop="_sfxPlay('decision'); manualModalOpen = true">
+          <button class="top-mode-guide-btn manual" @click.stop="openPlayManual">
             📖 プレイガイド
           </button>
           <button class="top-mode-guide-btn pick" @click.stop="_sfxPlay('decision'); howToPlayModalOpen = true; $nextTick(_howtoAnnotateCardRefs)">
@@ -5673,17 +5697,17 @@
     </div>
   </div>
 
-  <div v-if="manualModalOpen" class="battle-zone-modal manual-modal" role="dialog" aria-modal="true" aria-label="ツクリヨ プレイガイド" @click.self="manualModalOpen = false">
+  <div v-if="manualModalOpen" class="battle-zone-modal manual-modal" role="dialog" aria-modal="true" aria-label="ツクリヨ プレイガイド" @click.self="closePlayManual">
     <div class="battle-zone-modal-panel manual-panel">
-      <div class="manual-header">
+      <div class="manual-header" :inert="manualSpoilerConfirmOpen ? '' : null">
         <div class="manual-header-mark" aria-hidden="true" title="プレイガイド">📖</div>
         <div class="manual-header-copy">
           <div class="manual-header-title">ツクリヨ プレイガイド</div>
           <div class="manual-header-sub">3つの対戦モード／星戦のルール／キーワード／細則</div>
         </div>
-        <button class="manual-close" @click="_sfxPlay('cancel'); manualModalOpen = false">閉じる</button>
+        <button class="manual-close" @click="closePlayManual">閉じる</button>
       </div>
-      <div class="manual-scroll">
+      <div class="manual-scroll" :inert="manualSpoilerConfirmOpen ? '' : null">
         <section class="manual-cover">
           <div class="manual-cover-copy">
             <div class="manual-kicker">TSUKURIYO PLAY GUIDE</div>
@@ -5716,16 +5740,20 @@
 
         <main class="manual-main manual-copy">
           <section id="manual-world" class="manual-chapter">
-            <div class="manual-chapter-tag">CHAPTER 01</div>
-            <h2>終焉の先に、次の世を</h2>
+            <div class="manual-chapter-heading">
+              <div><div class="manual-chapter-tag">CHAPTER 01</div><h2>終焉の先に、次の世を</h2></div>
+              <div class="manual-chapter-mascot" aria-hidden="true"><img src="tutorial_guide/amaterasu-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+            </div>
             <p>突如飛来した無数の巨龍は文明を蹂躙し、生命を滅亡の淵へ追いやりました。古き神々は永い死闘の末に巨龍を打ち倒しましたが、その代償として星から生命の息吹は失われます。</p>
             <p>神々が星の深淵で見つけたのは、かつて存在した生命の記憶の残滓――<strong>「レガシー」</strong>。神秘のエネルギー<strong>「星魂」</strong>によってレガシーに命を吹き込めば、新たな世界を創ることができます。</p>
             <p>しかし、どの生命を蘇らせ、どのような未来を築くべきか。異なる理念を抱くカミたちは、創世の資格と星魂を賭けた闘争――<strong>「星戦」</strong>を選びました。</p>
           </section>
 
           <section id="manual-goal" class="manual-chapter">
-            <div class="manual-chapter-tag">CHAPTER 02</div>
-            <h2>ゲームの目的</h2>
+            <div class="manual-chapter-heading">
+              <div><div class="manual-chapter-tag">CHAPTER 02</div><h2>ゲームの目的</h2></div>
+              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/susanoo-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+            </div>
             <p>プレイヤーはカミの1人となり、ドラフト形式でカードを集め、自らの理念を体現するデッキを作ります。3回の星戦を終えた時、最も多くの<strong>星魂</strong>を持つプレイヤーが、次の世を創る勝者です。</p>
             <div class="manual-grid">
               <article class="manual-card">
@@ -5743,8 +5771,10 @@
           </section>
 
           <section id="manual-modes" class="manual-chapter">
-            <div class="manual-chapter-tag">CHAPTER 03</div>
-            <h2>3つの対戦モード</h2>
+            <div class="manual-chapter-heading">
+              <div><div class="manual-chapter-tag">CHAPTER 03</div><h2>3つの対戦モード</h2></div>
+              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/okuninushi-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+            </div>
             <p>共通の星戦ルールを、カードの集め方が異なる3つのモードで遊べます。初めて遊ぶ場合は、すぐ対戦できるストラクチャーデッキを使った理念構築戦がおすすめです。</p>
             <div class="manual-mode-grid">
               <article class="manual-mode-card"><div class="manual-mode-meta">4人対戦（CPU参加時は2人から）</div><b>創世決戦</b><p>神託でカミを選び、3回の選別と深化を行いながら星戦を3回行います。星戦の勝利点と、集めたカードの変換値から得る星魂で最終順位を決めます。</p></article>
@@ -5755,8 +5785,10 @@
           </section>
 
           <section id="manual-cards" class="manual-chapter">
-            <div class="manual-chapter-tag">CHAPTER 04</div>
-            <h2>カードの種類と見方</h2>
+            <div class="manual-chapter-heading">
+              <div><div class="manual-chapter-tag">CHAPTER 04</div><h2>カードの種類と見方</h2></div>
+              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/omoikane-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+            </div>
             <div class="manual-grid">
               <article class="manual-card"><div class="manual-card-icon">👑</div><h3>カミ</h3><p>プレイヤーの分身です。固有の天力トリガーと、神技・創世神技（そうせいじんぎ）を持ちます。メインフェイズ中、1ターンにどちらか1回だけ使用できます。</p></article>
               <article class="manual-card"><div class="manual-card-icon">⚔️</div><h3>レガシー</h3><p>レガシーフィールドに出て戦います。戦闘力で相手レガシーと戦い、神攻力で相手カミへダメージを与えます。</p></article>
@@ -5789,8 +5821,10 @@
           </section>
 
           <section id="manual-flow" class="manual-chapter">
-            <div class="manual-chapter-tag">CHAPTER 05</div>
-            <h2>創世決戦の流れ</h2>
+            <div class="manual-chapter-heading">
+              <div><div class="manual-chapter-tag">CHAPTER 05</div><h2>創世決戦の流れ</h2></div>
+              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/yamato-takeru-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+            </div>
             <div class="manual-flow">
               <div class="manual-flow-step"><span>壱</span><b>神託の儀</b>3枚の候補から、自分のカミを1体選びます。</div>
               <div class="manual-flow-step"><span>弐</span><b>選別の儀①</b>30枚をドラフトし、1枚を無料返還します。</div>
@@ -5805,8 +5839,10 @@
           </section>
 
           <section id="manual-draft" class="manual-chapter">
-            <div class="manual-chapter-tag">CHAPTER 06</div>
-            <h2>神託・選別・深化</h2>
+            <div class="manual-chapter-heading">
+              <div><div class="manual-chapter-tag">CHAPTER 06</div><h2>神託・選別・深化</h2></div>
+              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/amenouzume-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+            </div>
             <h3>神託の儀</h3>
             <p>プレイヤー1から順に、ランダムに提示された3枚のカミカードから1枚を選びます。選ばなかった2枚は候補へ戻り、次のプレイヤーへ進みます。</p>
             <h3>選別の儀</h3>
@@ -5820,7 +5856,7 @@
               </tbody>
             </table></div>
             <div class="manual-callout red"><strong>デフォルトデッキ削除（無料返還）</strong>は、各ラウンドの選別が終わった直後、深化の刻へ入る前に行います。返還したカードはデッキから取り除かれますが、その変換値は星魂として保持されます。</div>
-            <div class="manual-callout blue"><strong>ヤマタノオロチ専用：</strong>第3ラウンドの選別が完了すると、「終焉龍・ディエスイレ」1枚が専用枠としてデッキへ自動的に加わります。</div>
+            <div v-if="manualOrochiRevealed" class="manual-callout blue"><strong>ヤマタノオロチ専用：</strong>第3ラウンドの選別が完了すると、「終焉龍・ディエスイレ」1枚が専用枠としてデッキへ自動的に加わります。</div>
             <h3>深化の刻</h3>
             <p>ゲーム開始時は全員が見識1を獲得します。第2・第3ラウンドの深化開始時は、直前の星戦の勝者が見識1、敗者が見識3を獲得します。見識は次のラウンドへ持ち越せます。</p>
             <div class="manual-grid">
@@ -5832,8 +5868,10 @@
           </section>
 
           <section id="manual-battle" class="manual-chapter">
-            <div class="manual-chapter-tag">CHAPTER 07</div>
-            <h2>星戦のルール</h2>
+            <div class="manual-chapter-heading">
+              <div><div class="manual-chapter-tag">CHAPTER 07</div><h2>星戦のルール</h2></div>
+              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/takemikazuchi-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+            </div>
             <h3>組み合わせ</h3>
             <p>創世決戦の星戦は、セッション開始時にランダムな組み合わせが決まります。3ラウンドを通して同じ相手とは重複せず、4人全員が一度ずつ対戦します。各ラウンドの対戦相手は星戦画面で確認できます。</p>
             <div class="manual-callout blue">人間2人＋CPU2人の場合は、人間同士の卓とCPU同士の卓に分かれます。理念構築戦と星紡ぎ戦は参加した2人で1回対戦します。</div>
@@ -5882,8 +5920,10 @@
           </section>
 
           <section id="manual-keywords" class="manual-chapter">
-            <div class="manual-chapter-tag">CHAPTER 08</div>
-            <h2>カード用語・キーワード</h2>
+            <div class="manual-chapter-heading">
+              <div><div class="manual-chapter-tag">CHAPTER 08</div><h2>カード用語・キーワード</h2></div>
+              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/hinokagutsuchi-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+            </div>
             <div class="manual-table-wrap"><table class="manual-table">
               <tbody><tr><th>破壊</th><td>対象のカードをフィールドから墓地へ置きます。</td></tr><tr><th>崩壊</th><td>対象のカードをゲームから取り除き、崩壊エリアへ置きます。</td></tr><tr><th>タップ／アンタップ</th><td>カードを使用済みの横向き状態／使用可能な縦向き状態にします。</td></tr><tr><th>出現時／死亡時</th><td>フィールドに出た時／レガシーがフィールドから墓地へ送られた時に発動します。崩壊では死亡時は発動しません。</td></tr></tbody>
             </table></div>
@@ -5907,8 +5947,10 @@
           </section>
 
           <section id="manual-faq" class="manual-chapter">
-            <div class="manual-chapter-tag">CHAPTER 09</div>
-            <h2>細則（Q&amp;A）</h2>
+            <div class="manual-chapter-heading">
+              <div><div class="manual-chapter-tag">CHAPTER 09</div><h2>細則（Q&amp;A）</h2></div>
+              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/omoikane-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+            </div>
             <div class="manual-qa"><div class="manual-question">【出現時】などの効果が同時に発生した場合、どのような処理順になりますか。</div><div class="manual-answer">同時に発生した効果は、<strong>ターンプレイヤーから好きな順番</strong>で処理してください。</div></div>
             <div class="manual-qa"><div class="manual-question">傀儡化されたレガシーの【死亡時】効果は、どちらのフィールドで発動しますか。</div><div class="manual-answer">傀儡化したプレイヤー側のフィールドで発動します。手札へ戻す効果を受けた場合は、元々使用していたプレイヤーの手札へ戻ります。</div></div>
             <div class="manual-qa"><div class="manual-question">デッキや墓地から【進化】を持つレガシーを場に出した時、進化できますか。</div><div class="manual-answer">条件を満たすレガシーがすでにフィールドにいれば進化できます。同時に場へ出るレガシーを進化元にすることはできません。</div></div>
@@ -5922,8 +5964,10 @@
           </section>
 
           <section id="manual-score" class="manual-chapter">
-            <div class="manual-chapter-tag">CHAPTER 10</div>
-            <h2>終戦・星魂の集計</h2>
+            <div class="manual-chapter-heading">
+              <div><div class="manual-chapter-tag">CHAPTER 10</div><h2>終戦・星魂の集計</h2></div>
+              <div class="manual-chapter-mascot" aria-hidden="true"><img src="kami_chibi/tsukuyomi-chibi.webp" alt="" loading="lazy" decoding="async" width="136" height="136"></div>
+            </div>
             <p><strong>星魂 ＝ 星戦の勝利点（1勝につき10）＋ 集めた全カードの変換値</strong>です。デッキに残したカードと、無料返還／省察で星魂に変換したカードをすべて合計します。</p>
             <p>星魂が最も多いプレイヤーが勝者です。同点なら星戦の勝利数が多いプレイヤー、勝利数も同じなら該当プレイヤー同士の星戦に勝ったプレイヤーが上位です。</p>
           </section>
@@ -5932,21 +5976,32 @@
             <div class="manual-chapter-tag">CHAPTER 11</div>
             <h2>カミと難易度</h2>
             <div class="manual-kami-grid">
-              <article class="manual-kami"><img src="kami_illustrations/スサノオ.webp" alt="スサノオ"><div><b>スサノオ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>変化を受け入れる、変幻自在の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_illustrations/ヤマトタケル.webp" alt="ヤマトタケル"><div><b>ヤマトタケル</b><div class="manual-kami-difficulty">難易度 ★★★★★</div><p>他者に依らない、孤高利己の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_illustrations/オオクニヌシ.webp" alt="オオクニヌシ"><div><b>オオクニヌシ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>すべての生命と繁栄する、他種共存の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_illustrations/タケミカズチ.webp" alt="タケミカヅチ"><div><b>タケミカヅチ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>絶対的な力が支配する、武威震天の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_illustrations/オモイカネ.webp" alt="オモイカネ"><div><b>オモイカネ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>知識を求め理解を深める、温故知新の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_illustrations/アメノウズメ.webp" alt="アメノウズメ"><div><b>アメノウズメ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>困難より快楽を求める、悦楽至上の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_illustrations/ヒノカグツチ.webp" alt="ヒノカグツチ"><div><b>ヒノカグツチ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>欲望に素直に生きる、天衣無縫の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_illustrations/アマテラス.webp" alt="アマテラス"><div><b>アマテラス</b><div class="manual-kami-difficulty">難易度 ★</div><p>慈愛をもって接する、慈悲深厚の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_illustrations/ツクヨミ.webp" alt="ツクヨミ"><div><b>ツクヨミ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>統制された生命だけの、静寂閑雅の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><img src="kami_illustrations/ヤマタノオロチ.webp" alt="ヤマタノオロチ"><div><b>ヤマタノオロチ</b><div class="manual-kami-difficulty">難易度 ★</div><p>龍こそ真の支配者とする、龍の世界を目指す邪なる存在。</p></div></article>
+              <article class="manual-kami"><img src="kami_chibi/susanoo-chibi.webp" alt="スサノオのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>スサノオ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>変化を受け入れる、変幻自在の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_chibi/yamato-takeru-chibi.webp" alt="ヤマトタケルのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>ヤマトタケル</b><div class="manual-kami-difficulty">難易度 ★★★★★</div><p>他者に依らない、孤高利己の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_chibi/okuninushi-chibi.webp" alt="オオクニヌシのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>オオクニヌシ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>すべての生命と繁栄する、他種共存の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_chibi/takemikazuchi-chibi.webp" alt="タケミカヅチのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>タケミカヅチ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>絶対的な力が支配する、武威震天の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>オモイカネ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>知識を求め理解を深める、温故知新の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_chibi/amenouzume-chibi.webp" alt="アメノウズメのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>アメノウズメ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>困難より快楽を求める、悦楽至上の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_chibi/hinokagutsuchi-chibi.webp" alt="ヒノカグツチのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>ヒノカグツチ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>欲望に素直に生きる、天衣無縫の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="tutorial_guide/amaterasu-chibi.webp" alt="アマテラスのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>アマテラス</b><div class="manual-kami-difficulty">難易度 ★</div><p>慈愛をもって接する、慈悲深厚の世界を目指すカミ。</p></div></article>
+              <article class="manual-kami"><img src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b>ツクヨミ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>統制された生命だけの、静寂閑雅の世界を目指すカミ。</p></div></article>
+              <article v-if="manualOrochiRevealed" class="manual-kami manual-kami-secret"><img src="kami_chibi/yamata-no-orochi-chibi.webp" alt="ヤマタノオロチのちびキャラ" width="120" height="148" loading="lazy" decoding="async"><div><b ref="manualOrochiTitle" tabindex="-1">ヤマタノオロチ</b><div class="manual-kami-difficulty">難易度 ★</div><p>龍こそ真の支配者とする、龍の世界を目指す邪なる存在。</p><button class="manual-kami-hide" @click="manualHideOrochi">隠す</button></div></article>
+              <button v-else ref="manualOrochiReveal" type="button" class="manual-kami manual-kami-hidden" aria-label="隠しカミを表示" @click="manualRequestOrochi"><span class="manual-kami-mystery" aria-hidden="true">？</span><span class="manual-kami-hidden-copy"><b>？？？</b><span>隠しカミ<br>クリックして表示</span></span></button>
             </div>
             <h3>オンライン操作のショートカット</h3>
             <div class="manual-table-wrap"><table class="manual-table"><tbody><tr><th>Space / Enter</th><td>ターン終了</td></tr><tr><th>Z</th><td>一手戻る（Undo）</td></tr><tr><th>L</th><td>バトルログを表示</td></tr><tr><th>Q / E</th><td>カーソルを当てたフィールドカードのタップ状態を切り替え</td></tr><tr><th>Esc</th><td>開いているメニュー／モーダルを閉じる</td></tr></tbody></table></div>
           </section>
         </main>
+      </div>
+      <div v-if="manualSpoilerConfirmOpen" class="manual-spoiler-layer" @click.self="manualAnswerOrochi(false)">
+        <div class="manual-spoiler-dialog" role="dialog" aria-modal="true" aria-labelledby="manual-spoiler-title" aria-describedby="manual-spoiler-description">
+          <h2 id="manual-spoiler-title">隠しカミを表示しますか？</h2>
+          <p id="manual-spoiler-description">隠しカミに関するネタバレを含みます。名前・姿・理念を表示してもよろしいですか？</p>
+          <div class="manual-spoiler-actions">
+            <button ref="manualSpoilerNo" type="button" @click="manualAnswerOrochi(false)">いいえ</button>
+            <button type="button" class="manual-spoiler-yes" @click="manualAnswerOrochi(true)">はい</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -11488,6 +11543,8 @@ new Vue({
     poolDragCard: null,       // カードリストからドラッグ中のカード（デッキ欄へドロップで追加）
     glossaryModalOpen: false, // TOP画面のキーワード集モーダル
     manualModalOpen: false, // TOP画面のプレイガイド（説明書）モーダル
+    manualOrochiRevealed: false, // 隠しカミは、このガイドで明示的に表示した間だけ見せる
+    manualSpoilerConfirmOpen: false,
     howToPlayModalOpen: false, // TOP画面のカミ別ピックガイドモーダル
     modeDetailKey: null, // TOP画面のモード詳細画面（appView==='modeDetail'）：'game'|'construct'|'shield'。MODE_DETAIL_INFOのキー
     tutorial: null, // チュートリアル進行状態（null＝非実行）。TUTORIAL_LESSONS[].steps を参照
@@ -13359,6 +13416,40 @@ new Vue({
     },
   },
   methods: {
+    openPlayManual() {
+      this._sfxPlay('decision');
+      this.manualOrochiRevealed = false;
+      this.manualSpoilerConfirmOpen = false;
+      this.manualModalOpen = true;
+    },
+    closePlayManual() {
+      this._sfxPlay('cancel');
+      this.manualSpoilerConfirmOpen = false;
+      this.manualOrochiRevealed = false;
+      this.manualModalOpen = false;
+    },
+    manualRequestOrochi() {
+      if (!this.manualModalOpen || this.manualOrochiRevealed) return;
+      this._sfxPlay('decision');
+      this.manualSpoilerConfirmOpen = true;
+      // 表示の意思を確認するまでは、画像・名前を描画しない。初期フォーカスも「いいえ」。
+      this.$nextTick(() => { if (this.$refs.manualSpoilerNo) this.$refs.manualSpoilerNo.focus({ preventScroll: true }); });
+    },
+    manualAnswerOrochi(show) {
+      if (!this.manualModalOpen || !this.manualSpoilerConfirmOpen) return;
+      this.manualOrochiRevealed = show === true;
+      this.manualSpoilerConfirmOpen = false;
+      this._sfxPlay(show === true ? 'decision' : 'cancel');
+      this.$nextTick(() => {
+        const target = this.manualOrochiRevealed ? this.$refs.manualOrochiTitle : this.$refs.manualOrochiReveal;
+        if (target) target.focus({ preventScroll: true });
+      });
+    },
+    manualHideOrochi() {
+      this._sfxPlay('cancel');
+      this.manualOrochiRevealed = false;
+      this.$nextTick(() => { if (this.$refs.manualOrochiReveal) this.$refs.manualOrochiReveal.focus({ preventScroll: true }); });
+    },
     /* ある席の星戦勝利数（記録済みの全ラウンドから集計。CPUあり構成はCPU対応ペアリングで判定） */
     seatWinCount(seat) {
       const battles = (this.gs.data && this.gs.data.battles) || {};
@@ -17271,11 +17362,17 @@ new Vue({
         effect: divineSkillTheme(kami, 1),
         mode: 'orochi-seal-four', imgUrl: 'kami_cutin_eyes/10.png', fallbackStage: 0,
         kami, kamiNickname: kami.nickname || '', kamiName: kami.name || 'ヤマタノオロチ',
-        skillName: '四岐龍胤（封印四解放）', line: '龍の血が騒ぐ……\n龍ならざる命を、滅ぼせとな', _shownAt: Date.now(),
+        skillName: '四岐龍胤（封印四解放）', line: this._battleEmoteLineFor(kami, 'skill1'), _shownAt: Date.now(),
       };
+      const voice = this.playKamiVoice(kami, 'skill1');
       await new Promise(resolve => {
-        this._battleSkillCloseupResolve = resolve;
-        this._battleSkillCloseupT = setTimeout(resolve, this._battleMotionMs(2300));
+        let hold = null;
+        const finish = () => { if (hold) hold.cancel(); resolve(); };
+        this._battleSkillCloseupResolve = finish;
+        if (this.battleSkillCloseup.line) {
+          hold = this._battleHoldSpeech(this.battleSkillCloseup.line, voice, finish);
+          this._battleSkillCloseupT = hold.timer;
+        } else this._battleSkillCloseupT = setTimeout(finish, this._battleMotionMs(2300));
       });
       this._battleSkillCloseupResolve = null;
       this.battleSkillCloseup = null;
@@ -28633,6 +28730,14 @@ new Vue({
       return warnings;
     },
     onKeyDown(e) {
+      if (this.manualModalOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          if (this.manualSpoilerConfirmOpen) this.manualAnswerOrochi(false);
+          else this.closePlayManual();
+        } else if (e.key === 'Tab') this._battleTrapModalFocus(e);
+        return;
+      }
       if (this.tutorialCompletion) { this.tutorialCompletionInput(e); return; }
       const key = String(e.key || '').toLowerCase();
       if (key === 'tab' && this._battleTrapModalFocus(e)) return;
@@ -28675,7 +28780,7 @@ new Vue({
       }
       if (e.key === "Escape") {
         // 上に重なっているものから順に閉じる
-        if (this.manualModalOpen) this.manualModalOpen = false;
+        if (this.manualModalOpen) this.closePlayManual();
         else if (this.howToPlayModalOpen) { this.howToPlayModalOpen = false; this.hideCardHover(); }
         else if (this.battleFieldMenu)     this.battleFieldMenu = null;
         else if (this.battleFieldZoneMenu) this.battleFieldZoneMenu = null;

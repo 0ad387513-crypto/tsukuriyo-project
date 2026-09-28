@@ -172,6 +172,35 @@ test("play manual is separated from the pick guide and contains the revised rule
   assert.doesNotMatch(html, /隠密/);
 });
 
+test("play guide reveals its secret Kami only after explicit confirmation and resets on reopening", () => {
+  function guideMethod(name, params = '') {
+    const match = html.match(new RegExp('    ' + name + '\\([^\\n]*\\) \\{([\\s\\S]*?)\\r?\\n    \\},'));
+    assert.ok(match, name);
+    return Function(params, match[1]);
+  }
+  const vm = { manualModalOpen: false, manualOrochiRevealed: false, manualSpoilerConfirmOpen: false,
+    _sfxPlay() {}, $nextTick(fn) { fn(); }, $refs: {} };
+  const open = guideMethod('openPlayManual'), close = guideMethod('closePlayManual');
+  const request = guideMethod('manualRequestOrochi'), answer = guideMethod('manualAnswerOrochi', 'show');
+  open.call(vm);
+  answer.call(vm, true);
+  assert.equal(vm.manualOrochiRevealed, false, 'confirmation cannot be skipped');
+  request.call(vm);
+  assert.equal(vm.manualSpoilerConfirmOpen, true);
+  assert.equal(vm.manualOrochiRevealed, false, 'clicking the question mark does not reveal the character');
+  answer.call(vm, false);
+  assert.equal(vm.manualOrochiRevealed, false, 'declining keeps the character hidden');
+  request.call(vm); answer.call(vm, true);
+  assert.equal(vm.manualOrochiRevealed, true);
+  close.call(vm); answer.call(vm, true); open.call(vm);
+  assert.equal(vm.manualOrochiRevealed, false, 'closed or reopened guides do not retain approval');
+  assert.equal(vm.manualSpoilerConfirmOpen, false);
+  const manual = html.split('<div v-if="manualModalOpen"')[1].split('<!-- ===== ピックガイド')[0];
+  assert.match(manual, /v-if="manualOrochiRevealed"[^>]*class="manual-kami manual-kami-secret"/);
+  assert.match(manual, /v-if="manualOrochiRevealed"[^>]*class="manual-callout blue"/);
+  assert.equal((manual.match(/class="manual-chapter-mascot"/g) || []).length, 10);
+});
+
 test("battle end phase enforces the eight-card hand limit", () => {
   assert.match(html, /const BATTLE_HAND_LIMIT = 8/);
   assert.match(html, /await this\._battleEnforceHandLimit\(endingSide\)/);

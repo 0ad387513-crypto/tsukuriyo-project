@@ -52,6 +52,27 @@ test("tutorial keyword highlights wrap the exact ability while preserving keywor
   assert.ok(split(text,glossary,tokens,['存在しない能力']).every(p=>!p.focus));
 });
 
+test("Orochi's four-seal cut-in uses the voice script line and waits for speech completion", async () => {
+  const script = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'voices/voice_script.json'), 'utf8'));
+  const line = script.kami['10'].lines.skill1.text;
+  const kami = { no: '10', name: 'ヤマタノオロチ' }, voice = {};
+  let held, canceled = false, complete = false;
+  const vm = {
+    _battleEmoteLineFor(card, key) { assert.equal(card, kami); assert.equal(key, 'skill1'); return line; },
+    playKamiVoice(card, key) { assert.equal(card, kami); assert.equal(key, 'skill1'); return voice; },
+    _battleHoldSpeech(text, audio) { held = { text, audio }; return { timer: null, cancel() { canceled = true; } }; }
+  };
+  const running = method('_battleShowOrochiSealFourCutin', 'kami,divineSkillTheme', true).call(vm, kami, () => ({}));
+  running.then(() => { complete = true; });
+  await Promise.resolve();
+  assert.equal(vm.battleSkillCloseup.line, line);
+  assert.equal(held.text, line); assert.equal(held.audio, voice);
+  assert.equal(complete, false, 'the cinematic remains while the voice is playing');
+  vm._battleSkillCloseupResolve(); await running;
+  assert.equal(canceled, true); assert.equal(vm.battleSkillCloseup, null);
+  assert.equal(vm._battleSkillCloseupResolve, null);
+});
+
 function speechClock(vm) {
   let now=100;const timers=[];
   const clock={now:()=>now};
