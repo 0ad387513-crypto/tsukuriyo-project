@@ -29665,18 +29665,25 @@ new Vue({
     /* ソロテスト：guest=CPUを自動操作（購読のたびに呼ばれる。各処理は冪等） */
     _sbDriveBot(data) {
       if (!data) return;
+      // CPUの入室が確定するまでは動かさない（入室の書き込み中に準備完了を書くと、入室が中断されるため）
+      if (!this._sbBotJoined) return;
       const code = this.sb.roomCode;
       const fp   = data.phase;
       // 待機中：CPUがまだ ready していなければ ready にする
       if (fp === 'lobby' && data.guest && !data.guest.ready) {
-        setReady(code, 'guest', data.guest.id);
+        if (!this._sbBotStarting) {
+          this._sbBotStarting = true;
+          setReady(code, 'guest', data.guest.id)
+            .catch(e => console.warn('[星紡ぎ戦ソロ] CPUの準備完了に失敗:', e))
+            .finally(() => { this._sbBotStarting = false; });
+        }
         return;
       }
       // 両者 ready なのにコイントスへ進んでいない（同時に書き込んで開始の判定が取り消された）場合は、もう一度判定させる
       if (fp === 'lobby' && data.guest && data.guest.ready && data.host && data.host.ready) {
         if (!this._sbBotStarting) {
           this._sbBotStarting = true;
-          setReady(code, 'guest', data.guest.id).finally(() => { this._sbBotStarting = false; });
+          setReady(code, 'guest', data.guest.id).catch(e => console.warn('[星紡ぎ戦ソロ] 開始判定に失敗:', e)).finally(() => { this._sbBotStarting = false; });
         }
         return;
       }
@@ -29747,10 +29754,13 @@ new Vue({
         this.sb.role     = 'host';
         this.sb.phase    = 'waiting';
         this.sbSolo      = true;
+        this._sbBotJoined = false;
         this._sbSubscribe(roomCode);                  // 先に購読（bot自動操作を有効化）
         await joinRoom(roomCode, 'CPU');               // CPU が guest として参加
-        // CPU の ready は購読の _sbDriveBot で自動セット。自分も ready。
+        // 自分の準備完了を先に済ませてからCPUを動かす（同時に書き込むと、互いの処理が「set」で中断されるため）
         await setReady(roomCode, 'host', playerId);
+        this._sbBotJoined = true;
+        if (this.sb.roomData) this._sbDriveBot(this.sb.roomData); // 最新の状態で、CPUの準備完了から動かす
       } catch (e) {
         // 待機画面のままだとエラーが見えないので、ロビーに戻して表示し、作りかけの部屋は片付ける
         const failedCode = this.sb.roomCode;

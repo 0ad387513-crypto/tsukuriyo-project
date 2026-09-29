@@ -161,7 +161,7 @@ async function joinRoom(roomCode, playerName) {
       ready: false,
     };
     return cur;
-  });
+  }, undefined, false); // 確定前の仮の値を購読側へ流さない（受け取った側の書き込みで、この入室が「set」で中断されるのを防ぐ）
   const joined = res.committed && res.snapshot && res.snapshot.val();
   if (!joined || !joined.guest || joined.guest.id !== playerId) throw new Error("部屋への参加に失敗しました。満員・期限切れ・バージョン違いの可能性があります");
 
@@ -180,17 +180,25 @@ async function setReady(roomCode, role, playerId) {
 
   await ref.child(`${role}/ready`).set(true);
 
-  // 両者が揃っているかチェック（トランザクションで競合防止）
-  await ref.transaction(room => {
-    if (!room) return room;
-    if (room.host?.ready && room.guest?.ready && room.phase === "lobby") {
-      // コイントスで先攻決定
-      const firstPicker = Math.random() < 0.5 ? "host" : "guest";
-      room.phase       = "coin_toss";
-      room.firstPicker = firstPicker;
+  // 両者が揃っているかチェック（トランザクションで競合防止）。
+  // 相手の準備完了の書き込みと重なると「set」で中断されるので、そのときはやり直す
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await ref.transaction(room => {
+        if (!room) return room;
+        if (room.host?.ready && room.guest?.ready && room.phase === "lobby") {
+          // コイントスで先攻決定
+          const firstPicker = Math.random() < 0.5 ? "host" : "guest";
+          room.phase       = "coin_toss";
+          room.firstPicker = firstPicker;
+        }
+        return room;
+      });
+      return;
+    } catch (e) {
+      if (attempt >= 3 || String(e && e.message) !== "set") throw e;
     }
-    return room;
-  });
+  }
 }
 
 /* ------------------------------------------------------------------ */
