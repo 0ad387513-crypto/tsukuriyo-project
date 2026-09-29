@@ -148,6 +148,9 @@ async function joinRoom(roomCode, playerName) {
   const playerId = generateRoomCode();
 
   const res = await ref.transaction(cur => {
+    // 手元にまだ部屋のデータがないと、最初は cur=null で呼ばれる。ここで中断すると入室が失敗するので、
+    // null のまま返してサーバーの実データで再実行させる（部屋が本当に無ければ下の確認で失敗にする）
+    if (cur === null) return null;
     if (!cur || cur.buildVersion !== getAppBuildVersion()) return;
     if (Date.now() - Number(cur.createdAt || 0) >= SHIELD_ROOM_TTL_MS) return;
     if (cur.phase !== "lobby" || cur.guest) return;
@@ -159,7 +162,8 @@ async function joinRoom(roomCode, playerName) {
     };
     return cur;
   });
-  if (!res.committed) throw new Error("部屋への参加に失敗しました。満員・期限切れ・バージョン違いの可能性があります");
+  const joined = res.committed && res.snapshot && res.snapshot.val();
+  if (!joined || !joined.guest || joined.guest.id !== playerId) throw new Error("部屋への参加に失敗しました。満員・期限切れ・バージョン違いの可能性があります");
 
   // guestが入って満員になったので公開一覧からは外す
   if (typeof publicRoomRemove === "function") publicRoomRemove(roomCode);

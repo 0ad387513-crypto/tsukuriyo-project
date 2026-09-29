@@ -29672,6 +29672,14 @@ new Vue({
         setReady(code, 'guest', data.guest.id);
         return;
       }
+      // 両者 ready なのにコイントスへ進んでいない（同時に書き込んで開始の判定が取り消された）場合は、もう一度判定させる
+      if (fp === 'lobby' && data.guest && data.guest.ready && data.host && data.host.ready) {
+        if (!this._sbBotStarting) {
+          this._sbBotStarting = true;
+          setReady(code, 'guest', data.guest.id).finally(() => { this._sbBotStarting = false; });
+        }
+        return;
+      }
       // パックピック：guest のターンなら未取得パックから先頭を選ぶ
       if (fp === 'picking') {
         const hostPacks  = (data.hostPickedPacks  || []).slice ? data.hostPickedPacks  : Object.values(data.hostPickedPacks  || {});
@@ -29744,6 +29752,15 @@ new Vue({
         // CPU の ready は購読の _sbDriveBot で自動セット。自分も ready。
         await setReady(roomCode, 'host', playerId);
       } catch (e) {
+        // 待機画面のままだとエラーが見えないので、ロビーに戻して表示し、作りかけの部屋は片付ける
+        const failedCode = this.sb.roomCode;
+        this._sbCleanup();
+        if (failedCode) { try { getDb().ref(`rooms/${failedCode}`).remove(); } catch (err) { /* 片付けに失敗しても期限で消える */ } }
+        this.sb.roomCode = null;
+        this.sb.playerId = null;
+        this.sb.role = null;
+        this.sb.roomData = {};
+        this.sb.phase = 'lobby';
         this.sb.error = e.message || 'ソロテスト開始に失敗しました';
         this.sbSolo = false;
       } finally {
