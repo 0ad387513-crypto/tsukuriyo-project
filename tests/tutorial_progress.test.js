@@ -745,6 +745,51 @@ test("skill 2 completes a prominent portrait before starting its independent ani
   assert.match(html,/divine-skill-art v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation'/);
 });
 
+test("the full-screen genesis image appears only during speech before the original field effects", () => {
+  const components={};
+  const source=fs.readFileSync(path.join(__dirname,'..','divine_effects.js'),'utf8');
+  Function('Vue',source)({component(name,definition){components[name]=definition}});
+  const art=components['divine-skill-art'];
+  assert.match(art.template,/stage === 'cutin' && effect.index === 2/);
+  assert.equal((art.template.match(/class="genesis-hero"/g)||[]).length,1);
+  assert.doesNotMatch(art.template,/susanoo-resolve-scene/,'Susanoo does not repeat his character image after the voice');
+  assert.match(art.template,/susanoo-sword-arrival/);
+  const layout={origin:{x:640,y:620},enemy:{left:150,top:140,width:950,height:140},friendly:{left:150,top:390,width:950,height:140}};
+  assert.equal(art.computed.volley.call({layout,survivors:[]}).length,36,'the old sword volley still covers both fields');
+  assert.match(html,/phase === 'portrait'" stage="cutin"/);
+  assert.match(html,/v-if="!battleSkillCloseup.dedicatedArt && battleSkillCloseup.phase !== 'animation'"/);
+});
+
+test("cinematic skill names separate readings despite invisible breaks in card data", () => {
+  const parts=method('battleSkillCloseupNameParts');
+  assert.deepEqual(parts.call({battleSkillCloseup:{skillName:'無形幻化・天叢雲\u200b\n（むけい\u200bげんか・あまの\u200bむらくも）\u200b'}}),{main:'無形幻化・天叢雲',furigana:'むけいげんか・あまのむらくも'});
+  assert.deepEqual(parts.call({battleSkillCloseup:{skillName:'恩光'}}),{main:'恩光',furigana:''});
+});
+
+test("Susanoo sword lands on the displayed Kami in local, CPU and remote orientations", () => {
+  const getRect=method('_battleSusanooMarkRect','writerSide'),pending=method('battleSusanooMarkPending','displaySide');
+  for(const swapped of [false,true]) for(const writerSide of ['self','opp']) {
+    const display=swapped?(writerSide==='self'?'opp':'self'):writerSide;
+    const badge={left:679,top:display==='self'?630:70,width:38,height:44};
+    const portrait={querySelector:()=>({getBoundingClientRect:()=>badge})};
+    const vm={battleViewSide:side=>swapped?(side==='self'?'opp':'self'):side,
+      $el:{querySelector(selector){assert.equal(selector,display==='self'?'.battle-row-self-bot .kami-portrait':'.battle-row-opp-top .kami-portrait');return portrait}},
+      battleAnimationSpeed:'normal',battleSkillCloseup:{effect:{kamiNo:'1'},writerSide}};
+    assert.deepEqual(getRect.call(vm,writerSide),badge);
+    assert.equal(pending.call(vm,display),true);assert.equal(pending.call(vm,display==='self'?'opp':'self'),false);
+    vm.battleSkillCloseup=null;assert.equal(pending.call(vm,display),false);
+    vm.battleSkillCloseup={effect:{kamiNo:'1'},writerSide};vm.battleAnimationSpeed='minimal';assert.equal(pending.call(vm,display),false);
+    portrait.querySelector=()=>null;portrait.getBoundingClientRect=()=>({right:700,bottom:674});
+    assert.deepEqual(getRect.call(vm,writerSide),{left:679,top:626,width:38,height:44},'the receiver can predict the badge before state arrives');
+  }
+  const {divineSusanooSwordStyle,divineSkillAssetUrls}=require('../divine_effects.js');
+  const style=divineSusanooSwordStyle({left:679,top:630,width:38,height:44},{innerWidth:1280,innerHeight:720});
+  assert.equal(style.left,'698px');assert.equal(style.top,'652px');
+  assert.equal(style['--arrival-x'],'calc(50vw - 698px)');assert.equal(style['--arrival-y'],'calc(50vh - 652px)');
+  assert.ok(style['--arrival-scale']>10);assert.equal(divineSusanooSwordStyle(null),null);
+  assert.ok(divineSkillAssetUrls({no:1}).includes('divine_assets/totsuka-sword-d380260b8deb.webp'));
+});
+
 test("leaving during a cut-in does not restart the following animation", async () => {
   const durations=[];
   const vm={_battleEmoteLineFor:()=>'',playKamiVoice(){},_sfxPlay(){},_battleMotionMs(ms){durations.push(ms);return 60000;}};

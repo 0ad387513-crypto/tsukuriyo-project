@@ -341,8 +341,7 @@
 @keyframes fx-summon-form {0%,37%{opacity:0;scale:.2;filter:brightness(3) blur(15px)} 54%{opacity:1;scale:1;filter:brightness(1.3) blur(0)} 83%{opacity:1;scale:1.04;filter:brightness(1) blur(0)} 100%{opacity:0;scale:1.09;filter:brightness(1) blur(3px)}}
 @keyframes fx-summon-morph {0%,34%{opacity:0;scale:.2} 46%{opacity:.7;scale:.6} 65%,100%{opacity:0;scale:1.7}}
 
-/* カミの最初のカットインの後、剣を掲げる姿へ動く風と刀身の光を重ねる。 */
-.susanoo-resolve-scene {position:absolute;left:50%;top:50%;width:min(64vh,64vw);height:min(88vh,88vw);transform:translate(-50%,-50%);background:url('kami_cutin/susanoo-resolve-9f4617c3bdb5.webp') center/contain no-repeat;mask-image:radial-gradient(ellipse,#000 40%,#000b 65%,transparent 79%);animation:fx-resolve-pose var(--fx-duration) ease-out both}
+/* 全画面カットインの後、風と天叢雲の到着演出を重ねる。 */
 .resolve-blade-current {position:absolute;left:calc(50% - 3px);top:5%;width:6px;height:80%;background:linear-gradient(transparent,#fffbd9 45%,#ffe19b 60%,transparent);box-shadow:0 0 18px #ffb65b;mix-blend-mode:screen;animation:fx-resolve-blade var(--fx-duration) ease-in-out both}
 .resolve-storm-burst {position:absolute;left:50%;top:40%;width:45%;height:65%;border:3px solid #ffbd8977;border-radius:50%;box-shadow:0 0 45px #d7244044;animation:fx-resolve-burst var(--fx-duration) ease-out both}
 .resolve-storm-spark {position:absolute;left:calc(mod(var(--i)*37,100)*1%);top:calc(mod(var(--i)*23,100)*1%);width:calc(2px + mod(var(--i),3)*2px);height:3px;background:#ffd7a0;box-shadow:0 0 10px #ff6d58;animation:fx-resolve-spark var(--fx-duration) ease-in-out both;animation-delay:calc(mod(var(--i),5)*15ms)}
@@ -366,14 +365,19 @@
 @keyframes fx-void-eyes {0%,15%{opacity:0} 33%{opacity:.85} 48%{opacity:.45} 62%,83%{opacity:1} 100%{opacity:0}}
 @keyframes fx-void-mouth {0%,32%{opacity:0;scale:1 .6} 49%{opacity:.55;scale:1 1} 68%,85%{opacity:.9;scale:1.05 1} 100%{opacity:0;scale:1.07 1}}
 .divine-dragon ~ .divine-cinematic-title,.divine-dragon ~ .divine-effect-caption {display:none}
-@media(prefers-reduced-motion:reduce){.spirit-volley-blade,.spirit-rain-blade:after,.summon-orb-mote,.summon-light-orb,.summon-morph-halo,.resolve-blade-current,.resolve-storm-burst,.resolve-storm-spark,.orochi-peeling-seal,.orochi-roar-wave{display:none}.spirit-rain-blade{animation:none;transform:scale(var(--blade-scale));opacity:.7}.summon-animal-form,.susanoo-resolve-scene,.orochi-void,.orochi-awakening-face{animation:none;opacity:.8}.orochi-awakening-face{background-position:100% 100%}.summon-animal-form{scale:1;filter:none}.orochi-blood-mist{animation:none;opacity:.3}}
-.genesis-dedicated-mode.divine-portrait-mode .battle-skill-closeup-card { width:min(52vh,76vw); border:0; background:transparent; box-shadow:none; }
-.genesis-dedicated-mode.divine-portrait-mode .battle-skill-closeup-face { width:100%; height:auto; max-height:66vh; aspect-ratio:3/4; object-fit:contain; border-radius:0; mask-image:linear-gradient(transparent,#000 4%,#000 92%,transparent); }
-.genesis-dedicated-mode .battle-skill-closeup-skillname { position:relative; z-index:2; }
+@media(prefers-reduced-motion:reduce){.spirit-volley-blade,.spirit-rain-blade:after,.summon-orb-mote,.summon-light-orb,.summon-morph-halo,.resolve-blade-current,.resolve-storm-burst,.resolve-storm-spark,.orochi-peeling-seal,.orochi-roar-wave{display:none}.spirit-rain-blade{animation:none;transform:scale(var(--blade-scale));opacity:.7}.summon-animal-form,.orochi-void,.orochi-awakening-face{animation:none;opacity:.8}.orochi-awakening-face{background-position:100% 100%}.summon-animal-form{scale:1;filter:none}.orochi-blood-mist{animation:none;opacity:.3}}
+/* 専用カットインは台詞の間だけ全画面で一度表示する。 */
+.genesis-dedicated-mode.divine-portrait-mode { background:#070810f5; }
+.genesis-cutin-copy { position:absolute; z-index:3; left:0; right:0; bottom:0; padding:38px 5vw 3vh; background:linear-gradient(transparent,#02030bbb 38%,#02030bf2); color:#fff3d5; text-align:center; font-family:serif; text-shadow:0 2px 5px #000,0 0 20px #000; pointer-events:none; }
+.genesis-cutin-name { font-size:clamp(24px,3.5vw,42px); font-weight:900; letter-spacing:.07em; }
+.genesis-cutin-reading { margin-top:3px; font-size:clamp(12px,1.5vw,18px); }
+.genesis-cutin-kami { margin-top:8px; color:#e7c994; font-size:clamp(14px,1.7vw,22px); }
+.genesis-cutin-line { margin-top:10px; font-size:clamp(18px,2.3vw,30px); font-weight:700; line-height:1.6; }
 .genesis-dedicated-mode .divine-effect-caption { left:12%; right:12%; bottom:5%; text-align:center; }
 .genesis-dedicated-mode .divine-cinematic-title { top:5%; text-align:center; }
 .genesis-scene { position:absolute; inset:0; overflow:hidden; isolation:isolate; }
-.genesis-hero { position:absolute; left:50%; top:48%; width:min(66vh,78vw); height:88vh; object-fit:contain; transform:translate(-50%,-50%); mask-image:radial-gradient(ellipse,#000 50%,#000c 70%,transparent 91%); animation:genesisHero var(--fx-duration,2400ms) ease-out both; }
+.genesis-hero { position:absolute; left:50%; top:50%; width:100%; height:100%; object-fit:cover; transform:translate(-50%,-50%); mask-image:none; animation:genesisEnter 420ms ease-out both; }
+.divine-blade .genesis-hero { object-fit:cover; mask-image:none; }
 .genesis-horizon { position:absolute; inset:0; background:radial-gradient(ellipse at center,color-mix(in srgb,var(--divine-color) 32%,transparent),transparent 68%); animation:genesisHorizon var(--fx-duration) ease-out both; }
 .genesis-aura-ring { position:absolute; left:50%; top:48%; width:55vh; height:55vh; border:2px solid var(--divine-color); border-radius:50%; box-shadow:0 0 35px var(--divine-color),inset 0 0 24px var(--divine-color); transform:translate(-50%,-50%); animation:genesisRing var(--fx-duration) ease-out both; }
 .genesis-mote { position:absolute; left:var(--mote-x); top:var(--mote-y); width:4px; height:12px; background:var(--divine-accent); box-shadow:0 0 12px var(--divine-color); animation:genesisMote var(--fx-duration) ease-out both; animation-delay:calc(var(--i) * 14ms); transform:rotate(var(--mote-turn)); }
@@ -389,11 +393,10 @@
 .genesis-frozen-halo { position:absolute; inset:6% 12%; border:2px solid #b0e4ff99; box-shadow:inset 0 0 50px #90d0ff44; clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%); animation:genesisIce var(--fx-duration) ease-out both; }
 .genesis-eclipse { position:absolute; z-index:-1; left:50%; top:30%; width:70vh; height:70vh; border-radius:50%; background:#08020a; box-shadow:0 0 65px 15px #9e163e,0 0 110px #ec3c5355; transform:translate(-50%,-50%); animation:genesisEclipse var(--fx-duration) ease-out both; }
 .genesis-broken-seal { position:absolute; left:calc(8% + var(--i) * 10%); top:45%; width:24px; height:70px; background:linear-gradient(135deg,#e7cead,#835960); clip-path:polygon(0 0,100% 0,85% 40%,55% 45%,80% 55%,35% 100%,0 85%); animation:genesisSeal var(--fx-duration) ease-out both; }
-.divine-dragon .genesis-hero { filter:drop-shadow(0 0 26px #c92855); animation-name:genesisDragon; }
+.divine-dragon .genesis-hero { filter:drop-shadow(0 0 26px #c92855); }
 .divine-flame .genesis-horizon { background:radial-gradient(ellipse at 50% 70%,#ff512755,#3c061944 55%,transparent); }
 .divine-dragon .genesis-horizon { background:radial-gradient(ellipse,#a9073044,#08010bed 78%); }
-@keyframes genesisHero { 0%{opacity:0;scale:.92} 12%,52%{opacity:1;scale:1} 78%{opacity:.8;scale:1.035} 100%{opacity:0;scale:1.07} }
-@keyframes genesisDragon { 0%{opacity:0;scale:.94} 16%,68%{opacity:1;scale:1} 86%{opacity:.85;scale:1.04} 100%{opacity:0;scale:1.06} }
+@keyframes genesisEnter { from { opacity:0; scale:1.08; } to { opacity:1; scale:1; } }
 @keyframes genesisRing { 0%{opacity:0;scale:.35} 28%{opacity:.8} 70%{opacity:.35} 100%{opacity:0;scale:2.2} }
 @keyframes genesisHorizon { 0%,100%{opacity:0} 20%,70%{opacity:1} }
 @keyframes genesisMote { 0%{opacity:0;translate:0 50px} 30%{opacity:.9} 100%{opacity:0;translate:0 -160px} }
@@ -405,3 +408,28 @@
 @keyframes genesisEclipse { 0%{opacity:0;scale:.8} 25%,78%{opacity:.95;scale:1} 100%{opacity:0;scale:1.08} }
 @keyframes genesisSeal { 0%,24%{opacity:.8;translate:0 0;rotate:calc(var(--i) * 37deg)} 40%,100%{opacity:0;translate:calc((var(--i) - 4) * 65px) -220px;rotate:calc(var(--i) * 95deg)} }
 @media(prefers-reduced-motion:reduce) { .genesis-scene * { animation:none !important; } .genesis-mote,.genesis-broken-seal,.genesis-slash,.genesis-sunrays { display:none; } .genesis-hero { opacity:1; scale:1; } .genesis-aura-ring { opacity:.2; } }
+
+/* 台詞が長くても絵を消さず、続く効果段階で初めて退場する。 */
+.divine-stage-cutin .genesis-horizon { animation:genesisEnter 420ms ease-out both; }
+.divine-stage-cutin .genesis-eclipse { animation:genesisEnter 650ms ease-out both; }
+.divine-stage-cutin .genesis-mote { animation-duration:2400ms; animation-iteration-count:infinite; }
+.susanoo-mark-pending { visibility:hidden; }
+.susanoo-sword-arrival { position:absolute; left:50%; top:50%; width:min(68vh,64vw); height:min(68vh,64vw); transform:translate(-50%,-50%); filter:drop-shadow(0 0 22px #f44467); animation:genesisEnter 350ms ease-out both; }
+.susanoo-sword-travel { border:1px solid #d4b37c; border-radius:4px; background:#160f18ec; box-sizing:border-box; animation:susanooSwordArrival var(--fx-duration) cubic-bezier(.45,0,.18,1) both; }
+.genesis-dedicated-mode.divine-cinematic-mode:has(.divine-storm) { background:transparent; }
+@keyframes susanooSwordArrival {
+  0% { opacity:0; transform:translate(-50%,-50%) translate(var(--arrival-x),var(--arrival-y)) scale(var(--arrival-scale)); border-color:transparent; background:transparent; }
+  15%,42% { opacity:1; transform:translate(-50%,-50%) translate(var(--arrival-x),var(--arrival-y)) scale(var(--arrival-scale)); border-color:transparent; background:transparent; filter:drop-shadow(0 0 18px #f44467); }
+  88%,100% { opacity:1; transform:translate(-50%,-50%) translate(0,0) scale(1); border-color:#d4b37c; background:#160f18ec; filter:drop-shadow(0 0 6px #bd25424d); }
+}
+@media(max-width:700px) {
+  .genesis-hero { object-fit:cover; mask-image:none; }
+  .genesis-cutin-copy { padding:32px 4vw max(16px,env(safe-area-inset-bottom)); }
+  .genesis-cutin-name { letter-spacing:.04em; }
+  .genesis-cutin-kami { margin-top:4px; }
+  .genesis-cutin-line { font-size:18px; margin-top:6px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .genesis-hero,.genesis-horizon,.genesis-eclipse { animation:none !important; opacity:1; scale:1; }
+  .susanoo-sword-travel { animation:none; transform:translate(-50%,-50%); opacity:1; filter:none; }
+}

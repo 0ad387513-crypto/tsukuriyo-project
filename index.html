@@ -7562,7 +7562,7 @@
                    @mouseleave="hideCardHover">
                 <div v-if="!battleView.opp.kami" class="kami-placeholder">カミ(相手)</div>
                 <div v-else-if="!hasKamiIllustration(battleView.opp.kami)" class="kami-illust-missing">イラスト未登録</div>
-                <div v-if="battleView.opp.graveyardEvolutionEnabled && battleView.opp.kami && String(battleView.opp.kami.no) === '1'" class="kami-susanoo-mark kami-susanoo-mark-opp" tabindex="0" role="button"
+                <div v-if="battleView.opp.graveyardEvolutionEnabled && battleView.opp.kami && String(battleView.opp.kami.no) === '1'" class="kami-susanoo-mark kami-susanoo-mark-opp" :class="{'susanoo-mark-pending':battleSusanooMarkPending('opp')}" tabindex="0" role="button"
                      aria-label="付与された能力を確認：墓地からの進化" aria-describedby="susanoo-ability-opp"
                      @mouseenter.stop="hideCardHover" @focus="hideCardHover" @mousedown.stop @touchstart.stop
                      @click.stop="battleOpenKamiAbility('opp')" @keydown.enter.stop.prevent="battleOpenKamiAbility('opp')" @keydown.space.stop.prevent="battleOpenKamiAbility('opp')">
@@ -7764,7 +7764,7 @@
                    @mouseleave="hideCardHover">
                 <div v-if="!battleView.self.kami" class="kami-placeholder">カミ</div>
                 <div v-else-if="!hasKamiIllustration(battleView.self.kami)" class="kami-illust-missing">イラスト未登録</div>
-                <div v-if="battleView.self.graveyardEvolutionEnabled && battleView.self.kami && String(battleView.self.kami.no) === '1'" class="kami-susanoo-mark" tabindex="0" role="button"
+                <div v-if="battleView.self.graveyardEvolutionEnabled && battleView.self.kami && String(battleView.self.kami.no) === '1'" class="kami-susanoo-mark" :class="{'susanoo-mark-pending':battleSusanooMarkPending('self')}" tabindex="0" role="button"
                      aria-label="付与された能力を確認：墓地からの進化" aria-describedby="susanoo-ability-self"
                      @mouseenter.stop="hideCardHover" @focus="hideCardHover" @mousedown.stop @touchstart.stop
                      @click.stop="battleOpenKamiAbility('self')" @keydown.enter.stop.prevent="battleOpenKamiAbility('self')" @keydown.space.stop.prevent="battleOpenKamiAbility('self')">
@@ -8726,12 +8726,19 @@
     <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :style="{ zIndex: battleCpuThinking ? 10001 : null, '--fx-duration': _battleMotionMs(battleSkillCloseup.phase === 'animation' ? (battleSkillCloseup.animationDuration || 2400) : 1800)+'ms' }" :class="{ 'genesis-dedicated-mode': battleSkillCloseup.dedicatedArt, 'divine-cinematic-mode': battleSkillCloseup.phase === 'animation', 'divine-transfer-mode': battleSkillCloseup.phase === 'animation' && battleSkillCloseup.transfers && battleSkillCloseup.transfers.length > 0, 'divine-portrait-mode': battleSkillCloseup.phase === 'portrait', 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }"
          @click="battleSkillCloseupClickDismiss">
       <divine-skill1-sigil v-if="battleSkillCloseup.mode === 'skill1' && battleSkillCloseup.sigil && battleAnimationSpeed !== 'minimal'" :theme="battleSkillCloseup.sigil" :duration="_battleMotionMs(1800)"></divine-skill1-sigil>
-      <divine-skill-art v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'" :effect="battleSkillCloseup.effect" :layout="battleSkillCloseup.layout" :survivors="battleSkillCloseup.survivors" :targets="battleSkillCloseup.targets" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-skill-art>
+      <divine-skill-art v-if="battleSkillCloseup.dedicatedArt && battleSkillCloseup.phase === 'portrait'" stage="cutin" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(1800)"></divine-skill-art>
+      <div v-if="battleSkillCloseup.dedicatedArt && battleSkillCloseup.phase === 'portrait'" class="genesis-cutin-copy">
+        <div class="genesis-cutin-name">{{ battleSkillCloseupNameParts.main }}</div>
+        <div v-if="battleSkillCloseupNameParts.furigana" class="genesis-cutin-reading">{{ battleSkillCloseupNameParts.furigana }}</div>
+        <div class="genesis-cutin-kami">{{ battleSkillCloseup.kamiName }}</div>
+        <div v-if="battleSkillCloseup.line" class="genesis-cutin-line">「{{ battleSkillCloseup.line }}」</div>
+      </div>
+      <divine-skill-art v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'" :key="'effect-'+battleSkillCloseup._shownAt" :effect="battleSkillCloseup.effect" :layout="battleSkillCloseup.layout" :survivors="battleSkillCloseup.survivors" :targets="battleSkillCloseup.targets" :sword-landing="battleSkillCloseup.swordLanding" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-skill-art>
       <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'"><divine-scroll-transfer v-for="(transfer,i) in battleSkillCloseup.transfers" :key="'scroll-transfer'+i" :transfer="transfer" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-scroll-transfer></template>
       <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'"><divine-target-impact v-for="(rect,i) in battleSkillCloseup.targets" :key="'impact'+i" :rect="rect" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-target-impact></template>
       <div v-if="battleSkillCloseup.phase === 'animation' && battleSkillCloseup.effect" class="divine-cinematic-title">{{ battleSkillCloseupNameParts.main }}</div>
       <div v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation' && battleSkillCloseup.effect" class="divine-effect-caption">{{ battleSkillCloseup.effect.label }}</div>
-      <div v-if="battleSkillCloseup.phase !== 'animation'" class="battle-skill-closeup-card" :class="{ 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }">
+      <div v-if="!battleSkillCloseup.dedicatedArt && battleSkillCloseup.phase !== 'animation'" class="battle-skill-closeup-card" :class="{ 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }">
         <div class="battle-skill-closeup-skillname">
           <div class="battle-skill-closeup-skillname-main"
                :style="{ '--fit-len': battleSkillCloseupNameParts.main.length }">{{ battleSkillCloseupNameParts.main }}</div>
@@ -12202,7 +12209,7 @@ new Vue({
        本文とふりがなに分割する。ふりがなが長く1行に収まらず数文字だけ折り返ると見た目が
        崩れるため、本文とは別行にした上でCSS側で長さに応じてフォントサイズを縮める。 */
     battleSkillCloseupNameParts() {
-      const raw = String((this.battleSkillCloseup && this.battleSkillCloseup.skillName) || '');
+      const raw = String((this.battleSkillCloseup && this.battleSkillCloseup.skillName) || '').replace(/[\u200b-\u200d\ufeff]/g, '').replace(/\s+/g, ' ').trim();
       const m = raw.match(/^(.*?)[（(]([^）)]*)[）)]\s*$/);
       return m ? { main: m[1].trim(), furigana: m[2].trim() } : { main: raw, furigana: '' };
     },
@@ -17430,7 +17437,27 @@ new Vue({
       this._battleShowFatigueEffect(side, turn, damage);
       this._battleCheckResult({ side, reason: `fatigue:${turn}:${damage}` });
     },
-    /* 創世神技（必殺技）発動：カミの顔アップ＋技名アップを一定時間表示してから消える */
+    // 能力アイコンは天叢雲が到着してから表示する。画面の自分／相手と操作側を混同しない。
+    battleSusanooMarkPending(displaySide) {
+      const p = this.battleSkillCloseup;
+      return !!(p && p.effect && p.effect.kamiNo === '1' && this.battleAnimationSpeed !== 'minimal' && this.battleViewSide(p.writerSide || 'self') === displaySide);
+    },
+    _battleSusanooMarkRect(writerSide) {
+      const root = this.$el;
+      if (!root) return null;
+      const display = this.battleViewSide(writerSide);
+      const portrait = root.querySelector(display === 'self' ? '.battle-row-self-bot .kami-portrait' : '.battle-row-opp-top .kami-portrait');
+      if (!portrait) return null;
+      const badge = portrait.querySelector('.kami-susanoo-mark');
+      if (badge) {
+        const r = badge.getBoundingClientRect();
+        return {left:r.left,top:r.top,width:r.width,height:r.height};
+      }
+      // 受信側の効果同期より演出が先着した場合も、同じ右下の置き場へ向かう。
+      const r = portrait.getBoundingClientRect();
+      return {left:r.right + 17 - 38,top:r.bottom - 4 - 44,width:38,height:44};
+    },
+    /* 創世神技：全画面カットインと台詞を一度だけ表示し、その後に固有の効果を再生する。 */
     _battleDivineStageLayout(writerSide) {
       const root=this.$el;
       if (!root) return null;
@@ -17462,9 +17489,11 @@ new Vue({
       this.battleSkillCloseup = {
         effect,
         dedicatedArt: true,
+        writerSide,
         phase: 'portrait',
         animationDuration: String(kami && kami.no) === '10' ? 4200 : 2400,
         layout: typeof this._battleDivineStageLayout === 'function' ? this._battleDivineStageLayout(writerSide) : null,
+        swordLanding: String(kami && kami.no) === '1' && typeof this._battleSusanooMarkRect === 'function' ? this._battleSusanooMarkRect(writerSide) : null,
         targets: ['4','6','7','8'].includes(String(kami && kami.no)) && this._battleDivineContext ? (this._battleDivineContext.targets || []).slice(0,7).map(r => Object.assign({},r)) : [],
         survivors: String(kami && kami.no) === '2' && typeof this._battleDivineSurvivorCues === 'function' ? this._battleRemoteDivineTargets(this._battleDivineSurvivorCues(),'self') : [],
         transfers: String(kami && kami.no) === '5' && this._battleDivineContext ? (this._battleDivineContext.transfers || []).map(t => Object.assign({},t,{image:this.cardImageUrl(t.card)})) : [],
@@ -17483,6 +17512,7 @@ new Vue({
       const presentation = this.battleSkillCloseup;
       for (const phase of [{ name: 'portrait', duration: 1800 }, { name: 'animation', duration: presentation.animationDuration }]) {
         if (this.battleSkillCloseup !== presentation) break;
+        if (phase.name === 'animation' && String(kami && kami.no) === '1' && typeof this._battleSusanooMarkRect === 'function') presentation.swordLanding = this._battleSusanooMarkRect(writerSide);
         if (phase.name === 'animation' && remoteTransfers) presentation.transfers = this._battleRemoteDivineTransfers(remoteTransfers, writerSide);
         if (phase.name === 'animation' && remoteTargets && String(kami && kami.no) === '4') presentation.targets = this._battleRemoteDivineTargets(remoteTargets, writerSide);
         if (phase.name === 'animation' && String(kami && kami.no) === '2' && typeof this._battleDivineSurvivorCues === 'function') {

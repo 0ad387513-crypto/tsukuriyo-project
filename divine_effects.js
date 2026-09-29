@@ -13,16 +13,16 @@ const DIVINE_SKILL_THEMES = Object.freeze({
   '10': { motif: 'dragon', color: '#e66379', accent: '#ffbf69', skills: ['龍血が封印から溢れる', '八つの影が天を喰らう'] },
 });
 const DIVINE_SKILL_CUTINS = Object.freeze({
-  "1": "kami_cutin/susanoo-resolve-9f4617c3bdb5.webp",
-  "2": "kami_cutin/yamato-takeru-genesis-8973e1681dc1.webp",
-  "3": "kami_cutin/okuninushi-genesis-720a374de6f8.webp",
-  "4": "kami_cutin/takemikazuchi-genesis-14e2af2e60a2.webp",
-  "5": "kami_cutin/omoikane-genesis-edcac629cf30.webp",
-  "6": "kami_cutin/amenouzume-genesis-0ac8f9344349.webp",
-  "7": "kami_cutin/hinokagutsuchi-genesis-ce4ccac1d073.webp",
-  "8": "kami_cutin/amaterasu-genesis-e9f958b952f9.webp",
-  "9": "kami_cutin/tsukuyomi-genesis-f7c1bebfd8e1.webp",
-  "10": "kami_cutin/yamata-no-orochi-genesis-4759df52c6f3.webp"
+  "1": "kami_cutin/susanoo-genesis-wide-958aece72ece.webp",
+  "2": "kami_cutin/yamato-takeru-genesis-wide-bb49259ad3bc.webp",
+  "3": "kami_cutin/okuninushi-genesis-wide-a19316572c04.webp",
+  "4": "kami_cutin/takemikazuchi-genesis-wide-3436ae07d4d9.webp",
+  "5": "kami_cutin/omoikane-genesis-wide-e8a6cd5e2d7e.webp",
+  "6": "kami_cutin/amenouzume-genesis-wide-18ba55cfff28.webp",
+  "7": "kami_cutin/hinokagutsuchi-genesis-wide-1a704cff9031.webp",
+  "8": "kami_cutin/amaterasu-genesis-wide-5b320135c53a.webp",
+  "9": "kami_cutin/tsukuyomi-genesis-wide-e360ffb4ad00.webp",
+  "10": "kami_cutin/yamata-no-orochi-genesis-wide-4490bab69da3.webp"
 });
 function divineSkillTheme(kami, index) {
   const theme = DIVINE_SKILL_THEMES[String(kami && kami.no)] || DIVINE_SKILL_THEMES['8'];
@@ -49,7 +49,7 @@ function divineSpriteStyle(name) {
 function divineSkillAssetUrls(kami) {
   const atlas = 'divine_assets/relic-atlas-0fd1e7d6f3dc.webp';
   const assets = {
-    '1': ['kami_cutin/susanoo-resolve-9f4617c3bdb5.webp'],
+    '1': ['divine_assets/totsuka-sword-d380260b8deb.webp'],
     '2': ['divine_assets/spirit-sword-08a642135453.webp'],
     '3': [atlas, 'divine_assets/beast-light-forms-5bdddec3647d.webp'],
     '4': ['divine_assets/futsunomitama-seven-453501cd77c5.webp'],
@@ -150,6 +150,14 @@ function divineThunderSwordStyle(rect) {
   return {left:x+'px',top:y+'px',width:size+'px',height:size*1.45+'px',
     '--sword-start-x':`calc(50vw - ${x}px)`,'--sword-start-y':`calc(45vh - ${y}px)`};
 }
+// 中央の大きな天叢雲を、実際の能力アイコンと同じ位置・大きさへ収める。
+function divineSusanooSwordStyle(rect, viewport = typeof window !== 'undefined' ? window : {innerWidth:1200,innerHeight:800}) {
+  if (!rect) return null;
+  const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+  return {left:x+'px',top:y+'px',width:rect.width+'px',height:rect.height+'px',
+    '--arrival-x':`calc(50vw - ${x}px)`,'--arrival-y':`calc(50vh - ${y}px)`,
+    '--arrival-scale':Math.min(viewport.innerHeight*.68/rect.height,viewport.innerWidth*.64/rect.width)};
+}
 if (typeof Vue !== 'undefined') {
   Vue.component('divine-skill1-sigil', {
     props:{theme:Object,duration:{type:Number,default:1800}},
@@ -172,11 +180,11 @@ if (typeof Vue !== 'undefined') {
   });
   Vue.component('divine-skill-art', {
     methods: { artError(event) { if (!event.target.dataset.fallback) { event.target.dataset.fallback = '1'; event.target.src = 'kami_cutin/' + this.effect.kamiNo + '.webp'; } } },
-    props: { effect: Object, layout:Object, targets:Array, survivors:Array, stage: { type: String, default: 'closeup' }, duration: { type: Number, default: 3000 } },
-    computed: { volley(){return divineBladeVolley(this.layout,this.survivors || [])}, beastManifestations(){return divineBeastManifestations()},orochiSeals(){return divineOrochiSeals()},thunderBranches(){return divineThunderBranches()},fieldScrolls(){return divineFieldScrolls(this.layout)},thunderSwordStyle(){return divineThunderSwordStyle(this.targets && this.targets[0])} },
+    props: { effect: Object, layout:Object, targets:Array, survivors:Array, swordLanding:Object, stage: { type: String, default: 'closeup' }, duration: { type: Number, default: 3000 } },
+    computed: { volley(){return divineBladeVolley(this.layout,this.survivors || [])}, beastManifestations(){return divineBeastManifestations()},orochiSeals(){return divineOrochiSeals()},thunderBranches(){return divineThunderBranches()},fieldScrolls(){return divineFieldScrolls(this.layout)},thunderSwordStyle(){return divineThunderSwordStyle(this.targets && this.targets[0])},susanooSwordStyle(){return divineSusanooSwordStyle(this.swordLanding)} },
     template: `<div class="divine-art divine-painted" :class="['divine-'+effect.motif,'divine-level-'+effect.index,'divine-stage-'+stage]" :style="{'--divine-color':effect.color,'--divine-accent':effect.accent,'--fx-duration':duration+'ms'}" aria-hidden="true">
       <div class="divine-mist"></div><div class="divine-ground"></div>
-      <div v-if="stage === 'closeup' && effect.index === 2 && effect.cutin" class="genesis-scene">
+      <div v-if="stage === 'cutin' && effect.index === 2 && effect.cutin" class="genesis-scene">
         <div class="genesis-horizon"></div>
         <img class="genesis-hero" :src="effect.cutin" alt="" @error="artError">
         <div class="genesis-aura-ring"></div>
@@ -189,7 +197,8 @@ if (typeof Vue !== 'undefined') {
       </div>
       <div v-else class="divine-scene">
         <template v-if="effect.motif === 'storm'">
-          <div class="susanoo-resolve-scene"></div><div class="resolve-blade-current"></div><div class="resolve-storm-burst"></div>
+          <div class="susanoo-sword-arrival" :class="{'susanoo-sword-travel':susanooSwordStyle}" :style="susanooSwordStyle"><divine-sprite name="kusanagi"></divine-sprite></div>
+          <div class="resolve-blade-current"></div><div class="resolve-storm-burst"></div>
           <div v-for="i in 5" :key="'wind'+i" class="scarlet-vortex" :style="{'--i':i}"></div>
           <i v-for="i in 28" :key="'leaf'+i" class="resolve-storm-spark" :style="{'--i':i}"></i>
         </template>
@@ -250,4 +259,4 @@ if (typeof Vue !== 'undefined') {
     </div>`,
   });
 }
-if (typeof module !== 'undefined') module.exports = { DIVINE_SKILL_THEMES, DIVINE_SKILL_CUTINS, divineSkillTheme, divineSkillAssetUrls, DIVINE_SPRITES, divineSpriteStyle, divineTransferStyle, divineBladeVolley, divineThunderBranches, divineFieldScrolls, divineThunderSwordStyle, divineBeastManifestations };
+if (typeof module !== 'undefined') module.exports = { DIVINE_SKILL_THEMES, DIVINE_SKILL_CUTINS, divineSkillTheme, divineSkillAssetUrls, DIVINE_SPRITES, divineSpriteStyle, divineTransferStyle, divineBladeVolley, divineThunderBranches, divineFieldScrolls, divineThunderSwordStyle, divineSusanooSwordStyle, divineBeastManifestations };

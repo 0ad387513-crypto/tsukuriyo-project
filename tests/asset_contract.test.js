@@ -18,6 +18,9 @@ test("each genesis skill selects its own optimized art while skill 1 keeps the e
     assert.equal(file,DIVINE_SKILL_CUTINS[no]);assert.equal(theme.kamiNo,String(no));
     assert.ok(divineSkillAssetUrls({no}).includes(file));
     assert.ok(fs.statSync(path.join(root,file)).size<600000,file);
+    const data=fs.readFileSync(path.join(root,file)),format=data.toString('ascii',12,16);
+    const size=format==='VP8X'?[data.readUIntLE(24,3)+1,data.readUIntLE(27,3)+1]:[data.readUInt16LE(26)&0x3fff,data.readUInt16LE(28)&0x3fff];
+    assert.deepEqual(size,[1600,900],`${file}: all ten full-screen cut-ins share the landscape dimensions`);
     assert.equal(divineSkillTheme({no},1).cutin,null);
   }
 });
