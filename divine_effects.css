@@ -43,9 +43,6 @@
 .inferno-impact {position:absolute;inset:0;background:radial-gradient(ellipse,#fff9c9aa,#ff842742,transparent 75%);animation:fx-inferno-impact var(--fx-duration) ease-out both}
 .fire-column {position:absolute;left:calc(var(--i)*10% - 15%);bottom:-15%;height:100%;width:28%;background:radial-gradient(ellipse at bottom,#fff3b0 0%,#ff7d25 24%,#bb26366b 45%,transparent 70%);border-radius:50% 50% 12% 10%;filter:blur(10px);transform-origin:50% 100%;animation:fx-fire var(--fx-duration) ease-out both}
 .inferno-ember {position:absolute;left:calc(mod(var(--i)*37,100)*1%);top:calc(40% + mod(var(--i)*23,55)*1%);width:calc(3px + mod(var(--i),4)*2px);height:3px;background:#fff0a6;box-shadow:0 0 12px #f94315;animation:fx-inferno-ember var(--fx-duration) ease-out both}
-.yata-mirror { position:absolute; left:33%; top:1%; width:34%; height:34%; filter:drop-shadow(0 0 16px #fff3b6); animation:fx-mirror var(--fx-duration) ease-out both; }
-.warm-lightfall { position:absolute; left:20%; top:21%; width:60%; height:70%; background:linear-gradient(180deg,#fff5c78a,#f3d78c38,transparent); clip-path:polygon(46% 0,54% 0,100% 100%,0 100%); filter:blur(4px); animation:fx-lightfall var(--fx-duration) ease-out both; }
-.mirror-rays { position:absolute; inset:-10%; background:repeating-conic-gradient(from 15deg at 50% 26%,#f9e7a52b 0deg 2deg,transparent 2deg 19deg); mask-image:radial-gradient(ellipse,black,transparent 65%); animation:fx-lightfall var(--fx-duration) ease-out both; }
 .rebirth-ripple { position:absolute; left:22%; top:70%; width:56%; height:15%; border-radius:50%; border:2px solid #fff4c6; box-shadow:0 0 18px #fff1a4; animation:fx-rebirth var(--fx-duration) ease-out both; }
 .rebirth-ripple.second { top:76%; animation-name:fx-rebirth-second; }
 .sun-mote { position:absolute; left:calc(20% + mod(var(--i)*19,60)*1%); top:70%; width:4px; height:7px; border-radius:50%; background:#fff5d4; box-shadow:0 0 9px #ffe7a0; animation:fx-sun-mote var(--fx-duration) ease-out both; }
@@ -141,7 +138,6 @@
 @keyframes fx-clock-hand {0%,42% {rotate:var(--hand-start)} 60%,100% {rotate:var(--hand-stop)}}
 @keyframes fx-moment-stop {0% {opacity:0;translate:-70px -90px;rotate:-60deg} 22% {opacity:.5} 60%,88% {opacity:.9;translate:20px 25px;rotate:25deg} 100% {opacity:0;translate:20px 25px;rotate:25deg}}
 @keyframes fx-freeze-wave {0%,48% {opacity:0;scale:.2} 58% {opacity:.85;scale:.5} 67%,100% {opacity:0;scale:1.2}}
-@keyframes fx-mirror { 0% {opacity:0;translate:0 -20%;rotate:-10deg;scale:.8} 28%,77% {opacity:1;translate:0 0;rotate:0deg;scale:1} 100% {opacity:0;scale:1.02} }
 @keyframes fx-lightfall { 0%,20% {opacity:0;scale:.7 .3;transform-origin:50% 0} 47%,82% {opacity:1;scale:1 1} 100% {opacity:0;scale:1.1 1} }
 @keyframes fx-rebirth { 0%,28% {opacity:0;scale:.4} 50% {opacity:1;scale:1} 90%,100% {opacity:0;scale:1.4} }
 @keyframes fx-rebirth-second { 0%,42% {opacity:0;scale:.4} 62% {opacity:1;scale:1} 100% {opacity:0;scale:1.4} }
@@ -164,7 +160,7 @@
 .divine-grove.divine-stage-closeup .spirit-gathering {inset:auto;width:min(94vw,90vh);height:min(94vw,90vh);left:50%;top:50%;transform:translate(-50%,-50%)}
 .divine-grove.divine-stage-closeup .inaba-arrival {width:min(34vw,32vh);height:min(34vw,32vh);left:50%;top:48%;transform:translateX(-50%)}
 .divine-grove.divine-stage-closeup .grove-halo {inset:10% 5%;box-shadow:0 0 90px #60d58c45}
-.divine-butterfly.divine-stage-closeup .divine-scene {width:min(86vh,94vw);height:min(86vh,94vw)}
+.divine-camellia.divine-stage-closeup .divine-scene {width:100vw;height:100vh}
 .silk-echo {filter:blur(2px);animation-name:fx-silk-echo}
 .dance-trails {position:absolute;inset:0;width:100%;height:100%;stroke:#ffe0bb;stroke-width:2;stroke-linecap:round;stroke-dasharray:1200;filter:drop-shadow(0 0 7px #f8a9c7);animation:fx-dance-trail var(--fx-duration) ease-in-out both}
 .dance-trails path:last-child {stroke:#f3b6df;stroke-width:1}
@@ -208,9 +204,6 @@
 .divine-stage-closeup .hero-prop {inset:auto;left:50%;top:50%;width:min(80vh,80vw);height:min(80vh,80vw);transform:translate(-50%,-50%)}
 .divine-stage-closeup .scarlet-vortex {left:-15%;width:130%;height:35%;border-top-width:5px;box-shadow:0 -12px 35px #c8244070}
 .divine-stage-closeup .wind-leaf {width:26px;height:7px}
-.divine-stage-closeup .yata-mirror {left:calc(50% - min(20vh,20vw));top:0;width:min(40vh,40vw);height:min(40vh,40vw)}
-.divine-stage-closeup .warm-lightfall {left:-10%;width:120%;top:20%;height:80%}
-.divine-stage-closeup .mirror-rays {inset:-50%}
 .divine-stage-closeup .rebirth-ripple {left:0;width:100%;height:24%}
 .divine-stage-closeup .heavenly-silk {width:min(100vh,110vw);height:min(100vh,110vw)}
 .divine-stage-closeup.divine-moon .divine-scene {--clock-size:min(70vh,70vw)}
@@ -287,12 +280,19 @@
 @keyframes fx-sigil-reveal {0%{opacity:0} 18%,72%{opacity:1} 100%{opacity:0}}
 @keyframes fx-sigil-turn {0%{rotate:-28deg;scale:.82} 30%{scale:1} 100%{rotate:18deg;scale:1.04}}
 
-/* 八咫鏡を大きく掲げ、幾重もの光を盤面へ降ろす。 */
-.divine-stage-closeup .yata-mirror {left:calc(50% - min(35vh,35vw));top:0;width:min(70vh,70vw);height:min(70vh,70vw);filter:drop-shadow(0 0 25px #fff7ca) drop-shadow(0 0 70px #ffcb6466)}
-.divine-sun .warm-lightfall {left:-20%;width:140%;top:25%;height:115%;background:linear-gradient(180deg,#fffceada,#ffe2938f 45%,#ffda7840,transparent);filter:blur(5px)}
-.divine-sun .mirror-rays {background:repeating-conic-gradient(from 15deg at 50% 30%,#fff1b95a 0deg 3deg,transparent 3deg 14deg);mask-image:radial-gradient(ellipse,black,transparent 75%)}
-.solar-corona {position:absolute;left:10%;top:-5%;width:80%;height:70%;background:radial-gradient(ellipse,#fff7d378,#ffde9155 25%,transparent 65%);animation:fx-lightfall var(--fx-duration) ease-out both}
-.solar-beam {position:absolute;left:34%;top:28%;width:32%;height:110%;background:linear-gradient(#fffce9c0,#ffe8a144,transparent);clip-path:polygon(48% 0,52% 0,100% 100%,0 100%);transform-origin:50% 0;rotate:calc((var(--i) - 4.5)*9deg);animation:fx-lightfall var(--fx-duration) ease-out both;filter:blur(2px)}
+/* 金の彫刻がある鏡の背面を見せ、下側だけから盤面へ光を降ろす。 */
+.yata-descent {position:absolute;left:50%;top:5%;width:80%;aspect-ratio:3/2;transform:translateX(-50%);animation:fx-yata-hover var(--fx-duration) ease-in-out both}
+.divine-stage-closeup .yata-descent {top:3%;width:min(84vw,94vh)}
+.yata-mirror {position:absolute;z-index:2;inset:0;width:100%;height:100%;filter:drop-shadow(0 0 10px #ffc75c66)}
+.yata-descending-light {position:absolute;z-index:0;left:6%;top:82%;width:88%;height:110vh;transform-origin:50% 0;animation:fx-yata-light var(--fx-duration) ease-out both}
+.yata-underside-glow {position:absolute;z-index:1;left:4%;top:76%;width:92%;height:10%;border-radius:50%;background:radial-gradient(ellipse,#fffef7e0,#ffe7a58f 40%,transparent 72%);filter:blur(3px);animation:fx-yata-light var(--fx-duration) ease-out both}
+.divine-sun .warm-lightfall {position:absolute;left:-16%;top:0;width:132%;height:100%;background:linear-gradient(180deg,#fffceac4,#ffe29378 45%,#ffda7826,transparent);clip-path:polygon(15% 0,85% 0,100% 100%,0 100%);filter:blur(3px)}
+.divine-sun .mirror-rays {position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 6%,#fff4c955 6.5% 8%,transparent 8.5% 13%);mask-image:linear-gradient(black,transparent 92%);clip-path:polygon(8% 0,92% 0,100% 100%,0 100%)}
+.solar-corona {position:absolute;left:-10%;top:0;width:120%;height:85%;background:radial-gradient(ellipse at 50% 0,#fff7d350,#ffde912b 38%,transparent 70%)}
+.solar-beam {position:absolute;left:calc(1% + var(--i)*9%);top:0;width:18%;height:100%;background:linear-gradient(#fffce9b0,#ffe8a13d,transparent);clip-path:polygon(42% 0,58% 0,100% 100%,0 100%);transform-origin:50% 0;rotate:calc((var(--i) - 4.5)*4deg)}
+@keyframes fx-yata-hover {0%{opacity:0;translate:0 -18px;scale:.92} 24%{opacity:1;translate:0 0;scale:1} 48%{translate:0 -7px} 70%,82%{opacity:1;translate:0 0} 100%{opacity:0;translate:0 -5px}}
+@keyframes fx-yata-light {0%,20%{opacity:0;scale:1 .2} 48%,80%{opacity:1;scale:1 1} 100%{opacity:0;scale:1 1}}
+@media(prefers-reduced-motion:reduce){.yata-descent{opacity:1;translate:0 0;scale:1}.yata-descending-light,.yata-underside-glow{opacity:.45;scale:1}.divine-sun .mirror-rays,.divine-sun .solar-beam,.divine-sun .sun-mote{display:none}}
 
 /* 柱状のグラデーションを廃止し、描き込まれた炎の奔流へ。 */
 .inferno-wave {position:absolute;inset:-5% -10% -20%;background:url('divine_assets/inferno-wave-959a2a61584f.webp') center bottom/cover no-repeat;filter:drop-shadow(0 0 18px #ff552288);transform-origin:50% 100%;animation:fx-inferno-wave var(--fx-duration) cubic-bezier(.12,.7,.24,1) both}
@@ -383,7 +383,6 @@
 .genesis-mote { position:absolute; left:var(--mote-x); top:var(--mote-y); width:4px; height:12px; background:var(--divine-accent); box-shadow:0 0 12px var(--divine-color); animation:genesisMote var(--fx-duration) ease-out both; animation-delay:calc(var(--i) * 14ms); transform:rotate(var(--mote-turn)); }
 .divine-blade .genesis-mote,.divine-thunder .genesis-mote { width:2px; height:70px; clip-path:polygon(50% 0,100% 85%,50% 100%,0 85%); }
 .divine-grove .genesis-mote { width:10px; height:18px; border-radius:80% 0 80% 0; background:#bbf6a3; }
-.divine-butterfly .genesis-mote { width:28px; height:20px; clip-path:polygon(50% 45%,0 0,10% 70%,35% 100%,50% 55%,65% 100%,90% 70%,100% 0); animation-name:genesisButterfly; }
 .divine-flame .genesis-mote { width:8px; height:24px; border-radius:80% 20% 60% 40%; filter:drop-shadow(0 0 8px #ff651c); }
 .divine-moon .genesis-mote { width:12px; height:12px; clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); }
 .genesis-slash { position:absolute; left:-20%; top:47%; width:140%; height:4px; background:var(--divine-accent); box-shadow:0 0 24px 8px var(--divine-color); transform:rotate(-28deg); animation:genesisSlash var(--fx-duration) ease-out both; }
@@ -400,7 +399,6 @@
 @keyframes genesisRing { 0%{opacity:0;scale:.35} 28%{opacity:.8} 70%{opacity:.35} 100%{opacity:0;scale:2.2} }
 @keyframes genesisHorizon { 0%,100%{opacity:0} 20%,70%{opacity:1} }
 @keyframes genesisMote { 0%{opacity:0;translate:0 50px} 30%{opacity:.9} 100%{opacity:0;translate:0 -160px} }
-@keyframes genesisButterfly { 0%{opacity:0;translate:-40px 70px;scale:.5} 30%{opacity:.85;scale:1} 100%{opacity:0;translate:80px -180px;scale:.7} }
 @keyframes genesisSlash { 0%,28%{opacity:0;scale:0 1} 40%{opacity:.9;scale:1 1} 66%,100%{opacity:0;scale:1.4 1} }
 @keyframes genesisThread { 0%{opacity:0;scale:.3;rotate:-40deg} 25%,55%{opacity:.75;scale:1} 100%{opacity:0;scale:1.4;rotate:30deg} }
 @keyframes genesisSun { 0%{opacity:0;rotate:-8deg} 35%,65%{opacity:.9} 100%{opacity:0;rotate:14deg} }
@@ -433,3 +431,105 @@
   .genesis-hero,.genesis-horizon,.genesis-eclipse { animation:none !important; opacity:1; scale:1; }
   .susanoo-sword-travel { animation:none; transform:translate(-50%,-50%); opacity:1; filter:none; }
 }
+
+/* 椿を甘美な風に乗せ、透ける羽衣がゆったりと波打つ。 */
+.camellia-particle { position:absolute; left:var(--camellia-x); top:var(--camellia-y); width:var(--camellia-size); height:var(--camellia-size); background-size:300% 200%; background-repeat:no-repeat; opacity:0; filter:drop-shadow(0 0 3px #ffe5be45); animation:fx-camellia-drift var(--fx-duration) ease-in-out both; animation-delay:calc(var(--i) * 16ms); }
+.camellia-blossom { animation-name:fx-camellia-bloom; }
+.sweet-wind { position:absolute; inset:-10%; background:radial-gradient(ellipse at 20% 62%,#fff0d827,transparent 48%),radial-gradient(ellipse at 78% 35%,#e9bdc328,transparent 44%); filter:blur(14px); animation:fx-sweet-breeze var(--fx-duration) ease-in-out both; }
+.hagoromo-stream { position:absolute; inset:0; width:100%; height:100%; stroke:#fff0d855; stroke-width:28; stroke-linecap:round; filter:blur(1px) drop-shadow(0 0 12px #ffdfcb55); animation:fx-hagoromo-flow var(--fx-duration) ease-in-out both; }
+.hagoromo-stream path:last-child { stroke:#f4c3ce40; stroke-width:42; }
+.divine-camellia .heavenly-silk { inset:auto; left:50%; top:50%; width:min(95vw,100vh); height:min(95vw,100vh); transform:translate(-50%,-50%); filter:drop-shadow(0 0 18px #f3d6c02e); animation-name:fx-hagoromo-flow; }
+.divine-camellia .silk-echo { filter:blur(3px); animation-name:fx-hagoromo-echo; }
+/* 扇の要を軸に揺れ、前後の羽衣が異なる速さで蠱惑的にたなびく。 */
+.uzume-dancing-fan { position:absolute; left:50%; top:51%; width:60%; height:60%; transform:translate(-50%,-50%); transform-origin:50% 70%; z-index:2; opacity:0; filter:drop-shadow(0 0 16px #ffdfb752); animation:fx-uzume-fan-sway var(--fx-duration) ease-in-out both; }
+.divine-stage-closeup .uzume-dancing-fan { width:min(65vw,66vh); height:min(65vw,66vh); }
+.uzume-fan-leaf { transform-origin:50% 70%; animation:fx-uzume-fan-turn var(--fx-duration) ease-in-out both; }
+.divine-camellia.divine-level-2 .divine-scene .heavenly-silk { z-index:1; width:120%; height:120%; opacity:0; animation-name:fx-uzume-silk-dance; }
+.divine-camellia.divine-level-2 .divine-scene .silk-echo { z-index:3; width:105%; height:105%; opacity:0; filter:blur(1px); animation-name:fx-uzume-silk-front; }
+.divine-camellia.divine-level-2 .divine-scene .hagoromo-stream { z-index:1; }
+.divine-camellia .camellia-petal { z-index:4; }
+.divine-camellia .camellia-blossom { z-index:3; }
+.divine-camellia.divine-stage-closeup .camellia-particle { animation-duration:calc(var(--fx-duration) * .75); }
+.divine-camellia .divine-soft-flash { animation-name:fx-sweet-light; }
+.divine-camellia .genesis-aura-ring { opacity:.2; border-color:#fff1d440; box-shadow:0 0 24px #ffe3c533; animation-name:fx-camellia-halo; }
+.divine-camellia.divine-stage-cutin .camellia-particle { animation-duration:5200ms; animation-iteration-count:infinite; }
+.divine-camellia.divine-stage-cutin .sweet-wind,.divine-camellia.divine-stage-cutin .hagoromo-stream { animation-duration:6400ms; animation-iteration-count:infinite; }
+@keyframes fx-camellia-drift { 0% {opacity:0;translate:-7vw 4vh;rotate:calc(var(--camellia-turn) * -.3);scale:.8} 22% {opacity:.8;translate:-3vw -2vh} 58% {opacity:.9;translate:3vw 1vh;scale:1} 100% {opacity:0;translate:10vw -5vh;rotate:var(--camellia-turn);scale:.85} }
+@keyframes fx-camellia-bloom { 0% {opacity:0;translate:-4vw 2vh;rotate:-12deg;scale:.75} 28%,64% {opacity:.7;scale:1} 100% {opacity:0;translate:6vw -3vh;rotate:20deg;scale:.85} }
+@keyframes fx-sweet-breeze { 0% {opacity:0;translate:-5% 3%} 30%,65% {opacity:.8} 100% {opacity:0;translate:5% -3%} }
+@keyframes fx-hagoromo-flow { 0% {opacity:0;translate:-7% 4%;rotate:-5deg;scale:.94} 32% {opacity:.65;translate:-2% -3%;rotate:3deg} 68% {opacity:.6;translate:3% 1%;rotate:-2deg;scale:1.02} 100% {opacity:0;translate:7% -3%;rotate:4deg;scale:1} }
+@keyframes fx-hagoromo-echo { 0% {opacity:0;translate:5% -3%;rotate:7deg} 35%,64% {opacity:.2;translate:-2% 2%;rotate:-3deg} 100% {opacity:0;translate:-6% 4%;rotate:-6deg} }
+@keyframes fx-sweet-light { 0%,100% {opacity:0} 35%,65% {opacity:.35} }
+@keyframes fx-camellia-halo { 0%,100% {opacity:0;scale:.95} 35%,65% {opacity:.2;scale:1.04} }
+@keyframes fx-uzume-fan-sway { 0% {opacity:0;translate:-6% 5%;rotate:-18deg;scale:.88} 18% {opacity:1;scale:1} 42% {opacity:1;translate:4% -3%;rotate:13deg} 72% {opacity:1;translate:-3% 2%;rotate:-9deg;scale:1.03} 87% {opacity:.9;translate:2% -1%;rotate:6deg} 100% {opacity:0;translate:5% -4%;rotate:12deg;scale:.95} }
+@keyframes fx-uzume-fan-turn { 0%,100% {transform:perspective(900px) rotateY(-9deg) rotateX(5deg)} 42% {transform:perspective(900px) rotateY(11deg) rotateX(-4deg)} 72% {transform:perspective(900px) rotateY(-7deg) rotateX(3deg)} }
+@keyframes fx-uzume-silk-dance { 0% {opacity:0;translate:-12% 8%;rotate:-12deg;scale:.94} 24% {opacity:.75;translate:-4% -3%;rotate:4deg} 50% {opacity:.85;translate:7% 2%;rotate:13deg;scale:1.05} 76% {opacity:.75;translate:-3% -2%;rotate:-7deg} 100% {opacity:0;translate:12% -7%;rotate:10deg;scale:1} }
+@keyframes fx-uzume-silk-front { 0% {opacity:0;translate:14% -5%;rotate:15deg} 28% {opacity:.25;translate:1% 4%;rotate:-8deg} 58% {opacity:.35;translate:-9% -2%;rotate:6deg} 80% {opacity:.3;translate:3% 2%;rotate:-4deg} 100% {opacity:0;translate:-12% 7%;rotate:-14deg} }
+@media(prefers-reduced-motion:reduce) { .camellia-particle,.sweet-wind,.hagoromo-stream,.uzume-dancing-fan,.uzume-fan-leaf,.divine-camellia .heavenly-silk {animation:none!important} .camellia-petal,.sweet-wind,.hagoromo-stream {display:none} .camellia-blossom {opacity:.35} .uzume-dancing-fan {opacity:.9;translate:none;rotate:none;scale:1} .divine-camellia.divine-level-2 .divine-scene .heavenly-silk {opacity:.35} }
+
+/* 閉じた目の絵から顔へ寄り、同じ位置の開眼差分をまぶたの幅で見せる。 */
+@property --susanoo-eye-aperture { syntax:'<percentage>'; inherits:false; initial-value:0%; }
+.susanoo-awakening-scene { position:absolute; inset:0; overflow:hidden; isolation:isolate; background:#08030a; }
+.susanoo-awakening-frame { position:absolute; left:50%; top:50%; width:max(100vw,177.777778vh); height:max(56.25vw,100vh); transform:translate(-50%,-50%); }
+.susanoo-awakening-camera { position:absolute; inset:0; transform-origin:50% 36%; animation:susanooFaceApproach var(--fx-duration) cubic-bezier(.22,.65,.2,1) both; }
+.susanoo-awakening-base,.susanoo-awakening-eyes { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; }
+.susanoo-awakening-eyes { mask-image:radial-gradient(ellipse 4.1% var(--susanoo-eye-aperture) at 44.8% 35.8%,#000 66%,transparent 98%),radial-gradient(ellipse 4.1% var(--susanoo-eye-aperture) at 52.4% 35.8%,#000 66%,transparent 98%); animation:susanooOpenEyes var(--fx-duration) ease-out both; }
+.susanoo-eye-light { position:absolute; top:35.8%; width:8%; height:.28%; border-radius:50%; background:linear-gradient(90deg,transparent,#ffdf63aa,#fff6ce, #ffdf63aa,transparent); box-shadow:0 0 6px 2px #ffcf3855,0 0 18px #ffc22d88; transform:translate(-50%,-50%); mix-blend-mode:screen; animation:susanooGoldenGaze var(--fx-duration) ease-out both; }
+.susanoo-eye-light.eye-left { left:44.8%; }
+.susanoo-eye-light.eye-right { left:52.4%; }
+.susanoo-awakening-flare { position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse 60% 22% at 50% 36%,#ffe17344,transparent 75%); mix-blend-mode:screen; animation:susanooGazeFlare var(--fx-duration) ease-out both; }
+@keyframes susanooFaceApproach { 0% {transform:scale(1)} 23%,100% {transform:scale(2.6)} }
+@keyframes susanooOpenEyes { 0%,46% {--susanoo-eye-aperture:0%;opacity:0} 49% {--susanoo-eye-aperture:.25%;opacity:.7} 68%,100% {--susanoo-eye-aperture:3.6%;opacity:1} }
+.susanoo-awakening-eyes.eyes-narrow { --susanoo-eye-aperture:3.6%; animation:susanooOpenNarrow var(--fx-duration) ease-in-out both; }
+.susanoo-awakening-eyes.eyes-half { --susanoo-eye-aperture:3.6%; animation:susanooOpenHalf var(--fx-duration) ease-in-out both; }
+@keyframes susanooOpenNarrow { 0%,20%{opacity:0} 34%,100%{opacity:1} }
+@keyframes susanooOpenHalf { 0%,32%{opacity:0} 46%,100%{opacity:1} }
+@keyframes susanooGoldenGaze { 0%,60% {opacity:0;scale:.3 1} 74% {opacity:.85;scale:1.35 1.6} 96%,100% {opacity:.25;scale:1 1} }
+@keyframes susanooGazeFlare { 0%,61% {opacity:0} 75% {opacity:.7} 100% {opacity:0} }
+@media(prefers-reduced-motion:reduce) {
+  .susanoo-awakening-camera { animation:none; transform:scale(1.7); }
+  .susanoo-awakening-eyes { animation:none !important; --susanoo-eye-aperture:3.6%; opacity:1; }
+  .susanoo-eye-light,.susanoo-awakening-flare { display:none; }
+}
+
+
+/* 五本の高速斬撃、衝撃波、噴き上がる炎。大画像は一枚のアトラスを使い回す。 */
+.divine-scene.flame-target-scene {position:fixed;inset:0;width:100%;height:100%;transform:none;animation:hinoImpactQuake var(--fx-duration) linear both}
+.battle-skill-closeup-overlay.divine-cinematic-mode:has(.hino-claw-sweep) {background:#04060e77}
+.hino-claw-sweep,.hino-claw-burn {position:absolute;background-repeat:no-repeat;background-size:400% 200%;pointer-events:none}
+.hino-claw-sweep {transform:translate(-50%,-50%) rotate(var(--claw-angle));animation:hinoClawSlashFrames var(--fx-duration) steps(1,end) both,hinoClawSlashMotion var(--fx-duration) cubic-bezier(.15,.85,.3,1) both;filter:drop-shadow(0 0 10px #ff441a);z-index:3}
+.hino-claw-hit {position:absolute;z-index:2}
+.hino-card-memory {position:absolute;inset:0;background:center/contain no-repeat;border-radius:5px}
+.hino-claw-charge {position:absolute;inset:-25%;border-radius:40%;background:radial-gradient(ellipse,#ffc85099,#c92a0855 45%,transparent 72%);animation:hinoClawCharge var(--fx-duration) ease-in both}
+.hino-claw-scars {position:absolute;inset:-20%;background:repeating-linear-gradient(128deg,transparent 0 13%,#fff3c7 14% 15%,#ff4d10 16%,transparent 18% 25%);filter:drop-shadow(0 0 8px #ff5110);animation:hinoClawScars var(--fx-duration) ease-out both}
+.hino-claw-shock {position:absolute;inset:-30%;border:5px solid #ffcc79;border-radius:50%;box-shadow:0 0 0 10px #e1412155,inset 0 0 28px #ff912780;animation:hinoClawShock var(--fx-duration) ease-out both}
+.hino-claw-streaks {position:absolute;inset:0;overflow:visible;pointer-events:none;z-index:1}
+.hino-claw-streaks path {stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;animation:hinoClawStreak var(--fx-duration) linear both;animation-delay:calc(var(--fx-duration) * var(--slash-lag))}
+.hino-claw-trail {--streak-opacity:.45;stroke:#ee3817;stroke-width:10;opacity:0}
+.hino-claw-core {--streak-opacity:.3;stroke:#fff2b8;stroke-width:2;opacity:0}
+.hino-claw-burn {z-index:5;transform-origin:50% 65%;animation:hinoClawBurn var(--fx-duration) steps(1,end) both}
+.hino-heat-flash {position:absolute;inset:0;background:radial-gradient(ellipse,#ffefbccc,#ff441a80 52%,transparent);z-index:6;pointer-events:none;animation:hinoHeatFlash var(--fx-duration) linear both}
+.hino-fire-spark {position:absolute;left:50%;top:55%;width:5px;height:18px;border-radius:50%;background:#ffe5a8;box-shadow:0 0 7px 3px #ff4a12;opacity:0;rotate:var(--spark-angle);animation:hinoFireSpark var(--fx-duration) ease-out both;animation-delay:calc(var(--fx-duration) * var(--spark-lag))}
+
+.hino-infernal-mass {position:absolute;transform:translate(-50%,-50%);pointer-events:none;z-index:2}
+.hino-cinder-vortex {position:absolute;inset:3%;border-radius:42% 58% 47% 53%;background:conic-gradient(from 40deg,#13090900,#230b08dd 12%,#901b0eaa 22%,#120808ee 32%,#e8401199 44%,#1a0706ee 57%,#0d0806cc 68%,#a62609cc 81%,#140706ee 93%,transparent);box-shadow:inset 0 0 45px 24px #0b0509cc,0 0 24px #3c0b0d99;animation:hinoCinderVortex var(--fx-duration) ease-in both}
+.hino-cinder-vortex {mask-image:radial-gradient(ellipse,#000 30%,#000a 46%,transparent 72%)}
+.hino-cinder-vortex.vortex-echo {inset:12%;animation-name:hinoCinderEcho;border-radius:55% 45% 58% 42%}
+.hino-infernal-flame {position:absolute;inset:10%;background-size:400% 200%;background-position:66.666667% 100%;background-repeat:no-repeat;mix-blend-mode:screen;animation:hinoInfernalStrike var(--fx-duration) cubic-bezier(.14,.8,.25,1) both}
+.hino-blast-wave {position:absolute;left:-30%;top:30%;width:160%;height:26%;border:5px solid #ffe6a0;border-radius:50%;background:radial-gradient(ellipse,transparent 45%,#fb341355 66%,transparent 72%);box-shadow:0 0 0 8px #f3351880,0 0 25px 5px #ff4912,inset 0 0 22px #ff4515;animation:hinoBlastWave var(--fx-duration) cubic-bezier(.08,.8,.15,1) both}
+@keyframes hinoCinderVortex {0%{opacity:0;scale:.35;rotate:-50deg} 10%{opacity:.9;scale:.75;rotate:15deg} 19%{opacity:1;scale:1.15;rotate:120deg} 28%{opacity:.9;scale:1.35;rotate:220deg} 48%{opacity:.5;scale:1.75;rotate:310deg} 68%,100%{opacity:0;scale:2;rotate:400deg}}
+@keyframes hinoCinderEcho {0%{opacity:0;scale:.4;rotate:80deg} 12%{opacity:.8;scale:.9;rotate:-10deg} 23%{opacity:1;scale:1.1;rotate:-100deg} 42%{opacity:.4;scale:1.6;rotate:-240deg} 65%,100%{opacity:0;scale:1.9;rotate:-320deg}}
+@keyframes hinoInfernalStrike {0%,5%{opacity:0;scale:.2;translate:0 -10vh} 12%{opacity:.9;scale:.65;translate:0 -7vh} 19%{opacity:1;scale:1.2;translate:0 -3vh} 23%{opacity:1;scale:1.65;translate:0 3vh} 31%{opacity:.85;scale:1.9;translate:0 5vh} 45%,100%{opacity:0;scale:2.15;translate:0 7vh}}
+@keyframes hinoBlastWave {0%,21%{opacity:0;scale:.15 .4} 23%{opacity:1;scale:.5 .75} 29%{opacity:1;scale:1.6 1.5} 35%{opacity:.75;scale:2.6 1.8} 46%,100%{opacity:0;scale:3.4 2.1}}
+
+@keyframes hinoClawCharge {0%{opacity:0;scale:.35} 8%{opacity:.7;scale:1} 14%{opacity:1;scale:.55} 20%,100%{opacity:0;scale:1.6}}
+@keyframes hinoClawStreak {0%,13%{opacity:0;stroke-dashoffset:1} 14%{opacity:var(--streak-opacity);stroke-dashoffset:1} 22%{opacity:var(--streak-opacity);stroke-dashoffset:0} 26%,100%{opacity:0;stroke-dashoffset:0}}
+@keyframes hinoClawSlashFrames {0%,12%{opacity:0;background-position:0% 0%} 14%{opacity:1;background-position:0% 0%} 18%{background-position:33.333333% 0%} 22%{background-position:66.666667% 0%} 28%{background-position:100% 0%} 36%,100%{opacity:0}}
+@keyframes hinoClawSlashMotion {0%,12%{scale:1.3;translate:-12vw -18vh} 18%{scale:1.25;translate:0 0} 22%{scale:1.6;translate:3vw 5vh} 28%{scale:1.7;translate:5vw 8vh} 36%,100%{translate:7vw 12vh}}
+@keyframes hinoClawScars {0%,18%{opacity:0;scale:.6} 22%,34%{opacity:1;scale:1.2} 51%,100%{opacity:0;scale:1.4}}
+@keyframes hinoClawShock {0%,20%{opacity:0;scale:.2} 22%{opacity:1;scale:.45} 31%{opacity:.8;scale:1.65} 43%,100%{opacity:0;scale:2.7}}
+@keyframes hinoClawBurn {0%,22%{opacity:0;background-position:0% 100%;scale:.3;translate:0 9%} 25%{opacity:1;background-position:0% 100%;scale:.75;translate:0 0} 31%{background-position:33.333333% 100%;scale:1.15} 39%,48%{background-position:66.666667% 100%;scale:1.45;translate:0 -6%} 52%{background-position:33.333333% 100%;scale:1.2} 59%,70%{background-position:66.666667% 100%;scale:1.5;translate:0 -9%} 75%{background-position:33.333333% 100%;scale:1.3} 81%{background-position:66.666667% 100%;scale:1.45} 88%,100%{background-position:100% 100%;opacity:1;scale:1.2;translate:0 -12%}}
+@keyframes hinoHeatFlash {0%,18%{opacity:0} 21%{opacity:.65} 25%{opacity:.15} 30%,100%{opacity:0}}
+@keyframes hinoImpactQuake {0%,20%,40%,100%{translate:0 0} 22%{translate:-8px 5px} 24%{translate:7px -5px} 27%{translate:-5px 3px} 30%{translate:4px -2px} 34%{translate:-2px 1px}}
+@keyframes hinoFireSpark {0%,25%{opacity:0;translate:0 0;scale:.4} 30%{opacity:1;scale:1} 47%{opacity:.9} 71%,100%{opacity:0;translate:var(--spark-x) var(--spark-y);scale:.2}}
+@media(prefers-reduced-motion:reduce){.flame-target-scene{animation:none!important}.hino-claw-sweep,.hino-claw-scars,.hino-claw-streaks,.hino-claw-shock,.hino-claw-charge,.hino-fire-spark,.hino-heat-flash,.hino-infernal-mass{display:none}.hino-claw-burn{animation:none;background-position:100% 100%;opacity:.7;filter:none}}

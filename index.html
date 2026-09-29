@@ -455,6 +455,7 @@
     justify-content: center; gap: 14px;
   }
   .app.deck-expanded .deck-stats span b { font-size: 14px; }
+  .app.deck-expanded .deck-stats .cc { font-size: 12px; } /* 展開時は広いので属性の文字を元の大きさに戻す */
 
   /* 展開時：円グラフを小さめに横並び配置（縦スペース節約）*/
   .app.deck-expanded .deck-stats-colors {
@@ -595,25 +596,27 @@
 
   /* 属性カウントは色つきドット付き */
   .deck-stats-colors {
-    gap: 12px;
+    gap: 8px;
     align-items: center;
     flex-wrap: nowrap;
   }
+  /* デッキ一覧を広く見せるため、属性の行は円グラフを小さくし、6属性を1行に収める（デッキ欄の最小幅320pxでも収まる大きさ） */
   .color-pie {
-    width: 60px; height: 60px; border-radius: 50%;
+    width: 38px; height: 38px; border-radius: 50%;
     flex-shrink: 0;
     border: 2px solid #2a2f3d;
     box-shadow: 0 2px 6px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(0,0,0,0.4);
   }
   .color-pie-labels {
-    display: flex; flex-wrap: wrap; gap: 4px 10px;
+    display: flex; flex-wrap: wrap; gap: 2px 6px; justify-content: space-between;
     flex: 1; min-width: 0;
   }
   .deck-stats .cc {
-    display: inline-flex; align-items: center; gap: 4px;
+    display: inline-flex; align-items: center; gap: 3px; font-size: 11px; white-space: nowrap;
   }
+  .deck-stats .cc b { margin-left: 1px; font-size: 12px; }
   .deck-stats .cc::before {
-    content: ''; display: inline-block; width: 9px; height: 9px;
+    content: ''; display: inline-block; width: 7px; height: 7px;
     border-radius: 50%; border: 1px solid rgba(255,255,255,0.4);
     flex-shrink: 0;
   }
@@ -942,10 +945,11 @@
     background: #0a0c12 center / contain no-repeat;
   }
   .card-hover-preview.chp-evolved {
-    width: 484px; display: flex; gap: 4px; padding: 4px;
+    width: 484px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px;
     background: rgba(10,12,18,0.92);
   }
   .card-hover-preview.chp-evolved .chp-col { flex: 1; min-width: 0; }
+  .card-hover-zoom-note { grid-column: 1 / -1; display: block; background: #0a0c12; color: #aab7ca; font-size: 10px; line-height: 18px; text-align: center; white-space: nowrap; }
   .chp-label {
     font-size: 11px; color: #ffd86a; font-weight: 700;
     text-align: center; padding: 2px 0; line-height: 1.2;
@@ -1374,6 +1378,8 @@
   .top-mode-card.cardlist .top-mode-thumb { aspect-ratio: 1 / 1; }
   .top-mode-card.construct .top-mode-thumb,
   .top-mode-card.shield .top-mode-thumb { aspect-ratio: 1024 / 536; }
+  /* 理念構築戦の絵は正方形なので上下が切れる。タケミカヅチの顔が縦の中央に来て、ヒノカグツチの角が見える位置に合わせる */
+  .top-mode-card.construct .top-mode-thumb { background-position: center 32%; }
   .top-mode-label { font-size: clamp(16px, 1.25vw, 22px); font-weight: 800; letter-spacing: 0.03em; }
   .top-mode-card.game .top-mode-label { font-size: clamp(20px, 1.7vw, 28px); }
   /* カードリスト下の横長ボタン：説明書とピックガイドを独立した入口にする */
@@ -1394,7 +1400,7 @@
     border-color: #8a95b5;
   }
   .top-mode-guide-btn.manual { border-color: #9d7a3d; background: linear-gradient(160deg, #4a3822, #271d16); }
-  .top-mode-guide-btn.pick { border-color: #536d91; background: linear-gradient(160deg, #293d59, #192538); }
+  .top-mode-guide-btn.pick { border-color: #9d7a3d; background: linear-gradient(160deg, #4a3822, #271d16); } /* プレイガイド・チュートリアルと同じ茶金色 */
   /* チュートリアル追加で右列が伸びないよう、ガイド2つは少し低くする */
   .top-mode-guide-btn.manual, .top-mode-guide-btn.pick { min-height: 44px; }
   .top-mode-guide-btn.tutorial {
@@ -1446,53 +1452,44 @@
   .gm-draft .gm-pack-caption { flex: none; display: flex; align-items: center; height: 24px; gap: 4px; padding: 0 4px; }
   .gm-draft .gm-pack-name { flex: 1; min-width: 0; padding: 0; font-size: 11px; line-height: 24px; white-space: nowrap; }
   .gm-draft .pick-kind-tag { flex: none; margin: 0; padding: 1px 4px; font-size: 10px; }
-  .gm-draft-policy .gm-draft-kami-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; }
-  .gm-draft-policy .gm-draft-kami-mini { grid-template-columns: 48px minmax(0, 1fr); gap: 4px; padding: 5px; }
-  .gm-draft-policy .gm-draft-kami-name { white-space: normal; overflow: visible; font-size: 12px; line-height: 1.35; word-break: normal; }
-  .gm-draft-kami-seat { font-size: 10px; color: #a9b5ca; }
-  .gm-draft-kami-progress { margin-top: 5px; font-size: 11px; color: #ffdb87; }
+  /* 4人を横長の枠で縦に並べ、絵とプレイヤー情報を左右に分ける。 */
+  .gm-draft .gm-draft-policy { display: flex; flex-direction: column; }
+  .gm-draft-policy .gm-draft-kami-strip { flex: 1 1 auto; min-height: 0; grid-template-columns: 1fr; grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; }
+  .gm-draft-policy .gm-draft-kami-mini { box-sizing: border-box; min-height: 0; grid-template-columns: 88px minmax(0, 1fr); gap: 8px; padding: 5px; }
+  .gm-draft-policy .gm-draft-kami-name { white-space: normal; overflow: visible; font-size: 14px; line-height: 1.35; word-break: normal; text-align: left; }
+  .gm-draft-kami-seat { font-size: 12px; color: #a9b5ca; }
+  .gm-draft-kami-progress { margin-top: 5px; font-size: 12px; color: #ffdb87; }
   .gm-draft-kami-mini.done { background: #19302b; box-shadow: inset 0 0 0 1px #5abb8a; }
   .gm-draft-kami-mini.done .gm-draft-kami-progress { color: #9ce3b3; }
-  .gm-draft-policy .gm-draft-kami-thumb { width: 48px; height: clamp(68px, 11vh, 100px); }
-  .gm-draft-policy .gm-draft-kami-copy { display: contents; }
-  .gm-draft-policy .gm-draft-kami-thumb { grid-column: 1; grid-row: 1 / 3; }
-  .gm-draft-policy .gm-draft-kami-seat { grid-column: 2; grid-row: 1; align-self: end; }
-  .gm-draft-policy .gm-draft-kami-progress { grid-column: 2; grid-row: 2; align-self: start; margin-top: 2px; }
-  .gm-draft-policy .gm-draft-kami-name { grid-column: 1 / -1; grid-row: 3; text-align: center; white-space: nowrap; }
+  .gm-draft-policy .gm-draft-kami-thumb { width: 88px; height: 100%; max-height: 112px; min-height: 0; }
+  .gm-draft-policy .gm-draft-kami-copy { display: block; min-width: 0; }
   .gm-draft-policy .gm-pick-status { grid-template-columns: 1fr; gap: 6px; margin-bottom: 0; }
   .draft-kami-figure { margin: 0; }
   .draft-kami-chibi { display: block; width: 100%; height: 170px; object-fit: contain; }
   .guide-chibi-note { display: block; margin: 8px 0 0; color: #b9c6dc; font-size: 12px; line-height: 1.55; text-align: center; }
   @media (min-width: 761px) and (max-height: 680px) {
-    .gm-draft-policy .gm-draft-kami-strip { grid-template-columns: repeat(4, minmax(0,1fr)); }
-    .gm-draft-policy .gm-draft-kami-mini { grid-template-columns: 1fr; justify-items: center; padding: 4px; text-align: center; gap: 2px; }
-    .gm-draft-policy .gm-draft-kami-thumb { grid-column: 1; grid-row: 1; width: 40px; height: 48px; }
-    .gm-draft-policy .gm-draft-kami-seat { grid-column: 1; grid-row: 2; font-size: 9px; }
-    .gm-draft-policy .gm-draft-kami-name { grid-column: 1; grid-row: 3; white-space: normal; font-size: 10px; }
-    .gm-draft-policy .gm-draft-kami-progress { grid-column: 1; grid-row: 4; font-size: 10px; }
     .gm-draft-policy .draft-strip-note { display: none; }
     .gm-draft-policy .pick-policy-heading { margin-top: 5px; }
     .gm-draft-policy .pick-policy-hints { font-size: 11px; line-height: 1.4; }
+    .gm-draft-policy .gm-draft-kami-mini { grid-template-columns: 76px minmax(0, 1fr); }
+    .gm-draft-policy .gm-draft-kami-thumb { width: 76px; }
+    .gm-draft-policy .gm-draft-kami-name { font-size: 13px; }
   }
   .guide-chibi { width: 170px; margin: 0; }
   .draft-strip-note { text-align: left; margin: 8px 0 12px; }
   @media (max-width: 760px) {
     .cosmic-pick-panel > .gm-header { padding: 46px 10px 8px; gap: 6px; }
-    .gm-draft .gm-draft-layout { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; gap: 8px; }
-    .gm-draft .gm-draft-policy { display: block; grid-row: 2; }
-    .gm-draft-policy .gm-draft-kami-strip { grid-template-columns: repeat(4, minmax(0,1fr)); }
-    .gm-draft-policy .gm-draft-kami-mini { grid-template-columns: 1fr; justify-items: center; text-align: center; }
-    .gm-draft-policy .gm-draft-kami-thumb { height: 52px; width: 44px; }
-    .gm-draft-policy .gm-draft-kami-thumb { grid-column: 1; grid-row: 1; }
-    .gm-draft-policy .gm-draft-kami-seat { grid-column: 1; grid-row: 2; }
-    .gm-draft-policy .gm-draft-kami-progress { grid-column: 1; grid-row: 4; }
-    .gm-draft-policy .gm-draft-kami-name { white-space: normal; }
-    .gm-draft-policy .gm-draft-kami-name { font-size: 10px; }
+    .gm-draft .gm-draft-layout { grid-template-columns: 130px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 6px; }
+    .gm-draft .gm-draft-policy { grid-row: 1; padding: 6px; }
+    .gm-draft-policy .gm-draft-kami-mini { grid-template-columns: 48px minmax(0, 1fr); gap: 4px; padding: 4px; }
+    .gm-draft-policy .gm-draft-kami-thumb { width: 48px; max-height: 104px; }
+    .gm-draft-policy .gm-draft-kami-name { font-size: 11px; }
+    .gm-draft-policy .gm-draft-kami-seat,.gm-draft-policy .gm-draft-kami-progress { font-size: 10px; }
     .gm-draft-policy .pick-policy-heading { margin-top: 4px; }
     .gm-draft-policy .pick-policy-hints { font-size: 11px; line-height: 1.4; }
     .gm-draft-policy .draft-strip-note { display: none; }
     .cosmic-pick-panel > .gm-draft { padding: 8px; }
-    .gm-draft .gm-pack-grid { grid-row: 1; gap: 6px; }
+    .gm-draft .gm-pack-grid { grid-row: 1; grid-column: 2; gap: 6px; }
     .gm-draft .gm-pack-caption { height: 36px; flex-direction: column; justify-content: center; gap: 0; padding: 0 2px; }
     .gm-draft .gm-pack-card { width: min(100%, calc((100cqh - 86px) * 372 / 1039)); }
     .gm-draft .gm-pack-name { flex: none; width: 100%; line-height: 18px; font-size: 10px; }
@@ -1875,7 +1872,7 @@
   .mode-detail-desc-heading { font-size: 20px; font-weight: 800; color: #fff; }
   .mode-detail-desc-body {
     font-size: clamp(15px, 1.05vw, 18px); line-height: 1.9; color: #cdd3e0;
-    white-space: normal; word-break: normal; overflow-wrap: break-word; line-break: strict;
+    white-space: normal; word-break: keep-all; overflow-wrap: anywhere; line-break: strict;
   }
   .mode-detail-desc-body p { margin: 0 0 1em; }
   .mode-detail-desc-body p:last-child { margin-bottom: 0; }
@@ -2635,19 +2632,21 @@
   .gm-pack-card.pick-assist-not-recommended { border-color: #6a6a72; filter: grayscale(35%) brightness(0.82); }
   .pick-assist-badge {
     background: rgba(255, 216, 106, .95); color: #2a1c0a;
-    font-size: 14px; font-weight: 800; padding: 2px 6px; border-radius: 10px;
+    font-size: 16px; font-weight: 800; padding: 3px 7px; border-radius: 11px;
     white-space: nowrap; line-height: 1;
   }
   .pick-assist-badge-down { background: rgba(120, 120, 130, .95); color: #fff; }
   .pick-assist-badge-overlay { position: absolute; top: 4px; right: 4px; z-index: 2; pointer-events: none; }
+  /* おすすめ表示は右上から並べ、左端はカード左上のマナコスト（カード幅の約16%）より右で止める。
+     理由が多くて折り返しても、この左端より左には出ないのでコストの数字を隠さない。 */
   .pick-assist-recommend-overlay {
-    position: absolute; z-index: 3; top: 4px; left: 36px; right: 4px;
+    position: absolute; z-index: 3; top: 4px; left: max(36px, 19%); right: 4px;
     display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 3px;
     pointer-events: none;
   }
   .pick-assist-reason {
-    padding: 2px 5px; border: 1px solid rgba(255, 231, 151, .9); border-radius: 8px;
-    background: rgba(38, 29, 11, .94); color: #fff4c5; font-size: 9px; font-weight: 800;
+    padding: 3px 6px; border: 1px solid rgba(255, 231, 151, .9); border-radius: 9px;
+    background: rgba(38, 29, 11, .94); color: #fff4c5; font-size: 11px; font-weight: 800;
     line-height: 1; white-space: nowrap; box-shadow: 0 1px 4px rgba(0, 0, 0, .75);
   }
   .gm-pack-img { position: relative; width: 100%; aspect-ratio: 744 / 1039; background: #0a0c12 center / cover no-repeat; }
@@ -4984,8 +4983,14 @@
     position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%);
     font-size: 15px; font-weight: 900; white-space: nowrap; pointer-events: none;
     text-shadow: 0 0 6px rgba(0,0,0,.9), 0 1px 0 rgba(0,0,0,.9);
-    animation: statPopKf 0.9s ease-out forwards;
+    animation: statPopKf 1.4s ease-out forwards;
   }
+  .orb-disc.life { overflow:visible; }
+  .orb-disc.life .stat-pop { left:calc(100% + 8px); bottom:25%; transform:none; z-index:20; padding:4px 7px; border-radius:6px; background:#10121edb; border:1px solid currentColor; font-size:28px; line-height:1; animation:lifeDeltaPop 1.4s ease-out both; box-shadow:0 2px 9px #0009; }
+  .orb-disc.life .stat-pop.pop-lg {font-size:30px}
+  .orb-disc.life .stat-pop.pop-xl {font-size:34px}
+  @keyframes lifeDeltaPop {0%{opacity:0;translate:0 7px;scale:.8} 15%,70%{opacity:1;translate:0 -3px;scale:1} 100%{opacity:0;translate:0 -22px;scale:1}}
+  @media(prefers-reduced-motion:reduce){.orb-disc.life .stat-pop{animation:lifeDeltaFade 1.4s linear both} @keyframes lifeDeltaFade{0%,80%{opacity:1}100%{opacity:0}}}
   .stat-pop.plus { color: #7cf09a; }
   .stat-pop.minus { color: #ff7c7c; }
   .stat-pop.pop-lg { font-size: 20px; }
@@ -5434,7 +5439,7 @@
 <link rel="preload" as="image" href="top_mode_icons/cardlist.webp" fetchpriority="high">
 <link rel="preload" as="image" href="top_mode_icons/genesis4p.webp" fetchpriority="high">
 <link rel="preload" as="image" href="genesis_story/01-five-regions.webp">
-<link rel="preload" as="image" href="top_mode_icons/construct2p-duel-1b931109957b.webp" fetchpriority="high">
+<link rel="preload" as="image" href="top_mode_icons/construct2p-duel-66cbc68dc967.webp" fetchpriority="high">
 <link rel="preload" as="image" href="top_mode_icons/shield2p-oblong.webp" fetchpriority="high">
 <link rel="stylesheet" href="divine_effects.css">
 </head>
@@ -5561,7 +5566,7 @@
       </div>
       <div class="top-mode-column top-mode-column-center">
         <button class="top-mode-card construct" @click="openModeDetail('construct')">
-          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/construct2p-duel-1b931109957b.webp)' }"></span>
+          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/construct2p-duel-66cbc68dc967.webp)' }"></span>
           <span class="top-mode-label">理念構築戦</span>
         </button>
         <button class="top-mode-card shield" @click="openModeDetail('shield')">
@@ -5659,7 +5664,7 @@
       </div>
       <div class="mode-detail-right">
         <div class="mode-detail-desc-heading">詳しい説明</div>
-        <div class="mode-detail-desc-body"><p v-for="(paragraph, i) in modeDetailInfo.desc.split('\n').filter(Boolean)" :key="i">{{ paragraph }}</p></div>
+        <div class="mode-detail-desc-body"><p v-for="(phrases, i) in modeDetailParagraphs" :key="i"><template v-for="(phrase, j) in phrases"><span :key="'mdp' + j">{{ phrase }}</span><wbr :key="'mdw' + j"></template></p></div>
         <button class="mode-detail-start-btn" @click="modeDetailStart">{{ modeDetailInfo.startLabel }}</button>
       </div>
     </div>
@@ -6343,8 +6348,8 @@
         <!-- 表示モード切替：デッキの中身を見ながらでも多くのカードが一目で見えるよう、カードを小さく密に並べる表示に切り替える（従来の一覧表示・機能は変わらない） -->
         <button class="deck-sort-btn pool-dense-toggle-btn" @click="_sfxPlay('cancel'); togglePoolDenseView()"
                 :class="{ active: poolDenseView }"
-                :title="poolDenseView ? '通常のカード表示に戻す' : 'カードを小さく密に並べて多く表示する'">
-          {{ poolDenseView ? '▦ 通常表示' : '▦ 多く表示' }}
+                :title="poolDenseView ? 'カードを元の大きさに戻す' : 'カードを小さくして、一度に多くのカードを並べる'">
+          {{ poolDenseView ? '▦ カード表示を大きく' : '▦ カード表示を小さく' }}
         </button>
         <!-- カードプール ソート（右端） -->
         <div class="pool-sort-wrap">
@@ -6608,13 +6613,13 @@
     <div class="deck-list" :class="{ dense: deckDenseView }" v-if="!deckExpanded">
       <div class="deck-section-label">
         <button v-if="!deckDenseView" class="deck-info-collapse-btn" @click.stop="_sfxPlay('cancel'); deckInfoCollapsed = !deckInfoCollapsed">
-          {{ deckInfoCollapsed ? '▼ マナカーブ・属性内訳を表示' : '▲ マナカーブ・属性内訳を隠す' }}
+          {{ deckInfoCollapsed ? '▼ マナカーブなどを表示' : '▲ マナカーブなどを隠す' }}
         </button>
         <div class="deck-section-right">
           <button class="deck-sort-btn deck-dense-toggle-btn" @click.stop="_sfxPlay('cancel'); toggleDeckDenseView()"
                   :class="{ active: deckDenseView }"
-                  :title="deckDenseView ? '通常のカード表示に戻す' : 'カードを詰めて多く表示する'">
-            {{ deckDenseView ? '▦ 通常表示' : '▦ 多く表示' }}
+                  :title="deckDenseView ? 'デッキ一覧の行の間隔を元に戻す' : 'デッキ一覧の行を詰めて、一度に多くのカードを並べる'">
+            {{ deckDenseView ? '▦ 一覧を広げる' : '▦ 一覧を詰める' }}
           </button>
           <div class="deck-sort-wrap">
             <button class="deck-sort-btn" @click.stop="_sfxPlay('cancel'); deckSortOpen = !deckSortOpen"
@@ -7120,6 +7125,7 @@
       <div class="sb-hp-img"
            :style="{ backgroundImage: 'url(' + cardImageUrl(sbHoverCard) + ')' }">
       </div>
+      <div class="card-hover-zoom-note">ホイールで拡大・縮小</div>
     </div>
   </div><!-- /shield-overlay -->
 
@@ -7591,7 +7597,7 @@
               <div class="hud-orb">
                 <span class="orb-label">ライフ</span>
                 <div class="orb-disc life stat-pop-wrap" :class="{ 'life-warning': battleLifeWarning('opp') }">{{ battleStatNum('opp','life') }}<small>/ {{ battleView.opp.lifeMax }}</small>
-                  <span v-if="battleViewPops.oppLife" class="stat-pop" :class="battleViewPops.oppLife.cls">{{ battleViewPops.oppLife.text }}</span>
+                  <span v-if="battleViewPops.oppLife" :key="battleViewPops.oppLife.id" class="stat-pop" :class="battleViewPops.oppLife.cls">{{ battleViewPops.oppLife.text }}</span>
                 </div>
               </div>
             </div>
@@ -7794,7 +7800,7 @@
                 <span class="orb-label">ライフ</span>
                 <div class="life-row">
                   <div class="orb-disc life stat-pop-wrap" :class="{ 'life-warning': battleLifeWarning('self') }">{{ battleStatNum('self','life') }}<small>/ {{ battleView.self.lifeMax }}</small>
-                    <span v-if="battleViewPops.selfLife" class="stat-pop" :class="battleViewPops.selfLife.cls">{{ battleViewPops.selfLife.text }}</span>
+                    <span v-if="battleViewPops.selfLife" :key="battleViewPops.selfLife.id" class="stat-pop" :class="battleViewPops.selfLife.cls">{{ battleViewPops.selfLife.text }}</span>
                   </div>
                   <div class="orb-max-controls">
                     <button title="最大ライフを増やす（上限10）" @click="battleStat('self','lifeMax',1)">△</button>
@@ -8727,6 +8733,7 @@
          @click="battleSkillCloseupClickDismiss">
       <divine-skill1-sigil v-if="battleSkillCloseup.mode === 'skill1' && battleSkillCloseup.sigil && battleAnimationSpeed !== 'minimal'" :theme="battleSkillCloseup.sigil" :duration="_battleMotionMs(1800)"></divine-skill1-sigil>
       <divine-skill-art v-if="battleSkillCloseup.dedicatedArt && battleSkillCloseup.phase === 'portrait'" stage="cutin" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(1800)"></divine-skill-art>
+      <divine-skill-art v-if="battleSkillCloseup.phase === 'awakening'" stage="awakening" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(battleSkillCloseup.awakeningDuration)"></divine-skill-art>
       <div v-if="battleSkillCloseup.dedicatedArt && battleSkillCloseup.phase === 'portrait'" class="genesis-cutin-copy">
         <div class="genesis-cutin-name">{{ battleSkillCloseupNameParts.main }}</div>
         <div v-if="battleSkillCloseupNameParts.furigana" class="genesis-cutin-reading">{{ battleSkillCloseupNameParts.furigana }}</div>
@@ -8735,7 +8742,7 @@
       </div>
       <divine-skill-art v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'" :key="'effect-'+battleSkillCloseup._shownAt" :effect="battleSkillCloseup.effect" :layout="battleSkillCloseup.layout" :survivors="battleSkillCloseup.survivors" :targets="battleSkillCloseup.targets" :sword-landing="battleSkillCloseup.swordLanding" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-skill-art>
       <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'"><divine-scroll-transfer v-for="(transfer,i) in battleSkillCloseup.transfers" :key="'scroll-transfer'+i" :transfer="transfer" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-scroll-transfer></template>
-      <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'"><divine-target-impact v-for="(rect,i) in battleSkillCloseup.targets" :key="'impact'+i" :rect="rect" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-target-impact></template>
+      <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal' && battleSkillCloseup.effect.kamiNo !== '7'"><divine-target-impact v-for="(rect,i) in battleSkillCloseup.targets" :key="'impact'+i" :rect="rect" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-target-impact></template>
       <div v-if="battleSkillCloseup.phase === 'animation' && battleSkillCloseup.effect" class="divine-cinematic-title">{{ battleSkillCloseupNameParts.main }}</div>
       <div v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation' && battleSkillCloseup.effect" class="divine-effect-caption">{{ battleSkillCloseup.effect.label }}</div>
       <div v-if="!battleSkillCloseup.dedicatedArt && battleSkillCloseup.phase !== 'animation'" class="battle-skill-closeup-card" :class="{ 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }">
@@ -9300,7 +9307,7 @@
               </div>
             </div>
           </div>
-          <p class="guide-chibi-note draft-strip-note">ちびキャラにカーソルを合わせると<br>カミのカードを表示します。</p>
+          <p class="guide-chibi-note draft-strip-note">ちびキャラにカーソルを合わせると<br>カミのカードを表示します。<br>ホイールで拡大・縮小できます。</p>
           <div class="pick-policy-name">{{ gsMyKamiCard.name }}</div>
           <template v-if="gsMyPickGuide">
             <div class="pick-policy-world">理念「{{ gsMyPickGuide.world }}」</div>
@@ -9670,6 +9677,7 @@
       <div class="chp-label">進化元（重なり）</div>
       <div class="chp-img" :style="{ backgroundImage: 'url(' + cardImageUrl(hoverCard._evolvedBase) + ')' }"></div>
     </div>
+    <div class="card-hover-zoom-note">ホイールで拡大・縮小</div>
   </div>
 
   <!-- ===== カードプレビュー モーダル ===== -->
@@ -10372,7 +10380,7 @@ const MODE_DETAIL_INFO = {
   },
   construct: {
     title: '理念構築戦（2人対戦）',
-    image: 'top_mode_icons/construct2p-duel-1b931109957b.webp',
+    image: 'top_mode_icons/construct2p-duel-66cbc68dc967.webp',
     desc: '2人で、自由に構築したデッキを使って対戦するモードです。\n\nパックのドラフトは行わず、全カードプールから35枚を選んでデッキを作ります。\n\n自分で一から構築するほか、あらかじめ用意されたストラクチャーデッキを使って、すぐに対戦することもできます。',
     startLabel: '理念構築戦を開始する',
   },
@@ -11749,14 +11757,8 @@ new Vue({
       return Object.assign({}, bs, { self: bs.opp, opp: bs.self, activeSide: bs.activeSide === 'self' ? 'opp' : 'self' });
     },
     battleViewPops() {
-      const pops = this.battleStatPops || {};
-      if (!this.battleViewSwapped) return pops;
-      const out = {};
-      Object.keys(pops).forEach(key => {
-        const flipped = key.startsWith('self') ? 'opp' + key.slice(4) : key.startsWith('opp') ? 'self' + key.slice(3) : key;
-        out[flipped] = pops[key];
-      });
-      return out;
+      // 増減表示は固定された盤面の位置を基準にする。
+      return this.battleStatPops || {};
     },
     tutorialStep() {
       const lesson = this.tutorialLesson;
@@ -12221,6 +12223,11 @@ new Vue({
       return 'オラクル発動';
     },
     // TOP画面のモード詳細画面：現在選択中のモードの表示内容（MODE_DETAIL_INFO参照）
+    // モード説明の段落を文節ごとに区切る（文節の途中で改行しないよう、区切りにだけ<wbr>を入れる）
+    modeDetailParagraphs() {
+      const info = this.modeDetailInfo;
+      return info ? String(info.desc || '').split('\n').filter(Boolean).map(splitTutorialPhrases) : [];
+    },
     modeDetailInfo() {
       return MODE_DETAIL_INFO[this.modeDetailKey] || null;
     },
@@ -14549,8 +14556,13 @@ new Vue({
       await this._battleCpuThinkPause(900);
       opp.tenryoku = Math.max(0, (Number(opp.tenryoku) || 0) - cost);
       this.battleShowNotice(`${skillName}を発動`, `${this.battleContext.oppName}が${act.skill === 2 ? '創世神技' : '神技'}「${skillName}」を発動し、天力を${cost}消費しました。`, [kami]);
-      this._battleDivineContext = { kami, index: act.skill, targets: [], transfers: [], presented: false };
+      const divineContext = this._battleDivineContext = { kami, index: act.skill, targets: [], transfers: [], presented: false };
       try {
+      if (act.skill === 2 && String(kami.no) === '7') {
+        const idx = act.destroy ? this._tutorialOppIndex(bs.self.legacies, act.destroy) : -1;
+        const targets = idx >= 0 ? [bs.self.legacies[idx]] : [];
+        if (!await this._battlePresentFlameClaw(targets, 'opp')) return;
+      }
       if (act.destroy) {
         const idx = this._tutorialOppIndex(bs.self.legacies, act.destroy);
         if (idx >= 0) this.battleDestroyLegacy('self', idx, []);
@@ -14561,10 +14573,12 @@ new Vue({
         this.battleShowNotice('ライフ変化', `あなたのライフが${act.damage}減りました。`, []);
         this._battleCheckResult();
       }
-      if (act.skill === 2) await this._battleShowSkill2Closeup(kami, kami.skill2name, null, 'opp');
-      else { this._sfxPlay('skill'); await this._battleShowSkill1Closeup(kami, kami.skill1name); }
-      this._battleFinishDivinePresentation();
-      } finally { this._battleDivineContext = null; }
+      if (!this._battleDivineContext.presented) {
+        if (act.skill === 2) await this._battleShowSkill2Closeup(kami, kami.skill2name, null, 'opp');
+        else { this._sfxPlay('skill'); await this._battleShowSkill1Closeup(kami, kami.skill1name); }
+        this._battleFinishDivinePresentation();
+      }
+      } finally { if (divineContext === this._battleDivineContext) this._battleDivineContext = null; }
     },
     openBattleLaunch(source) {
       if (source === 'shield' && this.sb.phase !== 'complete') return;
@@ -17225,6 +17239,8 @@ new Vue({
        何も表示しない（あくまで装飾のため、通常の破壊/崩壊処理自体には一切影響しない）。
        必ずカードをDOMから取り除く（splice等）より前に呼び出すこと。 */
     _battleShowDestroySuck(side, zone, index, destZone) {
+      const divine = this._battleDivineContext;
+      if (divine && divine.presented && divine.index === 2 && String(divine.kami.no) === '7') return;
       const sourceRect = this._battleFieldCardRect(side, zone, index);
       if (this._battleDivineContext && sourceRect) {
         const { kami, index: skillIndex } = this._battleDivineContext;
@@ -17327,20 +17343,27 @@ new Vue({
     },
     /* ライフ/マナ/天力/封印のカウントアップ表示：テンプレートからは battleStatNum(side,key) で参照する */
     battleStatNum(side, key) {
-      side = this.battleViewSide(side); // 画面上の位置 → 内部のside（CPU手番代行中の入れ替えを打ち消す）
       const dispKey = side + key.charAt(0).toUpperCase() + key.slice(1);
       const disp = this.battleStatDisplay[dispKey];
-      if (disp === undefined) {
-        const p = this.battleSample && this.battleSample[side];
-        return (p ? p[key] : 0) || 0;
-      }
-      return disp;
+      if (disp !== undefined) return disp;
+      const board = this.battleView || this.battleSample;
+      return Number(board && board[side] && board[side][key]) || 0;
     },
-    _battleTweenStat(dispKey, to) {
+    _battleWatchStat(dispKey, next, previous) {
+      // 新しい対戦の初期値を回復・ダメージとして見せない。
+      if (!previous || next.board !== previous.board) {
+        this.$set(this.battleStatDisplay, dispKey, next.value);
+        return;
+      }
+      if (next.value !== previous.value) this._battleTweenStat(dispKey, next.value, previous.value);
+    },
+    _battleTweenStat(dispKey, to, previous) {
       if (to === null || to === undefined) { this.$set(this.battleStatDisplay, dispKey, to); return; }
       const cur = this.battleStatDisplay[dispKey];
+      // 実際の変更前の値を使い、カウント途中の値から誤った増減を算出しない。
+      if (Number.isFinite(previous) && to !== previous) this._battlePushStatPop(dispKey, to - previous);
       if (cur === undefined || cur === null || cur === to) { this.$set(this.battleStatDisplay, dispKey, to); return; }
-      this._battlePushStatPop(dispKey, to - cur);
+
       const from = cur;
       const start = performance.now();
       const duration = this._battleMotionMs(400);
@@ -17365,11 +17388,11 @@ new Vue({
       this.$set(this.battleStatPops, dispKey, { id, text: (delta > 0 ? '+' : '') + delta, cls: (delta > 0 ? 'plus' : 'minus') + sizeCls });
       setTimeout(() => {
         if (this.battleStatPops[dispKey] && this.battleStatPops[dispKey].id === id) this.$set(this.battleStatPops, dispKey, null);
-      }, 900);
+      }, 1400);
     },
     /* 新しい対戦開始時：カウントアップ用の表示値を実データに即時同期（アニメーションさせない） */
     _battleInitStatDisplay() {
-      const bs = this.battleSample;
+      const bs = this.battleView || this.battleSample;
       const vals = {};
       ['self', 'opp'].forEach(side => {
         const p = bs && bs[side];
@@ -17379,6 +17402,7 @@ new Vue({
         vals[side + 'Tenryoku'] = p.tenryoku;
         vals[side + 'Seal'] = p.seal;
       });
+      if (this._battleStatTweenSeq) Object.keys(this._battleStatTweenSeq).forEach(key => { this._battleStatTweenSeq[key]++; });
       this.battleStatDisplay = vals;
       this.battleStatPops = {};
     },
@@ -17483,6 +17507,46 @@ new Vue({
       }
       return cues;
     },
+    _battleKamiPortraitRect(side) {
+      const display = this.battleViewSide(side);
+      const el = this.$el && this.$el.querySelector(display === 'self' ? '.battle-row-self-bot .kami-portrait' : '.battle-row-opp-top .kami-portrait');
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return {left:r.left,top:r.top,width:r.width,height:r.height};
+    },
+    async _battlePresentFlameClaw(cards, writerSide = 'self') {
+      const context = this._battleDivineContext, board = this.battleSample;
+      // 選択画面を閉じた後、破壊前の盤面から実際の対象位置を取得する。
+      await this.$nextTick();
+      if (context !== this._battleDivineContext || board !== this.battleSample || this.appView !== 'battle') {
+        if (context) context.cancelled = true;
+        return false;
+      }
+      context.targets = [];
+      context.publicTargets = [];
+      for (const card of cards) {
+        const loc = this._dslFindCardLocation(card);
+        if (!loc || !['legacies','relics'].includes(loc.zone)) continue;
+        const index = (board[loc.side][loc.zone] || []).indexOf(card);
+        if (index < 0) continue;
+        const r = this._battleFieldCardRect(loc.side, loc.zone, index);
+        if (r) context.targets.push({left:r.left,top:r.top,width:r.width,height:r.height,kind:'card',image:this.cardImageUrl(card)});
+        context.publicTargets.push({side:loc.side,zone:loc.zone,index,cardNo:String(card.no)});
+      }
+      const enemySide = writerSide === 'self' ? 'opp' : 'self';
+      const r = this._battleKamiPortraitRect(enemySide);
+      if (r) context.targets.push(Object.assign({},r,{kind:'kami'}));
+      if (board[enemySide].kami) context.publicTargets.push({side:enemySide,zone:'kami',index:0,cardNo:String(board[enemySide].kami.no)});
+      const name = context.skillName || context.kami.skill2name;
+      this._battlePublishSkill2(context.kami.no, name, 2);
+      await this._battleShowSkill2Closeup(context.kami, name, null, writerSide);
+      if (board !== this.battleSample || this.appView !== 'battle' || context !== this._battleDivineContext) {
+        context.cancelled = true;
+        return false;
+      }
+      this._battleFinishDivinePresentation();
+      return true;
+    },
     async _battleShowSkill2Closeup(kami, skillName, remoteTransfers = null, writerSide = 'self', remoteTargets = null) {
       // 創世神技専用の姿と神器を描いたカットインを使う。通常の神技とは別の素材。
       const effect = divineSkillTheme(kami, 2);
@@ -17492,6 +17556,7 @@ new Vue({
         writerSide,
         phase: 'portrait',
         animationDuration: String(kami && kami.no) === '10' ? 4200 : 2400,
+        awakeningDuration: 3000,
         layout: typeof this._battleDivineStageLayout === 'function' ? this._battleDivineStageLayout(writerSide) : null,
         swordLanding: String(kami && kami.no) === '1' && typeof this._battleSusanooMarkRect === 'function' ? this._battleSusanooMarkRect(writerSide) : null,
         targets: ['4','6','7','8'].includes(String(kami && kami.no)) && this._battleDivineContext ? (this._battleDivineContext.targets || []).slice(0,7).map(r => Object.assign({},r)) : [],
@@ -17510,11 +17575,15 @@ new Vue({
       this._sfxPlay('skill2');
       const voice = this.playKamiVoice(kami, 'skill2');
       const presentation = this.battleSkillCloseup;
-      for (const phase of [{ name: 'portrait', duration: 1800 }, { name: 'animation', duration: presentation.animationDuration }]) {
+      // スサノオだけ、台詞の終了後に顔へ寄って開眼してから盤面の演出へ進む。
+      const phases = [{ name: 'portrait', duration: 1800 }];
+      if (effect.awakening && this.battleAnimationSpeed !== 'minimal') phases.push({name:'awakening',duration:presentation.awakeningDuration});
+      phases.push({ name: 'animation', duration: presentation.animationDuration });
+      for (const phase of phases) {
         if (this.battleSkillCloseup !== presentation) break;
         if (phase.name === 'animation' && String(kami && kami.no) === '1' && typeof this._battleSusanooMarkRect === 'function') presentation.swordLanding = this._battleSusanooMarkRect(writerSide);
         if (phase.name === 'animation' && remoteTransfers) presentation.transfers = this._battleRemoteDivineTransfers(remoteTransfers, writerSide);
-        if (phase.name === 'animation' && remoteTargets && String(kami && kami.no) === '4') presentation.targets = this._battleRemoteDivineTargets(remoteTargets, writerSide);
+        if (phase.name === 'animation' && remoteTargets && ['4','7'].includes(String(kami && kami.no))) presentation.targets = this._battleRemoteDivineTargets(remoteTargets, writerSide);
         if (phase.name === 'animation' && String(kami && kami.no) === '2' && typeof this._battleDivineSurvivorCues === 'function') {
           presentation.survivors = this._battleRemoteDivineTargets(remoteTargets || this._battleDivineSurvivorCues(),remoteTargets ? writerSide : 'self');
           presentation.layout = this._battleDivineStageLayout(writerSide);
@@ -17525,6 +17594,10 @@ new Vue({
         const roarTimer = phase.name === 'animation' && String(kami && kami.no) === '10' ? setTimeout(() => {
           if (this.battleSkillCloseup === presentation && presentation.phase === 'animation') this._sfxPlay('dragonHeavy');
         }, this._battleMotionMs(phase.duration) * .4) : null;
+        // 爪が着弾する絵に合わせて、一度だけ衝撃音を鳴らす。
+        const impactTimer = phase.name === 'animation' && effect.kamiNo === '7' && this.battleAnimationSpeed !== 'minimal' ? setTimeout(() => {
+          if (this.battleSkillCloseup === presentation && presentation.phase === 'animation') this._sfxPlay('hit');
+        }, this._battleMotionMs(phase.duration) * .2) : null;
         await new Promise(resolve => {
           let hold = null;
           const finish = () => { if (hold) hold.cancel(); resolve(); };
@@ -17535,6 +17608,7 @@ new Vue({
           } else this._battleSkillCloseupT = setTimeout(finish, this._battleMotionMs(phase.duration));
         });
         if (roarTimer !== null) clearTimeout(roarTimer);
+        if (impactTimer !== null) clearTimeout(impactTimer);
       }
       if (this.battleSkillCloseup === presentation) {
         this._battleSkillCloseupResolve = null;
@@ -17570,11 +17644,12 @@ new Vue({
       this._battleSkillCloseupResolve = null;
       this.battleSkillCloseup = null;
     },
-    // 神技カットイン：出現から0.5秒経っていればどこをクリックしても早めに閉じる
+    // 台詞は早送りできる。炎の爪は燃焼が終わるまで対象を盤面に残す。
     battleSkillCloseupClickDismiss() {
       const c = this.battleSkillCloseup;
       if (!c || !c._shownAt || !this._battleSkillCloseupResolve) return;
       if (Date.now() - c._shownAt < 500) return;
+      if (c.phase === 'animation' && c.effect && c.effect.kamiNo === '7' && this.battleAnimationSpeed !== 'minimal') return;
       clearTimeout(this._battleSkillCloseupT);
       const resolve = this._battleSkillCloseupResolve;
       this._battleSkillCloseupResolve = null;
@@ -17704,12 +17779,22 @@ new Vue({
     _battleRemoteDivineTargets(cues, writerSide) {
       const out=[];
       for (const cue of (Array.isArray(cues)?cues:[]).slice(0,7)) {
-        if (!cue || !['self','opp'].includes(cue.side) || !['legacies','relics'].includes(cue.zone) || !Number.isInteger(cue.index) || cue.index < 0 || cue.index > 31) continue;
+        if (!cue || !['self','opp'].includes(cue.side) || !['legacies','relics','kami'].includes(cue.zone) || !Number.isInteger(cue.index) || cue.index < 0 || cue.index > 31) continue;
         const side=cue.side==='self'?writerSide:(writerSide==='self'?'opp':'self');
+        if (cue.zone === 'kami') {
+          const kami = this.battleSample[side] && this.battleSample[side].kami;
+          if (cue.index !== 0 || !kami || String(kami.no) !== String(cue.cardNo)) continue;
+          const rect = this._battleKamiPortraitRect(side);
+          if (rect) out.push(Object.assign({},rect,{kind:'kami'}));
+          continue;
+        }
         const card=(this.battleSample[side][cue.zone] || [])[cue.index];
         if (!card || String(card.no)!==String(cue.cardNo)) continue;
         const rect=this._battleFieldCardRect(side,cue.zone,cue.index);
-        if (rect) out.push(rect);
+        if (rect) {
+          const flame = this.battleSkillCloseup && this.battleSkillCloseup.effect && this.battleSkillCloseup.effect.kamiNo === '7';
+          out.push(flame ? {left:rect.left,top:rect.top,width:rect.width,height:rect.height,kind:'card',image:this.cardImageUrl(card)} : rect);
+        }
       }
       return out;
     },
@@ -17722,7 +17807,7 @@ new Vue({
           writer: n.mySeat, kamiNo: kamiNo != null ? String(kamiNo) : null,
           skillName: String(skillName || ''), index: Number(index) === 1 ? 1 : 2, ts: Date.now(),
           transfers: String(kamiNo) === '5' && this._battleDivineContext ? (this._battleDivineContext.transfers || []).map(t => ({cardNo:String(t.card.no),fromIndex:t.fromIndex,toIndex:t.toIndex})) : [],
-          targets: String(kamiNo) === '2' ? this._battleDivineSurvivorCues() : String(kamiNo) === '4' && this._battleDivineContext ? (this._battleDivineContext.publicTargets || []).slice(0,7).map(t=>({side:t.side,zone:t.zone,index:t.index,cardNo:t.cardNo})) : [],
+          targets: String(kamiNo) === '2' ? this._battleDivineSurvivorCues() : ['4','7'].includes(String(kamiNo)) && this._battleDivineContext ? (this._battleDivineContext.publicTargets || []).slice(0,7).map(t=>({side:t.side,zone:t.zone,index:t.index,cardNo:t.cardNo})) : [],
         }).catch(() => {});
       } catch (e) { /* silent */ }
     },
@@ -19804,10 +19889,12 @@ new Vue({
       return ran;
     },
     async dslRunActions(actions, sourceCard) {
+      const divineContext = this._battleDivineContext;
       const prevLastAction = this._dslLastAction;
       const prevSucceeded = this._dslLastActionSucceeded;
       try {
         for (const act of actions) {
+          if (divineContext && (divineContext.cancelled || divineContext !== this._battleDivineContext)) break;
           const resolved = this.dslApplySublimAlternative(act);
           // 「ドローした場合の後続」「ドローした場合の後続コスト」「そうした場合」備考：
           // 直前の op が成功した時のみ実行（失敗時はスキップ）
@@ -21084,25 +21171,7 @@ new Vue({
       // 正しく突き合わせられるようにするため（_dslTrueActiveSide参照）。
       this._dslSwapped = !this._dslSwapped;
       this.battleViewSwapped = !!this._dslSwapped;
-      // self/oppはオブジェクト参照ごと入れ替わるため、ライフ/マナ/天力/封印のカウントアップ表示
-      // watcher（battleSample.self.life等）も「値が変わった」と誤検知し、実際には起きていない
-      // 変化をアニメーションしてしまう（例：CPU戦の入れ替え中に自分のライフ表示が一瞬相手の値になる）。
-      // 入れ替え直後に表示を実データへ即座に同期し、アニメーションさせないようにする。
-      this._battleSyncStatDisplayForSwap();
-    },
-    // self/opp入れ替え直後：カウントアップ表示をアニメーションなしで実データへ即時同期する
-    _battleSyncStatDisplayForSwap() {
-      const bs = this.battleSample;
-      ['self', 'opp'].forEach(side => {
-        const p = bs[side];
-        if (!p) return;
-        ['life', 'mana', 'tenryoku', 'seal'].forEach(key => {
-          const dispKey = side + key.charAt(0).toUpperCase() + key.slice(1);
-          this.$set(this.battleStatDisplay, dispKey, p[key]);
-        });
-      });
-      // 表示中の増減ポップ（+n/-n）もswapによる見かけ上の変化のため消しておく
-      this.battleStatPops = {};
+      // 表示位置の値を監視するので、CPU手番の入れ替えで増減表示は消さない。
     },
     /* 入れ替え（_dslSwapSelfOpp）の影響を受けない「本当の」side。見かけ上のself/oppラベル
        （rawSide）を、入れ替え回数の偶奇から本当の側へ逆算して返す。
@@ -21204,6 +21273,10 @@ new Vue({
           : destroyPrompt;
       }
       const targets = await this.dslChooseTargets(destroySel, destroyPrompt, { preferOpponent: true });
+      const divine = this._battleDivineContext;
+      if (divine && divine.index === 2 && String(divine.kami.no) === '7' && !divine.presented) {
+        if (!await this._battlePresentFlameClaw(targets)) return;
+      }
       if (!targets.length) return;
       this.battleSaveUndo();
       this._dslLastDestroyedCards = targets.map(card => ({
@@ -25948,10 +26021,11 @@ new Vue({
         );
         return;
       }
-      this._battleDivineContext = { kami, index, skillName: skill.name, targets: [], transfers: [], presented: false };
+      const divineContext = this._battleDivineContext = { kami, index, skillName: skill.name, targets: [], transfers: [], presented: false };
       try {
         await this.dslRunActions(target.処理 || [], kami);
-        // ヤマトタケル創世神技は対象決定後・破壊前に演出済み。他の神技は効果解決後に再生。
+        if (divineContext.cancelled || divineContext !== this._battleDivineContext) return;
+        // ヤマトタケル・ヒノカグツチは対象決定後、破壊前に演出を終えている。
         if (!this._battleDivineContext.presented) {
           this._battlePublishSkill2(kami.no, skill.name, index);
           if (index === 2) await this._battleShowSkill2Closeup(kami, skill.name);
@@ -25966,7 +26040,7 @@ new Vue({
           [kami]
         );
       } finally {
-        this._battleDivineContext = null;
+        if (divineContext === this._battleDivineContext) this._battleDivineContext = null;
       }
     },
     async _battleHandleSealThreshold(side, previous, current) {
@@ -28715,27 +28789,17 @@ new Vue({
       if (this.appView !== 'battle' && this.isSpoilerHidden(card) && !(allowKamiSpoiler && card.isKami)) return;
       if (!this.cardImageUrl(card)) return;
       this.hoverCard = card;
-      this.hoverZoom = 1;
       const el = event.currentTarget.closest('.card') || event.currentTarget;
       const rect = el.getBoundingClientRect();
       this._hoverSourceRect = rect;
       const evolved = !!(card && card._evolvedBase && this.cardImageUrl(card._evolvedBase));
-      const pw = Math.min(evolved ? 484 : 360, Math.max(120, window.innerWidth - 20), (window.innerHeight - 44) * 744 / 1039 * (evolved ? 2 : 1)); // 小画面でも画面内に収める。
-      const ph = evolved ? Math.round(240 * 1039 / 744) + 22 : Math.round(pw * 1039 / 744); // カード縦横比
-      const margin = 10;
-      // 右に出す → 右端が画面外なら左に
-      let left = rect.right + margin;
-      if (left + pw > window.innerWidth - margin) left = rect.left - pw - margin;
-      left = Math.max(margin, Math.min(window.innerWidth - pw - margin, left));
-      // 縦はカードの中央に合わせる → はみ出したらクランプ
-      let top = rect.top + (rect.height - ph) / 2;
-      top = Math.max(margin, Math.min(window.innerHeight - ph - margin, top));
-      this.hoverWidth = pw;
-      this.hoverLeft = left;
-      this.hoverTop = top;
+      const layout = this.cardHoverGeometry(rect, evolved ? 484 : 360, this.hoverZoom || 1, evolved);
+      this.hoverWidth = layout.width;
+      this.hoverLeft = layout.left;
+      this.hoverTop = layout.top;
     },
     cardHoverGeometry(rect, baseWidth, zoom, evolved) {
-      const margin = 10, extra = evolved ? 28 : 4, ratio = 1039 / 744 / (evolved ? 2 : 1);
+      const margin = 10, extra = evolved ? 48 : 22, ratio = 1039 / 744 / (evolved ? 2 : 1);
       const maxWidth = Math.min(window.innerWidth - 2 * margin, (window.innerHeight - 2 * margin - extra) / ratio);
       const width = Math.max(40, Math.min(baseWidth * zoom, maxWidth)), height = width * ratio + extra;
       let left = rect.right + margin;
@@ -28758,14 +28822,14 @@ new Vue({
       const current = this[key + 'Width'] / base;
       const zoom = Math.max(.5, Math.min(2, current * (event.deltaY < 0 ? 1.12 : 1 / 1.12)));
       const layout = this.cardHoverGeometry(rect, base, zoom, evolved);
-      this[key + 'Zoom'] = layout.zoom;
+      // 通常・星紡ぎ戦のどちらで調整しても、次に指すカードへ倍率を引き継ぐ。
+      this.hoverZoom = this.sbHoverZoom = layout.zoom;
       this[key + 'Width'] = layout.width;
       this[key + 'Left'] = layout.left;
       this[key + 'Top'] = layout.top;
     },
     hideCardHover() {
       this.hoverCard = null;
-      this.hoverZoom = 1;
       this._hoverSourceRect = null;
     },
     /* 遊び方ガイド内の静的テキストに含まれるカード名を自動検出し、カーソルを当てると
@@ -29429,24 +29493,15 @@ new Vue({
     showSbHover(card, event) {
       if (!this.cardImageUrl(card)) return;
       this.sbHoverCard = card;
-      this.sbHoverZoom = 1;
-      const rect   = event.currentTarget.getBoundingClientRect();
+      const rect = event.currentTarget.getBoundingClientRect();
       this._sbHoverSourceRect = rect;
-      const pw     = Math.min(440, window.innerWidth - 20, (window.innerHeight - 44) * 744 / 1039);
-      this.sbHoverWidth = pw;
-      const ph     = Math.round(pw * 1039 / 744);
-      const margin = 10;
-      let left = rect.right + margin;
-      if (left + pw > window.innerWidth - margin) left = rect.left - pw - margin;
-      left = Math.max(margin, Math.min(window.innerWidth - pw - margin, left));
-      let top = rect.top + (rect.height - ph) / 2;
-      top = Math.max(margin, Math.min(window.innerHeight - ph - margin, top));
-      this.sbHoverLeft = left;
-      this.sbHoverTop  = top;
+      const layout = this.cardHoverGeometry(rect, 440, this.sbHoverZoom || 1, false);
+      this.sbHoverWidth = layout.width;
+      this.sbHoverLeft = layout.left;
+      this.sbHoverTop = layout.top;
     },
     hideSbHover() {
       this.sbHoverCard = null;
-      this.sbHoverZoom = 1;
       this._sbHoverSourceRect = null;
     },
     /* パックピック中：取得済みカードをデッキ詳細ビューで確認（可逆）
@@ -30232,7 +30287,8 @@ new Vue({
     ['self', 'opp'].forEach(side => {
       ['life', 'mana', 'tenryoku', 'seal'].forEach(key => {
         const dispKey = side + key.charAt(0).toUpperCase() + key.slice(1);
-        this.$watch(`battleSample.${side}.${key}`, (val) => this._battleTweenStat(dispKey, val));
+        this.$watch(() => ({board:this.battleSample,value:this.battleView && this.battleView[side] && this.battleView[side][key]}),
+          (next, previous) => this._battleWatchStat(dispKey, next, previous));
       });
     });
     // BGM：TOP画像の初期表示を優先し、初回の曲読み込みだけ少し後ろへ回す。

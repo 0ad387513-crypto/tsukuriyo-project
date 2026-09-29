@@ -6,27 +6,46 @@ const DIVINE_SKILL_THEMES = Object.freeze({
   '3': { motif: 'grove', color: '#7ce598', accent: '#ffe4a0', skills: ['獣霊の足音が響く', '大地から眷属が集う'] },
   '4': { motif: 'thunder', color: '#ffd83d', accent: '#fff5a8', skills: ['雷をその身に纏う', '布都御魂が轟く'] },
   '5': { motif: 'script', color: '#bba0ff', accent: '#79f5f2', skills: ['言霊が力をほどく', '八意の糸が運命を繋ぎ替える'] },
-  '6': { motif: 'butterfly', color: '#ff9ddd', accent: '#ffe4ba', skills: ['舞に心が引き寄せられる', '胡蝶の舞が時を縛る'] },
+  '6': { motif: 'camellia', color: '#e9a7b6', accent: '#fff0d8', skills: ['舞に心が引き寄せられる', '羽衣と椿の舞が時を縛る'] },
   '7': { motif: 'flame', color: '#ff773b', accent: '#fff0a0', skills: ['灰の中に記憶が灯る', '紅蓮の焔が焼き尽くす'] },
   '8': { motif: 'sun', color: '#ffd97b', accent: '#fffbea', skills: ['光が命を護る', '鏡の光が命を呼び戻す'] },
   '9': { motif: 'moon', color: '#86d3ff', accent: '#e5d6ff', skills: ['月影へと還る', '凍てつく月が時を止める'] },
   '10': { motif: 'dragon', color: '#e66379', accent: '#ffbf69', skills: ['龍血が封印から溢れる', '八つの影が天を喰らう'] },
 });
 const DIVINE_SKILL_CUTINS = Object.freeze({
-  "1": "kami_cutin/susanoo-genesis-wide-958aece72ece.webp",
-  "2": "kami_cutin/yamato-takeru-genesis-wide-bb49259ad3bc.webp",
-  "3": "kami_cutin/okuninushi-genesis-wide-a19316572c04.webp",
-  "4": "kami_cutin/takemikazuchi-genesis-wide-3436ae07d4d9.webp",
-  "5": "kami_cutin/omoikane-genesis-wide-e8a6cd5e2d7e.webp",
-  "6": "kami_cutin/amenouzume-genesis-wide-18ba55cfff28.webp",
-  "7": "kami_cutin/hinokagutsuchi-genesis-wide-1a704cff9031.webp",
-  "8": "kami_cutin/amaterasu-genesis-wide-5b320135c53a.webp",
-  "9": "kami_cutin/tsukuyomi-genesis-wide-e360ffb4ad00.webp",
-  "10": "kami_cutin/yamata-no-orochi-genesis-wide-4490bab69da3.webp"
+  "1": "kami_cutin/susanoo-genesis-wide-413828a8d7da.webp",
+  "2": "kami_cutin/yamato-takeru-genesis-wide-8f1979db2bd7.webp",
+  "3": "kami_cutin/okuninushi-genesis-wide-a2a38433041e.webp",
+  "4": "kami_cutin/takemikazuchi-genesis-wide-53185a601ecf.webp",
+  "5": "kami_cutin/omoikane-genesis-wide-c953890ebdb4.webp",
+  "6": "kami_cutin/amenouzume-genesis-wide-de6bb559c748.webp",
+  "7": "kami_cutin/hinokagutsuchi-genesis-wide-0c3fb305b3f1.webp",
+  "8": "kami_cutin/amaterasu-genesis-wide-29f2370afeca.webp",
+  "9": "kami_cutin/tsukuyomi-genesis-wide-53109ffdfb57.webp",
+  "10": "kami_cutin/yamata-no-orochi-genesis-wide-6ae704e3f3dd.webp"
 });
+const DIVINE_SKILL_AWAKENINGS = Object.freeze({
+  '1': 'kami_cutin/susanoo-genesis-eyes-open-c63103e1dda9.webp',
+});
+const DIVINE_SKILL_AWAKENING_FRAMES = Object.freeze({
+  '1': Object.freeze(['kami_cutin/susanoo-genesis-eyes-narrow-0743a8e06ef7.webp','kami_cutin/susanoo-genesis-eyes-half-9691085fdf3f.webp']),
+});
+const DIVINE_CAMELLIA_ATLAS = 'divine_assets/camellia-atlas-e11e33d1fe46.webp';
+const DIVINE_UZUME_FAN = 'divine_assets/amenouzume-golden-fan-2cc76299100e.webp';
+const DIVINE_UZUME_SILK = 'divine_assets/amenouzume-hagoromo-2ef2602b4401.webp';
+const DIVINE_HINO_CLAW_ATLAS = 'divine_assets/hinokagutsuchi-claw-burn-frames-e97bb6811123.webp';
+const DIVINE_YATA_MIRROR = 'divine_assets/yata-golden-mirror-back-2d2896c377be.webp';
+// 赤と白の椿と花びらを交互に切り出す。花は周辺へ置き、中央を塞がない。
+function divineCamelliaStyle(i, blossom = false) {
+  const anchors = [[5,22],[88,16],[14,70],[85,68],[42,85],[91,43]];
+  const position = blossom ? anchors[(i-1)%anchors.length] : [(i*37)%100,(i*23)%100];
+  return {backgroundImage:`url('${DIVINE_CAMELLIA_ATLAS}')`,backgroundPosition:`${((i-1)%2)*50}% ${blossom?0:100}%`,
+    '--i':i,'--camellia-x':position[0]+'%','--camellia-y':position[1]+'%',
+    '--camellia-size':(blossom?40+(i%3)*12:14+(i%5)*4)+'px','--camellia-turn':((i%2?1:-1)*(35+i*7))+'deg'};
+}
 function divineSkillTheme(kami, index) {
   const theme = DIVINE_SKILL_THEMES[String(kami && kami.no)] || DIVINE_SKILL_THEMES['8'];
-  return { kamiNo: String(kami && kami.no), cutin: index === 2 ? DIVINE_SKILL_CUTINS[String(kami && kami.no)] : null, motif: theme.motif, color: index === 2 && String(kami && kami.no) === '1' ? '#dd354b' : theme.color, accent: theme.accent, label: theme.skills[index === 2 ? 1 : 0], index };
+  return { kamiNo: String(kami && kami.no), cutin: index === 2 ? DIVINE_SKILL_CUTINS[String(kami && kami.no)] : null, awakening: index === 2 ? DIVINE_SKILL_AWAKENINGS[String(kami && kami.no)] || null : null, awakeningFrames: index === 2 ? DIVINE_SKILL_AWAKENING_FRAMES[String(kami && kami.no)] || [] : [], motif: theme.motif, color: index === 2 && String(kami && kami.no) === '1' ? '#dd354b' : theme.color, accent: theme.accent, label: theme.skills[index === 2 ? 1 : 0], index };
 }
 
 // Atlas cells are native painted sprites; movements and lighting stay code-driven.
@@ -36,6 +55,9 @@ const DIVINE_SPRITES = Object.freeze({
   mirror: [0, 2], magatama: [1, 2], dragons: [2, 2], ofuda: [3, 2],
 });
 function divineSpriteStyle(name) {
+  if (name === 'mirror') return { backgroundImage: `url('${DIVINE_YATA_MIRROR}')`, backgroundPosition: 'center', backgroundSize: 'contain' };
+  if (name === 'fan') return { backgroundImage: `url('${DIVINE_UZUME_FAN}')`, backgroundPosition: 'center', backgroundSize: 'contain' };
+  if (name === 'silk') return { backgroundImage: `url('${DIVINE_UZUME_SILK}')`, backgroundPosition: 'center', backgroundSize: 'contain' };
   if (name === 'futsunomitama') return { backgroundImage: "url('divine_assets/futsunomitama-seven-453501cd77c5.webp')", backgroundPosition: 'center', backgroundSize: 'contain' };
   if (name === 'kusanagi' || name === 'spiritSword') return {
     backgroundImage: name === 'kusanagi' ? "url('divine_assets/totsuka-sword-d380260b8deb.webp')" : "url('divine_assets/spirit-sword-08a642135453.webp')",
@@ -54,13 +76,13 @@ function divineSkillAssetUrls(kami) {
     '3': [atlas, 'divine_assets/beast-light-forms-5bdddec3647d.webp'],
     '4': ['divine_assets/futsunomitama-seven-453501cd77c5.webp'],
     '5': ['divine_assets/mystic-purple-scroll-bd45e7325132.webp'],
-    '6': [atlas],
-    '7': ['divine_assets/inferno-wave-959a2a61584f.webp', 'divine_assets/flame-slash-frames-f34adc73079d.webp'],
-    '8': [atlas],
+    '6': [DIVINE_UZUME_SILK, DIVINE_CAMELLIA_ATLAS, DIVINE_UZUME_FAN],
+    '7': [DIVINE_HINO_CLAW_ATLAS],
+    '8': [DIVINE_YATA_MIRROR],
     '9': ['divine_assets/lunar-relics-ac681e76d45f.webp'],
     '10': ['divine_assets/orochi-awakening-frames-f2d43817643d.webp', 'divine_assets/orochi-seal-paper-8e9e3864d744.webp', 'divine_assets/orochi-torn-seal-29d8da98451b.webp'],
   };
-  return [...new Set([...(assets[String(kami && kami.no)] || []), DIVINE_SKILL_CUTINS[String(kami && kami.no)]].filter(Boolean))];
+  return [...new Set([...(assets[String(kami && kami.no)] || []), DIVINE_SKILL_CUTINS[String(kami && kami.no)], DIVINE_SKILL_AWAKENINGS[String(kami && kami.no)], ...(DIVINE_SKILL_AWAKENING_FRAMES[String(kami && kami.no)] || [])].filter(Boolean))];
 }
 function divineTransferStyle(transfer, duration) {
   const from = transfer.from, to = transfer.to;
@@ -158,6 +180,45 @@ function divineSusanooSwordStyle(rect, viewport = typeof window !== 'undefined' 
     '--arrival-x':`calc(50vw - ${x}px)`,'--arrival-y':`calc(50vh - ${y}px)`,
     '--arrival-scale':Math.min(viewport.innerHeight*.68/rect.height,viewport.innerWidth*.64/rect.width)};
 }
+
+// 選んだカードとカミの実座標を結ぶ一閃。固定の中央演出にしない。
+function divineFlameClawLayout(targets = []) {
+  const rects = targets.filter(r => r && ['left','top','width','height'].every(k => Number.isFinite(r[k])) && r.width > 0 && r.height > 0);
+  if (!rects.length) return {sweep:null,zones:[]};
+  const kami = rects.find(r => r.kind === 'kami') || rects[rects.length-1];
+  const card = rects.find(r => r.kind !== 'kami') || kami;
+  const a = {x:kami.left+kami.width/2,y:kami.top+kami.height/2};
+  const b = {x:card.left+card.width/2,y:card.top+card.height/2};
+  const dx=b.x-a.x,dy=b.y-a.y,distance=Math.hypot(dx,dy);
+  const thickness=Math.max(220,Math.max(...rects.map(r=>r.width))*2.6);
+  const length=Math.max(thickness*1.3,distance+thickness*1.5);
+  const sweep={left:(a.x+b.x)/2+'px',top:(a.y+b.y)/2+'px',width:length+'px',height:thickness+'px',
+    '--claw-angle':(distance>2?(Math.atan2(dy,dx)-Math.atan2(thickness,length))*180/Math.PI:0)+'deg',backgroundImage:"url('"+DIVINE_HINO_CLAW_ATLAS+"')"};
+  const zones=rects.map(rect=>{
+    const size=Math.max(rect.width*3.6,rect.height*2.6,300);
+    return {rect,style:{left:rect.left+rect.width/2-size/2+'px',top:rect.top+rect.height*.6-size*.58+'px',width:size+'px',height:size+'px',
+      backgroundImage:"url('"+DIVINE_HINO_CLAW_ATLAS+"')"}};
+  });
+  // 五本の光跡がカミと選択カードを通り、画面の外へ抜ける。
+  const ux=distance>2?dx/distance:0,uy=distance>2?dy/distance:1,nx=-uy,ny=ux;
+  const spread=Math.max(15,Math.max(...rects.map(r=>r.width))*.22),reach=Math.max(190,thickness);
+  const paths=Array.from({length:5},(_,i)=>{
+    const offset=(i-2)*spread,ax=a.x+nx*offset,ay=a.y+ny*offset,bx=b.x+nx*offset,by=b.y+ny*offset;
+    return 'M '+(ax-ux*reach+nx*reach*.8)+' '+(ay-uy*reach+ny*reach*.8)+
+      ' Q '+(ax-ux*reach*.25)+' '+(ay-uy*reach*.25)+' '+ax+' '+ay+
+      ' L '+bx+' '+by+' Q '+(bx+ux*reach*.35)+' '+(by+uy*reach*.35)+' '+(bx+ux*reach)+' '+(by+uy*reach);
+  });
+  zones.forEach(zone=>{
+    zone.sparks=Array.from({length:12},(_,i)=>{
+      const angle=(i+.35)*Math.PI*2/12,radius=(.4+(i%3)*.12)*parseFloat(zone.style.width);
+      return {'--spark-x':Math.cos(angle)*radius+'px','--spark-y':Math.sin(angle)*radius-35+'px','--spark-angle':angle*180/Math.PI+'deg','--spark-lag':(i%4)*.018};
+    });
+  });
+  const impactSize=Math.max(400,thickness*2.1);
+  const impact={left:(a.x+b.x)/2+'px',top:(a.y+b.y)/2+'px',width:impactSize+'px',height:impactSize+'px'};
+  return {sweep,zones,paths,impact};
+}
+
 if (typeof Vue !== 'undefined') {
   Vue.component('divine-skill1-sigil', {
     props:{theme:Object,duration:{type:Number,default:1800}},
@@ -179,23 +240,39 @@ if (typeof Vue !== 'undefined') {
     template: '<div class="divine-sprite" :class="\'sprite-\'+name" :style="spriteStyle" aria-hidden="true"></div>',
   });
   Vue.component('divine-skill-art', {
-    methods: { artError(event) { if (!event.target.dataset.fallback) { event.target.dataset.fallback = '1'; event.target.src = 'kami_cutin/' + this.effect.kamiNo + '.webp'; } } },
+    data() { return {awakeningFailed:false}; },
+    methods: { artError(event) { if (!event.target.dataset.fallback) { event.target.dataset.fallback = '1'; event.target.src = 'kami_cutin/' + this.effect.kamiNo + '.webp'; } }, awakeningError() { this.awakeningFailed = true; }, camelliaStyle(i, blossom) { return divineCamelliaStyle(i, blossom); } },
     props: { effect: Object, layout:Object, targets:Array, survivors:Array, swordLanding:Object, stage: { type: String, default: 'closeup' }, duration: { type: Number, default: 3000 } },
-    computed: { volley(){return divineBladeVolley(this.layout,this.survivors || [])}, beastManifestations(){return divineBeastManifestations()},orochiSeals(){return divineOrochiSeals()},thunderBranches(){return divineThunderBranches()},fieldScrolls(){return divineFieldScrolls(this.layout)},thunderSwordStyle(){return divineThunderSwordStyle(this.targets && this.targets[0])},susanooSwordStyle(){return divineSusanooSwordStyle(this.swordLanding)} },
+    computed: { volley(){return divineBladeVolley(this.layout,this.survivors || [])}, beastManifestations(){return divineBeastManifestations()},orochiSeals(){return divineOrochiSeals()},thunderBranches(){return divineThunderBranches()},fieldScrolls(){return divineFieldScrolls(this.layout)},thunderSwordStyle(){return divineThunderSwordStyle(this.targets && this.targets[0])},susanooSwordStyle(){return divineSusanooSwordStyle(this.swordLanding)},flameClaw(){return divineFlameClawLayout(this.targets || [])} },
     template: `<div class="divine-art divine-painted" :class="['divine-'+effect.motif,'divine-level-'+effect.index,'divine-stage-'+stage]" :style="{'--divine-color':effect.color,'--divine-accent':effect.accent,'--fx-duration':duration+'ms'}" aria-hidden="true">
       <div class="divine-mist"></div><div class="divine-ground"></div>
       <div v-if="stage === 'cutin' && effect.index === 2 && effect.cutin" class="genesis-scene">
         <div class="genesis-horizon"></div>
         <img class="genesis-hero" :src="effect.cutin" alt="" @error="artError">
         <div class="genesis-aura-ring"></div>
-        <i v-for="i in 18" :key="'genesis-mote'+i" class="genesis-mote" :style="{'--i':i,'--mote-x':((i*43)%100)+'%','--mote-y':((i*29)%100)+'%','--mote-turn':(i*37)+'deg'}"></i>
+        <template v-if="effect.motif !== 'camellia'"><i v-for="i in 18" :key="'genesis-mote'+i" class="genesis-mote" :style="{'--i':i,'--mote-x':((i*43)%100)+'%','--mote-y':((i*29)%100)+'%','--mote-turn':(i*37)+'deg'}"></i></template>
+        <template v-else>
+          <div class="sweet-wind"></div>
+          <svg class="hagoromo-stream" viewBox="0 0 1000 600" preserveAspectRatio="none" fill="none"><path d="M-100 430 C130 90 330 570 580 280 S870 70 1100 230"/><path d="M-100 170 C180 490 410 20 620 310 S850 510 1100 350"/></svg>
+          <i v-for="i in 4" :key="'bloom'+i" class="camellia-particle camellia-blossom" :style="camelliaStyle(i, true)"></i>
+          <i v-for="i in 18" :key="'petal'+i" class="camellia-particle camellia-petal" :style="camelliaStyle(i, false)"></i>
+        </template>
         <div v-if="effect.motif === 'blade' || effect.motif === 'thunder'" class="genesis-slash"></div>
         <div v-if="effect.motif === 'script'" class="genesis-fate-thread"></div>
         <div v-if="effect.motif === 'sun'" class="genesis-sunrays"></div>
         <div v-if="effect.motif === 'moon'" class="genesis-frozen-halo"></div>
         <template v-if="effect.motif === 'dragon'"><div class="genesis-eclipse"></div><i v-for="i in 8" :key="'seal'+i" class="genesis-broken-seal" :style="{'--i':i}"></i></template>
       </div>
-      <div v-else class="divine-scene">
+      <div v-else-if="stage === 'awakening' && effect.awakening" class="susanoo-awakening-scene">
+        <div class="susanoo-awakening-frame"><div class="susanoo-awakening-camera">
+          <img class="susanoo-awakening-base" :src="effect.cutin" alt="" @error="artError">
+          <template v-if="!awakeningFailed"><img v-for="(frame,i) in effect.awakeningFrames" :key="frame" class="susanoo-awakening-eyes" :class="{'eyes-narrow':i===0,'eyes-half':i===1}" :src="frame" alt="" @error="awakeningError"></template>
+          <img v-if="!awakeningFailed" class="susanoo-awakening-eyes" :src="effect.awakening" alt="" @error="awakeningError">
+          <template v-if="!awakeningFailed"><i class="susanoo-eye-light eye-left"></i><i class="susanoo-eye-light eye-right"></i></template>
+        </div></div>
+        <div v-if="!awakeningFailed" class="susanoo-awakening-flare"></div>
+      </div>
+      <div v-else class="divine-scene" :class="{'flame-target-scene':effect.motif==='flame' && effect.index===2}">
         <template v-if="effect.motif === 'storm'">
           <div class="susanoo-sword-arrival" :class="{'susanoo-sword-travel':susanooSwordStyle}" :style="susanooSwordStyle"><divine-sprite name="kusanagi"></divine-sprite></div>
           <div class="resolve-blade-current"></div><div class="resolve-storm-burst"></div>
@@ -221,22 +298,49 @@ if (typeof Vue !== 'undefined') {
         <template v-if="effect.motif === 'script'">
           <div v-for="(field,i) in fieldScrolls" :key="'field-scroll'+i" class="mystic-field-scroll" :style="field"><div class="field-scroll-mist"></div><div class="field-scroll-paper"></div><div class="field-scroll-release"></div><i v-for="j in 16" :key="j" class="field-scroll-mote" :style="{'--i':j}"></i></div>
         </template>
-        <template v-if="effect.motif === 'butterfly'">
+        <template v-if="effect.motif === 'camellia'">
+          <div class="sweet-wind"></div>
           <divine-sprite name="silk" class="hero-prop heavenly-silk"></divine-sprite>
           <divine-sprite name="silk" class="hero-prop heavenly-silk silk-echo"></divine-sprite>
-          <svg class="dance-trails" viewBox="0 0 600 600" fill="none"><path d="M20 470 C120 60 500 50 535 250 C565 420 70 480 105 285 C140 80 505 180 575 430"/><path d="M10 380 C210 550 540 470 485 210 C445 55 195 110 140 405"/></svg>
-          <div class="silk-wind"></div><div class="silk-wind second"></div>
-          <i v-for="i in (stage==='closeup'?48:18)" :key="'petal'+i" class="silk-petal" :style="{'--i':i,'--petal-x':((i*37)%100)+'%','--petal-y':((i*23)%100)+'%','--petal-size':(7+(i%5)*3)+'px','--petal-turn':((i%2?1:-1)*(150+i*13))+'deg'}"></i>
+          <svg class="hagoromo-stream" viewBox="0 0 1000 600" preserveAspectRatio="none" fill="none"><path d="M-100 430 C130 90 330 570 580 280 S870 70 1100 230"/><path d="M-100 170 C180 490 410 20 620 310 S850 510 1100 350"/></svg>
+          <div v-if="effect.index === 2" class="uzume-dancing-fan"><divine-sprite name="fan" class="uzume-fan-leaf"></divine-sprite></div>
+          <i v-for="i in 4" :key="'bloom'+i" class="camellia-particle camellia-blossom" :style="camelliaStyle(i, true)"></i>
+          <i v-for="i in (stage==='closeup'?36:12)" :key="'petal'+i" class="camellia-particle camellia-petal" :style="camelliaStyle(i, false)"></i>
         </template>
-        <template v-if="effect.motif === 'flame'">
+        <template v-if="effect.motif === 'flame' && effect.index === 2">
+          <div v-if="flameClaw.sweep" class="hino-heat-flash"></div>
+          <div v-if="flameClaw.sweep" class="hino-infernal-mass" :style="flameClaw.impact">
+            <div class="hino-cinder-vortex"></div><div class="hino-cinder-vortex vortex-echo"></div>
+            <div class="hino-infernal-flame" :style="{backgroundImage:flameClaw.sweep.backgroundImage}"></div>
+            <div class="hino-blast-wave"></div>
+          </div>
+          <svg v-if="flameClaw.sweep" class="hino-claw-streaks" width="100%" height="100%" fill="none" aria-hidden="true">
+            <path v-for="(path,i) in flameClaw.paths" :key="'trail'+i" class="hino-claw-trail" :d="path" pathLength="1" :style="{'--slash-lag':i*.006}"/>
+            <path v-for="(path,i) in flameClaw.paths" :key="'core'+i" class="hino-claw-core" :d="path" pathLength="1" :style="{'--slash-lag':i*.006}"/>
+          </svg>
+          <div v-if="flameClaw.sweep" class="hino-claw-sweep" :style="flameClaw.sweep"></div>
+          <div v-for="(zone,i) in flameClaw.zones" :key="'flame-target'+i" class="hino-claw-hit" :style="{left:zone.rect.left+'px',top:zone.rect.top+'px',width:zone.rect.width+'px',height:zone.rect.height+'px'}">
+            <div v-if="zone.rect.image" class="hino-card-memory" :style="{backgroundImage:'url('+zone.rect.image+')'}"></div>
+            <div class="hino-claw-charge"></div><div class="hino-claw-scars"></div><div class="hino-claw-shock"></div>
+          </div>
+          <div v-for="(zone,i) in flameClaw.zones" :key="'flame-burn'+i" class="hino-claw-burn" :style="zone.style">
+            <i v-for="(spark,j) in zone.sparks" :key="'spark'+j" class="hino-fire-spark" :style="spark"></i>
+          </div>
+        </template>
+        <template v-if="effect.motif === 'flame' && effect.index !== 2">
           <div class="inferno-sweep-frames"></div><div class="inferno-impact"></div>
           <div class="inferno-wave"></div><div class="inferno-heat"></div>
           <i v-for="i in 30" :key="'ember'+i" class="inferno-ember" :style="{'--i':i}"></i>
         </template>
         <template v-if="effect.motif === 'sun'">
-          <div class="mirror-rays"></div><div class="warm-lightfall"></div><div class="solar-corona"></div>
-          <i v-for="i in 8" :key="'beam'+i" class="solar-beam" :style="{'--i':i}"></i>
-          <divine-sprite name="mirror" class="yata-mirror"></divine-sprite>
+          <div class="yata-descent">
+            <div class="yata-descending-light">
+              <div class="mirror-rays"></div><div class="warm-lightfall"></div><div class="solar-corona"></div>
+              <i v-for="i in 8" :key="'beam'+i" class="solar-beam" :style="{'--i':i}"></i>
+            </div>
+            <div class="yata-underside-glow"></div>
+            <divine-sprite name="mirror" class="yata-mirror"></divine-sprite>
+          </div>
           <div class="rebirth-ripple"></div><div class="rebirth-ripple second"></div>
           <i v-for="i in 16" :key="'light'+i" class="sun-mote" :style="{'--i':i}"></i>
         </template>
@@ -259,4 +363,4 @@ if (typeof Vue !== 'undefined') {
     </div>`,
   });
 }
-if (typeof module !== 'undefined') module.exports = { DIVINE_SKILL_THEMES, DIVINE_SKILL_CUTINS, divineSkillTheme, divineSkillAssetUrls, DIVINE_SPRITES, divineSpriteStyle, divineTransferStyle, divineBladeVolley, divineThunderBranches, divineFieldScrolls, divineThunderSwordStyle, divineSusanooSwordStyle, divineBeastManifestations };
+if (typeof module !== 'undefined') module.exports = { divineFlameClawLayout, DIVINE_HINO_CLAW_ATLAS, DIVINE_SKILL_THEMES, DIVINE_SKILL_CUTINS, DIVINE_SKILL_AWAKENINGS, DIVINE_SKILL_AWAKENING_FRAMES, divineSkillTheme, divineSkillAssetUrls, DIVINE_SPRITES, divineSpriteStyle, divineTransferStyle, divineBladeVolley, divineThunderBranches, divineFieldScrolls, divineThunderSwordStyle, divineSusanooSwordStyle, divineBeastManifestations };

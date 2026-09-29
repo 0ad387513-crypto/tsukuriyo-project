@@ -33,14 +33,25 @@ test("wheel zoom changes only a visible card preview and keeps it on screen", ()
   assert.ok(evolved.top+evolved.width*1039/744/2+28<=590+.001);
 });
 
-test("shield preview supports the same wheel zoom and resets after leaving a card", () => {
+test("normal and shield previews retain one zoom preference across successive cards", () => {
   const geometry=method('cardHoverGeometry','rect,baseWidth,zoom,evolved,window');
   const vm={sbHoverCard:{no:2},sbHoverWidth:440,sbHoverZoom:1,_sbHoverSourceRect:{left:50,right:120,top:100,height:80},
     $el:{querySelector:selector=>selector==='.sb-hover-popup'},
     cardHoverGeometry(r,b,z,e){return geometry(r,b,z,e,{innerWidth:1280,innerHeight:900})}};
   method('onCardPreviewWheel','event').call(vm,{deltaY:-100,preventDefault(){},stopPropagation(){}});
-  assert.ok(vm.sbHoverWidth>440);method('hideSbHover').call(vm);assert.equal(vm.sbHoverZoom,1);assert.equal(vm._sbHoverSourceRect,null);
-  vm.hoverCard={no:2};vm.hoverZoom=1.5;method('hideCardHover').call(vm);assert.equal(vm.hoverZoom,1);assert.equal(vm._hoverSourceRect,null);
+  assert.ok(vm.sbHoverWidth>440);const zoom=vm.sbHoverZoom;
+  method('hideSbHover').call(vm);assert.equal(vm.sbHoverZoom,zoom);assert.equal(vm._sbHoverSourceRect,null);
+  assert.equal(vm.hoverZoom,zoom,'shield and normal views share the chosen ratio');
+  vm.hoverCard={no:2};method('hideCardHover').call(vm);assert.equal(vm.hoverZoom,zoom);assert.equal(vm._hoverSourceRect,null);
+  const rect={left:50,right:140,top:180,height:200},event={currentTarget:{closest:()=>null,getBoundingClientRect:()=>rect}};
+  Object.assign(vm,{appView:'cards',battleCardHoverBlocked:()=>false,isSpoilerHidden:()=>false,cardImageUrl:()=> 'card.webp'});
+  method('showCardHover','card,event,allowKamiSpoiler=false').call(vm,{no:3},event);
+  assert.equal(vm.hoverWidth,360*zoom,'the next normal card keeps the enlarged ratio');
+  method('hideCardHover').call(vm);
+  method('showCardHover','card,event,allowKamiSpoiler=false').call(vm,{no:4},event);
+  assert.equal(vm.hoverWidth,360*zoom);
+  method('showSbHover','card,event').call(vm,{no:5},event);
+  assert.equal(vm.sbHoverWidth,440*zoom);
 });
 
 test("draft status follows each Kami frame without altering shared seats", () => {
@@ -526,7 +537,8 @@ test("generated hand tokens enlarge during battle without revealing spoilers in 
   const hover=method('showCardHover','card,event,window,allowKamiSpoiler=false');
   for (const no of ['187','188']) {
     const card={no,isToken:true,spoiler:true};
-    const vm={appView:'battle',hoverCard:null,battleCardHoverBlocked:()=>false,isSpoilerHidden:c=>!!c.spoiler,cardImageUrl:()=>`cards/${no}.webp`};
+    const vm={appView:'battle',hoverCard:null,battleCardHoverBlocked:()=>false,isSpoilerHidden:c=>!!c.spoiler,cardImageUrl:()=>`cards/${no}.webp`,
+      cardHoverGeometry(r,b,z,e){return method('cardHoverGeometry','rect,baseWidth,zoom,evolved,window')(r,b,z,e,screen)}};
     hover.call(vm,card,event,screen);
     assert.equal(vm.hoverCard,card,'a generated, visible battle token can be enlarged');
     assert.ok(vm.hoverLeft>=0 && vm.hoverLeft+360<=screen.innerWidth);
@@ -569,6 +581,7 @@ test("chibi hover resolves Kami cards and guide approval cannot unlock card-list
   const vm={appView:'cards',allKamiCards:[kami],allCards:[ordinary],hoverCard:null,
     manualModalOpen:true,manualOrochiRevealed:false,battleCardHoverBlocked:()=>false,
     isSpoilerHidden:c=>!!c.spoiler,cardImageUrl:c=>c.isKami?'kami/10.webp':'cards/10.webp',
+    cardHoverGeometry(r,b,z,e){return method('cardHoverGeometry','rect,baseWidth,zoom,evolved,window')(r,b,z,e,screen)},
     showCardHover(card,e,allow){hover.call(this,card,e,screen,allow)}};
   const show=method('showGuideKami','no,event');
   show.call(vm,10,event);assert.equal(vm.hoverCard,null,'hidden guide portraits cannot reveal a Kami');
@@ -738,11 +751,41 @@ test("skill 2 completes a prominent portrait before starting its independent ani
   assert.equal(vm.battleSkillCloseup.phase,'portrait');
   assert.equal(vm.battleSkillCloseup.imgUrl,require('../divine_effects.js').DIVINE_SKILL_CUTINS['1'],'the dedicated pose is used for the opening portrait');
   clearTimeout(vm._battleSkillCloseupT);vm._battleSkillCloseupResolve();await Promise.resolve();
+  assert.equal(vm.battleSkillCloseup.phase,'awakening');
+  clearTimeout(vm._battleSkillCloseupT);vm._battleSkillCloseupResolve();await Promise.resolve();
   assert.equal(vm.battleSkillCloseup.phase,'animation');
-  assert.deepEqual(durations,[1800,2400]);
+  assert.deepEqual(durations,[1800,3000,2400]);
   clearTimeout(vm._battleSkillCloseupT);vm._battleSkillCloseupResolve();await using;
   assert.equal(vm.battleSkillCloseup,null);
   assert.match(html,/divine-skill-art v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation'/);
+});
+
+test("only Susanoo opens his eyes between speech and field effects, respects speed and cancels on exit", async () => {
+  const show=method('_battleShowSkill2Closeup','kami,skillName,divineSkillTheme,remoteTransfers,writerSide,remoteTargets,setTimeout,clearTimeout',true);
+  const theme=require('../divine_effects.js').divineSkillTheme;
+  for(const no of [1,2,3,4,5,6,7,8,9,10]) for(const speed of ['normal','fast','minimal']) {
+    const timers=[],phases=[],sounds=[],voices=[];
+    const vm={battleAnimationSpeed:speed,_battleEmoteLineFor:()=>'',playKamiVoice(k,key){voices.push(key)},_sfxPlay:key=>sounds.push(key),
+      _battleMotionMs:ms=>speed==='minimal'?10:ms*(speed==='fast'?.55:1)};
+    const timer=(callback,delay)=>{const t={callback,delay};timers.push(t);return t};
+    const using=show.call(vm,{no},'創世神技',theme,null,'opp',null,timer,()=>{});
+    while(vm.battleSkillCloseup) {
+      phases.push(vm.battleSkillCloseup.phase);
+      const current=timers[timers.length-1];
+      if(vm.battleSkillCloseup.phase==='awakening') assert.equal(current.delay,3000*(speed==='fast'?.55:1));
+      current.callback();await Promise.resolve();
+    }
+    await using;
+    assert.deepEqual(phases,no===1&&speed!=='minimal'?['portrait','awakening','animation']:['portrait','animation']);
+    assert.deepEqual(voices,['skill2']);assert.deepEqual(sounds,['skill2']);
+  }
+  const vm={battleAnimationSpeed:'normal',_battleEmoteLineFor:()=>'',playKamiVoice(){},_sfxPlay(){},_battleMotionMs:ms=>ms};
+  const timers=[];
+  const using=show.call(vm,{no:1},'創世神技',theme,null,'self',null,(callback,delay)=>{timers.push({callback,delay});return timers.length},()=>{});
+  timers[0].callback();await Promise.resolve();assert.equal(vm.battleSkillCloseup.phase,'awakening');
+  vm.battleSkillCloseup=null;timers[1].callback();await using;
+  assert.equal(timers.length,2,'leaving during the eye reveal cannot restart the field effect');
+  assert.equal(vm.battleSkillCloseup,null);
 });
 
 test("the full-screen genesis image appears only during speech before the original field effects", () => {
@@ -1338,4 +1381,191 @@ test("required turn and effect draws lose only when an additional card cannot be
   assert.equal(lose.call(vm,'opp'),false,'a hidden opponent deck is not empty');
   vm.battleNet.spectating=true;assert.equal(lose.call(vm,'self'),false,'a spectator does not decide private draws');
   assert.equal(vm.battleSample.result,undefined);
+});
+
+
+test("flame claw joins the chosen slot to the opposing Kami and follows either board orientation", () => {
+  const {divineFlameClawLayout}=require('../divine_effects.js');
+  for(const upside of [false,true]) {
+    const kami={left:450,top:upside?640:30,width:100,height:100,kind:'kami'},angles=[];
+    for(const x of [120,460,800]) {
+      const card={left:x,top:upside?400:240,width:80,height:120,kind:'card'};
+      const {sweep,zones}=divineFlameClawLayout([card,kami]);
+      assert.equal(parseFloat(sweep.left),(x+40+500)/2);
+      assert.equal(zones.length,2);assert.equal(divineFlameClawLayout([card,kami]).paths.length,5);
+      assert.ok(zones.every(z=>z.sparks.length===12 && z.sparks.every(v=>!Object.values(v).some(x=>String(x).includes('NaN')))));
+      const dx=x+40-500,dy=card.top+60-(kami.top+50);
+      const actualAngle=parseFloat(sweep['--claw-angle'])*Math.PI/180+Math.atan2(parseFloat(sweep.height),parseFloat(sweep.width));
+      assert.ok(Math.abs(actualAngle-Math.atan2(dy,dx))<1e-8);
+      assert.ok(parseFloat(sweep.width)>Math.hypot(dx,dy));
+      angles.push(sweep['--claw-angle']);
+    }
+    assert.equal(new Set(angles).size,3,'left, centre, and right targets have different slash trajectories');
+  }
+  assert.deepEqual(divineFlameClawLayout([null,{left:NaN,top:1,width:2,height:3}]),{sweep:null,zones:[]});
+});
+
+test("Hinokagutsuchi waits for target selection, claw animation, and death effects before damaging the enemy", async () => {
+  for(const cpu of [false,true]) for(const speed of ['normal','fast','minimal']) {
+    const kami={no:7,name:'ヒノカグツチ'},legacy={no:21},other={no:22};
+    const caster={kami,life:10,lifeMax:10,tenryoku:12,legacies:[],relics:[]};
+    const enemy={kami:{no:8},life:10,lifeMax:10,legacies:[other,legacy],relics:[]};
+    const events=[];let finishSelection,finishDeath;
+    const selection=new Promise(r=>{finishSelection=r}),death=new Promise(r=>{finishDeath=r});
+    const vm={appView:'battle',battleViewSwapped:cpu,_dslSwapped:cpu,battleAnimationSpeed:speed,
+      battleSample:{self:caster,opp:enemy},battleContext:{selfName:'あなた',oppName:'CPU'},
+      battleSkillOptions:[{index:2,enabled:true,cost:8,name:'焔天'}],effectSpecsReady:true,
+      _tutorialAllows:()=>true,battleSaveUndo(){},battleShowNotice(title){assert.notEqual(title,'神技処理エラー')},
+      _dslGetSpec:()=>specs.K7,dslApplySublimAlternative:a=>a,
+      _dslDefaultBothCategoriesIfUnrestricted:s=>s,_dslCardEffPower:()=>1000,
+      async dslChooseTargets(){await selection;return [legacy]},
+      $nextTick:async()=>{},_dslFindCardLocation:c=>({side:'opp',zone:'legacies'}),
+      _battleFieldCardRect:(side,zone,index)=>{assert.equal(index,1);return {left:400,top:cpu?440:240,width:80,height:120}},
+      _battleKamiPortraitRect:side=>{assert.equal(side,'opp');return {left:450,top:cpu?640:30,width:100,height:100}},
+      cardImageUrl:()=> 'legacy.webp',_battleFinishDivinePresentation:method('_battleFinishDivinePresentation'),
+      _battlePresentFlameClaw:method('_battlePresentFlameClaw','cards,writerSide="self"',true),
+      _battlePublishSkill2(){
+        events.push('publish');
+        assert.deepEqual(this._battleDivineContext.publicTargets,[
+          {side:'opp',zone:'legacies',index:1,cardNo:'21'},{side:'opp',zone:'kami',index:0,cardNo:'8'}
+        ]);
+      },
+      _battleEmoteLineFor:()=>'',playKamiVoice(){},_sfxPlay(){},_battleMotionMs:method('_battleMotionMs','ms'),
+      _dslCurrentSourceSide:()=> 'self',battleViewSide:method('battleViewSide','side'),battleFireKamiEvent(){},
+      _dslOpDestroy:method('_dslOpDestroy','act,sourceCard',true),_dslOpLife:method('_dslOpLife','act,sourceCard'),
+      async dslRunAction(a,source){if(a.操作==='破壊')await this._dslOpDestroy(a,source);else this._dslOpLife(a,source)},
+      dslRunActions:method('dslRunActions','actions,sourceCard',true),
+      _dslMoveFromField(card){events.push('destroy');enemy.legacies=enemy.legacies.filter(c=>c!==card);return true},
+      fullName:()=>'',async battleRunDeathKeywordEffects(){events.push('death');await death;}
+    };
+    vm._battleShowSkill2Closeup=function(k,name,transfers,writer){
+      events.push('cutin');return method('_battleShowSkill2Closeup','kami,skillName,divineSkillTheme,remoteTransfers=null,writerSide="self",remoteTargets=null',true)
+        .call(this,k,name,require('../divine_effects.js').divineSkillTheme,null,writer);
+    };
+    const using=method('battleUseKamiSkill','index',true).call(vm,2);
+    try {
+      await new Promise(r=>setImmediate(r));assert.deepEqual(events,[]);
+      finishSelection();await new Promise(r=>setImmediate(r));
+      assert.equal(vm.battleSkillCloseup.phase,'portrait');assert.deepEqual(enemy.legacies,[other,legacy]);
+      assert.equal(vm.battleSkillCloseup.targets.length,2);
+      clearTimeout(vm._battleSkillCloseupT);vm._battleSkillCloseupResolve();await Promise.resolve();
+      assert.equal(vm.battleSkillCloseup.phase,'animation');
+      assert.deepEqual(enemy.legacies,[other,legacy]);assert.equal(enemy.life,10);
+      method('battleSkillCloseupClickDismiss').call(vm);
+      assert.deepEqual(enemy.legacies,[other,legacy],'a click cannot remove a still-burning target');
+      clearTimeout(vm._battleSkillCloseupT);vm._battleSkillCloseupResolve();await new Promise(r=>setImmediate(r));
+      assert.deepEqual(events,['publish','cutin','destroy','death']);assert.equal(enemy.life,10);
+      finishDeath();await using;assert.equal(enemy.life,7);assert.equal(caster.life,10);
+      assert.deepEqual(enemy.legacies,[other]);assert.equal(vm._battleDivineContext,null);
+    } finally {
+      clearTimeout(vm._battleSkillCloseupT);
+      if(vm._battleSkillCloseupResolve)vm._battleSkillCloseupResolve();
+      finishSelection();finishDeath();
+    }
+  }
+});
+
+test("leaving during the flame cut-in cancels destruction, damage, and a second cinematic", async () => {
+  const kami={no:7},legacy={no:21};let release;
+  const animation=new Promise(r=>{release=r}),board={self:{kami,tenryoku:10},opp:{kami:{no:8},life:10,legacies:[legacy]}};
+  const vm={appView:'battle',battleSample:board,battleContext:{selfName:''},effectSpecsReady:true,
+    battleSkillOptions:[{index:2,enabled:true,cost:8,name:'焔天'}],_tutorialAllows:()=>true,
+    battleSaveUndo(){},battleShowNotice(){},_dslGetSpec:()=>specs.K7,dslApplySublimAlternative:a=>a,
+    _dslDefaultBothCategoriesIfUnrestricted:s=>s,dslChooseTargets:async()=>[legacy],
+    $nextTick:async()=>{},_dslFindCardLocation:()=>({side:'opp',zone:'legacies'}),
+    _battleFieldCardRect:()=>null,_battleKamiPortraitRect:()=>null,_battlePublishSkill2(){},cardImageUrl:()=> '',
+    async _battleShowSkill2Closeup(){await animation},_battleFinishDivinePresentation:method('_battleFinishDivinePresentation'),
+    _battlePresentFlameClaw:method('_battlePresentFlameClaw','cards,writerSide="self"',true),
+    _dslOpDestroy:method('_dslOpDestroy','act,sourceCard',true),
+    async dslRunAction(a,c){assert.equal(a.操作,'破壊','no damage runs after cancellation');await this._dslOpDestroy(a,c)},
+    dslRunActions:method('dslRunActions','actions,sourceCard',true),
+    _dslMoveFromField(){assert.fail('leaving never removes a target')},
+  };
+  const using=method('battleUseKamiSkill','index',true).call(vm,2);await new Promise(r=>setImmediate(r));
+  vm.appView='top';release();await using;
+  assert.deepEqual(board.opp.legacies,[legacy]);assert.equal(board.opp.life,10);
+  assert.equal(vm._battleDivineContext,null);
+});
+
+test("tutorial opponent flame skill burns the fixed Legacy and player Kami before destruction", async () => {
+  const kami={no:7,skill2name:'焔天',skill2cost:'8'},legacy={no:21};let release;
+  const finished=new Promise(r=>{release=r}),events=[];
+  const vm={appView:'battle',battleSample:{self:{kami:{no:8},life:4,legacies:[legacy]},opp:{kami,tenryoku:8}},
+    battleContext:{oppName:'ヒノカグツチ'},_battleCpuThinkPause:async()=>{},battleShowNotice(){},
+    _tutorialOppIndex:()=>0,_dslFindCardLocation:()=>({side:'self',zone:'legacies'}),
+    $nextTick:async()=>{},_battleFieldCardRect:()=>({left:100,top:400,width:80,height:120}),
+    _battleKamiPortraitRect:side=>{assert.equal(side,'self');return {left:300,top:600,width:100,height:100}},
+    cardImageUrl:()=>'',_battlePublishSkill2(){},_battleFinishDivinePresentation:method('_battleFinishDivinePresentation'),
+    _battlePresentFlameClaw:method('_battlePresentFlameClaw','cards,writerSide="self"',true),
+    async _battleShowSkill2Closeup(k,name,transfers,writer){
+      assert.equal(writer,'opp');assert.equal(this._battleDivineContext.targets.length,2);events.push('claw');await finished;
+    },
+    battleDestroyLegacy(side,index){events.push('destroy');this.battleSample[side].legacies.splice(index,1)},
+    _sfxPlay(){},_battleCheckResult(){}
+  };
+  const using=method('_tutorialOppSkill','act,say',true).call(vm,{skill:2,destroy:'fixed',damage:3},()=>{});
+  await new Promise(r=>setImmediate(r));
+  assert.deepEqual(events,['claw']);assert.deepEqual(vm.battleSample.self.legacies,[legacy]);assert.equal(vm.battleSample.self.life,4);
+  release();await using;assert.deepEqual(events,['claw','destroy']);assert.equal(vm.battleSample.self.life,1);
+});
+
+test("remote flame cues expose only matching public cards and the opposing Kami", () => {
+  for(const writer of ['self','opp']) {
+    const other=writer==='self'?'opp':'self',card={no:21},kami={no:8};
+    const vm={battleSample:{[writer]:{kami:{no:7},legacies:[],hand:[]},[other]:{kami,legacies:[card],hand:[{no:99}]}},
+      battleSkillCloseup:{effect:{kamiNo:'7'}},cardImageUrl:()=> 'legacy.webp',
+      _battleFieldCardRect:side=>{assert.equal(side,other);return {left:100,top:200,width:80,height:120}},
+      _battleKamiPortraitRect:side=>{assert.equal(side,other);return {left:300,top:20,width:100,height:100}}};
+    const cues=[{side:'opp',zone:'legacies',index:0,cardNo:'21'},{side:'opp',zone:'kami',index:0,cardNo:'8'},
+      {side:'opp',zone:'hand',index:0,cardNo:'99'},{side:'opp',zone:'kami',index:1,cardNo:'8'},
+      {side:'opp',zone:'legacies',index:0,cardNo:'99'},null];
+    const targets=method('_battleRemoteDivineTargets','cues,writerSide').call(vm,cues,writer);
+    assert.deepEqual(targets.map(t=>t.kind),['card','kami']);assert.equal(targets[0].image,'legacy.webp');
+  }
+});
+
+test("stat pop uses the true life difference during overlapping tweens and persists through CPU swaps", () => {
+  const frames=[],pops=[],timers=[],display={selfLife:8,oppLife:10};
+  const vm={battleStatDisplay:display,battleStatPops:{},_battleMotionMs:()=>400,$set:(o,k,v)=>{o[k]=v},
+    _battlePushStatPop(k,d){pops.push([k,d])}};
+  const tween=method('_battleTweenStat','dispKey,to,previous,performance,requestAnimationFrame');
+  tween.call(vm,'selfLife',6,9,{now:()=>0},fn=>frames.push(fn));
+  assert.deepEqual(pops,[['selfLife',-3]],'damage is -3 even when the tween still displays 8');
+  frames.shift()(400);assert.equal(display.selfLife,6);
+  tween.call(vm,'selfLife',7,6,{now:()=>0},fn=>frames.push(fn));
+  assert.deepEqual(pops,[['selfLife',-3],['selfLife',1]]);
+  frames.shift()(400);
+  const pop=method('_battlePushStatPop','dispKey,delta,setTimeout');
+  pop.call(vm,'selfLife',1,fn=>timers.push(fn));assert.equal(vm.battleStatPops.selfLife.text,'+1');assert.match(vm.battleStatPops.selfLife.cls,/plus/);
+  const old=vm.battleStatPops.selfLife;
+  pop.call(vm,'selfLife',-3,fn=>timers.push(fn));assert.equal(vm.battleStatPops.selfLife.text,'-3');assert.match(vm.battleStatPops.selfLife.cls,/minus/);
+  timers.shift()();assert.equal(vm.battleStatPops.selfLife.text,'-3','the older timeout cannot erase a newer change');
+  const a={life:7},b={life:10};vm.battleSample={self:a,opp:b,activeSide:'self'};
+  const swapping=method('_dslSwapSelfOpp');swapping.call(vm);
+  assert.equal(method('battleStatNum','side,key').call(vm,'self','life'),7);
+  assert.equal(method('battleViewPops').call(vm),vm.battleStatPops);
+  swapping.call(vm);assert.equal(vm.battleSample.self,a);assert.equal(vm.battleStatPops.selfLife.text,'-3');
+  timers.shift()();assert.equal(vm.battleStatPops.selfLife,null);
+});
+
+test("a flame skill on an empty enemy field still waits for the Kami impact before dealing damage", async () => {
+  let release;const finished=new Promise(r=>{release=r}),events=[];
+  const vm={_battleDivineContext:{kami:{no:7},index:2,presented:false},
+    _dslDefaultBothCategoriesIfUnrestricted:s=>s,dslChooseTargets:async()=>[],
+    async _battlePresentFlameClaw(targets){assert.deepEqual(targets,[]);events.push('animation');await finished;this._battleDivineContext.presented=true;return true},
+    battleSaveUndo(){assert.fail('no nonexistent card is destroyed')}};
+  const running=method('_dslOpDestroy','act,sourceCard',true).call(vm,{対象:{}},{no:7}).then(()=>events.push('next damage'));
+  await new Promise(r=>setImmediate(r));assert.deepEqual(events,['animation']);
+  release();await running;assert.deepEqual(events,['animation','next damage']);
+});
+
+test("life watchers ignore initial values and unchanged CPU orientations, but show the next real damage", () => {
+  const oldBoard={},newBoard={},changes=[],vm={battleStatDisplay:{selfLife:2},$set:(o,k,v)=>{o[k]=v},
+    _battleTweenStat:(...a)=>changes.push(a)},watch=method('_battleWatchStat','dispKey,next,previous');
+  watch.call(vm,'selfLife',{board:newBoard,value:10},{board:oldBoard,value:2});
+  assert.equal(vm.battleStatDisplay.selfLife,10);assert.deepEqual(changes,[]);
+  watch.call(vm,'selfLife',{board:newBoard,value:10},{board:newBoard,value:10});
+  assert.deepEqual(changes,[],'internal swaps do not restart a tween or announce damage');
+  watch.call(vm,'selfLife',{board:newBoard,value:7},{board:newBoard,value:10});
+  assert.deepEqual(changes,[['selfLife',7,10]]);
 });
