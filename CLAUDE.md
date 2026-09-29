@@ -20,7 +20,19 @@
 - `effect_spec.json`：カード効果の定義
 - `database.rules.json`：Realtime Database Rules（本番反映は `firebase deploy --only database --project tsukuriyo-7afe3`）
 - `functions/`：将来の Blaze 移行用。Spark本番では使わない
-- 画像・音声：`card_images/`、`kami_*`、`bgm/`、`sfx/`、`voices/` など
+- 画像・音声：`card_images/`、`kami_*`、`tutorial_guide/`、`bgm/`、`sfx/`、`voices/` など
+- `kami_cutin/genesis-generation.json`：創世神技カットインの現行URL・生成指示・差し替え履歴（ユーザー提供画像は `mode: "user-provided image; ..."`、旧版は `previousRevisions` に残す）
+- `tools/card-editor/`：カード編集室（ローカル専用。`npm run preview` 中に http://localhost:8765/tools/card-editor/ で開く。本番では `_redirects` で404）。使い方は同フォルダの README
+
+## 画像を追加・差し替えるとき（ユーザー指定のルール。詳細は `AGENTS.md`）
+
+- 元のPNG/JPEGを直接使わず、容量上限つきWebPに圧縮し、ファイル名に内容ハッシュ（sha256の先頭12桁）を付ける
+  - `cutin`：1600×900・300KB以下 / `sprite`：最大720×720・120KB以下 / `atlas`：最大1600×1600・160KB以下 / `scene`：最大1600×1600・300KB以下
+  - 画質82→62まで下げても収まらなければ、上限は緩めずに用途に合わせて解像度を見直す
+- 正規の手順は `python scripts/import_visual_asset.py 元画像 --output 保存先.webp --profile 種類 --replace 旧URL`。旧URLの置換（ルート直下の html/js/css・`_headers`・`kami_cutin/preview.html`・`genesis-generation.json`）と `optimized_assets.json` への記録まで行う
+- このPCには Python がないため、同じ規則を Node の画像ライブラリ sharp で再現して処理する（sharp はリポジトリに入れず、作業用フォルダに `npm i sharp` して使う。`optimized_assets.json` の項目名は `import:保存先（ハッシュなし）`）
+- `tests/asset_contract.test.js` が、ハッシュと実際の中身の一致・容量上限・`bytes < sourceBytes` を検証する
+- 画像の差し替えも変更なので `version.js` を上げる
 
 ## 確認方法
 

@@ -17,11 +17,11 @@ const DIVINE_SKILL_CUTINS = Object.freeze({
   "2": "kami_cutin/yamato-takeru-genesis-wide-8f1979db2bd7.webp",
   "3": "kami_cutin/okuninushi-genesis-wide-a2a38433041e.webp",
   "4": "kami_cutin/takemikazuchi-genesis-wide-53185a601ecf.webp",
-  "5": "kami_cutin/omoikane-genesis-wide-c953890ebdb4.webp",
+  "5": "kami_cutin/omoikane-genesis-wide-a5784234189d.webp",
   "6": "kami_cutin/amenouzume-genesis-wide-de6bb559c748.webp",
   "7": "kami_cutin/hinokagutsuchi-genesis-wide-0c3fb305b3f1.webp",
   "8": "kami_cutin/amaterasu-genesis-wide-29f2370afeca.webp",
-  "9": "kami_cutin/tsukuyomi-genesis-wide-53109ffdfb57.webp",
+  "9": "kami_cutin/tsukuyomi-genesis-wide-a8e7806f5483.webp",
   "10": "kami_cutin/yamata-no-orochi-genesis-wide-6ae704e3f3dd.webp"
 });
 const DIVINE_SKILL_AWAKENINGS = Object.freeze({
