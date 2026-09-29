@@ -1574,6 +1574,10 @@
   .kami-dex-difficulty.lv3 .kami-dex-stars span.on { color: #ff9a8a; }
   .kami-dex-tag { padding: 3px 9px; border: 1px solid #3f4a62; border-radius: 999px; background: rgba(12, 15, 23, .6); color: #b9c7e0; font-size: 11px; font-weight: 800; }
   .kami-dex-summary { margin: 0 0 12px; color: #e3e7ef; font-size: 14px; line-height: 1.85; }
+  /* 文節の塊：塊の途中では折り返さず、塊と塊の間でだけ改行する（1塊が枠より長いときだけは折り返す） */
+  .ja-phrase { display: inline-block; max-width: 100%; }
+  /* 図鑑の創生理念・効果の文（別のデータから表示する文）は、ブラウザの文節判定で区切りの良い位置で折り返す */
+  .kami-dex-panel .gs-kami-philosophy p, .kami-dex-panel .gs-kami-effect-text, .kami-dex-voice-text { line-break: strict; word-break: auto-phrase; }
   .kami-dex-recommend-title { margin-bottom: 4px; }
   .kami-dex-effects, .kami-dex-voices-open { margin-top: 10px; }
   .kami-dex-view-switch { display: flex; justify-content: center; gap: 6px; margin-top: 10px; }
@@ -5984,10 +5988,10 @@
               </span>
               <span v-for="tag in kamiDexProfile.tags" :key="tag" class="kami-dex-tag">{{ tag }}</span>
             </div>
-            <p class="kami-dex-summary">{{ kamiDexProfile.summary }}</p>
+            <p class="kami-dex-summary"><span v-for="(phrase, i) in kamiDexPhrases(kamiDexProfile.summary)" :key="'sum' + i" class="ja-phrase">{{ phrase }}</span></p>
             <div class="gs-kami-info-section-title kami-dex-recommend-title">こんな人におすすめ</div>
             <ul class="gs-kami-pick-policy">
-              <li v-for="item in kamiDexProfile.recommend" :key="item">{{ item }}</li>
+              <li v-for="item in kamiDexProfile.recommend" :key="item"><span v-for="(phrase, i) in kamiDexPhrases(item)" :key="'rec' + i" class="ja-phrase">{{ phrase }}</span></li>
             </ul>
           </div>
 
@@ -10760,53 +10764,53 @@ const KAMI_DEX_VOICE_LABELS = Object.freeze([
    文面はたたき台。直すときはここだけ書き換えればよい */
 const KAMI_DEX_PROFILES = Object.freeze({
   "1": {
-    summary: '【進化】や【昇華】でカードの姿を変えながら天力を溜め、少ない天力で創世神技を放つ変化のカミ。創世神技の後は、墓地のカードまで進化の素材にできる。',
-    recommend: ['カードを変化させるコンボを楽しみたい人', '状況に合わせて柔軟に戦い方を変えたい人'],
+    summary: '【進化】や｜【昇華】で｜カードの｜姿を｜変えながら｜天力を｜溜め、｜少ない｜天力で｜創世神技を｜放つ｜変化の｜カミ。｜創世神技の｜後は、｜墓地の｜カードまで｜進化の｜素材に｜できる。',
+    recommend: ['カードを｜変化させる｜コンボを｜楽しみたい人', '状況に｜合わせて｜柔軟に｜戦い方を｜変えたい人'],
     difficulty: 2, tags: ['進化・昇華', '柔軟', 'コンボ'],
   },
   "2": {
-    summary: 'デッキに同じ名前のカードを1枚も入れない代わりに、毎ターン天力が溜まる孤高のカミ。神技の手札補充で息切れせず、盤面に干渉する創世神技で押し切る。',
-    recommend: ['デッキ構築の縛りを楽しみたい人', '1枚ずつ役割を考えてカードを選ぶのが好きな人'],
+    summary: 'デッキに｜同じ｜名前の｜カードを｜1枚も｜入れない｜代わりに、｜毎ターン｜天力が｜溜まる｜孤高の｜カミ。｜神技の｜手札補充で｜息切れせず、｜盤面に｜干渉する｜創世神技で｜押し切る。',
+    recommend: ['デッキ構築の｜縛りを｜楽しみたい人', '1枚ずつ｜役割を｜考えて｜カードを｜選ぶのが｜好きな人'],
     difficulty: 3, tags: ['同名禁止', '手札補充', '重量級も可'],
   },
   "3": {
-    summary: '異なる種族を並べるほど天力が増える共存のカミ。神技で人獣を招来し、創世神技でレガシーを呼び出して、多種多様な仲間で盤面を埋めていく。',
-    recommend: ['いろいろな種族を並べて盤面で戦いたい人', '仲間を増やして数で押すのが好きな人'],
+    summary: '異なる｜種族を｜並べるほど｜天力が｜増える｜共存の｜カミ。｜神技で｜人獣を｜招来し、｜創世神技で｜レガシーを｜呼び出して、｜多種多様な｜仲間で｜盤面を｜埋めていく。',
+    recommend: ['いろいろな｜種族を｜並べて｜盤面で｜戦いたい人', '仲間を｜増やして｜数で｜押すのが｜好きな人'],
     difficulty: 2, tags: ['種族分散', 'レガシー多め', '盤面展開'],
   },
   "4": {
-    summary: '自分の場に最も戦闘力の高いレガシーがいることで天力を溜める武のカミ。神技でアンタップ状態のレガシーとも戦闘でき、力で真正面から押し切る。',
-    recommend: ['戦闘で真っ向勝負したい人', 'わかりやすく強いレガシーで攻めたい人'],
+    summary: '自分の｜場に｜最も｜戦闘力の｜高い｜レガシーが｜いることで｜天力を｜溜める｜武の｜カミ。｜神技で｜アンタップ状態の｜レガシーとも｜戦闘でき、｜力で｜真正面から｜押し切る。',
+    recommend: ['戦闘で｜真っ向勝負したい人', 'わかりやすく｜強い｜レガシーで｜攻めたい人'],
     difficulty: 1, tags: ['戦闘力', '【補正+】', '攻撃的'],
   },
   "5": {
-    summary: 'オラクルとレリックを使って天力を溜める叡智のカミ。レガシーは少なめで、全体除去や軽減を駆使して盤面を制御し、知恵で勝ち筋を組み立てる。',
-    recommend: ['相手の動きに対応しながらじっくり戦いたい人', 'オラクル・レリックを使いこなしたい人'],
+    summary: 'オラクルと｜レリックを｜使って｜天力を｜溜める｜叡智の｜カミ。｜レガシーは｜少なめで、｜全体除去や｜軽減を｜駆使して｜盤面を｜制御し、｜知恵で｜勝ち筋を｜組み立てる。',
+    recommend: ['相手の｜動きに｜対応しながら｜じっくり｜戦いたい人', 'オラクル・｜レリックを｜使いこなしたい人'],
     difficulty: 3, tags: ['オラクル・レリック', '全体除去', 'コントロール'],
   },
   "6": {
-    summary: 'マナ最大値やライフを増やして天力を溜める悦楽のカミ。序盤は耐えしのぎ、増えたマナで高コストのカードを次々に繰り出して場をひっくり返す。',
-    recommend: ['序盤をしのいで終盤に大技を決めたい人', 'マナを育てて重いカードを使いたい人'],
+    summary: 'マナ最大値や｜ライフを｜増やして｜天力を｜溜める｜悦楽の｜カミ。｜序盤は｜耐えしのぎ、｜増えた｜マナで｜高コストの｜カードを｜次々に｜繰り出して｜場を｜ひっくり返す。',
+    recommend: ['序盤を｜しのいで｜終盤に｜大技を｜決めたい人', 'マナを｜育てて｜重い｜カードを｜使いたい人'],
     difficulty: 2, tags: ['マナ最大値', 'ライフ回復', '高コスト'],
   },
   "7": {
-    summary: 'レガシーの破壊を力に変える破壊のカミ。【補正-】や除去で相手の盤面を崩し、自分のレガシーが倒れることさえ天力と墓地の糧にする。',
-    recommend: ['相手の盤面を崩して攻めたい人', '墓地を使ったコンボが好きな人'],
+    summary: 'レガシーの｜破壊を｜力に｜変える｜破壊の｜カミ。｜【補正-】や｜除去で｜相手の｜盤面を｜崩し、｜自分の｜レガシーが｜倒れることさえ｜天力と｜墓地の｜糧にする。',
+    recommend: ['相手の｜盤面を｜崩して｜攻めたい人', '墓地を｜使った｜コンボが｜好きな人'],
     difficulty: 2, tags: ['破壊・【補正-】', '妖怪', '墓地'],
   },
   "8": {
-    summary: '【守護】で仲間を守りながら天力を溜める慈悲のカミ。創世神技では墓地から好きなカードを蘇生でき、重いレガシーを呼び戻して形勢を変える。',
-    recommend: ['守りを固めて堅実に戦いたい人', '初めてツクリヨを遊ぶ人'],
+    summary: '【守護】で｜仲間を｜守りながら｜天力を｜溜める｜慈悲の｜カミ。｜創世神技では｜墓地から｜好きな｜カードを｜蘇生でき、｜重い｜レガシーを｜呼び戻して｜形勢を｜変える。',
+    recommend: ['守りを｜固めて｜堅実に｜戦いたい人', '初めて｜ツクリヨを｜遊ぶ人'],
     difficulty: 1, tags: ['守護', '蘇生', '防御的'],
   },
   "9": {
-    summary: 'トークンを招来するほど天力が溜まる静寂のカミ。影分身・ヨリシロちゃん・社の施しなどを並べ、統制の取れた盤面で相手を封じる。',
-    recommend: ['たくさんのトークンを並べるのが好きな人', '盤面を細かく管理して戦いたい人'],
+    summary: 'トークンを｜招来するほど｜天力が｜溜まる｜静寂の｜カミ。｜影分身・｜ヨリシロちゃん・｜社の施しなどを｜並べ、｜統制の｜取れた｜盤面で｜相手を｜封じる。',
+    recommend: ['たくさんの｜トークンを｜並べるのが｜好きな人', '盤面を｜細かく｜管理して｜戦いたい人'],
     difficulty: 2, tags: ['トークン', '招来', '忍者'],
   },
   "10": {
-    summary: '龍レガシーを率い、封印を解くほど力を増していく龍のカミ。天力を溜める他のカミとは異なる、独自の仕組みで戦う。',
-    recommend: ['龍の力で相手を圧倒したい人', '他のカミとは違う遊び方を楽しみたい人'],
+    summary: '龍レガシーを｜率い、｜封印を｜解くほど｜力を｜増していく｜龍の｜カミ。｜天力を｜溜める｜他の｜カミとは｜異なる、｜独自の｜仕組みで｜戦う。',
+    recommend: ['龍の｜力で｜相手を｜圧倒したい人', '他の｜カミとは｜違う｜遊び方を｜楽しみたい人'],
     difficulty: 3, tags: ['龍', '封印', '特殊'],
   },
 });
@@ -14307,6 +14311,10 @@ new Vue({
       this._kamiDexStopVoice();
       this.kamiDexOpen = false;
       this.kamiDexOrochiConfirm = false;
+    },
+    // 「｜」で区切った文を文節の配列にする（区切りの無い文はそのまま1つ）
+    kamiDexPhrases(text) {
+      return String(text || '').split('｜').filter(Boolean);
     },
     kamiDexSelect(no) {
       no = String(no);
