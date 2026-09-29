@@ -5858,8 +5858,8 @@
             </div>
           </div>
           <div class="manual-cover-cards" aria-hidden="true">
-            <img src="card_images/320/001.webp" alt="">
-            <img src="kami_card_images/320/001.webp" alt="">
+            <img :src="assetPath('card_images/320/001.webp')" alt="">
+            <img :src="assetPath('kami_card_images/320/001.webp')" alt="">
           </div>
         </section>
 
@@ -5935,7 +5935,7 @@
             </div>
             <div class="manual-card-figure">
               <div class="manual-card-image-wrap">
-                <img src="card_images/600/001.webp" alt="①から⑩の番号を重ねたレガシーカードの例">
+                <img :src="assetPath('card_images/600/001.webp')" alt="①から⑩の番号を重ねたレガシーカードの例">
                 <span class="manual-card-pin p1">①</span><span class="manual-card-pin p2">②</span>
                 <span class="manual-card-pin p3">③</span><span class="manual-card-pin p4">④</span>
                 <span class="manual-card-pin p5">⑤</span><span class="manual-card-pin p6">⑥</span>
@@ -9893,6 +9893,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-check-compat.js"></script>
 <!-- 追加モジュール（firebase.js は他のFirebase利用JSより先に読むこと） -->
 <script src="version.js"></script>
+<!-- 画像・音声の中身の識別子（node scripts/build_asset_hashes.js で作る）。assetUrl() が URL に付ける -->
+<script src="asset_hashes.js"></script>
 <script src="divine_effects.js"></script>
 <script src="firebase.js"></script>
 <script src="sync_core.js"></script>
@@ -10073,13 +10075,24 @@ function driveThumbUrl(fileId, width) {
 
 const LOCAL_CARD_IMAGE_MAX_NO = 198;
 const LOCAL_KAMI_CARD_IMAGE_MAX_NO = 10;
+/* 画像・音声のURL。asset_hashes.js（node scripts/build_asset_hashes.js で作る）にある素材は、
+   中身の識別子を ?h= に付ける。中身が変わったときだけURLが変わるので、本番では長期間キャッシュでき、
+   バージョンを上げても変わっていない素材は取り直さない（_headers で1年キャッシュを指定）。
+   一覧にない素材は識別子なしのURLを返す。rawPath は「bgm/曲名.mp3」のようにエンコード前の相対パス。 */
+function assetUrl(rawPath) {
+  const path = String(rawPath || '');
+  const encoded = path.split('/').map(encodeURIComponent).join('/');
+  const hashes = typeof ASSET_HASHES === 'object' && ASSET_HASHES ? ASSET_HASHES : null;
+  const hash = hashes && hashes[path];
+  return hash ? `${encoded}?h=${hash}` : encoded;
+}
 function localCardImageUrl(cardNo, isKami, width, buildVersion) {
   const no = parseInt(cardNo, 10);
   const maxNo = isKami ? LOCAL_KAMI_CARD_IMAGE_MAX_NO : LOCAL_CARD_IMAGE_MAX_NO;
   if (!Number.isFinite(no) || no < 1 || no > maxNo) return null;
   const assetWidth = Number(width) <= 400 ? 320 : 600;
   const directory = isKami ? 'kami_card_images' : 'card_images';
-  return `${directory}/${assetWidth}/${String(no).padStart(3, '0')}.webp?v=${encodeURIComponent(buildVersion)}`;
+  return assetUrl(`${directory}/${assetWidth}/${String(no).padStart(3, '0')}.webp`);
 }
 
 /* 神託の儀：カミ選択前に提示する創生理念と、実際のドラフトAIに沿ったピック基本方針。 */
@@ -16363,7 +16376,7 @@ new Vue({
       this._sfxLoadingPromises = this._sfxLoadingPromises || {};
       if (this._sfxLoadingPromises[name]) return this._sfxLoadingPromises[name];
       const promise = (async () => {
-        const src = `sfx/${file}`;
+        const src = assetUrl(`sfx/${file}`);
         const resp = await fetch(src);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const arrayBuf = await resp.arrayBuffer();
@@ -16442,7 +16455,7 @@ new Vue({
       if (!src || !(this.voiceVolume > 0)) return;
       try {
         if (this._kamiVoiceAudio) this._kamiVoiceAudio.pause();
-        const audio = new Audio(src + '?v=' + encodeURIComponent(this.BUILD_VERSION));
+        const audio = new Audio(typeof assetUrl === 'function' ? assetUrl(src) : src); // 中身の識別子付きURL（単体テストでは素のURL）
         audio.volume = this.voiceVolume;
         this._kamiVoiceAudio = audio;
         // 読み上げ終了・中断・再生失敗を、台詞の表示側でも待てるようにする。
@@ -16578,7 +16591,7 @@ new Vue({
       if (this._bgmLoadingPromises[key]) return this._bgmLoadingPromises[key];
       const promise = (async () => {
       const ctx = this._bgmAudioCtx();
-      const src = `bgm/${encodeURIComponent(entry.file)}`;
+      const src = assetUrl(`bgm/${entry.file}`);
       const resp = await fetch(src);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const arrayBuf = await resp.arrayBuffer();
@@ -17761,7 +17774,7 @@ new Vue({
       if (expression === 'defeat') {
         const file = this.findKamiIllustFile(kami);
         if (file && file.name) {
-          return `kami_illustrations/defeat/${encodeURIComponent(file.name)}?v=${encodeURIComponent(this.BUILD_VERSION)}`;
+          return assetUrl(`kami_illustrations/defeat/${file.name}`);
         }
       }
       return this.kamiIllustrationUrl(kami) || '';
@@ -28276,9 +28289,9 @@ new Vue({
         const files = [];
         for (const [no, filename] of Object.entries(manifest)) {
           if (!filename) continue;
-          const localUrl = `kami_illustrations/${encodeURIComponent(String(filename))}`;
+          const localUrl = assetUrl(`kami_illustrations/${String(filename)}`);
           try {
-            await axios.get(`${localUrl}?v=${encodeURIComponent(this.BUILD_VERSION)}`, { responseType: 'blob' });
+            await axios.get(localUrl, { responseType: 'blob' });
             files.push({ id: `local-${no}`, no: String(no), name: String(filename), localUrl, modifiedTime: this.BUILD_VERSION, path: 'kami_illustrations/' });
           } catch (e) {
             console.warn(`カミ正方形イラスト未配置: ${localUrl}`);
@@ -28392,10 +28405,14 @@ new Vue({
       const file = this.findKamiIllustFile(card);
       return file ? file.id : null;
     },
+    /* テンプレートから画像・音声のURLを作る（中身の識別子付き。assetUrl を参照） */
+    assetPath(rawPath) {
+      return assetUrl(rawPath);
+    },
     /* イラスト URL（無ければ通常カード画像にフォールバック） */
     kamiIllustrationUrl(card) {
       const file = this.findKamiIllustFile(card);
-      if (file && file.localUrl) return `${file.localUrl}?v=${encodeURIComponent(this.BUILD_VERSION)}`;
+      if (file && file.localUrl) return file.localUrl; // 中身の識別子付き（assetUrl）
       if (file) return `${driveThumbUrl(file.id, 400)}?v=${encodeURIComponent(file.modifiedTime || file.id)}`;
       return this.cardImageUrl(card);
     },
@@ -28403,7 +28420,7 @@ new Vue({
     kamiSelectionIllustrationUrl(card) {
       const no = parseInt(card && card.no, 10);
       if (Number.isFinite(no) && no >= 1 && no <= 10) {
-        return `kami_illustrations/selection/${String(no).padStart(3, '0')}.webp?v=${encodeURIComponent(this.BUILD_VERSION)}`;
+        return assetUrl(`kami_illustrations/selection/${String(no).padStart(3, '0')}.webp`);
       }
       return this.kamiIllustrationUrl(card);
     },

@@ -16,6 +16,27 @@
 /*.js
   Cache-Control: no-cache, must-revalidate
 
+# カード画像・カミの画像・ボイス・BGM・効果音は、ゲームが中身の識別子（asset_hashes.js）を
+# URLの ?h= に付けて読み込むので、中身が変わればURLも変わる。更新のたびに全部を取り直さないよう長期保存する。
+# （これらのフォルダの素材を直接URLで参照するときも、必ず assetUrl() を通すこと）
+/card_images/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/kami_card_images/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/kami_illustrations/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/voices/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/bgm/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/sfx/*
+  Cache-Control: public, max-age=31536000, immutable
+
 # 内容のハッシュを含むWebPは、更新時にURLも変わるため長期保存できる。
 /divine_assets/*.webp
   Cache-Control: public, max-age=31536000, immutable

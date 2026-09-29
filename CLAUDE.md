@@ -33,6 +33,7 @@
 - このPCには Python がないため、同じ規則を Node の画像ライブラリ sharp で再現して処理する（sharp はリポジトリに入れず、作業用フォルダに `npm i sharp` して使う。`optimized_assets.json` の項目名は `import:保存先（ハッシュなし）`）
 - `tests/asset_contract.test.js` が、ハッシュと実際の中身の一致・容量上限・`bytes < sourceBytes` を検証する
 - 画像の差し替えも変更なので `version.js` を上げる
+- `card_images/`・`kami_card_images/`・`kami_illustrations/`・`voices/`・`bgm/`・`sfx/` の素材は本番で1年キャッシュし、ゲームは `asset_hashes.js`（中身の識別子の一覧）を使って URL に `?h=` を付けて読み込む。これらを追加・差し替えたら `npm run assets:hash`（`node scripts/build_asset_hashes.js`）で一覧を作り直す（古いままだと `npm test` が失敗し、本番では差し替えが届かない）。コードからこれらのフォルダを参照するときは必ず `assetUrl()` を通す。カード編集室で保存したカード画像は自動で一覧に反映される
 
 ## 確認方法
 

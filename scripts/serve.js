@@ -83,7 +83,11 @@ async function handleDev(req, res, url) {
       ? `No.${no} は index.html の ${kind === "kami" ? "LOCAL_KAMI_CARD_IMAGE_MAX_NO" : "LOCAL_CARD_IMAGE_MAX_NO"}（${max}）より大きいので、ゲームはまだこの画像を使いません。値を ${no} 以上に上げてください。`
       : null;
     console.log(`[card-editor] ${path.relative(root, file)} を保存（${Math.round(body.length / 1024)}KB）`);
-    return sendJson(res, 200, { ok: true, path: path.relative(root, file).split(path.sep).join("/"), bytes: body.length, warning });
+    // 本番でカード画像を長期キャッシュしているので、中身の識別子の一覧（asset_hashes.js）も合わせて更新する
+    const relPath = path.relative(root, file).split(path.sep).join("/");
+    try { require("./build_asset_hashes").updateAssetHashes(root, [relPath]); }
+    catch (e) { console.warn("[card-editor] asset_hashes.js を更新できませんでした。node scripts/build_asset_hashes.js を実行してください:", e.message); }
+    return sendJson(res, 200, { ok: true, path: relPath, bytes: body.length, warning });
   }
   // カードのイラストの原本を tools/card-editor/art/NNN.webp に保存する。作り直しのときに編集室が読み込む
   if (url.pathname === "/__dev/card-art" && req.method === "POST") {
