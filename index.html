@@ -10181,7 +10181,7 @@
       <div class="chp-label">進化元（重なり）</div>
       <div class="chp-img" :style="{ backgroundImage: 'url(' + cardImageUrl(hoverCard._evolvedBase) + ')' }"></div>
     </div>
-    <div class="card-hover-zoom-note">ホイールで拡大・縮小</div>
+    <div v-if="appView !== 'cardlist'" class="card-hover-zoom-note">ホイールで拡大・縮小</div>
   </div>
 
   <!-- ===== カードプレビュー モーダル ===== -->
@@ -29941,7 +29941,9 @@ new Vue({
       const rect = el.getBoundingClientRect();
       this._hoverSourceRect = rect;
       const evolved = !!(card && card._evolvedBase && this.cardImageUrl(card._evolvedBase));
-      const layout = this.cardHoverGeometry(rect, evolved ? 484 : 360, this.hoverZoom || 1, evolved);
+      // カードリストはクリックで拡大できるため、ホイールでの拡大縮小は使わず、いつも標準の大きさで出す
+      const zoom = this.appView === 'cardlist' ? 1 : (this.hoverZoom || 1);
+      const layout = this.cardHoverGeometry(rect, evolved ? 484 : 360, zoom, evolved);
       this.hoverWidth = layout.width;
       this.hoverLeft = layout.left;
       this.hoverTop = layout.top;
@@ -29958,6 +29960,8 @@ new Vue({
     },
     onCardPreviewWheel(event) {
       if (!event.deltaY || event.ctrlKey || event.metaKey || !this.$el) return;
+      // カードリストではホイールで一覧をスクロールする（カードの拡大はクリックで行える）
+      if (this.appView === 'cardlist') return;
       const shield = !!(this.sbHoverCard && this.$el.querySelector('.sb-hover-popup'));
       const normal = !!(this.hoverCard && !this.previewCard && !this.battleCardHoverBlocked() && this.$el.querySelector('.card-hover-preview'));
       const rect = shield ? this._sbHoverSourceRect : this._hoverSourceRect;
