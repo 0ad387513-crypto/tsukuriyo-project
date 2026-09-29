@@ -1581,6 +1581,19 @@
     padding: 5px 16px; border: 1px solid #4a5268; border-radius: 999px; background: #1b202c; color: #cfd6e6; font-size: 12px; font-weight: 800; cursor: pointer;
   }
   .kami-dex-view-switch button.active { border-color: #e1c477; background: #5a4520; color: #fff3c9; }
+  .dex-preview-bar {
+    position: fixed; top: 58px; left: 50%; z-index: 850; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px; max-width: calc(100vw - 32px); flex-wrap: wrap; justify-content: center;
+    border: 1px solid #c79a4a; border-radius: 12px; background: rgba(12, 14, 22, .92); box-shadow: 0 10px 30px rgba(0, 0, 0, .55);
+  }
+  .dex-preview-bar-label { color: #f1d58a; font-size: 12px; font-weight: 900; letter-spacing: .06em; margin-right: 4px; }
+  .dex-preview-bar button {
+    padding: 7px 14px; border: 1px solid #5d78a8; border-radius: 9px; background: linear-gradient(160deg, #2a3a5e, #161d30);
+    color: #eaf1ff; font-size: 13px; font-weight: 900; cursor: pointer;
+  }
+  .dex-preview-bar button.genesis { border-color: #c79a4a; background: linear-gradient(160deg, #6a4a22, #2d1f14); color: #fff3d6; }
+  .dex-preview-bar button.back { border-color: #626b7c; background: #272d3a; color: #e4e8f0; }
+  .dex-preview-bar button:hover { filter: brightness(1.18); }
   .kami-dex-skill-preview { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .kami-dex-skill-preview-label { width: 100%; text-align: center; color: #cfb875; font-size: 11px; font-weight: 900; letter-spacing: .12em; }
   .kami-dex-skill-preview button {
@@ -9191,6 +9204,13 @@
       <span v-if="battleFatigueEffect.fatal">ターン経過による疲労で、{{ battleFatigueEffect.side === 'self' ? 'あなたが敗北しました' : '相手が敗北しました' }}</span>
     </div>
   </div>
+  <!-- カミ図鑑の演出プレビュー：仮の対戦画面の上部に、再生・図鑑へ戻るボタンを出す -->
+  <div v-if="appView === 'battle' && battleContext && battleContext.source === 'dexPreview' && !battleSkillCloseup && !battleLoading" class="dex-preview-bar" role="toolbar" aria-label="演出プレビュー">
+    <span class="dex-preview-bar-label">演出プレビュー：{{ battleSample && battleSample.self.kami ? battleSample.self.kami.name : '' }}</span>
+    <button type="button" @click="dexPreviewPlay(1)">✨ 神技</button>
+    <button type="button" class="genesis" @click="dexPreviewPlay(2)">🌟 創世神技</button>
+    <button type="button" class="back" @click="battleReturn">◀ カミ図鑑へ戻る</button>
+  </div>
   <transition name="battle-skill-closeup-fade">
     <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :style="{ zIndex: battleCpuThinking ? 10001 : null, '--fx-duration': _battleMotionMs(battleSkillCloseup.phase === 'animation' ? (battleSkillCloseup.animationDuration || 2400) : 1800)+'ms' }" :class="{ 'genesis-dedicated-mode': battleSkillCloseup.dedicatedArt, 'divine-cinematic-mode': battleSkillCloseup.phase === 'animation', 'divine-transfer-mode': battleSkillCloseup.phase === 'animation' && battleSkillCloseup.transfers && battleSkillCloseup.transfers.length > 0, 'divine-portrait-mode': battleSkillCloseup.phase === 'portrait', 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }"
          @click="battleSkillCloseupClickDismiss">
@@ -12533,6 +12553,7 @@ new Vue({
       if (this.battleContext.returnView === 'shield') return 'シールド戦';
       if (this.battleContext.returnView === 'game') return '星戦';
       if (this.battleContext.returnView === 'construct') return '理念構築戦';
+      if (this.battleContext.returnView === 'kamiDex') return 'カミ図鑑';
       return 'トップ';
     },
     /* バトルログ：新しい出来事ほど上に来るよう逆順で表示する（都度スクロールしなくて済むように） */
@@ -14621,27 +14642,9 @@ new Vue({
         else this._genesisStoryRestorePreviousBgm();
       }
     },
-    /* カミ図鑑から神技・創世神技の演出を見る。対戦の演出処理をそのまま使い、盤面の代わりに
-       画面の大きさから仮の位置（カミ・相手の場・自分の場・対象のカード）を用意する。終わったら図鑑へ戻る */
-    _divinePreviewGeometry(kami) {
-      const w = window.innerWidth || 1280, h = window.innerHeight || 800;
-      const enemy = { left: w * 0.18, top: h * 0.12, width: w * 0.64, height: h * 0.26 };
-      const friendly = { left: w * 0.18, top: h * 0.56, width: w * 0.64, height: h * 0.26 };
-      const cardW = Math.min(110, w * 0.08), cardH = cardW * 88 / 63;
-      const sample = (this.allCards || []).filter(c => !c.isToken && !c.isKami && c.category === 'レガシー');
-      const targets = [0, 1, 2].map(i => {
-        const card = sample.length ? sample[(i * 37 + Number(kami.no) * 11) % sample.length] : null;
-        return {
-          left: enemy.left + enemy.width * (0.25 + i * 0.25) - cardW / 2, top: enemy.top + (enemy.height - cardH) / 2,
-          width: cardW, height: cardH, kind: 'card', image: card ? this.cardImageUrl(card) : '',
-        };
-      });
-      return {
-        layout: { origin: { x: w / 2, y: h * 0.9 }, enemy, friendly },
-        swordLanding: { left: w * 0.5 + 60, top: h * 0.86, width: 38, height: 44 },
-        targets,
-      };
-    },
+    /* カミ図鑑から神技・創世神技の演出を見る：仮の対戦画面（自分と相手の場にヨリシロちゃんを3体ずつ）へ移り、
+    そのカミが神技・創世神技を使った想定で、対戦と同じ演出を再生する。演出だけを見せ、盤面の効果は処理しない。
+    仮の対戦画面では、上部のボタンでもう一度再生したり、カミ図鑑へ戻ったりできる */
     async kamiDexPreviewSkill(index) {
       const kami = this.kamiDexKami;
       if (!kami || this.kamiDexPreviewing || this.battleSkillCloseup) return;
@@ -14649,22 +14652,76 @@ new Vue({
       this._kamiDexStopVoice();
       this.kamiDexPreviewing = true;
       try {
-        // 絵が途中で出てこないよう、そのカミの演出素材を先に読み込む
-        await this._withLoadingScreen('演出を準備しています', this._kamiVisualUrls(kami).map(url => this._assetImage(url)));
         this.kamiDexOpen = false;
-        const stage = this._divinePreviewGeometry(kami);
-        this._divinePreviewStage = stage;
-        const hadContext = this._battleDivineContext;
-        // 対象を狙う演出（雷・炎の爪など）は、仮の対象カードへ向けて再生する
-        this._battleDivineContext = index === 2 && ['4', '6', '7', '8'].includes(String(kami.no))
-          ? { kami, index: 2, targets: stage.targets, transfers: [], survivors: [] } : null;
+        const ready = await this._dexPreviewStartBattle(kami);
+        if (!ready) { this.kamiDexOpen = true; return; }
+      } finally {
+        this.kamiDexPreviewing = false;
+      }
+      await this.dexPreviewPlay(index);
+    },
+    async _dexPreviewStartBattle(kami) {
+      try {
+        await this.ensureBattleAssetsLoaded();
+      } catch (e) {
+        alert(e && e.message ? e.message : 'カードデータを読み込めませんでした。');
+        return false;
+      }
+      const selfKami = this.allKamiCards.find(k => String(k.no) === String(kami.no)) || kami;
+      // 相手のカミは、見せたいカミと重ならない通常のカミにする
+      const oppNo = String(selfKami.no) === '8' ? '9' : '8';
+      const oppKami = this.allKamiCards.find(k => String(k.no) === oppNo) || this.allKamiCards.find(k => String(k.no) !== String(selfKami.no));
+      const pool = this._battleAlphaPoolForColor('ミックス');
+      this._battleInitialize({
+        source: 'dexPreview', modeLabel: '演出プレビュー', returnView: 'kamiDex',
+        selfName: 'あなた', oppName: '相手', firstSide: 'self', life: 10,
+        selfDeck: pool, oppDeck: pool, selfKami, oppKami,
+        syncGame: false, oppIsCpu: false, skipOpening: true,
+      });
+      // 自分と相手の場に、ヨリシロちゃんを3体ずつ並べる
+      const proto = this.battleSummonCandidates('ヨリシロちゃん')[0] || this.battleSummonCandidates('ヨリシロ')[0];
+      if (proto) {
+        for (const side of ['self', 'opp']) {
+          for (let i = 0; i < 3; i++) this.battleSample[side].legacies.push(this._battlePrepareFieldCard(Object.assign({}, proto)));
+        }
+      }
+      // 対戦のロード画面（素材とBGMの準備）が終わるまで待つ
+      await new Promise(resolve => {
+        const started = Date.now();
+        const check = () => (!this.battleLoading || Date.now() - started > 30000) ? resolve() : setTimeout(check, 100);
+        check();
+      });
+      await this.$nextTick();
+      await new Promise(resolve => setTimeout(resolve, 300)); // 盤面の配置が落ち着いてから位置を測る
+      return this.appView === 'battle' && !!this.battleSample;
+    },
+    // 仮の対戦画面で、自分のカミの神技（1）・創世神技（2）の演出を再生する
+    async dexPreviewPlay(index) {
+      if (this.appView !== 'battle' || !this.battleContext || this.battleContext.source !== 'dexPreview' || this.battleSkillCloseup) return;
+      const kami = this.battleSample && this.battleSample.self.kami;
+      if (!kami) return;
+      this.hideCardHover();
+      const hadContext = this._battleDivineContext;
+      if (index === 2 && ['4', '6', '7', '8'].includes(String(kami.no))) {
+        // 対象を狙う演出（雷・炎の爪など）は、相手のヨリシロちゃんへ向けて再生する
+        const targets = [];
+        (this.battleSample.opp.legacies || []).forEach((card, i) => {
+          const r = this._battleFieldCardRect('opp', 'legacies', i);
+          if (r) targets.push({ left: r.left, top: r.top, width: r.width, height: r.height, kind: 'card', image: this.cardImageUrl(card) });
+        });
+        if (String(kami.no) === '7') {
+          const r = this._battleKamiPortraitRect('opp');
+          if (r) targets.push(Object.assign({}, r, { kind: 'kami' }));
+        }
+        this._battleDivineContext = { kami, index: 2, targets, transfers: [], survivors: [] };
+      } else {
+        this._battleDivineContext = null;
+      }
+      try {
         if (index === 2) await this._battleShowSkill2Closeup(kami, kami.skill2name, null, 'self');
         else { this._sfxPlay('skill'); await this._battleShowSkill1Closeup(kami, kami.skill1name); }
-        this._battleDivineContext = hadContext || null;
       } finally {
-        this._divinePreviewStage = null;
-        this.kamiDexPreviewing = false;
-        this.kamiDexOpen = true;
+        this._battleDivineContext = hadContext || null;
       }
     },
     // カミ図鑑からOPを見返す
@@ -18499,7 +18556,6 @@ new Vue({
       return !!(p && p.effect && p.effect.kamiNo === '1' && this.battleAnimationSpeed !== 'minimal' && this.battleViewSide(p.writerSide || 'self') === displaySide);
     },
     _battleSusanooMarkRect(writerSide) {
-      if (this._divinePreviewStage) return this._divinePreviewStage.swordLanding;
       const root = this.$el;
       if (!root) return null;
       const display = this.battleViewSide(writerSide);
@@ -18516,7 +18572,6 @@ new Vue({
     },
     /* 創世神技：全画面カットインと台詞を一度だけ表示し、その後に固有の効果を再生する。 */
     _battleDivineStageLayout(writerSide) {
-      if (this._divinePreviewStage) return this._divinePreviewStage.layout;
       const root=this.$el;
       if (!root) return null;
       const display=this.battleViewSide(writerSide);
@@ -19041,6 +19096,8 @@ new Vue({
     },
     battleReturn() {
       this._sfxPlay('cancel');
+      // カミ図鑑の演出プレビューは対戦ではないので、確認せずに図鑑へ戻る
+      if (this.battleContext && this.battleContext.source === 'dexPreview') { this.battleReturnNow(); return; }
       const decided = !!this.battleSample.result;
       const message = decided
         ? `${this.battleReturnLabel}へ戻りますか？`
@@ -19098,6 +19155,7 @@ new Vue({
         this.constructOpen = true;
       } else {
         this.appView = 'top';
+        if (this.battleContext.returnView === 'kamiDex') this.kamiDexOpen = true;
       }
       // 勝敗bgm（victory/defeat）が鳴っていた場合、対戦画面を離れた時点で通常bgmに戻す
       // （appViewのwatcherにも同等の処理はあるが、確実性のためここでも明示的に呼ぶ）
