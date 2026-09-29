@@ -534,26 +534,10 @@
                         <span id="batchFolderName" style="margin-left:10px; color:#333;"></span>
                     </p>
                     <p style="font-size:12px; color:#666; margin-bottom:10px;">※ファイル名が「001_カード名.png」形式のフォルダを選択してください</p>
-                    <p style="margin-bottom:8px;">
-                        <label>裏面画像：</label>
-                        <input type="file" id="backImage" accept="image/*" style="display:none;">
-                        <button onclick="document.getElementById('backImage').click()" style="padding:5px 15px; cursor:pointer;">ファイルを選択</button>
-                        <span id="backImageName" style="margin-left:10px; color:#333;"></span>
-                    </p>
-                    <p style="font-size:12px; color:#666; margin-bottom:10px;">※ユドナリウム用の裏面画像（通常カード用）</p>
-                    <p style="margin-bottom:8px;">
-                        <label>カミ裏面画像：</label>
-                        <input type="file" id="kamiBackImage" accept="image/*" style="display:none;">
-                        <button onclick="document.getElementById('kamiBackImage').click()" style="padding:5px 15px; cursor:pointer;">ファイルを選択</button>
-                        <span id="kamiBackImageName" style="margin-left:10px; color:#333;"></span>
-                    </p>
-                    <p style="font-size:12px; color:#666; margin-bottom:10px;">※カミカード専用の裏面画像（未選択なら上の裏面画像を使用）</p>
                     <div><button @click="importArtFolder" :disabled="!gameLinkReady" style="margin: 5px; min-width: 320px; padding:10px 24px; background-color:#6d4c41; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">選んだフォルダのイラストを取り込む</button></div>
                     <div><button @click="regenerateAllFromSavedArt" :disabled="!gameLinkReady" style="margin: 5px; min-width: 320px; padding:10px 24px; background-color:#8d6e63; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">保存済みイラストで全カードを作り直す</button></div>
                     <div><button @click="batchGenerateToGame" :disabled="!gameLinkReady" style="margin: 5px; min-width: 320px; padding:10px 24px; background-color:#b8860b; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">一括生成してゲームに反映</button></div>
                     <div><button @click="batchGenerate(false)" style="margin: 5px; width: 320px; padding:10px 30px; background-color:#1565c0; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">一括生成してZIPダウンロード</button></div>
-                    <div><button @click="batchGenerateUdonarium" style="margin: 5px; width: 320px; padding:10px 30px; background-color:#4caf50; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">ユドナリウム用ZIP生成</button></div>
-                    <div><button @click="batchGenerateUdonariumByS" style="margin: 5px; width: 320px; padding:10px 30px; background-color:#ff9800; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">ユドナリウム用ZIP（S列1〜5の束）</button></div>
                     <p v-if="batchProgress" style="margin-top:10px;">{{batchProgress}}</p>
                 </div>
             </div>
@@ -610,23 +594,6 @@
             }
         });
 
-        document.getElementById('backImage').addEventListener('change', function() {
-            var label = document.getElementById('backImageName');
-            if (this.files.length > 0) {
-                label.textContent = this.files[0].name;
-            } else {
-                label.textContent = '';
-            }
-        });
-
-        document.getElementById('kamiBackImage').addEventListener('change', function() {
-            var label = document.getElementById('kamiBackImageName');
-            if (this.files.length > 0) {
-                label.textContent = this.files[0].name;
-            } else {
-                label.textContent = '';
-            }
-        });
 
     })
     </script>
