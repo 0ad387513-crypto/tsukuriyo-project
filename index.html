@@ -1511,6 +1511,11 @@
   .kami-dex-title-mark { font-size: 22px; }
   .kami-dex-title { color: #fff3c9; font-family: 'Yu Mincho','Hiragino Mincho ProN',serif; font-size: clamp(22px, 2.2vw, 30px); font-weight: 900; letter-spacing: .12em; }
   .kami-dex-sub { color: #8f99aa; font-size: 12px; }
+  .kami-dex-op-btn {
+    margin-left: auto; padding: 6px 14px; border: 1px solid #c79a4a; border-radius: 999px;
+    background: linear-gradient(160deg, #6a4a22, #2d1f14); color: #fff3d6; font-size: 12px; font-weight: 900; cursor: pointer;
+  }
+  .kami-dex-op-btn:hover { filter: brightness(1.15); }
   .kami-dex-tabs { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; margin-bottom: 16px; }
   .kami-dex-tab {
     display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; padding: 4px 2px 6px;
@@ -1523,6 +1528,40 @@
   .kami-dex-tab.active { border-color: #e1c477; background: linear-gradient(160deg, rgba(122, 92, 37, .45), rgba(20, 24, 34, .8)); color: #fff3c9; }
   .kami-dex-tab.locked.active, .kami-dex-tab.locked:hover { border-color: #c94c5d; }
   .kami-dex-panel .gs-kami-info-card-image { aspect-ratio: 600 / 838; background-size: cover; }
+  /* ピックガイド：おすすめカード一覧 */
+  .pick-card-list-btn {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 8px 16px;
+    border: 1px solid #c79a4a; border-radius: 999px; background: linear-gradient(160deg, #6a4a22, #2d1f14);
+    color: #fff3d6; font-size: 13px; font-weight: 900; cursor: pointer;
+  }
+  .pick-card-list-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  .pick-card-list-modal { z-index: 450; }
+  .pick-card-list-panel { width: min(1180px, 96vw); max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; }
+  .pick-card-list-chibi { width: 46px; height: 50px; object-fit: contain; flex: none; }
+  .pick-card-list-body { overflow-y: auto; padding: 14px clamp(12px, 2vw, 24px) 18px; }
+  .pick-card-list-empty { padding: 40px 0; text-align: center; color: #cfd6e6; }
+  .pick-card-tier { margin-bottom: 18px; padding: 12px; border: 1px solid #343b4b; border-radius: 12px; background: rgba(20, 24, 34, .72); }
+  .pick-card-tier.tier-top { border-color: #c9a24e; background: linear-gradient(135deg, rgba(122, 92, 37, .3), rgba(20, 24, 34, .75)); }
+  .pick-card-tier.tier-good { border-color: #4f6f9d; }
+  .pick-card-tier.tier-avoid { border-color: #8a3a44; background: linear-gradient(135deg, rgba(110, 28, 40, .22), rgba(20, 24, 34, .75)); }
+  .pick-card-tier-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; color: #fff3c9; font-size: 16px; font-weight: 900; }
+  .pick-card-tier-title small { color: #9aa4b6; font-size: 12px; font-weight: 700; }
+  .pick-card-tier-mark { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-size: 15px; }
+  .tier-top .pick-card-tier-mark { background: #b8923a; color: #fff; }
+  .tier-good .pick-card-tier-mark { background: #3d5f94; color: #fff; }
+  .tier-avoid .pick-card-tier-mark { background: #8a2f3c; color: #fff; }
+  .pick-card-tier-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+  .pick-card-tile { min-width: 0; cursor: zoom-in; outline: none; }
+  .pick-card-tile-img {
+    aspect-ratio: 63 / 88; border-radius: 6px; border: 1px solid #3a4258;
+    background: #10131c center / cover no-repeat; transition: transform .15s, box-shadow .15s;
+  }
+  .pick-card-tile:hover .pick-card-tile-img, .pick-card-tile:focus-visible .pick-card-tile-img { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0, 0, 0, .5); }
+  .tier-top .pick-card-tile-img { border-color: #d7b464; box-shadow: 0 0 10px rgba(215, 180, 100, .25); }
+  .tier-avoid .pick-card-tile-img { filter: grayscale(.55) brightness(.8); border-color: #8a3a44; }
+  .tier-avoid .pick-card-tile:hover .pick-card-tile-img { filter: none; }
+  .pick-card-tile-name { margin-top: 4px; color: #cfd6e6; font-size: 11px; line-height: 1.35; text-align: center; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .pick-card-list-note { margin: 4px 0 0; color: #8f99aa; font-size: 12px; line-height: 1.7; }
   .kami-dex-profile { border-color: #4f5f7d; background: linear-gradient(135deg, rgba(40, 60, 96, .28), rgba(20, 24, 34, .72)); }
   .kami-dex-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
   .kami-dex-difficulty {
@@ -1544,7 +1583,8 @@
   .kami-dex-view-switch button.active { border-color: #e1c477; background: #5a4520; color: #fff3c9; }
   .kami-dex-muted { margin-left: 6px; color: #d9a36c; font-size: 11px; font-weight: 700; letter-spacing: 0; }
   .kami-dex-voices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-  .kami-dex-wins { margin-top: 10px; grid-template-columns: 1fr; }
+  .kami-dex-wins { grid-template-columns: 1fr; }
+  .kami-dex-voice-subtitle { margin: 14px 0 6px; color: #ecd895; font-size: 12px; font-weight: 900; letter-spacing: .08em; }
   .kami-dex-voice {
     display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; padding: 7px 10px;
     border: 1px solid #343b4b; border-radius: 8px; background: rgba(12, 15, 23, .6); color: #d6dce7; text-align: left; cursor: pointer;
@@ -5876,6 +5916,7 @@
         <span class="kami-dex-title-mark" aria-hidden="true">⛩</span>
         <span class="kami-dex-title">カミ図鑑</span>
         <span class="kami-dex-sub">カミの理念・効果・声を確かめる</span>
+        <button type="button" class="kami-dex-op-btn" @click="replayGenesisStoryFromDex">🎬 創世決戦のOPを見る</button>
       </div>
       <div class="kami-dex-tabs" role="tablist" aria-label="カミを選ぶ">
         <button v-for="entry in kamiDexEntries" :key="'dex' + entry.no" type="button" role="tab"
@@ -5953,25 +5994,22 @@
             <button type="button" class="kami-dex-fold" :aria-expanded="kamiDexShowVoices ? 'true' : 'false'" @click="kamiDexShowVoices = !kamiDexShowVoices">
               {{ kamiDexShowVoices ? '▼' : '▶' }} ボイス<small v-if="!(voiceVolume > 0)" class="kami-dex-muted">（ボイスの音量が0のため再生されません）</small>
             </button>
-            <div v-if="kamiDexShowVoices" class="kami-dex-voices kami-dex-voices-open">
-              <button v-for="row in kamiDexVoiceRows" :key="row.key" type="button" class="kami-dex-voice"
-                      :class="{ playing: kamiDexPlayingKey === row.key }" :disabled="!row.hasVoice" @click="kamiDexPlay(row.key)">
-                <span class="kami-dex-voice-label">{{ row.hasVoice ? '▶' : '—' }} {{ row.label }}</span>
-                <span class="kami-dex-voice-text">「{{ row.text }}」</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="gs-kami-info-section">
-            <button type="button" class="kami-dex-fold" :aria-expanded="kamiDexShowWins ? 'true' : 'false'" @click="kamiDexShowWins = !kamiDexShowWins">
-              {{ kamiDexShowWins ? '▼' : '▶' }} 勝利のセリフ（相手のカミごと）
-            </button>
-            <div v-if="kamiDexShowWins" class="kami-dex-voices kami-dex-wins">
-              <button v-for="row in kamiDexWinRows" :key="row.key" type="button" class="kami-dex-voice"
-                      :class="{ playing: kamiDexPlayingKey === row.key }" :disabled="!row.hasVoice" @click="kamiDexPlay(row.key)">
-                <span class="kami-dex-voice-label">{{ row.hasVoice ? '▶' : '—' }} {{ row.label }}</span>
-                <span class="kami-dex-voice-text">「{{ row.text }}」</span>
-              </button>
+            <div v-if="kamiDexShowVoices" class="kami-dex-voices-open">
+              <div class="kami-dex-voices">
+                <button v-for="row in kamiDexVoiceRows" :key="row.key" type="button" class="kami-dex-voice"
+                        :class="{ playing: kamiDexPlayingKey === row.key }" :disabled="!row.hasVoice" @click="kamiDexPlay(row.key)">
+                  <span class="kami-dex-voice-label">{{ row.hasVoice ? '▶' : '—' }} {{ row.label }}</span>
+                  <span class="kami-dex-voice-text">「{{ row.text }}」</span>
+                </button>
+              </div>
+              <div v-if="kamiDexWinRows.length" class="kami-dex-voice-subtitle">勝利のセリフ（相手のカミごと）</div>
+              <div class="kami-dex-voices kami-dex-wins">
+                <button v-for="row in kamiDexWinRows" :key="row.key" type="button" class="kami-dex-voice"
+                        :class="{ playing: kamiDexPlayingKey === row.key }" :disabled="!row.hasVoice" @click="kamiDexPlay(row.key)">
+                  <span class="kami-dex-voice-label">{{ row.hasVoice ? '▶' : '—' }} {{ row.label }}</span>
+                  <span class="kami-dex-voice-text">「{{ row.text }}」</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -6082,9 +6120,9 @@
           {{ genesisStoryPlaying ? '一時停止' : '再生' }}
         </button>
         <button class="genesis-story-next" @click="genesisStoryStep(1)">
-          {{ genesisStoryIndex === genesisStoryScenes.length - 1 ? '創世決戦へ' : '次の絵へ' }} ›
+          {{ genesisStoryIndex === genesisStoryScenes.length - 1 ? (genesisStoryReplay ? 'カミ図鑑へ戻る' : '創世決戦へ') : '次の絵へ' }} ›
         </button>
-        <button class="genesis-story-skip" @click="finishGenesisStory">物語をスキップ</button>
+        <button class="genesis-story-skip" @click="finishGenesisStory">{{ genesisStoryReplay ? '閉じる' : '物語をスキップ' }}</button>
       </header>
       <div class="genesis-story-media"
            role="button"
@@ -6487,6 +6525,34 @@
   </div>
 
   <!-- ===== ピックガイド（説明書から分離。既存のカミ別指南は内容を維持） ===== -->
+  <!-- ピックガイド：カミごとのおすすめカード一覧（ピック補助・CPUと同じ採点で、ピックしたいカードと避けたいカードを絵で並べる） -->
+  <div v-if="pickCardListKami" class="battle-zone-modal pick-card-list-modal" role="dialog" aria-modal="true" aria-labelledby="pick-card-list-title" @click.self="closePickCardList">
+    <div class="battle-zone-modal-panel pick-card-list-panel">
+      <div class="manual-header">
+        <img v-if="kamiChibiUrl({ no: pickCardListKami })" class="pick-card-list-chibi" :src="kamiChibiUrl({ no: pickCardListKami })" alt="" draggable="false">
+        <div class="manual-header-copy">
+          <div id="pick-card-list-title" class="manual-header-title">{{ pickCardListKamiName }}のおすすめカード一覧</div>
+          <div class="manual-header-sub">カードにカーソルを合わせると拡大表示します</div>
+        </div>
+        <button class="manual-close" @click="closePickCardList">閉じる</button>
+      </div>
+      <div class="pick-card-list-body">
+        <div v-if="!pickCardListTiers.length" class="pick-card-list-empty">カードのデータを読み込んでいます…</div>
+        <section v-for="tier in pickCardListTiers" :key="tier.key" class="pick-card-tier" :class="'tier-' + tier.key">
+          <h3 class="pick-card-tier-title"><span class="pick-card-tier-mark">{{ tier.mark }}</span>{{ tier.label }}<small>{{ tier.note }}</small></h3>
+          <div class="pick-card-tier-grid">
+            <div v-for="card in tier.cards" :key="tier.key + card.no" class="pick-card-tile" tabindex="0"
+                 @mouseenter="showCardHover(card, $event)" @focus="showCardHover(card, $event)" @mouseleave="hideCardHover" @blur="hideCardHover">
+              <div class="pick-card-tile-img" :style="cardImageUrl(card, 320) ? { backgroundImage: 'url(' + cardImageUrl(card, 320) + ')' } : {}"></div>
+              <div class="pick-card-tile-name">{{ fullName(card) }}</div>
+            </div>
+          </div>
+        </section>
+        <p class="pick-card-list-note">※ ピック画面の👍👎やCPUと同じ評価基準で、カミとの相性を中心に自動で選んだ目安です。実際のピックでは、手持ちのカードや束の中身に合わせて判断してください。</p>
+      </div>
+    </div>
+  </div>
+
   <div v-if="howToPlayModalOpen" class="battle-zone-modal pick-guide-modal" role="dialog" aria-modal="true" aria-label="ピックガイド" @click.self="closePickGuide">
     <div class="battle-zone-modal-panel pick-guide-panel">
       <div class="manual-header" :inert="manualSpoilerConfirmOpen ? '' : null"><div class="manual-header-mark" aria-hidden="true">🧭</div><div class="manual-header-copy"><div class="manual-header-title">カミ別ピックガイド</div><div class="manual-header-sub">選別の儀・パック選択の参考に</div></div><button class="manual-close" @click="closePickGuide">閉じる</button></div>
@@ -6502,7 +6568,7 @@
           <div class="howto-body">・基本方針として、昇華・進化のカードを優先的にピックしましょう。特に進化は創世神技を使った後にも使える上ユニーク性も高いので、優先度は高いです。
 ・創世神技発動に必要な天力が少ないので、天力を固定値で上げるカード（約束の光・ミズホ、平穏の祈り手、鐘鳴らしの童など）との相性は最高です。神使が多いので、神使軸でデッキを組むのもありです。
 ・どのレガシーからでも進化できるカード（幽玄の面霊姫、葛ノ葉亭の若女将、千変万化の大妖狐）は最優先でピックしましょう。
-・昇華のコストを軽減するカード（厳格なる森の長・ハクレン、拒絶の守衛・イズモ）も強力です。種族は人獣のため、こちらに寄せるのもよいでしょう。</div></div>
+・昇華のコストを軽減するカード（厳格なる森の長・ハクレン、拒絶の守衛・イズモ）も強力です。種族は人獣のため、こちらに寄せるのもよいでしょう。</div><button type="button" class="pick-card-list-btn" @click="openPickCardList('1')">🃏 おすすめカード一覧を見る</button></div>
         </section>
         <section id="pick-yamato-takeru" class="howto-section pick-kami-section">
           <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/yamato-takeru-chibi.webp" alt="ヤマトタケルのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(2, $event)" @focus="showGuideKami(2, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
@@ -6512,7 +6578,7 @@
 ・神技で手札補充ができるので、軽めのカードを多くしても手札は尽きにくいです。
 ・創世神技で盤面干渉ができるので、マナ最大値を増やすカードを使う重量級の方針も強力です。
 ・創世神技は相手レガシーを1体残してしまうデメリットがあるので、単体除去のカード（冥土送りの侍女、静かなる謀殺など）を多めにピックしておくとよいでしょう。
-・同じ種族で固めることが難しく他種族寄りのデッキになりやすいので、「平和を願う剣・アヤト」「暁の盟約」「断禍の三重奏」の優先度は高くなります。</div></div>
+・同じ種族で固めることが難しく他種族寄りのデッキになりやすいので、「平和を願う剣・アヤト」「暁の盟約」「断禍の三重奏」の優先度は高くなります。</div><button type="button" class="pick-card-list-btn" @click="openPickCardList('2')">🃏 おすすめカード一覧を見る</button></div>
         </section>
         <section id="pick-okuninushi" class="howto-section pick-kami-section">
           <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/okuninushi-chibi.webp" alt="オオクニヌシのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(3, $event)" @focus="showGuideKami(3, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
@@ -6523,7 +6589,7 @@
 ・自身と異なる種族のトークンを招来するレガシー（無垢なる信徒・チフユ、約束の光・ミズホ、もふもふ探求者、決別の白槍・ミナト）も最優先でピックしましょう。
 ・自身の神技で人獣を招来できるので、人獣に偏ったピックは避けたほうがよいでしょう。
 ・複数の種族を並べる必要があるので、コスト7以上の重いカードは避け気味に。
-・手札切れに備え、「木漏れ日の道場」や「忠臣の予感」もピックしておくとよいでしょう。</div></div>
+・手札切れに備え、「木漏れ日の道場」や「忠臣の予感」もピックしておくとよいでしょう。</div><button type="button" class="pick-card-list-btn" @click="openPickCardList('3')">🃏 おすすめカード一覧を見る</button></div>
         </section>
         <section id="pick-takemikazuchi" class="howto-section pick-kami-section">
           <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/takemikazuchi-chibi.webp" alt="タケミカヅチのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(4, $event)" @focus="showGuideKami(4, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
@@ -6535,7 +6601,7 @@
 ・「覚悟の出陣」はレリックを多数採用していないと真価を発揮しませんが、侍とレリックを自然にピックできるタケミカヅチなら発揮しやすいので優先度は高いです。
 ・「刹那の救援」も戦闘力の高いレガシーを揃えるこのカミと好相性です。
 ・「木漏れ日の道場」は毎ターン【補正+1000】をかけられ、天力トリガーの条件を満たしやすくドローも優秀なので最優先です。
-・自身より戦闘力の高い相手レガシーを確実に除去するカード（冥土送りの侍女、静かなる謀殺など）もピックしましょう。</div></div>
+・自身より戦闘力の高い相手レガシーを確実に除去するカード（冥土送りの侍女、静かなる謀殺など）もピックしましょう。</div><button type="button" class="pick-card-list-btn" @click="openPickCardList('4')">🃏 おすすめカード一覧を見る</button></div>
         </section>
         <section id="pick-omoikane" class="howto-section pick-kami-section">
           <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(5, $event)" @focus="showGuideKami(5, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
@@ -6548,7 +6614,7 @@
 ・レガシーが少なくボードアドバンテージを取られやすいので、全体除去（恐怖の手記、熾烈なる戦役、禍ツ撃など）は優先してピックしましょう。
 ・「晴れ空の門出」はオラクルでありながらレリックの「社の施し」を招来できるため、最優先でピックすべきカードです。
 ・オラクル/レリックのコストを下げる「誇り高き名工」「史を紡ぐ語り部」も優先度が高く、オラクル、レリックより優先してピックする場合があります。
-・レガシーの割合が少ないと勝つのが難しいので、最低限レガシーもピックしましょう。</div></div>
+・レガシーの割合が少ないと勝つのが難しいので、最低限レガシーもピックしましょう。</div><button type="button" class="pick-card-list-btn" @click="openPickCardList('5')">🃏 おすすめカード一覧を見る</button></div>
         </section>
         <section id="pick-amenouzume" class="howto-section pick-kami-section">
           <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/amenouzume-chibi.webp" alt="アメノウズメのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(6, $event)" @focus="showGuideKami(6, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
@@ -6559,7 +6625,7 @@
 ・マナを増やす都合上、場にレガシーを出すタイミングが少ないことがあるので、除去カード（瞬速の死闘、禁忌の祭壇、式神奏術・一目連など）をピックしておきましょう。特に後者2つはライフ回復も伴うため優先度はさらに高めです。
 ・マナを増やして戦う都合上、高コストで場を大きく動かすカード（陰陽かぶれの犬神、紅翼龍・ルベル、偽りの聖女・サナエなど）とも相性がよいです。
 ・「もふもふ探求者」は低コストでも使える上、マナが増えた後半でも昇華で使えるため最優先です。
-・上記の他、昇華のカード全般はマナ最大値が増えた後でも使いやすいため優先度は高めです。</div></div>
+・上記の他、昇華のカード全般はマナ最大値が増えた後でも使いやすいため優先度は高めです。</div><button type="button" class="pick-card-list-btn" @click="openPickCardList('6')">🃏 おすすめカード一覧を見る</button></div>
         </section>
         <section id="pick-hinokagutsuchi" class="howto-section pick-kami-section">
           <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/hinokagutsuchi-chibi.webp" alt="ヒノカグツチのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(7, $event)" @focus="showGuideKami(7, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
@@ -6576,7 +6642,7 @@
 ・「昏き紫の眷属」は墓地を肥やすデッキだと真価を発揮します。ユニークを取り過ぎていなければピックしたいカードです。
 ・「神出鬼没の小鼠」は青/人獣寄りのカードで、このカミの基本方針とはあまり噛み合わないため優先度は低めです。
 ・「黄泉帰り」は墓地から回収＋除去という基本方針に大きく合致するため最優先級です。
-・「瞬速の死闘」は強力な選定除去で、天力を大きく稼げる可能性があるため最優先でピックしたいカードです。</div></div>
+・「瞬速の死闘」は強力な選定除去で、天力を大きく稼げる可能性があるため最優先でピックしたいカードです。</div><button type="button" class="pick-card-list-btn" @click="openPickCardList('7')">🃏 おすすめカード一覧を見る</button></div>
         </section>
         <section id="pick-amaterasu" class="howto-section pick-kami-section">
           <figure class="pick-kami-figure"><img class="pick-kami-image" src="tutorial_guide/amaterasu-chibi-01a4da0b3506.webp" alt="アマテラスのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(8, $event)" @focus="showGuideKami(8, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
@@ -6586,7 +6652,7 @@
 ・「平穏の祈り手」「鐘鳴らしの童」は召喚するだけで天力が2上がるため優先度がかなり高いです。
 ・ヨリシロちゃんを招来できるカードは相性がよく、その中でも複数招来できる「無垢なる信徒・チフユ」「決別の白槍・ミナト」「陰陽かぶれの犬神」は特に相性がよいです。
 ・神使には守護が多く、ヨリシロちゃんを招来するカードもあるので相性がよく、神使を中心にデッキを組むのもよいでしょう。
-・創世神技はなんでも墓地から蘇生できる破格の効果なので、なるべくコストの高いカードを蘇生したいです。コストの重いカード全般の優先度は高く、特に守護を持つ「黄角龍・フラウス」は最高の相性です。</div></div>
+・創世神技はなんでも墓地から蘇生できる破格の効果なので、なるべくコストの高いカードを蘇生したいです。コストの重いカード全般の優先度は高く、特に守護を持つ「黄角龍・フラウス」は最高の相性です。</div><button type="button" class="pick-card-list-btn" @click="openPickCardList('8')">🃏 おすすめカード一覧を見る</button></div>
         </section>
         <section id="pick-tsukuyomi" class="howto-section pick-kami-section">
           <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(9, $event)" @focus="showGuideKami(9, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
@@ -6598,7 +6664,7 @@
 ・天力トリガーの対象となるカードが多いので、天力を固定値で上げるカードとはあまり相性がよくなく、優先度は少し下がります。
 ・ヨリシロちゃんを生成するカードを多くピックできているなら、ヨリシロちゃんのオラクル軽減効果によりオラクルの優先度が上がります。
 ・「聖女の巡礼」は最優先です。1枚で天力を3得られます。
-・「落日の子守唄」「歓喜の凱旋」は毎ターントークンを招来できる最高の相性のカードなので、最優先でピックしましょう。</div></div>
+・「落日の子守唄」「歓喜の凱旋」は毎ターントークンを招来できる最高の相性のカードなので、最優先でピックしましょう。</div><button type="button" class="pick-card-list-btn" @click="openPickCardList('9')">🃏 おすすめカード一覧を見る</button></div>
         </section>
         <section v-if="manualOrochiRevealed" id="pick-yamata-no-orochi" class="howto-section pick-kami-section">
           <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/yamata-no-orochi-chibi.webp" alt="ヤマタノオロチのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(10, $event)" @focus="showGuideKami(10, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
@@ -6613,7 +6679,7 @@
 ・天力を扱わないカミなので、天力を固定値で上げるだけのカードはほぼ無駄になります。優先度をかなり下げましょう。
 ・「黄泉帰り」は墓地の貴重な龍を手札に戻して使い回せるため優先度が高いです。
 ・「謀略の囁き」のような除去カードは汎用性が高く、序盤を支えられるのでピックしてよいカードです。
-・「天喰らう咆哮」は墓地に揃った属性の種類数で真価を発揮します。特定の属性に偏らず、なるべく色のバランスを取りながらピックしましょう。</div></div>
+・「天喰らう咆哮」は墓地に揃った属性の種類数で真価を発揮します。特定の属性に偏らず、なるべく色のバランスを取りながらピックしましょう。</div><button type="button" class="pick-card-list-btn" @click="openPickCardList('10')">🃏 おすすめカード一覧を見る</button></div>
         </section>
         <section v-else id="pick-yamata-no-orochi" class="howto-section pick-kami-section">
           <button ref="pickOrochiReveal" class="pick-kami-mystery" aria-label="隠しカミのピック指南を表示" @click="manualRequestOrochi">？</button>
@@ -12039,6 +12105,8 @@ new Vue({
     kamiDexShowWins: false,
     kamiDexShowEffects: false,   // カミの効果は、たたんだ状態で開く
     kamiDexShowVoices: false,    // ボイスも、たたんだ状態で開く
+    pickCardListKami: null,      // ピックガイドのおすすめカード一覧を開いているカミの番号
+    genesisStoryReplay: false,   // カミ図鑑からOPを見返している（終わったら創世決戦へ進まず図鑑へ戻る）
     kamiDexPlayingKey: null,
     kamiDexOrochiRevealed: false, // 隠しカミは確認してから表示する
     kamiDexOrochiConfirm: false,
@@ -12246,6 +12314,44 @@ new Vue({
     kamiDexKami() {
       if (this.kamiDexNo === '10' && !this.kamiDexOrochiRevealed) return null;
       return (this.allKamiCards || []).find(k => String(k.no) === this.kamiDexNo) || null;
+    },
+    pickCardListKamiName() {
+      const no = this.pickCardListKami;
+      const card = (this.allKamiCards || []).find(k => String(k.no) === String(no));
+      return (card && card.name) || (GS_KAMI_SELECTION_GUIDES[no] && GS_KAMI_SELECTION_GUIDES[no].name) || 'カミ';
+    },
+    /* おすすめカード一覧：選別の儀に出るカード（ラウンド1〜3）を、ピック補助・CPUと同じ「カミとの相性点」で並べる。
+       最優先＝相性点のあるカードのうち上位10枚、おすすめ＝続く20枚、
+       避けたい＝相性点がマイナスのカード（少なければ相性点のないカードのうち評価の低いものを足して最低6枚）。
+       同じ評価ならカード単体の基礎点が高い方を上に置く。 */
+    pickCardListTiers() {
+      const no = this.pickCardListKami;
+      if (!no || !Array.isArray(this.allCards) || !this.allCards.length) return [];
+      const tags = this.gsCpuKamiAffinityTags(no);
+      const seen = new Set();
+      const pool = this.allCards.filter(c => {
+        if (!isEligible(c) || ![1, 2, 3].includes(Number(c.round))) return false;
+        const name = this.fullName(c);
+        if (seen.has(name)) return false;
+        seen.add(name);
+        return true;
+      });
+      const rows = pool.map(c => {
+        const fit = this.gsCpuCardTagScore(c, tags, []);
+        const base = this.gsCpuBaseScore(c);
+        return { c, fit, base, total: fit + base * 0.5 };
+      });
+      const liked = rows.filter(r => r.fit > 0).sort((a, b) => b.total - a.total || b.base - a.base);
+      let avoid = rows.filter(r => r.fit < 0).sort((a, b) => a.fit - b.fit || a.base - b.base).slice(0, 12);
+      if (avoid.length < 6) {
+        const low = rows.filter(r => r.fit === 0).sort((a, b) => a.total - b.total).slice(0, 6 - avoid.length);
+        avoid = avoid.concat(low);
+      }
+      return [
+        { key: 'top', mark: '◎', label: '最優先でピック', note: 'このカミの方針と特に噛み合うカード', cards: liked.slice(0, 10).map(r => r.c) },
+        { key: 'good', mark: '○', label: 'おすすめ', note: '方針に合い、見かけたら優先したいカード', cards: liked.slice(10, 30).map(r => r.c) },
+        { key: 'avoid', mark: '✕', label: '避けたい・優先度が低い', note: '方針と噛み合わない、または効果を活かしにくいカード', cards: avoid.map(r => r.c) },
+      ].filter(t => t.cards.length);
     },
     kamiDexProfile() {
       const profile = KAMI_DEX_PROFILES[this.kamiDexNo];
@@ -14092,6 +14198,24 @@ new Vue({
     },
   },
   methods: {
+    async openPickCardList(no) {
+      this._sfxPlay('decision');
+      this.hideCardHover();
+      this.pickCardListKami = String(no);
+      const jobs = [];
+      if (!Array.isArray(this.allCards) || !this.allCards.length) jobs.push(this.loadCards());
+      if (!Array.isArray(this.allKamiCards) || !this.allKamiCards.length) jobs.push(this.loadKamiCards());
+      if (!this.effectSpecsReady) jobs.push(this.loadEffectSpecs());
+      if (jobs.length) {
+        await Promise.allSettled(jobs);
+        this._gsCpuTagCache = {}; // カミのデータが揃ってから相性の分類を作り直す
+      }
+    },
+    closePickCardList() {
+      this._sfxPlay('cancel');
+      this.hideCardHover();
+      this.pickCardListKami = null;
+    },
     openTopNews() {
       this._sfxPlay('decision');
       this.topNewsOpen = true;
@@ -14321,9 +14445,10 @@ new Vue({
       else if (key === 'shield') this.goToShield();
       else if (key === 'construct') this.goToConstruct();
     },
-    async openGenesisStory() {
+    async openGenesisStory(replay = false) {
       this._sfxPlay('decision');
       if (this._genesisStoryPreparing) return;
+      this.genesisStoryReplay = !!replay;
       // OPの曲と最初の場面の絵が揃うまでロード画面で待ち、曲と絵を頭から揃えて始める
       this._genesisStoryPreparing = true;
       try {
@@ -14477,14 +14602,28 @@ new Vue({
         this._genesisStoryStopBgm();
         this.genesisStoryPlaying = false;
         this.genesisStoryOpen = false;
-        this._genesisStoryRestorePreviousBgm();
+        if (this.genesisStoryReplay) this._genesisStoryEndReplay();
+        else this._genesisStoryRestorePreviousBgm();
       }
+    },
+    // カミ図鑑からOPを見返す
+    replayGenesisStoryFromDex() {
+      this._kamiDexStopVoice();
+      this.kamiDexOpen = false;
+      this.openGenesisStory(true);
+    },
+    // 見返しを終えたら、元の曲に戻して図鑑を開き直す
+    _genesisStoryEndReplay() {
+      this.genesisStoryReplay = false;
+      this._genesisStoryRestorePreviousBgm();
+      this.kamiDexOpen = true;
     },
     finishGenesisStory() {
       this._genesisStoryClearTimer();
       this._genesisStoryStopBgm();
       this.genesisStoryPlaying = false;
       this.genesisStoryOpen = false;
+      if (this.genesisStoryReplay) { this._genesisStoryEndReplay(); return; }
       this.modeDetailKey = null;
       this.goToGame();
       const previous = this._genesisStoryPreviousBgmKey;

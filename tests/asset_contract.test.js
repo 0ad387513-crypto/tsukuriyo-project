@@ -270,3 +270,24 @@ test("shared battle serialization cannot include private hand or deck arrays", (
   assert.match(body[1], /clone\.handCount/);
   assert.match(body[1], /clone\.deckCount/);
 });
+
+test("pick guide card list sorts by Kami fit and lists poor fits separately", () => {
+  const cards = [];
+  for (let i = 1; i <= 40; i++) cards.push({ no: String(i), name: "c" + i, round: 1 + (i % 3), fit: 41 - i, base: 10 });
+  cards.push({ no: "41", name: "bad", round: 1, fit: -18, base: 10 });
+  cards.push({ no: "42", name: "c1", round: 1, fit: 99, base: 10 }); // 同名の再録は1枚にまとめる
+  cards.push({ no: "43", name: "token", round: 1, fit: 99, base: 10, isToken: true });
+  const vm = {
+    pickCardListKami: "1", allCards: cards,
+    gsCpuKamiAffinityTags: () => ["evolveSublim"],
+    gsCpuCardTagScore: card => card.fit, gsCpuBaseScore: card => card.base, fullName: card => card.name,
+  };
+  const isEligible = card => !card.isToken;
+  const tiers = appMethod("pickCardListTiers", "isEligible").call(vm, isEligible);
+  assert.deepEqual(tiers.map(t => t.key), ["top", "good", "avoid"]);
+  assert.equal(tiers[0].cards.length, 10);
+  assert.equal(tiers[0].cards[0].no, "1");
+  assert.equal(tiers[1].cards.length, 20);
+  assert.equal(tiers[2].cards[0].no, "41", "negative fits come first in the avoid tier");
+  assert.ok(!tiers.some(t => t.cards.some(c => c.no === "42" || c.no === "43")));
+});
