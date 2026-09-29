@@ -1421,6 +1421,23 @@
     .top-mode-guide-btn { min-height: 52px; }
     .top-guide-stack { grid-template-columns: 1fr; }
   }
+  /* PC（3列）のTOP：幅の上限（1500px）と上の固定余白をやめ、画面の高さに収まる範囲でボタンを最大まで大きくし、
+     上下の余りは均等に振り分ける。幅は「画面の高さ×2.2」までに抑え、縦に長くなってスクロールが出ないようにする。 */
+  @media (min-width: 1101px) {
+    .top-menu.top-menu-home { justify-content: center; justify-content: safe center; }
+    .top-menu.top-menu-home > .top-mode-grid {
+      margin-top: 0;
+      width: min(97vw, calc((100vh - 190px) * 2.2));
+    }
+    .top-menu-home .top-mode-label { font-size: clamp(16px, 1.3vw, 30px); }
+    .top-menu-home .top-mode-card.game .top-mode-label { font-size: clamp(20px, 1.8vw, 38px); }
+    .top-menu-home .top-mode-guide-btn { font-size: clamp(13px, 1vw, 19px); }
+    .top-menu-home .top-mode-guide-btn.manual, .top-menu-home .top-mode-guide-btn.pick { min-height: clamp(44px, 5vh, 60px); }
+    .top-menu-home .top-mode-guide-btn.tutorial { min-height: clamp(52px, 6.5vh, 76px); }
+    .top-menu-home .top-mode-guide-btn.tutorial small { font-size: clamp(11px, .75vw, 14px); }
+    /* 彼岸花はボタンの後ろ（左右の下端）に置き、ボタンの下の余った帯から咲いているように見せる */
+    .top-menu-home .higanbana-corner { width: auto; height: clamp(150px, 26vh, 320px); max-height: none; }
+  }
   /* ===== 再生中のBGM名（BGMメニューの横に、曲が切り替わったときだけ数秒表示して消す） ===== */
   .bgm-now-fade-enter-active, .bgm-now-fade-leave-active { transition: opacity .5s, transform .5s; }
   .bgm-now-fade-enter, .bgm-now-fade-leave-to { opacity: 0; transform: translateY(6px); }
