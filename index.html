@@ -1536,7 +1536,7 @@
   .kami-dex-tag { padding: 3px 9px; border: 1px solid #3f4a62; border-radius: 999px; background: rgba(12, 15, 23, .6); color: #b9c7e0; font-size: 11px; font-weight: 800; }
   .kami-dex-summary { margin: 0 0 12px; color: #e3e7ef; font-size: 14px; line-height: 1.85; }
   .kami-dex-recommend-title { margin-bottom: 4px; }
-  .kami-dex-effects { margin-top: 10px; }
+  .kami-dex-effects, .kami-dex-voices-open { margin-top: 10px; }
   .kami-dex-view-switch { display: flex; justify-content: center; gap: 6px; margin-top: 10px; }
   .kami-dex-view-switch button {
     padding: 5px 16px; border: 1px solid #4a5268; border-radius: 999px; background: #1b202c; color: #cfd6e6; font-size: 12px; font-weight: 800; cursor: pointer;
@@ -5950,8 +5950,10 @@
           </div>
 
           <div class="gs-kami-info-section">
-            <div class="gs-kami-info-section-title">ボイス<small v-if="!(voiceVolume > 0)" class="kami-dex-muted">（ボイスの音量が0のため再生されません）</small></div>
-            <div class="kami-dex-voices">
+            <button type="button" class="kami-dex-fold" :aria-expanded="kamiDexShowVoices ? 'true' : 'false'" @click="kamiDexShowVoices = !kamiDexShowVoices">
+              {{ kamiDexShowVoices ? '▼' : '▶' }} ボイス<small v-if="!(voiceVolume > 0)" class="kami-dex-muted">（ボイスの音量が0のため再生されません）</small>
+            </button>
+            <div v-if="kamiDexShowVoices" class="kami-dex-voices kami-dex-voices-open">
               <button v-for="row in kamiDexVoiceRows" :key="row.key" type="button" class="kami-dex-voice"
                       :class="{ playing: kamiDexPlayingKey === row.key }" :disabled="!row.hasVoice" @click="kamiDexPlay(row.key)">
                 <span class="kami-dex-voice-label">{{ row.hasVoice ? '▶' : '—' }} {{ row.label }}</span>
@@ -12036,6 +12038,7 @@ new Vue({
     kamiDexView: 'illust',       // 'illust'（イラスト） / 'card'（カード）
     kamiDexShowWins: false,
     kamiDexShowEffects: false,   // カミの効果は、たたんだ状態で開く
+    kamiDexShowVoices: false,    // ボイスも、たたんだ状態で開く
     kamiDexPlayingKey: null,
     kamiDexOrochiRevealed: false, // 隠しカミは確認してから表示する
     kamiDexOrochiConfirm: false,
