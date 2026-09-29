@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>ツクリヨ カード編集室（ローカル専用）</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="cropper.css" />
+    <link rel="stylesheet" href="load.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- ツクリヨのローカル確認用サーバー（npm run preview）でだけ保存できる。本番サイトでは /tools/ は公開しない -->
+        <div class="editor-link-status" :class="{ ready: gameLinkReady }">カード編集室（ローカル専用）：{{ gameLinkMessage }}</div>
+        <div class="load" v-show="!loaded">
+            <div class="box">
+                <div class="flower">
+                    <span class="petal petal01"></span>
+                    <span class="petal petal02"></span>
+                    <span class="petal petal03"></span>
+                    <span class="petal petal04"></span>
+                    <span class="petal petal05"></span>
+                </div>
+                <span class="txt">ろぉでぃんぐ…</span>
+            </div>
+        </div>
+        <p>
+            <h2>ツクリヨカードジェネレータ</h2>
+        </p>
+        <div class="parent">
+            <svg id="card" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 744 1039" ref="svgArea">
+                <!-- Generator: Adobe Illustrator 29.5.1, SVG Export Plug-In . SVG Version: 2.1.0 Build 141)  -->
+                <defs>
+                    <svg:style>
+                        @font-face {
+                            font-family: 'ArisawaKaisho';
+                            src: local('有澤楷書'), local('Arisawa-Kaisho');
+                        }
+                        /* カード名（縦書き） */
+                        .st5 {
+                        font-family: 'IPAex楷書', 'IPAexKaisho', 'sモトヤ新楷書', 'MotoyaShinKaisho', serif;
+                        font-weight: bold;
+                        font-size: 64px;
+                        fill: #fff;
+                        glyph-orientation-vertical: 0deg;
+                        text-orientation: upright;
+                        writing-mode: tb;
+                        text-anchor: middle;
+                        }
+                        /* 二つ名（縦書き） */
+                        .st10 {
+                        font-family: 'IPAex楷書', 'IPAexKaisho', 'sモトヤ新楷書', 'MotoyaShinKaisho', serif;
+                        font-weight: bold;
+                        font-size: 24px;
+                        fill: #fff;
+                        letter-spacing: 0.2em;
+                        glyph-orientation-vertical: 0deg;
+                        text-orientation: upright;
+                        writing-mode: tb;
+                        text-anchor: middle;
+                        text-shadow: 2px 2px 5px #000;
+                        }
+                        /* ふりがな（縦書き・二つ名なしのとき表示） */
+                        .st-furigana {
+                        font-family: 'IPAex楷書', 'IPAexKaisho', 'sモトヤ新楷書', 'MotoyaShinKaisho', serif;
+                        font-size: 14px;
+                        fill: #fff;
+                        letter-spacing: 0.1em;
+                        glyph-orientation-vertical: 0deg;
+                        text-orientation: upright;
+                        writing-mode: tb;
+                        text-anchor: start;
+                        dominant-baseline: auto;
+                        }
+                        /* コスト */
+                        .st3 {
+                        font-family: 'dnp 秀英初号明朝 Std', 'DNP ShueiShogoMincho Std', serif;
+                        font-weight: 600;
+                        font-size: 60px;
+                        fill: #fff;
+                        stroke-width: 10px;
+                        stroke-linejoin: round;
+                        paint-order: stroke fill;
+                        }
+                        /* カード種別名 */
+                        .st2 {
+                        font-family: 'ヒラギノ角ゴシック', 'Hiragino Sans', sans-serif;
+                        font-size: 30.6px;
+                        font-weight:500;
+                        fill: #fff;
+                        }
+                        /* 種族 */
+                        .st1 {
+                        font-family: 'ヒラギノ角ゴシック', 'Hiragino Sans', sans-serif;
+                        font-size: 30px;
+                        font-weight: 500;
+                        fill: #fff;
+                        opacity: 1;
+                        }
+                        /* 説明テキスト */
+                        .st7 {
+                        font-family: 'BIZ UDPMincho', 'BIZ-UDPMincho-Medium', serif;
+                        font-size: 24px;
+                        font-weight: 500;
+                        color: #fff;
+                        text-shadow: 2px 2px 5px #000;
+                        }
+                        /* フレーバーテキスト */
+                        .st9 {
+                        font-family: 'M PLUS Rounded 1c', 'Rounded Mplus 1c', sans-serif;
+                        font-size: 16px;
+                        font-weight: 500;
+                        fill: #fff;
+                        }
+                        /* 神攻力 */
+                        .st4 {
+                        font-family: 'dnp 秀英初号明朝 Std', 'DNP ShueiShogoMincho Std', serif;
+                        font-weight: 600;
+                        fill: #fff;
+                        font-size: 36px;
+                        }
+                        /* 戦闘力 */
+                        .st8 {
+                        font-family: 'dnp 秀英初号明朝 Std', 'DNP ShueiShogoMincho Std', serif;
+                        font-weight: 600;
+                        fill: #fff;
+                        font-size: 54px;
+                        }
+                        /* ラウンド数 */
+                        .st11 {
+                        font-family: 'dnp 秀英初号明朝 Std', 'DNP ShueiShogoMincho Std', serif;
+                        font-weight: 600;
+                        fill: #fff;
+                        font-size: 30px;
+                        }
+                        /* 返還値 */
+                        .st12 {
+                        font-family: 'dnp 秀英初号明朝 Std', 'DNP ShueiShogoMincho Std', serif;
+                        font-weight: 600;
+                        fill: #fff;
+                        font-size: 28px;
+                        }
+                        </style>
+                </defs>
+                <image id="cardImage" transform="translate(128 42)" width="585" height="585" preserveAspectRatio="xMidYMin meet" xlink:href="" />
+                <!-- フレームレイヤー（カミ以外：土台→枠→二つ名→レガシーのみ の順で重ねる） -->
+                <image v-for="(src, idx) in frameLayers" :key="'fl'+idx"
+                  width="744" height="1039" x="0" y="0" :xlink:href="src" />
+                <!-- カミカード：単一フレーム -->
+                <image v-if="cardCategory == 'カミ'" width="745" height="1040" :xlink:href="flameImg" />
+                <!-- コスト枠（金枠=ユニーク用 / 銀枠=基本用。コストアイコンの下レイヤー） -->
+                <image v-if="costFrameImg" :xlink:href="costFrameImg"
+                  x="8" y="-10" width="130" height="130" />
+                <!-- コストアイコン -->
+                <image v-if="costIconImg" :xlink:href="costIconImg"
+                  x="8" y="-10" width="130" height="130" />
+                <!-- カード名（縦書き） -->
+                <text class="st5" :transform="'translate(78 ' + cardNameY + ')'" v-if="cardCategory != 'カミ'">
+                    <tspan x="-8" y="50" v-bind:style="nameFontsize">{{cardNameMake}}</tspan>
+                </text>
+                <!-- 二つ名（縦書き） -->
+                <text class="st10" :transform="'translate(127 ' + cardNicknameY + ')'" v-if="hasNickname && cardCategory != 'カミ'">
+                    <tspan x="0" y="40" v-bind:style="nicknameFontsize">{{cardNicknameMake}}</tspan>
+                </text>
+                <!-- ふりがな（縦書き・二つ名なしのとき） -->
+                <text class="st-furigana" :transform="'translate(' + furiganaX + ' ' + (175 + furiganaOffsetY) + ')'" v-if="!hasNickname && cardFurigana" xml:space="preserve">
+                    <tspan x="5" y="0">{{cardFurigana}}</tspan>
+                </text>
+                <!-- ラウンド数（右上） -->
+                <text class="st11" transform="translate(662 57)" v-if="(cardCategory == 'レガシー' || cardCategory == 'オラクル' || cardCategory == 'レリック') && cardColor != '無' && cardColor != '創'">
+                    <tspan x="0" y="0">{{cardRound}}</tspan>
+                </text>
+                <!-- カード種別名 -->
+                <text class="st2" transform="translate(130 636)" v-if="cardCategory != 'カミ'">
+                    <tspan x="0" y="0">{{cardCategory}}</tspan>
+                </text>
+                <!-- 種族（レガシー・創属性以外） -->
+                <text class="st1" transform="translate(323 636)" v-if="cardCategory == 'レガシー' ">
+                    <tspan :x="cardTypePositionX" y="0">{{cardTypeMake}}</tspan>
+                </text>
+                <!-- 説明テキスト -->
+                <foreignObject class="st7" transform="translate(67 705)" x="-15" y="-45" width="643" height="240" v-if="cardCategory != 'カミ'">
+                    <html xmlns="http://www.w3.org/1999/xhtml">
+                    <div class="c" style="width:100%;height:100%;white-space:pre-wrap;word-break:break-all;overflow-wrap:break-word;overflow:hidden;" v-bind:style="textStyle" v-html="formattedTextHtml">
+                    </div>
+
+                    </html>
+                </foreignObject>
+                <!-- フレーバーテキスト -->
+                <foreignObject class="st9" transform="translate(58 893)" x="-10" y="-10" width="650" height="120" v-if="cardCategory != 'カミ'">
+                    <html xmlns="http://www.w3.org/1999/xhtml">
+                    <div style="width:100%;height:100%;white-space:pre-wrap;word-break:break-all;overflow-wrap:break-word;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;font-family:'M PLUS Rounded 1c','Rounded Mplus 1c',sans-serif;font-size:16px;color:#fff;" v-text="cardFlavor">
+                    </div>
+                    </html>
+                </foreignObject>
+                <!-- コスト（左上） -->
+                <text class="st3" transform="translate(55 82)" v-if="cardCategory != 'カミ'" :stroke="costStrokeUrl">
+                    <tspan :x="cardCostPositionX" y="-5">{{cardCostMake}}</tspan>
+                </text>
+                <!-- 神攻力（レガシー。創属性かつ龍は赤ストローク） -->
+                <text class="st4" transform="translate(670 994)" v-if="cardCategory == 'レガシー'"
+                  :style="cardColor == '創' && cardType == '龍' ? 'stroke:#cc0000;stroke-width:4px;paint-order:stroke fill;' : ''">
+                    <tspan x="0" y="0">{{cardAttack}}</tspan>
+                </text>
+                <!-- 戦闘力（レガシー。創属性かつ龍は赤ストローク） -->
+                <text class="st8" transform="translate(300 1000)" v-if="cardCategory == 'レガシー'"
+                  :style="cardColor == '創' && cardType == '龍' ? 'stroke:#cc0000;stroke-width:4px;paint-order:stroke fill;' : ''">
+                    <tspan :x="cardPowerPositionX" y="0">{{cardPowerMake}}</tspan>
+                </text>
+                <!-- 返還値の数字 -->
+                <text class="st12" transform="translate(128 1018)" v-if="(cardCategory == 'レガシー' || cardCategory == 'オラクル' || cardCategory == 'レリック') && cardColor != '無' && cardColor != '創'">
+                    <tspan x="0" y="0">{{cardReturn}}</tspan>
+                </text>
+
+                <!-- ========== カミカード専用オーバーレイ ========== -->
+                <!-- 天カトリガー（バナー内中央テキスト） -->
+                <foreignObject v-if="cardCategory == 'カミ' && kamiType != 'ヤマタノオロチ'" transform="translate(60 655)" width="625" height="75">
+                    <html xmlns="http://www.w3.org/1999/xhtml">
+                    <div :style="'width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;white-space:pre-line;overflow:hidden;font-family:\'BIZ UDPMincho\',\'BIZ-UDPMincho-Medium\',serif;font-size:' + kamiTriggerFontSize + 'px;font-weight:bold;line-height:1.35;color:#fff;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000,0 -2px 0 #000,0 2px 0 #000,-2px 0 0 #000,2px 0 0 #000;'">{{kamiTrigger}}</div>
+                    </html>
+                </foreignObject>
+                <!-- 神技1 消費天力 -->
+                <text v-if="cardCategory == 'カミ' && kamiType != 'ヤマタノオロチ'" transform="translate(132 783)" style="font-family:'dnp 秀英初号明朝 Std','DNP ShueiShogoMincho Std',serif;font-weight:600;font-size:26px;fill:#fff;text-anchor:middle;">
+                    <tspan x="0" y="0">{{kamiSkill1Cost}}</tspan>
+                </text>
+                <!-- 神技1 効果 -->
+                <foreignObject v-if="cardCategory == 'カミ' && kamiType != 'ヤマタノオロチ'" transform="translate(50 807)" width="675" height="85">
+                    <html xmlns="http://www.w3.org/1999/xhtml">
+                    <div :style="'width:100%;height:100%;white-space:pre-line;overflow:hidden;font-family:\'BIZ UDPMincho\',\'BIZ-UDPMincho-Medium\',serif;font-size:' + kamiSkill1FontSize + 'px;font-weight:bold;line-height:1.35;color:#fff;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000,0 -2px 0 #000,0 2px 0 #000,-2px 0 0 #000,2px 0 0 #000;'">{{kamiSkill1Effect}}</div>
+                    </html>
+                </foreignObject>
+                <!-- 神技2 消費天力 -->
+                <text v-if="cardCategory == 'カミ' && kamiType != 'ヤマタノオロチ'" transform="translate(130 912)" style="font-family:'dnp 秀英初号明朝 Std','DNP ShueiShogoMincho Std',serif;font-weight:600;font-size:26px;fill:#fff;text-anchor:middle;">
+                    <tspan x="0" y="0">{{kamiSkill2Cost}}</tspan>
+                </text>
+                <!-- 神技2 効果 -->
+                <foreignObject v-if="cardCategory == 'カミ'" transform="translate(50 937)" width="675" height="85">
+                    <html xmlns="http://www.w3.org/1999/xhtml">
+                    <div :style="'width:100%;height:100%;white-space:pre-line;overflow:hidden;font-family:\'BIZ UDPMincho\',\'BIZ-UDPMincho-Medium\',serif;font-size:' + kamiSkill2FontSize + 'px;font-weight:bold;line-height:1.35;color:#fff;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000,0 -2px 0 #000,0 2px 0 #000,-2px 0 0 #000,2px 0 0 #000;'">{{kamiSkill2Effect}}</div>
+                    </html>
+                </foreignObject>
+                <!-- ヤマタノオロチ専用：効果テキスト -->
+                <foreignObject v-if="cardCategory == 'カミ' && kamiType == 'ヤマタノオロチ'" transform="translate(50 580)" width="675" height="217">
+                    <html xmlns="http://www.w3.org/1999/xhtml">
+                    <div :style="'width:100%;height:100%;display:flex;align-items:flex-start;justify-content:flex-start;text-align:left;white-space:pre-line;overflow:hidden;font-family:\'BIZ UDPMincho\',\'BIZ-UDPMincho-Medium\',serif;font-size:' + kamiOrochiFontSize + 'px;font-weight:bold;line-height:1.45;color:#fff;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000,0 -2px 0 #000,0 2px 0 #000,-2px 0 0 #000,2px 0 0 #000;'">{{kamiOrochiText}}</div>
+                    </html>
+                </foreignObject>
+                <!-- ヤマタノオロチ専用：神技1効果 -->
+                <foreignObject v-if="cardCategory == 'カミ' && kamiType == 'ヤマタノオロチ'" transform="translate(50 807)" width="675" height="85">
+                    <html xmlns="http://www.w3.org/1999/xhtml">
+                    <div :style="'width:100%;height:100%;white-space:pre-line;overflow:hidden;font-family:\'BIZ UDPMincho\',\'BIZ-UDPMincho-Medium\',serif;font-size:' + kamiSkill1FontSize + 'px;font-weight:bold;line-height:1.35;color:#fff;text-shadow:-2px -2px 0 #000,2px -2px 0 #000,-2px 2px 0 #000,2px 2px 0 #000,0 -2px 0 #000,0 2px 0 #000,-2px 0 0 #000,2px 0 0 #000;'">{{kamiSkill1Effect}}</div>
+                    </html>
+                </foreignObject>
+                <!-- ========== カミカード専用オーバーレイ終了 ========== -->
+            </svg>
+            <div class="settingArea">
+                <input id="illustAreaSwitch" class="areaSwitch" type="checkbox" v-show="cardCategory != 'カミ'">
+                <label class="switchLabel" for="illustAreaSwitch" v-show="cardCategory != 'カミ'">カードイラスト設定</label>
+                <div class="contentsArea">
+                    <span class="btnArea">
+                        <p class="imgLabel">■カードイラスト</p>
+                        <div class="cardIllust">
+                            <img id="cropper-area">
+                        </div>
+                        <p>
+                            <label class="fileArea" v-show="select">
+                                <input type="file" id="fileUpload" name="src-img" accept="image/*" @change="cropSwitch">ファイルを選択
+                            </label>
+                            <button class="deleteBtn" id="fileDelete" v-show="!select" @click=cropSwitch>削除</button>
+                            <button class="cardBtn" id="crop-btn">カードに反映</button>
+                        </p>
+                    </span>
+                </div>
+                <!-- テンプレート設定（通常カード用）: 独立した開閉 -->
+                <div class="switchLabel" :class="{'switch-open': templatePanelOpen}"
+                     @click="templatePanelOpen = !templatePanelOpen"
+                     style="cursor:pointer;">テンプレート設定</div>
+                <div class="contentsArea" v-if="templatePanelOpen" style="height:auto; opacity:1; visibility:visible; padding:10px;">
+                    <p>
+                        <label class="textLabel">テンプレート：</label>
+                        <label class="textBox">
+                            <select class="selectLong" v-model="cardTemplate" ref="tempRef">
+                                <option disabled value="">
+                                    カードを選択してください
+                                </option>
+                                <option v-for="(value,key) in filteredCardList" :value="key" v-if="(value[6] || '') != 'カミ'">{{key}}</option>
+                            </select>
+                            <label class="btnArea">
+                                <button class="cardBtn" @click="templateSet()">設定</button>
+                            </label>
+                        </label>
+                    </p>
+                    <div class="imgLabel">■絞り込み</div>
+                    <p>
+                        <label class="textLabel">カード種別：</label>
+                        <select v-model="filterCategory" class="selectLong" @change="filteredChange()">
+                            <option value="">指定なし</option>
+                            <option v-for="value in cardCategoryList" :value="value.label" :key="value.label" v-if="value.label != 'カミ'">{{value.label}}</option>
+                        </select>
+                    </p>
+                    <p v-if="filterCategory == 'レガシー'">
+                        <label class="textLabel">属性：</label>
+                        <select v-model="filterColor" class="selectShort">
+                            <option value="">指定なし</option>
+                            <option v-for="value in cardColorList" :value="value.label" :key="value.label">{{value.label}}</option>
+                        </select>
+                    </p>
+                    <p v-if="filterCategory == 'レガシー'">
+                        <label class="textLabel">種族：</label>
+                        <select v-model="filterType" class="selectShort">
+                            <option value="">指定なし</option>
+                            <option v-for="value in cardTypeList" :value="value.label" :key="value.label">{{value.label}}</option>
+                        </select>
+                    </p>
+                </div>
+
+                <!-- カミカード設定: カード各種設定と排他表示 -->
+                <div class="switchLabel" :class="{'switch-open': activeSettingsPanel === 'kami'}"
+                     @click="activeSettingsPanel = activeSettingsPanel === 'kami' ? '' : 'kami'"
+                     style="cursor:pointer;">カミカード設定</div>
+                <div class="contentsArea" v-if="activeSettingsPanel === 'kami'" style="height:auto; opacity:1; visibility:visible; padding:10px;">
+                    <p>
+                        <label class="textLabel">テンプレート：</label>
+                        <label class="textBox">
+                            <select class="selectLong" ref="kamiTempRef" @change="setKamiTemplate()">
+                                <option disabled selected value="">カードを選択してください</option>
+                                <option v-for="(value,key) in kamiCardList" :value="key">{{key}}</option>
+                            </select>
+                        </label>
+                    </p>
+                    <p>
+                        <button class="cardBtn" @click="loadKamiSheet()" style="background-color:#5c6bc0; color:#fff;">カミシート読み込み</button>
+                    </p>
+                    <div class="imgLabel">■種別（フレーム選択）</div>
+                    <p>
+                        <label class="textLabel">種別：</label>
+                        <select v-model="kamiType" class="selectShort" @change="flameSet()">
+                            <option v-for="value in kamiTypeList" :value="value.label" :key="value.label">{{value.label}}</option>
+                        </select>
+                    </p>
+                    <div class="imgLabel">■テキスト入力</div>
+                    <!-- 通常カミ用入力 -->
+                    <p v-if="kamiType != 'ヤマタノオロチ'">
+                        <label class="textLabel">天力トリガー：</label>
+                        <span class="textBox">
+                            <textarea v-model="kamiTrigger" style="height:60px; width:670px;" placeholder="天力トリガーテキスト（2行まで）"></textarea>
+                        </span>
+                    </p>
+                    <p v-if="kamiType != 'ヤマタノオロチ'">
+                        <label class="textLabel">トリガー文字サイズ：</label>
+                        <input class="num i-text" type="number" min="8" max="60" v-model.number="kamiTriggerFontSize" style="width:70px;">
+                    </p>
+                    <p v-if="kamiType != 'ヤマタノオロチ'">
+                        <label class="textLabel">神技1消費天力：</label>
+                        <select v-model.number="kamiSkill1Cost" class="selectShort" style="width:60px;">
+                            <option v-for="n in 9" :value="n">{{n}}</option>
+                        </select>
+                    </p>
+                    <p v-if="kamiType != 'ヤマタノオロチ'">
+                        <label class="textLabel">神技1効果：</label>
+                        <span class="textBox">
+                            <textarea v-model="kamiSkill1Effect" style="height:70px; width:670px;" placeholder="効果テキスト（2行まで）"></textarea>
+                        </span>
+                    </p>
+                    <p v-if="kamiType != 'ヤマタノオロチ'">
+                        <label class="textLabel">神技1文字サイズ：</label>
+                        <input class="num i-text" type="number" min="8" max="50" v-model.number="kamiSkill1FontSize" style="width:70px;">
+                    </p>
+                    <p v-if="kamiType != 'ヤマタノオロチ'">
+                        <label class="textLabel">神技2消費天力：</label>
+                        <select v-model.number="kamiSkill2Cost" class="selectShort" style="width:60px;">
+                            <option v-for="n in 9" :value="n">{{n}}</option>
+                        </select>
+                    </p>
+                    <!-- ヤマタノオロチ専用テキスト入力 -->
+                    <p v-if="kamiType == 'ヤマタノオロチ'">
+                        <label class="textLabel">効果テキスト：</label>
+                        <span class="textBox">
+                            <textarea v-model="kamiOrochiText" style="height:80px; width:670px;" placeholder="効果テキスト（2行まで）"></textarea>
+                        </span>
+                    </p>
+                    <p v-if="kamiType == 'ヤマタノオロチ'">
+                        <label class="textLabel">効果文字サイズ：</label>
+                        <input class="num i-text" type="number" min="8" max="60" v-model.number="kamiOrochiFontSize" style="width:70px;">
+                    </p>
+                    <p v-if="kamiType == 'ヤマタノオロチ'">
+                        <label class="textLabel">神技1効果：</label>
+                        <span class="textBox">
+                            <textarea v-model="kamiSkill1Effect" style="height:70px; width:670px;" placeholder="神技1効果テキスト（2行まで）"></textarea>
+                        </span>
+                    </p>
+                    <p v-if="kamiType == 'ヤマタノオロチ'">
+                        <label class="textLabel">神技1文字サイズ：</label>
+                        <input class="num i-text" type="number" min="8" max="50" v-model.number="kamiSkill1FontSize" style="width:70px;">
+                    </p>
+                    <p>
+                        <label class="textLabel">神技2効果：</label>
+                        <span class="textBox">
+                            <textarea v-model="kamiSkill2Effect" style="height:70px; width:670px;" placeholder="効果テキスト（2行まで）"></textarea>
+                        </span>
+                    </p>
+                    <p>
+                        <label class="textLabel">神技2文字サイズ：</label>
+                        <input class="num i-text" type="number" min="8" max="50" v-model.number="kamiSkill2FontSize" style="width:70px;">
+                    </p>
+                    <p class="dlbtnArea" style="margin-top:10px;">
+                        <button @click="imageDL">保存（画像）</button>
+                        <button @click="saveKamiToSheet" v-if="kamiCardNo" style="margin-left:10px; background-color:#5c6bc0; color:#fff;">カミシートに保存</button>
+                        <button @click="publishToGame(true)" v-if="kamiCardNo" :disabled="!gameLinkReady" style="margin-left:10px; background-color:#b8860b; color:#fff; font-weight:bold;">シートとゲームに反映</button>
+                    </p>
+                </div>
+
+                <!-- カード各種設定: カミカード設定と排他表示 -->
+                <div class="switchLabel" :class="{'switch-open': activeSettingsPanel === 'card'}"
+                     @click="activeSettingsPanel = activeSettingsPanel === 'card' ? '' : 'card'"
+                     style="cursor:pointer;">カード各種設定</div>
+                <div class="contentsArea" v-if="activeSettingsPanel === 'card'" style="height:auto; opacity:1; visibility:visible; padding:10px;">
+                    <p>
+                        <label class="textLabel">カード名：</label>
+                        <input class="inputBox i-text" v-model="cardName">
+                    </p>
+                    <p>
+                        <label class="textLabel">ふりがな：</label>
+                        <input class="inputBox i-text" v-model="cardFurigana" placeholder="二つ名なしのとき表示">
+                    </p>
+                    <p v-if="cardFurigana && !hasNickname">
+                        <label class="textLabel">ふりがな位置：</label>
+                        <input class="num i-text" type="number" v-model.number="furiganaOffsetY">px
+                        <span style="font-size:12px; color:#666;">（下方向がプラス）</span>
+                    </p>
+                    <p>
+                        <label class="textLabel">カード種類：</label>
+                        <select v-model="cardCategory" class="selectShort" @change="flameSet()">
+                            <option v-for="value in cardCategoryList" :value="value.label" :key="value.label">{{value.label}}</option>
+                        </select>
+                    </p>
+                    <div class="imgLabel">■個別設定項目</div>
+                    <p>
+                        <label class="textLabel">コスト：</label>
+                        <input class="num i-text" type="number" min="0" max="10" v-model="cardCost">
+                    </p>
+                    <!-- 属性（レガシー・オラクル・レリック） -->
+                    <p v-if="cardCategory == 'レガシー' || cardCategory == 'オラクル' || cardCategory == 'レリック'">
+                        <label class="textLabel">属性：</label>
+                        <select v-model="cardColor" class="selectShort" @change="flameSet()">
+                            <option v-for="value in cardColorList" :value="value.label" :key="value.label">{{value.label}}</option>
+                        </select>
+                    </p>
+                    <!-- ラウンド数（レガシー・オラクル・レリック、無属性除く） -->
+                    <p v-if="(cardCategory == 'レガシー' || cardCategory == 'オラクル' || cardCategory == 'レリック') && cardColor != '無' && cardColor != '創'">
+                        <label class="textLabel">ラウンド数：</label>
+                        <select v-model="cardRound" class="selectShort">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </p>
+                    <!-- 返還値（レガシー: 0-2、オラクル・レリック: 1-2、無属性除く） -->
+                    <p v-if="cardCategory == 'レガシー' && cardColor != '無' && cardColor != '創'">
+                        <label class="textLabel">返還値：</label>
+                        <select v-model="cardReturn" class="selectShort" @change="flameSet()">
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                        </select>
+                    </p>
+                    <p v-if="(cardCategory == 'オラクル' || cardCategory == 'レリック') && cardColor != '無' && cardColor != '創'">
+                        <label class="textLabel">返還値：</label>
+                        <select v-model="cardReturn" class="selectShort" @change="flameSet()">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                        </select>
+                    </p>
+                    <!-- 二つ名（レガシーで返還値1or2・創属性以外） -->
+                    <div v-if="cardCategory == 'レガシー' && cardColor != '創' && (cardReturn == 1 || cardReturn == 2)">
+                        <p>
+                            <label class="textLabel">二つ名：</label>
+                            <input type="checkbox" v-model="hasNickname" @change="flameSet()">あり
+                        </p>
+                        <p v-if="hasNickname">
+                            <label class="textLabel"></label>
+                            <input class="inputBox i-text" v-model="cardNickname">
+                        </p>
+                    </div>
+                    <!-- 種族・戦闘力・神攻力（レガシー全般。カード画像への反映は創属性除く） -->
+                    <div v-if="cardCategory == 'レガシー'">
+                        <p>
+                            <label class="textLabel">種族：</label>
+                            <select v-model="cardType" class="selectLong" @change="flameSet()">
+                                <option v-for="value in cardTypeList" :value="value.label" :key="value.label">{{value.label}}</option>
+                            </select>
+                        </p>
+                        <p>
+                            <label class="textLabel">戦闘力：</label>
+                            <input class="inputBox i-text" type="number" step="500" min="500" v-model="cardPower">
+                        </p>
+                        <p>
+                            <label class="textLabel">神攻力：</label>
+                            <input class="num i-text" type="number" min="0" max="4" v-model="cardAttack">
+                        </p>
+                    </div>
+
+                    <p>
+                        <label class="textLabel">説明：</label>
+                        <span class="textBox">
+                            <textarea v-model="cardText" style="height:100px; width:670px;"></textarea><br>
+                            <label class="subLabel">
+                                文字：<input class="num" type="number" v-model="textSize">px
+                                行間：<input class="num" type="number" v-model="textHight">px
+                            </label>
+                            <span class="btnArea">
+                                <button class="cardBtn" @click="textSet()">説明文を更新</button>
+                            </span>
+                        </span>
+                    </p>
+                    <p>
+                        <label class="textLabel">フレーバー：</label>
+                        <textarea class="i-text" v-model="cardFlavor" rows="3" style="resize:vertical; width:670px; font-family:'M PLUS Rounded 1c','Rounded Mplus 1c',sans-serif; font-size:16px;"></textarea>
+                    </p>
+                    <p class="dlbtnArea" style="margin-top:10px;">
+                        <button @click="imageDL">保存（画像）</button>
+                        <button @click="saveToSheet" v-if="cardNo" style="margin-left:10px; background-color:#2e7d32; color:#fff;">スプレッドシートに保存</button>
+                        <button @click="publishToGame(false)" v-if="cardNo" :disabled="!gameLinkReady" style="margin-left:10px; background-color:#b8860b; color:#fff; font-weight:bold;">シートとゲームに反映</button>
+                    </p>
+                </div>
+                <div style="margin-top:20px; padding:15px; border:2px solid #666; background:#f5f5f5;">
+                    <p style="font-weight:bold; margin-bottom:10px;">■一括カード生成</p>
+                    <p style="margin-bottom:8px;">
+                        <label>イラストフォルダ：</label>
+                        <input type="file" id="batchFolder" webkitdirectory multiple style="display:none;">
+                        <button onclick="document.getElementById('batchFolder').click()" style="padding:5px 15px; cursor:pointer;">フォルダを選択</button>
+                        <span id="batchFolderName" style="margin-left:10px; color:#333;"></span>
+                    </p>
+                    <p style="font-size:12px; color:#666; margin-bottom:10px;">※ファイル名が「001_カード名.png」形式のフォルダを選択してください</p>
+                    <p style="margin-bottom:8px;">
+                        <label>裏面画像：</label>
+                        <input type="file" id="backImage" accept="image/*" style="display:none;">
+                        <button onclick="document.getElementById('backImage').click()" style="padding:5px 15px; cursor:pointer;">ファイルを選択</button>
+                        <span id="backImageName" style="margin-left:10px; color:#333;"></span>
+                    </p>
+                    <p style="font-size:12px; color:#666; margin-bottom:10px;">※ユドナリウム用の裏面画像（通常カード用）</p>
+                    <p style="margin-bottom:8px;">
+                        <label>カミ裏面画像：</label>
+                        <input type="file" id="kamiBackImage" accept="image/*" style="display:none;">
+                        <button onclick="document.getElementById('kamiBackImage').click()" style="padding:5px 15px; cursor:pointer;">ファイルを選択</button>
+                        <span id="kamiBackImageName" style="margin-left:10px; color:#333;"></span>
+                    </p>
+                    <p style="font-size:12px; color:#666; margin-bottom:10px;">※カミカード専用の裏面画像（未選択なら上の裏面画像を使用）</p>
+                    <div><button @click="batchGenerateToGame" :disabled="!gameLinkReady" style="margin: 5px; width: 320px; padding:10px 30px; background-color:#b8860b; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">一括生成してゲームに反映</button></div>
+                    <div><button @click="batchGenerate(false)" style="margin: 5px; width: 320px; padding:10px 30px; background-color:#1565c0; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">一括生成してZIPダウンロード</button></div>
+                    <div><button @click="batchGenerateUdonarium" style="margin: 5px; width: 320px; padding:10px 30px; background-color:#4caf50; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">ユドナリウム用ZIP生成</button></div>
+                    <div><button @click="batchGenerateUdonariumByS" style="margin: 5px; width: 320px; padding:10px 30px; background-color:#ff9800; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">ユドナリウム用ZIP（S列1〜5の束）</button></div>
+                    <p v-if="batchProgress" style="margin-top:10px;">{{batchProgress}}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvg/dist/browser/canvg.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="cropper.js"></script>
+    <script src="frames.js?v=1779249140"></script>
+    <script type="text/javascript">
+    $(function() {
+        var $uploadCrop;
+        var $preview = $('.cropper-area');
+
+        document.getElementById('fileDelete').addEventListener('click', function() {
+            //削除ボタン押下時、アップロードされた画像情報を削除する
+            document.getElementById('cropper-area').src = "";
+            document.getElementById('fileUpload').value = '';
+            cropper.destroy();
+        });
+
+        document.querySelector('input[name="src-img"]').addEventListener('change', function(changeFileEvent) {
+            //アップロードされたファイルをロード
+            var fReaderForURI = new FileReader();
+            fReaderForURI.readAsDataURL(changeFileEvent.target.files[0]);
+            fReaderForURI.onload = () => {
+                var imgEl = document.getElementById('cropper-area');
+                imgEl.src = String(fReaderForURI.result);
+                cropper = new Cropper(imgEl, { dragMode: 'move', aspectRatio: 1, autoCropArea: 1, viewMode: 1 });
+            }
+        });
+
+        document.getElementById('crop-btn').addEventListener('click', function() {
+            //画像クロッピング設定
+            var croppedCanvas = cropper.getCroppedCanvas({ width: 585, height: 585 });
+            document.getElementById('cardImage').setAttribute('href', croppedCanvas.toDataURL())
+        });
+
+        document.getElementById('batchFolder').addEventListener('change', function() {
+            var files = this.files;
+            var label = document.getElementById('batchFolderName');
+            if (files.length > 0) {
+                var folderPath = files[0].webkitRelativePath.split('/')[0];
+                label.textContent = folderPath + ' (' + files.length + 'ファイル)';
+            } else {
+                label.textContent = '';
+            }
+        });
+
+        document.getElementById('backImage').addEventListener('change', function() {
+            var label = document.getElementById('backImageName');
+            if (this.files.length > 0) {
+                label.textContent = this.files[0].name;
+            } else {
+                label.textContent = '';
+            }
+        });
+
+        document.getElementById('kamiBackImage').addEventListener('change', function() {
+            var label = document.getElementById('kamiBackImageName');
+            if (this.files.length > 0) {
+                label.textContent = this.files[0].name;
+            } else {
+                label.textContent = '';
+            }
+        });
+
+    })
+    </script>
+    <script src="tsukuriyo.js?v=20260520"></script>
+</body>
+
+</html>
