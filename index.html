@@ -1252,7 +1252,7 @@
   /* 見出し（ツクリヨオンライン）をタイトル画面へ移したぶん内容が上端に張り付くため、
      上に余白を足して上下のバランスを取る。画面が低いときは余白を詰め、
      入り切らない場合は従来どおりスクロールで見られる。 */
-  .top-menu.top-menu-home > .top-mode-grid { margin-top: clamp(0px, 11vh, 130px); }
+  .top-menu.top-menu-home > .top-mode-grid { margin-top: clamp(0px, 3vh, 40px); }
   /* TOP画面から他画面へ遷移する際、ゆっくりフェードアウトさせる（leave中は最前面に固定して
      4人対戦/シールド戦のような高z-indexのオーバーレイの上からでも確実にフェードが見えるようにする） */
   .top-menu-fade-enter-active { transition: opacity .5s ease; }
@@ -1384,7 +1384,7 @@
   .top-mode-card.game .top-mode-label { font-size: clamp(20px, 1.7vw, 28px); }
   /* カードリスト下の横長ボタン：説明書とピックガイドを独立した入口にする */
   .top-guide-stack {
-    display: grid; grid-template-columns: 1fr 1fr; gap: clamp(8px, .8vw, 12px);
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(8px, .8vw, 12px);
   }
   .top-mode-guide-btn {
     display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -1402,7 +1402,8 @@
   .top-mode-guide-btn.manual { border-color: #9d7a3d; background: linear-gradient(160deg, #4a3822, #271d16); }
   .top-mode-guide-btn.pick { border-color: #9d7a3d; background: linear-gradient(160deg, #4a3822, #271d16); } /* プレイガイド・チュートリアルと同じ茶金色 */
   /* チュートリアル追加で右列が伸びないよう、ガイド2つは少し低くする */
-  .top-mode-guide-btn.manual, .top-mode-guide-btn.pick { min-height: 44px; }
+  .top-mode-guide-btn.manual, .top-mode-guide-btn.pick, .top-mode-guide-btn.kamidex { min-height: 44px; padding: 4px 6px; word-break: keep-all; }
+  .top-mode-guide-btn.kamidex { border-color: #b0896a; background: linear-gradient(160deg, #54262a, #26161a); }
   .top-mode-guide-btn.tutorial {
     grid-column: 1 / -1; min-height: 52px; justify-content: flex-start; gap: 12px; padding: 4px 14px; text-align: left;
     border-color: #c79a4a; background: linear-gradient(160deg, #6a4a22, #2d1f14);
@@ -1421,13 +1422,125 @@
     .top-mode-guide-btn { min-height: 52px; }
     .top-guide-stack { grid-template-columns: 1fr; }
   }
-  /* PC（3列）のTOP：幅の上限（1500px）と上の固定余白をやめ、画面の高さに収まる範囲でボタンを最大まで大きくし、
-     上下の余りは均等に振り分ける。幅は「画面の高さ×2.2」までに抑え、縦に長くなってスクロールが出ないようにする。 */
+  /* ロゴの帯：丸い紋章の左右に、金の線を細く伸ばす */
+  .top-menu-home { --top-logo-h: clamp(72px, 12vh, 150px); }
+  .top-logo-band {
+    position: relative; z-index: 1; flex: none;
+    display: flex; align-items: center; justify-content: center; gap: clamp(14px, 2vw, 34px);
+    width: min(1100px, 94vw); height: var(--top-logo-h); margin-bottom: clamp(4px, 1vh, 12px);
+  }
+  .top-logo-medallion {
+    height: 100%; width: auto; aspect-ratio: 1 / 1; user-select: none;
+    filter: brightness(.9) drop-shadow(0 0 18px rgba(236, 207, 129, .28));
+  }
+  .top-logo-line {
+    position: relative; flex: 1 1 0; height: 1px; max-width: 420px;
+    background: linear-gradient(90deg, rgba(215, 180, 100, 0), rgba(215, 180, 100, .85));
+  }
+  .top-logo-line.right { background: linear-gradient(90deg, rgba(215, 180, 100, .85), rgba(215, 180, 100, 0)); }
+  .top-logo-line::after {
+    content: ""; position: absolute; top: 50%; width: 7px; height: 7px; background: #d7b464;
+    transform: translate(0, -50%) rotate(45deg);
+  }
+  .top-logo-line.left::after { right: -3px; }
+  .top-logo-line.right::after { left: -3px; }
+  /* お知らせ・ヒントの帯 */
+  .top-info-band {
+    position: relative; z-index: 1; flex: none;
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;
+    width: min(1500px, 97vw);
+  }
+  .top-info-news, .top-info-tip {
+    display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 40px;
+    padding: 6px 12px; border: 1px solid #3a4258; border-radius: 10px;
+    background: rgba(14, 17, 26, .82); color: #d9dde8; font-size: clamp(12px, .85vw, 15px); text-align: left;
+  }
+  .top-info-news { cursor: pointer; font: inherit; font-size: clamp(12px, .85vw, 15px); }
+  .top-info-news:hover { border-color: #8a95b5; }
+  .top-info-tag {
+    flex: none; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 900; letter-spacing: .08em;
+  }
+  .top-info-tag.news { background: #7a2632; color: #ffe3e6; }
+  .top-info-tag.tip { background: #6a5222; color: #fff1cc; }
+  .top-info-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top-info-next {
+    flex: none; width: 28px; height: 28px; border: 1px solid #4a5268; border-radius: 50%;
+    background: transparent; color: #cfd6e6; font-size: 18px; line-height: 1; cursor: pointer;
+  }
+  .top-info-next:hover { border-color: #d7b464; color: #fff; }
+  .top-tip-fade-enter-active, .top-tip-fade-leave-active { transition: opacity .35s ease; }
+  .top-tip-fade-enter, .top-tip-fade-leave-to { opacity: 0; }
+  @media (max-width: 1100px) { .top-info-band { width: min(960px, 94vw); } }
+  @media (max-width: 700px) {
+    .top-info-band { grid-template-columns: 1fr; width: min(560px, 94vw); }
+    .top-info-text { white-space: normal; }
+  }
+  /* 右下：バージョン表記と動作確認用ツールの小さなアイコン */
+  .top-corner-tools {
+    position: fixed; right: 10px; bottom: 8px; z-index: 2;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .top-corner-version { font-size: 11px; color: #7a8394; letter-spacing: .04em; }
+  .top-corner-devtools {
+    width: 30px; height: 30px; border: 1px solid #3a4055; border-radius: 50%;
+    background: rgba(12, 15, 23, .7); font-size: 14px; line-height: 1; cursor: pointer; opacity: .55;
+  }
+  .top-corner-devtools:hover, .top-corner-devtools:focus-visible { opacity: 1; border-color: #8a95b5; }
+  /* お知らせ一覧 */
+  .top-news-panel { width: min(640px, 96vw); }
+  .top-news-list { margin: 0; padding: 0; list-style: none; }
+  .top-news-list li { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(255, 255, 255, .08); font-size: 14px; line-height: 1.7; }
+  .top-news-version { flex: none; color: #cfb875; font-weight: 900; }
+  .top-news-text { color: #dfe3ec; }
+  /* カミ図鑑 */
+  .kami-dex-head { display: flex; align-items: baseline; gap: 10px; margin: 0 44px 12px 0; flex-wrap: wrap; }
+  .kami-dex-title-mark { font-size: 22px; }
+  .kami-dex-title { color: #fff3c9; font-family: 'Yu Mincho','Hiragino Mincho ProN',serif; font-size: clamp(22px, 2.2vw, 30px); font-weight: 900; letter-spacing: .12em; }
+  .kami-dex-sub { color: #8f99aa; font-size: 12px; }
+  .kami-dex-tabs { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; margin-bottom: 16px; }
+  .kami-dex-tab {
+    display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; padding: 4px 2px 6px;
+    border: 1px solid #343b4b; border-radius: 10px; background: rgba(20, 24, 34, .72); color: #cfd6e6; cursor: pointer;
+  }
+  .kami-dex-tab img { width: 100%; max-width: 72px; aspect-ratio: 240 / 260; object-fit: contain; }
+  .kami-dex-tab-lock { display: grid; place-items: center; width: 100%; max-width: 72px; aspect-ratio: 240 / 260; color: #8a3a44; font-size: 30px; font-weight: 900; }
+  .kami-dex-tab-name { max-width: 100%; font-size: 11px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kami-dex-tab:hover { border-color: #8a95b5; }
+  .kami-dex-tab.active { border-color: #e1c477; background: linear-gradient(160deg, rgba(122, 92, 37, .45), rgba(20, 24, 34, .8)); color: #fff3c9; }
+  .kami-dex-tab.locked.active, .kami-dex-tab.locked:hover { border-color: #c94c5d; }
+  .kami-dex-view-switch { display: flex; justify-content: center; gap: 6px; margin-top: 10px; }
+  .kami-dex-view-switch button {
+    padding: 5px 16px; border: 1px solid #4a5268; border-radius: 999px; background: #1b202c; color: #cfd6e6; font-size: 12px; font-weight: 800; cursor: pointer;
+  }
+  .kami-dex-view-switch button.active { border-color: #e1c477; background: #5a4520; color: #fff3c9; }
+  .kami-dex-muted { margin-left: 6px; color: #d9a36c; font-size: 11px; font-weight: 700; letter-spacing: 0; }
+  .kami-dex-voices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .kami-dex-wins { margin-top: 10px; grid-template-columns: 1fr; }
+  .kami-dex-voice {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; padding: 7px 10px;
+    border: 1px solid #343b4b; border-radius: 8px; background: rgba(12, 15, 23, .6); color: #d6dce7; text-align: left; cursor: pointer;
+  }
+  .kami-dex-voice:hover:not(:disabled) { border-color: #8a95b5; }
+  .kami-dex-voice:disabled { cursor: default; opacity: .6; }
+  .kami-dex-voice.playing { border-color: #e1c477; box-shadow: 0 0 12px rgba(225, 196, 119, .25); }
+  .kami-dex-voice-label { color: #90bff2; font-size: 11px; font-weight: 900; }
+  .kami-dex-voice-text { font-size: 13px; line-height: 1.6; }
+  .kami-dex-fold { width: 100%; padding: 0; border: 0; background: none; color: #ecd895; font-size: 13px; font-weight: 900; letter-spacing: .08em; text-align: left; cursor: pointer; }
+  .kami-dex-actions { margin-top: 16px; }
+  .kami-dex-spoiler, .kami-dex-empty { max-width: 460px; margin: 40px auto; text-align: center; color: #fff2c8; font-size: 14px; font-weight: 800; line-height: 1.7; }
+  .kami-dex-spoiler p { margin: 0 0 14px; }
+  @media (max-width: 900px) {
+    .kami-dex-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .kami-dex-voices { grid-template-columns: 1fr; }
+  }
+  /* PC（3列）のTOP：幅の上限（1500px）をやめ、画面の高さに収まる範囲でボタンを最大まで大きくし、
+     上下の余りは均等に振り分ける。幅は「ロゴと下の帯を除いた高さ×2.2」までに抑え、スクロールが出ないようにする。 */
   @media (min-width: 1101px) {
     .top-menu.top-menu-home { justify-content: center; justify-content: safe center; }
-    .top-menu.top-menu-home > .top-mode-grid {
+    .top-menu.top-menu-home > .top-mode-grid,
+    .top-menu.top-menu-home > .top-info-band {
       margin-top: 0;
-      width: min(97vw, calc((100vh - 190px) * 2.2));
+      width: min(97vw, calc((100vh - 150px - var(--top-logo-h)) * 2.2));
     }
     .top-menu-home .top-mode-label { font-size: clamp(16px, 1.3vw, 30px); }
     .top-menu-home .top-mode-card.game .top-mode-label { font-size: clamp(20px, 1.8vw, 38px); }
@@ -5634,8 +5747,13 @@
           :style="{ left: ((i*61)%100) + '%', animationDelay: ((i%7)*0.9) + 's', animationDuration: (9 + (i%5)*1.6) + 's' }"></span>
     <img class="higanbana-corner higanbana-corner-left" src="ui_decorations/higanbana-left.png" alt="" aria-hidden="true" draggable="false">
     <img class="higanbana-corner higanbana-corner-right" src="ui_decorations/higanbana-right.png" alt="" aria-hidden="true" draggable="false">
-    <!-- 起動時のタイトル画面でロゴを見せるようになったため、ここの見出しは表示しない
+    <!-- ロゴの帯：キービジュアルの紋章を丸く切り出し、左右に金の線を伸ばしてTOPの顔にする
          （.top-menu-hero / .top-menu-title は動作確認用ツール画面で引き続き使用する） -->
+    <div class="top-logo-band">
+      <span class="top-logo-line left" aria-hidden="true"></span>
+      <img class="top-logo-medallion" src="ui_decorations/top-logo-medallion-0c05be7b9a5b.webp" alt="ツクリヨ RETURN TO THE LEGACIES" draggable="false">
+      <span class="top-logo-line right" aria-hidden="true"></span>
+    </div>
     <div v-if="resumeSession" class="top-resume-banner">
       <span>進行中のセッションがあります（{{ resumeSession.kind === 'game' ? '創世決戦' : resumeSession.kind === 'shield' ? '星紡ぎ戦' : resumeSession.kind === 'construct' ? '理念構築戦' : '対戦テスト' }} / コード: {{ resumeSession.code }}）</span>
       <button class="top-resume-btn" @click="resumeActiveSession">↩ 戻る</button>
@@ -5673,17 +5791,142 @@
           <button class="top-mode-guide-btn pick" @click.stop="openPickGuide">
             🧭 ピックガイド
           </button>
+          <button class="top-mode-guide-btn kamidex" @click.stop="openKamiDex()">
+            ⛩ カミ図鑑
+          </button>
         </div>
       </div>
     </div>
-    <div class="top-devtools">
-      <button class="top-devtools-toggle" @click="openDevToolsScreen">
-        🔧 動作確認用ツール（対戦テスト・α版）
+    <!-- お知らせ・ヒントの帯：最新のお知らせ1件と、数秒ごとに切り替わる遊び方のヒント -->
+    <div class="top-info-band">
+      <button type="button" class="top-info-news" @click="openTopNews" title="お知らせを全部見る">
+        <span class="top-info-tag news">お知らせ</span>
+        <span class="top-info-text">{{ topNews[0].text }}</span>
       </button>
+      <div class="top-info-tip">
+        <span class="top-info-tag tip">ヒント</span>
+        <transition name="top-tip-fade" mode="out-in">
+          <span :key="topTipIndex" class="top-info-text">{{ topTips[topTipIndex % topTips.length] }}</span>
+        </transition>
+        <button type="button" class="top-info-next" @click="topTipNext" aria-label="次のヒントを表示">›</button>
+      </div>
     </div>
-    <div class="top-menu-footer">v{{ BUILD_VERSION }}</div>
+    <!-- 動作確認用ツールは一般のプレイヤーが使わないため、右下の小さなアイコンにまとめる -->
+    <div class="top-corner-tools">
+      <span class="top-corner-version">v{{ BUILD_VERSION }}</span>
+      <button type="button" class="top-corner-devtools" @click="openDevToolsScreen"
+              title="動作確認用ツール（対戦テスト・α版）" aria-label="動作確認用ツール（対戦テスト・α版）">🔧</button>
+    </div>
   </div>
   </transition>
+
+  <!-- ===== お知らせ一覧 ===== -->
+  <div v-if="topNewsOpen" class="gs-kami-info-overlay top-news-overlay" role="dialog" aria-modal="true" aria-labelledby="top-news-title" @click.self="closeTopNews">
+    <div class="gs-kami-info-panel top-news-panel">
+      <button type="button" class="gs-kami-info-close" @click="closeTopNews" aria-label="お知らせを閉じる">×</button>
+      <div class="gs-kami-info-kicker">NEWS</div>
+      <div id="top-news-title" class="gs-kami-info-name">お知らせ</div>
+      <ul class="top-news-list">
+        <li v-for="item in topNews" :key="item.version">
+          <span class="top-news-version">v{{ item.version }}</span>
+          <span class="top-news-text">{{ item.text }}</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== カミ図鑑：各カミの理念・効果・ボイスをまとめて見られる図鑑 ===== -->
+  <div v-if="kamiDexOpen" class="gs-kami-info-overlay kami-dex-overlay" role="dialog" aria-modal="true" aria-labelledby="kami-dex-title" @click.self="closeKamiDex">
+    <div class="gs-kami-info-panel kami-dex-panel" :class="{ orochi: kamiDexKami && kamiDexKami.type === 'ヤマタノオロチ' }">
+      <button type="button" class="gs-kami-info-close" @click="closeKamiDex" aria-label="カミ図鑑を閉じる">×</button>
+      <div class="kami-dex-head">
+        <span class="kami-dex-title-mark" aria-hidden="true">⛩</span>
+        <span class="kami-dex-title">カミ図鑑</span>
+        <span class="kami-dex-sub">カミの理念・効果・声を確かめる</span>
+      </div>
+      <div class="kami-dex-tabs" role="tablist" aria-label="カミを選ぶ">
+        <button v-for="entry in kamiDexEntries" :key="'dex' + entry.no" type="button" role="tab"
+                class="kami-dex-tab" :class="{ active: entry.no === kamiDexNo, locked: entry.locked }"
+                :aria-selected="entry.no === kamiDexNo ? 'true' : 'false'" @click="kamiDexSelect(entry.no)">
+          <img v-if="!entry.locked" :src="entry.chibi" alt="" draggable="false" loading="lazy">
+          <span v-else class="kami-dex-tab-lock" aria-hidden="true">？</span>
+          <span class="kami-dex-tab-name">{{ entry.locked ? '？？？' : entry.name }}</span>
+        </button>
+      </div>
+      <div v-if="kamiDexOrochiConfirm" class="kami-dex-spoiler">
+        <p>このカミの情報はネタバレを含みます。表示しますか？</p>
+        <div class="gs-kami-confirm-actions">
+          <button type="button" class="gs-kami-accept-btn" @click="kamiDexRevealOrochi">表示する</button>
+          <button type="button" class="gs-kami-decline-btn" @click="kamiDexOrochiConfirm = false">やめる</button>
+        </div>
+      </div>
+      <div v-else-if="!kamiDexKami" class="kami-dex-empty">カミのデータを読み込んでいます…</div>
+      <div v-else class="gs-kami-info-layout kami-dex-layout">
+        <div>
+          <div class="gs-kami-info-card-image" role="img" :aria-label="fullName(kamiDexKami)"
+               :style="kamiDexImageUrl ? { backgroundImage: 'url(' + kamiDexImageUrl + ')' } : {}"></div>
+          <div class="kami-dex-view-switch" role="group" aria-label="表示する絵">
+            <button type="button" :class="{ active: kamiDexView === 'illust' }" @click="kamiDexView = 'illust'">イラスト</button>
+            <button type="button" :class="{ active: kamiDexView === 'card' }" @click="kamiDexView = 'card'">カード</button>
+          </div>
+        </div>
+        <div>
+          <div class="gs-kami-info-kicker">KAMI ENCYCLOPEDIA</div>
+          <div id="kami-dex-title" class="gs-kami-info-name">{{ fullName(kamiDexKami) }}</div>
+
+          <div class="gs-kami-info-section gs-kami-philosophy">
+            <div class="gs-kami-info-section-title">創生理念</div>
+            <p>{{ gsKamiGuide(kamiDexKami).cause }}</p>
+            <p>{{ gsKamiVisionParts(kamiDexKami).before }}<strong class="gs-kami-world-emphasis">{{ gsKamiVisionParts(kamiDexKami).world }}</strong>{{ gsKamiVisionParts(kamiDexKami).after }}</p>
+          </div>
+
+          <div class="gs-kami-info-section">
+            <div class="gs-kami-info-section-title">カミの効果</div>
+            <div v-if="kamiDexKami.trigger" class="gs-kami-effect-row">
+              <span class="gs-kami-effect-label">{{ kamiDexKami.type === 'ヤマタノオロチ' ? '固有能力' : '天力トリガー' }}</span>
+              <div class="gs-kami-effect-text">{{ kamiDexKami.trigger }}</div>
+            </div>
+            <div v-if="kamiDexKami.skill1name || kamiDexKami.skill1effect" class="gs-kami-effect-row">
+              <span class="gs-kami-effect-label">神技 {{ kamiDexKami.skill1name }}<template v-if="kamiDexKami.type !== 'ヤマタノオロチ' && kamiDexKami.skill1cost"> ／ 消費天力{{ kamiDexKami.skill1cost }}</template></span>
+              <div class="gs-kami-effect-text">{{ kamiDexKami.skill1effect }}</div>
+            </div>
+            <div v-if="kamiDexKami.skill2name || kamiDexKami.skill2effect" class="gs-kami-effect-row">
+              <span class="gs-kami-effect-label">創世神技 {{ kamiDexKami.skill2name }}<template v-if="kamiDexKami.type !== 'ヤマタノオロチ' && kamiDexKami.skill2cost"> ／ 消費天力{{ kamiDexKami.skill2cost }}</template></span>
+              <div class="gs-kami-effect-text">{{ kamiDexKami.skill2effect }}</div>
+            </div>
+          </div>
+
+          <div class="gs-kami-info-section">
+            <div class="gs-kami-info-section-title">ボイス<small v-if="!(voiceVolume > 0)" class="kami-dex-muted">（ボイスの音量が0のため再生されません）</small></div>
+            <div class="kami-dex-voices">
+              <button v-for="row in kamiDexVoiceRows" :key="row.key" type="button" class="kami-dex-voice"
+                      :class="{ playing: kamiDexPlayingKey === row.key }" :disabled="!row.hasVoice" @click="kamiDexPlay(row.key)">
+                <span class="kami-dex-voice-label">{{ row.hasVoice ? '▶' : '—' }} {{ row.label }}</span>
+                <span class="kami-dex-voice-text">「{{ row.text }}」</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="gs-kami-info-section">
+            <button type="button" class="kami-dex-fold" :aria-expanded="kamiDexShowWins ? 'true' : 'false'" @click="kamiDexShowWins = !kamiDexShowWins">
+              {{ kamiDexShowWins ? '▼' : '▶' }} 勝利のセリフ（相手のカミごと）
+            </button>
+            <div v-if="kamiDexShowWins" class="kami-dex-voices kami-dex-wins">
+              <button v-for="row in kamiDexWinRows" :key="row.key" type="button" class="kami-dex-voice"
+                      :class="{ playing: kamiDexPlayingKey === row.key }" :disabled="!row.hasVoice" @click="kamiDexPlay(row.key)">
+                <span class="kami-dex-voice-label">{{ row.hasVoice ? '▶' : '—' }} {{ row.label }}</span>
+                <span class="kami-dex-voice-text">「{{ row.text }}」</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="kami-dex-actions">
+            <button type="button" class="gs-kami-accept-btn" @click="kamiDexOpenPickGuide">🧭 {{ kamiDexKami.name }}のピックガイドを見る</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== 動作確認用ツール専用画面 ===== -->
   <transition name="top-menu-fade">
@@ -10334,6 +10577,30 @@ const KAMI_EMOTE_LINES = {
   },
 };
 
+/* TOPのお知らせ（新しい順）。先頭の1件がTOP下の帯に出る。更新を公開したら先頭に追加する */
+const TOP_NEWS = Object.freeze([
+  { version: '1.15.251', text: 'TOP画面を新しくし、カミ図鑑を追加しました。各カミの理念・効果・ボイスを確かめられます。' },
+  { version: '1.15.250', text: '初めて読み込む素材があるときは、ロード画面で準備してから始まるようにしました。' },
+  { version: '1.15.248', text: '画像や音楽を端末に保存し、2回目以降の読み込みを速くしました。' },
+  { version: '1.15.187', text: 'カミのボイスと神技の演出、対戦フィールドの背景を追加しました。' },
+]);
+/* TOPのヒント（数秒ごとに順番に切り替わる） */
+const TOP_TIPS = Object.freeze([
+  '初めての人は、チュートリアルでアマテラスと一緒に遊び方を学べます。',
+  'ピックガイドでは、カミごとに優先したいカードの方針を確認できます。',
+  'ピック画面の👍は、今のカミと手持ちのカードに合う候補の目安です。',
+  'カミ図鑑では、各カミの創生理念・効果・ボイスを確かめられます。',
+  '創世決戦は4人で遊ぶモード。神託の儀でカミを選び、選別の儀でカードを集めます。',
+  'カードにカーソルを合わせると、カードを大きく表示できます。',
+  '対戦を中断しても、TOPの「進行中のセッションがあります」から戻れます。',
+  'BGMは自動選曲のほか、音量メニューから好きな曲に固定することもできます。',
+]);
+/* カミ図鑑で並べるボイスの種類と見出し */
+const KAMI_DEX_VOICE_LABELS = Object.freeze([
+  ['greeting', '挨拶'], ['praise', '称賛'], ['surprise', '驚き'], ['confusion', '困惑'],
+  ['taunt', '挑発'], ['boast', '理念'], ['skill1', '神技'], ['skill2', '創世神技'],
+]);
+
 /* 創世決戦（4人対戦）の終戦で、優勝したカミが告げる暫定セリフ。
    内容は後から精査しやすいよう、カミNo単位の独立データにしておく。 */
 const GS_SCORING_KAMI_LINES = Object.freeze({
@@ -11649,6 +11916,17 @@ new Vue({
     battleAttackVisual: null,   // 神攻＝ビーム／戦闘＝クラッシュの一撃演出：{ id, kind, x, y, length, angle, midX, midY }
     voiceVolume: loadStoredVolume(VOICE_VOLUME_STORAGE_KEY, 0.6), // カミのボイス音量（0〜1）
     kamiVoiceManifest: null, // { kami: { No: { key: 'voices/No/key.mp3' } } }。未生成なら null のまま
+    topNews: TOP_NEWS,
+    topTips: TOP_TIPS,
+    topNewsOpen: false,
+    topTipIndex: 0,
+    kamiDexOpen: false,          // カミ図鑑
+    kamiDexNo: '1',
+    kamiDexView: 'illust',       // 'illust'（イラスト） / 'card'（カード）
+    kamiDexShowWins: false,
+    kamiDexPlayingKey: null,
+    kamiDexOrochiRevealed: false, // 隠しカミは確認してから表示する
+    kamiDexOrochiConfirm: false,
     battleSfxVolume: loadStoredVolume(SFX_VOLUME_STORAGE_KEY), // SE音量（0〜1）。既定50%、localStorageに保存して次回以降も復元
     battleAnimationSpeed: loadStoredChoice('tsukuriyo_animationSpeed', ['normal','fast','minimal'], 'normal'),
     soundSettingsOpen: false,   // SE/BGM音量設定ポップオーバーの開閉（全画面共通）
@@ -11841,6 +12119,44 @@ new Vue({
     gsScoringRevealStage: null, // 終戦画面の演出ステージ：null(通常/結果表を表示) | 'announce'(黒背景「今回の勝者は…」) | 'kami'(優勝者のカミアップ)
   },
   computed: {
+    // カミ図鑑：タブに並べるカミ（隠しカミは確認するまで「？？？」）
+    kamiDexEntries() {
+      const nos = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+      return nos.map(no => {
+        const card = (this.allKamiCards || []).find(k => String(k.no) === no);
+        const guide = GS_KAMI_SELECTION_GUIDES[no] || {};
+        return { no, name: (card && card.name) || guide.name || ('カミ' + no), chibi: KAMI_CHIBI_FILES[no] || '', locked: no === '10' && !this.kamiDexOrochiRevealed };
+      });
+    },
+    kamiDexKami() {
+      if (this.kamiDexNo === '10' && !this.kamiDexOrochiRevealed) return null;
+      return (this.allKamiCards || []).find(k => String(k.no) === this.kamiDexNo) || null;
+    },
+    kamiDexImageUrl() {
+      const kami = this.kamiDexKami;
+      if (!kami) return '';
+      return this.kamiDexView === 'card' ? this.cardImageUrl(kami) : this.kamiSelectionIllustrationUrl(kami);
+    },
+    kamiDexVoiceRows() {
+      const no = this.kamiDexNo;
+      const lines = KAMI_EMOTE_LINES[no] || {};
+      const files = (this.kamiVoiceManifest && this.kamiVoiceManifest.kami[no]) || {};
+      const rows = KAMI_DEX_VOICE_LABELS.filter(([key]) => lines[key]).map(([key, label]) => ({ key, label, text: lines[key], hasVoice: !!files[key] }));
+      if (GS_SCORING_KAMI_LINES[no]) rows.push({ key: 'win_gs', label: '創世決戦で優勝', text: GS_SCORING_KAMI_LINES[no], hasVoice: !!files.win_gs });
+      return rows;
+    },
+    // 勝利のセリフ（相手のカミごと）。隠しカミへのセリフは、隠しカミを表示したときだけ並べる
+    kamiDexWinRows() {
+      const no = this.kamiDexNo;
+      const lines = KAMI_VICTORY_LINES[no] || {};
+      const files = (this.kamiVoiceManifest && this.kamiVoiceManifest.kami[no]) || {};
+      return Object.keys(lines).filter(opp => opp !== '10' || this.kamiDexOrochiRevealed)
+        .sort((a, b) => Number(a) - Number(b))
+        .map(opp => {
+          const entry = this.kamiDexEntries.find(e => e.no === opp);
+          return { key: 'win_' + opp, label: (entry ? entry.name : opp) + 'に勝ったとき', text: lines[opp], hasVoice: !!files['win_' + opp] };
+        });
+    },
     /* BGM選択メニュー用：{key, name} の配列（BGM_FILESそのものではなく整形して渡す） */
     bgmCurrentName() {
       return (BGM_FILES[this.bgmCurrentKey] || {}).name || '';
@@ -13656,6 +13972,79 @@ new Vue({
     },
   },
   methods: {
+    openTopNews() {
+      this._sfxPlay('decision');
+      this.topNewsOpen = true;
+    },
+    closeTopNews() {
+      this._sfxPlay('cancel');
+      this.topNewsOpen = false;
+    },
+    topTipNext() {
+      this._sfxPlay('menuselect');
+      this.topTipIndex = (this.topTipIndex + 1) % TOP_TIPS.length;
+      this._topTipStartedAt = Date.now();
+    },
+    // ヒントは数秒ごとに自動で次へ進める（TOPを表示していて、画面が表にあるときだけ）
+    _topTipTick() {
+      if (this.appView !== 'top' || this.titleScreenOpen || document.hidden) return;
+      if (Date.now() - (this._topTipStartedAt || 0) < 9000) return;
+      this.topTipIndex = (this.topTipIndex + 1) % TOP_TIPS.length;
+      this._topTipStartedAt = Date.now();
+    },
+    async openKamiDex(no = '1') {
+      this._sfxPlay('decision');
+      this.kamiDexNo = String(no);
+      this.kamiDexView = 'illust';
+      this.kamiDexShowWins = false;
+      this.kamiDexOrochiConfirm = false;
+      this.kamiDexOpen = true;
+      const jobs = [];
+      if (!Array.isArray(this.allKamiCards) || !this.allKamiCards.length) jobs.push(this.loadKamiCards());
+      if (!this.kamiVoiceManifest) jobs.push(this.loadKamiVoiceManifest());
+      if (jobs.length) await Promise.allSettled(jobs);
+    },
+    closeKamiDex() {
+      this._sfxPlay('cancel');
+      this._kamiDexStopVoice();
+      this.kamiDexOpen = false;
+      this.kamiDexOrochiConfirm = false;
+    },
+    kamiDexSelect(no) {
+      no = String(no);
+      if (no === this.kamiDexNo && !this.kamiDexOrochiConfirm) return;
+      this._sfxPlay('menuselect');
+      this._kamiDexStopVoice();
+      if (no === '10' && !this.kamiDexOrochiRevealed) { this.kamiDexOrochiConfirm = true; return; }
+      this.kamiDexOrochiConfirm = false;
+      this.kamiDexNo = no;
+      this.kamiDexShowWins = false;
+    },
+    kamiDexRevealOrochi() {
+      this._sfxPlay('decision');
+      this.kamiDexOrochiRevealed = true;
+      this.kamiDexOrochiConfirm = false;
+      this.kamiDexNo = '10';
+      this.kamiDexShowWins = false;
+    },
+    kamiDexPlay(key) {
+      const kami = this.kamiDexKami;
+      if (!kami) return;
+      const played = this.playKamiVoice(kami, key);
+      if (!played) return;
+      this.kamiDexPlayingKey = key;
+      played.done.then(() => { if (this.kamiDexPlayingKey === key && this._kamiVoiceAudio === played.audio) this.kamiDexPlayingKey = null; });
+    },
+    _kamiDexStopVoice() {
+      if (this.kamiDexPlayingKey && this._kamiVoiceAudio) this._kamiVoiceAudio.pause();
+      this.kamiDexPlayingKey = null;
+    },
+    kamiDexOpenPickGuide() {
+      const kami = this.kamiDexKami;
+      this._kamiDexStopVoice();
+      this.kamiDexOpen = false;
+      this.openPickGuideForKami(kami);
+    },
     openPlayManual() {
       this._sfxPlay('decision');
       this.howToPlayModalOpen = false;
@@ -30533,6 +30922,8 @@ new Vue({
   },  // /methods
 
   mounted() {
+    this._topTipStartedAt = Date.now();
+    this._topTipTimer = window.setInterval(() => this._topTipTick(), 1000);
     window.addEventListener('wheel', this.onCardPreviewWheel, { passive: false, capture: true });
     window.addEventListener('resize', this._battleUpdateNoticeBounds);
     window.addEventListener('scroll', this._battleUpdateNoticeBounds, true);
