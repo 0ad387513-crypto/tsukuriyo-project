@@ -186,6 +186,8 @@
     pendingOriginalNo: "",
     artCrop: null,
     artCropNo: "",
+    //保存済みの原本：番号 → ファイル名（「番号_カード名」）
+    artFiles: {},
     //読み込んだカードの保存済みイラストの状態表示
     artStatus: "",
     gameLinkMessage: "確認中…",
@@ -745,11 +747,30 @@
       return warnings;
     },
 
-    /* ===== イラストの原本（tools/card-editor/art/NNN.webp）と切り抜き位置（art/NNN.json） =====
-       原本はカード化する前のイラストをそのまま（長辺3000pxまで・WebP）保存し、
-       カードに載せる正方形の範囲は切り抜き位置として別に保存する。あとから範囲の調整や原本の差し替えができる。 */
+    /* ===== イラストの原本（art/番号_カード名.webp）と切り抜き位置（art/番号_カード名.json） =====
+       原本はカードに載せるイラストをそのまま（長辺3000pxまで・WebP）保存し、
+       カードに載せる正方形の範囲は切り抜き位置として別に保存する。あとから範囲の調整や原本の差し替えができる。
+       ファイル名はドライブの元イラストと同じ「番号_カード名」。番号からファイル名を引くため一覧を持っておく。 */
+    _refreshArtFiles: async function () {
+      try {
+        var list = await (await fetch("/__dev/card-art-list", { cache: "no-store" })).json();
+        this.artFiles = (list && list.files) || {};
+      } catch (e) {
+        this.artFiles = {};
+      }
+    },
     _artUrl: function (no, ext) {
-      return "art/" + String(parseInt(no, 10)).padStart(3, "0") + "." + (ext || "webp");
+      var base = (this.artFiles || {})[String(parseInt(no, 10))];
+      return base ? "art/" + encodeURIComponent(base) + "." + (ext || "webp") : null;
+    },
+    _artDisplayName: function (nickname, name) {
+      /*  ファイル名に使うカード名（二つ名があれば「二つ名・カード名」。一括生成のZIPと同じ）  */
+      var clean = function (s) { return String(s || "").replace(/[​-‍﻿]/g, ""); };
+      return clean(nickname) ? clean(nickname) + "・" + clean(name) : clean(name);
+    },
+    _artNameFromFile: function (fileName) {
+      /*  「001_カード名.png」からカード名の部分を取り出す  */
+      return String(fileName || "").replace(/^\d+_/, "").replace(/\.[^.]+$/, "");
     },
     _defaultArtCrop: function (width, height) {
       /*  一括生成と同じ既定の切り抜き（中央・上端基準の正方形）  */
@@ -816,8 +837,10 @@
       this.pendingOriginalNo = "";
       if (!no) return false;
       try {
-        var res = await fetch(this._artUrl(no), { cache: "no-store" });
-        if (!res.ok) { this.artStatus = "保存済みの原本なし（イラストのファイルを選んで「カードに反映」してください）"; return false; }
+        await this._refreshArtFiles();
+        var url = this._artUrl(no);
+        var res = url ? await fetch(url, { cache: "no-store" }) : null;
+        if (!res || !res.ok) { this.artStatus = "保存済みの原本なし（イラストのファイルを選んで「カードに反映」してください）"; return false; }
         var blob = await res.blob();
         var crop = null;
         var cropRes = await fetch(this._artUrl(no, "json"), { cache: "no-store" });
@@ -846,21 +869,23 @@
       if (!webp || webp.type !== "image/webp") throw new Error("このブラウザではWebPを作成できません（Chrome / Edge を使ってください）");
       return { blob: webp, width: canvas.width, height: canvas.height, scale: scale };
     },
-    _saveArtOriginal: async function (no, webpBlob) {
-      var res = await fetch("/__dev/card-art?no=" + encodeURIComponent(no), { method: "POST", headers: { "Content-Type": "image/webp" }, body: webpBlob });
+    _saveArtOriginal: async function (no, webpBlob, name) {
+      // name（カード名）があれば「番号_カード名.webp」で保存し、同じ番号の古いファイルは置き換わる
+      var res = await fetch("/__dev/card-art?no=" + encodeURIComponent(no) + "&name=" + encodeURIComponent(name || ""), { method: "POST", headers: { "Content-Type": "image/webp" }, body: webpBlob });
       var result = await res.json().catch(function () { return {}; });
       if (!res.ok || !result.ok) throw new Error(result.message || ("原本の保存に失敗しました（" + res.status + "）"));
     },
-    _saveArtCrop: async function (no, crop) {
-      var res = await fetch("/__dev/card-art-crop?no=" + encodeURIComponent(no), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(crop) });
+    _saveArtCrop: async function (no, crop, name) {
+      var res = await fetch("/__dev/card-art-crop?no=" + encodeURIComponent(no) + "&name=" + encodeURIComponent(name || ""), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(crop) });
       var result = await res.json().catch(function () { return {}; });
       if (!res.ok || !result.ok) throw new Error(result.message || ("切り抜き位置の保存に失敗しました（" + res.status + "）"));
     },
     _saveArtForCurrentCard: async function (no) {
       /*  「シートとゲームに反映」のとき：差し替えた原本と、今の切り抜き位置を保存する  */
+      var name = this._artDisplayName(this.cardNickname, this.cardName);
       if (this.pendingOriginalFile && String(this.pendingOriginalNo) === String(no)) {
         var converted = await this._originalToWebp(this.pendingOriginalFile);
-        await this._saveArtOriginal(no, converted.blob);
+        await this._saveArtOriginal(no, converted.blob, name);
         // 切り抜き位置は保存した原本の大きさに合わせる
         if (this.artCrop && converted.scale !== 1) {
           this.artCrop = {
@@ -871,13 +896,15 @@
         this.pendingOriginalFile = null;
         this.pendingOriginalNo = "";
       }
-      if (this.artCrop && String(this.artCropNo) === String(no)) await this._saveArtCrop(no, this.artCrop);
+      if (this.artCrop && String(this.artCropNo) === String(no)) await this._saveArtCrop(no, this.artCrop, name);
+      await this._refreshArtFiles();
     },
     _importOriginal: async function (no, file) {
-      /*  原本を取り込み、既定の切り抜き位置（中央・上端基準の正方形）も保存する  */
+      /*  原本を「番号_カード名」のまま取り込み、既定の切り抜き位置（中央・上端基準の正方形）も保存する  */
+      var name = this._artNameFromFile(file.name);
       var converted = await this._originalToWebp(file);
-      await this._saveArtOriginal(no, converted.blob);
-      await this._saveArtCrop(no, this._defaultArtCrop(converted.width, converted.height));
+      await this._saveArtOriginal(no, converted.blob, name);
+      await this._saveArtCrop(no, this._defaultArtCrop(converted.width, converted.height), name);
     },
     importArtFolder: async function () {
       /*  「001_カード名.png」形式のイラストフォルダを、原本として art/ に取り込む  */
@@ -898,8 +925,9 @@
     },
     _loadArtForBatch: async function (no) {
       /*  一括の作り直し用：原本と切り抜き位置からカードのイラストを描く（切り抜き画面は使わない）  */
-      var res = await fetch(this._artUrl(no), { cache: "no-store" });
-      if (!res.ok) return false;
+      var url = this._artUrl(no);
+      var res = url ? await fetch(url, { cache: "no-store" }) : null;
+      if (!res || !res.ok) return false;
       var bitmap = await createImageBitmap(await res.blob());
       var crop = null;
       var cropRes = await fetch(this._artUrl(no, "json"), { cache: "no-store" });
@@ -911,8 +939,8 @@
     regenerateAllFromSavedArt: async function () {
       /*  保存済みの原本がある全カードを、今のシートの内容で作り直してゲームに反映する（フレーム変更時など）  */
       if (!this.gameLinkReady) { alert("ローカル確認用サーバー（npm run preview）で開いてください。"); return; }
-      var list = await (await fetch("/__dev/card-art-list", { cache: "no-store" })).json().catch(function () { return { nos: [] }; });
-      var nos = (list.nos || []).map(String);
+      await this._refreshArtFiles();
+      var nos = Object.keys(this.artFiles || {});
       var self = this;
       var tasks = Object.keys(this.allCardList).map(function (k) { return self.allCardList[k]; }).filter(function (d) { return nos.indexOf(String(parseInt(d[0], 10))) !== -1; });
       if (!tasks.length) { alert("保存済みの原本があるカードがありません。先にイラストを取り込んでください。"); return; }

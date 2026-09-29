@@ -24,6 +24,43 @@ function localImageMaxNo(isKami) {
     return m ? Number(m[1]) : null;
   } catch { return null; }
 }
+// イラストの原本は「番号_カード名.webp」、切り抜き位置は「番号_カード名.json」（ドライブの元イラストと同じ命名）
+const artDir = path.join(root, "tools", "card-editor", "art");
+const artPattern = /^(\d{3})(?:_(.*))?\.(webp|json)$/;
+function artFiles() {
+  // 番号 → 拡張子を除いたファイル名（原本があるものだけ）
+  const map = {};
+  if (!fs.existsSync(artDir)) return map;
+  for (const f of fs.readdirSync(artDir)) {
+    const m = f.match(artPattern);
+    if (m && m[3] === "webp") map[String(parseInt(m[1], 10))] = f.slice(0, -5);
+  }
+  return map;
+}
+function artBaseName(no, name) {
+  const pad = String(no).padStart(3, "0");
+  const safe = String(name || "").replace(/[​-‍﻿]/g, "").replace(/[\\/:*?"<>|]/g, "").trim();
+  if (safe) return pad + "_" + safe;
+  return artFiles()[String(no)] || pad; // 名前の指定がなければ今のファイル名を使う
+}
+function writeArtFile(no, base, ext, data) {
+  fs.mkdirSync(artDir, { recursive: true });
+  // 同じ番号の古いファイル（カード名が変わった場合など）を消してから書く
+  for (const f of fs.readdirSync(artDir)) {
+    const m = f.match(artPattern);
+    if (m && parseInt(m[1], 10) === no && m[3] === ext && f !== base + "." + ext) fs.unlinkSync(path.join(artDir, f));
+  }
+  const file = path.join(artDir, base + "." + ext);
+  fs.writeFileSync(file, data);
+  if (ext === "webp") {
+    // カード名が変わって原本の名前が変わったときは、切り抜き位置のファイル名も合わせる
+    for (const f of fs.readdirSync(artDir)) {
+      const m = f.match(artPattern);
+      if (m && parseInt(m[1], 10) === no && m[3] === "json" && f !== base + ".json") fs.renameSync(path.join(artDir, f), path.join(artDir, base + ".json"));
+    }
+  }
+  return file;
+}
 async function handleDev(req, res, url) {
   // 他のサイトから localhost へ送り込まれるのを防ぐため、同じ確認用サーバーのページからの要求だけ受け付ける
   const origin = req.headers.origin;
@@ -55,10 +92,7 @@ async function handleDev(req, res, url) {
     let body;
     try { body = await readBody(req, 15 * 1024 * 1024); } catch { return sendJson(res, 413, { ok: false, message: "イラストが大きすぎます" }); }
     if (body.length < 16 || body.toString("ascii", 0, 4) !== "RIFF" || body.toString("ascii", 8, 12) !== "WEBP") return sendJson(res, 400, { ok: false, message: "WebP画像ではありません" });
-    const dir = path.join(root, "tools", "card-editor", "art");
-    fs.mkdirSync(dir, { recursive: true });
-    const file = path.join(dir, String(no).padStart(3, "0") + ".webp");
-    fs.writeFileSync(file, body);
+    const file = writeArtFile(no, artBaseName(no, url.searchParams.get("name")), "webp", body);
     console.log(`[card-editor] ${path.relative(root, file)} を保存（${Math.round(body.length / 1024)}KB）`);
     return sendJson(res, 200, { ok: true, path: path.relative(root, file).split(path.sep).join("/"), bytes: body.length });
   }
@@ -70,16 +104,13 @@ async function handleDev(req, res, url) {
     try { crop = JSON.parse((await readBody(req, 4096)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "切り抜き位置の形式が正しくありません" }); }
     const keys = ["x", "y", "width", "height"];
     if (!crop || !keys.every(k => Number.isFinite(crop[k])) || crop.width <= 0 || crop.height <= 0) return sendJson(res, 400, { ok: false, message: "切り抜き位置の値が正しくありません" });
-    const dir = path.join(root, "tools", "card-editor", "art");
-    fs.mkdirSync(dir, { recursive: true });
-    const file = path.join(dir, String(no).padStart(3, "0") + ".json");
-    fs.writeFileSync(file, JSON.stringify(Object.fromEntries(keys.map(k => [k, Math.round(crop[k])]))) + "\n");
+    // 切り抜き位置は原本と同じファイル名にそろえる
+    const file = writeArtFile(no, artFiles()[String(no)] || artBaseName(no, url.searchParams.get("name")), "json", JSON.stringify(Object.fromEntries(keys.map(k => [k, Math.round(crop[k])]))) + "\n");
     return sendJson(res, 200, { ok: true, path: path.relative(root, file).split(path.sep).join("/") });
   }
   if (url.pathname === "/__dev/card-art-list") {
-    const dir = path.join(root, "tools", "card-editor", "art");
-    const nos = fs.existsSync(dir) ? fs.readdirSync(dir).map(f => f.match(/^(\d{3})\.webp$/)).filter(Boolean).map(m => String(parseInt(m[1], 10))) : [];
-    return sendJson(res, 200, { ok: true, nos });
+    const files = artFiles();
+    return sendJson(res, 200, { ok: true, nos: Object.keys(files), files });
   }
   return sendJson(res, 404, { ok: false, message: "not found" });
 }
