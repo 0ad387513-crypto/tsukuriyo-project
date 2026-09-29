@@ -48,6 +48,25 @@ async function handleDev(req, res, url) {
     console.log(`[card-editor] ${path.relative(root, file)} を保存（${Math.round(body.length / 1024)}KB）`);
     return sendJson(res, 200, { ok: true, path: path.relative(root, file).split(path.sep).join("/"), bytes: body.length, warning });
   }
+  // カードのイラスト（正方形に切り抜いたもの）を tools/card-editor/art/NNN.webp に保存する。作り直しのときに編集室が読み込む
+  if (url.pathname === "/__dev/card-art" && req.method === "POST") {
+    const no = parseInt(url.searchParams.get("no"), 10);
+    if (!(no >= 1 && no <= 999)) return sendJson(res, 400, { ok: false, message: "No.の指定が正しくありません" });
+    let body;
+    try { body = await readBody(req, 5 * 1024 * 1024); } catch { return sendJson(res, 413, { ok: false, message: "イラストが大きすぎます" }); }
+    if (body.length < 16 || body.toString("ascii", 0, 4) !== "RIFF" || body.toString("ascii", 8, 12) !== "WEBP") return sendJson(res, 400, { ok: false, message: "WebP画像ではありません" });
+    const dir = path.join(root, "tools", "card-editor", "art");
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, String(no).padStart(3, "0") + ".webp");
+    fs.writeFileSync(file, body);
+    console.log(`[card-editor] ${path.relative(root, file)} を保存（${Math.round(body.length / 1024)}KB）`);
+    return sendJson(res, 200, { ok: true, path: path.relative(root, file).split(path.sep).join("/"), bytes: body.length });
+  }
+  if (url.pathname === "/__dev/card-art-list") {
+    const dir = path.join(root, "tools", "card-editor", "art");
+    const nos = fs.existsSync(dir) ? fs.readdirSync(dir).map(f => f.match(/^(\d{3})\.webp$/)).filter(Boolean).map(m => String(parseInt(m[1], 10))) : [];
+    return sendJson(res, 200, { ok: true, nos });
+  }
   return sendJson(res, 404, { ok: false, message: "not found" });
 }
 

@@ -181,6 +181,11 @@
     GAS_SECRET: "",
     //ツクリヨのローカル確認用サーバー（npm run preview）で開いているか。本番では保存できない
     gameLinkReady: false,
+    //「カードに反映」で切り抜いたイラスト（保存時に art/ へ残す）と、その対象のカードNo.
+    pendingArtCanvas: null,
+    pendingArtNo: "",
+    //読み込んだカードの保存済みイラストの状態表示
+    artStatus: "",
     gameLinkMessage: "確認中…",
 
     //一括生成の進捗表示
@@ -474,6 +479,8 @@
         this.activeSettingsPanel = "card";
         this.flameSet();
         this.textSet();
+        // リポジトリに保存済みのイラストがあれば、自動でカードに載せる
+        this._loadArtForCard(this.cardNo);
       }
     },
     saveToSheet: async function (silent) {
@@ -736,6 +743,87 @@
       return warnings;
     },
 
+    /* ===== イラストの保存（tools/card-editor/art/NNN.webp） ===== */
+    _artUrl: function (no) {
+      return "art/" + String(parseInt(no, 10)).padStart(3, "0") + ".webp";
+    },
+    _loadArtForCard: async function (no) {
+      /*  保存済みのイラストを読み込んでカードに載せる（SVGを画像にするため data URL で渡す）  */
+      this.artStatus = "";
+      if (!no) return false;
+      try {
+        var res = await fetch(this._artUrl(no), { cache: "no-store" });
+        if (!res.ok) { this.artStatus = "保存済みイラストなし（イラストを読み込んで「カードに反映」してください）"; return false; }
+        var blob = await res.blob();
+        var dataUrl = await new Promise(function (resolve) { var r = new FileReader(); r.onload = function () { resolve(r.result); }; r.readAsDataURL(blob); });
+        document.getElementById("cardImage").setAttribute("href", dataUrl);
+        this.pendingArtCanvas = null;
+        this.pendingArtNo = "";
+        this.artStatus = "保存済みイラストを読み込みました（" + this._artUrl(no) + "）";
+        return true;
+      } catch (e) {
+        this.artStatus = "イラストの読み込みに失敗しました";
+        return false;
+      }
+    },
+    _squareArtCanvas: function (img) {
+      /*  一括生成と同じ切り抜き（中央・上端基準の正方形）。保存は最大1170px（カード上の表示の2倍）  */
+      var size = Math.min(img.width, img.height);
+      var out = Math.min(1170, size);
+      var canvas = document.createElement("canvas");
+      canvas.width = out;
+      canvas.height = out;
+      canvas.getContext("2d").drawImage(img, (img.width - size) / 2, 0, size, size, 0, 0, out, out);
+      return canvas;
+    },
+    _saveArt: async function (no, canvas) {
+      /*  イラストをWebPに圧縮して art/ に保存する  */
+      var webp = await new Promise(function (resolve) { canvas.toBlob(resolve, "image/webp", 0.9); });
+      if (!webp || webp.type !== "image/webp") throw new Error("このブラウザではWebPを作成できません（Chrome / Edge を使ってください）");
+      var res = await fetch("/__dev/card-art?no=" + encodeURIComponent(no), { method: "POST", headers: { "Content-Type": "image/webp" }, body: webp });
+      var result = await res.json().catch(function () { return {}; });
+      if (!res.ok || !result.ok) throw new Error(result.message || ("イラストの保存に失敗しました（" + res.status + "）"));
+    },
+    importArtFolder: async function () {
+      /*  「001_カード名.png」形式のイラストフォルダを、正方形に切り抜いて art/ に取り込む  */
+      if (!this.gameLinkReady) { alert("ローカル確認用サーバー（npm run preview）で開いてください。"); return; }
+      var fileInput = document.getElementById("batchFolder");
+      if (!fileInput.files || fileInput.files.length === 0) { alert("先に「フォルダを選択」でイラストフォルダを選んでください。"); return; }
+      var files = Array.prototype.filter.call(fileInput.files, function (f) { return /^(\d+)_/.test(f.name) && /^image\//.test(f.type); });
+      if (!files.length) { alert("「001_カード名.png」形式のファイルが見つかりませんでした。"); return; }
+      if (!confirm(files.length + "枚のイラストを取り込みます（同じNo.の保存済みイラストは上書きされます）。よろしいですか？")) return;
+      var done = 0;
+      for (var i = 0; i < files.length; i++) {
+        var no = String(parseInt(files[i].name.match(/^(\d+)_/)[1], 10));
+        this.batchProgress = "イラストを取り込み中… (" + (i + 1) + "/" + files.length + ") No." + no;
+        var bitmap = await createImageBitmap(files[i]);
+        try { await this._saveArt(no, this._squareArtCanvas(bitmap)); done++; }
+        catch (e) { alert("No." + no + " を取り込めませんでした：" + (e.message || e)); return; }
+        finally { bitmap.close && bitmap.close(); }
+      }
+      this.batchProgress = "完了！ " + done + "枚のイラストを tools/card-editor/art/ に取り込みました。";
+    },
+    regenerateAllFromSavedArt: async function () {
+      /*  保存済みイラストがある全カードを、今のシートの内容で作り直してゲームに反映する（フレーム変更時など）  */
+      if (!this.gameLinkReady) { alert("ローカル確認用サーバー（npm run preview）で開いてください。"); return; }
+      var list = await (await fetch("/__dev/card-art-list", { cache: "no-store" })).json().catch(function () { return { nos: [] }; });
+      var nos = (list.nos || []).map(String);
+      var self = this;
+      var tasks = Object.keys(this.allCardList).map(function (k) { return self.allCardList[k]; }).filter(function (d) { return nos.indexOf(String(parseInt(d[0], 10))) !== -1; });
+      if (!tasks.length) { alert("保存済みイラストのあるカードがありません。先にイラストを取り込んでください。"); return; }
+      if (!confirm(tasks.length + "枚のカード画像を作り直して、ゲームの画像を上書きします。よろしいですか？")) return;
+      var warnings = [];
+      for (var t = 0; t < tasks.length; t++) {
+        self.batchProgress = "作り直し中… (" + (t + 1) + "/" + tasks.length + ") " + (tasks[t][2] || "");
+        await self._applyTemplate(tasks[t]);
+        await self._loadArtForCard(tasks[t][0]);
+        await self.$nextTick();
+        await new Promise(function (r) { setTimeout(r, 100); });
+        (await self._publishImageToGame(await self._svgToPng(), tasks[t][0], false)).forEach(function (w) { if (warnings.indexOf(w) === -1) warnings.push(w); });
+      }
+      self.batchProgress = "完了！ " + tasks.length + "枚を作り直してゲームに反映しました。" + (warnings.length ? " " + warnings.join(" ") : "");
+    },
+
     publishToGame: async function (isKami) {
       /*  今のカードをシートに保存し、画像をゲームに反映する（1枚）  */
       var no = isKami ? this.kamiCardNo : this.cardNo;
@@ -743,6 +831,11 @@
       if (!confirm("No." + no + " をスプレッドシートとゲームの画像に反映します。よろしいですか？")) return;
       try {
         if (isKami) await this.saveKamiToSheet(true); else await this.saveToSheet(true);
+        if (!isKami && this.pendingArtCanvas && String(this.pendingArtNo) === String(no)) {
+          await this._saveArt(no, this.pendingArtCanvas);
+          this.pendingArtCanvas = null;
+          this.pendingArtNo = "";
+        }
         var warnings = await this._publishImageToGame(await this._svgToPng(), no, isKami);
         alert("No." + no + " を反映しました。ゲームを再読み込みすると確認できます。" + (warnings.length ? "\n\n" + warnings.join("\n") : ""));
       } catch (e) {
@@ -818,6 +911,11 @@
 
         // イラスト画像を読み込んでSVGに設定
         await self._loadImageToCard(task.imageFile);
+        if (toGame) {
+          var artBitmap = await createImageBitmap(task.imageFile);
+          await self._saveArt(task.data[0], self._squareArtCanvas(artBitmap));
+          artBitmap.close && artBitmap.close();
+        }
 
         // Vue DOM更新を待つ
         await self.$nextTick();

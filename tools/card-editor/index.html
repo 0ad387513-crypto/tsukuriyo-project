@@ -269,6 +269,7 @@
                             </label>
                             <button class="deleteBtn" id="fileDelete" v-show="!select" @click=cropSwitch>削除</button>
                             <button class="cardBtn" id="crop-btn">カードに反映</button>
+                            <div v-if="artStatus" style="margin-top:4px; font-size:12px; color:#555;">{{ artStatus }}</div>
                         </p>
                     </span>
                 </div>
@@ -547,6 +548,8 @@
                         <span id="kamiBackImageName" style="margin-left:10px; color:#333;"></span>
                     </p>
                     <p style="font-size:12px; color:#666; margin-bottom:10px;">※カミカード専用の裏面画像（未選択なら上の裏面画像を使用）</p>
+                    <div><button @click="importArtFolder" :disabled="!gameLinkReady" style="margin: 5px; width: 320px; padding:10px 30px; background-color:#6d4c41; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">選んだフォルダのイラストを取り込む</button></div>
+                    <div><button @click="regenerateAllFromSavedArt" :disabled="!gameLinkReady" style="margin: 5px; width: 320px; padding:10px 30px; background-color:#8d6e63; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">保存済みイラストで全カードを作り直す</button></div>
                     <div><button @click="batchGenerateToGame" :disabled="!gameLinkReady" style="margin: 5px; width: 320px; padding:10px 30px; background-color:#b8860b; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">一括生成してゲームに反映</button></div>
                     <div><button @click="batchGenerate(false)" style="margin: 5px; width: 320px; padding:10px 30px; background-color:#1565c0; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">一括生成してZIPダウンロード</button></div>
                     <div><button @click="batchGenerateUdonarium" style="margin: 5px; width: 320px; padding:10px 30px; background-color:#4caf50; color:#fff; font-size:16px; font-weight:bold; border:none; cursor:pointer;">ユドナリウム用ZIP生成</button></div>
@@ -589,6 +592,10 @@
         document.getElementById('crop-btn').addEventListener('click', function() {
             //画像クロッピング設定
             var croppedCanvas = cropper.getCroppedCanvas({ width: 585, height: 585 });
+            // 「シートとゲームに反映」したときに art/ へ残すため、同じ切り抜きを高解像度でも覚えておく
+            app.pendingArtCanvas = cropper.getCroppedCanvas({ width: 1170, height: 1170 });
+            app.pendingArtNo = app.cardNo;
+            app.artStatus = "新しいイラストは「シートとゲームに反映」で保存されます";
             document.getElementById('cardImage').setAttribute('href', croppedCanvas.toDataURL())
         });
 
