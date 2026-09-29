@@ -22,7 +22,7 @@ const DIVINE_SKILL_CUTINS = Object.freeze({
   "7": "kami_cutin/hinokagutsuchi-genesis-wide-0c3fb305b3f1.webp",
   "8": "kami_cutin/amaterasu-genesis-wide-29f2370afeca.webp",
   "9": "kami_cutin/tsukuyomi-genesis-wide-a8e7806f5483.webp",
-  "10": "kami_cutin/yamata-no-orochi-genesis-wide-6ae704e3f3dd.webp"
+  "10": "kami_cutin/yamata-no-orochi-genesis-wide-8d35ef840ea7.webp"
 });
 const DIVINE_SKILL_AWAKENINGS = Object.freeze({
   '1': 'kami_cutin/susanoo-genesis-eyes-open-c63103e1dda9.webp',

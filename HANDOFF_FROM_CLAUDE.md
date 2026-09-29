@@ -1,5 +1,11 @@
 # Claude → Codex 引き継ぎメモ（2026-09-26 時点）
 
+## Claude 追記：v1.15.246（2026-09-30）
+
+- ヤマタノオロチ（no.10）の創世神技カットインをユーザー提供の添付画像に差し替え。構図の変更・再生成はせず `cutin` 規則で1600×900・202KBのWebPへ圧縮：`kami_cutin/yamata-no-orochi-genesis-wide-8d35ef840ea7.webp`。原本は `kami_cutin/yamata-no-orochi-user-reference-20260930.webp`。`divine_effects.js`・`_headers`・`genesis-generation.json`（旧版は `previousRevisions`）・`optimized_assets.json` を更新。固有演出（封印・咆哮）は変更なし。
+- 新しい絵は顔が右寄り（横約62％）のため、`.divine-dragon .genesis-hero` に `object-position:66% center` を追加。16:9の画面では変化なし、縦長の画面で左右が切れても顔が残る。
+- 158テスト成功。確認ページでPCとスマートフォン幅（375×812）の全画面表示を確認。
+
 ## Claude 追記：v1.15.238（2026-09-30）
 
 - オモイカネ（no.5）とツクヨミ（no.9）の創世神技カットインを、ユーザー提供の添付画像に差し替え。構図の変更・再生成はせず、`cutin` の規則で1600×900・300KB以下のWebPへ圧縮：`kami_cutin/omoikane-genesis-wide-a5784234189d.webp`（270KB）、`kami_cutin/tsukuyomi-genesis-wide-a8e7806f5483.webp`（205KB）。原本は `kami_cutin/{omoikane,tsukuyomi}-user-reference-20260930.*`。`divine_effects.js`・`_headers`・`genesis-generation.json`（旧版は `previousRevisions`）・`optimized_assets.json` を更新。固有演出は変更なし。
