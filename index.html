@@ -1581,6 +1581,15 @@
     padding: 5px 16px; border: 1px solid #4a5268; border-radius: 999px; background: #1b202c; color: #cfd6e6; font-size: 12px; font-weight: 800; cursor: pointer;
   }
   .kami-dex-view-switch button.active { border-color: #e1c477; background: #5a4520; color: #fff3c9; }
+  .kami-dex-skill-preview { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .kami-dex-skill-preview-label { width: 100%; text-align: center; color: #cfb875; font-size: 11px; font-weight: 900; letter-spacing: .12em; }
+  .kami-dex-skill-preview button {
+    padding: 8px 18px; border: 1px solid #5d78a8; border-radius: 10px; background: linear-gradient(160deg, #2a3a5e, #161d30);
+    color: #eaf1ff; font-size: 13px; font-weight: 900; cursor: pointer;
+  }
+  .kami-dex-skill-preview button.genesis { border-color: #c79a4a; background: linear-gradient(160deg, #6a4a22, #2d1f14); color: #fff3d6; }
+  .kami-dex-skill-preview button:hover:not(:disabled) { filter: brightness(1.18); transform: translateY(-1px); }
+  .kami-dex-skill-preview button:disabled { opacity: .5; cursor: wait; }
   .kami-dex-muted { margin-left: 6px; color: #d9a36c; font-size: 11px; font-weight: 700; letter-spacing: 0; }
   .kami-dex-voices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .kami-dex-wins { grid-template-columns: 1fr; }
@@ -5942,6 +5951,11 @@
           <div class="kami-dex-view-switch" role="group" aria-label="表示する絵">
             <button type="button" :class="{ active: kamiDexView === 'illust' }" @click="kamiDexView = 'illust'">イラスト</button>
             <button type="button" :class="{ active: kamiDexView === 'card' }" @click="kamiDexView = 'card'">カード</button>
+          </div>
+          <div class="kami-dex-skill-preview" role="group" aria-label="演出を見る">
+            <span class="kami-dex-skill-preview-label">演出を見る</span>
+            <button type="button" :disabled="kamiDexPreviewing" @click="kamiDexPreviewSkill(1)">✨ 神技</button>
+            <button type="button" class="genesis" :disabled="kamiDexPreviewing" @click="kamiDexPreviewSkill(2)">🌟 創世神技</button>
           </div>
         </div>
         <div>
@@ -12107,6 +12121,7 @@ new Vue({
     kamiDexShowVoices: false,    // ボイスも、たたんだ状態で開く
     pickCardListKami: null,      // ピックガイドのおすすめカード一覧を開いているカミの番号
     genesisStoryReplay: false,   // カミ図鑑からOPを見返している（終わったら創世決戦へ進まず図鑑へ戻る）
+    kamiDexPreviewing: false,    // カミ図鑑から神技・創世神技の演出を再生中
     kamiDexPlayingKey: null,
     kamiDexOrochiRevealed: false, // 隠しカミは確認してから表示する
     kamiDexOrochiConfirm: false,
@@ -14604,6 +14619,52 @@ new Vue({
         this.genesisStoryOpen = false;
         if (this.genesisStoryReplay) this._genesisStoryEndReplay();
         else this._genesisStoryRestorePreviousBgm();
+      }
+    },
+    /* カミ図鑑から神技・創世神技の演出を見る。対戦の演出処理をそのまま使い、盤面の代わりに
+       画面の大きさから仮の位置（カミ・相手の場・自分の場・対象のカード）を用意する。終わったら図鑑へ戻る */
+    _divinePreviewGeometry(kami) {
+      const w = window.innerWidth || 1280, h = window.innerHeight || 800;
+      const enemy = { left: w * 0.18, top: h * 0.12, width: w * 0.64, height: h * 0.26 };
+      const friendly = { left: w * 0.18, top: h * 0.56, width: w * 0.64, height: h * 0.26 };
+      const cardW = Math.min(110, w * 0.08), cardH = cardW * 88 / 63;
+      const sample = (this.allCards || []).filter(c => !c.isToken && !c.isKami && c.category === 'レガシー');
+      const targets = [0, 1, 2].map(i => {
+        const card = sample.length ? sample[(i * 37 + Number(kami.no) * 11) % sample.length] : null;
+        return {
+          left: enemy.left + enemy.width * (0.25 + i * 0.25) - cardW / 2, top: enemy.top + (enemy.height - cardH) / 2,
+          width: cardW, height: cardH, kind: 'card', image: card ? this.cardImageUrl(card) : '',
+        };
+      });
+      return {
+        layout: { origin: { x: w / 2, y: h * 0.9 }, enemy, friendly },
+        swordLanding: { left: w * 0.5 + 60, top: h * 0.86, width: 38, height: 44 },
+        targets,
+      };
+    },
+    async kamiDexPreviewSkill(index) {
+      const kami = this.kamiDexKami;
+      if (!kami || this.kamiDexPreviewing || this.battleSkillCloseup) return;
+      this._sfxPlay('decision');
+      this._kamiDexStopVoice();
+      this.kamiDexPreviewing = true;
+      try {
+        // 絵が途中で出てこないよう、そのカミの演出素材を先に読み込む
+        await this._withLoadingScreen('演出を準備しています', this._kamiVisualUrls(kami).map(url => this._assetImage(url)));
+        this.kamiDexOpen = false;
+        const stage = this._divinePreviewGeometry(kami);
+        this._divinePreviewStage = stage;
+        const hadContext = this._battleDivineContext;
+        // 対象を狙う演出（雷・炎の爪など）は、仮の対象カードへ向けて再生する
+        this._battleDivineContext = index === 2 && ['4', '6', '7', '8'].includes(String(kami.no))
+          ? { kami, index: 2, targets: stage.targets, transfers: [], survivors: [] } : null;
+        if (index === 2) await this._battleShowSkill2Closeup(kami, kami.skill2name, null, 'self');
+        else { this._sfxPlay('skill'); await this._battleShowSkill1Closeup(kami, kami.skill1name); }
+        this._battleDivineContext = hadContext || null;
+      } finally {
+        this._divinePreviewStage = null;
+        this.kamiDexPreviewing = false;
+        this.kamiDexOpen = true;
       }
     },
     // カミ図鑑からOPを見返す
@@ -18438,6 +18499,7 @@ new Vue({
       return !!(p && p.effect && p.effect.kamiNo === '1' && this.battleAnimationSpeed !== 'minimal' && this.battleViewSide(p.writerSide || 'self') === displaySide);
     },
     _battleSusanooMarkRect(writerSide) {
+      if (this._divinePreviewStage) return this._divinePreviewStage.swordLanding;
       const root = this.$el;
       if (!root) return null;
       const display = this.battleViewSide(writerSide);
@@ -18454,6 +18516,7 @@ new Vue({
     },
     /* 創世神技：全画面カットインと台詞を一度だけ表示し、その後に固有の効果を再生する。 */
     _battleDivineStageLayout(writerSide) {
+      if (this._divinePreviewStage) return this._divinePreviewStage.layout;
       const root=this.$el;
       if (!root) return null;
       const display=this.battleViewSide(writerSide);
