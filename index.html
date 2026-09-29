@@ -1462,18 +1462,32 @@
   }
   .top-info-tag.news { background: #7a2632; color: #ffe3e6; }
   .top-info-tag.tip { background: #6a5222; color: #fff1cc; }
-  .top-info-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top-info-marquee { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
+  .top-info-scroll { display: inline-block; white-space: nowrap; opacity: 0; will-change: transform; }
+  .top-info-scroll.running { animation-name: top-info-marquee; animation-timing-function: linear; animation-fill-mode: both; }
+  .top-info-band:hover .top-info-scroll.running { animation-play-state: paused; }
+  @keyframes top-info-marquee {
+    0% { opacity: 0; transform: translateX(0); }
+    4% { opacity: 1; transform: translateX(0); }
+    15% { transform: translateX(0); }
+    85% { transform: translateX(var(--marquee-shift, 0px)); }
+    96% { opacity: 1; transform: translateX(var(--marquee-shift, 0px)); }
+    100% { opacity: 0; transform: translateX(var(--marquee-shift, 0px)); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .top-info-marquee { white-space: normal; }
+    .top-info-scroll { white-space: normal; }
+    .top-info-scroll.running { animation-name: top-info-fade; }
+    @keyframes top-info-fade { 0%, 100% { opacity: 0; } 4%, 96% { opacity: 1; } }
+  }
   .top-info-next {
     flex: none; width: 28px; height: 28px; border: 1px solid #4a5268; border-radius: 50%;
     background: transparent; color: #cfd6e6; font-size: 18px; line-height: 1; cursor: pointer;
   }
   .top-info-next:hover { border-color: #d7b464; color: #fff; }
-  .top-tip-fade-enter-active, .top-tip-fade-leave-active { transition: opacity .35s ease; }
-  .top-tip-fade-enter, .top-tip-fade-leave-to { opacity: 0; }
   @media (max-width: 1100px) { .top-info-band { width: min(960px, 94vw); } }
   @media (max-width: 700px) {
     .top-info-band { grid-template-columns: 1fr; width: min(560px, 94vw); }
-    .top-info-text { white-space: normal; }
   }
   /* 右下：バージョン表記と動作確認用ツールの小さなアイコン */
   .top-corner-tools {
@@ -1508,6 +1522,21 @@
   .kami-dex-tab:hover { border-color: #8a95b5; }
   .kami-dex-tab.active { border-color: #e1c477; background: linear-gradient(160deg, rgba(122, 92, 37, .45), rgba(20, 24, 34, .8)); color: #fff3c9; }
   .kami-dex-tab.locked.active, .kami-dex-tab.locked:hover { border-color: #c94c5d; }
+  .kami-dex-panel .gs-kami-info-card-image { aspect-ratio: 600 / 838; background-size: cover; }
+  .kami-dex-profile { border-color: #4f5f7d; background: linear-gradient(135deg, rgba(40, 60, 96, .28), rgba(20, 24, 34, .72)); }
+  .kami-dex-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .kami-dex-difficulty {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid #6d5b32; border-radius: 999px;
+    background: rgba(67, 51, 20, .35); color: #fff2c8; font-size: 12px; font-weight: 900;
+  }
+  .kami-dex-meta-label { color: #cfb875; font-size: 11px; }
+  .kami-dex-stars span { color: #4a4f5c; }
+  .kami-dex-stars span.on { color: #f1d58a; }
+  .kami-dex-difficulty.lv3 .kami-dex-stars span.on { color: #ff9a8a; }
+  .kami-dex-tag { padding: 3px 9px; border: 1px solid #3f4a62; border-radius: 999px; background: rgba(12, 15, 23, .6); color: #b9c7e0; font-size: 11px; font-weight: 800; }
+  .kami-dex-summary { margin: 0 0 12px; color: #e3e7ef; font-size: 14px; line-height: 1.85; }
+  .kami-dex-recommend-title { margin-bottom: 4px; }
+  .kami-dex-effects { margin-top: 10px; }
   .kami-dex-view-switch { display: flex; justify-content: center; gap: 6px; margin-top: 10px; }
   .kami-dex-view-switch button {
     padding: 5px 16px; border: 1px solid #4a5268; border-radius: 999px; background: #1b202c; color: #cfd6e6; font-size: 12px; font-weight: 800; cursor: pointer;
@@ -5797,17 +5826,21 @@
         </div>
       </div>
     </div>
-    <!-- お知らせ・ヒントの帯：最新のお知らせ1件と、数秒ごとに切り替わる遊び方のヒント -->
+    <!-- お知らせ・ヒントの帯：長い文は横に流して最後まで見せ、読み終えたら次の項目へ移る（マウスを乗せると止まる） -->
     <div class="top-info-band">
       <button type="button" class="top-info-news" @click="openTopNews" title="お知らせを全部見る">
         <span class="top-info-tag news">お知らせ</span>
-        <span class="top-info-text">{{ topNews[0].text }}</span>
+        <span ref="newsMarquee" class="top-info-marquee">
+          <span :key="'news' + topNewsIndex" class="top-info-scroll" :class="{ running: !!topInfoAnim.news }"
+                :style="topInfoAnimStyle('news')" @animationend="topInfoAdvance('news')">{{ topNews[topNewsIndex % topNews.length].text }}</span>
+        </span>
       </button>
       <div class="top-info-tip">
         <span class="top-info-tag tip">ヒント</span>
-        <transition name="top-tip-fade" mode="out-in">
-          <span :key="topTipIndex" class="top-info-text">{{ topTips[topTipIndex % topTips.length] }}</span>
-        </transition>
+        <span ref="tipMarquee" class="top-info-marquee">
+          <span :key="'tip' + topTipIndex" class="top-info-scroll" :class="{ running: !!topInfoAnim.tip }"
+                :style="topInfoAnimStyle('tip')" @animationend="topInfoAdvance('tip')">{{ topTips[topTipIndex % topTips.length] }}</span>
+        </span>
         <button type="button" class="top-info-next" @click="topTipNext" aria-label="次のヒントを表示">›</button>
       </div>
     </div>
@@ -5874,6 +5907,22 @@
           <div class="gs-kami-info-kicker">KAMI ENCYCLOPEDIA</div>
           <div id="kami-dex-title" class="gs-kami-info-name">{{ fullName(kamiDexKami) }}</div>
 
+          <div v-if="kamiDexProfile" class="gs-kami-info-section kami-dex-profile">
+            <div class="kami-dex-meta">
+              <span class="kami-dex-difficulty" :class="'lv' + kamiDexProfile.difficulty" :title="'難易度：' + kamiDexProfile.difficultyLabel">
+                <span class="kami-dex-meta-label">難易度</span>
+                <span class="kami-dex-stars" aria-hidden="true"><span v-for="n in 3" :key="'star' + n" :class="{ on: n <= kamiDexProfile.difficulty }">★</span></span>
+                <span>{{ kamiDexProfile.difficultyLabel }}</span>
+              </span>
+              <span v-for="tag in kamiDexProfile.tags" :key="tag" class="kami-dex-tag">{{ tag }}</span>
+            </div>
+            <p class="kami-dex-summary">{{ kamiDexProfile.summary }}</p>
+            <div class="gs-kami-info-section-title kami-dex-recommend-title">こんな人におすすめ</div>
+            <ul class="gs-kami-pick-policy">
+              <li v-for="item in kamiDexProfile.recommend" :key="item">{{ item }}</li>
+            </ul>
+          </div>
+
           <div class="gs-kami-info-section gs-kami-philosophy">
             <div class="gs-kami-info-section-title">創生理念</div>
             <p>{{ gsKamiGuide(kamiDexKami).cause }}</p>
@@ -5881,7 +5930,10 @@
           </div>
 
           <div class="gs-kami-info-section">
-            <div class="gs-kami-info-section-title">カミの効果</div>
+            <button type="button" class="kami-dex-fold" :aria-expanded="kamiDexShowEffects ? 'true' : 'false'" @click="kamiDexShowEffects = !kamiDexShowEffects">
+              {{ kamiDexShowEffects ? '▼' : '▶' }} カミの効果（天力トリガー・神技・創世神技）
+            </button>
+            <div v-if="kamiDexShowEffects" class="kami-dex-effects">
             <div v-if="kamiDexKami.trigger" class="gs-kami-effect-row">
               <span class="gs-kami-effect-label">{{ kamiDexKami.type === 'ヤマタノオロチ' ? '固有能力' : '天力トリガー' }}</span>
               <div class="gs-kami-effect-text">{{ kamiDexKami.trigger }}</div>
@@ -5893,6 +5945,7 @@
             <div v-if="kamiDexKami.skill2name || kamiDexKami.skill2effect" class="gs-kami-effect-row">
               <span class="gs-kami-effect-label">創世神技 {{ kamiDexKami.skill2name }}<template v-if="kamiDexKami.type !== 'ヤマタノオロチ' && kamiDexKami.skill2cost"> ／ 消費天力{{ kamiDexKami.skill2cost }}</template></span>
               <div class="gs-kami-effect-text">{{ kamiDexKami.skill2effect }}</div>
+            </div>
             </div>
           </div>
 
@@ -10601,6 +10654,62 @@ const KAMI_DEX_VOICE_LABELS = Object.freeze([
   ['taunt', '挑発'], ['boast', '理念'], ['skill1', '神技'], ['skill2', '創世神技'],
 ]);
 
+/* カミ図鑑の紹介（説明・おすすめの人・難易度・遊び方の特徴）。難易度は 1＝初心者向け / 2＝ふつう / 3＝上級者向け。
+   文面はたたき台。直すときはここだけ書き換えればよい */
+const KAMI_DEX_PROFILES = Object.freeze({
+  "1": {
+    summary: '【進化】や【昇華】でカードの姿を変えながら天力を溜め、少ない天力で創世神技を放つ変化のカミ。創世神技の後は、墓地のカードまで進化の素材にできる。',
+    recommend: ['カードを変化させるコンボを楽しみたい人', '状況に合わせて柔軟に戦い方を変えたい人'],
+    difficulty: 2, tags: ['進化・昇華', '柔軟', 'コンボ'],
+  },
+  "2": {
+    summary: 'デッキに同じ名前のカードを1枚も入れない代わりに、毎ターン天力が溜まる孤高のカミ。神技の手札補充で息切れせず、盤面に干渉する創世神技で押し切る。',
+    recommend: ['デッキ構築の縛りを楽しみたい人', '1枚ずつ役割を考えてカードを選ぶのが好きな人'],
+    difficulty: 3, tags: ['同名禁止', '手札補充', '重量級も可'],
+  },
+  "3": {
+    summary: '異なる種族を並べるほど天力が増える共存のカミ。神技で人獣を招来し、創世神技でレガシーを呼び出して、多種多様な仲間で盤面を埋めていく。',
+    recommend: ['いろいろな種族を並べて盤面で戦いたい人', '仲間を増やして数で押すのが好きな人'],
+    difficulty: 2, tags: ['種族分散', 'レガシー多め', '盤面展開'],
+  },
+  "4": {
+    summary: '自分の場に最も戦闘力の高いレガシーがいることで天力を溜める武のカミ。神技でアンタップ状態のレガシーとも戦闘でき、力で真正面から押し切る。',
+    recommend: ['戦闘で真っ向勝負したい人', 'わかりやすく強いレガシーで攻めたい人'],
+    difficulty: 1, tags: ['戦闘力', '【補正+】', '攻撃的'],
+  },
+  "5": {
+    summary: 'オラクルとレリックを使って天力を溜める叡智のカミ。レガシーは少なめで、全体除去や軽減を駆使して盤面を制御し、知恵で勝ち筋を組み立てる。',
+    recommend: ['相手の動きに対応しながらじっくり戦いたい人', 'オラクル・レリックを使いこなしたい人'],
+    difficulty: 3, tags: ['オラクル・レリック', '全体除去', 'コントロール'],
+  },
+  "6": {
+    summary: 'マナ最大値やライフを増やして天力を溜める悦楽のカミ。序盤は耐えしのぎ、増えたマナで高コストのカードを次々に繰り出して場をひっくり返す。',
+    recommend: ['序盤をしのいで終盤に大技を決めたい人', 'マナを育てて重いカードを使いたい人'],
+    difficulty: 2, tags: ['マナ最大値', 'ライフ回復', '高コスト'],
+  },
+  "7": {
+    summary: 'レガシーの破壊を力に変える破壊のカミ。【補正-】や除去で相手の盤面を崩し、自分のレガシーが倒れることさえ天力と墓地の糧にする。',
+    recommend: ['相手の盤面を崩して攻めたい人', '墓地を使ったコンボが好きな人'],
+    difficulty: 2, tags: ['破壊・【補正-】', '妖怪', '墓地'],
+  },
+  "8": {
+    summary: '【守護】で仲間を守りながら天力を溜める慈悲のカミ。創世神技では墓地から好きなカードを蘇生でき、重いレガシーを呼び戻して形勢を変える。',
+    recommend: ['守りを固めて堅実に戦いたい人', '初めてツクリヨを遊ぶ人'],
+    difficulty: 1, tags: ['守護', '蘇生', '防御的'],
+  },
+  "9": {
+    summary: 'トークンを招来するほど天力が溜まる静寂のカミ。影分身・ヨリシロちゃん・社の施しなどを並べ、統制の取れた盤面で相手を封じる。',
+    recommend: ['たくさんのトークンを並べるのが好きな人', '盤面を細かく管理して戦いたい人'],
+    difficulty: 2, tags: ['トークン', '招来', '忍者'],
+  },
+  "10": {
+    summary: '龍レガシーを率い、封印を解くほど力を増していく龍のカミ。天力を溜める他のカミとは異なる、独自の仕組みで戦う。',
+    recommend: ['龍の力で相手を圧倒したい人', '他のカミとは違う遊び方を楽しみたい人'],
+    difficulty: 3, tags: ['龍', '封印', '特殊'],
+  },
+});
+const KAMI_DEX_DIFFICULTY_LABELS = Object.freeze({ 1: '初心者向け', 2: 'ふつう', 3: '上級者向け' });
+
 /* 創世決戦（4人対戦）の終戦で、優勝したカミが告げる暫定セリフ。
    内容は後から精査しやすいよう、カミNo単位の独立データにしておく。 */
 const GS_SCORING_KAMI_LINES = Object.freeze({
@@ -11919,11 +12028,14 @@ new Vue({
     topNews: TOP_NEWS,
     topTips: TOP_TIPS,
     topNewsOpen: false,
+    topNewsIndex: 0,
     topTipIndex: 0,
+    topInfoAnim: { news: null, tip: null }, // 帯の文字送り { shift: 流す距離px, duration: 秒 }
     kamiDexOpen: false,          // カミ図鑑
     kamiDexNo: '1',
     kamiDexView: 'illust',       // 'illust'（イラスト） / 'card'（カード）
     kamiDexShowWins: false,
+    kamiDexShowEffects: false,   // カミの効果は、たたんだ状態で開く
     kamiDexPlayingKey: null,
     kamiDexOrochiRevealed: false, // 隠しカミは確認してから表示する
     kamiDexOrochiConfirm: false,
@@ -12131,6 +12243,11 @@ new Vue({
     kamiDexKami() {
       if (this.kamiDexNo === '10' && !this.kamiDexOrochiRevealed) return null;
       return (this.allKamiCards || []).find(k => String(k.no) === this.kamiDexNo) || null;
+    },
+    kamiDexProfile() {
+      const profile = KAMI_DEX_PROFILES[this.kamiDexNo];
+      if (!profile) return null;
+      return Object.assign({}, profile, { difficultyLabel: KAMI_DEX_DIFFICULTY_LABELS[profile.difficulty] || '' });
     },
     kamiDexImageUrl() {
       const kami = this.kamiDexKami;
@@ -13982,15 +14099,33 @@ new Vue({
     },
     topTipNext() {
       this._sfxPlay('menuselect');
-      this.topTipIndex = (this.topTipIndex + 1) % TOP_TIPS.length;
-      this._topTipStartedAt = Date.now();
+      this.topInfoAdvance('tip');
     },
-    // ヒントは数秒ごとに自動で次へ進める（TOPを表示していて、画面が表にあるときだけ）
-    _topTipTick() {
-      if (this.appView !== 'top' || this.titleScreenOpen || document.hidden) return;
-      if (Date.now() - (this._topTipStartedAt || 0) < 9000) return;
-      this.topTipIndex = (this.topTipIndex + 1) % TOP_TIPS.length;
-      this._topTipStartedAt = Date.now();
+    /* 帯の文字送り：枠に収まらない文は、少し止めてから末尾まで横に流し、また少し止めて次の項目へ。
+       収まる文は7秒表示してから次へ。流す速さは1秒あたり約55px */
+    topInfoAnimStyle(kind) {
+      const anim = this.topInfoAnim[kind];
+      if (!anim) return {};
+      return { '--marquee-shift': (-anim.shift) + 'px', animationDuration: anim.duration + 's' };
+    },
+    _topInfoMeasure(kind) {
+      const box = this.$refs[kind + 'Marquee'];
+      const text = box && box.querySelector('.top-info-scroll');
+      if (!text || !box.clientWidth) return;
+      const shift = Math.max(0, Math.ceil(text.scrollWidth - box.clientWidth));
+      const duration = shift ? Math.max(9, (shift / 55) / 0.7) : 7; // 流れている時間が全体の7割
+      this.$set(this.topInfoAnim, kind, { shift, duration });
+    },
+    topInfoAdvance(kind) {
+      if (kind === 'news') this.topNewsIndex = (this.topNewsIndex + 1) % TOP_NEWS.length;
+      else this.topTipIndex = (this.topTipIndex + 1) % TOP_TIPS.length;
+      this.$set(this.topInfoAnim, kind, null);
+      this.$nextTick(() => this._topInfoMeasure(kind));
+    },
+    _topInfoRestart() {
+      if (this.appView !== 'top') return;
+      this.topInfoAnim = { news: null, tip: null };
+      this.$nextTick(() => { this._topInfoMeasure('news'); this._topInfoMeasure('tip'); });
     },
     async openKamiDex(no = '1') {
       this._sfxPlay('decision');
@@ -30922,8 +31057,12 @@ new Vue({
   },  // /methods
 
   mounted() {
-    this._topTipStartedAt = Date.now();
-    this._topTipTimer = window.setInterval(() => this._topTipTick(), 1000);
+    // TOPに戻ったとき・画面の幅が変わったときは、帯の文字送りを測り直す
+    this.$watch(() => this.appView === 'top' && !this.titleScreenOpen, (shown) => { if (shown) this._topInfoRestart(); }, { immediate: true });
+    window.addEventListener('resize', () => {
+      clearTimeout(this._topInfoResizeTimer);
+      this._topInfoResizeTimer = setTimeout(() => this._topInfoRestart(), 300);
+    });
     window.addEventListener('wheel', this.onCardPreviewWheel, { passive: false, capture: true });
     window.addEventListener('resize', this._battleUpdateNoticeBounds);
     window.addEventListener('scroll', this._battleUpdateNoticeBounds, true);
