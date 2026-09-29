@@ -4915,6 +4915,25 @@
   }
   .battle-skill-closeup-fade-leave-active { transition: opacity 0.3s ease; }
   .battle-skill-closeup-fade-leave-to { opacity: 0; }
+  /* 創世神技のカットイン：暗い背景もこの中に持ち、カットインが終わると画面の端から中央へ向かって消える
+     （背景だけが一瞬で消えて急に盤面へ戻る違和感をなくす）。消えている間に次の盤面の演出が始まる */
+  .genesis-cutin-exit-wrap { position: absolute; inset: 0; background: #070810f5; }
+  .battle-skill-closeup-overlay.genesis-dedicated-mode.divine-portrait-mode { background: transparent; }
+  @property --genesis-cutin-wipe { syntax: '<percentage>'; inherits: false; initial-value: 160%; }
+  .genesis-cutin-exit-leave-active {
+    pointer-events: none;
+    -webkit-mask-image: radial-gradient(ellipse 75% 75% at 50% 50%, #000 calc(var(--genesis-cutin-wipe) - 45%), transparent var(--genesis-cutin-wipe));
+    mask-image: radial-gradient(ellipse 75% 75% at 50% 50%, #000 calc(var(--genesis-cutin-wipe) - 45%), transparent var(--genesis-cutin-wipe));
+    animation: genesisCutinWipeKf 0.85s cubic-bezier(.55, 0, .45, 1) forwards;
+  }
+  @keyframes genesisCutinWipeKf {
+    0%   { --genesis-cutin-wipe: 160%; opacity: 1; }
+    80%  { opacity: 1; }
+    100% { --genesis-cutin-wipe: 0%; opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .genesis-cutin-exit-leave-active { -webkit-mask-image: none; mask-image: none; animation: none; transition: opacity .2s ease; opacity: 0; }
+  }
 
   /* ===== 神技：目線だけアップの軽量カットイン（創世神技と質感を分けるための専用スタイル） ===== */
   .battle-skill-closeup-overlay.skill1-mode { background: rgba(2, 3, 6, 0.4); }
@@ -8752,14 +8771,19 @@
     <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :style="{ zIndex: battleCpuThinking ? 10001 : null, '--fx-duration': _battleMotionMs(battleSkillCloseup.phase === 'animation' ? (battleSkillCloseup.animationDuration || 2400) : 1800)+'ms' }" :class="{ 'genesis-dedicated-mode': battleSkillCloseup.dedicatedArt, 'divine-cinematic-mode': battleSkillCloseup.phase === 'animation', 'divine-transfer-mode': battleSkillCloseup.phase === 'animation' && battleSkillCloseup.transfers && battleSkillCloseup.transfers.length > 0, 'divine-portrait-mode': battleSkillCloseup.phase === 'portrait', 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }"
          @click="battleSkillCloseupClickDismiss">
       <divine-skill1-sigil v-if="battleSkillCloseup.mode === 'skill1' && battleSkillCloseup.sigil && battleAnimationSpeed !== 'minimal'" :theme="battleSkillCloseup.sigil" :duration="_battleMotionMs(1800)"></divine-skill1-sigil>
-      <divine-skill-art v-if="battleSkillCloseup.dedicatedArt && battleSkillCloseup.phase === 'portrait'" stage="cutin" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(1800)"></divine-skill-art>
+      <!-- 創世神技のカットイン（暗い背景・絵・技名）はひとまとめにし、終わるときは画面の端から中央へ消えていく -->
+      <transition name="genesis-cutin-exit">
+        <div v-if="battleSkillCloseup.dedicatedArt && battleSkillCloseup.phase === 'portrait'" class="genesis-cutin-exit-wrap">
+          <divine-skill-art stage="cutin" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(1800)"></divine-skill-art>
+          <div class="genesis-cutin-copy">
+            <div class="genesis-cutin-name">{{ battleSkillCloseupNameParts.main }}</div>
+            <div v-if="battleSkillCloseupNameParts.furigana" class="genesis-cutin-reading">{{ battleSkillCloseupNameParts.furigana }}</div>
+            <div class="genesis-cutin-kami">{{ battleSkillCloseup.kamiName }}</div>
+            <div v-if="battleSkillCloseup.line" class="genesis-cutin-line">「{{ battleSkillCloseup.line }}」</div>
+          </div>
+        </div>
+      </transition>
       <divine-skill-art v-if="battleSkillCloseup.phase === 'awakening'" stage="awakening" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(battleSkillCloseup.awakeningDuration)"></divine-skill-art>
-      <div v-if="battleSkillCloseup.dedicatedArt && battleSkillCloseup.phase === 'portrait'" class="genesis-cutin-copy">
-        <div class="genesis-cutin-name">{{ battleSkillCloseupNameParts.main }}</div>
-        <div v-if="battleSkillCloseupNameParts.furigana" class="genesis-cutin-reading">{{ battleSkillCloseupNameParts.furigana }}</div>
-        <div class="genesis-cutin-kami">{{ battleSkillCloseup.kamiName }}</div>
-        <div v-if="battleSkillCloseup.line" class="genesis-cutin-line">「{{ battleSkillCloseup.line }}」</div>
-      </div>
       <divine-skill-art v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'" :key="'effect-'+battleSkillCloseup._shownAt" :effect="battleSkillCloseup.effect" :layout="battleSkillCloseup.layout" :survivors="battleSkillCloseup.survivors" :targets="battleSkillCloseup.targets" :sword-landing="battleSkillCloseup.swordLanding" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-skill-art>
       <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'"><divine-scroll-transfer v-for="(transfer,i) in battleSkillCloseup.transfers" :key="'scroll-transfer'+i" :transfer="transfer" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-scroll-transfer></template>
       <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal' && battleSkillCloseup.effect.kamiNo !== '7'"><divine-target-impact v-for="(rect,i) in battleSkillCloseup.targets" :key="'impact'+i" :rect="rect" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-target-impact></template>

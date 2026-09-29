@@ -799,7 +799,7 @@ test("the full-screen genesis image appears only during speech before the origin
   assert.match(art.template,/susanoo-sword-arrival/);
   const layout={origin:{x:640,y:620},enemy:{left:150,top:140,width:950,height:140},friendly:{left:150,top:390,width:950,height:140}};
   assert.equal(art.computed.volley.call({layout,survivors:[]}).length,36,'the old sword volley still covers both fields');
-  assert.match(html,/phase === 'portrait'" stage="cutin"/);
+  assert.match(html,/phase === 'portrait'" class="genesis-cutin-exit-wrap">\s*<divine-skill-art stage="cutin"/);
   assert.match(html,/v-if="!battleSkillCloseup.dedicatedArt && battleSkillCloseup.phase !== 'animation'"/);
 });
 
