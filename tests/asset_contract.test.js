@@ -42,9 +42,11 @@ function localReferences(pattern) {
 }
 
 function appMethod(name, params = "") {
-  const source = html.match(new RegExp("    " + name + "\\([^\\n]*\\) \\{([\\s\\S]*?)\\r?\\n    \\},"));
+  const source = html.match(new RegExp("    (async )?" + name + "\\([^\\n]*\\) \\{([\\s\\S]*?)\\r?\\n    \\},"));
   assert.ok(source, name);
-  return Function(params, source[1]);
+  // async のメソッドは await を含むため、async 関数として組み立てる
+  const Ctor = source[1] ? (async () => {}).constructor : Function;
+  return Ctor(params, source[2]);
 }
 
 test("startup image preloads stay below 2 MB and never request divine art", () => {
@@ -62,64 +64,87 @@ test("startup image preloads stay below 2 MB and never request divine art", () =
   assert.ok(!calls.includes("_preloadKamiCutinImages"));
 });
 
-test("battle preloads only its two Kami with bounded concurrency and cancels after leaving", () => {
-  const { divineSkillAssetUrls } = require("../divine_effects.js");
+test("image loader serves screen images first and pauses background images in battle", async () => {
   const images = [];
   class ImageStub { constructor() { images.push(this); } }
-  const makeVm = () => {
-    const vm = { appView: "battle", battleView: { self: { kami: { no: 2 } }, opp: { kami: { no: 4 } } } };
-    vm._kamiVisualUrls = kami => appMethod("_kamiVisualUrls", "kami, divineSkillAssetUrls").call(vm, kami, divineSkillAssetUrls);
-    vm._preloadKamiVisuals = kamis => appMethod("_preloadKamiVisuals", "kamis, Image").call(vm, kamis, ImageStub);
-    vm._preloadBattleVisuals = () => appMethod("_preloadBattleVisuals").call(vm);
-    return vm;
-  };
-  let vm = makeVm();
-  vm._preloadBattleVisuals();
-  assert.equal(images.length, 2);
-  for (let i = 0; i < images.length; i++) images[i].onload();
-  const urls = images.map(image => image.src);
-  assert.deepEqual(new Set(urls), new Set(["kami_cutin/2.webp", "kami_cutin_eyes/2.png", "kami_cutin/4.webp", "kami_cutin_eyes/4.png", ...divineSkillAssetUrls({ no: 2 }), ...divineSkillAssetUrls({ no: 4 })]));
-  assert.ok(images.every(image => image.decoding === "async"));
-  images.length = 0;
-  vm._preloadBattleVisuals();
-  assert.equal(images.length, 0, "already loaded textures are never requested twice");
-  vm = makeVm();
-  vm._preloadBattleVisuals();
-  vm.appView = "top";
-  images[0].onload();
-  assert.equal(images.length, 2, "pending callbacks cannot start more requests after exit");
-  vm._preloadBattleVisuals();
-  assert.equal(images.length, 2, "opening TOP never warms battle textures");
-  vm.appView = "game";
-  vm._preloadKamiVisuals([{ no: 2 }]);
-  assert.ok(images.length > 2, "choosing a Kami again resumes the skipped textures");
-});
-
-test("idle prefetch runs one request at a time and waits during battle, hidden tabs and slow connections", async () => {
-  const requested = [];
-  const fetchStub = url => { requested.push(url); return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) }); };
   const timers = [];
-  const env = { fetch: fetchStub, document: { hidden: false }, navigator: {}, assetUrl: p => `${p}?h=x`, window: { setTimeout: fn => timers.push(fn) } };
-  const vm = { appView: "top" };
-  vm._idlePrefetchAllowed = () => appMethod("_idlePrefetchAllowed", "fetch, document, navigator").call(vm, env.fetch, env.document, env.navigator);
-  vm._deferStartupWork = fn => timers.push(fn);
-  const run = paths => appMethod("_idlePrefetch", "paths, fetch, assetUrl, window").call(vm, paths, env.fetch, env.assetUrl, env.window);
-  run(["bgm/victory.mp3", "card_images/320/001.webp", "bgm/victory.mp3"]);
-  assert.deepEqual(requested, ["bgm/victory.mp3?h=x"], "only one request starts at a time");
+  const env = { document: { hidden: false }, navigator: {}, window: { setTimeout: fn => { timers.push(fn); return timers.length; } } };
+  const vm = { appView: "game" };
+  vm._backgroundLoadAllowed = () => appMethod("_backgroundLoadAllowed", "document, navigator").call(vm, env.document, env.navigator);
+  vm._assetImagePump = () => appMethod("_assetImagePump", "Image, window").call(vm, ImageStub, env.window);
+  vm._assetImage = (url, bg) => appMethod("_assetImage", "url, background").call(vm, url, bg);
+  const tick = () => new Promise(resolve => setImmediate(resolve));
+  const finished = new Set();
+  const finish = async image => { finished.add(image); image.onload(); await tick(); };
+  const drain = async () => { let image; while ((image = images.find(i => !finished.has(i)))) await finish(image); };
+  // 裏の画像は1本ずつ
+  vm._assetImage("bg1.webp", true);
+  vm._assetImage("bg2.webp", true);
+  assert.deepEqual(images.map(i => i.src), ["bg1.webp"]);
+  // 画面に必要な画像は裏の画像を待たずに4本まで並行して読む
+  const shown = ["a.webp", "b.webp", "c.webp", "d.webp", "e.webp"].map(url => vm._assetImage(url));
+  assert.deepEqual(images.map(i => i.src), ["bg1.webp", "a.webp", "b.webp", "c.webp"]);
+  await finish(images[0]);
+  assert.equal(images[4].src, "d.webp", "screen images go before the remaining background image");
+  // 裏で待っていた画像が画面に必要になったら、裏の順番を待たずに読む
+  const promoted = vm._assetImage("bg2.webp");
+  await finish(images[1]);
+  await finish(images[2]);
+  assert.deepEqual(images.slice(5).map(i => i.src), ["e.webp", "bg2.webp"]);
+  await drain();
+  await Promise.all([...shown, promoted]);
+  assert.ok(images.every(i => i.decoding === "async"));
+  // 読み終えた画像は二度読まない
+  const count = images.length;
+  await vm._assetImage("a.webp");
+  assert.equal(images.length, count);
+  // 対戦中・遅い回線・裏のタブでは裏の画像を止める
   vm.appView = "battle";
-  await new Promise(r => setImmediate(r));
+  vm._assetImage("bg3.webp", true);
+  assert.equal(images.length, count, "battle pauses background loading");
+  assert.equal(timers.length, 1, "paused loader checks again later");
+  vm.appView = "game";
   timers.shift()();
-  assert.equal(requested.length, 1, "battle pauses the queue");
-  vm.appView = "top";
-  timers.shift()();
-  assert.deepEqual(requested, ["bgm/victory.mp3?h=x", "card_images/320/001.webp?h=x"], "duplicates are skipped and the queue resumes");
+  assert.equal(images[images.length - 1].src, "bg3.webp");
   env.navigator.connection = { effectiveType: "3g" };
-  assert.equal(vm._idlePrefetchAllowed(), false);
+  assert.equal(vm._backgroundLoadAllowed(), false);
   env.navigator.connection = { saveData: true, effectiveType: "4g" };
-  assert.equal(vm._idlePrefetchAllowed(), false);
+  assert.equal(vm._backgroundLoadAllowed(), false);
   env.navigator.connection = { effectiveType: "4g" };
   env.document.hidden = true;
-  assert.equal(vm._idlePrefetchAllowed(), false);
+  assert.equal(vm._backgroundLoadAllowed(), false);
+});
+
+test("battle waits behind a loading screen before the coin flip", async () => {
+  const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  assert.match(html, /if \(this\.battleLoading\) \{ this\._battleOpeningAfterLoad = true; return; \}/);
+  assert.match(html, /if \(config\.source !== 'tutorial'\) this\._battleRunLoadingScreen\(\);/);
+  assert.match(html, /<div v-if="assetLoading" class="asset-loading-screen"/);
+  const loaded = [];
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const vm = {
+    appView: "battle", bgmAuto: true, battleFieldTheme: { file: "battle_fields/ninja.webp" },
+    battleSample: { self: { kami: { no: 2 }, hand: [{ no: 5 }] }, opp: { kami: { no: 4 }, hand: [{ no: 9 }] } },
+    cardImageUrl: card => `card/${card.no}.webp`,
+    _kamiVisualUrls: kami => (kami ? [`kami_cutin/${kami.no}.webp`] : []),
+    _assetImage: url => { loaded.push(url); return gate; },
+    _bgmWaitUntilPlaying: () => Promise.resolve(),
+    _withLoadingScreen: (title, jobs) => Promise.all(jobs),
+    _battleOpeningAfterLoad: false,
+  };
+  let opened = 0;
+  vm._battleBeginOpeningSequence = () => { if (vm.battleLoading) { vm._battleOpeningAfterLoad = true; return; } opened++; };
+  const running = appMethod("_battleRunLoadingScreen", "BGM_FILES").call(vm, {});
+  assert.equal(vm.battleLoading, true);
+  vm._battleBeginOpeningSequence();
+  assert.equal(opened, 0, "coin flip waits for the assets");
+  assert.deepEqual(new Set(loaded), new Set(["kami_cutin/2.webp", "card/2.webp", "kami_cutin/4.webp", "card/4.webp", "card/5.webp", "battle_fields/ninja.webp"]));
+  assert.ok(!loaded.includes("card/9.webp"), "the opponent's hidden hand is not loaded");
+  release();
+  await running;
+  assert.equal(vm.battleLoading, false);
+  assert.equal(opened, 1);
 });
 
 test("decoded BGM cache retains at most three tracks and protects current playback", () => {

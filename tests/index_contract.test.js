@@ -499,9 +499,7 @@ test("Genesis prologue synchronizes its dedicated non-looping BGM", () => {
   assert.match(html, /genesisOp:\s*\{[^}]*file:\s*'genesis-op\.mp3'[^}]*category:\s*'story'[^}]*loop:\s*false/);
   assert.match(html, /!\['result', 'story'\]\.includes\(BGM_FILES\[key\]\.category\)/);
   assert.match(html, /async _bgmPlay\(key, options = \{\}\)/);
-  assert.match(html, /const playedOffsetSec = shouldLoop \? loopResumeSec : Math\.min\(requestedOffsetSec, maxOffsetSec\);[\s\S]*source\.start\(startAt, playedOffsetSec\)/);
-  // 創世決戦OPは再生位置を指定して鳴らすので、流し再生（読み込み中に鳴らし始める）を使わない
-  assert.match(html, /if \(!cachedMedia && entry\.loop !== false && !options\.offsetSec/);
+  assert.match(html, /const playedOffsetSec = shouldLoop \? 0 : Math\.min\(requestedOffsetSec, maxOffsetSec\);[\s\S]*source\.start\(startAt, playedOffsetSec\)/);
   assert.match(html, /_genesisStorySceneStartMs\(index\)/);
   assert.match(html, /_genesisStoryCurrentOffsetMs\(\)/);
   assert.match(html, /_genesisStoryPlayBgmAt\(0\)/);
