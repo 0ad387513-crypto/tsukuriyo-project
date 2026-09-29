@@ -55,7 +55,7 @@ test("startup image preloads stay below 2 MB and never request divine art", () =
   assert.ok(bytes < 2 * 1024 * 1024, `startup preload budget exceeded: ${bytes}`);
   const deferred = [], calls = [];
   const vm = { allCards: [], allKamiCards: [], _deferStartupWork: fn => deferred.push(fn) };
-  for (const name of ["loadKamiIllustrations", "loadCardBack", "gsLoadGlobalCardStats", "_sfxPreloadAll", "_bgmPreloadAll", "_preloadKamiCutinImages"]) vm[name] = () => calls.push(name);
+  for (const name of ["loadKamiIllustrations", "loadCardBack", "gsLoadGlobalCardStats", "_sfxPreloadAll", "_bgmPreloadAll", "_preloadKamiCutinImages", "_idlePrefetchStartup"]) vm[name] = () => calls.push(name);
   appMethod("_scheduleStartupAssetWork").call(vm);
   deferred.forEach(fn => fn());
   assert.ok(!calls.includes("_bgmPreloadAll"));
@@ -66,21 +66,60 @@ test("battle preloads only its two Kami with bounded concurrency and cancels aft
   const { divineSkillAssetUrls } = require("../divine_effects.js");
   const images = [];
   class ImageStub { constructor() { images.push(this); } }
-  const vm = { appView: "battle", battleView: { self: { kami: { no: 2 } }, opp: { kami: { no: 4 } } } };
-  const load = appMethod("_preloadBattleVisuals", "Image, divineSkillAssetUrls");
-  load.call(vm, ImageStub, divineSkillAssetUrls);
+  const makeVm = () => {
+    const vm = { appView: "battle", battleView: { self: { kami: { no: 2 } }, opp: { kami: { no: 4 } } } };
+    vm._kamiVisualUrls = kami => appMethod("_kamiVisualUrls", "kami, divineSkillAssetUrls").call(vm, kami, divineSkillAssetUrls);
+    vm._preloadKamiVisuals = kamis => appMethod("_preloadKamiVisuals", "kamis, Image").call(vm, kamis, ImageStub);
+    vm._preloadBattleVisuals = () => appMethod("_preloadBattleVisuals").call(vm);
+    return vm;
+  };
+  let vm = makeVm();
+  vm._preloadBattleVisuals();
   assert.equal(images.length, 2);
   for (let i = 0; i < images.length; i++) images[i].onload();
   const urls = images.map(image => image.src);
   assert.deepEqual(new Set(urls), new Set(["kami_cutin/2.webp", "kami_cutin_eyes/2.png", "kami_cutin/4.webp", "kami_cutin_eyes/4.png", ...divineSkillAssetUrls({ no: 2 }), ...divineSkillAssetUrls({ no: 4 })]));
   assert.ok(images.every(image => image.decoding === "async"));
   images.length = 0;
-  load.call(vm, ImageStub, divineSkillAssetUrls);
+  vm._preloadBattleVisuals();
+  assert.equal(images.length, 0, "already loaded textures are never requested twice");
+  vm = makeVm();
+  vm._preloadBattleVisuals();
   vm.appView = "top";
   images[0].onload();
   assert.equal(images.length, 2, "pending callbacks cannot start more requests after exit");
-  load.call(vm, ImageStub, divineSkillAssetUrls);
+  vm._preloadBattleVisuals();
   assert.equal(images.length, 2, "opening TOP never warms battle textures");
+  vm.appView = "game";
+  vm._preloadKamiVisuals([{ no: 2 }]);
+  assert.ok(images.length > 2, "choosing a Kami again resumes the skipped textures");
+});
+
+test("idle prefetch runs one request at a time and waits during battle, hidden tabs and slow connections", async () => {
+  const requested = [];
+  const fetchStub = url => { requested.push(url); return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) }); };
+  const timers = [];
+  const env = { fetch: fetchStub, document: { hidden: false }, navigator: {}, assetUrl: p => `${p}?h=x`, window: { setTimeout: fn => timers.push(fn) } };
+  const vm = { appView: "top" };
+  vm._idlePrefetchAllowed = () => appMethod("_idlePrefetchAllowed", "fetch, document, navigator").call(vm, env.fetch, env.document, env.navigator);
+  vm._deferStartupWork = fn => timers.push(fn);
+  const run = paths => appMethod("_idlePrefetch", "paths, fetch, assetUrl, window").call(vm, paths, env.fetch, env.assetUrl, env.window);
+  run(["bgm/victory.mp3", "card_images/320/001.webp", "bgm/victory.mp3"]);
+  assert.deepEqual(requested, ["bgm/victory.mp3?h=x"], "only one request starts at a time");
+  vm.appView = "battle";
+  await new Promise(r => setImmediate(r));
+  timers.shift()();
+  assert.equal(requested.length, 1, "battle pauses the queue");
+  vm.appView = "top";
+  timers.shift()();
+  assert.deepEqual(requested, ["bgm/victory.mp3?h=x", "card_images/320/001.webp?h=x"], "duplicates are skipped and the queue resumes");
+  env.navigator.connection = { effectiveType: "3g" };
+  assert.equal(vm._idlePrefetchAllowed(), false);
+  env.navigator.connection = { saveData: true, effectiveType: "4g" };
+  assert.equal(vm._idlePrefetchAllowed(), false);
+  env.navigator.connection = { effectiveType: "4g" };
+  env.document.hidden = true;
+  assert.equal(vm._idlePrefetchAllowed(), false);
 });
 
 test("decoded BGM cache retains at most three tracks and protects current playback", () => {

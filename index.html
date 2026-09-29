@@ -16313,29 +16313,62 @@ new Vue({
         }
       }, delay);
     },
-    // 対戦にいるカミの素材だけ準備する。TOPや別の対戦へ移ったら残りの先読みを止める。
-    _preloadBattleVisuals() {
-      const token = this._battleVisualPreloadToken = (this._battleVisualPreloadToken || 0) + 1;
-      if (this.appView !== 'battle') return;
-      const board = this.battleView || this.battleSample || {};
-      const urls = Array.from(new Set([board.self, board.opp].flatMap(side => {
-        const kami = side && side.kami;
-        if (!kami || !/^(?:[1-9]|10)$/.test(String(kami.no))) return [];
-        return [`kami_cutin/${kami.no}.webp`, `kami_cutin_eyes/${kami.no}.png`, ...divineSkillAssetUrls(kami)];
-      })));
+    // カミの神技・創世神技の演出素材の一覧（実際に登場するカミの分だけ先読みするため）
+    _kamiVisualUrls(kami) {
+      if (!kami || !/^(?:[1-9]|10)$/.test(String(kami.no))) return [];
+      return [`kami_cutin/${kami.no}.webp`, `kami_cutin_eyes/${kami.no}.png`, ...divineSkillAssetUrls(kami)];
+    },
+    /* カミが決まった時点（神託の儀・ピック中・デッキ提出時・対戦開始時）で、そのカミの演出素材を裏で読み込む。
+       ピック中など待ち時間の長い場面で読み終えておき、対戦の最初の神技で素材が間に合わない事態を防ぐ。
+       一度読んだ素材は二度読まない。低い優先度で2本ずつ読み、画面の表示を邪魔しない。 */
+    _preloadKamiVisuals(kamis) {
+      this._kamiVisualPreloaded = this._kamiVisualPreloaded || new Set();
+      this._kamiVisualQueue = this._kamiVisualQueue || [];
+      for (const kami of (kamis || [])) {
+        for (const url of this._kamiVisualUrls(kami)) {
+          if (!url || this._kamiVisualPreloaded.has(url)) continue;
+          this._kamiVisualPreloaded.add(url);
+          this._kamiVisualQueue.push(url);
+        }
+      }
       const CONCURRENCY = 2;
-      let nextIndex = 0;
+      this._kamiVisualActive = this._kamiVisualActive || 0;
+      // TOPやカード一覧へ戻ったら残りは読まない（読み残しは次にカミが決まったとき改めて並べる）
+      const wanted = () => ['battle', 'game', 'shield', 'construct', 'tutorialPick'].includes(this.appView);
       const loadNext = () => {
-        if (this.appView !== 'battle' || token !== this._battleVisualPreloadToken) return;
-        const index = nextIndex++;
-        if (index >= urls.length) return;
+        if (!wanted()) {
+          for (const rest of this._kamiVisualQueue.splice(0)) this._kamiVisualPreloaded.delete(rest);
+        }
+        const url = this._kamiVisualQueue.shift();
+        if (!url) { this._kamiVisualActive = Math.max(0, this._kamiVisualActive - 1); return; }
         const image = new Image();
         image.decoding = 'async';
         if ('fetchPriority' in image) image.fetchPriority = 'low';
         image.onload = image.onerror = loadNext;
-        image.src = urls[index];
+        image.src = url;
       };
-      for (let i = 0; i < CONCURRENCY; i++) loadNext();
+      while (this._kamiVisualActive < CONCURRENCY && this._kamiVisualQueue.length) {
+        this._kamiVisualActive++;
+        loadNext();
+      }
+    },
+    // 対戦にいるカミの素材を準備する（カミ選択時に先読み済みなら、ここでは何も読まない）
+    _preloadBattleVisuals() {
+      if (this.appView !== 'battle') return;
+      const board = this.battleView || this.battleSample || {};
+      this._preloadKamiVisuals([board.self, board.opp].map(side => side && side.kami));
+    },
+    // 今遊んでいるモードで決まっているカミの番号（創世決戦の各席・星紡ぎ戦・理念構築戦の両者）
+    _decidedKamiNos() {
+      const nos = [];
+      const seats = (this.gs && this.gs.data && this.gs.data.seats) || {};
+      for (const seat of Object.values(seats)) if (seat && seat.kamiNo != null && seat.kamiNo !== '') nos.push(String(seat.kamiNo));
+      const sbRoom = (this.sb && this.sb.roomData) || {};
+      if (sbRoom.hostKami) nos.push(String(sbRoom.hostKami));
+      if (sbRoom.guestKami) nos.push(String(sbRoom.guestKami));
+      const cbRoom = (this.cb && this.cb.roomData) || {};
+      for (const side of [cbRoom.host, cbRoom.guest]) if (side && side.kamiNo) nos.push(String(side.kamiNo));
+      return Array.from(new Set(nos)).sort();
     },
     _scheduleStartupAssetWork() {
       // TOP を開くだけでは不要な外部一覧・統計はアイドル時まで開始しない。
@@ -16353,6 +16386,58 @@ new Vue({
       }, 1800);
       // メニューでよく使う短いSEだけ準備する。BGMは再生する曲だけ読み込む。
       this._deferStartupWork(() => this._sfxPreloadAll(), 3500);
+      // 手の空いた時間に、次に使いそうな素材を少しずつ取り寄せておく
+      this._deferStartupWork(() => this._idlePrefetchStartup(), 8000);
+    },
+    /* 空き時間の先読み：通信を低い優先度で1本ずつ流し、ブラウザの保存領域（1年キャッシュ）に入れておく。
+       対戦中・画面が裏にあるとき・通信節約設定や遅い回線では止め、画面の操作や対戦の通信を邪魔しない。 */
+    _idlePrefetchAllowed() {
+      if (typeof fetch !== 'function') return false;
+      if (typeof document !== 'undefined' && document.hidden) return false;
+      if (this.appView === 'battle') return false;
+      const conn = typeof navigator !== 'undefined' && navigator.connection;
+      if (conn && (conn.saveData || /(?:^|-)(?:2g|3g)$/.test(String(conn.effectiveType || '')))) return false;
+      return true;
+    },
+    _idlePrefetch(paths) {
+      this._idlePrefetchDone = this._idlePrefetchDone || new Set();
+      this._idlePrefetchQueue = this._idlePrefetchQueue || [];
+      for (const path of (paths || [])) {
+        if (!path || this._idlePrefetchDone.has(path)) continue;
+        this._idlePrefetchDone.add(path);
+        this._idlePrefetchQueue.push(path);
+      }
+      if (this._idlePrefetchRunning) return;
+      this._idlePrefetchRunning = true;
+      const next = () => {
+        if (!this._idlePrefetchQueue.length) { this._idlePrefetchRunning = false; return; }
+        // 対戦中・裏にあるときは中断せず待つ（5秒ごとに見直す）
+        if (!this._idlePrefetchAllowed()) { window.setTimeout(next, 5000); return; }
+        const path = this._idlePrefetchQueue.shift();
+        const url = /^(?:card_images|kami_card_images|kami_illustrations|voices|bgm|sfx)\//.test(path) ? assetUrl(path) : path;
+        const init = { priority: 'low', credentials: 'same-origin' };
+        fetch(url, init)
+          .then(res => (res && res.ok ? res.arrayBuffer() : null))
+          .catch(() => null)
+          .then(() => this._deferStartupWork(next, path.startsWith('bgm/') ? 1500 : 250));
+      };
+      next();
+    },
+    // 起動後：勝敗のジングル・選定の儀の曲・カード一覧の小さい画像（どのモードでも使う軽いもの）
+    _idlePrefetchStartup() {
+      const bgm = this.bgmVolume > 0 ? ['victory', 'defeat', 'senjouNoMai']
+        .filter(key => BGM_FILES[key]).map(key => `bgm/${BGM_FILES[key].file}`) : [];
+      const cards = (this.allCards || []).map(card => localCardImageUrl(card.no, false, 320))
+        .filter(Boolean).map(url => url.split('?')[0]);
+      this._idlePrefetch([...bgm, ...cards]);
+    },
+    // 創世決戦に入ったら、最初の星戦（1回目）の曲を用意しておく（2回目以降はその次の空き時間に）
+    _idlePrefetchForView(view) {
+      if (view !== 'game' || !(this.bgmVolume > 0)) return;
+      const rounds = [1, 2, 3];
+      const paths = rounds.flatMap(round => Object.keys(BGM_FILES)
+        .filter(key => BGM_FILES[key].round === round).map(key => `bgm/${BGM_FILES[key].file}`));
+      this._idlePrefetch(paths);
     },
     /* SEはBGMと共有のAudioContextを使い、専用のGainNodeを経由して鳴らす。
        毎回 new Audio(src) でHTTP取得からやり直すと、本番環境（CDN経由）ではローカルサーバーに
@@ -16551,7 +16636,56 @@ new Vue({
       }
       return this._bgmCtx;
     },
+    /* 初めて流す曲は、ダウンロードの完了を待たずに <audio> で読み込みながら鳴らし始める（流し再生）。
+       裏でデコードが終わったら、同じ再生位置から継ぎ目のないループ再生（AudioBuffer）へ滑らかに引き継ぐ。
+       音量はBGM共通のGainNodeを通すので、音量設定・ミュートはこれまでどおり効く。 */
+    _bgmStartStream(key) {
+      const entry = BGM_FILES[key];
+      if (!entry || typeof Audio !== 'function') return null;
+      const ctx = this._bgmAudioCtx();
+      if (ctx.state === 'suspended') ctx.resume().catch(() => { /* 次のユーザー操作で再試行される */ });
+      const fadeSec = this._bgmPlayingKey === 'victory' && key !== 'victory' ? .65 : 0;
+      this._bgmStopCurrentSource(fadeSec);
+      const el = new Audio(assetUrl(`bgm/${entry.file}`));
+      el.preload = 'auto';
+      el.loop = true; // 引き継ぎ前に曲の終わりまで来ても途切れないように
+      let node;
+      try { node = ctx.createMediaElementSource(el); } catch (e) { return null; }
+      const gain = ctx.createGain();
+      node.connect(gain);
+      gain.connect(this._bgmGain);
+      if (fadeSec) {
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(1, ctx.currentTime + fadeSec);
+      }
+      // 音声出力がまだ止まっている（ページで一度も操作していない等）ときは無音のまま進むので、引き継ぎ時に位置を使わない
+      const stream = { key, el, node, gain, audible: ctx.state === 'running' };
+      this._bgmStream = stream;
+      this._bgmPlayingKey = key;
+      this._bgmAnnounce(key);
+      const played = el.play();
+      if (played && played.catch) played.catch(() => { /* 自動再生できない環境では、読み込み後の通常再生に任せる */ });
+      return stream;
+    },
+    _bgmStopStream(stream, fadeSec = 0) {
+      if (!stream) return;
+      if (this._bgmStream === stream) this._bgmStream = null;
+      const dispose = () => {
+        try { stream.el.pause(); } catch (e) { /* noop */ }
+        try { stream.el.removeAttribute('src'); stream.el.load(); } catch (e) { /* noop */ }
+        try { stream.node.disconnect(); } catch (e) { /* noop */ }
+        try { stream.gain.disconnect(); } catch (e) { /* noop */ }
+      };
+      if (fadeSec > 0 && this._bgmCtx) {
+        const now = this._bgmCtx.currentTime;
+        stream.gain.gain.cancelScheduledValues(now);
+        stream.gain.gain.setValueAtTime(stream.gain.gain.value, now);
+        stream.gain.gain.linearRampToValueAtTime(0, now + fadeSec);
+        setTimeout(dispose, fadeSec * 1000 + 50);
+      } else dispose();
+    },
     _bgmStopCurrentSource(fadeSec = 0) {
+      if (this._bgmStream) this._bgmStopStream(this._bgmStream, fadeSec);
       const nodes = this._bgmSourceNodes || [], gain = this._bgmTrackGain;
       const dispose = () => {
         nodes.forEach(node => {
@@ -16761,33 +16895,73 @@ new Vue({
       if (!entry) return;
       const loadToken = (this._bgmLoadSeq = (this._bgmLoadSeq || 0) + 1);
       this.bgmCurrentKey = key; // 同カテゴリ判定等が即座に効くよう先に確定（従来のfire-and-forgetと同等の挙動）
+      // まだデコードしていないループ曲は、読み込みを待たずに流し再生で鳴らし始める
+      // （創世決戦OPのように再生位置を指定する曲・ジングルは従来どおりデコード後に鳴らす）
+      const cachedMedia = this._bgmBufferCache && this._bgmBufferCache[key];
+      if (!cachedMedia && entry.loop !== false && !options.offsetSec && typeof this._bgmStartStream === 'function') this._bgmStartStream(key);
       let media;
       try {
         media = await this._bgmLoadBuffer(key);
       } catch (err) {
         console.warn(`[bgm] "${key}" の読み込みに失敗:`, err && err.message);
-        return;
+        return; // 流し再生が始まっていれば、そのまま（ループ付きで）鳴らし続ける
       }
       if (loadToken !== this._bgmLoadSeq) return; // 読み込み中に別の曲へ切り替わっていたら破棄
       const ctx = this._bgmAudioCtx();
       if (ctx.state === 'suspended') { try { await ctx.resume(); } catch (e) { /* 次のユーザー操作で再試行される */ } }
       if (loadToken !== this._bgmLoadSeq) return;
-      const fadeSec = this._bgmPlayingKey === 'victory' && key !== 'victory' ? .65 : 0;
+      // 流し再生中なら、その再生位置から引き継ぐ（流し再生は外しておき、下で重ねて消す）
+      const stream = this._bgmStream && this._bgmStream.key === key ? this._bgmStream : null;
+      if (stream) this._bgmStream = null;
+      const streamPos = stream && stream.audible && !stream.el.paused && stream.el.currentTime > 0 ? stream.el.currentTime : null;
+      const fadeSec = stream ? 0 : (this._bgmPlayingKey === 'victory' && key !== 'victory' ? .65 : 0);
       this._bgmStopCurrentSource(fadeSec);
-      this._bgmAnnounce(key);
+      if (!stream) this._bgmAnnounce(key); // 流し再生のときは開始時に表示済み
       const shouldLoop = entry.loop !== false;
       const requestedOffsetSec = Math.max(0, Number(options.offsetSec) || 0);
       const nodes = [];
       const startAt = ctx.currentTime;
       const trackGain = ctx.createGain();
       trackGain.connect(this._bgmGain);
-      if (fadeSec) {
+      const handoffSec = streamPos != null ? 0.3 : 0;
+      if (handoffSec) {
+        // 流し再生から0.3秒かけて重ねて入れ替える（デコーダの差による数十msのずれを目立たせない）
         trackGain.gain.setValueAtTime(0, startAt);
-        trackGain.gain.linearRampToValueAtTime(1, startAt + fadeSec);
+        trackGain.gain.linearRampToValueAtTime(1, startAt + handoffSec);
+        this._bgmStopStream(stream, handoffSec);
+      } else {
+        if (stream) this._bgmStopStream(stream, 0);
+        if (fadeSec) {
+          trackGain.gain.setValueAtTime(0, startAt);
+          trackGain.gain.linearRampToValueAtTime(1, startAt + fadeSec);
+        }
       }
       this._bgmTrackGain = trackGain;
       this._bgmPlayingKey = key;
-      if (shouldLoop && media.loopBuffer) {
+      if (shouldLoop && media.loopBuffer && streamPos != null) {
+        // 流し再生の位置から続きを鳴らす。イントロ中ならイントロの残り→ループ、ループ区間ならループの途中から
+        const loopLen = Math.max(0.01, media.loopEndSec - media.loopStartSec);
+        if (streamPos < media.loopStartSec) {
+          const introSource = ctx.createBufferSource();
+          introSource.buffer = media.buffer;
+          introSource.connect(trackGain);
+          introSource.start(startAt, streamPos, media.loopStartSec - streamPos);
+          nodes.push(introSource);
+          const loopSource = ctx.createBufferSource();
+          loopSource.buffer = media.loopBuffer;
+          loopSource.loop = true;
+          loopSource.connect(trackGain);
+          loopSource.start(startAt + (media.loopStartSec - streamPos));
+          nodes.push(loopSource);
+        } else {
+          const loopSource = ctx.createBufferSource();
+          loopSource.buffer = media.loopBuffer;
+          loopSource.loop = true;
+          loopSource.connect(trackGain);
+          loopSource.start(startAt, ((streamPos - media.loopStartSec) % loopLen + loopLen) % loopLen);
+          nodes.push(loopSource);
+        }
+      } else if (shouldLoop && media.loopBuffer) {
         // イントロは「ループ区間に入る前（0〜loopStartSec）」だけを1回再生する。
         // ここを誤ってloopEndSecまで再生すると、ループ区間（loopStart〜loopEnd）を
         // 一度自然に再生した直後に、クロスフェード済みループバッファがloopStartから
@@ -16814,7 +16988,13 @@ new Vue({
         }
         source.connect(trackGain);
         const maxOffsetSec = Math.max(0, media.buffer.duration - 0.01);
-        const playedOffsetSec = shouldLoop ? 0 : Math.min(requestedOffsetSec, maxOffsetSec);
+        // ループ曲を流し再生から引き継ぐときは、その位置（ループ区間を越えていれば折り返した位置）から鳴らす
+        let loopResumeSec = 0;
+        if (shouldLoop && streamPos != null) {
+          const ls = source.loopStart || 0, le = source.loopEnd || media.buffer.duration, len = Math.max(0.01, le - ls);
+          loopResumeSec = streamPos < le ? streamPos : ls + ((streamPos - ls) % len);
+        }
+        const playedOffsetSec = shouldLoop ? loopResumeSec : Math.min(requestedOffsetSec, maxOffsetSec);
         source.start(startAt, playedOffsetSec);
         nodes.push(source);
         // 創世決戦OPは場面の切り替えを曲の拍に合わせるため、再生位置の基準を覚えておく
@@ -30393,10 +30573,17 @@ new Vue({
     });
     // BGM：TOP画像の初期表示を優先し、初回の曲読み込みだけ少し後ろへ回す。
     this.$watch('appView', (v) => { this._bgmRestoreAfterBattle(v); });
+    this.$watch('appView', (v) => { this._deferStartupWork(() => this._idlePrefetchForView(v), 4000); });
     this.$watch(() => {
       const board = this.battleView || this.battleSample || {};
       return this.appView === 'battle' ? 'battle:' + [board.self, board.opp].map(side => side && side.kami && side.kami.no).join(':') : '';
     }, () => this._preloadBattleVisuals());
+    // カミが決まったら、対戦を待たずにそのカミの演出素材を裏で読み始める
+    this.$watch(() => this._decidedKamiNos().join(','), (key) => {
+      if (!key) return;
+      const kamis = key.split(',').map(no => (this.allKamiCards || []).find(k => String(k.no) === no)).filter(Boolean);
+      this._deferStartupWork(() => this._preloadKamiVisuals(kamis), 300);
+    });
     this._deferStartupWork(() => this._bgmRestoreAfterBattle(this.appView), 2500);
     this._deferStartupWork(() => this.loadKamiVoiceManifest(), 1500);
     // 選定の儀（ピック）〜返還〜深化の刻（見識の使用）：対戦に移行するまでは
