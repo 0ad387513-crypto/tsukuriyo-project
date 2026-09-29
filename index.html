@@ -12391,8 +12391,8 @@ new Vue({
       return (card && card.name) || (GS_KAMI_SELECTION_GUIDES[no] && GS_KAMI_SELECTION_GUIDES[no].name) || 'カミ';
     },
     /* おすすめカード一覧：選別の儀に出るカード（ラウンド1〜3）を、ピック補助・CPUと同じ「カミとの相性点」で並べる。
-       最優先＝相性点のあるカードのうち上位10枚、おすすめ＝続く20枚、
-       避けたい＝相性点がマイナスのカード（少なければ相性点のないカードのうち評価の低いものを足して最低6枚）。
+       最優先＝相性点のあるカードのうち上位5枚、おすすめ＝続く10枚、
+       避けたい＝相性点がマイナスのカード最大6枚（少なければ相性点のないカードのうち評価の低いものを足して最低3枚）。
        同じ評価ならカード単体の基礎点が高い方を上に置く。 */
     pickCardListTiers() {
       const no = this.pickCardListKami;
@@ -12412,14 +12412,14 @@ new Vue({
         return { c, fit, base, total: fit + base * 0.5 };
       });
       const liked = rows.filter(r => r.fit > 0).sort((a, b) => b.total - a.total || b.base - a.base);
-      let avoid = rows.filter(r => r.fit < 0).sort((a, b) => a.fit - b.fit || a.base - b.base).slice(0, 12);
-      if (avoid.length < 6) {
-        const low = rows.filter(r => r.fit === 0).sort((a, b) => a.total - b.total).slice(0, 6 - avoid.length);
+      let avoid = rows.filter(r => r.fit < 0).sort((a, b) => a.fit - b.fit || a.base - b.base).slice(0, 6);
+      if (avoid.length < 3) {
+        const low = rows.filter(r => r.fit === 0).sort((a, b) => a.total - b.total).slice(0, 3 - avoid.length);
         avoid = avoid.concat(low);
       }
       return [
-        { key: 'top', mark: '◎', label: '最優先でピック', note: 'このカミの方針と特に噛み合うカード', cards: liked.slice(0, 10).map(r => r.c) },
-        { key: 'good', mark: '○', label: 'おすすめ', note: '方針に合い、見かけたら優先したいカード', cards: liked.slice(10, 30).map(r => r.c) },
+        { key: 'top', mark: '◎', label: '最優先でピック', note: 'このカミの方針と特に噛み合うカード', cards: liked.slice(0, 5).map(r => r.c) },
+        { key: 'good', mark: '○', label: 'おすすめ', note: '方針に合い、見かけたら優先したいカード', cards: liked.slice(5, 15).map(r => r.c) },
         { key: 'avoid', mark: '✕', label: '避けたい・優先度が低い', note: '方針と噛み合わない、または効果を活かしにくいカード', cards: avoid.map(r => r.c) },
       ].filter(t => t.cards.length);
     },

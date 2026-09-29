@@ -285,9 +285,9 @@ test("pick guide card list sorts by Kami fit and lists poor fits separately", ()
   const isEligible = card => !card.isToken;
   const tiers = appMethod("pickCardListTiers", "isEligible").call(vm, isEligible);
   assert.deepEqual(tiers.map(t => t.key), ["top", "good", "avoid"]);
-  assert.equal(tiers[0].cards.length, 10);
+  assert.equal(tiers[0].cards.length, 5);
   assert.equal(tiers[0].cards[0].no, "1");
-  assert.equal(tiers[1].cards.length, 20);
+  assert.equal(tiers[1].cards.length, 10);
   assert.equal(tiers[2].cards[0].no, "41", "negative fits come first in the avoid tier");
   assert.ok(!tiers.some(t => t.cards.some(c => c.no === "42" || c.no === "43")));
 });
