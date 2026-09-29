@@ -48,12 +48,12 @@ async function handleDev(req, res, url) {
     console.log(`[card-editor] ${path.relative(root, file)} を保存（${Math.round(body.length / 1024)}KB）`);
     return sendJson(res, 200, { ok: true, path: path.relative(root, file).split(path.sep).join("/"), bytes: body.length, warning });
   }
-  // カードのイラスト（正方形に切り抜いたもの）を tools/card-editor/art/NNN.webp に保存する。作り直しのときに編集室が読み込む
+  // カードのイラストの原本を tools/card-editor/art/NNN.webp に保存する。作り直しのときに編集室が読み込む
   if (url.pathname === "/__dev/card-art" && req.method === "POST") {
     const no = parseInt(url.searchParams.get("no"), 10);
     if (!(no >= 1 && no <= 999)) return sendJson(res, 400, { ok: false, message: "No.の指定が正しくありません" });
     let body;
-    try { body = await readBody(req, 5 * 1024 * 1024); } catch { return sendJson(res, 413, { ok: false, message: "イラストが大きすぎます" }); }
+    try { body = await readBody(req, 15 * 1024 * 1024); } catch { return sendJson(res, 413, { ok: false, message: "イラストが大きすぎます" }); }
     if (body.length < 16 || body.toString("ascii", 0, 4) !== "RIFF" || body.toString("ascii", 8, 12) !== "WEBP") return sendJson(res, 400, { ok: false, message: "WebP画像ではありません" });
     const dir = path.join(root, "tools", "card-editor", "art");
     fs.mkdirSync(dir, { recursive: true });
@@ -61,6 +61,20 @@ async function handleDev(req, res, url) {
     fs.writeFileSync(file, body);
     console.log(`[card-editor] ${path.relative(root, file)} を保存（${Math.round(body.length / 1024)}KB）`);
     return sendJson(res, 200, { ok: true, path: path.relative(root, file).split(path.sep).join("/"), bytes: body.length });
+  }
+  // 原本のうちカードに載せる正方形の範囲（原本の画素で x, y, width, height）を art/NNN.json に保存する
+  if (url.pathname === "/__dev/card-art-crop" && req.method === "POST") {
+    const no = parseInt(url.searchParams.get("no"), 10);
+    if (!(no >= 1 && no <= 999)) return sendJson(res, 400, { ok: false, message: "No.の指定が正しくありません" });
+    let crop;
+    try { crop = JSON.parse((await readBody(req, 4096)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "切り抜き位置の形式が正しくありません" }); }
+    const keys = ["x", "y", "width", "height"];
+    if (!crop || !keys.every(k => Number.isFinite(crop[k])) || crop.width <= 0 || crop.height <= 0) return sendJson(res, 400, { ok: false, message: "切り抜き位置の値が正しくありません" });
+    const dir = path.join(root, "tools", "card-editor", "art");
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, String(no).padStart(3, "0") + ".json");
+    fs.writeFileSync(file, JSON.stringify(Object.fromEntries(keys.map(k => [k, Math.round(crop[k])]))) + "\n");
+    return sendJson(res, 200, { ok: true, path: path.relative(root, file).split(path.sep).join("/") });
   }
   if (url.pathname === "/__dev/card-art-list") {
     const dir = path.join(root, "tools", "card-editor", "art");

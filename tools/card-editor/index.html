@@ -559,28 +559,24 @@
             //削除ボタン押下時、アップロードされた画像情報を削除する
             document.getElementById('cropper-area').src = "";
             document.getElementById('fileUpload').value = '';
-            cropper.destroy();
+            if (window.cropper) window.cropper.destroy();
+            window.cropper = null;
+            app.pendingOriginalFile = null;
+            app.artCrop = null;
         });
 
         document.querySelector('input[name="src-img"]').addEventListener('change', function(changeFileEvent) {
             //アップロードされたファイルをロード
             var fReaderForURI = new FileReader();
-            fReaderForURI.readAsDataURL(changeFileEvent.target.files[0]);
-            fReaderForURI.onload = () => {
-                var imgEl = document.getElementById('cropper-area');
-                imgEl.src = String(fReaderForURI.result);
-                cropper = new Cropper(imgEl, { dragMode: 'move', aspectRatio: 1, autoCropArea: 1, viewMode: 1 });
-            }
+            // 新しい原本として切り抜き画面に開く（保存は「シートとゲームに反映」のとき）
+            if (changeFileEvent.target.files[0]) app.onArtFileSelected(changeFileEvent.target.files[0]);
         });
 
         document.getElementById('crop-btn').addEventListener('click', function() {
             //画像クロッピング設定
-            var croppedCanvas = cropper.getCroppedCanvas({ width: 585, height: 585 });
-            // 「シートとゲームに反映」したときに art/ へ残すため、同じ切り抜きを高解像度でも覚えておく
-            app.pendingArtCanvas = cropper.getCroppedCanvas({ width: 1170, height: 1170 });
-            app.pendingArtNo = app.cardNo;
-            app.artStatus = "新しいイラストは「シートとゲームに反映」で保存されます";
-            document.getElementById('cardImage').setAttribute('href', croppedCanvas.toDataURL())
+            // 範囲をカードに反映し、切り抜き位置を覚える（保存は「シートとゲームに反映」のとき）
+            app._applyCropperToCard();
+            app.artStatus = "切り抜き位置をカードに反映しました。「シートとゲームに反映」で原本と位置が保存されます";
         });
 
         document.getElementById('batchFolder').addEventListener('change', function() {

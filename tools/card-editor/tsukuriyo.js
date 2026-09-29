@@ -181,9 +181,11 @@
     GAS_SECRET: "",
     //ツクリヨのローカル確認用サーバー（npm run preview）で開いているか。本番では保存できない
     gameLinkReady: false,
-    //「カードに反映」で切り抜いたイラスト（保存時に art/ へ残す）と、その対象のカードNo.
-    pendingArtCanvas: null,
-    pendingArtNo: "",
+    //イラストの原本：差し替えるために選んだファイル・今の切り抜き位置と、その対象のカードNo.
+    pendingOriginalFile: null,
+    pendingOriginalNo: "",
+    artCrop: null,
+    artCropNo: "",
     //読み込んだカードの保存済みイラストの状態表示
     artStatus: "",
     gameLinkMessage: "確認中…",
@@ -743,80 +745,183 @@
       return warnings;
     },
 
-    /* ===== イラストの保存（tools/card-editor/art/NNN.webp） ===== */
-    _artUrl: function (no) {
-      return "art/" + String(parseInt(no, 10)).padStart(3, "0") + ".webp";
+    /* ===== イラストの原本（tools/card-editor/art/NNN.webp）と切り抜き位置（art/NNN.json） =====
+       原本はカード化する前のイラストをそのまま（長辺3000pxまで・WebP）保存し、
+       カードに載せる正方形の範囲は切り抜き位置として別に保存する。あとから範囲の調整や原本の差し替えができる。 */
+    _artUrl: function (no, ext) {
+      return "art/" + String(parseInt(no, 10)).padStart(3, "0") + "." + (ext || "webp");
+    },
+    _defaultArtCrop: function (width, height) {
+      /*  一括生成と同じ既定の切り抜き（中央・上端基準の正方形）  */
+      var size = Math.min(width, height);
+      return { x: Math.round((width - size) / 2), y: 0, width: size, height: size };
+    },
+    _cropToCard: function (img, crop) {
+      /*  原本から切り抜き範囲をカードのイラスト枠（585px）に描く  */
+      var canvas = document.createElement("canvas");
+      canvas.width = 585;
+      canvas.height = 585;
+      canvas.getContext("2d").drawImage(img, crop.x, crop.y, crop.width, crop.height, 0, 0, 585, 585);
+      document.getElementById("cardImage").setAttribute("href", canvas.toDataURL());
+    },
+    _openArtInCropper: function (src, crop) {
+      /*  原本を切り抜き画面に開き、保存済みの切り抜き位置を再現してカードに載せる  */
+      var self = this;
+      return new Promise(function (resolve) {
+        if (window.cropper) { try { window.cropper.destroy(); } catch (e) { /* 既に破棄済み */ } }
+        var imgEl = document.getElementById("cropper-area");
+        imgEl.onload = function () {
+          imgEl.onload = null;
+          window.cropper = new Cropper(imgEl, {
+            dragMode: "move", aspectRatio: 1, autoCropArea: 1, viewMode: 1,
+            ready: function () {
+              if (crop) window.cropper.setData(crop);
+              self._applyCropperToCard();
+              resolve();
+            },
+          });
+        };
+        imgEl.src = src;
+        self.select = false; // 「削除」ボタンを出す（原本を開いている状態）
+      });
+    },
+    _applyCropperToCard: function () {
+      /*  切り抜き画面の範囲をカードに反映し、保存用の切り抜き位置を覚える  */
+      if (!window.cropper) return;
+      var canvas = window.cropper.getCroppedCanvas({ width: 585, height: 585 });
+      if (canvas) document.getElementById("cardImage").setAttribute("href", canvas.toDataURL());
+      var d = window.cropper.getData(true);
+      this.artCrop = { x: d.x, y: d.y, width: d.width, height: d.height };
+      this.artCropNo = this.cardNo;
+    },
+    onArtFileSelected: function (file) {
+      /*  新しい原本を選んだとき：切り抜き画面に開き、「シートとゲームに反映」で原本を差し替える  */
+      var self = this;
+      var reader = new FileReader();
+      reader.onload = function () {
+        self.pendingOriginalFile = file;
+        self.pendingOriginalNo = self.cardNo;
+        self._openArtInCropper(String(reader.result), null).then(function () {
+          self.artStatus = "新しい原本を読み込みました。範囲を調整して「カードに反映」→「シートとゲームに反映」で保存されます";
+        });
+      };
+      reader.readAsDataURL(file);
     },
     _loadArtForCard: async function (no) {
-      /*  保存済みのイラストを読み込んでカードに載せる（SVGを画像にするため data URL で渡す）  */
+      /*  保存済みの原本と切り抜き位置を読み込んで、切り抜き画面とカードに載せる  */
       this.artStatus = "";
+      this.artCrop = null;
+      this.artCropNo = "";
+      this.pendingOriginalFile = null;
+      this.pendingOriginalNo = "";
       if (!no) return false;
       try {
         var res = await fetch(this._artUrl(no), { cache: "no-store" });
-        if (!res.ok) { this.artStatus = "保存済みイラストなし（イラストを読み込んで「カードに反映」してください）"; return false; }
+        if (!res.ok) { this.artStatus = "保存済みの原本なし（イラストのファイルを選んで「カードに反映」してください）"; return false; }
         var blob = await res.blob();
+        var crop = null;
+        var cropRes = await fetch(this._artUrl(no, "json"), { cache: "no-store" });
+        if (cropRes.ok) crop = await cropRes.json().catch(function () { return null; });
         var dataUrl = await new Promise(function (resolve) { var r = new FileReader(); r.onload = function () { resolve(r.result); }; r.readAsDataURL(blob); });
-        document.getElementById("cardImage").setAttribute("href", dataUrl);
-        this.pendingArtCanvas = null;
-        this.pendingArtNo = "";
-        this.artStatus = "保存済みイラストを読み込みました（" + this._artUrl(no) + "）";
+        await this._openArtInCropper(dataUrl, crop);
+        this.artStatus = "保存済みの原本を読み込みました（範囲はドラッグで調整して「カードに反映」、原本の差し替えは「削除」→「ファイルを選択」）";
         return true;
       } catch (e) {
-        this.artStatus = "イラストの読み込みに失敗しました";
+        this.artStatus = "原本の読み込みに失敗しました";
         return false;
       }
     },
-    _squareArtCanvas: function (img) {
-      /*  一括生成と同じ切り抜き（中央・上端基準の正方形）。保存は最大1170px（カード上の表示の2倍）  */
-      var size = Math.min(img.width, img.height);
-      var out = Math.min(1170, size);
+    _originalToWebp: async function (source) {
+      /*  原本をWebPにする（長辺3000pxまで。小さい画像は拡大しない）  */
+      var bitmap = await createImageBitmap(source);
+      var scale = Math.min(1, 3000 / Math.max(bitmap.width, bitmap.height));
       var canvas = document.createElement("canvas");
-      canvas.width = out;
-      canvas.height = out;
-      canvas.getContext("2d").drawImage(img, (img.width - size) / 2, 0, size, size, 0, 0, out, out);
-      return canvas;
-    },
-    _saveArt: async function (no, canvas) {
-      /*  イラストをWebPに圧縮して art/ に保存する  */
-      var webp = await new Promise(function (resolve) { canvas.toBlob(resolve, "image/webp", 0.9); });
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      var ctx = canvas.getContext("2d");
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close && bitmap.close();
+      var webp = await new Promise(function (resolve) { canvas.toBlob(resolve, "image/webp", 0.92); });
       if (!webp || webp.type !== "image/webp") throw new Error("このブラウザではWebPを作成できません（Chrome / Edge を使ってください）");
-      var res = await fetch("/__dev/card-art?no=" + encodeURIComponent(no), { method: "POST", headers: { "Content-Type": "image/webp" }, body: webp });
+      return { blob: webp, width: canvas.width, height: canvas.height, scale: scale };
+    },
+    _saveArtOriginal: async function (no, webpBlob) {
+      var res = await fetch("/__dev/card-art?no=" + encodeURIComponent(no), { method: "POST", headers: { "Content-Type": "image/webp" }, body: webpBlob });
       var result = await res.json().catch(function () { return {}; });
-      if (!res.ok || !result.ok) throw new Error(result.message || ("イラストの保存に失敗しました（" + res.status + "）"));
+      if (!res.ok || !result.ok) throw new Error(result.message || ("原本の保存に失敗しました（" + res.status + "）"));
+    },
+    _saveArtCrop: async function (no, crop) {
+      var res = await fetch("/__dev/card-art-crop?no=" + encodeURIComponent(no), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(crop) });
+      var result = await res.json().catch(function () { return {}; });
+      if (!res.ok || !result.ok) throw new Error(result.message || ("切り抜き位置の保存に失敗しました（" + res.status + "）"));
+    },
+    _saveArtForCurrentCard: async function (no) {
+      /*  「シートとゲームに反映」のとき：差し替えた原本と、今の切り抜き位置を保存する  */
+      if (this.pendingOriginalFile && String(this.pendingOriginalNo) === String(no)) {
+        var converted = await this._originalToWebp(this.pendingOriginalFile);
+        await this._saveArtOriginal(no, converted.blob);
+        // 切り抜き位置は保存した原本の大きさに合わせる
+        if (this.artCrop && converted.scale !== 1) {
+          this.artCrop = {
+            x: Math.round(this.artCrop.x * converted.scale), y: Math.round(this.artCrop.y * converted.scale),
+            width: Math.round(this.artCrop.width * converted.scale), height: Math.round(this.artCrop.height * converted.scale),
+          };
+        }
+        this.pendingOriginalFile = null;
+        this.pendingOriginalNo = "";
+      }
+      if (this.artCrop && String(this.artCropNo) === String(no)) await this._saveArtCrop(no, this.artCrop);
+    },
+    _importOriginal: async function (no, file) {
+      /*  原本を取り込み、既定の切り抜き位置（中央・上端基準の正方形）も保存する  */
+      var converted = await this._originalToWebp(file);
+      await this._saveArtOriginal(no, converted.blob);
+      await this._saveArtCrop(no, this._defaultArtCrop(converted.width, converted.height));
     },
     importArtFolder: async function () {
-      /*  「001_カード名.png」形式のイラストフォルダを、正方形に切り抜いて art/ に取り込む  */
+      /*  「001_カード名.png」形式のイラストフォルダを、原本として art/ に取り込む  */
       if (!this.gameLinkReady) { alert("ローカル確認用サーバー（npm run preview）で開いてください。"); return; }
       var fileInput = document.getElementById("batchFolder");
       if (!fileInput.files || fileInput.files.length === 0) { alert("先に「フォルダを選択」でイラストフォルダを選んでください。"); return; }
       var files = Array.prototype.filter.call(fileInput.files, function (f) { return /^(\d+)_/.test(f.name) && /^image\//.test(f.type); });
       if (!files.length) { alert("「001_カード名.png」形式のファイルが見つかりませんでした。"); return; }
-      if (!confirm(files.length + "枚のイラストを取り込みます（同じNo.の保存済みイラストは上書きされます）。よろしいですか？")) return;
+      if (!confirm(files.length + "枚のイラストを原本として取り込みます（同じNo.の原本と切り抜き位置は上書きされます）。よろしいですか？")) return;
       var done = 0;
       for (var i = 0; i < files.length; i++) {
         var no = String(parseInt(files[i].name.match(/^(\d+)_/)[1], 10));
-        this.batchProgress = "イラストを取り込み中… (" + (i + 1) + "/" + files.length + ") No." + no;
-        var bitmap = await createImageBitmap(files[i]);
-        try { await this._saveArt(no, this._squareArtCanvas(bitmap)); done++; }
+        this.batchProgress = "原本を取り込み中… (" + (i + 1) + "/" + files.length + ") No." + no;
+        try { await this._importOriginal(no, files[i]); done++; }
         catch (e) { alert("No." + no + " を取り込めませんでした：" + (e.message || e)); return; }
-        finally { bitmap.close && bitmap.close(); }
       }
-      this.batchProgress = "完了！ " + done + "枚のイラストを tools/card-editor/art/ に取り込みました。";
+      this.batchProgress = "完了！ " + done + "枚の原本を tools/card-editor/art/ に取り込みました。";
+    },
+    _loadArtForBatch: async function (no) {
+      /*  一括の作り直し用：原本と切り抜き位置からカードのイラストを描く（切り抜き画面は使わない）  */
+      var res = await fetch(this._artUrl(no), { cache: "no-store" });
+      if (!res.ok) return false;
+      var bitmap = await createImageBitmap(await res.blob());
+      var crop = null;
+      var cropRes = await fetch(this._artUrl(no, "json"), { cache: "no-store" });
+      if (cropRes.ok) crop = await cropRes.json().catch(function () { return null; });
+      this._cropToCard(bitmap, crop || this._defaultArtCrop(bitmap.width, bitmap.height));
+      bitmap.close && bitmap.close();
+      return true;
     },
     regenerateAllFromSavedArt: async function () {
-      /*  保存済みイラストがある全カードを、今のシートの内容で作り直してゲームに反映する（フレーム変更時など）  */
+      /*  保存済みの原本がある全カードを、今のシートの内容で作り直してゲームに反映する（フレーム変更時など）  */
       if (!this.gameLinkReady) { alert("ローカル確認用サーバー（npm run preview）で開いてください。"); return; }
       var list = await (await fetch("/__dev/card-art-list", { cache: "no-store" })).json().catch(function () { return { nos: [] }; });
       var nos = (list.nos || []).map(String);
       var self = this;
       var tasks = Object.keys(this.allCardList).map(function (k) { return self.allCardList[k]; }).filter(function (d) { return nos.indexOf(String(parseInt(d[0], 10))) !== -1; });
-      if (!tasks.length) { alert("保存済みイラストのあるカードがありません。先にイラストを取り込んでください。"); return; }
+      if (!tasks.length) { alert("保存済みの原本があるカードがありません。先にイラストを取り込んでください。"); return; }
       if (!confirm(tasks.length + "枚のカード画像を作り直して、ゲームの画像を上書きします。よろしいですか？")) return;
       var warnings = [];
       for (var t = 0; t < tasks.length; t++) {
         self.batchProgress = "作り直し中… (" + (t + 1) + "/" + tasks.length + ") " + (tasks[t][2] || "");
         await self._applyTemplate(tasks[t]);
-        await self._loadArtForCard(tasks[t][0]);
+        await self._loadArtForBatch(tasks[t][0]);
         await self.$nextTick();
         await new Promise(function (r) { setTimeout(r, 100); });
         (await self._publishImageToGame(await self._svgToPng(), tasks[t][0], false)).forEach(function (w) { if (warnings.indexOf(w) === -1) warnings.push(w); });
@@ -831,11 +936,7 @@
       if (!confirm("No." + no + " をスプレッドシートとゲームの画像に反映します。よろしいですか？")) return;
       try {
         if (isKami) await this.saveKamiToSheet(true); else await this.saveToSheet(true);
-        if (!isKami && this.pendingArtCanvas && String(this.pendingArtNo) === String(no)) {
-          await this._saveArt(no, this.pendingArtCanvas);
-          this.pendingArtCanvas = null;
-          this.pendingArtNo = "";
-        }
+        if (!isKami) await this._saveArtForCurrentCard(no);
         var warnings = await this._publishImageToGame(await this._svgToPng(), no, isKami);
         alert("No." + no + " を反映しました。ゲームを再読み込みすると確認できます。" + (warnings.length ? "\n\n" + warnings.join("\n") : ""));
       } catch (e) {
@@ -911,11 +1012,7 @@
 
         // イラスト画像を読み込んでSVGに設定
         await self._loadImageToCard(task.imageFile);
-        if (toGame) {
-          var artBitmap = await createImageBitmap(task.imageFile);
-          await self._saveArt(task.data[0], self._squareArtCanvas(artBitmap));
-          artBitmap.close && artBitmap.close();
-        }
+        if (toGame) await self._importOriginal(task.data[0], task.imageFile);
 
         // Vue DOM更新を待つ
         await self.$nextTick();
