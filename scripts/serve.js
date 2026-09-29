@@ -76,7 +76,8 @@ http.createServer((req, res) => {
   try { url = new URL(req.url, "http://localhost"); pathname = decodeURIComponent(url.pathname); }
   catch { res.writeHead(400).end(); return; }
   if (pathname.startsWith("/__dev/")) { handleDev(req, res, url).catch(err => sendJson(res, 500, { ok: false, message: String(err && err.message || err) })); return; }
-  const file = path.resolve(root, "." + (pathname === "/" ? "/index.html" : pathname));
+  // 「/tools/card-editor/」のようにフォルダで終わるURLは、その中の index.html を返す
+  const file = path.resolve(root, "." + (pathname.endsWith("/") ? pathname + "index.html" : pathname));
   const relative = path.relative(root, file);
   if (relative.startsWith("..") || path.isAbsolute(relative) || relative.split(path.sep).some(part => part.startsWith("."))) {
     res.writeHead(403).end(); return;
