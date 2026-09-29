@@ -14672,6 +14672,9 @@ new Vue({
       const oppNo = String(selfKami.no) === '8' ? '9' : '8';
       const oppKami = this.allKamiCards.find(k => String(k.no) === oppNo) || this.allKamiCards.find(k => String(k.no) !== String(selfKami.no));
       const pool = this._battleAlphaPoolForColor('ミックス');
+      // BGMは「荘厳なる闘い」で固定する（手動で曲を選んでいる場合も、戻るときに元の曲へ戻す）
+      this._dexPreviewPreviousBgmKey = this.bgmCurrentKey;
+      if (!this.bgmAuto && BGM_FILES.soukanNaruTatakai) this._bgmPlay('soukanNaruTatakai');
       this._battleInitialize({
         source: 'dexPreview', modeLabel: '演出プレビュー', returnView: 'kamiDex',
         selfName: 'あなた', oppName: '相手', firstSide: 'self', life: 10,
@@ -17995,6 +17998,11 @@ new Vue({
         if (this.bgmCurrentKey !== this.battleContext.tutorialBgm) this._bgmPlay(this.battleContext.tutorialBgm);
         return;
       }
+      // カミ図鑑の演出プレビューは「荘厳なる闘い」で固定する
+      if (view === 'battle' && this.battleContext && this.battleContext.source === 'dexPreview' && BGM_FILES.soukanNaruTatakai) {
+        if (this.bgmCurrentKey !== 'soukanNaruTatakai') this._bgmPlay('soukanNaruTatakai');
+        return;
+      }
       // 4人対戦の対戦画面（星戦）は、通常のbattleカテゴリではなくラウンド専用のBGM群を使う
       if (view === 'battle' && this.battleContext && this.battleContext.source === 'game' && this.battleContext.round) {
         this._bgmAutoPickRoundBattle(this.battleContext.round);
@@ -19111,6 +19119,7 @@ new Vue({
     },
     battleReturnNow() {
       const leavingTutorial = !!(this.battleContext && this.battleContext.source === 'tutorial');
+      const leavingDexPreview = !!(this.battleContext && this.battleContext.source === 'dexPreview');
       if (this.tutorial) this._tutorialStop();
       // 4人対戦の星戦：自分が勝った対戦なら、戻る際に自動で勝者記録する
       // （host限定の手動クリックだけだと、戻った時点でまだ未記録に見えてしまうため）。
@@ -19162,6 +19171,11 @@ new Vue({
       this._bgmRestoreAfterBattle(this.appView);
       // チュートリアルの固定曲は、手動選曲中でも画面に合った曲へ戻す
       if (leavingTutorial && !this.bgmAuto) this._bgmAutoPickForView(this.appView);
+      // 図鑑の演出プレビューで固定した曲は、手動選曲中なら元の曲へ戻す
+      if (leavingDexPreview && !this.bgmAuto) {
+        const previous = this._dexPreviewPreviousBgmKey;
+        if (previous && BGM_FILES[previous] && previous !== this.bgmCurrentKey) this._bgmPlay(previous);
+      }
     },
     /* Undo: battleSample の現状をスナップショット（最新50件まで保持） */
     battleSaveUndo() {
