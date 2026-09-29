@@ -1,5 +1,14 @@
 # Claude → Codex 引き継ぎメモ（2026-09-26 時点）
 
+## Claude 追記：v1.15.238（2026-09-30）
+
+- オモイカネ（no.5）とツクヨミ（no.9）の創世神技カットインを、ユーザー提供の添付画像に差し替え。構図の変更・再生成はせず、`cutin` の規則で1600×900・300KB以下のWebPへ圧縮：`kami_cutin/omoikane-genesis-wide-a5784234189d.webp`（270KB）、`kami_cutin/tsukuyomi-genesis-wide-a8e7806f5483.webp`（205KB）。原本は `kami_cutin/{omoikane,tsukuyomi}-user-reference-20260930.*`。`divine_effects.js`・`_headers`・`genesis-generation.json`（旧版は `previousRevisions`）・`optimized_assets.json` を更新。固有演出は変更なし。
+- `AGENTS.md` の画像ルールに合わせ、チュートリアル案内役の画像6枚を `sprite` の規則でハッシュ付きWebPへ作り直した（表情差分645×720・約116KB）。祝福の画像は紙吹雪が細かく720pxでは画質62でも120KBを超えるため、終了画面の最大表示幅に合わせ607×640・118KBにした（上限は緩めていない）。ハッシュのない旧ファイルは削除し、`_headers` に `/tutorial_guide/*.webp` の長期キャッシュを追加。`kami_chibi/prompts.json` の styleReference も新URLへ。
+- このPCにはPythonがないため、`scripts/import_visual_asset.py` と同じ処理（画質82→62の順で上限内に収める・sha256先頭12桁・参照置換・manifest記録）をNodeのsharpで再現して実行した。`python tests/test_import_visual_asset.py` は未実行。
+- 選別の練習で追加された3台詞に表情を指定（pick-recommend-kami＝surprised、synergy・other＝serious）。
+- `CLAUDE.md` に画像ルールとカード編集室の説明を追記。
+- 158テスト成功。確認ページで2柱の新カットイン（通常表示・全画面の技名表示）を確認。本体で案内役の表情5枚・終了画面・一覧/TOPの画像が新URLで読み込まれることを確認。
+
 ## Codex 追記：v1.15.204（2026-09-29）
 
 - 創世神技は専用画像を台詞・ボイスの終了まで全画面に一度だけ表示し、続く演出では専用画像を再表示しない。小さいカード枠を撤去。`divine-skill-art` の `stage="cutin"` は専用画像、従来の `closeup` は固有演出を担当。台詞終了の保持・途中退出・高速／最小／動きの軽減設定を維持。
