@@ -20,7 +20,7 @@
 - `effect_spec.json`：カード効果の定義
 - `database.rules.json`：Realtime Database Rules（本番反映は `firebase deploy --only database --project tsukuriyo-7afe3`）
 - `functions/`：将来の Blaze 移行用。Spark本番では使わない
-- 画像・音声：`card_images/`、`kami_*`、`tutorial_guide/`、`bgm/`、`sfx/`、`voices/` など
+- 画像・音声：`card_images/`、`kami_*`、`tutorial_guide/`、`emote_icons/`（エモートの表情アイコン。カミごとに3×2のアトラス）、`bgm/`、`sfx/`、`voices/` など
 - `kami_cutin/genesis-generation.json`：創世神技カットインの現行URL・生成指示・差し替え履歴（ユーザー提供画像は `mode: "user-provided image; ..."`、旧版は `previousRevisions` に残す）
 - `tools/card-editor/`：カード編集室（ローカル専用。`npm run preview` 中に http://localhost:8765/tools/card-editor/ で開く。本番では `_redirects` で404）。使い方は同フォルダの README
 

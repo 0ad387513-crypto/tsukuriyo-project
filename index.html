@@ -5241,7 +5241,16 @@
     overflow-wrap: break-word; word-break: break-word;
     pointer-events: none;
   }
+  /* エモートの吹き出しは、そのカミの表情アイコンを台詞の左に添える（神技のセリフには付けない） */
+  .emote-bubble.has-icon { display: flex; align-items: center; gap: 10px; max-width: 320px; padding: 6px 16px 6px 8px; }
+  .emote-bubble-icon {
+    flex: none; width: 60px; height: 60px; background-repeat: no-repeat; background-size: 300% 200%;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); animation: emoteIconPop .35s cubic-bezier(.3,1.6,.5,1) both;
+  }
+  @keyframes emoteIconPop { from { transform: scale(.5) rotate(-8deg); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .emote-bubble-icon { animation: none; } }
   .emote-bubble-self { left: 50%; top: 62%; transform: translateX(-50%); }
+  .emote-bubble.above { transform: translate(-50%, -100%); } /* ポートレートの上に出すとき（top はポートレートの上端） */
   .emote-bubble-opp  { left: 50%; top: calc(50% + 8px); transform: translateX(-50%); }
   .emote-bubble-fade-enter-active { transition: opacity 0.2s ease, transform 0.2s ease; }
   .emote-bubble-fade-leave-active { transition: opacity 0.3s ease; }
@@ -5269,6 +5278,14 @@
   .emote-wheel-backdrop { position: fixed; inset: 0; z-index: 4290; }
   .emote-wheel-item .emote-wheel-emoji { font-size: 22px; line-height: 1; }
   .emote-wheel-item .emote-wheel-label { font-size: 10px; margin-top: 2px; white-space: nowrap; }
+  /* カミの表情アイコンがあるときは、絵文字の代わりに円いっぱいにアイコンを出し、名前は円の下に添える */
+  .emote-wheel-item.has-icon { left: -38px; top: -38px; width: 76px; height: 76px; }
+  .emote-wheel-item .emote-wheel-icon { width: 64px; height: 64px; background-repeat: no-repeat; background-size: 300% 200%; filter: drop-shadow(0 2px 3px rgba(0,0,0,.45)); }
+  .emote-wheel-item.has-icon .emote-wheel-label {
+    position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); margin: 0; padding: 1px 8px; border-radius: 999px;
+    background: rgba(20, 16, 30, 0.92); border: 1px solid rgba(255,255,255,0.3); color: #fff;
+  }
+  .emote-wheel-item.has-icon.active .emote-wheel-label { background: #ffb43c; border-color: #fff2dc; color: #2a1a08; }
   .emote-wheel-item.active {
     background: rgba(255, 180, 60, 0.92); border-color: #fff2dc; color: #2a1a08;
   }
@@ -8074,7 +8091,7 @@
                   <divine-sprite name="kusanagi"></divine-sprite>
                   <span id="susanoo-ability-opp" class="kami-orochi-tooltip" role="tooltip"><strong>付与された能力：墓地からの進化</strong>進化条件を満たす、自分の墓地のレガシーも進化元に選べます。この効果は星戦が終わるまで続きます。タップで詳細を確認できます。</span>
                 </div>
-                <div v-if="battleViewIsOrochi('opp') && battleView.opp.seal === 0" class="kami-orochi-mark kami-orochi-mark-opp" tabindex="0" role="button"
+                <div v-if="battleViewIsOrochi('opp') && battleView.opp.seal === 0" class="kami-orochi-mark kami-orochi-mark-opp" :class="{'orochi-mark-pending':battleOrochiMarkPending('opp')}" tabindex="0" role="button"
                      aria-label="創世神技発動中：龍レガシーの神攻を強化" aria-describedby="orochi-ability-opp"
                      @mouseenter.stop="hideCardHover" @focus="hideCardHover"
                      @mousedown.stop @touchstart.stop
@@ -8276,7 +8293,7 @@
                   <divine-sprite name="kusanagi"></divine-sprite>
                   <span id="susanoo-ability-self" class="kami-orochi-tooltip" role="tooltip"><strong>付与された能力：墓地からの進化</strong>進化条件を満たす、自分の墓地のレガシーも進化元に選べます。この効果は星戦が終わるまで続きます。タップで詳細を確認できます。</span>
                 </div>
-                <div v-if="battleViewIsOrochi('self') && battleView.self.seal === 0" class="kami-orochi-mark" tabindex="0" role="button"
+                <div v-if="battleViewIsOrochi('self') && battleView.self.seal === 0" class="kami-orochi-mark" :class="{'orochi-mark-pending':battleOrochiMarkPending('self')}" tabindex="0" role="button"
                      aria-label="創世神技発動中：龍レガシーの神攻を強化" aria-describedby="orochi-ability-self"
                      @mouseenter.stop="hideCardHover" @focus="hideCardHover"
                      @mousedown.stop @touchstart.stop
@@ -9236,7 +9253,7 @@
     <button type="button" class="back" @click="battleReturn">◀ カミ図鑑へ戻る</button>
   </div>
   <transition name="battle-skill-closeup-fade">
-    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :style="{ zIndex: battleCpuThinking ? 10001 : null, '--fx-duration': _battleMotionMs(battleSkillCloseup.phase === 'animation' ? (battleSkillCloseup.animationDuration || 2400) : 1800)+'ms' }" :class="{ 'genesis-dedicated-mode': battleSkillCloseup.dedicatedArt, 'divine-cinematic-mode': battleSkillCloseup.phase === 'animation', 'divine-transfer-mode': battleSkillCloseup.phase === 'animation' && battleSkillCloseup.transfers && battleSkillCloseup.transfers.length > 0, 'divine-portrait-mode': battleSkillCloseup.phase === 'portrait', 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }"
+    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :style="{ zIndex: battleCpuThinking ? 10001 : null, '--fx-duration': _battleMotionMs(battleSkillCloseup.phase === 'animation' ? (battleSkillCloseup.animationDuration || 2400) : 1800)+'ms' }" :class="{ 'genesis-dedicated-mode': battleSkillCloseup.dedicatedArt, 'divine-cinematic-mode': battleSkillCloseup.phase === 'animation', 'orochi-seal-arrival-mode': battleSkillCloseup.phase === 'sealArrival', 'divine-transfer-mode': battleSkillCloseup.phase === 'animation' && battleSkillCloseup.transfers && battleSkillCloseup.transfers.length > 0, 'divine-portrait-mode': battleSkillCloseup.phase === 'portrait', 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }"
          @click="battleSkillCloseupClickDismiss">
       <divine-skill1-sigil v-if="battleSkillCloseup.mode === 'skill1' && battleSkillCloseup.sigil && battleAnimationSpeed !== 'minimal'" :theme="battleSkillCloseup.sigil" :duration="_battleMotionMs(1800)"></divine-skill1-sigil>
       <!-- 創世神技のカットイン（暗い背景・絵・技名）はひとまとめにし、終わるときは画面の端から中央へ消えていく -->
@@ -9253,6 +9270,7 @@
       </transition>
       <divine-skill-art v-if="battleSkillCloseup.phase === 'awakening'" stage="awakening" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(battleSkillCloseup.awakeningDuration)"></divine-skill-art>
       <divine-skill-art v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'" :key="'effect-'+battleSkillCloseup._shownAt" :effect="battleSkillCloseup.effect" :layout="battleSkillCloseup.layout" :survivors="battleSkillCloseup.survivors" :targets="battleSkillCloseup.targets" :sword-landing="battleSkillCloseup.swordLanding" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-skill-art>
+      <divine-orochi-seal-arrival v-if="battleSkillCloseup.phase === 'sealArrival' && battleSkillCloseup.sealLanding" :landing="battleSkillCloseup.sealLanding" :duration="_battleMotionMs(1200)"></divine-orochi-seal-arrival>
       <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'"><divine-scroll-transfer v-for="(transfer,i) in battleSkillCloseup.transfers" :key="'scroll-transfer'+i" :transfer="transfer" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-scroll-transfer></template>
       <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal' && battleSkillCloseup.effect.kamiNo !== '7'"><divine-target-impact v-for="(rect,i) in battleSkillCloseup.targets" :key="'impact'+i" :rect="rect" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-target-impact></template>
       <div v-if="battleSkillCloseup.phase === 'animation' && battleSkillCloseup.effect" class="divine-cinematic-title">{{ battleSkillCloseupNameParts.main }}</div>
@@ -9278,12 +9296,12 @@
 
   <!-- ===== カミの吹き出し（エモート／神技・2のセリフ）：カミポートレートの真下に表示 ===== -->
   <transition name="emote-bubble-fade">
-    <div v-if="emoteBubbles.self" :key="'self'+emoteBubbles.self.id" class="emote-bubble emote-bubble-self"
-         :style="emoteBubbles.self.pos ? { left: emoteBubbles.self.pos.x + 'px', top: emoteBubbles.self.pos.y + 'px' } : {}">{{ emoteBubbles.self.text }}</div>
+    <div v-if="emoteBubbles.self" :key="'self'+emoteBubbles.self.id" class="emote-bubble emote-bubble-self" :class="{ 'has-icon': emoteBubbleIcon(emoteBubbles.self), above: emoteBubbles.self.pos && emoteBubbles.self.pos.above }"
+         :style="emoteBubbles.self.pos ? { left: emoteBubbles.self.pos.x + 'px', top: emoteBubbles.self.pos.y + 'px' } : {}"><span v-if="emoteBubbleIcon(emoteBubbles.self)" class="emote-bubble-icon" :style="emoteBubbleIcon(emoteBubbles.self)"></span><span>{{ emoteBubbles.self.text }}</span></div>
   </transition>
   <transition name="emote-bubble-fade">
-    <div v-if="emoteBubbles.opp" :key="'opp'+emoteBubbles.opp.id" class="emote-bubble emote-bubble-opp"
-         :style="emoteBubbles.opp.pos ? { left: emoteBubbles.opp.pos.x + 'px', top: emoteBubbles.opp.pos.y + 'px' } : {}">{{ emoteBubbles.opp.text }}</div>
+    <div v-if="emoteBubbles.opp" :key="'opp'+emoteBubbles.opp.id" class="emote-bubble emote-bubble-opp" :class="{ 'has-icon': emoteBubbleIcon(emoteBubbles.opp), above: emoteBubbles.opp.pos && emoteBubbles.opp.pos.above }"
+         :style="emoteBubbles.opp.pos ? { left: emoteBubbles.opp.pos.x + 'px', top: emoteBubbles.opp.pos.y + 'px' } : {}"><span v-if="emoteBubbleIcon(emoteBubbles.opp)" class="emote-bubble-icon" :style="emoteBubbleIcon(emoteBubbles.opp)"></span><span>{{ emoteBubbles.opp.text }}</span></div>
   </transition>
 
   <!-- ===== エモート選択ホイール：自分のカミポートレートをドラッグ、または右クリックで表示 ===== -->
@@ -9292,10 +9310,11 @@
   <div v-if="emoteWheel" class="emote-wheel" :style="{ left: emoteWheel.x + 'px', top: emoteWheel.y + 'px' }">
     <div class="emote-wheel-center"></div>
     <div v-for="(t, i) in emoteWheelItems" :key="t.key" class="emote-wheel-item"
-         :class="{ active: emoteWheel.hoverKey === t.key, 'tutorial-emote-target': tutorialStep && tutorialStep.id === 'greeting' && t.key === 'greeting', 'tutorial-emote-other': tutorialStep && tutorialStep.id === 'greeting' && t.key !== 'greeting' }" :style="t.style"
+         :class="{ 'has-icon': !!t.icon, active: emoteWheel.hoverKey === t.key, 'tutorial-emote-target': tutorialStep && tutorialStep.id === 'greeting' && t.key === 'greeting', 'tutorial-emote-other': tutorialStep && tutorialStep.id === 'greeting' && t.key !== 'greeting' }" :style="t.style"
          @mouseenter="emoteWheel.hoverKey = t.key" @mouseleave="emoteWheel.hoverKey = null"
          @click.stop="battleEmoteWheelItemClick(t.key)">
-      <span class="emote-wheel-emoji">{{ t.emoji }}</span>
+      <span v-if="t.icon" class="emote-wheel-icon" :style="t.icon" aria-hidden="true"></span>
+      <span v-else class="emote-wheel-emoji">{{ t.emoji }}</span>
       <span class="emote-wheel-label">{{ t.label }}</span>
     </div>
   </div>
@@ -11006,6 +11025,26 @@ const EMOTE_TYPES = [
   { key: "confusion", emoji: "😥", label: "困惑" },
   { key: "boast",     emoji: "🔥", label: "大見栄" },
 ];
+// カミごとのエモートアイコン（3列×2行のアトラス。並びは EMOTE_TYPES と同じ：あいさつ・賞賛・驚き／疑問・困惑・大見栄）。
+// アイコンの無いカミは絵文字のまま表示する。作り方は emote_icons/README.md
+const KAMI_EMOTE_ICONS = Object.freeze({
+  '1': 'emote_icons/susanoo-emotes-f5fcfa47d2b2.webp',
+  '2': 'emote_icons/yamato-takeru-emotes-2988aa492745.webp',
+  '3': 'emote_icons/okuninushi-emotes-4af0fe94b5cd.webp',
+  '4': 'emote_icons/takemikazuchi-emotes-060508c3abbc.webp',
+  '5': 'emote_icons/omoikane-emotes-18529c459f08.webp',
+  '6': 'emote_icons/amenouzume-emotes-14bb0cef54e0.webp',
+  '7': 'emote_icons/hinokagutsuchi-emotes-4b8beb3ffba2.webp',
+  '8': 'emote_icons/amaterasu-emotes-08c64197c446.webp',
+  '9': 'emote_icons/tsukuyomi-emotes-c475ad817c3b.webp',
+  '10': 'emote_icons/yamata-no-orochi-emotes-1910188d9e83.webp',
+});
+function emoteIconStyle(kamiNo, key) {
+  const url = KAMI_EMOTE_ICONS[String(kamiNo)];
+  const i = EMOTE_TYPES.findIndex(t => t.key === key);
+  if (!url || i < 0) return null;
+  return { backgroundImage: `url('${url}')`, backgroundPosition: `${(i % 3) * 50}% ${Math.floor(i / 3) * 100}%` };
+}
 
 // TOP画面の各モードタイル→詳細画面（画像＋説明＋開始ボタン）の内容
 const MODE_DETAIL_INFO = {
@@ -12993,12 +13032,14 @@ new Vue({
       const n = EMOTE_TYPES.length;
       const radius = 92;
       const hoverKey = this.emoteWheel && this.emoteWheel.hoverKey;
+      const kami = this.battleSample && this.battleSample.self && this.battleSample.self.kami;
       return EMOTE_TYPES.map((t, i) => {
         const angle = (Math.PI * 2 * i) / n - Math.PI / 2; // 先頭を真上から時計回りに配置
         const x = Math.cos(angle) * radius;
         const y = Math.sin(angle) * radius;
         const scale = hoverKey === t.key ? 1.15 : 1;
-        return Object.assign({}, t, { style: { transform: `translate(${x}px, ${y}px) scale(${scale})` } });
+        const icon = kami ? emoteIconStyle(kami.no, t.key) : null;
+        return Object.assign({}, t, { icon, style: { transform: `translate(${x}px, ${y}px) scale(${scale})` } });
       });
     },
     filteredCards() {
@@ -15546,8 +15587,20 @@ new Vue({
       if (act.skill === 2 && String(kami.no) === '7') {
         const idx = act.destroy ? this._tutorialOppIndex(bs.self.legacies, act.destroy) : -1;
         const targets = idx >= 0 ? [bs.self.legacies[idx]] : [];
+        divineContext.flameCapture = () => {
+          const current = act.destroy ? this._tutorialOppIndex(bs.self.legacies, act.destroy) : -1;
+          if (current >= 0) this.battleDestroyLegacy('self', current, []);
+        };
+        divineContext.flameDamage = () => {
+          if (!act.damage || divineContext.flameDamageApplied) return;
+          bs.self.life = Math.max(0, (Number(bs.self.life) || 0) - act.damage);
+          divineContext.flameDamageApplied = true;
+          this._sfxPlay('hit');
+          this.battleShowNotice('ライフ変化', `あなたのライフが${act.damage}減りました。`, []);
+          this._battleCheckResult();
+        };
         if (!await this._battlePresentFlameClaw(targets, 'opp')) return;
-      }
+      } else {
       if (act.destroy) {
         const idx = this._tutorialOppIndex(bs.self.legacies, act.destroy);
         if (idx >= 0) this.battleDestroyLegacy('self', idx, []);
@@ -15557,6 +15610,7 @@ new Vue({
         this._sfxPlay('hit');
         this.battleShowNotice('ライフ変化', `あなたのライフが${act.damage}減りました。`, []);
         this._battleCheckResult();
+      }
       }
       if (!this._battleDivineContext.presented) {
         if (act.skill === 2) await this._battleShowSkill2Closeup(kami, kami.skill2name, null, 'opp');
@@ -17240,7 +17294,7 @@ new Vue({
     // カミの神技・創世神技の演出素材の一覧（実際に登場するカミの分だけ先読みするため）
     _kamiVisualUrls(kami) {
       if (!kami || !/^(?:[1-9]|10)$/.test(String(kami.no))) return [];
-      return [`kami_cutin/${kami.no}.webp`, `kami_cutin_eyes/${kami.no}.png`, ...divineSkillAssetUrls(kami)];
+      return [`kami_cutin/${kami.no}.webp`, `kami_cutin_eyes/${kami.no}.png`, ...divineSkillAssetUrls(kami), KAMI_EMOTE_ICONS[String(kami.no)]].filter(Boolean);
     },
     /* 画像の読み込み係。画面に今すぐ必要な画像（ロード画面・ピック中の束）を先に、4本ずつ読む。
        裏で用意しておく画像（カミの演出素材・ドラフトで出うるカード）は、今すぐ必要な画像が無いときだけ1本ずつ読み、
@@ -18399,7 +18453,8 @@ new Vue({
        必ずカードをDOMから取り除く（splice等）より前に呼び出すこと。 */
     _battleShowDestroySuck(side, zone, index, destZone) {
       const divine = this._battleDivineContext;
-      if (divine && divine.presented && divine.index === 2 && String(divine.kami.no) === '7') return;
+      // 爪で引き裂かれて消える間は、墓地アイコンへ飛ぶ通常演出を重ねない。
+      if (divine && divine.index === 2 && String(divine.kami.no) === '7' && (divine.flameCaptured || divine.presented)) return;
       const sourceRect = this._battleFieldCardRect(side, zone, index);
       if (this._battleDivineContext && sourceRect) {
         const { kami, index: skillIndex } = this._battleDivineContext;
@@ -18625,6 +18680,10 @@ new Vue({
       const p = this.battleSkillCloseup;
       return !!(p && p.effect && p.effect.kamiNo === '1' && this.battleAnimationSpeed !== 'minimal' && this.battleViewSide(p.writerSide || 'self') === displaySide);
     },
+    battleOrochiMarkPending(displaySide) {
+      const p = this.battleSkillCloseup;
+      return !!(p && p.effect && p.effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal' && this.battleViewSide(p.writerSide || 'self') === displaySide);
+    },
     _battleSusanooMarkRect(writerSide) {
       const root = this.$el;
       if (!root) return null;
@@ -18637,6 +18696,21 @@ new Vue({
         return {left:r.left,top:r.top,width:r.width,height:r.height};
       }
       // 受信側の効果同期より演出が先着した場合も、同じ右下の置き場へ向かう。
+      const r = portrait.getBoundingClientRect();
+      return {left:r.right + 17 - 38,top:r.bottom - 4 - 44,width:38,height:44};
+    },
+    _battleOrochiMarkRect(writerSide) {
+      const root = this.$el;
+      if (!root) return null;
+      const display = this.battleViewSide(writerSide);
+      const portrait = root.querySelector(display === 'self' ? '.battle-row-self-bot .kami-portrait' : '.battle-row-opp-top .kami-portrait');
+      if (!portrait) return null;
+      const badge = portrait.querySelector('.kami-orochi-mark');
+      if (badge) {
+        const r = badge.getBoundingClientRect();
+        return {left:r.left,top:r.top,width:r.width,height:r.height};
+      }
+      // 公開状態の同期より先に演出が始まったときも、同じ右下の置き場へ向かう。
       const r = portrait.getBoundingClientRect();
       return {left:r.right + 17 - 38,top:r.bottom - 4 - 44,width:38,height:44};
     },
@@ -18703,6 +18777,19 @@ new Vue({
         context.cancelled = true;
         return false;
       }
+      // 最小演出などで途中の時刻通知が省かれた場合も、破壊→死亡時効果→ダメージの順を保つ。
+      if (!context.flameCaptured && typeof context.flameCapture === 'function') {
+        context.flameCaptured = true;
+        context.flameCapture();
+      }
+      if (context.flameDeathPromise) await context.flameDeathPromise;
+      if (context.flameDeathError) throw context.flameDeathError;
+      if (typeof context.flameDamage === 'function') await context.flameDamage();
+      if (context.flameDamageError) throw context.flameDamageError;
+      if (board !== this.battleSample || this.appView !== 'battle' || context !== this._battleDivineContext) {
+        context.cancelled = true;
+        return false;
+      }
       this._battleFinishDivinePresentation();
       return true;
     },
@@ -18714,10 +18801,11 @@ new Vue({
         dedicatedArt: true,
         writerSide,
         phase: 'portrait',
-        animationDuration: String(kami && kami.no) === '10' ? 4200 : 2400,
+        animationDuration: String(kami && kami.no) === '7' ? 4300 : (String(kami && kami.no) === '10' || String(kami && kami.no) === '6') ? 4200 : 2400,
         awakeningDuration: 3000,
         layout: typeof this._battleDivineStageLayout === 'function' ? this._battleDivineStageLayout(writerSide) : null,
         swordLanding: String(kami && kami.no) === '1' && typeof this._battleSusanooMarkRect === 'function' ? this._battleSusanooMarkRect(writerSide) : null,
+        sealLanding: null,
         targets: ['4','6','7','8'].includes(String(kami && kami.no)) && this._battleDivineContext ? (this._battleDivineContext.targets || []).slice(0,7).map(r => Object.assign({},r)) : [],
         survivors: String(kami && kami.no) === '2' && typeof this._battleDivineSurvivorCues === 'function' ? this._battleRemoteDivineTargets(this._battleDivineSurvivorCues(),'self') : [],
         transfers: String(kami && kami.no) === '5' && this._battleDivineContext ? (this._battleDivineContext.transfers || []).map(t => Object.assign({},t,{image:this.cardImageUrl(t.card)})) : [],
@@ -18733,14 +18821,18 @@ new Vue({
       };
       this._sfxPlay('skill2');
       const voice = this.playKamiVoice(kami, 'skill2');
+      // 咆哮の音源を先に読み込み、龍が姿を現す瞬間に遅れず鳴らす。
+      if (effect.kamiNo === '10' && typeof this._sfxLoadBuffer === 'function') this._sfxLoadBuffer('dragonHeavy').catch(() => {});
       const presentation = this.battleSkillCloseup;
       // スサノオだけ、台詞の終了後に顔へ寄って開眼してから盤面の演出へ進む。
       const phases = [{ name: 'portrait', duration: 1800 }];
       if (effect.awakening && this.battleAnimationSpeed !== 'minimal') phases.push({name:'awakening',duration:presentation.awakeningDuration});
       phases.push({ name: 'animation', duration: presentation.animationDuration });
+      if (effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal') phases.push({name:'sealArrival',duration:1200});
       for (const phase of phases) {
         if (this.battleSkillCloseup !== presentation) break;
         if (phase.name === 'animation' && String(kami && kami.no) === '1' && typeof this._battleSusanooMarkRect === 'function') presentation.swordLanding = this._battleSusanooMarkRect(writerSide);
+        if (phase.name === 'sealArrival' && typeof this._battleOrochiMarkRect === 'function') presentation.sealLanding = this._battleOrochiMarkRect(writerSide);
         if (phase.name === 'animation' && remoteTransfers) presentation.transfers = this._battleRemoteDivineTransfers(remoteTransfers, writerSide);
         if (phase.name === 'animation' && remoteTargets && ['4','7'].includes(String(kami && kami.no))) presentation.targets = this._battleRemoteDivineTargets(remoteTargets, writerSide);
         if (phase.name === 'animation' && String(kami && kami.no) === '2' && typeof this._battleDivineSurvivorCues === 'function') {
@@ -18749,14 +18841,28 @@ new Vue({
         }
         presentation.phase = phase.name;
         presentation._shownAt = Date.now();
-        // 八枚の札が消えた後だけ、高コスト龍召喚の咆哮を一度鳴らす。
+        // 札がはがれて少女の全容が見えてから間を置き、八頭の龍が現れる瞬間に咆哮を鳴らす。
         const roarTimer = phase.name === 'animation' && String(kami && kami.no) === '10' ? setTimeout(() => {
-          if (this.battleSkillCloseup === presentation && presentation.phase === 'animation') this._sfxPlay('dragonHeavy');
-        }, this._battleMotionMs(phase.duration) * .4) : null;
-        // 爪が着弾する絵に合わせて、一度だけ衝撃音を鳴らす。
+          if (this.battleSkillCloseup === presentation && presentation.phase === 'animation') this._sfxPlay('dragonHeavy', .35);
+        }, this._battleMotionMs(phase.duration) * .82) : null;
+        // 爪による引き込みと、相手カミへの爆発を別々の時刻で確定させる。
         const impactTimer = phase.name === 'animation' && effect.kamiNo === '7' && this.battleAnimationSpeed !== 'minimal' ? setTimeout(() => {
           if (this.battleSkillCloseup === presentation && presentation.phase === 'animation') this._sfxPlay('hit');
-        }, this._battleMotionMs(phase.duration) * .2) : null;
+        }, this._battleMotionMs(phase.duration) * .12) : null;
+        const flameContext = phase.name === 'animation' && effect.kamiNo === '7' ? this._battleDivineContext : null;
+        const captureTimer = flameContext && this.battleAnimationSpeed !== 'minimal' ? setTimeout(() => {
+          if (flameContext !== this._battleDivineContext || this.battleSkillCloseup !== presentation || presentation.phase !== 'animation'
+            || flameContext.flameCaptured || typeof flameContext.flameCapture !== 'function') return;
+          flameContext.flameCaptured = true;
+          try { flameContext.flameCapture(); } catch (e) { flameContext.flameDeathError = e; }
+        }, this._battleMotionMs(phase.duration) * .30) : null;
+        const eruptionTimer = phase.name === 'animation' && effect.kamiNo === '7' && this.battleAnimationSpeed !== 'minimal' ? setTimeout(() => {
+          if (this.battleSkillCloseup === presentation && presentation.phase === 'animation') this._sfxPlay('effect');
+        }, this._battleMotionMs(phase.duration) * .54) : null;
+        const flameDamageTimer = flameContext && this.battleAnimationSpeed !== 'minimal' ? setTimeout(() => {
+          if (flameContext === this._battleDivineContext && this.battleSkillCloseup === presentation
+            && presentation.phase === 'animation' && typeof flameContext.flameDamage === 'function') flameContext.flameDamage();
+        }, this._battleMotionMs(phase.duration) * .57) : null;
         await new Promise(resolve => {
           let hold = null;
           const finish = () => { if (hold) hold.cancel(); resolve(); };
@@ -18764,10 +18870,17 @@ new Vue({
           if (phase.name === 'portrait' && presentation.line) {
             hold = this._battleHoldSpeech(presentation.line, voice, finish);
             this._battleSkillCloseupT = hold.timer;
-          } else this._battleSkillCloseupT = setTimeout(finish, this._battleMotionMs(phase.duration));
+          } else {
+            // オロチは龍の絵を保持したまま、約3秒の咆哮が終わるまで次の札演出へ進まない。
+            const roarHoldMs = phase.name === 'animation' && effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal' ? 3200 : 0;
+            this._battleSkillCloseupT = setTimeout(finish, this._battleMotionMs(phase.duration) + roarHoldMs);
+          }
         });
         if (roarTimer !== null) clearTimeout(roarTimer);
         if (impactTimer !== null) clearTimeout(impactTimer);
+        if (captureTimer !== null) clearTimeout(captureTimer);
+        if (eruptionTimer !== null) clearTimeout(eruptionTimer);
+        if (flameDamageTimer !== null) clearTimeout(flameDamageTimer);
       }
       if (this.battleSkillCloseup === presentation) {
         this._battleSkillCloseupResolve = null;
@@ -18993,7 +19106,11 @@ new Vue({
       const el = this.$el && this.$el.querySelector(sel);
       const rect = el ? el.getBoundingClientRect() : null;
       const pos = rect ? { x: rect.left + rect.width / 2, y: rect.bottom + 10 } : null;
-      this.$set(this.emoteBubbles, side, { text, id, pos });
+      // 下に吹き出しの入る余白が無いとき（自分のカミは画面の下端近くにある）は、ポートレートの上に出す
+      const bubbleHeight = speechOptions.emote ? 84 : 56;
+      if (pos && typeof window !== 'undefined' && pos.y + bubbleHeight > window.innerHeight) Object.assign(pos, { y: rect.top - 10, above: true });
+      // speechOptions.emote（{ kamiNo, key }）があれば、吹き出しにそのカミの表情アイコンを添える
+      this.$set(this.emoteBubbles, side, { text, id, pos, emote: speechOptions.emote || null });
       this._emoteSpeechHolds = this._emoteSpeechHolds || {};
       if (this._emoteSpeechHolds[side]) this._emoteSpeechHolds[side].cancel();
       this._emoteSpeechHolds[side] = this._battleHoldSpeech(text, voice, () => {
@@ -19029,8 +19146,8 @@ new Vue({
           if (this.tutorial !== greetingLesson || !this.tutorialStep || this.tutorialStep.id !== 'greeting') return;
           this.$set(greetingLesson.flags, 'greetingReplied', true);
           this._tutorialTick();
-        }, { endWithVoice: true });
-      } : null, greetingLesson ? { endWithVoice: true } : {});
+        }, { endWithVoice: true, emote: opponent ? { kamiNo: String(opponent.no), key: 'greeting' } : null });
+      } : null, Object.assign(greetingLesson ? { endWithVoice: true } : {}, { emote: { kamiNo: String(kami.no), key } }));
       this._battlePublishEmote(key);
     },
     _battlePublishEmote(key) {
@@ -19051,7 +19168,11 @@ new Vue({
       const text = this._battleEmoteLineFor(kami, payload.key);
       if (!text) return;
       this._sfxPlay('emote');
-      this._battleShowEmoteBubble('opp', text, this.playKamiVoice(kami, payload.key));
+      this._battleShowEmoteBubble('opp', text, this.playKamiVoice(kami, payload.key), null, { emote: { kamiNo: String(kami.no), key: String(payload.key) } });
+    },
+    // 吹き出しに添える表情アイコンの表示位置（アトラスの該当コマ）。エモート以外の吹き出し・アイコンの無いカミは null
+    emoteBubbleIcon(bubble) {
+      return bubble && bubble.emote ? emoteIconStyle(bubble.emote.kamiNo, bubble.emote.key) : null;
     },
     // 自分のカミポートレートのクリック：エモートのドラッグ操作直後は誤ってプレビューを開かないよう抑止する
     battleSelfKamiClick() {
@@ -19065,6 +19186,8 @@ new Vue({
       const point = e.touches ? e.touches[0] : e;
       this._emoteDragStartX = point.clientX;
       this._emoteDragStartY = point.clientY;
+      // ホイールはカミの円の中心に出す（押した位置に出すと、円の端を押したときに輪がずれて見える）
+      this._emoteWheelCenter = this._battleEmoteWheelCenter(e, point);
       this._emoteDragMoved = false;
       this.emoteWheel = null;
       const move = ev => this._battleEmoteDragMove(ev);
@@ -19078,7 +19201,14 @@ new Vue({
     battleEmoteContextMenu(e) {
       if (this.battleNet && this.battleNet.spectating) return;
       if (!this.battleSample.self.kami || this.battleSample.result) return;
-      this.emoteWheel = { x: e.clientX, y: e.clientY, hoverKey: null, static: true };
+      const center = this._battleEmoteWheelCenter(e, e);
+      this.emoteWheel = { x: center.x, y: center.y, hoverKey: null, static: true };
+    },
+    // エモートホイールの中心：操作したカミの円（ポートレート）の中心。取れないときは押した位置
+    _battleEmoteWheelCenter(e, point) {
+      const el = e && e.currentTarget && e.currentTarget.getBoundingClientRect ? e.currentTarget : null;
+      const r = el ? el.getBoundingClientRect() : null;
+      return r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : { x: point.clientX, y: point.clientY };
     },
     battleEmoteWheelItemClick(key) {
       this.emoteWheel = null;
@@ -19092,10 +19222,12 @@ new Vue({
       if (!this.emoteWheel) {
         if (dist < 14) return; // ドラッグ判定の閾値未満はクリック扱いのままにする
         this._emoteDragMoved = true;
-        this.emoteWheel = { x: this._emoteDragStartX, y: this._emoteDragStartY, hoverKey: null };
+        const center = this._emoteWheelCenter || { x: this._emoteDragStartX, y: this._emoteDragStartY };
+        this.emoteWheel = { x: center.x, y: center.y, hoverKey: null };
       }
       if (e.cancelable) e.preventDefault();
-      if (dist < 30) {
+      // 選ぶ項目は、ホイールの中心から見た指の方向で決める（項目は中心の周りに並んでいるため）
+      if (dist < 30 || Math.hypot(point.clientX - this.emoteWheel.x, point.clientY - this.emoteWheel.y) < 30) {
         this.emoteWheel.hoverKey = null;
         return;
       }
@@ -21060,6 +21192,23 @@ new Vue({
       const divineContext = this._battleDivineContext;
       const prevLastAction = this._dslLastAction;
       const prevSucceeded = this._dslLastActionSucceeded;
+      // ヒノカグツチの破壊とライフ減少は、同じ演出の二つの着弾点で確定させる。
+      const flameLifeAct = divineContext && divineContext.index === 2 && String(divineContext.kami.no) === '7'
+        && actions.some(act => act && act.操作 === '破壊')
+        ? actions.find(act => act && act.操作 === 'ライフ' && act.側 === 'opp' && Number(act.数) < 0) : null;
+      if (flameLifeAct && !divineContext.flameLifeAct) {
+        divineContext.flameLifeAct = flameLifeAct;
+        divineContext.flameDamage = () => {
+          if (!divineContext.flameDamagePromise) divineContext.flameDamagePromise = (async () => {
+            if (divineContext.flameDeathPromise) await divineContext.flameDeathPromise;
+            if (divineContext.flameDeathError) throw divineContext.flameDeathError;
+            if (divineContext.cancelled || divineContext !== this._battleDivineContext || this.appView !== 'battle') return;
+            this._dslOpLife(flameLifeAct, sourceCard);
+            divineContext.flameDamageApplied = true;
+          })().catch(e => { divineContext.flameDamageError = e; });
+          return divineContext.flameDamagePromise;
+        };
+      }
       try {
         for (const act of actions) {
           if (divineContext && (divineContext.cancelled || divineContext !== this._battleDivineContext)) break;
@@ -21071,6 +21220,11 @@ new Vue({
           if (gate && !this._dslLastActionSucceeded) {
             this._dslLastAction = resolved;
             continue;
+          }
+          if (divineContext && resolved === divineContext.flameLifeAct && divineContext.flameDamagePromise) {
+            await divineContext.flameDamagePromise;
+            if (divineContext.flameDamageError) throw divineContext.flameDamageError;
+            if (divineContext.flameDamageApplied) { this._dslLastAction = resolved; continue; }
           }
           // 既定で成功扱い。op側で失敗時に false を立てる
           this._dslLastActionSucceeded = true;
@@ -22442,25 +22596,37 @@ new Vue({
       }
       const targets = await this.dslChooseTargets(destroySel, destroyPrompt, { preferOpponent: true });
       const divine = this._battleDivineContext;
-      if (divine && divine.index === 2 && String(divine.kami.no) === '7' && !divine.presented) {
-        if (!await this._battlePresentFlameClaw(targets)) return;
-      }
-      if (!targets.length) return;
-      this.battleSaveUndo();
-      this._dslLastDestroyedCards = targets.map(card => ({
-        card,
-        power: this._dslCardEffPower(card),
-        attack: Number(card && card.attack) || 0
-      }));
       const movedFromField = [];
-      targets.forEach(c => {
-        if (this._dslMoveFromField(c, 'graveyard')) movedFromField.push(c);
-      });
-      this.battleShowNotice('破壊', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を破壊しました。`, targets);
+      const destroyChosen = () => {
+        if (!targets.length) return;
+        this.battleSaveUndo();
+        this._dslLastDestroyedCards = targets.map(card => ({
+          card, power: this._dslCardEffPower(card), attack: Number(card && card.attack) || 0
+        }));
+        targets.forEach(c => {
+          if (this._dslMoveFromField(c, 'graveyard')) movedFromField.push(c);
+        });
+        this.battleShowNotice('破壊', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を破壊しました。`, targets);
+      };
       // 死亡時トリガー：場から墓地に行ったもののみ発火（手札からの破壊などには発火しない）
       // 死亡時効果は持ち主の視点へ一時的に入れ替えることがある。
-      // 復元前に後続（例：ヒノカグツチ創世神技の相手への3ダメージ）へ進まない。
-      for (const card of movedFromField) await this.battleRunDeathKeywordEffects(card);
+      const runDeath = async () => {
+        for (const card of movedFromField) await this.battleRunDeathKeywordEffects(card);
+      };
+      if (divine && divine.index === 2 && String(divine.kami.no) === '7' && !divine.presented) {
+        divine.flameCapture = () => {
+          destroyChosen();
+          divine.flameDeathPromise = runDeath().catch(e => { divine.flameDeathError = e; });
+        };
+        if (!await this._battlePresentFlameClaw(targets)) return;
+        if (divine.flameDeathPromise) await divine.flameDeathPromise;
+        if (divine.flameDeathError) throw divine.flameDeathError;
+      } else {
+        if (!targets.length) return;
+        destroyChosen();
+        await runDeath();
+      }
+      if (!targets.length) return;
       if (Array.isArray(act.後続) && act.後続.length) {
         await this.dslRunActions(act.後続, sourceCard);
       }

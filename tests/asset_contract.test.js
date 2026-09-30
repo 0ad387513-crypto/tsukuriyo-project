@@ -9,6 +9,32 @@ const crypto = require("node:crypto");
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 
+test("Uzume's fan moves continuously while red and white petals rise on staggered spiral paths", () => {
+  const {DIVINE_UZUME_FAN_FRAMES,divineUzumeSpiralPetalStyle,divineSkillAssetUrls}=require('../divine_effects.js');
+  assert.equal(DIVINE_UZUME_FAN_FRAMES.length,1);
+  for(const file of DIVINE_UZUME_FAN_FRAMES){
+    assert.ok(divineSkillAssetUrls({no:6}).includes(file));
+    assert.ok(fs.statSync(path.join(root,file)).size<=120000,file);
+  }
+  const red=divineUzumeSpiralPetalStyle(1),white=divineUzumeSpiralPetalStyle(2);
+  assert.notEqual(red['--petal-cell-y'],white['--petal-cell-y']);
+  assert.equal(new Set(Array.from({length:8},(_,n)=>{const p=divineUzumeSpiralPetalStyle(n+1);return p['--petal-cell-x']+','+p['--petal-cell-y']})).size,8);
+  const petalUrl=red['--petal-image'].match(/url\('([^']+)'\)/)[1];
+  assert.ok(divineSkillAssetUrls({no:6}).includes(petalUrl));
+  assert.ok(fs.statSync(path.join(root,petalUrl)).size<=160000);
+  assert.match(red['--petal-entry-y'],/-\d+vh/);
+  assert.notEqual(red['--petal-orbit-0'],red['--petal-orbit-1']);
+  assert.notEqual(red['--petal-delay'],white['--petal-delay']);
+  assert.notEqual(red['--petal-height-shift'],white['--petal-height-shift']);
+  assert.ok(Array.from({length:11},(_,step)=>red[`--petal-orbit-${step}`]).every(Boolean));
+  const css=fs.readFileSync(path.join(root,'divine_effects.css'),'utf8');
+  assert.match(css,/@keyframes fx-uzume-fan-sway/);
+  assert.match(css,/@keyframes fx-uzume-fan-flight[\s\S]*?48%\s*\{[^}]*26vh/);
+  assert.match(css,/@keyframes fx-uzume-petal-spiral[\s\S]*?100%\s*\{[^}]*-122vh/);
+  assert.match(css,/@keyframes fx-uzume-petal-flutter/);
+  assert.match(css,/\.uzume-wind-threads \{[^}]*stroke:#fff1dd8c/);
+});
+
 test("each genesis skill selects its own optimized art while skill 1 keeps the eye cut-in", () => {
   const {DIVINE_SKILL_CUTINS,DIVINE_SKILL_AWAKENINGS,divineSkillTheme,divineSkillAssetUrls}=require('../divine_effects.js');
   assert.equal(Object.keys(DIVINE_SKILL_CUTINS).length,10);
@@ -24,7 +50,7 @@ test("each genesis skill selects its own optimized art while skill 1 keeps the e
     assert.equal(divineSkillTheme({no},1).cutin,null);
     assert.equal(divineSkillTheme({no},1).awakening,null);
     assert.equal(theme.awakening,no===1?DIVINE_SKILL_AWAKENINGS['1']:null);
-    assert.equal(theme.awakeningFrames.length,no===1?2:0);
+    assert.equal(theme.awakeningFrames.length,no===1?3:0);
     for(const frame of [theme.awakening,...theme.awakeningFrames].filter(Boolean)) {
       const data=fs.readFileSync(path.join(root,frame)),format=data.toString('ascii',12,16);
       const size=format==='VP8X'?[data.readUIntLE(24,3)+1,data.readUIntLE(27,3)+1]:[data.readUInt16LE(26)&0x3fff,data.readUInt16LE(28)&0x3fff];
