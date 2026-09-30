@@ -48,6 +48,14 @@ class VisualImportTest(unittest.TestCase):
             self.assertLessEqual(len(data), 160000)
             self.assertGreaterEqual(quality, 62)
 
+    def test_generated_odd_size_atlas_is_aligned_after_resize(self):
+        with tempfile.TemporaryDirectory(prefix="tsukuriyo-image-import-test-") as directory:
+            source = Path(directory) / "atlas.png"
+            Image.new("RGBA", (1774, 887), (220, 200, 170, 100)).save(source)
+            data, size, _ = optimizer.encode_image(source, "atlas", (4, 2), max_side=1200)
+            self.assertEqual(size, (1200, 600))
+            self.assertLessEqual(len(data), 160000)
+
     def test_rejects_outside_output_and_wrong_cutin_shape(self):
         with tempfile.TemporaryDirectory(prefix="tsukuriyo-image-import-test-") as directory:
             root = Path(directory)

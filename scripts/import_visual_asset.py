@@ -17,7 +17,7 @@ PROFILES = {
 }
 
 
-def encode_image(source, profile, grid=(1, 1)):
+def encode_image(source, profile, grid=(1, 1), max_side=None):
     policy = PROFILES[profile]
     if min(grid) < 1:
         raise ValueError("スプライトの列数・行数は1以上にしてください")
@@ -29,9 +29,11 @@ def encode_image(source, profile, grid=(1, 1)):
                 raise ValueError("カットインは16:9の画像を指定してください。自動で切り抜きません")
             image = image.resize(policy["size"], Image.Resampling.LANCZOS)
         else:
-            if image.width % grid[0] or image.height % grid[1]:
-                raise ValueError("画像サイズがスプライトの列数・行数で割り切れません")
-            image.thumbnail(policy["size"], Image.Resampling.LANCZOS)
+            size_limit = (max_side, max_side) if max_side else policy["size"]
+            if max_side and (max_side < 1 or max_side > max(policy["size"])):
+                raise ValueError("最大辺はプロファイルの範囲内で指定してください")
+            image.thumbnail(size_limit, Image.Resampling.LANCZOS)
+            # 生成画像の寸法がセル数で割り切れなくても、表示用の寸法だけを揃える。
             size = (image.width // grid[0] * grid[0], image.height // grid[1] * grid[1])
             if min(size) < 1:
                 raise ValueError("スプライトのセルが小さすぎます")
@@ -63,13 +65,13 @@ def update_metadata(value, replacements):
     return replacements.get(value, value) if isinstance(value, str) else value
 
 
-def import_asset(source, output, profile, replace=(), grid=(1, 1), root=ROOT):
+def import_asset(source, output, profile, replace=(), grid=(1, 1), root=ROOT, max_side=None):
     root = Path(root).resolve()
     source = Path(source).resolve()
     target = workspace_path(root, output)
     if target.suffix.lower() != ".webp":
         raise ValueError("保存先の拡張子は.webpを指定してください")
-    data, size, quality = encode_image(source, profile, grid)
+    data, size, quality = encode_image(source, profile, grid, max_side)
     # 内容を含むURLで、旧画像のキャッシュと混ざらないようにする。
     stem = re.sub(r"-[a-f0-9]{12}$", "", target.stem)
     target = target.with_name(stem + "-" + hashlib.sha256(data).hexdigest()[:12] + ".webp")
@@ -119,12 +121,13 @@ def main():
     parser.add_argument("--profile", required=True, choices=PROFILES)
     parser.add_argument("--replace", action="append", default=[], help="旧URL。指定した参照を自動更新")
     parser.add_argument("--grid", default="1x1", help="アトラスの列x行。セル境界を維持")
+    parser.add_argument("--max-side", type=int, help="必要に応じて最大辺を抑え、表示用画像をさらに軽量化")
     args = parser.parse_args()
     try:
         grid = tuple(int(n) for n in args.grid.split("x"))
         if len(grid) != 2:
             raise ValueError("--gridは3x2など列x行で指定してください")
-        asset = import_asset(args.source, args.output, args.profile, args.replace, grid)
+        asset = import_asset(args.source, args.output, args.profile, args.replace, grid, max_side=args.max_side)
     except (OSError, ValueError) as error:
         parser.exit(1, str(error) + "\n")
     print(json.dumps(asset, ensure_ascii=False))

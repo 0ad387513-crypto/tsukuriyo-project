@@ -760,7 +760,7 @@ test("skill 2 completes a prominent portrait before starting its independent ani
   assert.match(html,/divine-skill-art v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation'/);
 });
 
-test("only Susanoo opens his eyes between speech and field effects, respects speed and cancels on exit", async () => {
+test("Susanoo opens his eyes and Orochi's seals arrive after the field effect, respecting speed and exit", async () => {
   const show=method('_battleShowSkill2Closeup','kami,skillName,divineSkillTheme,remoteTransfers,writerSide,remoteTargets,setTimeout,clearTimeout',true);
   const theme=require('../divine_effects.js').divineSkillTheme;
   for(const no of [1,2,3,4,5,6,7,8,9,10]) for(const speed of ['normal','fast','minimal']) {
@@ -776,7 +776,8 @@ test("only Susanoo opens his eyes between speech and field effects, respects spe
       current.callback();await Promise.resolve();
     }
     await using;
-    assert.deepEqual(phases,no===1&&speed!=='minimal'?['portrait','awakening','animation']:['portrait','animation']);
+    assert.deepEqual(phases,no===1&&speed!=='minimal'?['portrait','awakening','animation']:
+      no===10&&speed!=='minimal'?['portrait','animation','sealArrival']:['portrait','animation']);
     assert.deepEqual(voices,['skill2']);assert.deepEqual(sounds,['skill2']);
   }
   const vm={battleAnimationSpeed:'normal',_battleEmoteLineFor:()=>'',playKamiVoice(){},_sfxPlay(){},_battleMotionMs:ms=>ms};
@@ -847,23 +848,73 @@ test("Orochi roars after its seals release, and dismissing cancels a pending roa
     const timers=[],sounds=[];
     const timer=(callback,delay)=>{const t={callback,delay,cancelled:false};timers.push(t);return t};
     const cancel=t=>{t.cancelled=true};
-    const vm={_battleEmoteLineFor:()=>'',playKamiVoice(){},_sfxPlay:s=>sounds.push(s),_battleMotionMs:ms=>ms*speed};
+    const vm={_battleEmoteLineFor:()=>'',playKamiVoice(){},_sfxPlay:(name,volume)=>sounds.push({name,volume}),_battleMotionMs:ms=>ms*speed,_battleOrochiMarkRect:()=>({left:100,top:60,width:38,height:44})};
     const using=method('_battleShowSkill2Closeup','kami,skillName,divineSkillTheme,remoteTransfers,writerSide,remoteTargets,setTimeout,clearTimeout',true).call(vm,{no:10},'神技2',require('../divine_effects.js').divineSkillTheme,null,'self',null,timer,cancel);
-    assert.deepEqual(sounds,['skill2']);
+    assert.deepEqual(sounds,[{name:'skill2',volume:undefined}]);
     assert.equal(timers[0].delay,1800*speed);
     timers[0].callback();await Promise.resolve();
     assert.equal(vm.battleSkillCloseup.phase,'animation');
-    assert.equal(timers[1].delay,4200*speed*.4);
-    assert.ok(timers[1].delay>1589*speed,'the roar follows the last seal at normal and fast speed');
-    assert.equal(timers[2].delay,4200*speed);
+    assert.equal(timers[1].delay,4200*speed*.82);
+    assert.ok(timers[1].delay>4200*speed*.64,'the roar follows a pause after the girl is fully revealed at normal and fast speed');
+    assert.equal(timers[2].delay,4200*speed+3200);
+    assert.ok(timers[2].delay-timers[1].delay>=3000,'the dragon scene stays visible until the roar has played in full');
     if (!dismiss) timers[1].callback();
     else vm.battleSkillCloseup=null;
-    timers[2].callback();await using;
+    timers[2].callback();
+    if (!dismiss) {
+      await Promise.resolve();
+      assert.equal(vm.battleSkillCloseup.phase,'sealArrival');
+      assert.deepEqual(vm.battleSkillCloseup.sealLanding,{left:100,top:60,width:38,height:44});
+      assert.equal(timers[3].delay,1200*speed);
+      timers[3].callback();
+    }
+    await using;
     assert.equal(timers[1].cancelled,true);
     if (dismiss) timers[1].callback(); // A callback already queued still cannot play after leaving.
-    assert.deepEqual(sounds,dismiss?['skill2']:['skill2','dragonHeavy']);
+    assert.deepEqual(sounds,dismiss?[{name:'skill2',volume:undefined}]:[{name:'skill2',volume:undefined},{name:'dragonHeavy',volume:.35}]);
     assert.equal(vm.battleSkillCloseup,null);
   }
+});
+
+test('Orochi gathers eight seals into the same ability mark on either side', () => {
+  const {divineOrochiSealArrivalStyles,divineOrochiSealMarkStyle}=require('../divine_effects.js');
+  const seals=divineOrochiSealArrivalStyles({innerWidth:1200,innerHeight:800});
+  assert.equal(seals.length,8);
+  assert.equal(new Set(seals.map(s=>s['--seal-from-x']+','+s['--seal-from-y'])).size,8);
+  const rect={left:140,top:70,width:38,height:44};
+  const style=divineOrochiSealMarkStyle(rect,{innerWidth:1200,innerHeight:800});
+  assert.equal(style.left,'159px');
+  assert.equal(style.top,'92px');
+  assert.match(style['--arrival-x'],/159px/);
+  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+  assert.match(html,/battleOrochiMarkPending\('self'\)/);
+  assert.match(html,/battleOrochiMarkPending\('opp'\)/);
+  assert.match(html,/divine-orochi-seal-arrival/);
+});
+
+test("Orochi keeps the original cut-in and reveals a separate seamless painting after eight seals peel", () => {
+  const {divineSkillAssetUrls,DIVINE_OROCHI_UNIFIED_SCENE,DIVINE_SKILL_CUTINS}=require('../divine_effects.js');
+  const components={};
+  Function('Vue',fs.readFileSync(path.join(__dirname,'..','divine_effects.js'),'utf8'))({component(name,definition){components[name]=definition}});
+  assert.match(components['divine-skill-art'].template,/class="orochi-unified-girl"/);
+  assert.match(components['divine-skill-art'].template,/class="orochi-unified-dragons"/);
+  assert.doesNotMatch(components['divine-skill-art'].template,/orochi-face-glow/);
+  assert.match(components['divine-skill-art'].template,/class="orochi-peeling-seal"/);
+  assert.doesNotMatch(components['divine-skill-art'].template,/class="genesis-broken-seal"/);
+  assert.doesNotMatch(components['divine-skill-art'].template,/orochi-dragon-eye-pair/);
+  assert.ok(divineSkillAssetUrls({no:10}).includes(DIVINE_OROCHI_UNIFIED_SCENE));
+  assert.equal(DIVINE_SKILL_CUTINS['10'],'kami_cutin/yamata-no-orochi-genesis-wide-8d35ef840ea7.webp');
+  assert.notEqual(DIVINE_OROCHI_UNIFIED_SCENE,DIVINE_SKILL_CUTINS['10']);
+  assert.ok(divineSkillAssetUrls({no:10}).includes(DIVINE_SKILL_CUTINS['10']));
+  assert.equal(divineSkillAssetUrls({no:10}).filter(url=>url===DIVINE_OROCHI_UNIFIED_SCENE).length,1);
+  assert.ok(!divineSkillAssetUrls({no:10}).some(url=>url.includes('orochi-silhouette-')||url.includes('orochi-awakened-expression-')||url.includes('orochi-eight-dragons-wide-')));
+  assert.ok(fs.statSync(path.join(__dirname,'..',DIVINE_OROCHI_UNIFIED_SCENE)).size<300000);
+  const css=fs.readFileSync(path.join(__dirname,'..','divine_effects.css'),'utf8');
+  assert.ok(css.includes(`background:url('${DIVINE_OROCHI_UNIFIED_SCENE}') center/100% 100% no-repeat`));
+  assert.doesNotMatch(css,/fx-orochi-face-glow/);
+  assert.match(css,/@keyframes fx-orochi-girl[^\n]*44%,52%\{opacity:1;filter:brightness\(\.055\)/);
+  assert.match(css,/@keyframes fx-orochi-dragons[^\n]*0%,80%\{opacity:0/);
+  assert.ok(!divineSkillAssetUrls({no:10}).some(url=>url.includes('orochi-awakening-frames-')));
 });
 
 test("all ten Kami present both skills without field replays", () => {
@@ -1384,32 +1435,66 @@ test("required turn and effect draws lose only when an additional card cannot be
 });
 
 
-test("flame claw joins the chosen slot to the opposing Kami and follows either board orientation", () => {
-  const {divineFlameClawLayout}=require('../divine_effects.js');
+test("flame claw shreds the chosen card and a continuous fire wall crosses the enemy Kami's row", () => {
+  const {divineFlameClawLayout,divineSkillAssetUrls,DIVINE_HINO_FIRE_WALL_FRAMES}=require('../divine_effects.js');
+  assert.ok(!divineSkillAssetUrls({no:7}).some(url=>url.includes('gouge')),'the terrain gouge is no longer loaded');
+  assert.ok(divineSkillAssetUrls({no:7}).every(url=>!url.includes('hinokagutsuchi-fire-only-')),'the repeated narrow columns are no longer loaded');
+  assert.equal(DIVINE_HINO_FIRE_WALL_FRAMES.length,4);
   for(const upside of [false,true]) {
-    const kami={left:450,top:upside?640:30,width:100,height:100,kind:'kami'},angles=[];
+    const kami={left:450,top:upside?640:30,width:100,height:100,kind:'kami'},shatters=[];
     for(const x of [120,460,800]) {
-      const card={left:x,top:upside?400:240,width:80,height:120,kind:'card'};
-      const {sweep,zones}=divineFlameClawLayout([card,kami]);
-      assert.equal(parseFloat(sweep.left),(x+40+500)/2);
-      assert.equal(zones.length,2);assert.equal(divineFlameClawLayout([card,kami]).paths.length,5);
-      assert.ok(zones.every(z=>z.sparks.length===12 && z.sparks.every(v=>!Object.values(v).some(x=>String(x).includes('NaN')))));
-      const dx=x+40-500,dy=card.top+60-(kami.top+50);
-      const actualAngle=parseFloat(sweep['--claw-angle'])*Math.PI/180+Math.atan2(parseFloat(sweep.height),parseFloat(sweep.width));
-      assert.ok(Math.abs(actualAngle-Math.atan2(dy,dx))<1e-8);
-      assert.ok(parseFloat(sweep.width)>Math.hypot(dx,dy));
-      angles.push(sweep['--claw-angle']);
+      const card={left:x,top:upside?400:240,width:80,height:120,kind:'card',image:'card.webp'};
+      const {sweep,shatter,eruptionLayers,burst}=divineFlameClawLayout([card,kami]);
+      assert.equal(parseFloat(sweep.left),x+40);
+      assert.match(sweep.backgroundImage,/hinokagutsuchi-red-slash-/);
+      assert.equal(parseFloat(shatter.style.left),x);
+      assert.ok(shatter.image.includes('card.webp'));
+      assert.equal(eruptionLayers.length,4,'four full-width painted frames form one fire wall');
+      assert.equal(new Set(eruptionLayers.map(layer=>layer.style.backgroundImage)).size,4);
+      for(const layer of eruptionLayers) {
+        assert.ok(layer.style.backgroundImage.includes('hinokagutsuchi-fire-wall-'));
+        const flameTop=parseFloat(layer.style.top),flameBottom=flameTop+parseFloat(layer.style.height);
+        assert.ok(flameTop<kami.top+50 && flameBottom>kami.top+50);
+        assert.ok(parseFloat(layer.style.left)<=0 && parseFloat(layer.style.left)+parseFloat(layer.style.width)>=1200);
+      }
+      assert.deepEqual(eruptionLayers.map(layer=>layer.phase),[0,1,2,3]);
+      assert.equal(parseFloat(burst.left),0);
+      shatters.push(parseFloat(shatter.style.left));
     }
-    assert.equal(new Set(angles).size,3,'left, centre, and right targets have different slash trajectories');
+    assert.equal(new Set(shatters).size,3,'left, centre, and right cards shatter in their own slots');
   }
-  assert.deepEqual(divineFlameClawLayout([null,{left:NaN,top:1,width:2,height:3}]),{sweep:null,zones:[]});
+  const onlyKami=divineFlameClawLayout([{left:450,top:30,width:100,height:100,kind:'kami'}]);
+  assert.equal(onlyKami.shatter,null);assert.equal(onlyKami.eruptionLayers.length,4);
+  assert.deepEqual(divineFlameClawLayout([null,{left:NaN,top:1,width:2,height:3}]),{sweep:null,shatter:null,eruptionLayers:[],burst:null});
+});
+
+test("Hinokagutsuchi sends the selected card to the graveyard before the leader explosion", async () => {
+  const legacy={no:21},board={opp:{legacies:[legacy],graveyard:[],life:10}},events=[];
+  const context={kami:{no:7},index:2,flameCapture(){
+    events.push('graveyard');board.opp.legacies.splice(0,1);board.opp.graveyard.push(legacy);
+  },flameDamage(){events.push('damage');board.opp.life-=3}};
+  const timers=[];
+  const schedule=(callback,delay)=>{const timer={callback,delay};timers.push(timer);return timer};
+  const vm={_battleDivineContext:context,_battleEmoteLineFor:()=>'',playKamiVoice(){},_sfxPlay(){},
+    _battleMotionMs:ms=>ms};
+  const show=method('_battleShowSkill2Closeup','kami,skillName,divineSkillTheme,remoteTransfers,writerSide,remoteTargets,setTimeout,clearTimeout',true);
+  const using=show.call(vm,{no:7},'焔天',require('../divine_effects.js').divineSkillTheme,null,'self',null,schedule,()=>{});
+  vm._battleSkillCloseupT.callback();await Promise.resolve();
+  assert.equal(vm.battleSkillCloseup.phase,'animation');
+  assert.deepEqual(board.opp.graveyard,[]);assert.equal(board.opp.life,10);
+  timers.find(t=>t.delay===4300*.30).callback();
+  assert.deepEqual(events,['graveyard']);assert.deepEqual(board.opp.graveyard,[legacy]);assert.equal(board.opp.life,10);
+  timers.find(t=>t.delay===4300*.57).callback();
+  assert.deepEqual(events,['graveyard','damage']);assert.equal(board.opp.life,7);
+  vm._battleSkillCloseupT.callback();await using;
+  assert.equal(vm.battleSkillCloseup,null);
 });
 
 test("Hinokagutsuchi waits for target selection, claw animation, and death effects before damaging the enemy", async () => {
   for(const cpu of [false,true]) for(const speed of ['normal','fast','minimal']) {
     const kami={no:7,name:'ヒノカグツチ'},legacy={no:21},other={no:22};
     const caster={kami,life:10,lifeMax:10,tenryoku:12,legacies:[],relics:[]};
-    const enemy={kami:{no:8},life:10,lifeMax:10,legacies:[other,legacy],relics:[]};
+    const enemy={kami:{no:8},life:10,lifeMax:10,legacies:[other,legacy],relics:[],graveyard:[]};
     const events=[];let finishSelection,finishDeath;
     const selection=new Promise(r=>{finishSelection=r}),death=new Promise(r=>{finishDeath=r});
     const vm={appView:'battle',battleViewSwapped:cpu,_dslSwapped:cpu,battleAnimationSpeed:speed,
@@ -1435,7 +1520,10 @@ test("Hinokagutsuchi waits for target selection, claw animation, and death effec
       _dslOpDestroy:method('_dslOpDestroy','act,sourceCard',true),_dslOpLife:method('_dslOpLife','act,sourceCard'),
       async dslRunAction(a,source){if(a.操作==='破壊')await this._dslOpDestroy(a,source);else this._dslOpLife(a,source)},
       dslRunActions:method('dslRunActions','actions,sourceCard',true),
-      _dslMoveFromField(card){events.push('destroy');enemy.legacies=enemy.legacies.filter(c=>c!==card);return true},
+      _dslMoveFromField(card,destination){
+        assert.equal(destination,'graveyard');events.push('destroy');
+        enemy.legacies=enemy.legacies.filter(c=>c!==card);enemy.graveyard.push(card);return true;
+      },
       fullName:()=>'',async battleRunDeathKeywordEffects(){events.push('death');await death;}
     };
     vm._battleShowSkill2Closeup=function(k,name,transfers,writer){
@@ -1454,7 +1542,8 @@ test("Hinokagutsuchi waits for target selection, claw animation, and death effec
       method('battleSkillCloseupClickDismiss').call(vm);
       assert.deepEqual(enemy.legacies,[other,legacy],'a click cannot remove a still-burning target');
       clearTimeout(vm._battleSkillCloseupT);vm._battleSkillCloseupResolve();await new Promise(r=>setImmediate(r));
-      assert.deepEqual(events,['publish','cutin','destroy','death']);assert.equal(enemy.life,10);
+      assert.deepEqual(events,['publish','cutin','destroy','death']);
+      assert.deepEqual(enemy.graveyard,[legacy]);assert.equal(enemy.life,10);
       finishDeath();await using;assert.equal(enemy.life,7);assert.equal(caster.life,10);
       assert.deepEqual(enemy.legacies,[other]);assert.equal(vm._battleDivineContext,null);
     } finally {
@@ -1487,7 +1576,7 @@ test("leaving during the flame cut-in cancels destruction, damage, and a second 
   assert.equal(vm._battleDivineContext,null);
 });
 
-test("tutorial opponent flame skill burns the fixed Legacy and player Kami before destruction", async () => {
+test("tutorial opponent flame skill destroys the fixed Legacy before damaging the player Kami", async () => {
   const kami={no:7,skill2name:'焔天',skill2cost:'8'},legacy={no:21};let release;
   const finished=new Promise(r=>{release=r}),events=[];
   const vm={appView:'battle',battleSample:{self:{kami:{no:8},life:4,legacies:[legacy]},opp:{kami,tenryoku:8}},

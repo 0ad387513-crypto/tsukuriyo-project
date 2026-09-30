@@ -7659,7 +7659,7 @@
                   <divine-sprite name="kusanagi"></divine-sprite>
                   <span id="susanoo-ability-opp" class="kami-orochi-tooltip" role="tooltip"><strong>付与された能力：墓地からの進化</strong>進化条件を満たす、自分の墓地のレガシーも進化元に選べます。この効果は星戦が終わるまで続きます。タップで詳細を確認できます。</span>
                 </div>
-                <div v-if="battleViewIsOrochi('opp') && battleView.opp.seal === 0" class="kami-orochi-mark kami-orochi-mark-opp" tabindex="0" role="button"
+                <div v-if="battleViewIsOrochi('opp') && battleView.opp.seal === 0" class="kami-orochi-mark kami-orochi-mark-opp" :class="{'orochi-mark-pending':battleOrochiMarkPending('opp')}" tabindex="0" role="button"
                      aria-label="創世神技発動中：龍レガシーの神攻を強化" aria-describedby="orochi-ability-opp"
                      @mouseenter.stop="hideCardHover" @focus="hideCardHover"
                      @mousedown.stop @touchstart.stop
@@ -7861,7 +7861,7 @@
                   <divine-sprite name="kusanagi"></divine-sprite>
                   <span id="susanoo-ability-self" class="kami-orochi-tooltip" role="tooltip"><strong>付与された能力：墓地からの進化</strong>進化条件を満たす、自分の墓地のレガシーも進化元に選べます。この効果は星戦が終わるまで続きます。タップで詳細を確認できます。</span>
                 </div>
-                <div v-if="battleViewIsOrochi('self') && battleView.self.seal === 0" class="kami-orochi-mark" tabindex="0" role="button"
+                <div v-if="battleViewIsOrochi('self') && battleView.self.seal === 0" class="kami-orochi-mark" :class="{'orochi-mark-pending':battleOrochiMarkPending('self')}" tabindex="0" role="button"
                      aria-label="創世神技発動中：龍レガシーの神攻を強化" aria-describedby="orochi-ability-self"
                      @mouseenter.stop="hideCardHover" @focus="hideCardHover"
                      @mousedown.stop @touchstart.stop
@@ -8814,7 +8814,7 @@
     </div>
   </div>
   <transition name="battle-skill-closeup-fade">
-    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :style="{ zIndex: battleCpuThinking ? 10001 : null, '--fx-duration': _battleMotionMs(battleSkillCloseup.phase === 'animation' ? (battleSkillCloseup.animationDuration || 2400) : 1800)+'ms' }" :class="{ 'genesis-dedicated-mode': battleSkillCloseup.dedicatedArt, 'divine-cinematic-mode': battleSkillCloseup.phase === 'animation', 'divine-transfer-mode': battleSkillCloseup.phase === 'animation' && battleSkillCloseup.transfers && battleSkillCloseup.transfers.length > 0, 'divine-portrait-mode': battleSkillCloseup.phase === 'portrait', 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }"
+    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :style="{ zIndex: battleCpuThinking ? 10001 : null, '--fx-duration': _battleMotionMs(battleSkillCloseup.phase === 'animation' ? (battleSkillCloseup.animationDuration || 2400) : 1800)+'ms' }" :class="{ 'genesis-dedicated-mode': battleSkillCloseup.dedicatedArt, 'divine-cinematic-mode': battleSkillCloseup.phase === 'animation', 'orochi-seal-arrival-mode': battleSkillCloseup.phase === 'sealArrival', 'divine-transfer-mode': battleSkillCloseup.phase === 'animation' && battleSkillCloseup.transfers && battleSkillCloseup.transfers.length > 0, 'divine-portrait-mode': battleSkillCloseup.phase === 'portrait', 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }"
          @click="battleSkillCloseupClickDismiss">
       <divine-skill1-sigil v-if="battleSkillCloseup.mode === 'skill1' && battleSkillCloseup.sigil && battleAnimationSpeed !== 'minimal'" :theme="battleSkillCloseup.sigil" :duration="_battleMotionMs(1800)"></divine-skill1-sigil>
       <!-- 創世神技のカットイン（暗い背景・絵・技名）はひとまとめにし、終わるときは画面の端から中央へ消えていく -->
@@ -8831,6 +8831,7 @@
       </transition>
       <divine-skill-art v-if="battleSkillCloseup.phase === 'awakening'" stage="awakening" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(battleSkillCloseup.awakeningDuration)"></divine-skill-art>
       <divine-skill-art v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'" :key="'effect-'+battleSkillCloseup._shownAt" :effect="battleSkillCloseup.effect" :layout="battleSkillCloseup.layout" :survivors="battleSkillCloseup.survivors" :targets="battleSkillCloseup.targets" :sword-landing="battleSkillCloseup.swordLanding" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-skill-art>
+      <divine-orochi-seal-arrival v-if="battleSkillCloseup.phase === 'sealArrival' && battleSkillCloseup.sealLanding" :landing="battleSkillCloseup.sealLanding" :duration="_battleMotionMs(1200)"></divine-orochi-seal-arrival>
       <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'"><divine-scroll-transfer v-for="(transfer,i) in battleSkillCloseup.transfers" :key="'scroll-transfer'+i" :transfer="transfer" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-scroll-transfer></template>
       <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal' && battleSkillCloseup.effect.kamiNo !== '7'"><divine-target-impact v-for="(rect,i) in battleSkillCloseup.targets" :key="'impact'+i" :rect="rect" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-target-impact></template>
       <div v-if="battleSkillCloseup.phase === 'animation' && battleSkillCloseup.effect" class="divine-cinematic-title">{{ battleSkillCloseupNameParts.main }}</div>
@@ -14720,8 +14721,20 @@ new Vue({
       if (act.skill === 2 && String(kami.no) === '7') {
         const idx = act.destroy ? this._tutorialOppIndex(bs.self.legacies, act.destroy) : -1;
         const targets = idx >= 0 ? [bs.self.legacies[idx]] : [];
+        divineContext.flameCapture = () => {
+          const current = act.destroy ? this._tutorialOppIndex(bs.self.legacies, act.destroy) : -1;
+          if (current >= 0) this.battleDestroyLegacy('self', current, []);
+        };
+        divineContext.flameDamage = () => {
+          if (!act.damage || divineContext.flameDamageApplied) return;
+          bs.self.life = Math.max(0, (Number(bs.self.life) || 0) - act.damage);
+          divineContext.flameDamageApplied = true;
+          this._sfxPlay('hit');
+          this.battleShowNotice('ライフ変化', `あなたのライフが${act.damage}減りました。`, []);
+          this._battleCheckResult();
+        };
         if (!await this._battlePresentFlameClaw(targets, 'opp')) return;
-      }
+      } else {
       if (act.destroy) {
         const idx = this._tutorialOppIndex(bs.self.legacies, act.destroy);
         if (idx >= 0) this.battleDestroyLegacy('self', idx, []);
@@ -14731,6 +14744,7 @@ new Vue({
         this._sfxPlay('hit');
         this.battleShowNotice('ライフ変化', `あなたのライフが${act.damage}減りました。`, []);
         this._battleCheckResult();
+      }
       }
       if (!this._battleDivineContext.presented) {
         if (act.skill === 2) await this._battleShowSkill2Closeup(kami, kami.skill2name, null, 'opp');
@@ -17568,7 +17582,8 @@ new Vue({
        必ずカードをDOMから取り除く（splice等）より前に呼び出すこと。 */
     _battleShowDestroySuck(side, zone, index, destZone) {
       const divine = this._battleDivineContext;
-      if (divine && divine.presented && divine.index === 2 && String(divine.kami.no) === '7') return;
+      // 爪で引き裂かれて消える間は、墓地アイコンへ飛ぶ通常演出を重ねない。
+      if (divine && divine.index === 2 && String(divine.kami.no) === '7' && (divine.flameCaptured || divine.presented)) return;
       const sourceRect = this._battleFieldCardRect(side, zone, index);
       if (this._battleDivineContext && sourceRect) {
         const { kami, index: skillIndex } = this._battleDivineContext;
@@ -17794,6 +17809,10 @@ new Vue({
       const p = this.battleSkillCloseup;
       return !!(p && p.effect && p.effect.kamiNo === '1' && this.battleAnimationSpeed !== 'minimal' && this.battleViewSide(p.writerSide || 'self') === displaySide);
     },
+    battleOrochiMarkPending(displaySide) {
+      const p = this.battleSkillCloseup;
+      return !!(p && p.effect && p.effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal' && this.battleViewSide(p.writerSide || 'self') === displaySide);
+    },
     _battleSusanooMarkRect(writerSide) {
       const root = this.$el;
       if (!root) return null;
@@ -17806,6 +17825,21 @@ new Vue({
         return {left:r.left,top:r.top,width:r.width,height:r.height};
       }
       // 受信側の効果同期より演出が先着した場合も、同じ右下の置き場へ向かう。
+      const r = portrait.getBoundingClientRect();
+      return {left:r.right + 17 - 38,top:r.bottom - 4 - 44,width:38,height:44};
+    },
+    _battleOrochiMarkRect(writerSide) {
+      const root = this.$el;
+      if (!root) return null;
+      const display = this.battleViewSide(writerSide);
+      const portrait = root.querySelector(display === 'self' ? '.battle-row-self-bot .kami-portrait' : '.battle-row-opp-top .kami-portrait');
+      if (!portrait) return null;
+      const badge = portrait.querySelector('.kami-orochi-mark');
+      if (badge) {
+        const r = badge.getBoundingClientRect();
+        return {left:r.left,top:r.top,width:r.width,height:r.height};
+      }
+      // 公開状態の同期より先に演出が始まったときも、同じ右下の置き場へ向かう。
       const r = portrait.getBoundingClientRect();
       return {left:r.right + 17 - 38,top:r.bottom - 4 - 44,width:38,height:44};
     },
@@ -17872,6 +17906,19 @@ new Vue({
         context.cancelled = true;
         return false;
       }
+      // 最小演出などで途中の時刻通知が省かれた場合も、破壊→死亡時効果→ダメージの順を保つ。
+      if (!context.flameCaptured && typeof context.flameCapture === 'function') {
+        context.flameCaptured = true;
+        context.flameCapture();
+      }
+      if (context.flameDeathPromise) await context.flameDeathPromise;
+      if (context.flameDeathError) throw context.flameDeathError;
+      if (typeof context.flameDamage === 'function') await context.flameDamage();
+      if (context.flameDamageError) throw context.flameDamageError;
+      if (board !== this.battleSample || this.appView !== 'battle' || context !== this._battleDivineContext) {
+        context.cancelled = true;
+        return false;
+      }
       this._battleFinishDivinePresentation();
       return true;
     },
@@ -17883,10 +17930,11 @@ new Vue({
         dedicatedArt: true,
         writerSide,
         phase: 'portrait',
-        animationDuration: String(kami && kami.no) === '10' ? 4200 : 2400,
+        animationDuration: String(kami && kami.no) === '7' ? 4300 : (String(kami && kami.no) === '10' || String(kami && kami.no) === '6') ? 4200 : 2400,
         awakeningDuration: 3000,
         layout: typeof this._battleDivineStageLayout === 'function' ? this._battleDivineStageLayout(writerSide) : null,
         swordLanding: String(kami && kami.no) === '1' && typeof this._battleSusanooMarkRect === 'function' ? this._battleSusanooMarkRect(writerSide) : null,
+        sealLanding: null,
         targets: ['4','6','7','8'].includes(String(kami && kami.no)) && this._battleDivineContext ? (this._battleDivineContext.targets || []).slice(0,7).map(r => Object.assign({},r)) : [],
         survivors: String(kami && kami.no) === '2' && typeof this._battleDivineSurvivorCues === 'function' ? this._battleRemoteDivineTargets(this._battleDivineSurvivorCues(),'self') : [],
         transfers: String(kami && kami.no) === '5' && this._battleDivineContext ? (this._battleDivineContext.transfers || []).map(t => Object.assign({},t,{image:this.cardImageUrl(t.card)})) : [],
@@ -17902,14 +17950,18 @@ new Vue({
       };
       this._sfxPlay('skill2');
       const voice = this.playKamiVoice(kami, 'skill2');
+      // 咆哮の音源を先に読み込み、龍が姿を現す瞬間に遅れず鳴らす。
+      if (effect.kamiNo === '10' && typeof this._sfxLoadBuffer === 'function') this._sfxLoadBuffer('dragonHeavy').catch(() => {});
       const presentation = this.battleSkillCloseup;
       // スサノオだけ、台詞の終了後に顔へ寄って開眼してから盤面の演出へ進む。
       const phases = [{ name: 'portrait', duration: 1800 }];
       if (effect.awakening && this.battleAnimationSpeed !== 'minimal') phases.push({name:'awakening',duration:presentation.awakeningDuration});
       phases.push({ name: 'animation', duration: presentation.animationDuration });
+      if (effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal') phases.push({name:'sealArrival',duration:1200});
       for (const phase of phases) {
         if (this.battleSkillCloseup !== presentation) break;
         if (phase.name === 'animation' && String(kami && kami.no) === '1' && typeof this._battleSusanooMarkRect === 'function') presentation.swordLanding = this._battleSusanooMarkRect(writerSide);
+        if (phase.name === 'sealArrival' && typeof this._battleOrochiMarkRect === 'function') presentation.sealLanding = this._battleOrochiMarkRect(writerSide);
         if (phase.name === 'animation' && remoteTransfers) presentation.transfers = this._battleRemoteDivineTransfers(remoteTransfers, writerSide);
         if (phase.name === 'animation' && remoteTargets && ['4','7'].includes(String(kami && kami.no))) presentation.targets = this._battleRemoteDivineTargets(remoteTargets, writerSide);
         if (phase.name === 'animation' && String(kami && kami.no) === '2' && typeof this._battleDivineSurvivorCues === 'function') {
@@ -17918,14 +17970,28 @@ new Vue({
         }
         presentation.phase = phase.name;
         presentation._shownAt = Date.now();
-        // 八枚の札が消えた後だけ、高コスト龍召喚の咆哮を一度鳴らす。
+        // 札がはがれて少女の全容が見えてから間を置き、八頭の龍が現れる瞬間に咆哮を鳴らす。
         const roarTimer = phase.name === 'animation' && String(kami && kami.no) === '10' ? setTimeout(() => {
-          if (this.battleSkillCloseup === presentation && presentation.phase === 'animation') this._sfxPlay('dragonHeavy');
-        }, this._battleMotionMs(phase.duration) * .4) : null;
-        // 爪が着弾する絵に合わせて、一度だけ衝撃音を鳴らす。
+          if (this.battleSkillCloseup === presentation && presentation.phase === 'animation') this._sfxPlay('dragonHeavy', .35);
+        }, this._battleMotionMs(phase.duration) * .82) : null;
+        // 爪による引き込みと、相手カミへの爆発を別々の時刻で確定させる。
         const impactTimer = phase.name === 'animation' && effect.kamiNo === '7' && this.battleAnimationSpeed !== 'minimal' ? setTimeout(() => {
           if (this.battleSkillCloseup === presentation && presentation.phase === 'animation') this._sfxPlay('hit');
-        }, this._battleMotionMs(phase.duration) * .2) : null;
+        }, this._battleMotionMs(phase.duration) * .12) : null;
+        const flameContext = phase.name === 'animation' && effect.kamiNo === '7' ? this._battleDivineContext : null;
+        const captureTimer = flameContext && this.battleAnimationSpeed !== 'minimal' ? setTimeout(() => {
+          if (flameContext !== this._battleDivineContext || this.battleSkillCloseup !== presentation || presentation.phase !== 'animation'
+            || flameContext.flameCaptured || typeof flameContext.flameCapture !== 'function') return;
+          flameContext.flameCaptured = true;
+          try { flameContext.flameCapture(); } catch (e) { flameContext.flameDeathError = e; }
+        }, this._battleMotionMs(phase.duration) * .30) : null;
+        const eruptionTimer = phase.name === 'animation' && effect.kamiNo === '7' && this.battleAnimationSpeed !== 'minimal' ? setTimeout(() => {
+          if (this.battleSkillCloseup === presentation && presentation.phase === 'animation') this._sfxPlay('effect');
+        }, this._battleMotionMs(phase.duration) * .54) : null;
+        const flameDamageTimer = flameContext && this.battleAnimationSpeed !== 'minimal' ? setTimeout(() => {
+          if (flameContext === this._battleDivineContext && this.battleSkillCloseup === presentation
+            && presentation.phase === 'animation' && typeof flameContext.flameDamage === 'function') flameContext.flameDamage();
+        }, this._battleMotionMs(phase.duration) * .57) : null;
         await new Promise(resolve => {
           let hold = null;
           const finish = () => { if (hold) hold.cancel(); resolve(); };
@@ -17933,10 +17999,17 @@ new Vue({
           if (phase.name === 'portrait' && presentation.line) {
             hold = this._battleHoldSpeech(presentation.line, voice, finish);
             this._battleSkillCloseupT = hold.timer;
-          } else this._battleSkillCloseupT = setTimeout(finish, this._battleMotionMs(phase.duration));
+          } else {
+            // オロチは龍の絵を保持したまま、約3秒の咆哮が終わるまで次の札演出へ進まない。
+            const roarHoldMs = phase.name === 'animation' && effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal' ? 3200 : 0;
+            this._battleSkillCloseupT = setTimeout(finish, this._battleMotionMs(phase.duration) + roarHoldMs);
+          }
         });
         if (roarTimer !== null) clearTimeout(roarTimer);
         if (impactTimer !== null) clearTimeout(impactTimer);
+        if (captureTimer !== null) clearTimeout(captureTimer);
+        if (eruptionTimer !== null) clearTimeout(eruptionTimer);
+        if (flameDamageTimer !== null) clearTimeout(flameDamageTimer);
       }
       if (this.battleSkillCloseup === presentation) {
         this._battleSkillCloseupResolve = null;
@@ -20228,6 +20301,23 @@ new Vue({
       const divineContext = this._battleDivineContext;
       const prevLastAction = this._dslLastAction;
       const prevSucceeded = this._dslLastActionSucceeded;
+      // ヒノカグツチの破壊とライフ減少は、同じ演出の二つの着弾点で確定させる。
+      const flameLifeAct = divineContext && divineContext.index === 2 && String(divineContext.kami.no) === '7'
+        && actions.some(act => act && act.操作 === '破壊')
+        ? actions.find(act => act && act.操作 === 'ライフ' && act.側 === 'opp' && Number(act.数) < 0) : null;
+      if (flameLifeAct && !divineContext.flameLifeAct) {
+        divineContext.flameLifeAct = flameLifeAct;
+        divineContext.flameDamage = () => {
+          if (!divineContext.flameDamagePromise) divineContext.flameDamagePromise = (async () => {
+            if (divineContext.flameDeathPromise) await divineContext.flameDeathPromise;
+            if (divineContext.flameDeathError) throw divineContext.flameDeathError;
+            if (divineContext.cancelled || divineContext !== this._battleDivineContext || this.appView !== 'battle') return;
+            this._dslOpLife(flameLifeAct, sourceCard);
+            divineContext.flameDamageApplied = true;
+          })().catch(e => { divineContext.flameDamageError = e; });
+          return divineContext.flameDamagePromise;
+        };
+      }
       try {
         for (const act of actions) {
           if (divineContext && (divineContext.cancelled || divineContext !== this._battleDivineContext)) break;
@@ -20239,6 +20329,11 @@ new Vue({
           if (gate && !this._dslLastActionSucceeded) {
             this._dslLastAction = resolved;
             continue;
+          }
+          if (divineContext && resolved === divineContext.flameLifeAct && divineContext.flameDamagePromise) {
+            await divineContext.flameDamagePromise;
+            if (divineContext.flameDamageError) throw divineContext.flameDamageError;
+            if (divineContext.flameDamageApplied) { this._dslLastAction = resolved; continue; }
           }
           // 既定で成功扱い。op側で失敗時に false を立てる
           this._dslLastActionSucceeded = true;
@@ -21610,25 +21705,37 @@ new Vue({
       }
       const targets = await this.dslChooseTargets(destroySel, destroyPrompt, { preferOpponent: true });
       const divine = this._battleDivineContext;
-      if (divine && divine.index === 2 && String(divine.kami.no) === '7' && !divine.presented) {
-        if (!await this._battlePresentFlameClaw(targets)) return;
-      }
-      if (!targets.length) return;
-      this.battleSaveUndo();
-      this._dslLastDestroyedCards = targets.map(card => ({
-        card,
-        power: this._dslCardEffPower(card),
-        attack: Number(card && card.attack) || 0
-      }));
       const movedFromField = [];
-      targets.forEach(c => {
-        if (this._dslMoveFromField(c, 'graveyard')) movedFromField.push(c);
-      });
-      this.battleShowNotice('破壊', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を破壊しました。`, targets);
+      const destroyChosen = () => {
+        if (!targets.length) return;
+        this.battleSaveUndo();
+        this._dslLastDestroyedCards = targets.map(card => ({
+          card, power: this._dslCardEffPower(card), attack: Number(card && card.attack) || 0
+        }));
+        targets.forEach(c => {
+          if (this._dslMoveFromField(c, 'graveyard')) movedFromField.push(c);
+        });
+        this.battleShowNotice('破壊', `${targets.map(c => `「${this.fullName(c)}」`).join('、')}を破壊しました。`, targets);
+      };
       // 死亡時トリガー：場から墓地に行ったもののみ発火（手札からの破壊などには発火しない）
       // 死亡時効果は持ち主の視点へ一時的に入れ替えることがある。
-      // 復元前に後続（例：ヒノカグツチ創世神技の相手への3ダメージ）へ進まない。
-      for (const card of movedFromField) await this.battleRunDeathKeywordEffects(card);
+      const runDeath = async () => {
+        for (const card of movedFromField) await this.battleRunDeathKeywordEffects(card);
+      };
+      if (divine && divine.index === 2 && String(divine.kami.no) === '7' && !divine.presented) {
+        divine.flameCapture = () => {
+          destroyChosen();
+          divine.flameDeathPromise = runDeath().catch(e => { divine.flameDeathError = e; });
+        };
+        if (!await this._battlePresentFlameClaw(targets)) return;
+        if (divine.flameDeathPromise) await divine.flameDeathPromise;
+        if (divine.flameDeathError) throw divine.flameDeathError;
+      } else {
+        if (!targets.length) return;
+        destroyChosen();
+        await runDeath();
+      }
+      if (!targets.length) return;
       if (Array.isArray(act.後続) && act.後続.length) {
         await this.dslRunActions(act.後続, sourceCard);
       }
