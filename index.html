@@ -2414,6 +2414,31 @@
     background: #27231e; color: #eee4d4; font-weight: 800; cursor: pointer;
   }
   .manual-close:hover { border-color: #c9a963; background: #383024; }
+  /* ===== 3つのガイド窓（プレイガイド・ピックガイド・カミ図鑑）の共通の枠 =====
+     大きさ・位置（画面中央）・角丸・枠線・背景・見出しをそろえる。見出しは .manual-header（丸い印＋題名＋副題＋「閉じる」）を共用し、
+     見出しの下だけがスクロールする */
+  .battle-zone-modal.manual-modal, .battle-zone-modal.pick-guide-modal, .gs-kami-info-overlay.kami-dex-overlay { padding: 16px; display: grid; place-items: center; }
+  .battle-zone-modal-panel.manual-panel, .battle-zone-modal-panel.pick-guide-panel, .gs-kami-info-panel.kami-dex-panel {
+    box-sizing: border-box; width: min(1320px, calc(100vw - 32px)); max-width: none; min-width: 0;
+    height: calc(100vh - 32px); height: calc(100dvh - 32px); max-height: none;
+    border: 1px solid #765e35; border-radius: 12px; padding: 0; overflow: hidden;
+    background:
+      radial-gradient(circle at 90% 5%, rgba(218,165,82,.13), transparent 30%),
+      linear-gradient(165deg, #17171d 0%, #0d1017 68%, #15110e 100%);
+    box-shadow: 0 24px 80px rgba(0,0,0,.75);
+  }
+  .gs-kami-info-panel.kami-dex-panel, .battle-zone-modal-panel.manual-panel { display: flex; flex-direction: column; }
+  .manual-panel > .manual-header { flex: none; }
+  .manual-panel > .manual-scroll { flex: 1 1 auto; min-height: 0; height: auto; } /* 見出しの高さに関係なく、残りの高さをちょうど使う */
+  .gs-kami-info-panel.kami-dex-panel.orochi { border-color: #853a42; }
+  .kami-dex-panel > .manual-header { flex: none; }
+  .kami-dex-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: clamp(14px, 2vh, 22px) clamp(18px, 2.4vw, 30px) clamp(18px, 3vh, 30px); }
+  .kami-dex-panel .kami-dex-op-btn { margin-left: auto; }
+  .kami-dex-panel .kami-dex-close { margin-left: 0; }
+  @media (max-width: 760px) {
+    .battle-zone-modal.manual-modal, .battle-zone-modal.pick-guide-modal, .gs-kami-info-overlay.kami-dex-overlay { padding: 0; }
+    .battle-zone-modal-panel.manual-panel, .battle-zone-modal-panel.pick-guide-panel, .gs-kami-info-panel.kami-dex-panel { width: 100vw; height: 100vh; height: 100dvh; border-radius: 0; }
+  }
   .manual-scroll { height: calc(100% - 69px); overflow-y: auto; scroll-behavior: smooth; }
   .manual-cover {
     position: relative; min-height: 430px; display: grid; grid-template-columns: minmax(0,1.2fr) minmax(250px,.8fr);
@@ -3388,6 +3413,29 @@
   .sp-btn-disabled { background: #333; color: #888; cursor: not-allowed; }
 
   .sp-divider { border: none; border-top: 1px solid #2a2f3d; margin: 8px 0; }
+  /* ===== ロビーの入口（3モード共通）：「相手と対戦」「CPUと対戦」を先に選べるよう2つの枠に分ける ===== */
+  .sp-lobby.lobby-split { max-width: 900px; margin: 24px auto; }
+  .lobby-choices { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 760px) { .lobby-choices { grid-template-columns: 1fr; } }
+  .lobby-card {
+    display: flex; flex-direction: column; gap: 10px; min-width: 0;
+    padding: 16px 18px 18px; border-radius: 10px;
+    background: #171b26; border: 1px solid #2e3548; border-top: 3px solid #b58d49;
+  }
+  .lobby-card-cpu { border-top-color: #6a5a8a; }
+  .lobby-card .lobby-card-title, .sp-lobby .lobby-card .lobby-card-title { margin: 0; font-size: 17px; font-weight: 800; color: #f2d894; letter-spacing: .06em; }
+  .lobby-card-cpu .lobby-card-title, .sp-lobby .lobby-card-cpu .lobby-card-title { color: #d8c8f8; }
+  .lobby-card-lead { margin: 0 0 2px; font-size: 13px; line-height: 1.6; color: #b9c2d2; word-break: keep-all; overflow-wrap: anywhere; }
+  .lobby-card-note { font-size: 12px; color: #8f9aad; }
+  .lobby-card .gm-public-room-list { margin-top: 0; }
+  .lobby-sub { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding-top: 12px; border-top: 1px solid #262b39; }
+  .lobby-sub-title { margin: 0; font-size: 14px; font-weight: 800; color: #dbe2ee; }
+  .lobby-join-row { display: flex; gap: 8px; }
+  .lobby-join-row .sp-input { flex: 1; min-width: 0; }
+  .sp-lobby .lobby-join-row .sp-btn { width: auto; flex: none; padding: 10px 18px; }
+  .lobby-cpu-toggle { margin-top: 2px; }
+  .gm-btn-find { background: #1565c0; border-color: #3d86d6; color: #fff; }
+  .gm-btn-find:hover:not(:disabled) { background: #1976d2; }
   .sp-room-code-display {
     background: #1a1d28; border: 2px solid #4a7a4a; border-radius: 6px;
     padding: 16px; text-align: center;
@@ -6021,7 +6069,7 @@
   <!-- ===== SE/BGM音量設定（全画面共通のフローティングボタン。対戦画面は専用ヘッダーボタンと
        重なるため、対戦画面表示中はこちらを隠す。カードリスト画面ではBGM不要かつ他の
        ボタン群と重なるため非表示にする） ===== -->
-  <div v-if="appView !== 'battle' && appView !== 'cardlist' && !deckExpanded && !manualModalOpen && !howToPlayModalOpen" class="global-sound-settings" :class="{ 'on-top-header': appHeaderView }">
+  <div v-if="appView !== 'battle' && appView !== 'cardlist' && !deckExpanded && !manualModalOpen && !howToPlayModalOpen && !kamiDexOpen" class="global-sound-settings" :class="{ 'on-top-header': appHeaderView }">
     <!-- 共通ヘッダーのある画面（TOP・モード紹介）では、ヘッダーの右端に「戦績」「音量」を文字付きで出す。
          ガイドの2つはTOPの右下にあるので、ヘッダーの無い画面（ロビー・ピック等）だけで出す -->
     <button v-if="!appHeaderView" class="global-sound-btn howto-open-btn" @click.stop="openPlayManual" title="プレイガイド（説明書）"><span class="ui-icon ui-icon-play-guide" aria-hidden="true"></span></button>
@@ -6207,13 +6255,17 @@
   <!-- ===== カミ図鑑：各カミの理念・効果・ボイスをまとめて見られる図鑑 ===== -->
   <div v-if="kamiDexOpen" class="gs-kami-info-overlay kami-dex-overlay" role="dialog" aria-modal="true" aria-labelledby="kami-dex-title" @click.self="closeKamiDex">
     <div class="gs-kami-info-panel kami-dex-panel" :class="{ orochi: kamiDexKami && kamiDexKami.type === 'ヤマタノオロチ' }">
-      <button type="button" class="gs-kami-info-close" @click="closeKamiDex" aria-label="カミ図鑑を閉じる">×</button>
-      <div class="kami-dex-head">
-        <span class="kami-dex-title-mark" aria-hidden="true">⛩</span>
-        <span class="kami-dex-title">カミ図鑑</span>
-        <span class="kami-dex-sub">カミの理念・効果・声を確かめる</span>
+      <!-- プレイガイド・ピックガイドと同じ見出し（丸い印＋題名＋副題＋右端に「閉じる」）。下の本文だけがスクロールする -->
+      <div class="manual-header">
+        <div class="manual-header-mark" aria-hidden="true"><span class="ui-icon ui-icon-kami-encyclopedia" aria-hidden="true"></span></div>
+        <div class="manual-header-copy">
+          <div class="manual-header-title">カミ図鑑</div>
+          <div class="manual-header-sub">カミの理念・効果・声を確かめる</div>
+        </div>
         <button type="button" class="kami-dex-op-btn" @click="replayGenesisStoryFromDex">🎬 創世決戦のOPを見る</button>
+        <button type="button" class="manual-close kami-dex-close" @click="closeKamiDex" aria-label="カミ図鑑を閉じる">閉じる</button>
       </div>
+      <div class="kami-dex-scroll">
       <div class="kami-dex-tabs" role="tablist" aria-label="カミを選ぶ">
         <button v-for="entry in kamiDexEntries" :key="'dex' + entry.no" type="button" role="tab"
                 class="kami-dex-tab" :class="{ active: entry.no === kamiDexNo, locked: entry.locked }"
@@ -6346,6 +6398,7 @@
             <button type="button" class="gs-kami-accept-btn" @click="kamiDexOpenPickGuide"><span class="ui-icon ui-icon-pick-guide" aria-hidden="true"></span> {{ kamiDexKami.name }}のピックガイドを見る</button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -6617,7 +6670,7 @@
           <a href="#manual-battle">星戦</a>
           <a href="#manual-keywords">用語</a>
           <a href="#manual-faq">細則Q&amp;A</a>
-          <a href="#manual-kami">カミ</a>
+          <a href="#manual-shortcuts">操作</a>
         </nav>
 
         <main class="manual-main manual-copy">
@@ -6646,10 +6699,10 @@
               <article class="manual-card">
                 <div class="manual-card-icon">★</div>
                 <h3>カードを還元する</h3>
-                <p>ゲーム終了時、集めた全カードにある<strong>変換値（0～2）</strong>の合計が星魂になります。途中で返還したカードの変換値も集計します。</p>
+                <p>ゲーム終了時、集めた全カードにある<strong>返還値（0～2）</strong>の合計が星魂になります。途中で返還したカードの返還値も集計します。</p>
               </article>
             </div>
-            <div class="manual-callout"><strong>強さと星魂のバランスが重要です。</strong> 強力な能力を持つ代わりに変換値が低いカードもあります。強いカードだけでは終戦時の星魂が伸びず、変換値の高いカードだけでは星戦に勝ちにくくなります。星戦の勝利とカードから得る星魂の両方を見据えて構築しましょう。</div>
+            <div class="manual-callout"><strong>強さと星魂のバランスが重要です。</strong> 強力な能力を持つ代わりに返還値が低いカードもあります。強いカードだけでは終戦時の星魂が伸びず、返還値の高いカードだけでは星戦に勝ちにくくなります。星戦の勝利とカードから得る星魂の両方を見据えて構築しましょう。</div>
           </section>
 
           <section id="manual-modes" class="manual-chapter">
@@ -6659,7 +6712,7 @@
             </div>
             <p>共通の星戦ルールを、カードの集め方が異なる3つのモードで遊べます。初めて遊ぶ場合は、すぐ対戦できるストラクチャーデッキを使った理念構築戦がおすすめです。</p>
             <div class="manual-mode-grid">
-              <article class="manual-mode-card"><div class="manual-mode-meta">4人対戦（CPU参加時は2人から）</div><b>創世決戦</b><p>神託でカミを選び、3回の選別と深化を行いながら星戦を3回行います。星戦の勝利点と、集めたカードの変換値から得る星魂で最終順位を決めます。</p></article>
+              <article class="manual-mode-card"><div class="manual-mode-meta">4人対戦（CPU参加時は2人から）</div><b>創世決戦</b><p>神託でカミを選び、3回の選別と深化を行いながら星戦を3回行います。星戦の勝利点と、集めたカードの返還値から得る星魂で最終順位を決めます。</p></article>
               <article class="manual-mode-card"><div class="manual-mode-meta">2人対戦</div><b>理念構築戦</b><p>全カードプールから35枚を自由に選んで構築し、選んだカミとデッキで1回の星戦を行います。用意済みのストラクチャーデッキでも開始できます。</p></article>
               <article class="manual-mode-card"><div class="manual-mode-meta">2人対戦</div><b>星紡ぎ戦</b><p>提示されたパックを交互に選び、合計48枚のカードを集めます。集めた48枚をそのままデッキとして使い、最後に選んだカミと1回の星戦を行います。</p></article>
             </div>
@@ -6694,7 +6747,7 @@
                 <li><strong>種類・種族</strong>：レガシーの種族は、忍者・侍・人獣・神使・妖怪・龍の6種です。</li>
                 <li><strong>戦闘力</strong>：戦闘で比較する値。0以下になったレガシーは破壊されます。</li>
                 <li><strong>神攻力</strong>：神攻で相手カミに与えるダメージです。</li>
-                <li><strong>変換値</strong>：終戦時に星魂へ還元される値（0～2）です。</li>
+                <li><strong>返還値</strong>：終戦時に星魂へ還元される値（0～2）です。</li>
                 <li><strong>効果</strong>：カード固有の能力です。</li>
                 <li><strong>カード枠</strong>：銀枠は各種2枚、金枠は各種<strong>1枚</strong>存在します。</li>
               </ol>
@@ -6715,7 +6768,7 @@
               <div class="manual-flow-step"><span>伍</span><b>深化の刻②</b>見識で強化して、組み合わせを変え星戦②へ。</div>
               <div class="manual-flow-step"><span>陸</span><b>選別の儀③</b>5枚を追加し、2枚を無料返還します。</div>
               <div class="manual-flow-step"><span>漆</span><b>深化の刻③</b>最後の調整を行い、星戦③を戦います。</div>
-              <div class="manual-flow-step"><span>捌</span><b>終戦</b>勝利点と全カードの変換値を合計します。</div>
+              <div class="manual-flow-step"><span>捌</span><b>終戦</b>勝利点と全カードの返還値を合計します。</div>
             </div>
             <div class="manual-callout">オンライン版では、CPUを加えることで2人から創世決戦を開始できます。人間2人＋CPU2人の場合、星戦は人間同士の卓とCPU同士の卓に分かれ、人間だけで最終順位を競います。</div>
           </section>
@@ -6737,7 +6790,7 @@
                 <tr><td>第3ラウンド</td><td>5枚束 × 1回</td><td><strong>5枚</strong></td><td><strong>2枚</strong></td></tr>
               </tbody>
             </table></div>
-            <div class="manual-callout red"><strong>デフォルトデッキ削除（無料返還）</strong>は、各ラウンドの選別が終わった直後、深化の刻へ入る前に行います。返還したカードはデッキから取り除かれますが、その変換値は星魂として保持されます。</div>
+            <div class="manual-callout red"><strong>デフォルトデッキ削除（無料返還）</strong>は、各ラウンドの選別が終わった直後、深化の刻へ入る前に行います。返還したカードはデッキから取り除かれますが、その返還値は星魂として保持されます。</div>
             <div v-if="manualOrochiRevealed" class="manual-callout blue"><strong>ヤマタノオロチ専用：</strong>第3ラウンドの選別が完了すると、「終焉龍・ディエスイレ」1枚が専用枠としてデッキへ自動的に加わります。</div>
             <h3>深化の刻</h3>
             <p>ゲーム開始時は全員が見識1を獲得します。第2・第3ラウンドの深化開始時は、直前の星戦の勝者が見識1、敗者が見識3を獲得します。見識は次のラウンドへ持ち越せます。</p>
@@ -6850,27 +6903,14 @@
               <div><div class="manual-chapter-tag">CHAPTER 10</div><h2>終戦・星魂の集計</h2></div>
               <figure class="manual-chapter-mascot"><img src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
-            <p><strong>星魂 ＝ 星戦の勝利点（1勝につき10）＋ 集めた全カードの変換値</strong>です。デッキに残したカードと、無料返還／省察で星魂に変換したカードをすべて合計します。</p>
+            <p><strong>星魂 ＝ 星戦の勝利点（1勝につき10）＋ 集めた全カードの返還値</strong>です。デッキに残したカードと、無料返還／省察で星魂に変換したカードをすべて合計します。</p>
             <p>星魂が最も多いプレイヤーが勝者です。同点なら星戦の勝利数が多いプレイヤー、勝利数も同じなら該当プレイヤー同士の星戦に勝ったプレイヤーが上位です。</p>
           </section>
 
-          <section id="manual-kami" class="manual-chapter">
+          <!-- カミの一覧と難易度はカミ図鑑と重なるため、ユーザー指定で削除。この章は操作のショートカットだけにした -->
+          <section id="manual-shortcuts" class="manual-chapter">
             <div class="manual-chapter-tag">CHAPTER 11</div>
-            <h2>カミと難易度</h2>
-            <div class="manual-kami-grid">
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/susanoo-chibi.webp" alt="スサノオのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>スサノオ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>変化を受け入れる、変幻自在の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/yamato-takeru-chibi.webp" alt="ヤマトタケルのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>ヤマトタケル</b><div class="manual-kami-difficulty">難易度 ★★★★★</div><p>他者に依らない、孤高利己の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/okuninushi-chibi.webp" alt="オオクニヌシのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>オオクニヌシ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>すべての生命と繁栄する、他種共存の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/takemikazuchi-chibi.webp" alt="タケミカヅチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>タケミカヅチ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>絶対的な力が支配する、武威震天の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>オモイカネ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>知識を求め理解を深める、温故知新の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/amenouzume-chibi.webp" alt="アメノウズメのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>アメノウズメ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>困難より快楽を求める、悦楽至上の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/hinokagutsuchi-chibi.webp" alt="ヒノカグツチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>ヒノカグツチ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>欲望に素直に生きる、天衣無縫の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="tutorial_guide/amaterasu-chibi-01a4da0b3506.webp" alt="アマテラスのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>アマテラス</b><div class="manual-kami-difficulty">難易度 ★</div><p>慈愛をもって接する、慈悲深厚の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>ツクヨミ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>統制された生命だけの、静寂閑雅の世界を目指すカミ。</p></div></article>
-              <article v-if="manualOrochiRevealed" class="manual-kami manual-kami-secret"><figure class="guide-chibi"><img src="kami_chibi/yamata-no-orochi-chibi.webp" alt="ヤマタノオロチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b ref="manualOrochiTitle" tabindex="-1">ヤマタノオロチ</b><div class="manual-kami-difficulty">難易度 ★</div><p>龍こそ真の支配者とする、龍の世界を目指す邪なる存在。</p><button class="manual-kami-hide" @click="manualHideOrochi">隠す</button></div></article>
-              <button v-else ref="manualOrochiReveal" type="button" class="manual-kami manual-kami-hidden" aria-label="隠しカミを表示" @click="manualRequestOrochi"><span class="manual-kami-mystery" aria-hidden="true">？</span><span class="manual-kami-hidden-copy"><b>？？？</b><span>隠しカミ<br>クリックして表示</span></span></button>
-            </div>
-            <h3>オンライン操作のショートカット</h3>
+            <h2>操作のショートカット</h2>
             <div class="manual-table-wrap"><table class="manual-table"><tbody><tr><th>Space / Enter</th><td>ターン終了</td></tr><tr><th>Z</th><td>一手戻る（Undo）</td></tr><tr><th>L</th><td>バトルログを表示</td></tr><tr><th>Q / E</th><td>カーソルを当てたフィールドカードのタップ状態を切り替え</td></tr><tr><th>Esc</th><td>開いているメニュー／モーダルを閉じる</td></tr></tbody></table></div>
           </section>
         </main>
@@ -7617,75 +7657,67 @@
       <div class="sp-body">
 
         <!-- ======= ロビー ======= -->
-        <div v-if="sb.phase === 'lobby'" class="sp-lobby">
+        <div v-if="sb.phase === 'lobby'" class="sp-lobby lobby-split">
           <div>
             <h3>プレイヤー名</h3>
             <input class="sp-input" v-model="sb.myName" placeholder="名前を入力（任意）" maxlength="20">
           </div>
 
-          <!-- 部屋を立てる -->
-          <div>
-            <h3>部屋を立てる</h3>
-            <label class="cpu-auto-play-toggle">
-              <input type="checkbox" v-model="sbCreatePublic">
-              この部屋を公開する（見知らぬ相手も一覧・ランダムマッチから参加できます）
-            </label>
-            <button class="sp-btn sp-btn-create" @click="onCreateRoom"
-                    :disabled="sb.connecting">
-              {{ sb.connecting ? '接続中…' : '新しい部屋を作成' }}
-            </button>
-          </div>
-
-          <hr class="sp-divider">
-
-          <!-- 公開中の部屋一覧・ランダムマッチ -->
-          <div>
-            <h3>公開中の部屋から参加</h3>
-            <button v-if="!sbMatchToken" class="sp-btn sp-btn-join" :disabled="sb.connecting" @click="sbRandomMatch">
-              🎲 対戦相手を探す
-            </button>
-            <button v-else class="sp-btn" @click="sbCancelMatch">検索をキャンセル</button>
-            <div v-if="sbPublicRooms.length" class="gm-public-room-list" style="margin-top:10px;">
-              <div class="gm-public-room-title">公開中の部屋（{{ sbPublicRooms.length }}件）</div>
-              <div v-for="r in sbPublicRooms.slice(0, sbPublicVisibleLimit)" :key="r.code" class="gm-public-room-row">
-                <span>{{ r.hostName }}の部屋</span>
-                <button class="gm-btn" :disabled="sb.connecting" @click="sbJoinPublic(r.code)">参加する</button>
+          <!-- 遊び方を先に選ぶ：左＝オンラインで相手と対戦、右＝CPUと対戦 -->
+          <div class="lobby-choices">
+            <section class="lobby-card">
+              <h3 class="lobby-card-title">相手と対戦</h3>
+              <p class="lobby-card-lead">オンラインで、ほかのプレイヤーと対戦します。</p>
+              <button v-if="!sbMatchToken" class="sp-btn sp-btn-join" :disabled="sb.connecting" @click="sbRandomMatch">
+                🎲 対戦相手を探す
+              </button>
+              <button v-else class="sp-btn" @click="sbCancelMatch">検索をキャンセル</button>
+              <div v-if="sbPublicRooms.length" class="gm-public-room-list">
+                <div class="gm-public-room-title">公開中の部屋（{{ sbPublicRooms.length }}件）</div>
+                <div v-for="r in sbPublicRooms.slice(0, sbPublicVisibleLimit)" :key="r.code" class="gm-public-room-row">
+                  <span>{{ r.hostName }}の部屋</span>
+                  <button class="gm-btn" :disabled="sb.connecting" @click="sbJoinPublic(r.code)">参加する</button>
+                </div>
+                <button v-if="sbPublicHasMore" class="gm-btn gm-btn-ghost" :disabled="sbPublicLoading" @click="sbLoadMorePublic">{{ sbPublicLoading ? '読込中…' : 'さらに表示' }}</button>
               </div>
-              <button v-if="sbPublicHasMore" class="gm-btn gm-btn-ghost" :disabled="sbPublicLoading" @click="sbLoadMorePublic">{{ sbPublicLoading ? '読込中…' : 'さらに表示' }}</button>
-            </div>
-            <div v-else style="font-size:11px; color:#9aa; margin-top:6px;">現在公開中の部屋はありません</div>
-          </div>
+              <div v-else class="lobby-card-note">現在公開中の部屋はありません</div>
 
-          <hr class="sp-divider">
+              <div class="lobby-sub">
+                <h4 class="lobby-sub-title">部屋を作って相手を待つ</h4>
+                <label class="cpu-auto-play-toggle">
+                  <input type="checkbox" v-model="sbCreatePublic">
+                  この部屋を公開する（部屋コードを知らない相手も、一覧や「対戦相手を探す」から参加できます）
+                </label>
+                <button class="sp-btn sp-btn-create" @click="onCreateRoom" :disabled="sb.connecting">
+                  {{ sb.connecting ? '接続中…' : '新しい部屋を作成' }}
+                </button>
+              </div>
 
-          <!-- 既存の部屋に入る -->
-          <div>
-            <h3>部屋に入る</h3>
-            <input class="sp-input" v-model="sb.joinCode"
-                   placeholder="部屋コード（6文字）" maxlength="6"
-                   style="text-transform:uppercase; letter-spacing:0.15em; margin-bottom:8px;">
-            <button class="sp-btn sp-btn-join" @click="onJoinRoom"
-                    :disabled="sb.connecting || sb.joinCode.length < 4">
-              {{ sb.connecting ? '接続中…' : '入室する' }}
-            </button>
-          </div>
+              <div class="lobby-sub">
+                <h4 class="lobby-sub-title">部屋コードで入る</h4>
+                <div class="lobby-join-row">
+                  <input class="sp-input" v-model="sb.joinCode"
+                         placeholder="部屋コード（6文字）" maxlength="6"
+                         style="text-transform:uppercase; letter-spacing:0.15em;">
+                  <button class="sp-btn sp-btn-join" @click="onJoinRoom"
+                          :disabled="sb.connecting || sb.joinCode.length < 4">
+                    {{ sb.connecting ? '接続中…' : '入室する' }}
+                  </button>
+                </div>
+              </div>
+            </section>
 
-          <hr class="sp-divider">
-
-          <!-- ソロテスト -->
-          <div>
-            <h3>ソロテスト</h3>
-            <label class="cpu-auto-play-toggle">
-              <input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay">
-              CPUが自律して行動する（OFF＝従来通り待機のみ）
-            </label>
-            <button class="sp-btn sp-btn-solo" @click="sbSoloStart"
-                    :disabled="sb.connecting">
-              🤖 CPUと開始（ソロテスト）
-            </button>
-            <div style="font-size:11px; color:#9aa; margin-top:6px; text-align:center;">
-              相手をCPUにして1人で動作確認できます
-            </div>
+            <section class="lobby-card lobby-card-cpu">
+              <h3 class="lobby-card-title">CPUと対戦</h3>
+              <p class="lobby-card-lead">CPUを相手に、1人で遊べます。パック選択からCPUと交互に進めます。</p>
+              <button class="sp-btn sp-btn-solo" @click="sbSoloStart" :disabled="sb.connecting">
+                🤖 CPUと対戦を始める
+              </button>
+              <label class="cpu-auto-play-toggle lobby-cpu-toggle">
+                <input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay">
+                CPUが自分でカードを使い、攻撃する（オフにすると、CPUは何もせずに手番を返します）
+              </label>
+            </section>
           </div>
 
           <div v-if="sb.error" style="color:#f88; font-size:13px; text-align:center;">{{ sb.error }}</div>
@@ -7876,7 +7908,7 @@
           <div v-if="sb.tempKami && sb.tempKami.type === 'ヤマタノオロチ' && sbOrochiBonus"
                class="sp-orochi-bonus-bar">
             <div class="sp-orochi-bonus-label">
-              シールド戦限定：このカミを選択するとデッキに自動追加されます
+              星紡ぎ戦限定：このカミを選択するとデッキに自動追加されます
             </div>
             <div class="sp-orochi-bonus-card">
               <div class="sp-orochi-bonus-thumb"
@@ -7953,68 +7985,66 @@
 
       <div class="sp-body">
         <!-- ======= ルーム未作成：ロビーフォーム ======= -->
-        <div v-if="!cb.roomCode" class="sp-lobby">
+        <div v-if="!cb.roomCode" class="sp-lobby lobby-split">
           <div>
             <h3>プレイヤー名</h3>
             <input class="sp-input" v-model="cb.myName" placeholder="名前を入力（任意）" maxlength="20">
           </div>
 
-          <div>
-            <h3>部屋を立てる</h3>
-            <label class="cpu-auto-play-toggle">
-              <input type="checkbox" v-model="cbCreatePublic">
-              この部屋を公開する（見知らぬ相手も一覧・ランダムマッチから参加できます）
-            </label>
-            <button class="sp-btn sp-btn-create" @click="cbCreateRoom" :disabled="cb.connecting">
-              {{ cb.connecting ? '接続中…' : '新しい部屋を作成' }}
-            </button>
-          </div>
-
-          <hr class="sp-divider">
-
-          <div>
-            <h3>公開中の部屋から参加</h3>
-            <button v-if="!cbMatchToken" class="sp-btn sp-btn-join" :disabled="cb.connecting" @click="cbRandomMatch">
-              🎲 対戦相手を探す
-            </button>
-            <button v-else class="sp-btn" @click="cbCancelMatch">検索をキャンセル</button>
-            <div v-if="cbPublicRooms.length" class="gm-public-room-list" style="margin-top:10px;">
-              <div class="gm-public-room-title">公開中の部屋（{{ cbPublicRooms.length }}件）</div>
-              <div v-for="r in cbPublicRooms.slice(0, cbPublicVisibleLimit)" :key="r.code" class="gm-public-room-row">
-                <span>{{ r.hostName }}の部屋</span>
-                <button class="gm-btn" :disabled="cb.connecting" @click="cbJoinPublic(r.code)">参加する</button>
+          <!-- 遊び方を先に選ぶ：左＝オンラインで相手と対戦、右＝CPUと対戦 -->
+          <div class="lobby-choices">
+            <section class="lobby-card">
+              <h3 class="lobby-card-title">相手と対戦</h3>
+              <p class="lobby-card-lead">オンラインで、ほかのプレイヤーと対戦します。</p>
+              <button v-if="!cbMatchToken" class="sp-btn sp-btn-join" :disabled="cb.connecting" @click="cbRandomMatch">
+                🎲 対戦相手を探す
+              </button>
+              <button v-else class="sp-btn" @click="cbCancelMatch">検索をキャンセル</button>
+              <div v-if="cbPublicRooms.length" class="gm-public-room-list">
+                <div class="gm-public-room-title">公開中の部屋（{{ cbPublicRooms.length }}件）</div>
+                <div v-for="r in cbPublicRooms.slice(0, cbPublicVisibleLimit)" :key="r.code" class="gm-public-room-row">
+                  <span>{{ r.hostName }}の部屋</span>
+                  <button class="gm-btn" :disabled="cb.connecting" @click="cbJoinPublic(r.code)">参加する</button>
+                </div>
+                <button v-if="cbPublicHasMore" class="gm-btn gm-btn-ghost" :disabled="cbPublicLoading" @click="cbLoadMorePublic">{{ cbPublicLoading ? '読込中…' : 'さらに表示' }}</button>
               </div>
-              <button v-if="cbPublicHasMore" class="gm-btn gm-btn-ghost" :disabled="cbPublicLoading" @click="cbLoadMorePublic">{{ cbPublicLoading ? '読込中…' : 'さらに表示' }}</button>
-            </div>
-            <div v-else style="font-size:11px; color:#9aa; margin-top:6px;">現在公開中の部屋はありません</div>
-          </div>
+              <div v-else class="lobby-card-note">現在公開中の部屋はありません</div>
 
-          <hr class="sp-divider">
+              <div class="lobby-sub">
+                <h4 class="lobby-sub-title">部屋を作って相手を待つ</h4>
+                <label class="cpu-auto-play-toggle">
+                  <input type="checkbox" v-model="cbCreatePublic">
+                  この部屋を公開する（部屋コードを知らない相手も、一覧や「対戦相手を探す」から参加できます）
+                </label>
+                <button class="sp-btn sp-btn-create" @click="cbCreateRoom" :disabled="cb.connecting">
+                  {{ cb.connecting ? '接続中…' : '新しい部屋を作成' }}
+                </button>
+              </div>
 
-          <div>
-            <h3>部屋に入る</h3>
-            <input class="sp-input" v-model="cb.joinCode"
-                   placeholder="部屋コード（6文字）" maxlength="6"
-                   style="text-transform:uppercase; letter-spacing:0.15em; margin-bottom:8px;">
-            <button class="sp-btn sp-btn-join" @click="cbJoinRoom" :disabled="cb.connecting || cb.joinCode.length < 4">
-              {{ cb.connecting ? '接続中…' : '入室する' }}
-            </button>
-          </div>
+              <div class="lobby-sub">
+                <h4 class="lobby-sub-title">部屋コードで入る</h4>
+                <div class="lobby-join-row">
+                  <input class="sp-input" v-model="cb.joinCode"
+                         placeholder="部屋コード（6文字）" maxlength="6"
+                         style="text-transform:uppercase; letter-spacing:0.15em;">
+                  <button class="sp-btn sp-btn-join" @click="cbJoinRoom" :disabled="cb.connecting || cb.joinCode.length < 4">
+                    {{ cb.connecting ? '接続中…' : '入室する' }}
+                  </button>
+                </div>
+              </div>
+            </section>
 
-          <hr class="sp-divider">
-
-          <div>
-            <h3>ソロプレイ</h3>
-            <select class="sp-input" v-model="cb.soloCpuDeckId" style="margin-bottom:8px;">
-              <option value="">🎲 CPUのデッキ：ランダム</option>
-              <option v-for="sd in cbStructureDecks" :key="sd.id" :value="sd.id">CPUのデッキ：{{ sd.name }}</option>
-            </select>
-            <button class="sp-btn sp-btn-solo" @click="cbSoloStart" :disabled="cb.connecting">
-              🤖 CPUと開始（ソロプレイ）
-            </button>
-            <div style="font-size:11px; color:#9aa; margin-top:6px; text-align:center;">
-              相手をCPUにして1人で動作確認できます（CPUのデッキ・カミはストラクチャーデッキから選べます）
-            </div>
+            <section class="lobby-card lobby-card-cpu">
+              <h3 class="lobby-card-title">CPUと対戦</h3>
+              <p class="lobby-card-lead">CPUを相手に、1人で遊べます。CPUは構築済みデッキ（ストラクチャーデッキ）とそのカミを使います。</p>
+              <select class="sp-input" v-model="cb.soloCpuDeckId">
+                <option value="">🎲 CPUのデッキ：ランダム</option>
+                <option v-for="sd in cbStructureDecks" :key="sd.id" :value="sd.id">CPUのデッキ：{{ sd.name }}</option>
+              </select>
+              <button class="sp-btn sp-btn-solo" @click="cbSoloStart" :disabled="cb.connecting">
+                🤖 CPUと対戦を始める
+              </button>
+            </section>
           </div>
 
           <div v-if="cb.error" style="color:#f88; font-size:13px; text-align:center;">{{ cb.error }}</div>
@@ -9387,7 +9417,7 @@
                   :disabled="battleWaitingForRematch" @click="battleRequestRematch">
             {{ battleWaitingForRematch ? '相手の応答を待っています…' : ((battleContext.returnView === 'shield' || battleContext.returnView === 'construct') ? '🔁 同じデッキで再戦する' : '🔁 もう一度対戦する') }}
           </button>
-          <button v-if="battleContext.returnView === 'shield'" @click="battleReturn">🎴 パック選択からやり直す（シールド戦のトップへ）</button>
+          <button v-if="battleContext.returnView === 'shield'" @click="battleReturn">🎴 パック選択からやり直す</button>
           <button v-else @click="battleReturn">{{ battleContext.returnView === 'top' ? 'トップへ戻る' : (battleContext.returnView === 'game' ? '次へ進む' : battleReturnLabel + 'へ戻る') }}</button>
         </div>
       </div>
@@ -9403,7 +9433,7 @@
           外伝 選別の儀（練習）<span class="gm-draft-set">束 {{ tutorialPick.packIndex + 1 }} / {{ tutorialPick.packs.length }}</span>
         </div>
         <div class="gm-draft-headright">
-          <span class="gm-draft-return-total tutorial-pick-soul" title="選んだカードの変換値の合計です">
+          <span class="gm-draft-return-total tutorial-pick-soul" title="選んだカードの返還値の合計です">
             <span class="gm-soul-icon">★</span>星魂の見込み <b>{{ tutorialPickSoul }}</b>
           </span>
           <span class="gm-draft-progress">あなたの取得 <b>{{ tutorialPick.picks.length }}</b> / {{ tutorialPick.packs.length }}</span>
@@ -9436,7 +9466,7 @@
                 <span v-for="reason in tutorialPickRecommendations.reasons[String(card.no)]" :key="reason" class="pick-assist-reason">{{ reason }}</span>
               </div>
               <div class="gm-pack-img" :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}">
-                <span class="gm-pack-return-overlay" title="このカードの変換値">
+                <span class="gm-pack-return-overlay" title="このカードの返還値">
                   <span class="gm-soul-icon">★</span><span>×</span><b>{{ Number(card.return) || 0 }}</b>
                 </span>
               </div>
@@ -9927,50 +9957,65 @@
 
       <!-- ===== メニュー ===== -->
       <div v-if="gs.view === 'menu'" class="gm-body gm-menu">
-        <p class="gm-lead">4人で「壱 神託の儀（カミ選択）」を行います。代表者が「セッションを作成」し、表示された6文字コードを他の3人が入力して参加します。</p>
+        <p class="gm-lead">4人で遊ぶモードです。オンラインで相手と対戦するか、CPUと対戦するかを選んでください。</p>
         <label class="gm-field">
           <span>あなたの名前（任意）</span>
           <input type="text" v-model="gs.myName" maxlength="12" placeholder="プレイヤー名">
         </label>
-        <div class="gm-menu-actions">
-          <label class="cpu-auto-play-toggle">
-            <input type="checkbox" v-model="gsCreatePublic">
-            このセッションを公開する（見知らぬ相手も一覧・ランダムマッチから参加できます）
-          </label>
-          <button class="gm-btn gm-btn-primary" :disabled="gs.connecting" @click="gsCreate">
-            {{ gs.connecting ? '通信中…' : 'セッションを作成' }}
-          </button>
-          <div class="gm-or">または</div>
-          <div class="gm-join-row">
-            <input type="text" v-model="gs.joinCode" maxlength="6"
-                   placeholder="コード(6文字)" class="gm-code-input"
-                   style="text-transform:uppercase;">
-            <button class="gm-btn" :disabled="gs.connecting" @click="gsJoin">コードで参加</button>
-          </div>
-          <button v-if="!gsMatchToken" class="gm-btn" :disabled="gs.connecting" @click="gsRandomMatch">
-            🎲 対戦相手を探す
-          </button>
-          <button v-else class="gm-btn" @click="gsCancelMatch">検索をキャンセル</button>
+        <!-- 遊び方を先に選ぶ：左＝オンラインで相手と対戦、右＝CPUと対戦 -->
+        <div class="lobby-choices">
+          <section class="lobby-card">
+            <h3 class="lobby-card-title">相手と対戦</h3>
+            <p class="lobby-card-lead">オンラインで、ほかのプレイヤーと4人で対戦します。2人しか集まらないときは、セッションを作った人が席3・4にCPUを追加できます。</p>
+            <button v-if="!gsMatchToken" class="gm-btn gm-btn-find" :disabled="gs.connecting" @click="gsRandomMatch">
+              🎲 対戦相手を探す
+            </button>
+            <button v-else class="gm-btn" @click="gsCancelMatch">検索をキャンセル</button>
+            <div v-if="gsPublicSessions.length" class="gm-public-room-list">
+              <div class="gm-public-room-title">公開中のセッション（{{ gsPublicSessions.length }}件）</div>
+              <div v-for="r in gsPublicSessions.slice(0, gsPublicVisibleLimit)" :key="r.code" class="gm-public-room-row">
+                <span>{{ r.hostName }}のセッション（{{ r.seatsFilled || 1 }}/4人）</span>
+                <button class="gm-btn" :disabled="gs.connecting" @click="gsJoinPublic(r.code)">参加する</button>
+              </div>
+              <button v-if="gsPublicHasMore" class="gm-btn gm-btn-ghost" :disabled="gsPublicLoading" @click="gsLoadMorePublic">{{ gsPublicLoading ? '読込中…' : 'さらに表示' }}</button>
+            </div>
+            <div v-else class="lobby-card-note">現在公開中のセッションはありません</div>
+
+            <div class="lobby-sub">
+              <h4 class="lobby-sub-title">セッションを作って相手を待つ</h4>
+              <label class="cpu-auto-play-toggle">
+                <input type="checkbox" v-model="gsCreatePublic">
+                このセッションを公開する（コードを知らない相手も、一覧や「対戦相手を探す」から参加できます）
+              </label>
+              <button class="gm-btn gm-btn-primary" :disabled="gs.connecting" @click="gsCreate">
+                {{ gs.connecting ? '通信中…' : 'セッションを作成' }}
+              </button>
+            </div>
+
+            <div class="lobby-sub">
+              <h4 class="lobby-sub-title">コードで参加する</h4>
+              <div class="gm-join-row">
+                <input type="text" v-model="gs.joinCode" maxlength="6"
+                       placeholder="コード(6文字)" class="gm-code-input"
+                       style="text-transform:uppercase;">
+                <button class="gm-btn" :disabled="gs.connecting" @click="gsJoin">参加する</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="lobby-card lobby-card-cpu">
+            <h3 class="lobby-card-title">CPUと対戦</h3>
+            <p class="lobby-card-lead">CPU3体と4人で対戦します。CPUの神託・選別・深化は自動で進みます。</p>
+            <button class="gm-btn gm-btn-solo" :disabled="gs.connecting" @click="gsSoloTest">
+              🤖 CPUと対戦を始める
+            </button>
+            <label class="cpu-auto-play-toggle lobby-cpu-toggle">
+              <input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay">
+              星戦でCPUが自分でカードを使い、攻撃する（オフにすると、CPUは何もせずに手番を返します）
+            </label>
+          </section>
         </div>
         <div v-if="gs.error" class="gm-error">{{ gs.error }}</div>
-        <div v-if="gsPublicSessions.length" class="gm-public-room-list">
-          <div class="gm-public-room-title">公開中のセッション（{{ gsPublicSessions.length }}件）</div>
-          <div v-for="r in gsPublicSessions.slice(0, gsPublicVisibleLimit)" :key="r.code" class="gm-public-room-row">
-            <span>{{ r.hostName }}のセッション（{{ r.seatsFilled || 1 }}/4人）</span>
-            <button class="gm-btn" :disabled="gs.connecting" @click="gsJoinPublic(r.code)">参加する</button>
-          </div>
-          <button v-if="gsPublicHasMore" class="gm-btn gm-btn-ghost" :disabled="gsPublicLoading" @click="gsLoadMorePublic">{{ gsPublicLoading ? '読込中…' : 'さらに表示' }}</button>
-        </div>
-        <div class="gm-solo-row">
-          <label class="cpu-auto-play-toggle">
-            <input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay">
-            CPUが自律して行動する（OFF＝従来通り待機のみ）
-          </label>
-          <button class="gm-btn gm-btn-solo" :disabled="gs.connecting" @click="gsSoloTest">
-            🤖 ソロテスト（CPU3体と開始）
-          </button>
-          <div class="gm-deepen-hint">動作確認用：あなたは席1。神託・ドラフト・深化はCPUが自動進行します。</div>
-        </div>
       </div>
 
       <!-- ===== ロビー ===== -->
@@ -11392,7 +11437,7 @@ const MODE_DETAIL_INFO = {
       { name: '選別の儀', text: '配られた束から1枚ずつ選び、カードを集めます。', repeat: true },
       { name: '深化の刻', text: '見識を使って、デッキを調整・強化します。', repeat: true },
       { name: '星戦', text: '組み合わせを変えながら、1対1で対戦します。', repeat: true },
-      { name: '終戦', text: '勝利点と、集めたカードの変換値を星魂として合計し、最終順位を決めます。' },
+      { name: '終戦', text: '勝利点と、集めたカードの返還値を星魂として合計し、最終順位を決めます。' },
     ],
     repeatNote: '選別の儀 → 深化の刻 → 星戦 を3回くり返します',
     note: 'CPUを加えれば、2人からでも開始できます。',
@@ -11470,7 +11515,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
   "learn": [
     "選別の儀",
     "星魂",
-    "変換値",
+    "返還値",
     "ユニークと基本",
     "龍のカード",
     "理念との同調",
@@ -11516,27 +11561,27 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "focus": "pickPack"
     },
     { "face": "serious",
-      "say": "創世決戦の順位は「星魂（せいこん）」で決まります。星戦に1回勝つごとに星魂10。それに加えて、集めたカードの「変換値」の合計も、終戦のときに星魂になるのです。",
+      "say": "創世決戦の順位は「星魂（せいこん）」で決まります。星戦に1回勝つごとに星魂10。それに加えて、集めたカードの「返還値」の合計も、終戦のときに星魂になるのです。",
       "focus": "pickSoul"
     },
     { "face": "serious",
-      "say": "カードにある、★のついた数字が「変換値」。0から2まであります。強さだけでなく、この数字もよく見てくださいね。",
+      "say": "カードにある、★のついた数字が「返還値」。0から2まであります。強さだけでなく、この数字もよく見てくださいね。",
       "focus": "pickReturn"
     },
     {
-      "say": "「平穏の祈り手」のような銀枠のカードは「基本カード」。カードプールに同じカードが2枚ずつあります。ユニークほど強くはありませんが、変換値は2。星魂をしっかり稼いでくれます。",
+      "say": "「平穏の祈り手」のような銀枠のカードは「基本カード」。カードプールに同じカードが2枚ずつあります。ユニークほど強くはありませんが、返還値は2。星魂をしっかり稼いでくれます。",
       "cards": [
         "pack:平穏の祈り手"
       ]
     },
     {
-      "say": "「慈愛の忍・イロハ」のような金枠のカードは「ユニークカード」。カードプールに1枚しかない、強力なカードです。そのかわり、変換値は1しかありません。",
+      "say": "「慈愛の忍・イロハ」のような金枠のカードは「ユニークカード」。カードプールに1枚しかない、強力なカードです。そのかわり、返還値は1しかありません。",
       "cards": [
         "pack:慈愛の忍・イロハ"
       ]
     },
     { "face": "troubled",
-      "say": "そして「猛き赤の眷属」のような「龍」のレガシー。とても強力で、星戦の勝利に大きく貢献してくれます。ですが変換値は0。星魂を1つも生まない、代償の大きな危険なカードなのです。",
+      "say": "そして「猛き赤の眷属」のような「龍」のレガシー。とても強力で、星戦の勝利に大きく貢献してくれます。ですが返還値は0。星魂を1つも生まない、代償の大きな危険なカードなのです。",
       "cards": [
         "pack:猛き赤の眷属"
       ]
@@ -11574,7 +11619,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "focus": "pickPack"
     },
     {
-      "task": "この束では、私の理念に同調する【守護】を持ち、変換値も2の「平穏の祈り手」を選んでみましょう。",
+      "task": "この束では、私の理念に同調する【守護】を持ち、返還値も2の「平穏の祈り手」を選んでみましょう。",
       "focus": "pickPack",
       "allow": {
         "pick": [
@@ -11584,7 +11629,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "done": vm => vm.tutorialPick && vm.tutorialPick.picks.some(c => vm.fullName(c).includes('平穏の祈り手'))
     },
     { "face": "joy",
-      "say": "変換値2が、そのまま星魂の見込みに加わりました。残りのカードは、隣の方へ渡されます。",
+      "say": "返還値2が、そのまま星魂の見込みに加わりました。残りのカードは、隣の方へ渡されます。",
       "focus": "pickSoul"
     },
     {
@@ -11597,14 +11642,14 @@ const TUTORIAL_PRACTICE = Object.freeze({
       ]
     },
     {
-      "say": "変換値は1と少し低めです。でも星戦に勝てば星魂10。強いカードで星戦を勝ち抜くのも、立派な作戦ですよ。",
+      "say": "返還値は1と少し低めです。でも星戦に勝てば星魂10。強いカードで星戦を勝ち抜くのも、立派な作戦ですよ。",
       "focus": "pickSoul",
       "cards": [
         "pack:平和を願う剣・アヤト"
       ]
     },
     {
-      "say": "同じ【守護】を持つ基本カードの「逢魔ヶ淵の渡し守」なら、変換値は2。こちらを選ぶ考え方もあります。どちらが正解ということはないのです。",
+      "say": "同じ【守護】を持つ基本カードの「逢魔ヶ淵の渡し守」なら、返還値は2。こちらを選ぶ考え方もあります。どちらが正解ということはないのです。",
       "cards": [
         "pack:逢魔ヶ淵の渡し守"
       ]
@@ -11623,7 +11668,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "action": "nextPack"
     },
     { "face": "serious",
-      "say": "最後の束です。龍の「昏き紫の眷属」は強力ですが、変換値は0。選ぶなら、星魂を手放してでも星戦の勝利を取りにいく覚悟が必要ですね。",
+      "say": "最後の束です。龍の「昏き紫の眷属」は強力ですが、返還値は0。選ぶなら、星魂を手放してでも星戦の勝利を取りにいく覚悟が必要ですね。",
       "cards": [
         "pack:昏き紫の眷属"
       ]
@@ -11641,7 +11686,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "done": vm => vm.tutorialPick && vm.tutorialPick.picks.length >= 3
     },
     { "face": "joy",
-      "say": "選び終わりました。選んだカードの変換値の合計が、今の星魂の見込みです。",
+      "say": "選び終わりました。選んだカードの返還値の合計が、今の星魂の見込みです。",
       "focus": "pickSoul"
     },
     { "face": "surprised",
@@ -11649,7 +11694,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "focus": "pickPool"
     },
     {
-      "say": "また、各ラウンドの選別が終わると、デッキから数枚を無料で返還できます。返還したカードの変換値も、ちゃんと星魂として残りますよ。",
+      "say": "また、各ラウンドの選別が終わると、デッキから数枚を無料で返還できます。返還したカードの返還値も、ちゃんと星魂として残りますよ。",
       "focus": "pickPool"
     },
     { "face": "joy",
@@ -12025,7 +12070,7 @@ function splitTutorialPhrases(text) {
 const TUTORIAL_KEYWORDS = Object.freeze([
   '天力トリガー', '疲労ダメージ', '手札の上限', '山札切れ', '神攻力', '戦闘力', '創世神技', '神技', '神技', '神攻', '戦闘',
   'ライフ', 'マナ', '天力', 'コスト', 'タップ', 'アンタップ', 'マリガン', 'リロール', '進化', '昇華', '選定', '疾駆', '奇襲',
-  '守護', '不可侵', '墓地', '崩壊', '変換値', '星魂', '理念', 'ユニークカード', '基本カード', '勝利', '社の施し', 'オラクル',
+  '守護', '不可侵', '墓地', '崩壊', '返還値', '星魂', '理念', 'ユニークカード', '基本カード', '勝利', '社の施し', 'オラクル',
   '選別の儀', '深化の刻', '見識',
 ].sort((a, b) => b.length - a.length));
 function markTutorialKeywords(text) {
@@ -13027,7 +13072,7 @@ new Vue({
       });
     },
     battleReturnLabel() {
-      if (this.battleContext.returnView === 'shield') return 'シールド戦';
+      if (this.battleContext.returnView === 'shield') return '星紡ぎ戦';
       if (this.battleContext.returnView === 'game') return '星戦';
       if (this.battleContext.returnView === 'construct') return '理念構築戦';
       if (this.battleContext.returnView === 'kamiDex') return 'カミ図鑑';
@@ -16135,7 +16180,7 @@ new Vue({
         }
       }
       this._battleInitialize({
-        source: 'shield', modeLabel: 'シールド戦', returnView: 'shield',
+        source: 'shield', modeLabel: '星紡ぎ戦', returnView: 'shield',
         selfName: selfInfo.name || this.sb.myName || '自分',
         oppName: oppInfo.name || '相手', firstSide, life: 10,
         selfDeck,
@@ -16517,7 +16562,7 @@ new Vue({
         for (let i = 0; i < this.deck[no]; i++) editedDeck.push(card);
       }
       this._battleInitialize({
-        source: 'shield', modeLabel: 'シールド戦', returnView: 'shield',
+        source: 'shield', modeLabel: '星紡ぎ戦', returnView: 'shield',
         selfName: selfInfo.name || this.sb.myName || '自分',
         oppName: oppInfo.name || '相手', firstSide, life: 10,
         selfDeck: editedDeck.length ? editedDeck : this.sbMyFinalDeck,
@@ -16540,7 +16585,7 @@ new Vue({
         for (let i = 0; i < this.deck[no]; i++) editedDeck.push(card);
       }
       this._battleInitialize({
-        source: 'shield', modeLabel: 'シールド戦', returnView: 'shield',
+        source: 'shield', modeLabel: '星紡ぎ戦', returnView: 'shield',
         selfName: this.sb.myName || '自分', oppName: '相手', firstSide, life: 10,
         selfDeck: editedDeck.length ? editedDeck : this.sbMyFinalDeck, oppDeck: this.sbOpponentFinalDeck,
         selfKami: this.sbMySelectedKami, oppKami: this.sbOpponentSelectedKami,
@@ -16623,7 +16668,7 @@ new Vue({
       // 対戦テスト/シールド戦/創世決戦のいずれも battleTables/{code}/{table}/state を
       // 共通の同期経路として使っているため、モードに応じてtableだけを切り替えれば観戦できる。
       const modeInput = (window.prompt(
-        '観戦するモードを番号で選んでください：\n1 = 対戦テスト\n2 = 星紡ぎ戦（シールド戦）\n3 = 創世決戦・卓1\n4 = 創世決戦・卓2\n5 = 理念構築戦',
+        '観戦するモードを番号で選んでください：\n1 = 対戦テスト\n2 = 星紡ぎ戦\n3 = 創世決戦・卓1\n4 = 創世決戦・卓2\n5 = 理念構築戦',
         '1'
       ) || '').trim();
       const tableMap = { '1': 'test', '2': 'shield', '3': 1, '4': 2, '5': 'construct' };
@@ -31333,7 +31378,7 @@ new Vue({
 
     tryCloseShield() {
       if (['picking', 'excluding', 'kami_select'].includes(this.sb.phase)) {
-        if (!confirm('シールド戦を中断しますか？')) return;
+        if (!confirm('星紡ぎ戦を中断しますか？')) return;
       }
       this._sfxPlay('cancel');
       if (this._deckLoadedFromSession) {

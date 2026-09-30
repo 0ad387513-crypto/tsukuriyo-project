@@ -168,7 +168,9 @@ test("play manual is separated from the pick guide and contains the revised rule
   assert.match(html, /【死角】を持たないレガシーは、このレガシーを【戦闘】の攻撃対象に選ぶことができず、【守護】により攻撃先を変更することもできません/);
   assert.match(html, /手札以外から使用された場合は、【昇華】を発動することができません/);
   assert.match(html, /同時に発生した効果は、<strong>ターンプレイヤーから好きな順番<\/strong>/);
-  assert.match(html, /オオクニヌシ[\s\S]*?難易度 ★★★/);
+  // カミの一覧と難易度はカミ図鑑と重なるため、プレイガイドから削除した（ユーザー指定）
+  assert.doesNotMatch(html, /<div class="manual-kami-difficulty">/);
+  assert.match(html, /<section id="manual-shortcuts" class="manual-chapter">[\s\S]*?操作のショートカット/);
   assert.doesNotMatch(html, /隠密/);
 });
 
@@ -212,7 +214,6 @@ test("both guides reveal their secret Kami only after explicit confirmation and 
   assert.equal(vm.manualOrochiRevealed, false, 'reopening the pick guide hides spoilers');
   pickClose.call(vm);
   const manual = html.split('<div v-if="manualModalOpen"')[1].split('<!-- ===== ピックガイド')[0];
-  assert.match(manual, /v-if="manualOrochiRevealed"[^>]*class="manual-kami manual-kami-secret"/);
   assert.match(manual, /v-if="manualOrochiRevealed"[^>]*class="manual-callout blue"/);
   assert.equal((manual.match(/class="manual-chapter-mascot"/g) || []).length, 10);
 });
