@@ -115,12 +115,25 @@ test("loading screens show nine lightweight Kami stickers and rule hints without
   assert.match(html, /<div id="app-loading"[\s\S]*?class="loading-kami-art"/);
   assert.match(html, /<div v-if="assetLoading"[\s\S]*?:src="assetLoading\.scene\.image"/);
   assert.match(html, /const state = \{ title, done: 0, total: list\.length, scene: window\.tsukuriyoPickLoadingScene\(\) \}/);
+  // 起動直後の絵はページの一番最初（head）で決めて最優先で読み込み、本体側のスクリプトはそれを表示するだけ
+  const head = html.match(/<title>[^<]*<\/title>\r?\n<script>([\s\S]*?)<\/script>/);
+  assert.ok(head, "loading scenes are prepared at the very top of the page");
   const startup = html.match(/<div id="app-loading"[\s\S]*?<script>([\s\S]*?)<\/script>\s*<div id="app"/);
   assert.ok(startup, "startup loading script runs before Vue");
-  const fields = { '.loading-kami-art': { style: {}, src: '' }, '.loading-kami-name': {}, '.loading-kami-hint': {} };
+  const fields = { '.loading-kami-art': { style: {}, src: '' }, '.loading-kami-hint': {} };
   const loading = { querySelector: selector => fields[selector] };
-  const scope = { window: {}, document: { getElementById: () => loading } };
-  nodeVm.runInNewContext(startup[1], scope);
+  const links = [];
+  // 画像は読み込み終わった扱いにし、load やタイマーはすぐ実行する
+  class ImageStub { set src(v) { this._src = v; if (this.onload) this.onload(); } get src() { return this._src; } }
+  const scope = { Math, Image: ImageStub, setTimeout: fn => fn(),
+    window: { addEventListener: (type, fn) => { if (type === 'load') fn(); } },
+    document: { getElementById: () => loading, createElement: () => ({ setAttribute(k, v) { this[k] = v; } }), head: { appendChild: l => links.push(l) } } };
+  nodeVm.createContext(scope);
+  nodeVm.runInContext(head[1], scope);
+  nodeVm.runInContext(startup[1], scope);
+  assert.equal(links[0].rel, 'preload');
+  assert.equal(links[0].fetchpriority, 'high', 'the startup sticker is fetched before other images');
+  assert.equal(fields['.loading-kami-art'].src, links[0].href);
   assert.ok(fields['.loading-kami-art'].src.startsWith('loading_chibi/'));
   assert.ok(fields['.loading-kami-hint'].textContent.startsWith('ヒント：'));
   let last = fields['.loading-kami-art'].src;

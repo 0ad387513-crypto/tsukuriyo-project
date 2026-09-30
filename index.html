@@ -4,6 +4,64 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>ツクリヨ オンライン</title>
+<script>
+/* ロード画面の休憩中のカミとヒント。起動直後のロード画面にも出すため、ページの一番最初に用意する。
+   ・起動直後の絵：ここで決めて、ほかの画像より先に（最優先で）読み込み始める
+   ・次のロード画面の絵：ページの読み込みが一段落したら、先に高い優先度で読み込んでおく
+   ・ロード画面を出すときに、用意した絵がまだ届いていなければ、読み込み済みの絵（起動直後の絵など）を使う
+     → 初回起動でも、ロード画面のちびキャラが空白にならない */
+(() => {
+  const scenes = Object.freeze([
+    { name: 'スサノオ', image: 'loading_chibi/susanoo-rest-c8d7dafddecd.webp', hint: '最初の手札は引き直せる。序盤に使うカードを考えて選ぼう。' },
+    { name: 'ヤマトタケル', image: 'loading_chibi/yamato-takeru-rest-1a579987af7b.webp', hint: '残りのマナを見ながら、カードを出す順番を考えよう。' },
+    { name: 'オオクニヌシ', image: 'loading_chibi/okuninushi-rest-077817e82a0e.webp', hint: 'レガシーの能力を確認し、仲間同士の力を生かそう。' },
+    { name: 'タケミカヅチ', image: 'loading_chibi/takemikazuchi-rest-fc71fcd56c88.webp', hint: '戦闘力と神攻力は別の数値。戦う相手に合わせて確かめよう。' },
+    { name: 'オモイカネ', image: 'loading_chibi/omoikane-rest-5459d8e24381.webp', hint: 'オラクルを使う前に、対象や効果の選択肢を確認しよう。' },
+    { name: 'アメノウズメ', image: 'loading_chibi/amenouzume-rest-8cd886a79256.webp', hint: '効果を発動するか選べるときは、今の盤面を見て判断しよう。' },
+    { name: 'ヒノカグツチ', image: 'loading_chibi/hinokagutsuchi-rest-9a3bc9d78c0b.webp', hint: '天力がたまる条件はカミによって違う。神技を使う前に確認しよう。' },
+    { name: 'アマテラス', image: 'loading_chibi/amaterasu-rest-c8488a613337.webp', hint: '自分の理念に同調するレガシーを集めることが大切。' },
+    { name: 'ツクヨミ', image: 'loading_chibi/tsukuyomi-rest-cd32de2b7937.webp', hint: 'レリックの起動効果は、使うタイミングを見極めよう。' },
+  ]);
+  const ready = new Set();
+  const warm = scene => {
+    if (!scene || ready.has(scene.image)) return;
+    const img = new Image();
+    img.decoding = 'async';
+    if ('fetchPriority' in img) img.fetchPriority = 'high';
+    img.onload = () => ready.add(scene.image);
+    img.src = scene.image;
+  };
+  let previous = -1;
+  const pickRandom = () => {
+    let index = Math.floor(Math.random() * scenes.length);
+    if (index === previous) index = (index + 1) % scenes.length;
+    previous = index;
+    return scenes[index];
+  };
+  const startup = pickRandom();
+  const preload = document.createElement('link');
+  preload.rel = 'preload';
+  preload.as = 'image';
+  preload.href = startup.image;
+  preload.setAttribute('fetchpriority', 'high');
+  document.head.appendChild(preload);
+  warm(startup);
+  window.tsukuriyoStartupLoadingScene = startup;
+  let next = null;
+  const prepareNext = () => { if (!next) { next = pickRandom(); warm(next); } };
+  window.addEventListener('load', () => setTimeout(prepareNext, 300));
+  window.tsukuriyoPickLoadingScene = () => {
+    let scene = next;
+    next = null;
+    if (!scene || !ready.has(scene.image)) {
+      const loaded = scenes.filter(item => ready.has(item.image));
+      scene = loaded.length ? loaded[Math.floor(Math.random() * loaded.length)] : (scene || startup);
+    }
+    setTimeout(prepareNext, 0); // 次のロード画面の絵も先に用意しておく
+    return scene;
+  };
+})();
+</script>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; height: 100%; font-family: 'Hiragino Sans', 'ヒラギノ角ゴシック', 'Meiryo', sans-serif; background: #1b1f2a; color: #eee; }
@@ -3007,9 +3065,13 @@
   .gm-pack-grid, .sp-packs-grid { position: relative; }
   .gm-pack-grid.is-loading > :not(.pick-images-loading),
   .sp-packs-grid.is-loading > :not(.pick-images-loading) { visibility: hidden; }
+  .pick-loading-kami { display: block; width: auto; height: min(260px, 32vh, 70%); max-width: 45%; object-fit: contain; }
+  .pick-loading-copy { display: flex; flex-direction: column; gap: 8px; max-width: min(420px, 50%); }
+  .pick-loading-copy > div:first-child { display: flex; align-items: center; gap: 10px; }
+  .pick-loading-hint { color: #eee7d9; font-size: clamp(13px, 1.8vh, 16px); line-height: 1.65; letter-spacing: 0; text-wrap: pretty; }
   .pick-images-loading {
     position: absolute; inset: 0; min-height: 160px; z-index: 5;
-    display: flex; align-items: center; justify-content: center; gap: 10px;
+    display: flex; align-items: center; justify-content: center; gap: clamp(14px, 2vw, 32px); padding: 12px;
     color: #e8dcc0; font-size: 15px; letter-spacing: .08em;
   }
   .asset-loading-screen {
@@ -5922,29 +5984,13 @@
   <div>読み込み中…</div>
 </div>
 <script>
-/* 起動直後にも表示できるよう、Vueより先に軽量なロード画面データだけ用意する。 */
+/* 起動直後のロード画面：ページの一番最初（head）で決めて読み込み始めた絵とヒントを入れる */
 (() => {
-  const scenes = Object.freeze([
-    { name: 'スサノオ', image: 'loading_chibi/susanoo-rest-c8d7dafddecd.webp', hint: '最初の手札は引き直せる。序盤に使うカードを考えて選ぼう。' },
-    { name: 'ヤマトタケル', image: 'loading_chibi/yamato-takeru-rest-1a579987af7b.webp', hint: '残りのマナを見ながら、カードを出す順番を考えよう。' },
-    { name: 'オオクニヌシ', image: 'loading_chibi/okuninushi-rest-077817e82a0e.webp', hint: 'レガシーの能力を確認し、仲間同士の力を生かそう。' },
-    { name: 'タケミカヅチ', image: 'loading_chibi/takemikazuchi-rest-fc71fcd56c88.webp', hint: '戦闘力と神攻力は別の数値。戦う相手に合わせて確かめよう。' },
-    { name: 'オモイカネ', image: 'loading_chibi/omoikane-rest-5459d8e24381.webp', hint: 'オラクルを使う前に、対象や効果の選択肢を確認しよう。' },
-    { name: 'アメノウズメ', image: 'loading_chibi/amenouzume-rest-8cd886a79256.webp', hint: '効果を発動するか選べるときは、今の盤面を見て判断しよう。' },
-    { name: 'ヒノカグツチ', image: 'loading_chibi/hinokagutsuchi-rest-9a3bc9d78c0b.webp', hint: '天力がたまる条件はカミによって違う。神技を使う前に確認しよう。' },
-    { name: 'アマテラス', image: 'loading_chibi/amaterasu-rest-c8488a613337.webp', hint: '自分の理念に同調するレガシーを集めることが大切。' },
-    { name: 'ツクヨミ', image: 'loading_chibi/tsukuyomi-rest-cd32de2b7937.webp', hint: 'レリックの起動効果は、使うタイミングを見極めよう。' },
-  ]);
-  let previous = -1;
-  window.tsukuriyoPickLoadingScene = () => {
-    let index = Math.floor(Math.random() * scenes.length);
-    if (index === previous) index = (index + 1) % scenes.length;
-    previous = index;
-    return scenes[index];
-  };
-  const scene = window.tsukuriyoPickLoadingScene();
+  const scene = window.tsukuriyoStartupLoadingScene;
   const loading = document.getElementById('app-loading');
+  if (!scene || !loading) return;
   const art = loading.querySelector('.loading-kami-art');
+  if ('fetchPriority' in art) art.fetchPriority = 'high';
   art.onerror = () => { art.style.display = 'none'; };
   art.src = scene.image;
   loading.querySelector('.loading-kami-hint').textContent = 'ヒント：' + scene.hint;
@@ -7708,7 +7754,7 @@
           </div>
 
           <div class="sp-packs-grid" :class="{ 'is-loading': pickImagesLoading }">
-            <div v-if="pickImagesLoading" class="pick-images-loading" role="status"><span class="asset-loading-spinner" aria-hidden="true"></span>カードを読み込み中…</div>
+            <div v-if="pickImagesLoading" class="pick-images-loading" role="status"><img v-if="pickLoadingScene" class="pick-loading-kami" :src="pickLoadingScene.image" alt="" decoding="async"><div class="pick-loading-copy"><div><span class="asset-loading-spinner" aria-hidden="true"></span>カードを読み込み中…</div><div v-if="pickLoadingScene" class="pick-loading-hint">ヒント：{{ pickLoadingScene.hint }}</div></div></div>
             <div v-for="(pack, i) in sb.packs" :key="i"
                  class="sp-pack-card"
                  :class="{
@@ -9377,7 +9423,7 @@
         <div class="tutorial-pick-center">
           <div class="gm-draft-status mine">★ あなたのピックです — 束から1枚選んでください（残りは隣へ回ります）</div>
           <div class="gm-pack-grid tutorial-pick-pack" :class="{ 'is-loading': pickImagesLoading }">
-            <div v-if="pickImagesLoading" class="pick-images-loading" role="status"><span class="asset-loading-spinner" aria-hidden="true"></span>カードを読み込み中…</div>
+            <div v-if="pickImagesLoading" class="pick-images-loading" role="status"><img v-if="pickLoadingScene" class="pick-loading-kami" :src="pickLoadingScene.image" alt="" decoding="async"><div class="pick-loading-copy"><div><span class="asset-loading-spinner" aria-hidden="true"></span>カードを読み込み中…</div><div v-if="pickLoadingScene" class="pick-loading-hint">ヒント：{{ pickLoadingScene.hint }}</div></div></div>
             <div v-for="card in tutorialPick.pack" :key="'tpk' + card.no" class="gm-pack-card"
                  :class="['kind-' + cardPickKind(card).key, { 'pick-assist-recommended': tutorialPickRecommendations.nos.includes(String(card.no)) }]"
                  :data-tcard="'pack:' + fullName(card)"
@@ -10087,7 +10133,7 @@
           <button type="button" class="pick-guide-link" @click="openPickGuideForKami(gsMyKamiCard)"><span class="ui-icon ui-icon-pick-guide" aria-hidden="true"></span> {{ gsMyKamiCard.name }}の<wbr>ピックガイドを見る</button>
         </aside>
         <div class="gm-pack-grid" :class="{ locked: gsIPickedThisStep, 'is-loading': pickImagesLoading }">
-          <div v-if="pickImagesLoading" class="pick-images-loading" role="status"><span class="asset-loading-spinner" aria-hidden="true"></span>カードを読み込み中…</div>
+          <div v-if="pickImagesLoading" class="pick-images-loading" role="status"><img v-if="pickLoadingScene" class="pick-loading-kami" :src="pickLoadingScene.image" alt="" decoding="async"><div class="pick-loading-copy"><div><span class="asset-loading-spinner" aria-hidden="true"></span>カードを読み込み中…</div><div v-if="pickLoadingScene" class="pick-loading-hint">ヒント：{{ pickLoadingScene.hint }}</div></div></div>
           <div v-for="(card, i) in gsMyPackCards" :key="i" class="gm-pack-card"
                :class="['kind-' + cardPickKind(card).key, { 'pick-assist-recommended': gsDraftRecommendedCardNos.includes(String(card.no)), 'pick-assist-not-recommended': gsDraftNotRecommendedCardNos.includes(String(card.no)) }]"
                @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
@@ -12451,6 +12497,7 @@ new Vue({
     assetLoading: null,      // ロード画面 { title, done, total, scene }（素材が揃うまで画面を覆う）
     battleLoading: false,    // 対戦に入るときの素材読み込み中（コイン演出は読み込み後に始める）
     pickImagesLoading: false, // ピック中の束のカード画像を読み込み中
+    pickLoadingScene: null,   // ピックの読み込み中に出す休憩中のカミとヒント（ロード画面と同じもの）
 
     /* ===== 対戦画面（Phase 3：手動対戦操作＋Undo） ===== */
     battleSample: {
@@ -17816,6 +17863,8 @@ new Vue({
       const token = this._pickImagesToken = {};
       const st = this._imgLoader;
       if (!urls.length || (st && urls.every(url => st.done.has(url)))) { this.pickImagesLoading = false; return; }
+      // ロード画面と同じく、休憩中のカミとヒントを出す（読み込み済みの絵を優先して選ぶので空白にならない）
+      if (!this.pickImagesLoading && typeof window.tsukuriyoPickLoadingScene === 'function') this.pickLoadingScene = window.tsukuriyoPickLoadingScene();
       this.pickImagesLoading = true;
       await Promise.race([Promise.all(urls.map(url => this._assetImage(url))), new Promise(resolve => window.setTimeout(resolve, 15000))]);
       if (this._pickImagesToken === token) this.pickImagesLoading = false;
