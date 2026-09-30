@@ -1682,3 +1682,17 @@ test("the wheel scrolls until the preview has been shown for 0.5s, and an ongoin
     assert.equal(prevented,2,'after pausing, the next wheel turn zooms');
   } finally { Date.now=realNow; }
 });
+
+test("the wheel hint appears only once the wheel can zoom (0.5s after the preview opens)", async () => {
+  const rect={left:50,right:140,top:180,height:200},event={currentTarget:{closest:()=>null,getBoundingClientRect:()=>rect}};
+  const geometry=method('cardHoverGeometry','rect,baseWidth,zoom,evolved,window');
+  const vm={appView:'battle',hoverCard:null,hoverZoom:1,battleCardHoverBlocked:()=>false,isSpoilerHidden:()=>false,cardImageUrl:()=>'card.webp',
+    cardHoverGeometry(r,b,z,e){return geometry(r,b,z,e,{innerWidth:1280,innerHeight:900})}};
+  const show=method('showCardHover','card,event,allowKamiSpoiler=false');
+  const card={no:7};show.call(vm,card,event);
+  assert.equal(vm.hoverZoomReady,false,'no hint right after the preview opens');
+  await new Promise(r=>setTimeout(r,560));
+  assert.equal(vm.hoverZoomReady,true,'the hint appears after 0.5s');
+  show.call(vm,{no:8},event);assert.equal(vm.hoverZoomReady,false,'a new card restarts the wait');
+  assert.match(html,/class="card-hover-zoom-note" :class="\{ ready: hoverZoomReady \}"/);
+});

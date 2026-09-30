@@ -950,6 +950,9 @@
   }
   .card-hover-preview.chp-evolved .chp-col { flex: 1; min-width: 0; }
   .card-hover-zoom-note { grid-column: 1 / -1; display: block; background: #0a0c12; color: #aab7ca; font-size: 10px; line-height: 18px; text-align: center; white-space: nowrap; }
+  /* 説明は0.5秒後（ホイールが使えるようになってから）に表示する。行の高さは最初から確保しておく */
+  .card-hover-zoom-note:not(.ready) { color: transparent; }
+  .card-hover-zoom-note.ready { transition: color .2s ease; }
   .chp-label {
     font-size: 11px; color: #ffd86a; font-weight: 700;
     text-align: center; padding: 2px 0; line-height: 1.2;
@@ -7678,7 +7681,7 @@
       <div class="sb-hp-img"
            :style="{ backgroundImage: 'url(' + cardImageUrl(sbHoverCard) + ')' }">
       </div>
-      <div class="card-hover-zoom-note">ホイールで拡大・縮小</div>
+      <div class="card-hover-zoom-note" :class="{ ready: sbHoverZoomReady }">ホイールで拡大・縮小</div>
     </div>
   </div><!-- /shield-overlay -->
 
@@ -10251,7 +10254,8 @@
       <div class="chp-label">進化元（重なり）</div>
       <div class="chp-img" :style="{ backgroundImage: 'url(' + cardImageUrl(hoverCard._evolvedBase) + ')' }"></div>
     </div>
-    <div v-if="appView !== 'cardlist'" class="card-hover-zoom-note">ホイールで拡大・縮小</div>
+    <!-- ホイールで拡大・縮小できるのは表示から0.5秒後なので、説明もそのときに出す（場所は最初から確保して表示のずれを防ぐ） -->
+    <div v-if="appView !== 'cardlist'" class="card-hover-zoom-note" :class="{ ready: hoverZoomReady }">ホイールで拡大・縮小</div>
   </div>
 
   <!-- ===== カードプレビュー モーダル ===== -->
@@ -12187,6 +12191,8 @@ new Vue({
     hoverZoom: 1,
     hoverWidth: 360,
     sbHoverZoom: 1,
+    hoverZoomReady: false,   // 拡大表示が出て0.5秒たち、ホイールで拡大・縮小できる状態か（説明文の表示に使う）
+    sbHoverZoomReady: false,
     sbHoverWidth: 440,
     hoverTop: 0,             // ホバープレビューのY座標(px)
     baseDevicePixelRatio: window.devicePixelRatio || 1, // 起動時のDPR（ズーム検知の基準）
@@ -30192,7 +30198,12 @@ new Vue({
       // 対戦中に表示済みのカードは拡大できる。カードリスト等のネタバレ防止は維持。
       if (this.appView !== 'battle' && this.isSpoilerHidden(card) && !(allowKamiSpoiler && card.isKami)) return;
       if (!this.cardImageUrl(card)) return;
-      if (this.hoverCard !== card) this._hoverShownAt = Date.now(); // 拡大表示が出た時刻（ホイールを拡大に使うまでの待ち時間の起点）
+      if (this.hoverCard !== card) {
+        this._hoverShownAt = Date.now(); // 拡大表示が出た時刻（ホイールを拡大に使うまでの待ち時間の起点）
+        this.hoverZoomReady = false;
+        clearTimeout(this._hoverZoomReadyT);
+        this._hoverZoomReadyT = setTimeout(() => { if (this.hoverCard === card) this.hoverZoomReady = true; }, 500);
+      }
       this.hoverCard = card;
       const el = event.currentTarget.closest('.card') || event.currentTarget;
       const rect = el.getBoundingClientRect();
@@ -30909,7 +30920,12 @@ new Vue({
     /* 専用 sbHoverCard を使い、オーバーレイ内の sb-hover-popup で表示 */
     showSbHover(card, event) {
       if (!this.cardImageUrl(card)) return;
-      if (this.sbHoverCard !== card) this._sbHoverShownAt = Date.now();
+      if (this.sbHoverCard !== card) {
+        this._sbHoverShownAt = Date.now();
+        this.sbHoverZoomReady = false;
+        clearTimeout(this._sbHoverZoomReadyT);
+        this._sbHoverZoomReadyT = setTimeout(() => { if (this.sbHoverCard === card) this.sbHoverZoomReady = true; }, 500);
+      }
       this.sbHoverCard = card;
       const rect = event.currentTarget.getBoundingClientRect();
       this._sbHoverSourceRect = rect;
