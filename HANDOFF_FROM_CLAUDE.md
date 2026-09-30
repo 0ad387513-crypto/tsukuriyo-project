@@ -1,5 +1,13 @@
 # Claude → Codex 引き継ぎメモ（2026-09-26 時点）
 
+## Claude 追記：v1.15.251（2026-09-30）
+
+- エモートの絵文字を、ユーザー提供のカミ別表情アイコン（10柱×6種）に置き換え。1柱につき1枚のアトラス（3列×2行・1コマ160px・`atlas` 規則で70〜99KB・ハッシュ付き）を `emote_icons/` に置き、`KAMI_EMOTE_ICONS`（カミ番号→URL）と `emoteIconStyle(kamiNo, key)` で該当コマを表示。コマの並びは `EMOTE_TYPES` と同じ。ZIPとの対応（疑問＝smile、大見栄＝victory など）とZIP番号のずれは `emote_icons/README.md`。
+- ホイール：自分のカミのアイコンを円いっぱいに表示し、名前は円の下に添える（`.has-icon`）。アイコンの無いカミは従来の絵文字。吹き出し：エモートのときだけ台詞の左にそのカミのアイコン（`speechOptions.emote = { kamiNo, key }` → `emoteBubbles[side].emote`、テンプレートの `emoteBubbleIcon()`）。神技のセリフには付けない。相手のエモート・チュートリアルの挨拶の返事も相手カミのアイコン。
+- アイコンで吹き出しが高くなり自分のカミの下に収まらなくなるため、下に余白が無いときはポートレートの上に出す（`pos.above` → `.emote-bubble.above`）。
+- 対戦前のロード画面で読み込むよう `_kamiVisualUrls` にアトラスを追加。`_headers` に `/emote_icons/*.webp` の長期キャッシュ。
+- 161テスト成功。壱の対戦画面でホイールのアイコン6種・自分と相手の吹き出し（自分は上側に表示）を確認。コンソールエラーなし。オンライン対戦での相手側の表示は未確認（受信処理は既存の `_battleApplyRemoteEmote` にアイコン情報を渡すだけ）。
+
 ## Claude 追記：v1.15.246（2026-09-30）
 
 - ヤマタノオロチ（no.10）の創世神技カットインをユーザー提供の添付画像に差し替え。構図の変更・再生成はせず `cutin` 規則で1600×900・202KBのWebPへ圧縮：`kami_cutin/yamata-no-orochi-genesis-wide-8d35ef840ea7.webp`。原本は `kami_cutin/yamata-no-orochi-user-reference-20260930.webp`。`divine_effects.js`・`_headers`・`genesis-generation.json`（旧版は `previousRevisions`）・`optimized_assets.json` を更新。固有演出（封印・咆哮）は変更なし。

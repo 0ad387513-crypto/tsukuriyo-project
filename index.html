@@ -5001,7 +5001,16 @@
     overflow-wrap: break-word; word-break: break-word;
     pointer-events: none;
   }
+  /* エモートの吹き出しは、そのカミの表情アイコンを台詞の左に添える（神技のセリフには付けない） */
+  .emote-bubble.has-icon { display: flex; align-items: center; gap: 10px; max-width: 320px; padding: 6px 16px 6px 8px; }
+  .emote-bubble-icon {
+    flex: none; width: 60px; height: 60px; background-repeat: no-repeat; background-size: 300% 200%;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); animation: emoteIconPop .35s cubic-bezier(.3,1.6,.5,1) both;
+  }
+  @keyframes emoteIconPop { from { transform: scale(.5) rotate(-8deg); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .emote-bubble-icon { animation: none; } }
   .emote-bubble-self { left: 50%; top: 62%; transform: translateX(-50%); }
+  .emote-bubble.above { transform: translate(-50%, -100%); } /* ポートレートの上に出すとき（top はポートレートの上端） */
   .emote-bubble-opp  { left: 50%; top: calc(50% + 8px); transform: translateX(-50%); }
   .emote-bubble-fade-enter-active { transition: opacity 0.2s ease, transform 0.2s ease; }
   .emote-bubble-fade-leave-active { transition: opacity 0.3s ease; }
@@ -5029,6 +5038,14 @@
   .emote-wheel-backdrop { position: fixed; inset: 0; z-index: 4290; }
   .emote-wheel-item .emote-wheel-emoji { font-size: 22px; line-height: 1; }
   .emote-wheel-item .emote-wheel-label { font-size: 10px; margin-top: 2px; white-space: nowrap; }
+  /* カミの表情アイコンがあるときは、絵文字の代わりに円いっぱいにアイコンを出し、名前は円の下に添える */
+  .emote-wheel-item.has-icon { left: -38px; top: -38px; width: 76px; height: 76px; }
+  .emote-wheel-item .emote-wheel-icon { width: 64px; height: 64px; background-repeat: no-repeat; background-size: 300% 200%; filter: drop-shadow(0 2px 3px rgba(0,0,0,.45)); }
+  .emote-wheel-item.has-icon .emote-wheel-label {
+    position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); margin: 0; padding: 1px 8px; border-radius: 999px;
+    background: rgba(20, 16, 30, 0.92); border: 1px solid rgba(255,255,255,0.3); color: #fff;
+  }
+  .emote-wheel-item.has-icon.active .emote-wheel-label { background: #ffb43c; border-color: #fff2dc; color: #2a1a08; }
   .emote-wheel-item.active {
     background: rgba(255, 180, 60, 0.92); border-color: #fff2dc; color: #2a1a08;
   }
@@ -8839,12 +8856,12 @@
 
   <!-- ===== カミの吹き出し（エモート／神技・2のセリフ）：カミポートレートの真下に表示 ===== -->
   <transition name="emote-bubble-fade">
-    <div v-if="emoteBubbles.self" :key="'self'+emoteBubbles.self.id" class="emote-bubble emote-bubble-self"
-         :style="emoteBubbles.self.pos ? { left: emoteBubbles.self.pos.x + 'px', top: emoteBubbles.self.pos.y + 'px' } : {}">{{ emoteBubbles.self.text }}</div>
+    <div v-if="emoteBubbles.self" :key="'self'+emoteBubbles.self.id" class="emote-bubble emote-bubble-self" :class="{ 'has-icon': emoteBubbleIcon(emoteBubbles.self), above: emoteBubbles.self.pos && emoteBubbles.self.pos.above }"
+         :style="emoteBubbles.self.pos ? { left: emoteBubbles.self.pos.x + 'px', top: emoteBubbles.self.pos.y + 'px' } : {}"><span v-if="emoteBubbleIcon(emoteBubbles.self)" class="emote-bubble-icon" :style="emoteBubbleIcon(emoteBubbles.self)"></span><span>{{ emoteBubbles.self.text }}</span></div>
   </transition>
   <transition name="emote-bubble-fade">
-    <div v-if="emoteBubbles.opp" :key="'opp'+emoteBubbles.opp.id" class="emote-bubble emote-bubble-opp"
-         :style="emoteBubbles.opp.pos ? { left: emoteBubbles.opp.pos.x + 'px', top: emoteBubbles.opp.pos.y + 'px' } : {}">{{ emoteBubbles.opp.text }}</div>
+    <div v-if="emoteBubbles.opp" :key="'opp'+emoteBubbles.opp.id" class="emote-bubble emote-bubble-opp" :class="{ 'has-icon': emoteBubbleIcon(emoteBubbles.opp), above: emoteBubbles.opp.pos && emoteBubbles.opp.pos.above }"
+         :style="emoteBubbles.opp.pos ? { left: emoteBubbles.opp.pos.x + 'px', top: emoteBubbles.opp.pos.y + 'px' } : {}"><span v-if="emoteBubbleIcon(emoteBubbles.opp)" class="emote-bubble-icon" :style="emoteBubbleIcon(emoteBubbles.opp)"></span><span>{{ emoteBubbles.opp.text }}</span></div>
   </transition>
 
   <!-- ===== エモート選択ホイール：自分のカミポートレートをドラッグ、または右クリックで表示 ===== -->
@@ -8853,10 +8870,11 @@
   <div v-if="emoteWheel" class="emote-wheel" :style="{ left: emoteWheel.x + 'px', top: emoteWheel.y + 'px' }">
     <div class="emote-wheel-center"></div>
     <div v-for="(t, i) in emoteWheelItems" :key="t.key" class="emote-wheel-item"
-         :class="{ active: emoteWheel.hoverKey === t.key, 'tutorial-emote-target': tutorialStep && tutorialStep.id === 'greeting' && t.key === 'greeting', 'tutorial-emote-other': tutorialStep && tutorialStep.id === 'greeting' && t.key !== 'greeting' }" :style="t.style"
+         :class="{ 'has-icon': !!t.icon, active: emoteWheel.hoverKey === t.key, 'tutorial-emote-target': tutorialStep && tutorialStep.id === 'greeting' && t.key === 'greeting', 'tutorial-emote-other': tutorialStep && tutorialStep.id === 'greeting' && t.key !== 'greeting' }" :style="t.style"
          @mouseenter="emoteWheel.hoverKey = t.key" @mouseleave="emoteWheel.hoverKey = null"
          @click.stop="battleEmoteWheelItemClick(t.key)">
-      <span class="emote-wheel-emoji">{{ t.emoji }}</span>
+      <span v-if="t.icon" class="emote-wheel-icon" :style="t.icon" aria-hidden="true"></span>
+      <span v-else class="emote-wheel-emoji">{{ t.emoji }}</span>
       <span class="emote-wheel-label">{{ t.label }}</span>
     </div>
   </div>
@@ -10455,6 +10473,26 @@ const EMOTE_TYPES = [
   { key: "confusion", emoji: "😥", label: "困惑" },
   { key: "boast",     emoji: "🔥", label: "大見栄" },
 ];
+// カミごとのエモートアイコン（3列×2行のアトラス。並びは EMOTE_TYPES と同じ：あいさつ・賞賛・驚き／疑問・困惑・大見栄）。
+// アイコンの無いカミは絵文字のまま表示する。作り方は emote_icons/README.md
+const KAMI_EMOTE_ICONS = Object.freeze({
+  '1': 'emote_icons/susanoo-emotes-f5fcfa47d2b2.webp',
+  '2': 'emote_icons/yamato-takeru-emotes-2988aa492745.webp',
+  '3': 'emote_icons/okuninushi-emotes-4af0fe94b5cd.webp',
+  '4': 'emote_icons/takemikazuchi-emotes-060508c3abbc.webp',
+  '5': 'emote_icons/omoikane-emotes-18529c459f08.webp',
+  '6': 'emote_icons/amenouzume-emotes-14bb0cef54e0.webp',
+  '7': 'emote_icons/hinokagutsuchi-emotes-4b8beb3ffba2.webp',
+  '8': 'emote_icons/amaterasu-emotes-08c64197c446.webp',
+  '9': 'emote_icons/tsukuyomi-emotes-c475ad817c3b.webp',
+  '10': 'emote_icons/yamata-no-orochi-emotes-1910188d9e83.webp',
+});
+function emoteIconStyle(kamiNo, key) {
+  const url = KAMI_EMOTE_ICONS[String(kamiNo)];
+  const i = EMOTE_TYPES.findIndex(t => t.key === key);
+  if (!url || i < 0) return null;
+  return { backgroundImage: `url('${url}')`, backgroundPosition: `${(i % 3) * 50}% ${Math.floor(i / 3) * 100}%` };
+}
 
 // TOP画面の各モードタイル→詳細画面（画像＋説明＋開始ボタン）の内容
 const MODE_DETAIL_INFO = {
@@ -12340,12 +12378,14 @@ new Vue({
       const n = EMOTE_TYPES.length;
       const radius = 92;
       const hoverKey = this.emoteWheel && this.emoteWheel.hoverKey;
+      const kami = this.battleSample && this.battleSample.self && this.battleSample.self.kami;
       return EMOTE_TYPES.map((t, i) => {
         const angle = (Math.PI * 2 * i) / n - Math.PI / 2; // 先頭を真上から時計回りに配置
         const x = Math.cos(angle) * radius;
         const y = Math.sin(angle) * radius;
         const scale = hoverKey === t.key ? 1.15 : 1;
-        return Object.assign({}, t, { style: { transform: `translate(${x}px, ${y}px) scale(${scale})` } });
+        const icon = kami ? emoteIconStyle(kami.no, t.key) : null;
+        return Object.assign({}, t, { icon, style: { transform: `translate(${x}px, ${y}px) scale(${scale})` } });
       });
     },
     filteredCards() {
@@ -16374,7 +16414,7 @@ new Vue({
     // カミの神技・創世神技の演出素材の一覧（実際に登場するカミの分だけ先読みするため）
     _kamiVisualUrls(kami) {
       if (!kami || !/^(?:[1-9]|10)$/.test(String(kami.no))) return [];
-      return [`kami_cutin/${kami.no}.webp`, `kami_cutin_eyes/${kami.no}.png`, ...divineSkillAssetUrls(kami)];
+      return [`kami_cutin/${kami.no}.webp`, `kami_cutin_eyes/${kami.no}.png`, ...divineSkillAssetUrls(kami), KAMI_EMOTE_ICONS[String(kami.no)]].filter(Boolean);
     },
     /* 画像の読み込み係。画面に今すぐ必要な画像（ロード画面・ピック中の束）を先に、4本ずつ読む。
        裏で用意しておく画像（カミの演出素材・ドラフトで出うるカード）は、今すぐ必要な画像が無いときだけ1本ずつ読み、
@@ -18122,7 +18162,11 @@ new Vue({
       const el = this.$el && this.$el.querySelector(sel);
       const rect = el ? el.getBoundingClientRect() : null;
       const pos = rect ? { x: rect.left + rect.width / 2, y: rect.bottom + 10 } : null;
-      this.$set(this.emoteBubbles, side, { text, id, pos });
+      // 下に吹き出しの入る余白が無いとき（自分のカミは画面の下端近くにある）は、ポートレートの上に出す
+      const bubbleHeight = speechOptions.emote ? 84 : 56;
+      if (pos && typeof window !== 'undefined' && pos.y + bubbleHeight > window.innerHeight) Object.assign(pos, { y: rect.top - 10, above: true });
+      // speechOptions.emote（{ kamiNo, key }）があれば、吹き出しにそのカミの表情アイコンを添える
+      this.$set(this.emoteBubbles, side, { text, id, pos, emote: speechOptions.emote || null });
       this._emoteSpeechHolds = this._emoteSpeechHolds || {};
       if (this._emoteSpeechHolds[side]) this._emoteSpeechHolds[side].cancel();
       this._emoteSpeechHolds[side] = this._battleHoldSpeech(text, voice, () => {
@@ -18158,8 +18202,8 @@ new Vue({
           if (this.tutorial !== greetingLesson || !this.tutorialStep || this.tutorialStep.id !== 'greeting') return;
           this.$set(greetingLesson.flags, 'greetingReplied', true);
           this._tutorialTick();
-        }, { endWithVoice: true });
-      } : null, greetingLesson ? { endWithVoice: true } : {});
+        }, { endWithVoice: true, emote: opponent ? { kamiNo: String(opponent.no), key: 'greeting' } : null });
+      } : null, Object.assign(greetingLesson ? { endWithVoice: true } : {}, { emote: { kamiNo: String(kami.no), key } }));
       this._battlePublishEmote(key);
     },
     _battlePublishEmote(key) {
@@ -18180,7 +18224,11 @@ new Vue({
       const text = this._battleEmoteLineFor(kami, payload.key);
       if (!text) return;
       this._sfxPlay('emote');
-      this._battleShowEmoteBubble('opp', text, this.playKamiVoice(kami, payload.key));
+      this._battleShowEmoteBubble('opp', text, this.playKamiVoice(kami, payload.key), null, { emote: { kamiNo: String(kami.no), key: String(payload.key) } });
+    },
+    // 吹き出しに添える表情アイコンの表示位置（アトラスの該当コマ）。エモート以外の吹き出し・アイコンの無いカミは null
+    emoteBubbleIcon(bubble) {
+      return bubble && bubble.emote ? emoteIconStyle(bubble.emote.kamiNo, bubble.emote.key) : null;
     },
     // 自分のカミポートレートのクリック：エモートのドラッグ操作直後は誤ってプレビューを開かないよう抑止する
     battleSelfKamiClick() {
