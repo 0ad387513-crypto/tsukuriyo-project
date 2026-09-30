@@ -2010,10 +2010,7 @@
   }
   /* ===== チュートリアル（対戦画面内。モーダル(390〜)より下、盤面より上） ===== */
   .tutorial-layer { position: fixed; inset: 0; z-index: 380; pointer-events: none; }
-  /* チュートリアル中はライフ・天力・マナを手で増減するボタンを隠す（battleStat 側でも受け付けない） */
-  .battle-overlay.tutorial-active .orb-value-controls,
-  .battle-overlay.tutorial-active .orb-max-controls,
-  .battle-overlay.tutorial-active .mana-controls { visibility: hidden; pointer-events: none; }
+  /* チュートリアル中はライフ・天力・マナの手動調整（ヘッダーの調整パネル）の入口を出さない（battleStat 側でも受け付けない） */
   .tutorial-layer.finale { z-index: 760; } /* 勝利後は結果画面(700)の上で締めの台詞を出す */
   .tutorial-catcher { position: absolute; inset: 0; pointer-events: auto; cursor: pointer; }
   .tutorial-dim { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -4198,22 +4195,15 @@
   }
   .dgc-cell.dgc-deck { cursor: pointer; }
   .dgc-cell:hover { background: #2a3548; }
+  /* デッキ・墓地・崩壊のアイコン（design_assets/battle-ui-icons-semantic-v3 の原画をインラインSVG化。
+     currentColor の単色なので、領域ごとの色は color で指定する） */
   .dgc-icon {
-    width: 22px; height: 28px;
+    width: 24px; height: 24px;
     color: #e8d4a0; flex-shrink: 0;
   }
-  /* デッキアイコン：CSS div で3枚カード重なりを描画（SVG描画失敗対策） */
-  .dgc-deck-icon { position: relative; }
-  .dgc-deck-icon .ddi-card {
-    position: absolute;
-    width: 12px; height: 18px;
-    background: #e8d4a0;
-    border: 1px solid #1a2030;
-    border-radius: 2px;
-  }
-  .dgc-deck-icon .ddi-card-1 { top: 8px; left: 0px; }
-  .dgc-deck-icon .ddi-card-2 { top: 5px; left: 5px; }
-  .dgc-deck-icon .ddi-card-3 { top: 2px; left: 10px; }
+  .dgc-icon.dgc-deck-icon { color: #b9d9f2; }
+  .dgc-icon.dgc-graveyard-icon { color: #d8c6e8; }
+  .dgc-icon.dgc-crumbled-icon { color: #e7b6ae; }
   .dgc-info {
     display: flex; flex-direction: column; gap: 0;
     line-height: 1.1;
@@ -4349,6 +4339,47 @@
   .battle-undo-btn .undo-count {
     font-size: 10px; color: #d8c8ff; margin-left: 4px; font-weight: 600;
   }
+  /* ヘッダーのアイコンボタン（時間設定・手動調整）：音量・戦績アイコンにそろえて常に金色。開いている間はボタンの地を明るくして示す */
+  .battle-header-icon-btn { display: inline-flex; align-items: center; justify-content: center; padding: 3px 9px; color: #e8c878; }
+  .battle-header-icon-btn:hover:not(:disabled) { color: #f3d993; }
+  .battle-header-icon-btn.is-open { background: #4a3f5a; border-color: #b89a5a; }
+  .battle-header-svg { width: 20px; height: 20px; display: block; }
+  /* バトルログ：戦績と同じアイコン（ui-icon-battle-record）を文字の前に置く */
+  .battle-log-btn { display: inline-flex; align-items: center; gap: 5px; padding-top: 3px; padding-bottom: 3px; }
+  .battle-undo-btn.battle-log-btn .ui-icon { width: 20px; height: 20px; }
+  /* 通信状態：状態名だけを常に出し、押すと詳細（コード・送受信・revision）を開く */
+  .battle-sync-detail-btn { cursor: pointer; font-family: inherit; color: inherit; }
+  .battle-sync-caret { font-size: 9px; opacity: .7; margin-left: 2px; }
+  .battle-net-detail { min-width: 190px; left: 0; right: auto; }
+  .battle-net-detail-title, .battle-adjust-title { font-size: 11px; font-weight: 800; color: #c9d2df; margin-bottom: 6px; }
+  .battle-net-detail dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 12px; }
+  .battle-net-detail dt { color: #8f9bb0; }
+  .battle-net-detail dd { margin: 0; color: #e8ecf3; font-variant-numeric: tabular-nums; word-break: break-all; }
+  .battle-net-detail-note { margin: 8px 0 0; font-size: 11px; color: #aab5c6; line-height: 1.5; }
+  /* 手動調整パネル：項目名・現在値・増減ボタンを1行ずつ並べる */
+  .battle-adjust-panel { width: 300px; box-sizing: border-box; }
+  .battle-adjust-row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
+    padding: 5px 0 5px 8px; border-left: 3px solid #5b6474;
+  }
+  .battle-adjust-row + .battle-adjust-row { margin-top: 3px; }
+  .battle-adjust-row.life { border-left-color: #d0485a; }
+  .battle-adjust-row.tenryoku { border-left-color: #3f7fcf; }
+  .battle-adjust-row.seal { border-left-color: #d63b48; }
+  .battle-adjust-row.mana { border-left-color: #2fbf6a; }
+  .battle-adjust-row.sub { padding-top: 2px; }
+  .battle-adjust-name { font-size: 12px; font-weight: 800; color: #e7ebf3; white-space: nowrap; }
+  .battle-adjust-name small { margin-left: 6px; font-size: 10px; font-weight: 600; color: #8f9bb0; }
+  .battle-adjust-row.sub .battle-adjust-name { font-weight: 700; color: #c9d2df; }
+  .battle-adjust-value { min-width: 44px; text-align: right; font-size: 15px; font-weight: 900; color: #fff; font-variant-numeric: tabular-nums; }
+  .battle-adjust-value small { font-size: 11px; color: #aab5c6; }
+  .battle-adjust-btns { display: flex; gap: 4px; }
+  .battle-adjust-btns button {
+    width: 32px; height: 28px; padding: 0; border-radius: 5px; cursor: pointer;
+    background: #26344d; border: 1px solid #5d7196; color: #fff; font-size: 14px; font-weight: 900;
+  }
+  .battle-adjust-btns button:hover { background: #34507a; }
+  .battle-adjust-btns button:focus-visible { outline: 2px solid #e8c878; outline-offset: 1px; }
   /* 相手クライアントへ判断を委ねて応答待ち中のインジケーター（守護確認・相手選択効果 等） */
   .battle-waiting-banner {
     position: absolute; top: 52px; left: 50%; transform: translateX(-50%);
@@ -4764,11 +4795,14 @@
   .battle-surrender-btn:hover { background: #b32b39; }
   .battle-board { gap: 6px; padding: 6px 8px; }
   .battle-main {
-    grid-template-rows: minmax(96px, .78fr) minmax(118px, 1.12fr) minmax(118px, 1.12fr) minmax(118px, .98fr);
+    /* 相手の段（伏せ手札・カミ・レリック）はカミの大きさ＋余白までに抑え、余った高さをレガシーの場と自分の段へ回す */
+    grid-template-rows: minmax(96px, calc(var(--kw) + 36px)) minmax(118px, 1.12fr) minmax(118px, 1.12fr) minmax(118px, .98fr);
     gap: 6px;
   }
   .battle-row-opp-top, .battle-row-self-bot {
     grid-template-columns: minmax(0, 1fr) var(--status-w) minmax(0, 1fr);
+    /* 段の高さを盤面の割り当てに固定する（中央のカミ列の中身が高くても、手札・レリック枠が画面下へはみ出さない） */
+    grid-template-rows: minmax(0, 1fr);
     gap: 8px;
   }
   .battle-zone {
@@ -4959,6 +4993,9 @@
   }
   .hand-disabled { opacity: .82; }
   .battle-center-col { justify-content: center; gap: 3px; }
+  /* 段の高さを固定しても、カミ・神技ボタン・カミ名は縮めずに従来どおり表示する */
+  .battle-center-col > * { flex-shrink: 0; }
+  .battle-center-col { justify-content: safe center; } /* 収まらないときは上端から並べ、従来の位置を保つ */
   .kami-hud {
     display: grid; grid-template-columns: 80px var(--kw) 80px;
     align-items: end; justify-content: center; gap: 4px; width: 100%;
@@ -4973,14 +5010,9 @@
     margin: 0 auto;
   }
   .hud-orb { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
-  /* ライフ赤丸の右に △▽（最大値ボタン）を配置するための横並びレイアウト */
   .life-row {
     position: relative; display: flex; align-items: center; justify-content: center;
     width: 44px; margin: 0 auto;
-  }
-  .life-row .orb-max-controls {
-    position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
-    flex-direction: column; gap: 0; margin: 0;
   }
   /* ===== カミ枠の段階表示（自分のみ）：通常=neutral, 神技可=silver, 創世神技可=gold点滅 ===== */
   .kami-portrait { border-color: #3a4258; box-shadow: 0 0 8px rgba(60,80,110,0.35); }
@@ -5013,15 +5045,6 @@
     box-shadow: inset 0 0 10px rgba(0,0,0,0.7), 0 0 12px rgba(180,30,40,0.55);
     text-shadow: 0 0 4px rgba(0,0,0,0.8);
   }
-  .orb-max-controls, .orb-value-controls { display: flex; align-items: center; justify-content: center; gap: 3px; }
-  .orb-max-controls { flex-direction: column; gap: 0; margin-bottom: 1px; }
-  .orb-max-controls button, .orb-value-controls button {
-    width: 22px; height: 18px; padding: 0; line-height: 1; border-radius: 9px;
-    border: 1px solid #7e94ba; background: #294c84; color: #fff; cursor: pointer;
-    font-size: 12px; font-weight: 900;
-  }
-  .orb-max-controls button { width: 14px; height: 12px; background: transparent; border: 0; color: #ff9a9f; }
-  .orb-value-controls button:hover { background: #3b68aa; }
   .kami-name {
     max-width: 100%; color: #d8deea; font-size: 11px; font-weight: 800;
     text-align: center; line-height: 1.25;
@@ -5066,13 +5089,6 @@
   /* 最大値を超えて使えるマナ（このターンのみ等）：通常の緑とは別の金色で目立たせる */
   .mana-orb.bonus { background: #e8b23a; border-color: #ffe29a; box-shadow: 0 0 8px rgba(232,178,58,.75); }
   .mana-empty { grid-column: 1 / -1; color: #687383; font-size: 10px; text-align: center; }
-  .mana-controls { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
-  .mana-controls span { color: #9ca9bb; font-size: 9px; }
-  .mana-control-group { display: flex; gap: 3px; }
-  .mana-controls button {
-    width: 24px; height: 20px; padding: 0; border-radius: 4px; cursor: pointer;
-    background: #264b38; border: 1px solid #5fa278; color: #d9ffe5; font-weight: 900;
-  }
   .dgc-stack { gap: 5px; padding: 5px; }
   .dgc-cell { min-height: 42px; gap: 8px; padding: 5px 7px; border: 1px solid transparent; }
   .dgc-cell.zone-deck { background: #18385d; border-color: #376ca3; }
@@ -5089,7 +5105,7 @@
   }
   .dgc-cell.disabled { cursor: not-allowed; filter: grayscale(.45); opacity: .75; }
   .dgc-cell.disabled:hover { background: #18385d; }
-  .dgc-icon { width: 30px; height: 34px; }
+  .dgc-icon { width: 24px; height: 24px; }
   .dgc-info { flex-direction: row; align-items: baseline; gap: 7px; }
   .dgc-name { color: #e7ebf3; font-size: 12px; font-weight: 800; }
   .dgc-count { color: #fff; font-size: 17px; }
@@ -5926,15 +5942,13 @@
     .battle-row-self-bot .battle-center-col { transform: translateY(-10px); }
     .orb-disc { width: 43px; height: 43px; font-size: 16px; }
     .life-row { width: 43px; }
-    .orb-max-controls button { height: 10px; }
-    .orb-value-controls button { width: 20px; height: 16px; }
     .kami-skill-btn { padding: 3px 10px; font-size: 12px; }
     .kami-name { font-size: 9px; }
     .mana-panel { padding: 4px 5px; gap: 3px; }
     .mana-orb { width: 13px; height: 13px; }
     .dgc-stack { gap: 3px; padding: 3px; }
     .dgc-cell { min-height: 34px; padding: 3px 6px; }
-    .dgc-icon { width: 25px; height: 28px; }
+    .dgc-icon { width: 22px; height: 22px; }
     .turn-middle { padding: 5px; }
     .battle-end-turn-btn { padding: 6px 4px; }
   }
@@ -8199,27 +8213,35 @@
            :style="{ left: l.x + 'px', top: l.y + 'px', width: l.length + 'px', transform: 'rotate(' + l.angle + 'deg)', '--link-ms': l.duration + 'ms' }"></div>
       <div class="battle-header">
       <button class="battle-back-btn" @click="battleReturn">◀ {{ battleReturnLabel }}</button>
-      <h2>⚔ 対戦画面</h2>
+      <!-- 見出しは読み上げ用にのみ残す（「◀ 戻る」と対戦カードの表示で画面は分かるため、見た目の重複を避ける） -->
+      <h2 class="sr-only">対戦画面</h2>
       <span class="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {{ battleView.result ? '対戦終了' : (battleView.activeSide === 'self' ? 'あなたのターンです' : '相手のターンです') }}
       </span>
       <span class="battle-matchup">{{ battleContext.selfName }} vs {{ battleContext.oppName }}</span>
       <span class="battle-phase">{{ battleContext.round ? 'ラウンド' + battleContext.round : battleContext.modeLabel }}</span>
-      <span class="battle-setup-note">マリガン 自分{{ battleContext.selfMulligans }}回/相手{{ battleContext.oppMulligans }}回</span>
-      <!-- 観戦モード表示（書き込み不可・両者手札全公開） -->
-      <span v-if="battleNet.on && battleNet.spectating" class="battle-sync-status ready" title="観戦モード：操作はできません（両者の手札が全公開されています）">
-        🔍 観戦中 <span style="opacity:.7;margin-left:6px;">[コード: {{ battleNet.code }}]</span>
-        <span v-if="battleNet.lastReceivedAt" style="opacity:.6;margin-left:6px;">↓ {{ battleNetReceivedAgo }}</span>
-      </span>
-      <!-- オンライン同期ステータス（対戦テストモードのみ表示） -->
-      <span v-if="battleNet.on && !battleNet.spectating" class="battle-sync-status" role="status" aria-live="polite"
-            :class="battleNetHealth.kind" :title="battleNetHealth.detail || ''">
-        <span class="battle-sync-dot"></span> {{ battleNetHealth.label }}
-        <span style="opacity:.7;margin-left:6px;">[コード: {{ battleNet.code }} / 席{{ battleNet.mySeat }}]</span>
-        <span v-if="battleNet.lastPublishedAt" style="opacity:.6;margin-left:6px;">↑ {{ battleNetPublishedAgo }}</span>
-        <span v-if="battleNet.lastReceivedAt" style="opacity:.6;margin-left:6px;">↓ {{ battleNetReceivedAgo }}</span>
-        <span v-if="battleNet.lastRevision" style="opacity:.6;margin-left:6px;">rev.{{ battleNet.lastRevision }}</span>
-      </span>
+      <!-- 観戦中・通信状態は常に表示し、コード・送受信時刻・revision は押したときだけ開く「通信の詳細」へまとめる -->
+      <div v-if="battleNet.on" class="battle-header-sound-wrap">
+        <button type="button" class="battle-sync-status battle-sync-detail-btn" :class="battleNet.spectating ? 'ready' : battleNetHealth.kind"
+                :title="battleNet.spectating ? '観戦モード：操作はできません（両者の手札が全公開されています）' : (battleNetHealth.detail || '')"
+                :aria-expanded="battleNetDetailOpen ? 'true' : 'false'" aria-label="通信の詳細を開く"
+                @click.stop="_sfxPlay('cancel'); battleToggleHeaderPanel('battleNetDetailOpen')">
+          <span v-if="battleNet.spectating">🔍 観戦中</span>
+          <span v-else role="status" aria-live="polite"><span class="battle-sync-dot"></span> {{ battleNetHealth.label }}</span>
+          <span class="battle-sync-caret" aria-hidden="true">▾</span>
+        </button>
+        <div v-if="battleNetDetailOpen" class="global-sound-popover battle-header-sound-popover battle-net-detail" @click.stop>
+          <div class="battle-net-detail-title">通信の詳細</div>
+          <dl>
+            <dt>コード</dt><dd>{{ battleNet.code }}</dd>
+            <template v-if="!battleNet.spectating"><dt>席</dt><dd>{{ battleNet.mySeat }}</dd></template>
+            <template v-if="!battleNet.spectating"><dt>送信</dt><dd>{{ battleNet.lastPublishedAt ? battleNetPublishedAgo : '—' }}</dd></template>
+            <dt>受信</dt><dd>{{ battleNet.lastReceivedAt ? battleNetReceivedAgo : '—' }}</dd>
+            <template v-if="!battleNet.spectating"><dt>revision</dt><dd>{{ battleNet.lastRevision || '—' }}</dd></template>
+          </dl>
+          <p v-if="!battleNet.spectating && battleNetHealth.detail" class="battle-net-detail-note">{{ battleNetHealth.detail }}</p>
+        </div>
+      </div>
       <span v-if="battleNet.on && battleNet.syncWarning" class="battle-sync-status waiting" role="status">
         ⚠️ {{ battleNet.syncWarning }}
       </span>
@@ -8244,7 +8266,7 @@
       <!-- SE/BGM音量設定：フローティング版だと降参ボタン等と重なるため、対戦画面ではヘッダー内に配置する -->
       <div class="battle-header-sound-wrap">
         <transition name="bgm-now-fade"><span v-if="bgmNowPlaying" :key="bgmNowPlaying.id" class="bgm-current-name" :title="bgmNowPlaying.name" role="status" aria-live="polite">♪ {{ bgmNowPlaying.name }}</span></transition>
-        <button class="battle-undo-btn" @click.stop="_sfxPlay('cancel'); soundSettingsOpen = !soundSettingsOpen" title="音量設定" aria-label="音量と演出設定を開く"><span class="ui-icon ui-icon-volume" aria-hidden="true"></span></button>
+        <button class="battle-undo-btn" @click.stop="_sfxPlay('cancel'); battleToggleHeaderPanel('soundSettingsOpen')" title="音量設定" aria-label="音量と演出設定を開く"><span class="ui-icon ui-icon-volume" aria-hidden="true"></span></button>
         <div v-if="soundSettingsOpen" class="global-sound-popover battle-header-sound-popover" @click.stop>
           <div class="global-sound-row">
             <span class="global-sound-label">SE音量</span>
@@ -8280,7 +8302,11 @@
         </div>
       </div>
       <div class="battle-header-sound-wrap">
-        <button class="battle-undo-btn" @click.stop="_sfxPlay('cancel'); turnTimerSettingsOpen = !turnTimerSettingsOpen" title="ターン経過時間の設定" aria-label="ターン時間設定を開く">⏱</button>
+        <button class="battle-undo-btn battle-header-icon-btn" :class="{ 'is-open': turnTimerSettingsOpen }" :aria-expanded="turnTimerSettingsOpen ? 'true' : 'false'"
+                @click.stop="_sfxPlay('cancel'); battleToggleHeaderPanel('turnTimerSettingsOpen')" title="ターン経過時間の設定" aria-label="ターン時間設定を開く">
+          <!-- design_assets/battle-ui-icons-semantic-v3/timer.svg をインライン化（色は currentColor） -->
+          <svg class="battle-header-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M25 7h14M32 7v8"/><circle cx="32" cy="37" r="21"/><path d="M32 37V24M32 37l10 7"/></svg>
+        </button>
         <div v-if="turnTimerSettingsOpen" class="global-sound-popover battle-header-sound-popover" @click.stop>
           <div class="global-sound-row">
             <label class="battle-turn-timer-toggle">
@@ -8296,8 +8322,61 @@
           </div>
         </div>
       </div>
-      <button class="battle-undo-btn" @click="battleOpenLogModal('log')" title="バトルログを表示" aria-label="バトルログを開く">
-        📜 バトルログ
+      <!-- 手動調整：ライフ・天力／封印・マナの増減ボタンは盤面に常時並べず、ここから開くパネルにまとめる。
+           チュートリアル中と観戦中は手動調整できないため、入口ごと出さない。
+           上限に達していてもボタンは押せるままにする（増加を試みたこと自体で発火する天力トリガーがあるため） -->
+      <div v-if="!tutorial && !battleNet.spectating" class="battle-header-sound-wrap">
+        <button class="battle-undo-btn battle-header-icon-btn" :class="{ 'is-open': battleAdjustOpen }" :aria-expanded="battleAdjustOpen ? 'true' : 'false'"
+                @click.stop="_sfxPlay('cancel'); battleToggleHeaderPanel('battleAdjustOpen')" title="ライフ・天力・マナの手動調整" aria-label="手動調整を開く">
+          <!-- design_assets/battle-ui-icons-semantic-v3/adjustment.svg をインライン化（色は currentColor） -->
+          <svg class="battle-header-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 9v46M44 9v46"/><path d="M12 23h16v9H12zM36 36h16v9H36z" fill="currentColor"/></svg>
+        </button>
+        <div v-if="battleAdjustOpen" class="global-sound-popover battle-header-sound-popover battle-adjust-panel" role="group" aria-labelledby="battle-adjust-title" @click.stop>
+          <div id="battle-adjust-title" class="battle-adjust-title">手動調整（自分）</div>
+          <div class="battle-adjust-row life">
+            <span class="battle-adjust-name">ライフ</span>
+            <span class="battle-adjust-value">{{ battleStatNum('self','life') }}<small> / {{ battleView.self.lifeMax }}</small></span>
+            <span class="battle-adjust-btns">
+              <button type="button" aria-label="ライフを1減らす" @click="battleStat('self','life',-1)">−</button>
+              <button type="button" aria-label="ライフを1増やす" @click="battleStat('self','life',1)">＋</button>
+            </span>
+          </div>
+          <div class="battle-adjust-row life sub">
+            <span class="battle-adjust-name">最大ライフ<small>上限10</small></span>
+            <span class="battle-adjust-value">{{ battleView.self.lifeMax }}</span>
+            <span class="battle-adjust-btns">
+              <button type="button" aria-label="最大ライフを1減らす" @click="battleStat('self','lifeMax',-1)">▽</button>
+              <button type="button" aria-label="最大ライフを1増やす（上限10）" @click="battleStat('self','lifeMax',1)">△</button>
+            </span>
+          </div>
+          <div class="battle-adjust-row" :class="battleViewIsOrochi('self') ? 'seal' : 'tenryoku'">
+            <span class="battle-adjust-name">{{ battleViewIsOrochi('self') ? '封印' : '天力' }}<small>上限{{ battleViewIsOrochi('self') ? 8 : 10 }}</small></span>
+            <span class="battle-adjust-value">{{ battleViewIsOrochi('self') ? battleStatNum('self','seal') : battleStatNum('self','tenryoku') }}</span>
+            <span class="battle-adjust-btns">
+              <button type="button" :aria-label="(battleViewIsOrochi('self') ? '封印' : '天力') + 'を1減らす'" @click="battleStat('self', battleViewIsOrochi('self') ? 'seal' : 'tenryoku', -1)">−</button>
+              <button type="button" :aria-label="(battleViewIsOrochi('self') ? '封印' : '天力') + 'を1増やす'" @click="battleStat('self', battleViewIsOrochi('self') ? 'seal' : 'tenryoku', 1)">＋</button>
+            </span>
+          </div>
+          <div class="battle-adjust-row mana">
+            <span class="battle-adjust-name">使用可能マナ</span>
+            <span class="battle-adjust-value">{{ battleStatNum('self','mana') }}<small> / {{ battleView.self.manaMax }}</small></span>
+            <span class="battle-adjust-btns">
+              <button type="button" aria-label="使用可能マナを1減らす" @click="battleStat('self','mana',-1)">−</button>
+              <button type="button" aria-label="使用可能マナを1増やす" @click="battleStat('self','mana',1)">＋</button>
+            </span>
+          </div>
+          <div class="battle-adjust-row mana sub">
+            <span class="battle-adjust-name">最大マナ<small>上限10</small></span>
+            <span class="battle-adjust-value">{{ battleView.self.manaMax }}</span>
+            <span class="battle-adjust-btns">
+              <button type="button" aria-label="最大マナを1減らす" @click="battleStat('self','manaMax',-1)">▽</button>
+              <button type="button" aria-label="最大マナを1増やす（上限10）" @click="battleStat('self','manaMax',1)">△</button>
+            </span>
+          </div>
+        </div>
+      </div>
+      <button class="battle-undo-btn battle-log-btn" @click="battleOpenLogModal('log')" title="バトルログを表示" aria-label="バトルログを開く">
+        <span class="ui-icon ui-icon-battle-record" aria-hidden="true"></span> バトルログ
       </button>
       <button class="battle-undo-btn" @click="battleUndo" :disabled="!battleCanUndo"
               :title="battleUndoDisabledReason">
@@ -8636,10 +8715,7 @@
                   {{ battleViewIsOrochi('self') ? battleStatNum('self','seal') : battleStatNum('self','tenryoku') }}
                   <span v-if="battleViewPops[battleViewIsOrochi('self') ? 'selfSeal' : 'selfTenryoku']" class="stat-pop" :class="battleViewPops[battleViewIsOrochi('self') ? 'selfSeal' : 'selfTenryoku'].cls">{{ battleViewPops[battleViewIsOrochi('self') ? 'selfSeal' : 'selfTenryoku'].text }}</span>
                 </div>
-                <div class="orb-value-controls">
-                  <button @click="battleStat('self', battleViewIsOrochi('self') ? 'seal' : 'tenryoku', -1)">−</button>
-                  <button @click="battleStat('self', battleViewIsOrochi('self') ? 'seal' : 'tenryoku', 1)">+</button>
-                </div>
+                <!-- 手動の増減はヘッダーの「手動調整」パネルへ移した -->
               </div>
               <!-- 中央：カミ（X軸基準、神技段階で枠色変化） -->
               <div class="kami-portrait"
@@ -8678,21 +8754,13 @@
                   <div v-for="p in battleShatterParticles.particles" :key="p.id" class="kami-shatter-particle" :style="p.style"></div>
                 </div>
               </div>
-              <!-- 右：ライフ（赤丸の右に △▽、下に - +） -->
+              <!-- 右：ライフ（手動の増減・最大値の変更はヘッダーの「手動調整」パネルへ移した） -->
               <div class="hud-orb">
                 <span class="orb-label">ライフ</span>
                 <div class="life-row">
                   <div class="orb-disc life stat-pop-wrap" :class="{ 'life-warning': battleLifeWarning('self') }">{{ battleStatNum('self','life') }}<small>/ {{ battleView.self.lifeMax }}</small>
                     <span v-if="battleViewPops.selfLife" :key="battleViewPops.selfLife.id" class="stat-pop" :class="battleViewPops.selfLife.cls">{{ battleViewPops.selfLife.text }}</span>
                   </div>
-                  <div class="orb-max-controls">
-                    <button title="最大ライフを増やす（上限10）" @click="battleStat('self','lifeMax',1)">△</button>
-                    <button title="最大ライフを減らす" @click="battleStat('self','lifeMax',-1)">▽</button>
-                  </div>
-                </div>
-                <div class="orb-value-controls">
-                  <button @click="battleStat('self','life',-1)">−</button>
-                  <button @click="battleStat('self','life',1)">+</button>
                 </div>
               </div>
             </div>
@@ -8741,20 +8809,17 @@
         <!-- 相手 デッキ・墓地・崩壊 -->
         <div class="dgc-stack">
           <div class="dgc-cell dgc-deck zone-deck disabled" title="相手のデッキは操作できません">
-            <div class="dgc-icon dgc-deck-icon">
-              <div class="ddi-card ddi-card-1"></div>
-              <div class="ddi-card ddi-card-2"></div>
-              <div class="ddi-card ddi-card-3"></div>
-            </div>
+            <svg class="dgc-icon dgc-deck-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none">
+              <g stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 7h29a3 3 0 0 1 3 3v39"/><path d="M17 12h29a3 3 0 0 1 3 3v39"/><rect x="10" y="17" width="33" height="40" rx="3"/></g>
+            </svg>
             <div class="dgc-info">
               <span class="dgc-name">デッキ</span>
               <span class="dgc-count">{{ battleView.opp.deckCount }}</span>
             </div>
           </div>
           <div class="dgc-cell zone-graveyard opp-graveyard-drop" :class="{ 'graveyard-glow': battleView.opp._glowActive }" title="相手の墓地は閲覧のみ" @click="battleOpenZone('opp','graveyard')">
-            <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
-              <path d="M 8 41 H 32 V 46 H 8 Z"/>
-              <path d="M 12 41 V 19 a 8 8 0 0 1 16 0 V 41 Z"/>
+            <svg class="dgc-icon dgc-graveyard-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none">
+              <g stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 41V13l6-6h6l6 6v28z"/><path d="M17 43h30v7H17z"/><path d="M10 51h44v7H10z"/></g>
             </svg>
             <div class="dgc-info">
               <span class="dgc-name">墓地</span>
@@ -8762,17 +8827,9 @@
             </div>
           </div>
           <div class="dgc-cell zone-crumbled opp-crumbled-drop" title="相手の崩壊は閲覧のみ" @click="battleOpenZone('opp','crumbled')">
-            <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
-              <ellipse cx="17" cy="24" rx="13" ry="14"/>
-              <ellipse cx="13" cy="24" rx="2.5" ry="3.5" fill="#1a2030"/>
-              <ellipse cx="21" cy="24" rx="2.5" ry="3.5" fill="#1a2030"/>
-              <path d="M 17 30 L 15.5 34 L 18.5 34 Z" fill="#1a2030"/>
-              <rect x="28" y="10" width="3" height="3"/>
-              <rect x="32" y="14" width="2.5" height="2.5"/>
-              <rect x="31" y="20" width="3" height="3"/>
-              <rect x="35" y="11" width="2.5" height="2.5"/>
-              <rect x="36" y="18" width="3" height="3"/>
-              <rect x="33" y="26" width="2.5" height="2.5"/>
+            <svg class="dgc-icon dgc-crumbled-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none">
+              <g stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 9h26v11l-5 5 5 6-6 7 4 5v11H11a3 3 0 0 1-3-3V12a3 3 0 0 1 3-3z"/></g>
+              <g fill="currentColor"><path d="m45 13 5 2-2 5-5-2z"/><path d="m48 27 6 1-2 6-6-1z"/><path d="m44 44 5 4-4 5-5-4z"/></g>
             </svg>
             <div class="dgc-info">
               <span class="dgc-name">崩壊</span>
@@ -8805,10 +8862,6 @@
             <span v-for="n in Math.max(battleView.self.manaMax, battleView.self.mana)" :key="'sm'+n" class="mana-orb" :class="{ available: n <= battleView.self.mana, bonus: n > battleView.self.manaMax && n <= battleView.self.mana }"></span>
             <span v-if="battleView.self.manaMax === 0 && battleView.self.mana === 0" class="mana-empty">0</span>
           </div>
-          <div class="mana-controls">
-            <div><span>最大</span><div class="mana-control-group"><button @click="battleStat('self','manaMax',-1)">▽</button><button @click="battleStat('self','manaMax',1)">△</button></div></div>
-            <div><span>使用可能</span><div class="mana-control-group"><button @click="battleStat('self','mana',-1)">−</button><button @click="battleStat('self','mana',1)">＋</button></div></div>
-          </div>
         </div>
 
         <!-- 自分 デッキ・墓地・崩壊 -->
@@ -8816,11 +8869,9 @@
           <div class="dgc-cell dgc-deck zone-deck self-deck-drop"
                @click="battleAskDrawConfirm('self')"
                @contextmenu.prevent="deckClick('self', $event)">
-            <div class="dgc-icon dgc-deck-icon">
-              <div class="ddi-card ddi-card-1"></div>
-              <div class="ddi-card ddi-card-2"></div>
-              <div class="ddi-card ddi-card-3"></div>
-            </div>
+            <svg class="dgc-icon dgc-deck-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none">
+              <g stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 7h29a3 3 0 0 1 3 3v39"/><path d="M17 12h29a3 3 0 0 1 3 3v39"/><rect x="10" y="17" width="33" height="40" rx="3"/></g>
+            </svg>
             <div class="dgc-info">
               <span class="dgc-name">デッキ</span>
               <span class="dgc-count">{{ battleView.self.deckCount }}</span>
@@ -8831,9 +8882,8 @@
                @dragover.prevent="battleUpdateDragOverZone($event); battleUpdateFieldAttackTarget($event)"
                @drop.prevent="battleFieldDragEnd($event)"
                @click="battleOpenZone('self','graveyard')">
-            <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
-              <path d="M 8 41 H 32 V 46 H 8 Z"/>
-              <path d="M 12 41 V 19 a 8 8 0 0 1 16 0 V 41 Z"/>
+            <svg class="dgc-icon dgc-graveyard-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none">
+              <g stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 41V13l6-6h6l6 6v28z"/><path d="M17 43h30v7H17z"/><path d="M10 51h44v7H10z"/></g>
             </svg>
             <div class="dgc-info">
               <span class="dgc-name">墓地</span>
@@ -8845,17 +8895,9 @@
                @dragover.prevent="battleUpdateFieldAttackTarget($event)"
                @drop.prevent="battleFieldDragEnd($event)"
                @click="battleOpenZone('self','crumbled')">
-            <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
-              <ellipse cx="17" cy="24" rx="13" ry="14"/>
-              <ellipse cx="13" cy="24" rx="2.5" ry="3.5" fill="#1a2030"/>
-              <ellipse cx="21" cy="24" rx="2.5" ry="3.5" fill="#1a2030"/>
-              <path d="M 17 30 L 15.5 34 L 18.5 34 Z" fill="#1a2030"/>
-              <rect x="28" y="10" width="3" height="3"/>
-              <rect x="32" y="14" width="2.5" height="2.5"/>
-              <rect x="31" y="20" width="3" height="3"/>
-              <rect x="35" y="11" width="2.5" height="2.5"/>
-              <rect x="36" y="18" width="3" height="3"/>
-              <rect x="33" y="26" width="2.5" height="2.5"/>
+            <svg class="dgc-icon dgc-crumbled-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none">
+              <g stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 9h26v11l-5 5 5 6-6 7 4 5v11H11a3 3 0 0 1-3-3V12a3 3 0 0 1 3-3z"/></g>
+              <g fill="currentColor"><path d="m45 13 5 2-2 5-5-2z"/><path d="m48 27 6 1-2 6-6-1z"/><path d="m44 44 5 4-4 5-5-4z"/></g>
             </svg>
             <div class="dgc-info">
               <span class="dgc-name">崩壊</span>
@@ -12687,6 +12729,8 @@ new Vue({
     battleAnimationSpeed: loadStoredChoice('tsukuriyo_animationSpeed', ['normal','fast','minimal'], 'normal'),
     soundSettingsOpen: false,   // SE/BGM音量設定ポップオーバーの開閉（全画面共通）
     turnTimerSettingsOpen: false, // ターン経過時間設定ポップオーバーの開閉（対戦画面ヘッダー）
+    battleAdjustOpen: false,      // ライフ・天力・マナの手動調整パネルの開閉（対戦画面ヘッダー）
+    battleNetDetailOpen: false,   // 通信の詳細（コード・送受信時刻・revision）の開閉（対戦画面ヘッダー）
     bgmVolume: loadStoredVolume(BGM_VOLUME_STORAGE_KEY), // BGM音量（0〜1）。既定50%
     bgmNowPlaying: null, // 曲名の一時表示 { id, name }（BGMメニュー横に約4秒）
     bgmCurrentKey: null, // 現在再生中のBGMキー（BGM_FILESのキー）。null=未再生
@@ -31024,6 +31068,15 @@ new Vue({
       this.battleHandMenu = null;
       this.battleZoneCardMenu = null;
       this.soundSettingsOpen = false; // SE/BGM音量設定ポップオーバーを閉じる
+      this.turnTimerSettingsOpen = false;
+      this.battleAdjustOpen = false;
+      this.battleNetDetailOpen = false;
+    },
+    /* 対戦画面ヘッダーのパネル（音量・時間設定・手動調整・通信の詳細）は1つずつ開く */
+    battleToggleHeaderPanel(key) {
+      const next = !this[key];
+      for (const k of ['soundSettingsOpen', 'turnTimerSettingsOpen', 'battleAdjustOpen', 'battleNetDetailOpen']) this[k] = false;
+      this[key] = next;
     },
     addCard(card) {
       if (this.appView === 'shield' || this.appView === 'game') return; // モード中はガード
