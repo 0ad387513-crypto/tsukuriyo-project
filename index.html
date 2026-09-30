@@ -1647,6 +1647,11 @@
   .kami-dex-chibi.placeholder { border-style: dashed; color: #7f889a; cursor: default; }
   .kami-dex-chibi.placeholder:hover { border-color: #343b4b; }
   .kami-dex-chibi-soon { display: grid; place-items: center; width: 100%; max-width: 110px; aspect-ratio: 240 / 260; font-size: 30px; font-weight: 900; color: #4a5268; }
+  .kami-dex-emote-img {
+    display: block; width: 100%; max-width: 88px; aspect-ratio: 1 / 1;
+    background-size: 300% 200%; background-repeat: no-repeat;
+  }
+  .kami-dex-emote-img.zoom { width: min(320px, 70vw); max-width: none; margin: 0 auto; filter: drop-shadow(0 10px 30px rgba(0, 0, 0, .6)); }
   .kami-dex-chibi-zoom {
     position: fixed; inset: 0; z-index: 5200; display: grid; place-items: center; padding: 16px;
     background: rgba(2, 4, 10, .88); cursor: zoom-out;
@@ -6213,7 +6218,7 @@
 
           <div class="gs-kami-info-section">
             <button type="button" class="kami-dex-fold" :aria-expanded="kamiDexShowChibis ? 'true' : 'false'" @click="kamiDexShowChibis = !kamiDexShowChibis">
-              {{ kamiDexShowChibis ? '▼' : '▶' }} ちびキャラ（{{ kamiDexChibis.length }}）
+              {{ kamiDexShowChibis ? '▼' : '▶' }} ちびキャラ
             </button>
             <div v-if="kamiDexShowChibis" class="kami-dex-chibis">
               <button v-for="chibi in kamiDexChibis" :key="chibi.file" type="button" class="kami-dex-chibi"
@@ -6226,6 +6231,17 @@
                 <span>追加予定</span>
               </div>
             </div>
+            <!-- エモート：対戦中に使う表情アイコン（1枚の画像に6つ並んだものを切り分けて表示） -->
+            <template v-if="kamiDexShowChibis && kamiDexEmotes.length">
+              <div class="kami-dex-voice-subtitle">エモート</div>
+              <div class="kami-dex-chibis kami-dex-emotes">
+                <button v-for="emote in kamiDexEmotes" :key="emote.key" type="button" class="kami-dex-chibi"
+                        :title="emote.label + '（押すと拡大）'" @click="kamiDexChibiZoom = { label: 'エモート（' + emote.label + '）', style: emote.style }">
+                  <span class="kami-dex-emote-img" :style="emote.style" role="img" :aria-label="kamiDexKami.name + 'のエモート（' + emote.label + '）'"></span>
+                  <span>{{ emote.label }}</span>
+                </button>
+              </div>
+            </template>
           </div>
 
           <div class="kami-dex-actions">
@@ -6239,7 +6255,8 @@
   <!-- カミ図鑑：ちびキャラの拡大表示（押すか背景を押すと閉じる） -->
   <div v-if="kamiDexOpen && kamiDexChibiZoom" class="kami-dex-chibi-zoom" role="dialog" aria-modal="true" :aria-label="kamiDexChibiZoom.label" @click="kamiDexChibiZoom = null">
     <figure>
-      <img :src="kamiDexChibiZoom.file" alt="" draggable="false">
+      <img v-if="kamiDexChibiZoom.file" :src="kamiDexChibiZoom.file" alt="" draggable="false">
+      <span v-else class="kami-dex-emote-img zoom" :style="kamiDexChibiZoom.style" aria-hidden="true"></span>
       <figcaption>{{ kamiDexKami ? kamiDexKami.name : '' }}・{{ kamiDexChibiZoom.label }}</figcaption>
     </figure>
   </div>
@@ -12716,6 +12733,10 @@ new Vue({
     },
     kamiDexChibis() {
       return KAMI_DEX_CHIBIS[this.kamiDexNo] || [];
+    },
+    // カミのエモート6種（エモート用の画像があるカミだけ）
+    kamiDexEmotes() {
+      return EMOTE_TYPES.map(t => ({ key: t.key, label: t.label, style: emoteIconStyle(this.kamiDexNo, t.key) })).filter(e => e.style);
     },
     kamiDexProfile() {
       const profile = KAMI_DEX_PROFILES[this.kamiDexNo];
