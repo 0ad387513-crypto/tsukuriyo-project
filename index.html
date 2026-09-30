@@ -1431,6 +1431,8 @@
   }
   .top-logo-medallion {
     height: 100%; width: auto; aspect-ratio: 1 / 1; user-select: none;
+    /* 紋章の絵は右側（白い衣の女性）が明るく、暗い背景では右に寄って見える。明るさの重心が中央に来るよう左へずらす */
+    transform: translateX(-3.5%);
     filter: brightness(.9) drop-shadow(0 0 18px rgba(236, 207, 129, .28));
   }
   .top-logo-line {
@@ -1445,10 +1447,9 @@
   .top-logo-line.left::after { right: -3px; }
   .top-logo-line.right::after { left: -3px; }
   /* お知らせ・ヒントの帯 */
-  /* ロゴの下・モードの絵の上に置く */
+  /* モード選択の下に置く */
   .top-info-band {
     position: relative; z-index: 1; flex: none;
-    margin-bottom: clamp(8px, 1.4vh, 16px);
     display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;
     width: min(1500px, 97vw);
   }
@@ -1464,6 +1465,12 @@
   }
   .top-info-tag.news { background: #7a2632; color: #ffe3e6; }
   .top-info-tag.tip { background: #6a5222; color: #fff1cc; }
+  .top-info-new {
+    flex: none; padding: 1px 6px; border-radius: 4px; background: #e8c35a; color: #2a1c0a;
+    font-size: 10px; font-weight: 900; letter-spacing: .08em; animation: top-info-new-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes top-info-new-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(232, 195, 90, .5); } 50% { box-shadow: 0 0 0 5px rgba(232, 195, 90, 0); } }
+  @media (prefers-reduced-motion: reduce) { .top-info-new { animation: none; } }
   .top-info-marquee { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
   .top-info-scroll { display: inline-block; white-space: nowrap; opacity: 0; will-change: transform; }
   .top-info-scroll.running { animation-name: top-info-marquee; animation-timing-function: linear; animation-fill-mode: both; }
@@ -5875,24 +5882,6 @@
       <img class="top-logo-medallion" src="ui_decorations/top-logo-medallion-0c05be7b9a5b.webp" alt="ツクリヨ RETURN TO THE LEGACIES" draggable="false">
       <span class="top-logo-line right" aria-hidden="true"></span>
     </div>
-    <!-- お知らせ・ヒントの帯：長い文は横に流して最後まで見せ、読み終えたら次の項目へ移る（マウスを乗せると止まる） -->
-    <div class="top-info-band">
-      <button type="button" class="top-info-news" @click="openTopNews" title="お知らせを全部見る">
-        <span class="top-info-tag news">お知らせ</span>
-        <span ref="newsMarquee" class="top-info-marquee">
-          <span :key="'news' + topNewsIndex" class="top-info-scroll" :class="{ running: !!topInfoAnim.news }"
-                :style="topInfoAnimStyle('news')" @animationend="topInfoAdvance('news')">{{ topNews[topNewsIndex % topNews.length].text }}</span>
-        </span>
-      </button>
-      <div class="top-info-tip">
-        <span class="top-info-tag tip">ヒント</span>
-        <span ref="tipMarquee" class="top-info-marquee">
-          <span :key="'tip' + topTipIndex" class="top-info-scroll" :class="{ running: !!topInfoAnim.tip }"
-                :style="topInfoAnimStyle('tip')" @animationend="topInfoAdvance('tip')">{{ topTips[topTipIndex % topTips.length] }}</span>
-        </span>
-        <button type="button" class="top-info-next" @click="topTipNext" aria-label="次のヒントを表示">›</button>
-      </div>
-    </div>
     <div v-if="resumeSession" class="top-resume-banner">
       <span>進行中のセッションがあります（{{ resumeSession.kind === 'game' ? '創世決戦' : resumeSession.kind === 'shield' ? '星紡ぎ戦' : resumeSession.kind === 'construct' ? '理念構築戦' : '対戦テスト' }} / コード: {{ resumeSession.code }}）</span>
       <button class="top-resume-btn" @click="resumeActiveSession">↩ 戻る</button>
@@ -5934,6 +5923,25 @@
             ⛩ カミ図鑑
           </button>
         </div>
+      </div>
+    </div>
+    <!-- お知らせ・ヒントの帯（モード選択の下）：長い文は横に流して最後まで見せ、読み終えたら次の項目へ移る（マウスを乗せると止まる） -->
+    <div class="top-info-band">
+      <button type="button" class="top-info-news" @click="openTopNews" title="お知らせを全部見る">
+        <span class="top-info-tag news">お知らせ</span>
+        <span v-if="topNewsUnread" class="top-info-new" aria-label="新しいお知らせ">NEW</span>
+        <span ref="newsMarquee" class="top-info-marquee">
+          <span :key="'news' + topNewsIndex" class="top-info-scroll" :class="{ running: !!topInfoAnim.news }"
+                :style="topInfoAnimStyle('news')" @animationend="topInfoAdvance('news')">{{ topNews[topNewsIndex % topNews.length].text }}</span>
+        </span>
+      </button>
+      <div class="top-info-tip">
+        <span class="top-info-tag tip">ヒント</span>
+        <span ref="tipMarquee" class="top-info-marquee">
+          <span :key="'tip' + topTipIndex" class="top-info-scroll" :class="{ running: !!topInfoAnim.tip }"
+                :style="topInfoAnimStyle('tip')" @animationend="topInfoAdvance('tip')">{{ topTips[topTipIndex % topTips.length] }}</span>
+        </span>
+        <button type="button" class="top-info-next" @click="topTipNext" aria-label="次のヒントを表示">›</button>
       </div>
     </div>
     <!-- 動作確認用ツールは一般のプレイヤーが使わないため、右下の小さなアイコンにまとめる -->
@@ -10764,7 +10772,9 @@ const KAMI_EMOTE_LINES = {
   },
 };
 
-/* TOPのお知らせ（新しい順）。先頭の1件がTOP下の帯に出る。更新を公開したら先頭に追加する */
+/* TOPのお知らせ（新しい順）。先頭の1件がTOP下の帯に出る。更新を公開したら先頭に追加する。
+   先頭のお知らせを一覧で見るまでは「NEW」を付ける（見たお知らせは端末に記録する） */
+const TOP_NEWS_SEEN_STORAGE_KEY = 'tsukuriyo_topNewsSeen';
 const TOP_NEWS = Object.freeze([
   { version: '1.15.251', text: 'TOP画面を新しくし、カミ図鑑を追加しました。各カミの理念・効果・ボイスを確かめられます。' },
   { version: '1.15.250', text: '初めて読み込む素材があるときは、ロード画面で準備してから始まるようにしました。' },
@@ -12206,6 +12216,7 @@ new Vue({
     topNews: TOP_NEWS,
     topTips: TOP_TIPS,
     topNewsOpen: false,
+    topNewsSeenVersion: (() => { try { return localStorage.getItem(TOP_NEWS_SEEN_STORAGE_KEY) || ''; } catch (e) { return ''; } })(),
     topNewsIndex: 0,
     topTipIndex: 0,
     topInfoAnim: { news: null, tip: null }, // 帯の文字送り { shift: 流す距離px, duration: 秒 }
@@ -12414,6 +12425,9 @@ new Vue({
   },
   computed: {
     // カミ図鑑：タブに並べるカミ（隠しカミは確認するまで「？？？」）
+    topNewsUnread() {
+      return !!(TOP_NEWS[0] && TOP_NEWS[0].version !== this.topNewsSeenVersion);
+    },
     kamiDexEntries() {
       const nos = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
       return nos.map(no => {
@@ -14333,6 +14347,11 @@ new Vue({
     openTopNews() {
       this._sfxPlay('decision');
       this.topNewsOpen = true;
+      const latest = TOP_NEWS[0] && TOP_NEWS[0].version;
+      if (latest) {
+        this.topNewsSeenVersion = latest;
+        try { localStorage.setItem(TOP_NEWS_SEEN_STORAGE_KEY, latest); } catch (e) { /* 保存できない環境では毎回NEWを出す */ }
+      }
     },
     closeTopNews() {
       this._sfxPlay('cancel');
