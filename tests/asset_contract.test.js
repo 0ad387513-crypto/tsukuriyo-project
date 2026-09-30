@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const nodeVm = require("node:vm");
 
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
@@ -96,6 +97,38 @@ test("startup image preloads stay below 2 MB and never request divine art", () =
   deferred.forEach(fn => fn());
   assert.ok(!calls.includes("_bgmPreloadAll"));
   assert.ok(!calls.includes("_preloadKamiCutinImages"));
+});
+
+test("loading screens show nine lightweight Kami stickers and rule hints without Orochi", () => {
+  const sceneBlock = html.match(/const scenes = Object\.freeze\(\[([\s\S]*?)\]\);/);
+  assert.ok(sceneBlock, "loading scene list exists before Vue mounts");
+  const entries = Array.from(sceneBlock[1].matchAll(/\{ name: '([^']+)', image: '([^']+)', hint: '([^']+)' \}/g));
+  assert.equal(entries.length, 9);
+  assert.equal(new Set(entries.map(([, name]) => name)).size, 9);
+  assert.equal(new Set(entries.map(([, , image]) => image)).size, 9);
+  for (const [, name, image, hint] of entries) {
+    assert.notEqual(name, "ヤマタノオロチ");
+    assert.ok(hint.length >= 15, `${name} has a useful hint`);
+    assert.match(image, /^loading_chibi\/.+-[a-f0-9]{12}\.webp$/);
+    assert.ok(fs.statSync(path.join(root, image)).size <= 120000, image);
+  }
+  assert.match(html, /<div id="app-loading"[\s\S]*?class="loading-kami-art"/);
+  assert.match(html, /<div v-if="assetLoading"[\s\S]*?:src="assetLoading\.scene\.image"/);
+  assert.match(html, /const state = \{ title, done: 0, total: list\.length, scene: window\.tsukuriyoPickLoadingScene\(\) \}/);
+  const startup = html.match(/<div id="app-loading"[\s\S]*?<script>([\s\S]*?)<\/script>\s*<div id="app"/);
+  assert.ok(startup, "startup loading script runs before Vue");
+  const fields = { '.loading-kami-art': { style: {}, src: '' }, '.loading-kami-name': {}, '.loading-kami-hint': {} };
+  const loading = { querySelector: selector => fields[selector] };
+  const scope = { window: {}, document: { getElementById: () => loading } };
+  nodeVm.runInNewContext(startup[1], scope);
+  assert.ok(fields['.loading-kami-art'].src.startsWith('loading_chibi/'));
+  assert.ok(fields['.loading-kami-hint'].textContent.startsWith('ヒント：'));
+  let last = fields['.loading-kami-art'].src;
+  for (let i = 0; i < 30; i++) {
+    const next = scope.window.tsukuriyoPickLoadingScene();
+    assert.notEqual(next.image, last, "successive screens avoid the same Kami");
+    last = next.image;
+  }
 });
 
 test("image loader serves screen images first and pauses background images in battle", async () => {
@@ -333,4 +366,12 @@ test("every chibi listed in the Kami encyclopedia exists", () => {
   assert.ok(files.length >= 10);
   for (const file of files) assert.ok(fs.existsSync(path.join(root, file)), `ちびキャラの画像がありません: ${file}`);
   for (let no = 1; no <= 10; no++) assert.ok(block[1].includes(`"${no}": [`), `カミ${no}のちびキャラ一覧`);
+  const restBlock = html.match(/const KAMI_DEX_REST_CHIBIS = Object\.freeze\(\{([\s\S]*?)\r?\n\}\);/);
+  assert.ok(restBlock, "ロード画面の差分も図鑑に掲載する");
+  const restEntries = Array.from(restBlock[1].matchAll(/"(\d+)": \{ file: '([^']+)', label: '([^']+)' \}/g));
+  assert.deepEqual(restEntries.map(([ , no]) => no), ["1", "2", "3", "4", "5", "6", "7", "8", "9"]);
+  const loadingBlock = html.match(/const scenes = Object\.freeze\(\[([\s\S]*?)\]\);/);
+  const loadingFiles = Array.from(loadingBlock[1].matchAll(/image: '([^']+)'/g), match => match[1]);
+  assert.deepEqual(restEntries.map(([, , file]) => file), loadingFiles, "図鑑には採用したロード画面の画像をそのまま掲載する");
+  assert.match(html, /return rest \? \[\.\.\.base, rest\] : base;/);
 });

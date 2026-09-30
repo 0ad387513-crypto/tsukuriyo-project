@@ -3002,11 +3002,15 @@
     display: flex; align-items: center; justify-content: center; padding: 16px;
     background: radial-gradient(ellipse at center, rgba(28, 24, 40, .97), rgba(6, 7, 12, .99));
   }
-  .asset-loading-box { width: min(420px, 100%); text-align: center; color: #efe6cf; }
+  .asset-loading-box { width: min(440px, 100%); text-align: center; color: #efe6cf; }
+  .loading-kami-art { display: block; width: min(210px, 28vh, 48vw); height: min(210px, 28vh, 48vw); object-fit: contain; margin: 0 auto 4px; }
+  .loading-kami-name { color: #f1d58a; font-size: 15px; font-weight: 800; letter-spacing: .08em; }
+  .loading-kami-hint { min-height: 3em; margin: 7px auto 0; color: #eee7d9; font-size: 14px; line-height: 1.65; text-wrap: pretty; }
   .asset-loading-title { margin-top: 14px; font-size: 18px; letter-spacing: .12em; }
   .asset-loading-bar { margin: 16px auto 12px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
   .asset-loading-bar > span { display: block; height: 100%; background: linear-gradient(90deg, #b8923a, #f1d58a); transition: width .25s ease; }
   .asset-loading-note { font-size: 12px; color: #b9ae96; line-height: 1.7; word-break: keep-all; }
+  .asset-loading-box > .asset-loading-spinner { margin-top: 10px; }
   .asset-loading-spinner {
     display: inline-block; width: 28px; height: 28px; border-radius: 50%;
     border: 3px solid rgba(241, 213, 138, .25); border-top-color: #f1d58a;
@@ -5874,8 +5878,10 @@
   #app-loading {
     position: fixed; inset: 0; z-index: 9999;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 14px; background: #0b0e14; color: #cbd3de; font-size: 16px; font-weight: 700;
+    gap: 8px; padding: 18px; text-align: center; background: #0b0e14; color: #cbd3de; font-size: 16px; font-weight: 700;
   }
+  #app-loading .loading-kami-hint { max-width: 440px; }
+  #app-loading .app-loading-spinner { margin-top: 6px; }
   #app-loading .app-loading-spinner {
     width: 34px; height: 34px; border-radius: 50%;
     border: 3px solid #344157; border-top-color: #dc9f50;
@@ -5893,7 +5899,43 @@
 <link rel="stylesheet" href="divine_effects.css">
 </head>
 <body>
-<div id="app-loading"><div class="app-loading-spinner"></div><div>読み込み中…</div></div>
+<div id="app-loading" role="status" aria-live="polite">
+  <img class="loading-kami-art" alt="" decoding="async">
+  <div class="loading-kami-name"></div>
+  <div class="loading-kami-hint"></div>
+  <div class="app-loading-spinner" aria-hidden="true"></div>
+  <div>読み込み中…</div>
+</div>
+<script>
+/* 起動直後にも表示できるよう、Vueより先に軽量なロード画面データだけ用意する。 */
+(() => {
+  const scenes = Object.freeze([
+    { name: 'スサノオ', image: 'loading_chibi/susanoo-rest-c8d7dafddecd.webp', hint: '最初の手札は引き直せる。序盤に使うカードを考えて選ぼう。' },
+    { name: 'ヤマトタケル', image: 'loading_chibi/yamato-takeru-rest-1a579987af7b.webp', hint: '残りのマナを見ながら、カードを出す順番を考えよう。' },
+    { name: 'オオクニヌシ', image: 'loading_chibi/okuninushi-rest-077817e82a0e.webp', hint: 'レガシーの能力を確認し、仲間同士の力を生かそう。' },
+    { name: 'タケミカヅチ', image: 'loading_chibi/takemikazuchi-rest-fc71fcd56c88.webp', hint: '戦闘力と神攻力は別の数値。戦う相手に合わせて確かめよう。' },
+    { name: 'オモイカネ', image: 'loading_chibi/omoikane-rest-5459d8e24381.webp', hint: 'オラクルを使う前に、対象や効果の選択肢を確認しよう。' },
+    { name: 'アメノウズメ', image: 'loading_chibi/amenouzume-rest-8cd886a79256.webp', hint: '効果を発動するか選べるときは、今の盤面を見て判断しよう。' },
+    { name: 'ヒノカグツチ', image: 'loading_chibi/hinokagutsuchi-rest-9a3bc9d78c0b.webp', hint: '天力がたまる条件はカミによって違う。神技を使う前に確認しよう。' },
+    { name: 'アマテラス', image: 'loading_chibi/amaterasu-rest-c8488a613337.webp', hint: '自分の理念に同調するレガシーを集めることが大切。' },
+    { name: 'ツクヨミ', image: 'loading_chibi/tsukuyomi-rest-cd32de2b7937.webp', hint: 'レリックの起動効果は、使うタイミングを見極めよう。' },
+  ]);
+  let previous = -1;
+  window.tsukuriyoPickLoadingScene = () => {
+    let index = Math.floor(Math.random() * scenes.length);
+    if (index === previous) index = (index + 1) % scenes.length;
+    previous = index;
+    return scenes[index];
+  };
+  const scene = window.tsukuriyoPickLoadingScene();
+  const loading = document.getElementById('app-loading');
+  const art = loading.querySelector('.loading-kami-art');
+  art.onerror = () => { art.style.display = 'none'; };
+  art.src = scene.image;
+  loading.querySelector('.loading-kami-name').textContent = scene.name;
+  loading.querySelector('.loading-kami-hint').textContent = 'ヒント：' + scene.hint;
+})();
+</script>
 <div id="app" v-cloak class="app" @click.capture="tutorialSurfaceClick($event)" @pointerdown.capture="tutorialCompletionInput($event)" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek }">
 
   <!-- ===== タイトル画面：起動直後に一度だけ表示し、クリックでトップメニューへ入る =====
@@ -10374,6 +10416,9 @@
   <!-- ロード画面：画面を切り替える前に、曲・絵・カード画像が揃うまで覆って待つ -->
   <div v-if="assetLoading" class="asset-loading-screen" role="status" aria-live="polite">
     <div class="asset-loading-box">
+      <img class="loading-kami-art" :src="assetLoading.scene.image" :alt="assetLoading.scene.name + 'のちびキャラ'" decoding="async">
+      <div class="loading-kami-name">{{ assetLoading.scene.name }}</div>
+      <div class="loading-kami-hint">ヒント：{{ assetLoading.scene.hint }}</div>
       <span class="asset-loading-spinner" aria-hidden="true"></span>
       <div class="asset-loading-title">{{ assetLoading.title }}</div>
       <div class="asset-loading-bar"><span :style="{ width: Math.round(100 * assetLoading.done / Math.max(1, assetLoading.total)) + '%' }"></span></div>
@@ -11079,6 +11124,18 @@ const KAMI_DEX_CHIBIS = Object.freeze({
   ],
   "9": [{ file: 'kami_chibi/tsukuyomi-chibi.webp', label: '通常' }],
   "10": [{ file: 'kami_chibi/yamata-no-orochi-chibi.webp', label: '通常' }],
+});
+/* ロード画面用の休憩差分は、図鑑の既存差分の後ろへ足す。ヤマタノオロチには用意しない。 */
+const KAMI_DEX_REST_CHIBIS = Object.freeze({
+  "1": { file: 'loading_chibi/susanoo-rest-c8d7dafddecd.webp', label: 'おにぎり' },
+  "2": { file: 'loading_chibi/yamato-takeru-rest-1a579987af7b.webp', label: '盆栽' },
+  "3": { file: 'loading_chibi/okuninushi-rest-077817e82a0e.webp', label: '団子は……？' },
+  "4": { file: 'loading_chibi/takemikazuchi-rest-fc71fcd56c88.webp', label: '修行中' },
+  "5": { file: 'loading_chibi/omoikane-rest-5459d8e24381.webp', label: '巻物の山' },
+  "6": { file: 'loading_chibi/amenouzume-rest-8cd886a79256.webp', label: 'お昼寝' },
+  "7": { file: 'loading_chibi/hinokagutsuchi-rest-9a3bc9d78c0b.webp', label: '焼き餅' },
+  "8": { file: 'loading_chibi/amaterasu-rest-c8488a613337.webp', label: 'お茶の時間' },
+  "9": { file: 'loading_chibi/tsukuyomi-rest-cd32de2b7937.webp', label: '無気力' },
 });
 
 /* 創世決戦（4人対戦）の終戦で、優勝したカミが告げる暫定セリフ。
@@ -12368,7 +12425,7 @@ new Vue({
     /* ===== トップメニュー（ツクリヨオンライン） ===== */
     appView: 'top',    // 'top' | 'cardlist' | 'shield' | 'game' | 'battle'
     titleScreenOpen: true, // 起動直後のタイトル画面（クリックでトップメニューへ）
-    assetLoading: null,      // ロード画面 { title, done, total }（素材が揃うまで画面を覆う）
+    assetLoading: null,      // ロード画面 { title, done, total, scene }（素材が揃うまで画面を覆う）
     battleLoading: false,    // 対戦に入るときの素材読み込み中（コイン演出は読み込み後に始める）
     pickImagesLoading: false, // ピック中の束のカード画像を読み込み中
 
@@ -12715,7 +12772,9 @@ new Vue({
       ].filter(t => t.cards.length);
     },
     kamiDexChibis() {
-      return KAMI_DEX_CHIBIS[this.kamiDexNo] || [];
+      const base = KAMI_DEX_CHIBIS[this.kamiDexNo] || [];
+      const rest = KAMI_DEX_REST_CHIBIS[this.kamiDexNo];
+      return rest ? [...base, rest] : base;
     },
     kamiDexProfile() {
       const profile = KAMI_DEX_PROFILES[this.kamiDexNo];
@@ -17620,7 +17679,7 @@ new Vue({
       if (!list.length) return;
       const token = {};
       this._loadingScreenToken = token;
-      const state = { title, done: 0, total: list.length };
+      const state = { title, done: 0, total: list.length, scene: window.tsukuriyoPickLoadingScene() };
       const showTimer = window.setTimeout(() => {
         if (this._loadingScreenToken === token) this.assetLoading = state;
       }, 250);
