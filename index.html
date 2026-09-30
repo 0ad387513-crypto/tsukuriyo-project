@@ -30031,7 +30031,7 @@ new Vue({
       this._cardHoverArmLeaveTimer();
       return true;
     },
-    // 通り道でカーソルが0.4秒止まったら消す（通り道で動いている間は、動くたびに数え直す）
+    // 通り道でカーソルが0.25秒止まったら消す（通り道で動いている間は、動くたびに数え直す）
     _cardHoverArmLeaveTimer() {
       const leaving = this._cardHoverLeaving;
       clearTimeout(this._cardHoverLeaveTimer);
@@ -30039,7 +30039,7 @@ new Vue({
       this._cardHoverLeaveTimer = setTimeout(() => {
         if (this._cardHoverLeaving !== leaving || leaving.over) return;
         this._cardHoverFinishLeaving();
-      }, 400);
+      }, 250);
     },
     _cardHoverFinishLeaving() {
       const leaving = this._cardHoverLeaving;
@@ -30080,7 +30080,7 @@ new Vue({
       if (!leaving) return;
       if (event.buttons) return; // スライダーをドラッグ中は、枠の外へはみ出しても消さない
       leaving.over = this._cardHoverPointerInside(leaving.key, event);
-      // 拡大表示の上、または元のカードと拡大表示の間のすき間にいる間は残す（すき間で止まったら0.4秒で消える）
+      // 拡大表示の上、または元のカードと拡大表示の間のすき間にいる間は残す（すき間で止まったら0.25秒で消える）
       if (leaving.over) return;
       if (this._cardHoverCorridor(leaving.key, event)) this._cardHoverArmLeaveTimer();
       else this._cardHoverFinishLeaving();
