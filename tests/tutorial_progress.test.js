@@ -1435,20 +1435,23 @@ test("required turn and effect draws lose only when an additional card cannot be
 });
 
 
-test("flame claw shreds the chosen card and a continuous fire wall crosses the enemy Kami's row", () => {
+test("flame claw quietly dissolves the chosen card and a continuous fire wall crosses the enemy Kami's row", () => {
   const {divineFlameClawLayout,divineSkillAssetUrls,DIVINE_HINO_FIRE_WALL_FRAMES}=require('../divine_effects.js');
+  const css=fs.readFileSync(path.join(__dirname,'..','divine_effects.css'),'utf8');
+  assert.match(css,/hinoCardQuietVanish/);
+  assert.doesNotMatch(css,/hino-card-shard|hinoCardShred/);
   assert.ok(!divineSkillAssetUrls({no:7}).some(url=>url.includes('gouge')),'the terrain gouge is no longer loaded');
   assert.ok(divineSkillAssetUrls({no:7}).every(url=>!url.includes('hinokagutsuchi-fire-only-')),'the repeated narrow columns are no longer loaded');
   assert.equal(DIVINE_HINO_FIRE_WALL_FRAMES.length,4);
   for(const upside of [false,true]) {
-    const kami={left:450,top:upside?640:30,width:100,height:100,kind:'kami'},shatters=[];
+    const kami={left:450,top:upside?640:30,width:100,height:100,kind:'kami'},dissolves=[];
     for(const x of [120,460,800]) {
       const card={left:x,top:upside?400:240,width:80,height:120,kind:'card',image:'card.webp'};
-      const {sweep,shatter,eruptionLayers,burst}=divineFlameClawLayout([card,kami]);
+      const {sweep,dissolve,eruptionLayers,burst}=divineFlameClawLayout([card,kami]);
       assert.equal(parseFloat(sweep.left),x+40);
       assert.match(sweep.backgroundImage,/hinokagutsuchi-red-slash-/);
-      assert.equal(parseFloat(shatter.style.left),x);
-      assert.ok(shatter.image.includes('card.webp'));
+      assert.equal(parseFloat(dissolve.style.left),x);
+      assert.ok(dissolve.image.includes('card.webp'));
       assert.equal(eruptionLayers.length,4,'four full-width painted frames form one fire wall');
       assert.equal(new Set(eruptionLayers.map(layer=>layer.style.backgroundImage)).size,4);
       for(const layer of eruptionLayers) {
@@ -1459,13 +1462,13 @@ test("flame claw shreds the chosen card and a continuous fire wall crosses the e
       }
       assert.deepEqual(eruptionLayers.map(layer=>layer.phase),[0,1,2,3]);
       assert.equal(parseFloat(burst.left),0);
-      shatters.push(parseFloat(shatter.style.left));
+      dissolves.push(parseFloat(dissolve.style.left));
     }
-    assert.equal(new Set(shatters).size,3,'left, centre, and right cards shatter in their own slots');
+    assert.equal(new Set(dissolves).size,3,'left, centre, and right cards dissolve in their own slots');
   }
   const onlyKami=divineFlameClawLayout([{left:450,top:30,width:100,height:100,kind:'kami'}]);
-  assert.equal(onlyKami.shatter,null);assert.equal(onlyKami.eruptionLayers.length,4);
-  assert.deepEqual(divineFlameClawLayout([null,{left:NaN,top:1,width:2,height:3}]),{sweep:null,shatter:null,eruptionLayers:[],burst:null});
+  assert.equal(onlyKami.dissolve,null);assert.equal(onlyKami.eruptionLayers.length,4);
+  assert.deepEqual(divineFlameClawLayout([null,{left:NaN,top:1,width:2,height:3}]),{sweep:null,dissolve:null,eruptionLayers:[],burst:null});
 });
 
 test("Hinokagutsuchi sends the selected card to the graveyard before the leader explosion", async () => {

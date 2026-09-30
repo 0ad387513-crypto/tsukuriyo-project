@@ -1249,7 +1249,7 @@
     padding: 56px 20px 40px; z-index: 50; overflow-y: auto; overflow-x: hidden;
   }
   .top-menu.top-menu-home {
-    justify-content: flex-start; padding: clamp(16px, 2.4vh, 30px) clamp(18px, 2vw, 38px);
+    justify-content: flex-start; padding: var(--top-pad-y) clamp(18px, 2vw, 38px);
     overflow-y: auto; overflow-x: hidden;
   }
   /* 見出し（ツクリヨオンライン）をタイトル画面へ移したぶん内容が上端に張り付くため、
@@ -1384,6 +1384,12 @@
   /* 理念構築戦の絵は正方形なので上下が切れる。タケミカヅチの顔が縦の中央に来て、ヒノカグツチの角が見える位置に合わせる */
   .top-mode-card.construct .top-mode-thumb { background-position: center 32%; }
   .top-mode-label { font-size: clamp(16px, 1.25vw, 22px); font-weight: 800; letter-spacing: 0.03em; }
+  /* モード名の下の一行説明：初めての人が押す前にモードの違いを分かるようにする */
+  .top-mode-sub { margin-top: -6px; font-size: clamp(11px, .8vw, 15px); font-weight: 600; color: #c9cfdd; line-height: 1.4; word-break: keep-all; overflow-wrap: anywhere; }
+  /* まだ一度もチュートリアルをクリアしていない人には、入口をゆっくり光らせて気づいてもらう */
+  .top-mode-guide-btn.tutorial.first-time { animation: topTutorialGlow 2.4s ease-in-out infinite; }
+  @keyframes topTutorialGlow { 50% { border-color: #ffd978; box-shadow: 0 0 0 1px rgba(255, 217, 120, .5), 0 0 22px rgba(255, 200, 100, .45); } }
+  @media (prefers-reduced-motion: reduce) { .top-mode-guide-btn.tutorial.first-time { animation: none; border-color: #ffd978; } }
   .top-mode-card.game .top-mode-label { font-size: clamp(20px, 1.7vw, 28px); }
   /* カードリスト下の横長ボタン：説明書とピックガイドを独立した入口にする */
   .top-guide-stack {
@@ -1405,8 +1411,11 @@
   .top-mode-guide-btn.manual { border-color: #9d7a3d; background: linear-gradient(160deg, #4a3822, #271d16); }
   .top-mode-guide-btn.pick { border-color: #9d7a3d; background: linear-gradient(160deg, #4a3822, #271d16); } /* プレイガイド・チュートリアルと同じ茶金色 */
   /* チュートリアル追加で右列が伸びないよう、ガイド2つは少し低くする */
-  .top-mode-guide-btn.manual, .top-mode-guide-btn.pick, .top-mode-guide-btn.kamidex { min-height: 44px; padding: 4px 6px; word-break: keep-all; }
-  .top-mode-guide-btn.kamidex { border-color: #b0896a; background: linear-gradient(160deg, #54262a, #26161a); }
+  .top-mode-guide-btn.manual, .top-mode-guide-btn.pick, .top-mode-guide-btn.kamidex { min-height: 44px; padding: 6px 4px; word-break: keep-all; }
+  /* カミ図鑑もほかの2つと同じ茶金色。幅が狭いので、アイコンを上・名前を下に並べて文字を詰めない */
+  .top-mode-guide-btn.kamidex { border-color: #9d7a3d; background: linear-gradient(160deg, #4a3822, #271d16); }
+  .top-mode-guide-btn.manual, .top-mode-guide-btn.pick, .top-mode-guide-btn.kamidex { flex-direction: column; gap: 2px; line-height: 1.25; }
+  .top-guide-icon.ui-icon { width: 1.5em; height: 1.5em; vertical-align: middle; }
   .top-mode-guide-btn.tutorial {
     grid-column: 1 / -1; min-height: 52px; justify-content: flex-start; gap: 12px; padding: 4px 14px; text-align: left;
     border-color: #c79a4a; background: linear-gradient(160deg, #6a4a22, #2d1f14);
@@ -1425,28 +1434,25 @@
     .top-mode-guide-btn { min-height: 52px; }
     .top-guide-stack { grid-template-columns: 1fr; }
   }
-  /* ロゴの帯：丸い紋章の左右に、金の線を細く伸ばす */
-  .top-menu-home { --top-logo-h: clamp(72px, 12vh, 150px); }
-  .top-logo-band {
+  /* 上端のヘッダー：中央に横長の筆文字ロゴを控えめな大きさで置き、下に左右対称に薄れる金の細い線。
+     幅はモード選択と同じにそろえる。右端には共通ボタン（戦績・音量）が重なる。
+     高さ・上余白・内容の幅は、右上の共通ボタンの位置合わせにも使うので :root の変数にしておく */
+  :root {
+    --top-pad-y: clamp(12px, 1.8vh, 24px);
+    --top-header-h: clamp(50px, 7vh, 78px);
+    --top-content-w: min(97vw, calc((100vh - 158px - var(--top-header-h)) * 2.2));
+  }
+  .top-header {
     position: relative; z-index: 1; flex: none;
-    display: flex; align-items: center; justify-content: center; gap: clamp(14px, 2vw, 34px);
-    width: min(1100px, 94vw); height: var(--top-logo-h); margin-bottom: clamp(4px, 1vh, 12px);
+    display: flex; align-items: center; justify-content: center;
+    width: min(1500px, 97vw); height: var(--top-header-h);
+    border-bottom: 1px solid transparent;
+    border-image: linear-gradient(90deg, rgba(215, 180, 100, 0), rgba(215, 180, 100, .6) 30%, rgba(215, 180, 100, .6) 70%, rgba(215, 180, 100, 0)) 1;
   }
-  .top-logo-medallion {
-    height: 100%; width: auto; aspect-ratio: 1 / 1; user-select: none;
-    filter: brightness(.9) drop-shadow(0 0 18px rgba(236, 207, 129, .28));
+  .top-wordmark {
+    height: 78%; width: auto; user-select: none;
+    filter: drop-shadow(0 2px 10px rgba(0, 0, 0, .55)) drop-shadow(0 0 16px rgba(236, 207, 129, .18));
   }
-  .top-logo-line {
-    position: relative; flex: 1 1 0; height: 1px; max-width: 420px;
-    background: linear-gradient(90deg, rgba(215, 180, 100, 0), rgba(215, 180, 100, .85));
-  }
-  .top-logo-line.right { background: linear-gradient(90deg, rgba(215, 180, 100, .85), rgba(215, 180, 100, 0)); }
-  .top-logo-line::after {
-    content: ""; position: absolute; top: 50%; width: 7px; height: 7px; background: #d7b464;
-    transform: translate(0, -50%) rotate(45deg);
-  }
-  .top-logo-line.left::after { right: -3px; }
-  .top-logo-line.right::after { left: -3px; }
   /* お知らせ・ヒントの帯 */
   /* モード選択の下に置く */
   .top-info-band {
@@ -1457,12 +1463,12 @@
   .top-info-news, .top-info-tip {
     display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 40px;
     padding: 6px 12px; border: 1px solid #3a4258; border-radius: 10px;
-    background: rgba(14, 17, 26, .82); color: #d9dde8; font-size: clamp(12px, .85vw, 15px); text-align: left;
+    background: rgba(14, 17, 26, .82); color: #d9dde8; font-size: clamp(13px, .9vw, 16px); text-align: left;
   }
-  .top-info-news { cursor: pointer; font: inherit; font-size: clamp(12px, .85vw, 15px); }
+  .top-info-news { cursor: pointer; font: inherit; font-size: clamp(13px, .9vw, 16px); }
   .top-info-news:hover { border-color: #8a95b5; }
   .top-info-tag {
-    flex: none; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 900; letter-spacing: .08em;
+    flex: none; padding: 2px 8px; border-radius: 999px; font-size: clamp(11px, .75vw, 13px); font-weight: 900; letter-spacing: .08em;
   }
   .top-info-tag.news { background: #7a2632; color: #ffe3e6; }
   .top-info-tag.tip { background: #6a5222; color: #fff1cc; }
@@ -1659,22 +1665,37 @@
   /* PC（3列）のTOP：幅の上限（1500px）をやめ、画面の高さに収まる範囲でボタンを最大まで大きくし、
      上下の余りは均等に振り分ける。幅は「ロゴと下の帯を除いた高さ×2.2」までに抑え、スクロールが出ないようにする。 */
   @media (min-width: 1101px) {
-    .top-menu.top-menu-home { justify-content: center; justify-content: safe center; }
+    /* ヘッダーは上端に固定し、その下の残りの高さの中で、モード選択とお知らせの帯を上下中央に置く */
+    .top-menu.top-menu-home { justify-content: flex-start; }
+    .top-menu.top-menu-home > .top-header,
+    .top-menu.mode-detail-screen > .top-header,
     .top-menu.top-menu-home > .top-mode-grid,
     .top-menu.top-menu-home > .top-info-band {
-      margin-top: 0;
-      width: min(97vw, calc((100vh - 150px - var(--top-logo-h)) * 2.2));
+      width: var(--top-content-w);
+    }
+    .top-menu.mode-detail-screen > .mode-detail-panel { width: min(1340px, var(--top-content-w)); }
+    .top-menu.top-menu-home > .top-mode-grid { margin-top: auto; }
+    .top-menu.top-menu-home > .top-info-band { margin-bottom: auto; }
+    /* 右上の共通ボタンを、ヘッダーの高さの中央・モード選択の右端にそろえる */
+    .global-sound-settings.on-top-header {
+      top: calc(var(--top-pad-y) + (var(--top-header-h) - 36px) / 2);
+      right: calc((100vw - var(--top-content-w)) / 2);
     }
     /* 3列の下辺をそろえる：一番高い列（ふだんはカードリスト＋ガイドの列）に合わせて他の列を伸ばし、
        伸びた分はモードの絵を大きくして埋める（絵は枠いっぱいに表示し、はみ出た端だけ切れる） */
     .top-menu-home .top-mode-grid { align-items: stretch; }
     .top-menu-home .top-mode-card { flex: 1 1 auto; }
     .top-menu-home .top-mode-thumb { flex: 1 1 auto; min-height: 0; }
+    /* 創世決戦は正方形の絵の四隅に4柱がいるので、縦に伸ばして左右を切らない。余った高さは名前と説明の周りに回す
+       （画面が低くて正方形が入らないときだけ縮み、そのときは従来どおり端が切れる） */
+    .top-menu-home .top-mode-card.game .top-mode-thumb { flex: 0 1 auto; aspect-ratio: 1 / 1; }
+    .top-menu-home .top-mode-card.game .top-mode-label { margin-top: auto; }
+    .top-menu-home .top-mode-card.game .top-mode-sub { margin-bottom: auto; }
     .top-menu-home .top-guide-stack { flex: none; }
     .top-menu-home .top-mode-label { font-size: clamp(16px, 1.3vw, 30px); }
     .top-menu-home .top-mode-card.game .top-mode-label { font-size: clamp(20px, 1.8vw, 38px); }
     .top-menu-home .top-mode-guide-btn { font-size: clamp(13px, 1vw, 19px); }
-    .top-menu-home .top-mode-guide-btn.manual, .top-menu-home .top-mode-guide-btn.pick { min-height: clamp(44px, 5vh, 60px); }
+    .top-menu-home .top-mode-guide-btn.manual, .top-menu-home .top-mode-guide-btn.pick, .top-menu-home .top-mode-guide-btn.kamidex { min-height: clamp(52px, 6.5vh, 76px); }
     .top-menu-home .top-mode-guide-btn.tutorial { min-height: clamp(52px, 6.5vh, 76px); }
     .top-menu-home .top-mode-guide-btn.tutorial small { font-size: clamp(11px, .75vw, 14px); }
     /* 彼岸花はボタンの後ろ（左右の下端）に置き、ボタンの下の余った帯から咲いているように見せる */
@@ -2119,48 +2140,118 @@
     .genesis-story-scene-enter-active, .genesis-story-scene-leave-active { transition-duration: .01ms; }
   }
   /* ===== モード詳細画面：TOPのモードタイルをクリックした遷移先（画像＋説明＋開始ボタン） ===== */
+  /* TOPと同じヘッダー（.top-header）を使い、上余白・左右の余白もTOPにそろえる。
+     本体（絵＋説明）はヘッダーの下の残りの高さの中で上下中央に置く */
+  .top-menu.mode-detail-screen { justify-content: flex-start; padding: var(--top-pad-y) clamp(18px, 2vw, 38px); }
+  .mode-detail-screen > .mode-detail-panel { margin: auto 0; }
   .mode-detail-back {
-    position: absolute; top: 18px; left: 18px; z-index: 2;
-    padding: 8px 16px; border-radius: 8px; cursor: pointer;
-    color: #fff; border: 1px solid #3a4258; background: rgba(20,24,36,0.7);
-    font-size: 13px; font-weight: 700;
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 2;
+    padding: 7px 16px; border-radius: 18px; cursor: pointer;
+    color: #fff; border: 1px solid #4a4f5d; background: rgba(20,24,34,.85);
+    font-size: 13px; font-weight: 800; letter-spacing: .04em;
   }
-  .mode-detail-back:hover { border-color: #8a95b5; background: rgba(30,36,52,0.85); }
+  .mode-detail-back:hover { border-color: #7e94ba; background: rgba(40,46,64,.9); }
+  /* ヘッダー中央のモード名：ロゴの筆文字・導入文の明朝とそろえて明朝体に。人数はカッコ書きにせず、横に小さく淡く添える。
+     両脇の小さな金のひし形は、ヘッダー下の金線と響き合う飾り */
+  .mode-detail-title {
+    margin: 0; display: flex; align-items: center; gap: clamp(10px, .9vw, 16px);
+    font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'MS PMincho', serif; font-weight: 600;
+    color: #f2d894; text-shadow: 0 2px 10px rgba(0,0,0,.6);
+  }
+  .mode-detail-title-name { font-size: clamp(21px, 1.7vw, 30px); letter-spacing: .18em; margin-right: -.18em; line-height: 1.2; }
+  .mode-detail-title-players {
+    font-size: clamp(12px, .8vw, 14px); letter-spacing: .12em; color: #b9a67c; font-weight: 600;
+    padding-left: clamp(10px, .9vw, 16px); border-left: 1px solid rgba(199, 154, 74, .45); line-height: 1.4;
+  }
+  .mode-detail-title-ornament { width: 7px; height: 7px; flex: none; background: #c79a4a; transform: rotate(45deg); opacity: .85; }
   .mode-detail-panel {
     position: relative; z-index: 1;
-    display: grid; grid-template-columns: minmax(0, 620px) minmax(0, 660px); gap: 16px 32px; align-items: start; justify-content: center;
-    width: min(1340px, 96vw); margin-top: 8px;
+    /* 右欄は絵と同じ高さに伸ばし、開始ボタンを絵の下端にそろえる（説明が長いときは行が伸び、絵は上にそろう） */
+    display: grid; grid-template-columns: minmax(0, 620px) minmax(0, 660px); gap: 16px clamp(24px, 2.4vw, 44px); align-items: stretch; justify-content: center;
+    width: min(1340px, 96vw);
   }
   .mode-detail-left { display: contents; }
-  .mode-detail-title { grid-column: 1; grid-row: 1; }
-  .mode-detail-title { font-size: 22px; font-weight: 800; color: #ffe9a8; letter-spacing: 0.04em; text-align: center; }
   .mode-detail-image {
-    grid-column: 1; grid-row: 2; justify-self: center; width: min(100%, 62vh); aspect-ratio: 1 / 1; border-radius: 14px;
+    grid-column: 1; grid-row: 1; align-self: start; justify-self: center; width: min(100%, 62vh); aspect-ratio: 1 / 1; border-radius: 14px;
     background-color: #10131c; background-size: cover; background-position: center;
     border: 1px solid rgba(255,255,255,0.15);
     box-shadow: 0 10px 30px rgba(0,0,0,.5);
   }
   .mode-detail-right {
-    grid-column: 2; grid-row: 2; min-width: 0; max-width: 660px;
-    display: flex; flex-direction: column; gap: 14px;
+    grid-column: 2; grid-row: 1; min-width: 0; max-width: 660px;
+    display: flex; flex-direction: column; gap: clamp(10px, 2.3vh, 26px);
+    color: #cdd3e0; word-break: keep-all; overflow-wrap: anywhere; line-break: strict;
   }
-  .mode-detail-desc-heading { font-size: 20px; font-weight: 800; color: #fff; }
-  .mode-detail-desc-body {
-    font-size: clamp(15px, 1.05vw, 18px); line-height: 1.9; color: #cdd3e0;
-    white-space: normal; word-break: keep-all; overflow-wrap: anywhere; line-break: strict;
+  /* 導入文：モードの魅力を一言で（見出しなので明朝、金色） */
+  .mode-detail-lead {
+    margin: 0; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', serif;
+    font-size: clamp(21px, 1.55vw, 28px); font-weight: 700; line-height: 1.45; letter-spacing: .05em; color: #f2d894;
+    text-shadow: 0 2px 10px rgba(0,0,0,.55);
   }
-  .mode-detail-desc-body p { margin: 0 0 1em; }
-  .mode-detail-desc-body p:last-child { margin-bottom: 0; }
+  .mode-detail-body { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; gap: clamp(10px, 2.3vh, 26px); min-height: 0; }
+  /* 流れ：番号（壱〜）を細い金の線でつなぐ */
+  .mode-detail-steps { position: relative; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: clamp(6px, 1.9vh, 22px); }
+  .mode-detail-steps::before {
+    content: ''; position: absolute; left: 17px; top: 18px; bottom: 18px; width: 1px;
+    background: linear-gradient(rgba(199, 154, 74, .6), rgba(199, 154, 74, .15));
+  }
+  .mode-detail-step { position: relative; display: flex; align-items: flex-start; gap: 14px; }
+  .mode-detail-step-num {
+    flex: none; display: grid; place-items: center; width: 35px; height: 35px; border-radius: 50%;
+    border: 1px solid #b58d49; background: radial-gradient(circle, #3a2d1b, #15120d); color: #f2d894;
+    font-family: 'Yu Mincho', 'YuMincho', serif; font-size: 15px; font-weight: 800;
+  }
+  /* 段階名と説明は2列に固定（名前の長さや説明の長さで折り返し方が変わらないように） */
+  .mode-detail-step-body { flex: 1; min-width: 0; padding-top: 5px; display: grid; grid-template-columns: 5.6em minmax(0, 1fr); align-items: baseline; gap: 2px 14px; }
+  .mode-detail-step-name { font-size: clamp(15px, 1vw, 18px); color: #fff; letter-spacing: .04em; white-space: nowrap; }
+  .mode-detail-step-text { font-size: clamp(14px, .95vw, 17px); line-height: 1.6; }
+  /* 横並び（stepsLayout: 'row'。手順が少ない星紡ぎ戦）：番号・段階名・説明を縦に積んだカードを、矢印でつないで横に並べる */
+  .mode-detail-steps.row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(22px, 2vw, 34px); }
+  .mode-detail-steps.row::before { display: none; }
+  .mode-detail-steps.row .mode-detail-step {
+    flex-direction: column; align-items: center; gap: clamp(8px, 1.3vh, 14px); text-align: center;
+    padding: clamp(16px, 2.6vh, 28px) 12px clamp(14px, 2.2vh, 24px); border-radius: 12px;
+    background: rgba(20, 24, 36, .72); border: 1px solid #333b50; border-top: 3px solid #b58d49;
+  }
+  .mode-detail-steps.row .mode-detail-step:not(:last-child)::after {
+    content: '▶'; position: absolute; top: 50%; right: calc(-1 * clamp(22px, 2vw, 34px) / 2); transform: translate(50%, -50%);
+    color: #c79a4a; font-size: 13px; line-height: 1;
+  }
+  .mode-detail-steps.row .mode-detail-step-num { width: clamp(38px, 2.6vw, 46px); height: clamp(38px, 2.6vw, 46px); font-size: clamp(16px, 1.1vw, 19px); }
+  .mode-detail-steps.row .mode-detail-step-body { display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 0; }
+  .mode-detail-steps.row .mode-detail-step-name { font-size: clamp(16px, 1.15vw, 20px); }
+  .mode-detail-steps.row .mode-detail-step-text { font-size: clamp(14px, .95vw, 16px); }
+  /* くり返す段階（創世決戦の選別→深化→星戦）は、番号の輪を金色で満たして区別する */
+  .mode-detail-step.repeat .mode-detail-step-num { background: radial-gradient(circle, #6a5226, #2c2213); border-color: #e0bd72; }
+  .mode-detail-repeat-note {
+    margin: -2px 0 0 49px; font-size: clamp(12px, .85vw, 15px); font-weight: 800; color: #e0bd72; letter-spacing: .04em;
+  }
+  .mode-detail-repeat-mark { margin-right: 6px; }
+  /* 特徴：小さな枠を並べる（数に合わせて2列／3列） */
+  .mode-detail-points { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(8px, 1.6vh, 16px); }
+  .mode-detail-points.count-3 { grid-template-columns: 1fr; }
+  .mode-detail-point {
+    padding: clamp(10px, 1.4vh, 14px) 14px; border-radius: 10px;
+    background: rgba(20, 24, 36, .72); border: 1px solid #333b50; border-left: 3px solid #b58d49;
+  }
+  .mode-detail-point-name { display: block; margin-bottom: 4px; font-size: clamp(15px, 1vw, 18px); color: #fff; letter-spacing: .04em; }
+  .mode-detail-point p { margin: 0; font-size: clamp(13px, .9vw, 16px); line-height: 1.6; }
+  .mode-detail-note { margin: 0; font-size: clamp(13px, .9vw, 15px); line-height: 1.6; color: #a9b1c2; }
+  /* 開始ボタン：この画面の主操作。金色で、絵の下端にそろえる */
   .mode-detail-start-btn {
-    margin-top: auto; padding: 16px 20px; border-radius: 10px; cursor: pointer;
-    font-size: 16px; font-weight: 800; letter-spacing: 0.04em; color: #fff;
-    background: linear-gradient(135deg, #2a5a4a, #2a7a5a); border: 1px solid #5abb8a;
-    transition: transform 0.12s, box-shadow 0.12s;
+    margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 12px;
+    padding: clamp(14px, 2vh, 18px) 20px; border-radius: 10px; cursor: pointer;
+    font-size: clamp(16px, 1.1vw, 19px); font-weight: 900; letter-spacing: 0.08em; color: #281c0b;
+    background: linear-gradient(180deg, #f0cf82, #d2a551); border: 1px solid #f7e0a6;
+    box-shadow: 0 6px 18px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.35);
+    transition: transform 0.12s, box-shadow 0.12s, filter .12s;
   }
-  .mode-detail-start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(90,187,138,.35); }
+  .mode-detail-start-btn:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 10px 26px rgba(224, 182, 94, .35), inset 0 1px 0 rgba(255,255,255,.35); }
+  .mode-detail-start-btn:focus-visible { outline: 2px solid #fff2c8; outline-offset: 3px; }
+  .mode-detail-start-arrow { font-size: .75em; }
   @media (max-width: 700px) {
     .mode-detail-panel { grid-template-columns: minmax(0, 1fr); width: min(480px, 90vw); }
-    .mode-detail-right { grid-column: 1; grid-row: 3; max-width: none; }
+    .mode-detail-right { grid-column: 1; grid-row: 2; max-width: none; }
   }
   /* トップ画面：開発者・動作確認用ツール（折りたたみ） */
   .top-devtools { position: relative; z-index: 1; width: min(420px, 92vw); }
@@ -4123,6 +4214,20 @@
     margin-left: auto; flex-shrink: 0; background: transparent; border: 1px solid #f0b86c;
     color: #ffe2a8; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-size: 12px;
   }
+  /* 機能アイコン（金色の線画。design_assets/ui-icons-gold-v1 を ui_icons/ にハッシュ付きWebPで取り込み）。
+     絵文字は環境で絵柄が変わり作品の雰囲気からも浮くため、ナビゲーション用のアイコンはこれにそろえる。
+     大きさは親の文字サイズに合わせ、置き場所ごとに必要なら width/height を上書きする */
+  .ui-icon { display: inline-block; flex: none; width: 1.3em; height: 1.3em; vertical-align: -0.28em; background: center / contain no-repeat; }
+  .ui-icon-play-guide { background-image: url('ui_icons/play-guide-9abf29563f41.webp'); }
+  .ui-icon-pick-guide { background-image: url('ui_icons/pick-guide-01abcf72c84b.webp'); }
+  .ui-icon-kami-encyclopedia { background-image: url('ui_icons/kami-encyclopedia-49a594dabb66.webp'); }
+  .ui-icon-battle-record { background-image: url('ui_icons/battle-record-abb6934c480c.webp'); }
+  .ui-icon-volume { background-image: url('ui_icons/volume-8444d4a95bef.webp'); }
+  .ui-icon-dev-tools { background-image: url('ui_icons/dev-tools-edfebb44fae3.webp'); }
+  .global-sound-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+  .global-sound-btn .ui-icon, .battle-undo-btn .ui-icon { width: 22px; height: 22px; vertical-align: middle; }
+  .top-corner-devtools .ui-icon { width: 17px; height: 17px; vertical-align: middle; }
+  .manual-header-mark .ui-icon { width: 60%; height: 60%; }
   .global-sound-settings { position: fixed; top: 8px; right: 8px; z-index: 9500; display: flex; align-items: center; gap: 8px; }
   /* 対戦画面ヘッダー内版：降参ボタン等と重ならないよう、ヘッダーの通常のflow内に配置する */
   .battle-header-sound-wrap { position: relative; }
@@ -4133,6 +4238,8 @@
     cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.5);
   }
   .global-sound-btn:hover { background: rgba(40,46,64,.9); border-color: #7e94ba; }
+  .global-sound-btn.with-label { width: auto; padding: 0 14px 0 11px; border-radius: 18px; display: inline-flex; align-items: center; gap: 6px; }
+  .global-sound-btn-label { font-size: 13px; font-weight: 800; letter-spacing: .06em; }
   .global-sound-popover {
     position: absolute; top: calc(100% + 6px); right: 0;
     background: #1a2030; border: 1px solid #4a4f5d; border-radius: 6px;
@@ -5811,12 +5918,16 @@
   <!-- ===== SE/BGM音量設定（全画面共通のフローティングボタン。対戦画面は専用ヘッダーボタンと
        重なるため、対戦画面表示中はこちらを隠す。カードリスト画面ではBGM不要かつ他の
        ボタン群と重なるため非表示にする） ===== -->
-  <div v-if="appView !== 'battle' && appView !== 'cardlist' && !deckExpanded && !manualModalOpen && !howToPlayModalOpen" class="global-sound-settings">
-    <button class="global-sound-btn howto-open-btn" @click.stop="openPlayManual" title="プレイガイド（説明書）">📖</button>
-    <button class="global-sound-btn howto-open-btn" @click.stop="openPickGuide" title="ピックガイド">🧭</button>
-    <button class="global-sound-btn howto-open-btn" @click.stop="openBattleHistory" title="戦績・対戦履歴">📜</button>
+  <div v-if="appView !== 'battle' && appView !== 'cardlist' && !deckExpanded && !manualModalOpen && !howToPlayModalOpen" class="global-sound-settings" :class="{ 'on-top-header': appHeaderView }">
+    <!-- 共通ヘッダーのある画面（TOP・モード紹介）では、ヘッダーの右端に「戦績」「音量」を文字付きで出す。
+         ガイドの2つはTOPの右下にあるので、ヘッダーの無い画面（ロビー・ピック等）だけで出す -->
+    <button v-if="!appHeaderView" class="global-sound-btn howto-open-btn" @click.stop="openPlayManual" title="プレイガイド（説明書）"><span class="ui-icon ui-icon-play-guide" aria-hidden="true"></span></button>
+    <button v-if="!appHeaderView" class="global-sound-btn howto-open-btn" @click.stop="openPickGuide" title="ピックガイド"><span class="ui-icon ui-icon-pick-guide" aria-hidden="true"></span></button>
+    <!-- 戦績はここにしか入口がないので、TOPでは文字を添えて見つけやすくする -->
+    <button class="global-sound-btn howto-open-btn" :class="{ 'with-label': appHeaderView }" @click.stop="openBattleHistory" title="戦績・対戦履歴"><span class="ui-icon ui-icon-battle-record" aria-hidden="true"></span><span v-if="appHeaderView" class="global-sound-btn-label">戦績</span></button>
     <transition name="bgm-now-fade"><span v-if="bgmNowPlaying" :key="bgmNowPlaying.id" class="bgm-current-name" :title="bgmNowPlaying.name" role="status" aria-live="polite">♪ {{ bgmNowPlaying.name }}</span></transition>
-    <button class="global-sound-btn" @click.stop="_sfxPlay('cancel'); soundSettingsOpen = !soundSettingsOpen" title="音量設定">🎵</button>
+    <!-- TOPでは戦績と同じ「アイコン＋文字」の形にそろえる -->
+    <button class="global-sound-btn" :class="{ 'with-label': appHeaderView }" @click.stop="_sfxPlay('cancel'); soundSettingsOpen = !soundSettingsOpen" title="音量設定"><span class="ui-icon ui-icon-volume" aria-hidden="true"></span><span v-if="appHeaderView" class="global-sound-btn-label">音量</span></button>
     <div v-if="soundSettingsOpen" class="global-sound-popover" @click.stop>
       <div class="global-sound-row">
         <span class="global-sound-label">SE音量</span>
@@ -5893,13 +6004,12 @@
           :style="{ left: ((i*61)%100) + '%', animationDelay: ((i%7)*0.9) + 's', animationDuration: (9 + (i%5)*1.6) + 's' }"></span>
     <img class="higanbana-corner higanbana-corner-left" src="ui_decorations/higanbana-left.png" alt="" aria-hidden="true" draggable="false">
     <img class="higanbana-corner higanbana-corner-right" src="ui_decorations/higanbana-right.png" alt="" aria-hidden="true" draggable="false">
-    <!-- ロゴの帯：キービジュアルの紋章を、陰陽玉（中の円）が中心に来るよう丸く切り出し、左右に金の線を伸ばしてTOPの顔にする
+    <!-- 上端のヘッダー：中央に横長の筆文字ロゴ。右端には全画面共通の「戦績」「音量」ボタン（.global-sound-settings）が
+         ヘッダーの高さの中央・モード選択の右端にそろって重なる（PCのみ）。
          （.top-menu-hero / .top-menu-title は動作確認用ツール画面で引き続き使用する） -->
-    <div class="top-logo-band">
-      <span class="top-logo-line left" aria-hidden="true"></span>
-      <img class="top-logo-medallion" src="ui_decorations/top-logo-medallion-90bc1c791881.webp" alt="ツクリヨ RETURN TO THE LEGACIES" draggable="false">
-      <span class="top-logo-line right" aria-hidden="true"></span>
-    </div>
+    <header class="top-header">
+      <img class="top-wordmark" src="ui_decorations/top-wordmark-ea4c96cfbd1a.webp" alt="ツクリヨ RETURN TO THE LEGACIES" draggable="false">
+    </header>
     <div v-if="resumeSession" class="top-resume-banner">
       <span>進行中のセッションがあります（{{ resumeSession.kind === 'game' ? '創世決戦' : resumeSession.kind === 'shield' ? '星紡ぎ戦' : resumeSession.kind === 'construct' ? '理念構築戦' : '対戦テスト' }} / コード: {{ resumeSession.code }}）</span>
       <button class="top-resume-btn" @click="resumeActiveSession">↩ 戻る</button>
@@ -5909,36 +6019,41 @@
         <button class="top-mode-card game" @click="openModeDetail('game')">
           <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/genesis4p.webp)' }"></span>
           <span class="top-mode-label">創世決戦</span>
+          <span class="top-mode-sub">4人でカードを選び、3回の対戦と星魂で競う</span>
         </button>
       </div>
       <div class="top-mode-column top-mode-column-center">
         <button class="top-mode-card construct" @click="openModeDetail('construct')">
           <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/construct2p-duel-66cbc68dc967.webp)' }"></span>
           <span class="top-mode-label">理念構築戦</span>
+          <span class="top-mode-sub">2人対戦・35枚デッキ／構築済みデッキでも遊べる</span>
         </button>
         <button class="top-mode-card shield" @click="openModeDetail('shield')">
           <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/shield2p-oblong.webp)' }"></span>
           <span class="top-mode-label">星紡ぎ戦</span>
+          <span class="top-mode-sub">2人でパックを選び、集めた48枚で対戦</span>
         </button>
       </div>
       <div class="top-mode-column top-mode-column-side">
         <button class="top-mode-card cardlist" @click="openModeDetail('cardlist')">
           <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/cardlist.webp)' }"></span>
           <span class="top-mode-label">カードリスト</span>
+          <span class="top-mode-sub">全カードの確認と、デッキの作成・管理</span>
         </button>
         <div class="top-guide-stack">
-          <button class="top-mode-guide-btn tutorial" :disabled="tutorialLoading" @click.stop="_sfxPlay('decision'); tutorialMenuOpen = true">
+          <button class="top-mode-guide-btn tutorial" :class="{ 'first-time': !tutorialClearedCount }" :disabled="tutorialLoading" @click.stop="_sfxPlay('decision'); tutorialMenuOpen = true">
             <span class="top-tutorial-face" aria-hidden="true"></span>
             <span>{{ tutorialLoading ? '準備しています…' : 'チュートリアル' }}<small>初めての人は<wbr>まずここから</small><small v-if="!tutorialClearedCount">アマテラスと<wbr>遊び方を<wbr>学ぶ</small><small v-else>{{ tutorialClearedCount }}／{{ tutorialLessons.length }}<wbr>クリア</small></span>
           </button>
+          <!-- 3つのガイドは同じ色・同じ形（絵文字のアイコンを上、名前を下）にそろえる -->
           <button class="top-mode-guide-btn manual" @click.stop="openPlayManual">
-            📖 プレイガイド
+            <span class="top-guide-icon ui-icon ui-icon-play-guide" aria-hidden="true"></span><span>プレイガイド</span>
           </button>
           <button class="top-mode-guide-btn pick" @click.stop="openPickGuide">
-            🧭 ピックガイド
+            <span class="top-guide-icon ui-icon ui-icon-pick-guide" aria-hidden="true"></span><span>ピックガイド</span>
           </button>
           <button class="top-mode-guide-btn kamidex" @click.stop="openKamiDex()">
-            ⛩ カミ図鑑
+            <span class="top-guide-icon ui-icon ui-icon-kami-encyclopedia" aria-hidden="true"></span><span>カミ図鑑</span>
           </button>
         </div>
       </div>
@@ -5966,7 +6081,7 @@
     <div class="top-corner-tools">
       <span class="top-corner-version">v{{ BUILD_VERSION }}</span>
       <button type="button" class="top-corner-devtools" @click="openDevToolsScreen"
-              title="動作確認用ツール（対戦テスト・α版）" aria-label="動作確認用ツール（対戦テスト・α版）">🔧</button>
+              title="動作確認用ツール（対戦テスト・α版）" aria-label="動作確認用ツール（対戦テスト・α版）"><span class="ui-icon ui-icon-dev-tools" aria-hidden="true"></span></button>
     </div>
   </div>
   </transition>
@@ -6114,7 +6229,7 @@
           </div>
 
           <div class="kami-dex-actions">
-            <button type="button" class="gs-kami-accept-btn" @click="kamiDexOpenPickGuide">🧭 {{ kamiDexKami.name }}のピックガイドを見る</button>
+            <button type="button" class="gs-kami-accept-btn" @click="kamiDexOpenPickGuide"><span class="ui-icon ui-icon-pick-guide" aria-hidden="true"></span> {{ kamiDexKami.name }}のピックガイドを見る</button>
           </div>
         </div>
       </div>
@@ -6178,21 +6293,44 @@
 
   <!-- ===== モード詳細画面（TOPのモードタイルをクリックした遷移先。画像＋説明＋開始ボタン） ===== -->
   <transition name="top-menu-fade">
-  <div v-if="appView === 'modeDetail' && modeDetailInfo" class="top-menu">
+  <div v-if="appView === 'modeDetail' && modeDetailInfo" class="top-menu mode-detail-screen">
     <span v-for="i in 16" :key="'mdPetal'+i" class="top-menu-petal"
           :style="{ left: ((i*61)%100) + '%', animationDelay: ((i%7)*0.9) + 's', animationDuration: (9 + (i%5)*1.6) + 's' }"></span>
     <img class="higanbana-corner higanbana-corner-left" src="ui_decorations/higanbana-left.png" alt="" aria-hidden="true" draggable="false">
     <img class="higanbana-corner higanbana-corner-right" src="ui_decorations/higanbana-right.png" alt="" aria-hidden="true" draggable="false">
-    <button class="mode-detail-back" @click="modeDetailBack">◀ トップへ戻る</button>
+    <!-- TOPと同じヘッダー：左に戻る、中央にモード名（ロゴの代わりに「今いる画面」を示す）、右端に共通の戦績・音量 -->
+    <header class="top-header mode-detail-header">
+      <button class="mode-detail-back" @click="modeDetailBack">◀ トップへ戻る</button>
+      <h1 class="mode-detail-title"><span class="mode-detail-title-ornament" aria-hidden="true"></span><span class="mode-detail-title-name">{{ modeDetailInfo.title }}</span><span v-if="modeDetailInfo.players" class="mode-detail-title-players">{{ modeDetailInfo.players }}</span><span class="mode-detail-title-ornament" aria-hidden="true"></span></h1>
+    </header>
     <div class="mode-detail-panel">
       <div class="mode-detail-left">
-        <div class="mode-detail-title">{{ modeDetailInfo.title }}</div>
         <div class="mode-detail-image" :style="{ backgroundImage: 'url(' + modeDetailInfo.image + ')' }"></div>
       </div>
-      <div class="mode-detail-right">
-        <div class="mode-detail-desc-heading">詳しい説明</div>
-        <div class="mode-detail-desc-body"><p v-for="(phrases, i) in modeDetailParagraphs" :key="i"><template v-for="(phrase, j) in phrases"><span :key="'mdp' + j">{{ phrase }}</span><wbr :key="'mdw' + j"></template></p></div>
-        <button class="mode-detail-start-btn" @click="modeDetailStart">{{ modeDetailInfo.startLabel }}</button>
+      <!-- 右欄：導入文 → 流れ（steps）または特徴（points）→ 補足 → 開始ボタン（絵の下端にそろう） -->
+      <div class="mode-detail-right" v-if="modeDetailView">
+        <p class="mode-detail-lead"><template v-for="(p, j) in modeDetailView.lead"><span :key="'mdl' + j">{{ p }}</span><wbr :key="'mdlw' + j"></template></p>
+        <!-- 本文（流れか特徴）は、導入文と開始ボタンの間の残りの高さの中で上下中央に置き、説明の量が違っても下に大きな空白を作らない -->
+        <div class="mode-detail-body">
+        <ol v-if="modeDetailView.steps.length" class="mode-detail-steps" :class="{ row: modeDetailView.stepsLayout === 'row' }">
+          <li v-for="(step, i) in modeDetailView.steps" :key="step.name" class="mode-detail-step" :class="{ repeat: step.repeat }">
+            <span class="mode-detail-step-num" aria-hidden="true">{{ ['壱', '弐', '参', '肆', '伍', '陸'][i] }}</span>
+            <div class="mode-detail-step-body">
+              <b class="mode-detail-step-name">{{ step.name }}</b>
+              <span class="mode-detail-step-text"><template v-for="(p, j) in step.phrases"><span :key="'mds' + j">{{ p }}</span><wbr :key="'mdsw' + j"></template></span>
+            </div>
+          </li>
+        </ol>
+        <p v-if="modeDetailView.repeatNote" class="mode-detail-repeat-note"><span class="mode-detail-repeat-mark" aria-hidden="true">↻</span>{{ modeDetailView.repeatNote }}</p>
+        <div v-if="modeDetailView.points.length" class="mode-detail-points" :class="'count-' + modeDetailView.points.length">
+          <div v-for="point in modeDetailView.points" :key="point.name" class="mode-detail-point">
+            <b class="mode-detail-point-name">{{ point.name }}</b>
+            <p><template v-for="(p, j) in point.phrases"><span :key="'mdp' + j">{{ p }}</span><wbr :key="'mdpw' + j"></template></p>
+          </div>
+        </div>
+        </div>
+        <p v-if="modeDetailView.note" class="mode-detail-note"><template v-for="(p, j) in modeDetailView.note"><span :key="'mdn' + j">{{ p }}</span><wbr :key="'mdnw' + j"></template></p>
+        <button class="mode-detail-start-btn" @click="modeDetailStart">{{ modeDetailInfo.startLabel }}<span class="mode-detail-start-arrow" aria-hidden="true">▶</span></button>
       </div>
     </div>
   </div>
@@ -6326,7 +6464,7 @@
   <div v-if="manualModalOpen" class="battle-zone-modal manual-modal" role="dialog" aria-modal="true" aria-label="ツクリヨ プレイガイド" @click.self="closePlayManual">
     <div class="battle-zone-modal-panel manual-panel">
       <div class="manual-header" :inert="manualSpoilerConfirmOpen ? '' : null">
-        <div class="manual-header-mark" aria-hidden="true" title="プレイガイド">📖</div>
+        <div class="manual-header-mark" aria-hidden="true" title="プレイガイド"><span class="ui-icon ui-icon-play-guide" aria-hidden="true"></span></div>
         <div class="manual-header-copy">
           <div class="manual-header-title">ツクリヨ プレイガイド</div>
           <div class="manual-header-sub">3つの対戦モード／星戦のルール／キーワード／細則</div>
@@ -6663,7 +6801,7 @@
 
   <div v-if="howToPlayModalOpen" class="battle-zone-modal pick-guide-modal" role="dialog" aria-modal="true" aria-label="ピックガイド" @click.self="closePickGuide">
     <div class="battle-zone-modal-panel pick-guide-panel">
-      <div class="manual-header" :inert="manualSpoilerConfirmOpen ? '' : null"><div class="manual-header-mark" aria-hidden="true">🧭</div><div class="manual-header-copy"><div class="manual-header-title">カミ別ピックガイド</div><div class="manual-header-sub">選別の儀・パック選択の参考に</div></div><button class="manual-close" @click="closePickGuide">閉じる</button></div>
+      <div class="manual-header" :inert="manualSpoilerConfirmOpen ? '' : null"><div class="manual-header-mark" aria-hidden="true"><span class="ui-icon ui-icon-pick-guide" aria-hidden="true"></span></div><div class="manual-header-copy"><div class="manual-header-title">カミ別ピックガイド</div><div class="manual-header-sub">選別の儀・パック選択の参考に</div></div><button class="manual-close" @click="closePickGuide">閉じる</button></div>
       <nav class="manual-quick-nav pick-guide-nav" aria-label="カミ別ピック指南" :inert="manualSpoilerConfirmOpen ? '' : null"><a href="#pick-susanoo">スサノオ</a><a href="#pick-yamato-takeru">ヤマトタケル</a><a href="#pick-okuninushi">オオクニヌシ</a><a href="#pick-takemikazuchi">タケミカヅチ</a><a href="#pick-omoikane">オモイカネ</a><a href="#pick-amenouzume">アメノウズメ</a><a href="#pick-hinokagutsuchi">ヒノカグツチ</a><a href="#pick-amaterasu">アマテラス</a><a href="#pick-tsukuyomi">ツクヨミ</a><a href="#pick-yamata-no-orochi">{{ manualOrochiRevealed ? 'ヤマタノオロチ' : '？？？' }}</a></nav>
       <div class="howto-list pick-guide-content" :inert="manualSpoilerConfirmOpen ? '' : null">
         <div class="howto-section">
@@ -7917,7 +8055,7 @@
       <!-- SE/BGM音量設定：フローティング版だと降参ボタン等と重なるため、対戦画面ではヘッダー内に配置する -->
       <div class="battle-header-sound-wrap">
         <transition name="bgm-now-fade"><span v-if="bgmNowPlaying" :key="bgmNowPlaying.id" class="bgm-current-name" :title="bgmNowPlaying.name" role="status" aria-live="polite">♪ {{ bgmNowPlaying.name }}</span></transition>
-        <button class="battle-undo-btn" @click.stop="_sfxPlay('cancel'); soundSettingsOpen = !soundSettingsOpen" title="音量設定" aria-label="音量と演出設定を開く">🎵</button>
+        <button class="battle-undo-btn" @click.stop="_sfxPlay('cancel'); soundSettingsOpen = !soundSettingsOpen" title="音量設定" aria-label="音量と演出設定を開く"><span class="ui-icon ui-icon-volume" aria-hidden="true"></span></button>
         <div v-if="soundSettingsOpen" class="global-sound-popover battle-header-sound-popover" @click.stop>
           <div class="global-sound-row">
             <span class="global-sound-label">SE音量</span>
@@ -9880,7 +10018,7 @@
           </div>
           <p class="guide-chibi-note draft-strip-note">ちびキャラにカーソルを合わせると<br>カミのカードを表示します。<br>ホイールで拡大・縮小できます。</p>
           <!-- ピック方針の本文は置かず、自分のカミのピックガイドへ直接飛ぶ。空いた分はちびキャラを大きく見せる -->
-          <button type="button" class="pick-guide-link" @click="openPickGuideForKami(gsMyKamiCard)">📖 {{ gsMyKamiCard.name }}の<wbr>ピックガイドを見る</button>
+          <button type="button" class="pick-guide-link" @click="openPickGuideForKami(gsMyKamiCard)"><span class="ui-icon ui-icon-pick-guide" aria-hidden="true"></span> {{ gsMyKamiCard.name }}の<wbr>ピックガイドを見る</button>
         </aside>
         <div class="gm-pack-grid" :class="{ locked: gsIPickedThisStep, 'is-loading': pickImagesLoading }">
           <div v-if="pickImagesLoading" class="pick-images-loading" role="status"><span class="asset-loading-spinner" aria-hidden="true"></span>カードを読み込み中…</div>
@@ -11103,29 +11241,58 @@ function emoteIconStyle(kamiNo, key) {
 }
 
 // TOP画面の各モードタイル→詳細画面（画像＋説明＋開始ボタン）の内容
+// TOPのモードタイルを押した先の紹介画面の内容。右欄は「一言の導入文 → 流れ（steps）か特徴（points）→ 補足（note）→ 開始ボタン」の順に並ぶ。
+// 文言はプレイガイドのルール説明と一致させること（人数・枚数・回数を変えたときはここも直す）。
 const MODE_DETAIL_INFO = {
   cardlist: {
     title: 'カードリスト',
     image: 'top_mode_icons/cardlist.webp',
-    desc: '収録されているカードを、画像とカード情報を見ながら確認できます。\n\n色・カード種別・種族・コストなどで絞り込みます。目的のカードを素早く探せます。\n\nカードにカーソルを合わせると、大きな画像で内容を確認できます。\n\n画面内の「キーワード集」では、【疾駆】【守護】【誘】【招来】など、共通能力の詳しい意味を確認できます。',
+    lead: 'カードを調べて、デッキを組む。',
+    points: [
+      { name: '絞り込み', text: '色・カード種別・種族・コストなどで、目的のカードを素早く探せます。' },
+      { name: '拡大表示', text: 'カードにカーソルを合わせると、大きな画像で内容を確かめられます。' },
+      { name: 'キーワード集', text: '【疾駆】【守護】【誘】【招来】など、共通能力の意味を確認できます。' },
+      { name: 'デッキ管理', text: '作ったデッキを保存し、デッキコードで共有できます。' },
+    ],
     startLabel: 'カードリストを見る',
   },
   game: {
-    title: '創世決戦（4人対戦）',
+    title: '創世決戦', players: '4人対戦',
     image: 'top_mode_icons/genesis4p.webp',
-    desc: '4人でロビーに集まって遊ぶ対戦モードです。CPUを交えれば、2人からでも開始できます。\n\n① 神託の儀：対戦で使用するカミを選びます。\n② 選別の儀：パックを順番に取り、デッキ候補を集めます。\n③ 深化の刻：集めたカードから、使用するデッキを完成させます。\n④ 星戦：組み合わせを変えながら、3回の対戦を行います。\n⑤ 終戦：獲得した星魂を集計し、最終順位を決定します。',
+    lead: 'カミを選び、カードを集め、三度の星戦へ。',
+    steps: [
+      { name: '神託の儀', text: '3枚の候補から、自分のカミを1体選びます。' },
+      { name: '選別の儀', text: '配られた束から1枚ずつ選び、カードを集めます。', repeat: true },
+      { name: '深化の刻', text: '見識を使って、デッキを調整・強化します。', repeat: true },
+      { name: '星戦', text: '組み合わせを変えながら、1対1で対戦します。', repeat: true },
+      { name: '終戦', text: '勝利点と、集めたカードの変換値を星魂として合計し、最終順位を決めます。' },
+    ],
+    repeatNote: '選別の儀 → 深化の刻 → 星戦 を3回くり返します',
+    note: 'CPUを加えれば、2人からでも開始できます。',
     startLabel: '創世決戦を開始する',
   },
   construct: {
-    title: '理念構築戦（2人対戦）',
+    title: '理念構築戦', players: '2人対戦',
     image: 'top_mode_icons/construct2p-duel-66cbc68dc967.webp',
-    desc: '2人で、自由に構築したデッキを使って対戦するモードです。\n\nパックのドラフトは行わず、全カードプールから35枚を選んでデッキを作ります。\n\n自分で一から構築するほか、あらかじめ用意されたストラクチャーデッキを使って、すぐに対戦することもできます。',
+    lead: '好きな35枚で、自分だけの戦い方を。',
+    points: [
+      { name: '自由に構築', text: 'パックのドラフトは行わず、全カードプールからちょうど35枚を選んでデッキを作ります。' },
+      { name: '構築済みデッキ', text: 'あらかじめ用意されたストラクチャーデッキを選べば、すぐに対戦を始められます。' },
+      { name: 'カミと対戦', text: '選んだカミとデッキで、1回の星戦を行います。' },
+    ],
     startLabel: '理念構築戦を開始する',
   },
   shield: {
-    title: '星紡ぎ戦（2人対戦）',
+    title: '星紡ぎ戦', players: '2人対戦',
     image: 'top_mode_icons/shield2p.webp',
-    desc: '2人でパックを選び、その場で作ったデッキを使って対戦するモードです。\n\n① パックを交互に選び、カードを48枚集めます。\n② 対戦で使用するカミを選びます。\n③ 集めた48枚をそのままデッキとして使い、対戦します。\n\n対戦後は、同じデッキで再戦するか、パック選択からやり直すかを選べます。',
+    lead: '選んだ48枚、そのまま勝負へ。',
+    stepsLayout: 'row', // 手順が3つと少ないので、縦の一覧ではなく横に並べたカードで流れを見せる
+    steps: [
+      { name: 'パック選択', text: '提示されたパックを交互に選び、カードを48枚集めます。' },
+      { name: 'カミ選択', text: '対戦で使用するカミを選びます。' },
+      { name: '星戦', text: '集めた48枚をそのままデッキとして使い、対戦します。' },
+    ],
+    note: '対戦後は、同じデッキで再戦するか、パック選択からやり直すかを選べます。',
     startLabel: '星紡ぎ戦を開始する',
   },
 };
@@ -12614,6 +12781,10 @@ new Vue({
       // 増減表示は固定された盤面の位置を基準にする。
       return this.battleStatPops || {};
     },
+    // 共通ヘッダー（ロゴ／画面名＋右端の戦績・音量）を出している画面
+    appHeaderView() {
+      return this.appView === 'top' || (this.appView === 'modeDetail' && !!this.modeDetailInfo);
+    },
     tutorialStep() {
       const lesson = this.tutorialLesson;
       return lesson ? (lesson.steps[this.tutorial.index] || null) : null;
@@ -13079,9 +13250,17 @@ new Vue({
     },
     // TOP画面のモード詳細画面：現在選択中のモードの表示内容（MODE_DETAIL_INFO参照）
     // モード説明の段落を文節ごとに区切る（文節の途中で改行しないよう、区切りにだけ<wbr>を入れる）
-    modeDetailParagraphs() {
+    // 紹介画面の右欄。文は文節に区切り（phrases）、語の途中で改行しないようにする
+    modeDetailView() {
       const info = this.modeDetailInfo;
-      return info ? String(info.desc || '').split('\n').filter(Boolean).map(splitTutorialPhrases) : [];
+      if (!info) return null;
+      const split = text => splitTutorialPhrases(String(text || ''));
+      const withPhrases = list => (list || []).map(item => Object.assign({}, item, { phrases: split(item.text) }));
+      return {
+        lead: split(info.lead),
+        steps: withPhrases(info.steps), points: withPhrases(info.points),
+        repeatNote: info.repeatNote || '', note: info.note ? split(info.note) : null, stepsLayout: info.stepsLayout || 'list',
+      };
     },
     modeDetailInfo() {
       return MODE_DETAIL_INFO[this.modeDetailKey] || null;

@@ -15,7 +15,7 @@ const DIVINE_SKILL_THEMES = Object.freeze({
 const DIVINE_SKILL_CUTINS = Object.freeze({
   "1": "kami_cutin/susanoo-genesis-wide-413828a8d7da.webp",
   "2": "kami_cutin/yamato-takeru-genesis-wide-8f1979db2bd7.webp",
-  "3": "kami_cutin/okuninushi-genesis-wide-a2a38433041e.webp",
+  "3": "kami_cutin/okuninushi-genesis-wide-74ffd381fe8a.webp",
   "4": "kami_cutin/takemikazuchi-genesis-wide-53185a601ecf.webp",
   "5": "kami_cutin/omoikane-genesis-wide-a5784234189d.webp",
   "6": "kami_cutin/amenouzume-genesis-wide-de6bb559c748.webp",
@@ -37,6 +37,7 @@ const DIVINE_UZUME_FAN_FRAMES = Object.freeze([
   DIVINE_UZUME_FAN,
 ]);
 const DIVINE_UZUME_SILK = 'divine_assets/amenouzume-hagoromo-2ef2602b4401.webp';
+const DIVINE_UZUME_HAGOROMO_POSES = 'divine_assets/amenouzume-hagoromo-wind-poses-c0da1212d44f.webp';
 const DIVINE_HINO_RED_SLASH = 'divine_assets/hinokagutsuchi-red-slash-8dbac9d0078c.webp';
 const DIVINE_HINO_FIRE_WALL_FRAMES = Object.freeze([
   'divine_assets/hinokagutsuchi-fire-wall-ignition-a35083ccbd3c.webp',
@@ -90,7 +91,7 @@ function divineSkillAssetUrls(kami) {
     '3': [atlas, 'divine_assets/beast-light-forms-5bdddec3647d.webp'],
     '4': ['divine_assets/futsunomitama-seven-453501cd77c5.webp'],
     '5': ['divine_assets/mystic-purple-scroll-bd45e7325132.webp'],
-    '6': [DIVINE_UZUME_SILK, DIVINE_CAMELLIA_ATLAS, DIVINE_UZUME_PETAL_ATLAS, ...DIVINE_UZUME_FAN_FRAMES],
+    '6': [DIVINE_UZUME_SILK, DIVINE_UZUME_HAGOROMO_POSES, DIVINE_CAMELLIA_ATLAS, DIVINE_UZUME_PETAL_ATLAS, ...DIVINE_UZUME_FAN_FRAMES],
     '7': [DIVINE_HINO_RED_SLASH, ...DIVINE_HINO_FIRE_WALL_FRAMES],
     '8': [DIVINE_YATA_MIRROR],
     '9': ['divine_assets/lunar-relics-ac681e76d45f.webp'],
@@ -153,9 +154,10 @@ function divineOrochiSeals() {
 // 赤白の花びらに位相・高さ・半径の差を付け、扇の周囲を連続したらせんとして巻き上げる。
 function divineUzumeSpiralPetalStyle(i) {
   const variant=((i-1)*5)%8;
-  const phase = ((i * 37) % 80) * Math.PI / 40;
-  const radius = 11 + (i % 7) * 2.5;
-  const orbit = step => `${(Math.cos(phase + step * .94) * radius).toFixed(2)}vw`;
+  const phase = ((i * 23) % 56) * Math.PI / 28;
+  // 根元を細く、上に行くほど外へ広がる花びらの渦にする。
+  const radius = 7 + (i % 7) * 1.1;
+  const orbit = step => `${(Math.cos(phase + step * .94) * radius * (.7 + step * .22)).toFixed(2)}vw`;
   const depth = step => (.78 + (Math.sin(phase + step * .94) + 1) * .16).toFixed(2);
   const flight = Object.fromEntries(Array.from({length:11},(_,step)=>[
     [`--petal-orbit-${step}`,orbit(step)],
@@ -165,9 +167,11 @@ function divineUzumeSpiralPetalStyle(i) {
     '--petal-image': `url('${DIVINE_UZUME_PETAL_ATLAS}')`,
     '--petal-cell-x': `${(variant%4)*100/3}%`,
     '--petal-cell-y': `${variant<4?0:100}%`,
-    '--petal-size': `${21 + (i % 7) * 4}px`,
+    '--petal-size': `${38 + (i % 5) * 7}px`,
     '--petal-flutter-ms': `${440+(i%6)*95}ms`,
     '--petal-flutter-delay': `${-(i%9)*91}ms`,
+    '--petal-radius-start': `${(radius*.7).toFixed(2)}vw`,
+    '--petal-radius-end': `${(radius*2.9).toFixed(2)}vw`,
     '--petal-delay': `${-((i * 13) % 17) * 31}ms`,
     '--petal-entry-x': `${(i * 37) % 114 - 57}vw`,
     '--petal-entry-y': `${-78 - (i % 8) * 7}vh`,
@@ -176,6 +180,10 @@ function divineUzumeSpiralPetalStyle(i) {
     '--petal-turn': `${230 + (i % 7) * 37}deg`,
     ...flight,
   };
+}
+function divineUzumeHagoromoPoseStyle(i) {
+  const cell=i-1;
+  return {backgroundImage:`url('${DIVINE_UZUME_HAGOROMO_POSES}')`,backgroundPosition:`${(cell%2)*100}% ${Math.floor(cell/2)*100}%`,'--pose-delay':`${cell*650}ms`};
 }
 // はがれた八枚を画面外の退避先から集め、実際の能力アイコンへ導く。
 function divineOrochiSealArrivalStyles(viewport = typeof window !== 'undefined' ? window : {innerWidth:1200,innerHeight:800}) {
@@ -240,14 +248,14 @@ function divineSusanooSwordStyle(rect, viewport = typeof window !== 'undefined' 
 // 爪は選んだカードの位置へ、爆発は相手カミの位置へそれぞれ合わせる。
 function divineFlameClawLayout(targets = []) {
   const rects = targets.filter(r => r && ['left','top','width','height'].every(k => Number.isFinite(r[k])) && r.width > 0 && r.height > 0);
-  if (!rects.length) return {sweep:null,shatter:null,eruptionLayers:[],burst:null};
+  if (!rects.length) return {sweep:null,dissolve:null,eruptionLayers:[],burst:null};
   const kami = rects.find(r => r.kind === 'kami') || rects[rects.length-1];
   const card = rects.find(r => r.kind !== 'kami') || null;
   const ky=kami.top+kami.height/2;
   const strike=card ? {left:card.left+card.width/2+'px',top:card.top+card.height/2+18+'px',
     width:Math.max(560,card.width*6)+'px',height:Math.max(360,card.height*3)+'px',
     '--claw-angle':'-12deg',backgroundImage:"url('"+DIVINE_HINO_RED_SLASH+"')"} : null;
-  const shatter=card ? {style:{left:card.left+'px',top:card.top+'px',width:card.width+'px',height:card.height+'px'},
+  const dissolve=card ? {style:{left:card.left+'px',top:card.top+'px',width:card.width+'px',height:card.height+'px'},
     image:card.image?"url('"+card.image+"')":'none'} : null;
   const viewportWidth=typeof window !== 'undefined' ? window.innerWidth : 1200;
   const viewportHeight=typeof window !== 'undefined' ? window.innerHeight : 800;
@@ -259,7 +267,7 @@ function divineFlameClawLayout(targets = []) {
     left:((viewportWidth-flameWidth)/2)+'px',top:(flameBottom-flameHeight)+'px',
     width:flameWidth+'px',height:flameHeight+'px',backgroundImage:"url('"+url+"')"}}));
   const burst={left:'0px',top:(ky-Math.max(220,kami.height*2))+'px',width:viewportWidth+'px',height:Math.max(450,kami.height*4)+'px'};
-  return {sweep:strike,shatter,eruptionLayers,burst};
+  return {sweep:strike,dissolve,eruptionLayers,burst};
 }
 
 if (typeof Vue !== 'undefined') {
@@ -292,7 +300,7 @@ if (typeof Vue !== 'undefined') {
   });
   Vue.component('divine-skill-art', {
     data() { return {awakeningFailed:false}; },
-    methods: { artError(event) { if (!event.target.dataset.fallback) { event.target.dataset.fallback = '1'; event.target.src = 'kami_cutin/' + this.effect.kamiNo + '.webp'; } }, awakeningError() { this.awakeningFailed = true; }, camelliaStyle(i, blossom) { return divineCamelliaStyle(i, blossom); }, spiralPetalStyle(i) { return divineUzumeSpiralPetalStyle(i); } },
+    methods: { artError(event) { if (!event.target.dataset.fallback) { event.target.dataset.fallback = '1'; event.target.src = 'kami_cutin/' + this.effect.kamiNo + '.webp'; } }, awakeningError() { this.awakeningFailed = true; }, camelliaStyle(i, blossom) { return divineCamelliaStyle(i, blossom); }, spiralPetalStyle(i) { return divineUzumeSpiralPetalStyle(i); }, hagoromoPoseStyle(i) { return divineUzumeHagoromoPoseStyle(i); } },
     props: { effect: Object, layout:Object, targets:Array, survivors:Array, swordLanding:Object, stage: { type: String, default: 'closeup' }, duration: { type: Number, default: 3000 } },
     computed: { volley(){return divineBladeVolley(this.layout,this.survivors || [])}, beastManifestations(){return divineBeastManifestations()},orochiSeals(){return divineOrochiSeals()},thunderBranches(){return divineThunderBranches()},fieldScrolls(){return divineFieldScrolls(this.layout)},thunderSwordStyle(){return divineThunderSwordStyle(this.targets && this.targets[0])},susanooSwordStyle(){return divineSusanooSwordStyle(this.swordLanding)},flameClaw(){return divineFlameClawLayout(this.targets || [])},uzumeFanFrames(){return DIVINE_UZUME_FAN_FRAMES} },
     template: `<div class="divine-art divine-painted" :class="['divine-'+effect.motif,'divine-level-'+effect.index,'divine-stage-'+stage]" :style="{'--divine-color':effect.color,'--divine-accent':effect.accent,'--fx-duration':duration+'ms'}" aria-hidden="true">
@@ -351,9 +359,10 @@ if (typeof Vue !== 'undefined') {
         </template>
         <template v-if="effect.motif === 'camellia'">
           <template v-if="effect.index === 2">
-            <svg class="uzume-wind-threads" viewBox="0 0 1000 1000" preserveAspectRatio="none" fill="none"><path d="M140 850 C-40 620 410 745 220 505 S110 245 490 250 S750 70 515 -90"/><path d="M790 940 C1050 710 520 675 760 440 S880 205 485 185 S260 80 490 -80"/><path d="M500 1040 C260 710 830 705 530 470 S210 330 560 195 S740 15 535 -100"/></svg>
+            <i v-for="i in 2" :key="'uzume-gust-'+i" class="uzume-soft-gust" :class="'uzume-soft-gust-'+i"></i>
+            <div class="uzume-hagoromo-flight"><i v-for="i in 4" :key="'hagoromo-pose-'+i" class="uzume-hagoromo-pose" :style="hagoromoPoseStyle(i)"></i></div>
             <div class="uzume-fan-flight"><img class="uzume-fan-frame" :src="uzumeFanFrames[0]" alt=""></div>
-            <i v-for="i in 80" :key="'spiral-petal-'+i" class="uzume-spiral-petal" :style="spiralPetalStyle(i)"><span class="uzume-spiral-petal-art"></span></i>
+            <i v-for="i in 56" :key="'spiral-petal-'+i" class="uzume-spiral-petal" :style="spiralPetalStyle(i)"><span class="uzume-spiral-petal-art"></span></i>
           </template>
           <template v-else>
             <div class="sweet-wind"></div>
@@ -366,7 +375,7 @@ if (typeof Vue !== 'undefined') {
         </template>
         <template v-if="effect.motif === 'flame' && effect.index === 2">
           <div v-if="flameClaw.sweep" class="hino-strike" :style="flameClaw.sweep"></div>
-          <div v-if="flameClaw.shatter" class="hino-card-shatter" :style="flameClaw.shatter.style"><i v-for="i in 4" :key="'hino-shard-'+i" class="hino-card-shard" :class="'hino-card-shard-'+i" :style="{backgroundImage:flameClaw.shatter.image}"></i><span v-if="flameClaw.shatter.image==='none'">選んだレガシー</span></div>
+          <div v-if="flameClaw.dissolve" class="hino-card-dissolve" :style="flameClaw.dissolve.style"><div class="hino-card-dissolve-art" :style="{backgroundImage:flameClaw.dissolve.image}"><span v-if="flameClaw.dissolve.image==='none'">選んだレガシー</span></div></div>
           <div v-for="(layer,i) in flameClaw.eruptionLayers" :key="'hino-eruption-'+i" class="hino-eruption" :class="'hino-eruption-'+layer.phase" :style="layer.style"></div>
           <div v-if="flameClaw.burst" class="hino-eruption-glare" :style="flameClaw.burst"></div>
         </template>
@@ -408,4 +417,4 @@ if (typeof Vue !== 'undefined') {
     </div>`,
   });
 }
-if (typeof module !== 'undefined') module.exports = { divineFlameClawLayout, DIVINE_HINO_RED_SLASH, DIVINE_HINO_FIRE_WALL_FRAMES, DIVINE_OROCHI_UNIFIED_SCENE, DIVINE_UZUME_FAN_FRAMES, divineUzumeSpiralPetalStyle, DIVINE_SKILL_THEMES, DIVINE_SKILL_CUTINS, DIVINE_SKILL_AWAKENINGS, DIVINE_SKILL_AWAKENING_FRAMES, divineSkillTheme, divineSkillAssetUrls, DIVINE_SPRITES, divineSpriteStyle, divineTransferStyle, divineBladeVolley, divineThunderBranches, divineFieldScrolls, divineThunderSwordStyle, divineSusanooSwordStyle, divineOrochiSealArrivalStyles, divineOrochiSealMarkStyle, divineBeastManifestations };
+if (typeof module !== 'undefined') module.exports = { divineFlameClawLayout, DIVINE_HINO_RED_SLASH, DIVINE_HINO_FIRE_WALL_FRAMES, DIVINE_OROCHI_UNIFIED_SCENE, DIVINE_UZUME_FAN_FRAMES, DIVINE_UZUME_HAGOROMO_POSES, divineUzumeSpiralPetalStyle, divineUzumeHagoromoPoseStyle, DIVINE_SKILL_THEMES, DIVINE_SKILL_CUTINS, DIVINE_SKILL_AWAKENINGS, DIVINE_SKILL_AWAKENING_FRAMES, divineSkillTheme, divineSkillAssetUrls, DIVINE_SPRITES, divineSpriteStyle, divineTransferStyle, divineBladeVolley, divineThunderBranches, divineFieldScrolls, divineThunderSwordStyle, divineSusanooSwordStyle, divineOrochiSealArrivalStyles, divineOrochiSealMarkStyle, divineBeastManifestations };
