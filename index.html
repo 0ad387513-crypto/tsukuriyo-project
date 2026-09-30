@@ -949,7 +949,15 @@
     background: rgba(10,12,18,0.92);
   }
   .card-hover-preview.chp-evolved .chp-col { flex: 1; min-width: 0; }
-  .card-hover-zoom-note { grid-column: 1 / -1; display: block; background: #0a0c12; color: #aab7ca; font-size: 10px; line-height: 18px; text-align: center; white-space: nowrap; }
+  /* 拡大表示の下の大きさスライダー：表示本体はマウスを通すが、スライダーだけは操作できる */
+  .chp-zoom-row { grid-column: 1 / -1; background: #0a0c12; }
+  .card-hover-zoom-bar {
+    pointer-events: auto; box-sizing: border-box; display: flex; align-items: center; gap: 6px;
+    width: min(190px, 100%); height: 32px; padding: 0 8px; background: #0a0c12; color: #aab7ca; font-size: 10px; white-space: nowrap;
+  }
+  .card-hover-zoom-bar.side-right { margin-left: auto; }
+  .card-hover-zoom-bar input[type=range] { flex: 1 1 auto; min-width: 0; margin: 0; accent-color: #d7b464; cursor: pointer; }
+  .chz-label { flex: none; }
   .chp-label {
     font-size: 11px; color: #ffd86a; font-weight: 700;
     text-align: center; padding: 2px 0; line-height: 1.2;
@@ -7611,7 +7619,12 @@
       <div class="sb-hp-img"
            :style="{ backgroundImage: 'url(' + cardImageUrl(sbHoverCard) + ')' }">
       </div>
-      <div class="card-hover-zoom-note">ホイールで拡大・縮小</div>
+      <div class="card-hover-zoom-bar" :class="'side-' + sbHoverBarSide" @mousedown.stop @click.stop>
+        <span class="chz-label" aria-hidden="true">縮小</span>
+        <input type="range" min="0.5" max="2" step="0.05" :value="sbHoverZoom" aria-label="拡大表示の大きさ（右で拡大・左で縮小）"
+               @input="setCardHoverZoom('sbHover', $event.target.value)">
+        <span class="chz-label" aria-hidden="true">拡大</span>
+      </div>
     </div>
   </div><!-- /shield-overlay -->
 
@@ -10182,7 +10195,15 @@
       <div class="chp-label">進化元（重なり）</div>
       <div class="chp-img" :style="{ backgroundImage: 'url(' + cardImageUrl(hoverCard._evolvedBase) + ')' }"></div>
     </div>
-    <div v-if="appView !== 'cardlist'" class="card-hover-zoom-note">ホイールで拡大・縮小</div>
+    <!-- 大きさのスライダー（右で拡大・左で縮小）。カードリストはクリックで拡大できるため出さない -->
+    <div v-if="appView !== 'cardlist'" class="chp-zoom-row">
+      <div class="card-hover-zoom-bar" :class="'side-' + hoverBarSide" @mousedown.stop @click.stop>
+        <span class="chz-label" aria-hidden="true">縮小</span>
+        <input type="range" min="0.5" max="2" step="0.05" :value="hoverZoom" aria-label="拡大表示の大きさ（右で拡大・左で縮小）"
+               @input="setCardHoverZoom('hover', $event.target.value)">
+        <span class="chz-label" aria-hidden="true">拡大</span>
+      </div>
+    </div>
   </div>
 
   <!-- ===== カードプレビュー モーダル ===== -->
@@ -12075,6 +12096,8 @@ new Vue({
     hoverZoom: 1,
     hoverWidth: 360,
     sbHoverZoom: 1,
+    hoverBarSide: 'left',   // 拡大表示のスライダーを寄せる側（元のカードに近い側。大きさを変えてもスライダーが動かない）
+    sbHoverBarSide: 'left',
     sbHoverWidth: 440,
     hoverTop: 0,             // ホバープレビューのY座標(px)
     baseDevicePixelRatio: window.devicePixelRatio || 1, // 起動時のDPR（ズーム検知の基準）
@@ -29937,6 +29960,9 @@ new Vue({
       // 対戦中に表示済みのカードは拡大できる。カードリスト等のネタバレ防止は維持。
       if (this.appView !== 'battle' && this.isSpoilerHidden(card) && !(allowKamiSpoiler && card.isKami)) return;
       if (!this.cardImageUrl(card)) return;
+      // 拡大表示の上（スライダーへ向かう途中）では、その下に隠れたカードへ切り替えない
+      if (this.hoverCard && this.hoverCard !== card && this._cardHoverPointerInside('hover', event)) return;
+      this._cardHoverLeaving = null;
       this.hoverCard = card;
       const el = event.currentTarget.closest('.card') || event.currentTarget;
       const rect = el.getBoundingClientRect();
@@ -29948,9 +29974,10 @@ new Vue({
       this.hoverWidth = layout.width;
       this.hoverLeft = layout.left;
       this.hoverTop = layout.top;
+      this.hoverBarSide = layout.left >= rect.right ? 'left' : 'right';
     },
     cardHoverGeometry(rect, baseWidth, zoom, evolved) {
-      const margin = 10, extra = evolved ? 48 : 22, ratio = 1039 / 744 / (evolved ? 2 : 1);
+      const margin = 10, extra = evolved ? 62 : 36, ratio = 1039 / 744 / (evolved ? 2 : 1);
       const maxWidth = Math.min(window.innerWidth - 2 * margin, (window.innerHeight - 2 * margin - extra) / ratio);
       const width = Math.max(40, Math.min(baseWidth * zoom, maxWidth)), height = width * ratio + extra;
       let left = rect.right + margin;
@@ -29959,29 +29986,73 @@ new Vue({
       const top = Math.max(margin, Math.min(window.innerHeight - height - margin, rect.top + (rect.height - height) / 2));
       return { width, left, top, zoom: width / baseWidth };
     },
-    onCardPreviewWheel(event) {
-      if (!event.deltaY || event.ctrlKey || event.metaKey || !this.$el) return;
-      // カードリストではホイールで一覧をスクロールする（カードの拡大はクリックで行える）
-      if (this.appView === 'cardlist') return;
-      const shield = !!(this.sbHoverCard && this.$el.querySelector('.sb-hover-popup'));
-      const normal = !!(this.hoverCard && !this.previewCard && !this.battleCardHoverBlocked() && this.$el.querySelector('.card-hover-preview'));
-      const rect = shield ? this._sbHoverSourceRect : this._hoverSourceRect;
-      if ((!shield && !normal) || !rect) return;
-      event.preventDefault();
-      event.stopPropagation();
-      const key = shield ? 'sbHover' : 'hover', card = shield ? this.sbHoverCard : this.hoverCard;
+    /* 拡大表示の大きさを、表示の下のスライダーで変える（右で拡大・左で縮小）。
+       スライダーが指の下から逃げないよう、元のカードに近い側の端と下端を固定したまま大きさだけを変える。
+       決めた倍率は次に指すカードにも引き継ぐ（通常・星紡ぎ戦で共通） */
+    setCardHoverZoom(key, value) {
+      const shield = key === 'sbHover';
+      const card = shield ? this.sbHoverCard : this.hoverCard;
+      if (!card) return;
       const evolved = !shield && !!(card._evolvedBase && this.cardImageUrl(card._evolvedBase));
       const base = shield ? 440 : (evolved ? 484 : 360);
-      const current = this[key + 'Width'] / base;
-      const zoom = Math.max(.5, Math.min(2, current * (event.deltaY < 0 ? 1.12 : 1 / 1.12)));
-      const layout = this.cardHoverGeometry(rect, base, zoom, evolved);
-      // 通常・星紡ぎ戦のどちらで調整しても、次に指すカードへ倍率を引き継ぐ。
-      this.hoverZoom = this.sbHoverZoom = layout.zoom;
-      this[key + 'Width'] = layout.width;
-      this[key + 'Left'] = layout.left;
-      this[key + 'Top'] = layout.top;
+      const margin = 10, extra = evolved ? 62 : 36, ratio = 1039 / 744 / (evolved ? 2 : 1);
+      const oldWidth = this[key + 'Width'], oldLeft = this[key + 'Left'], oldTop = this[key + 'Top'];
+      const oldBottom = oldTop + oldWidth * ratio + extra;
+      const maxWidth = Math.min(window.innerWidth - 2 * margin, (window.innerHeight - 2 * margin - extra) / ratio);
+      const width = Math.max(40, Math.min(base * Math.max(.5, Math.min(2, Number(value) || 1)), maxWidth));
+      const height = width * ratio + extra;
+      let left = this[key + 'BarSide'] === 'left' ? oldLeft : oldLeft + oldWidth - width;
+      left = Math.max(margin, Math.min(window.innerWidth - width - margin, left));
+      const top = Math.max(margin, Math.min(window.innerHeight - height - margin, oldBottom - height));
+      this[key + 'Width'] = width;
+      this[key + 'Left'] = left;
+      this[key + 'Top'] = top;
+      this.hoverZoom = this.sbHoverZoom = width / base;
+    },
+    // マウスが拡大表示（スライダーを含む）の上にあるか
+    _cardHoverPointerInside(key, event) {
+      if (!event || typeof event.clientX !== 'number' || !this.$el) return false;
+      if (key === 'hover' && this.appView === 'cardlist') return false;
+      const el = this.$el.querySelector(key === 'sbHover' ? '.sb-hover-popup' : '.card-hover-preview');
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return event.clientX >= r.left - 4 && event.clientX <= r.right + 4 && event.clientY >= r.top - 4 && event.clientY <= r.bottom + 4;
+    },
+    /* 元のカードから離れたら：スライダーへ向かっている間（拡大表示の上）は残し、それ以外へ出たら消す。
+       少しの間どこにも動かなければ消す */
+    _cardHoverStartLeaving(key, event) {
+      if (key === 'hover' && this.appView === 'cardlist') return false;
+      const token = {};
+      // 離れた時点ですでに拡大表示（スライダー）の上なら、そのまま残す
+      this._cardHoverLeaving = { key, token, over: this._cardHoverPointerInside(key, event) };
+      clearTimeout(this._cardHoverLeaveTimer);
+      this._cardHoverLeaveTimer = setTimeout(() => {
+        const leaving = this._cardHoverLeaving;
+        if (!leaving || leaving.token !== token || leaving.over) return;
+        this._cardHoverFinishLeaving();
+      }, 600);
+      return true;
+    },
+    _cardHoverFinishLeaving() {
+      const leaving = this._cardHoverLeaving;
+      this._cardHoverLeaving = null;
+      clearTimeout(this._cardHoverLeaveTimer);
+      if (!leaving) return;
+      if (leaving.key === 'sbHover') { this.sbHoverCard = null; this._sbHoverSourceRect = null; }
+      else { this.hoverCard = null; this._hoverSourceRect = null; }
+    },
+    onCardHoverPointerMove(event) {
+      const leaving = this._cardHoverLeaving;
+      if (!leaving) return;
+      if (event.buttons) return; // スライダーをドラッグ中は、枠の外へはみ出しても消さない
+      leaving.over = this._cardHoverPointerInside(leaving.key, event);
+      if (!leaving.over) this._cardHoverFinishLeaving();
     },
     hideCardHover() {
+      const event = arguments[0]; // @mouseleave から呼ばれたときだけマウスのイベントが渡る
+      // マウスが元のカードから離れただけなら、拡大表示の上（スライダー）へ移るまで少し残す
+      if (event && (event.type === 'mouseleave' || event.type === 'mouseout') && this.hoverCard && this._cardHoverStartLeaving('hover', event)) return;
+      if (this._cardHoverLeaving && this._cardHoverLeaving.key === 'hover') this._cardHoverLeaving = null;
       this.hoverCard = null;
       this._hoverSourceRect = null;
     },
@@ -30645,6 +30716,8 @@ new Vue({
     /* 専用 sbHoverCard を使い、オーバーレイ内の sb-hover-popup で表示 */
     showSbHover(card, event) {
       if (!this.cardImageUrl(card)) return;
+      if (this.sbHoverCard && this.sbHoverCard !== card && this._cardHoverPointerInside('sbHover', event)) return;
+      this._cardHoverLeaving = null;
       this.sbHoverCard = card;
       const rect = event.currentTarget.getBoundingClientRect();
       this._sbHoverSourceRect = rect;
@@ -30652,8 +30725,12 @@ new Vue({
       this.sbHoverWidth = layout.width;
       this.sbHoverLeft = layout.left;
       this.sbHoverTop = layout.top;
+      this.sbHoverBarSide = layout.left >= rect.right ? 'left' : 'right';
     },
     hideSbHover() {
+      const event = arguments[0];
+      if (event && (event.type === 'mouseleave' || event.type === 'mouseout') && this.sbHoverCard && this._cardHoverStartLeaving('sbHover', event)) return;
+      if (this._cardHoverLeaving && this._cardHoverLeaving.key === 'sbHover') this._cardHoverLeaving = null;
       this.sbHoverCard = null;
       this._sbHoverSourceRect = null;
     },
@@ -31383,7 +31460,7 @@ new Vue({
       clearTimeout(this._topInfoResizeTimer);
       this._topInfoResizeTimer = setTimeout(() => this._topInfoRestart(), 300);
     });
-    window.addEventListener('wheel', this.onCardPreviewWheel, { passive: false, capture: true });
+    window.addEventListener('mousemove', this.onCardHoverPointerMove, { passive: true });
     window.addEventListener('resize', this._battleUpdateNoticeBounds);
     window.addEventListener('scroll', this._battleUpdateNoticeBounds, true);
     this.$watch(() => [this.appView, this.battleToasts.length].join(':'), () => this.$nextTick(this._battleUpdateNoticeBounds), { immediate: true });
@@ -31680,7 +31757,7 @@ new Vue({
     document.addEventListener('visibilitychange', this._onVisibilityChangeForTurnFlash);
   },
   beforeDestroy() {
-    window.removeEventListener('wheel', this.onCardPreviewWheel, true);
+    window.removeEventListener('mousemove', this.onCardHoverPointerMove);
     window.removeEventListener('resize', this._battleUpdateNoticeBounds);
     window.removeEventListener('scroll', this._battleUpdateNoticeBounds, true);
     if (this._battleNoticeBoundsObserver) this._battleNoticeBoundsObserver.disconnect();

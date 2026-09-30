@@ -12,33 +12,34 @@ function method(name, params = "", async = false) {
   return new (async ? Object.getPrototypeOf(async function(){}).constructor : Function)(params, body[1]);
 }
 
-test("wheel zoom changes only a visible card preview and keeps it on screen", () => {
-  const screen={innerWidth:1280,innerHeight:720},rect={left:1100,right:1200,top:500,height:120};
+test("the zoom slider resizes only the visible preview, keeps it on screen and pins the slider edge", () => {
+  const screen={innerWidth:1280,innerHeight:1400},rect={left:100,right:200,top:800,height:120};
   const geometry=method('cardHoverGeometry','rect,baseWidth,zoom,evolved,window');
-  const vm={hoverCard:{no:1},hoverWidth:360,hoverZoom:1,_hoverSourceRect:rect,previewCard:null,
-    $el:{querySelector:selector=>selector==='.card-hover-preview'},battleCardHoverBlocked:()=>false,
-    cardImageUrl:()=>'',cardHoverGeometry(r,b,z,e){return geometry(r,b,z,e,screen)}};
-  const wheel=method('onCardPreviewWheel','event');let prevented=0,stopped=0;
-  const event={deltaY:-100,preventDefault(){prevented++},stopPropagation(){stopped++}};
-  wheel.call(vm,event);assert.ok(vm.hoverWidth>360);assert.equal(prevented,1);assert.equal(stopped,1);
-  const bigger=vm.hoverWidth;wheel.call(vm,{...event,deltaY:100});assert.ok(vm.hoverWidth<bigger);
-  for(let i=0;i<20;i++)wheel.call(vm,event);
+  const start=geometry(rect,360,1,false,screen);
+  const vm={hoverCard:{no:1},hoverWidth:start.width,hoverLeft:start.left,hoverTop:start.top,hoverZoom:1,hoverBarSide:'left',
+    cardImageUrl:()=>''};
+  const zoom=method('setCardHoverZoom','key,value,window');
+  const bottom=v=>v.hoverTop+v.hoverWidth*1039/744+36;
+  const before=bottom(vm);
+  zoom.call(vm,'hover',1.4,screen);
+  assert.ok(vm.hoverWidth>start.width);assert.equal(vm.hoverLeft,start.left,'the edge next to the card stays put');
+  assert.ok(Math.abs(bottom(vm)-before)<.001,'the slider row does not jump while dragging');
+  zoom.call(vm,'hover',2,screen);
   assert.ok(vm.hoverLeft>=10 && vm.hoverLeft+vm.hoverWidth<=screen.innerWidth-10);
-  assert.ok(vm.hoverTop>=10 && vm.hoverTop+vm.hoverWidth*1039/744+4<=screen.innerHeight-10+.001);
-  const count=prevented;wheel.call(vm,{...event,ctrlKey:true});assert.equal(prevented,count,'browser zoom is untouched');
-  vm.previewCard={no:1};wheel.call(vm,event);assert.equal(prevented,count,'hidden hover cannot block scrolling');
-  vm.previewCard=null;vm.hoverCard=null;wheel.call(vm,event);assert.equal(prevented,count);
+  assert.ok(vm.hoverTop>=10 && bottom(vm)<=screen.innerHeight-10+.001);
+  zoom.call(vm,'hover',.5,screen);assert.ok(Math.abs(vm.hoverWidth-180)<.001);
+  vm.hoverCard=null;const width=vm.hoverWidth;zoom.call(vm,'hover',1.5,screen);assert.equal(vm.hoverWidth,width,'no preview, no change');
+  assert.ok(!html.includes("addEventListener('wheel'"),'the mouse wheel scrolls the page again');
   const evolved=geometry(rect,484,2,true,{innerWidth:390,innerHeight:600});
   assert.ok(evolved.left>=10 && evolved.left+evolved.width<=380);
-  assert.ok(evolved.top+evolved.width*1039/744/2+28<=590+.001);
 });
 
 test("normal and shield previews retain one zoom preference across successive cards", () => {
   const geometry=method('cardHoverGeometry','rect,baseWidth,zoom,evolved,window');
-  const vm={sbHoverCard:{no:2},sbHoverWidth:440,sbHoverZoom:1,_sbHoverSourceRect:{left:50,right:120,top:100,height:80},
-    $el:{querySelector:selector=>selector==='.sb-hover-popup'},
-    cardHoverGeometry(r,b,z,e){return geometry(r,b,z,e,{innerWidth:1280,innerHeight:900})}};
-  method('onCardPreviewWheel','event').call(vm,{deltaY:-100,preventDefault(){},stopPropagation(){}});
+  const screen={innerWidth:1280,innerHeight:900};
+  const vm={sbHoverCard:{no:2},sbHoverWidth:440,sbHoverLeft:200,sbHoverTop:100,sbHoverZoom:1,sbHoverBarSide:'left',_sbHoverSourceRect:{left:50,right:120,top:100,height:80},
+    cardHoverGeometry(r,b,z,e){return geometry(r,b,z,e,screen)}};
+  method('setCardHoverZoom','key,value,window').call(vm,'sbHover',1.3,screen);
   assert.ok(vm.sbHoverWidth>440);const zoom=vm.sbHoverZoom;
   method('hideSbHover').call(vm);assert.equal(vm.sbHoverZoom,zoom);assert.equal(vm._sbHoverSourceRect,null);
   assert.equal(vm.hoverZoom,zoom,'shield and normal views share the chosen ratio');
@@ -46,12 +47,12 @@ test("normal and shield previews retain one zoom preference across successive ca
   const rect={left:50,right:140,top:180,height:200},event={currentTarget:{closest:()=>null,getBoundingClientRect:()=>rect}};
   Object.assign(vm,{appView:'cards',battleCardHoverBlocked:()=>false,isSpoilerHidden:()=>false,cardImageUrl:()=> 'card.webp'});
   method('showCardHover','card,event,allowKamiSpoiler=false').call(vm,{no:3},event);
-  assert.equal(vm.hoverWidth,360*zoom,'the next normal card keeps the enlarged ratio');
+  assert.ok(Math.abs(vm.hoverWidth-360*zoom)<.001,'the next normal card keeps the enlarged ratio');
   method('hideCardHover').call(vm);
   method('showCardHover','card,event,allowKamiSpoiler=false').call(vm,{no:4},event);
-  assert.equal(vm.hoverWidth,360*zoom);
+  assert.ok(Math.abs(vm.hoverWidth-360*zoom)<.001);
   method('showSbHover','card,event').call(vm,{no:5},event);
-  assert.equal(vm.sbHoverWidth,440*zoom);
+  assert.ok(Math.abs(vm.sbHoverWidth-440*zoom)<.001);
 });
 
 test("draft status follows each Kami frame without altering shared seats", () => {
