@@ -319,10 +319,10 @@ test("pick guide card list sorts by Kami fit and lists poor fits separately", ()
 });
 
 test("every chibi listed in the Kami encyclopedia exists", () => {
-  const block = html.match(/const KAMI_DEX_CHIBIS = Object\.freeze\(\{([\s\S]*?)\n\}\);/);
+  const block = html.match(/const KAMI_DEX_CHIBIS = Object\.freeze\(\{([\s\S]*?)\r?\n\}\);/);
   assert.ok(block, "KAMI_DEX_CHIBIS");
   const files = [...block[1].matchAll(/file: '([^']+)'/g)].map(m => m[1]);
   assert.ok(files.length >= 10);
   for (const file of files) assert.ok(fs.existsSync(path.join(root, file)), `ちびキャラの画像がありません: ${file}`);
-  for (let no = 1; no <= 10; no++) assert.match(block[1], new RegExp(`"${no}": \[`), `カミ${no}のちびキャラ一覧`);
+  for (let no = 1; no <= 10; no++) assert.ok(block[1].includes(`"${no}": [`), `カミ${no}のちびキャラ一覧`);
 });
