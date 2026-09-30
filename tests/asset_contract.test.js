@@ -334,3 +334,13 @@ test("every chibi listed in the Kami encyclopedia exists", () => {
   for (const file of files) assert.ok(fs.existsSync(path.join(root, file)), `ちびキャラの画像がありません: ${file}`);
   for (let no = 1; no <= 10; no++) assert.ok(block[1].includes(`"${no}": [`), `カミ${no}のちびキャラ一覧`);
 });
+
+test("the chibi viewer steps through chibis then emotes and wraps around", () => {
+  const vm = { kamiDexGallery: [{ label: "通常" }, { label: "喜び" }, { label: "エモート（あいさつ）" }], kamiDexZoomIndex: 0, _sfxPlay() {} };
+  const step = appMethod("kamiDexZoomStep", "delta");
+  step.call(vm, 1); assert.equal(vm.kamiDexZoomIndex, 1);
+  step.call(vm, 1); assert.equal(vm.kamiDexZoomIndex, 2, "emotes follow the chibis");
+  step.call(vm, 1); assert.equal(vm.kamiDexZoomIndex, 0, "wraps to the first picture");
+  step.call(vm, -1); assert.equal(vm.kamiDexZoomIndex, 2, "and backwards to the last");
+  vm.kamiDexZoomIndex = -1; step.call(vm, 1); assert.equal(vm.kamiDexZoomIndex, -1, "closed viewer ignores the arrows");
+});

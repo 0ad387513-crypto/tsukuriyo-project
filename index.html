@@ -1637,28 +1637,38 @@
   .kami-dex-voice.playing { border-color: #e1c477; box-shadow: 0 0 12px rgba(225, 196, 119, .25); }
   .kami-dex-voice-label { color: #90bff2; font-size: 11px; font-weight: 900; }
   .kami-dex-voice-text { font-size: 13px; line-height: 1.6; }
-  .kami-dex-chibis { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-top: 10px; }
+  .kami-dex-chibis { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px; margin-top: 10px; }
   .kami-dex-chibi {
     display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 6px 4px 8px;
     border: 1px solid #343b4b; border-radius: 10px; background: rgba(12, 15, 23, .6); color: #cfd6e6; font-size: 11px; font-weight: 800; cursor: zoom-in;
   }
-  .kami-dex-chibi img { width: 100%; max-width: 110px; aspect-ratio: 240 / 260; object-fit: contain; }
+  .kami-dex-chibi img { width: 100%; max-width: 150px; aspect-ratio: 240 / 260; object-fit: contain; }
   .kami-dex-chibi:hover { border-color: #e1c477; }
   .kami-dex-chibi.placeholder { border-style: dashed; color: #7f889a; cursor: default; }
   .kami-dex-chibi.placeholder:hover { border-color: #343b4b; }
-  .kami-dex-chibi-soon { display: grid; place-items: center; width: 100%; max-width: 110px; aspect-ratio: 240 / 260; font-size: 30px; font-weight: 900; color: #4a5268; }
+  .kami-dex-chibi-soon { display: grid; place-items: center; width: 100%; max-width: 150px; aspect-ratio: 240 / 260; font-size: 30px; font-weight: 900; color: #4a5268; }
   .kami-dex-emote-img {
-    display: block; width: 100%; max-width: 88px; aspect-ratio: 1 / 1;
+    display: block; width: 100%; max-width: 116px; aspect-ratio: 1 / 1;
     background-size: 300% 200%; background-repeat: no-repeat;
   }
-  .kami-dex-emote-img.zoom { width: min(320px, 70vw); max-width: none; margin: 0 auto; filter: drop-shadow(0 10px 30px rgba(0, 0, 0, .6)); }
+  .kami-dex-emote-img.zoom { width: min(420px, 70vw, 70vh); max-width: none; margin: 0 auto; filter: drop-shadow(0 10px 30px rgba(0, 0, 0, .6)); }
   .kami-dex-chibi-zoom {
     position: fixed; inset: 0; z-index: 5200; display: grid; place-items: center; padding: 16px;
     background: rgba(2, 4, 10, .88); cursor: zoom-out;
   }
   .kami-dex-chibi-zoom figure { margin: 0; text-align: center; }
-  .kami-dex-chibi-zoom img { max-width: min(520px, 90vw); max-height: 78vh; object-fit: contain; filter: drop-shadow(0 10px 30px rgba(0, 0, 0, .6)); }
+  .kami-dex-chibi-zoom img { max-width: min(680px, 78vw); max-height: 80vh; object-fit: contain; filter: drop-shadow(0 10px 30px rgba(0, 0, 0, .6)); }
   .kami-dex-chibi-zoom figcaption { margin-top: 10px; color: #fff3c9; font-size: 15px; font-weight: 900; letter-spacing: .08em; }
+  .kami-dex-chibi-zoom figcaption small { margin-left: 10px; color: #aab4c6; font-size: 12px; font-weight: 700; }
+  .kami-dex-chibi-zoom:focus { outline: none; }
+  .kami-dex-zoom-nav {
+    position: fixed; top: 50%; transform: translateY(-50%); z-index: 1;
+    width: 56px; height: 88px; border: 1px solid #85754f; border-radius: 12px; background: rgba(12, 15, 23, .85);
+    color: #ffe4a0; font-size: 42px; font-weight: 900; line-height: 1; cursor: pointer;
+  }
+  .kami-dex-zoom-nav:hover { background: #3a3020; border-color: #e1c477; }
+  .kami-dex-zoom-nav.prev { left: max(12px, calc(50% - min(680px, 78vw) / 2 - 90px)); }
+  .kami-dex-zoom-nav.next { right: max(12px, calc(50% - min(680px, 78vw) / 2 - 90px)); }
   .kami-dex-fold { width: 100%; padding: 0; border: 0; background: none; color: #ecd895; font-size: 13px; font-weight: 900; letter-spacing: .08em; text-align: left; cursor: pointer; }
   .kami-dex-actions { margin-top: 16px; }
   .kami-dex-spoiler, .kami-dex-empty { max-width: 460px; margin: 40px auto; text-align: center; color: #fff2c8; font-size: 14px; font-weight: 800; line-height: 1.7; }
@@ -6221,8 +6231,8 @@
               {{ kamiDexShowChibis ? '▼' : '▶' }} ちびキャラ
             </button>
             <div v-if="kamiDexShowChibis" class="kami-dex-chibis">
-              <button v-for="chibi in kamiDexChibis" :key="chibi.file" type="button" class="kami-dex-chibi"
-                      :title="chibi.label + '（押すと拡大）'" @click="kamiDexChibiZoom = chibi">
+              <button v-for="(chibi, i) in kamiDexChibis" :key="chibi.file" type="button" class="kami-dex-chibi"
+                      :title="chibi.label + '（押すと拡大）'" @click="kamiDexOpenZoom(i)">
                 <img :src="chibi.file" :alt="kamiDexKami.name + 'のちびキャラ（' + chibi.label + '）'" loading="lazy" draggable="false">
                 <span>{{ chibi.label }}</span>
               </button>
@@ -6235,8 +6245,8 @@
             <template v-if="kamiDexShowChibis && kamiDexEmotes.length">
               <div class="kami-dex-voice-subtitle">エモート</div>
               <div class="kami-dex-chibis kami-dex-emotes">
-                <button v-for="emote in kamiDexEmotes" :key="emote.key" type="button" class="kami-dex-chibi"
-                        :title="emote.label + '（押すと拡大）'" @click="kamiDexChibiZoom = { label: 'エモート（' + emote.label + '）', style: emote.style }">
+                <button v-for="(emote, i) in kamiDexEmotes" :key="emote.key" type="button" class="kami-dex-chibi"
+                        :title="emote.label + '（押すと拡大）'" @click="kamiDexOpenZoom(kamiDexChibis.length + i)">
                   <span class="kami-dex-emote-img" :style="emote.style" role="img" :aria-label="kamiDexKami.name + 'のエモート（' + emote.label + '）'"></span>
                   <span>{{ emote.label }}</span>
                 </button>
@@ -6252,13 +6262,16 @@
     </div>
   </div>
 
-  <!-- カミ図鑑：ちびキャラの拡大表示（押すか背景を押すと閉じる） -->
-  <div v-if="kamiDexOpen && kamiDexChibiZoom" class="kami-dex-chibi-zoom" role="dialog" aria-modal="true" :aria-label="kamiDexChibiZoom.label" @click="kamiDexChibiZoom = null">
+  <!-- カミ図鑑：ちびキャラ・エモートの拡大表示。左右の矢印（キーボードの←→でも可）で前後の絵へ、絵か背景を押すと閉じる -->
+  <div v-if="kamiDexOpen && kamiDexZoomItem" ref="kamiDexZoom" class="kami-dex-chibi-zoom" role="dialog" aria-modal="true" :aria-label="kamiDexZoomItem.label" tabindex="-1"
+       @click="kamiDexCloseZoom" @keydown.left.prevent="kamiDexZoomStep(-1)" @keydown.right.prevent="kamiDexZoomStep(1)" @keydown.esc.prevent.stop="kamiDexCloseZoom">
+    <button v-if="kamiDexGallery.length > 1" type="button" class="kami-dex-zoom-nav prev" aria-label="前の絵" @click.stop="kamiDexZoomStep(-1)">‹</button>
     <figure>
-      <img v-if="kamiDexChibiZoom.file" :src="kamiDexChibiZoom.file" alt="" draggable="false">
-      <span v-else class="kami-dex-emote-img zoom" :style="kamiDexChibiZoom.style" aria-hidden="true"></span>
-      <figcaption>{{ kamiDexKami ? kamiDexKami.name : '' }}・{{ kamiDexChibiZoom.label }}</figcaption>
+      <img v-if="kamiDexZoomItem.file" :key="kamiDexZoomItem.file" :src="kamiDexZoomItem.file" alt="" draggable="false">
+      <span v-else :key="kamiDexZoomItem.label" class="kami-dex-emote-img zoom" :style="kamiDexZoomItem.style" aria-hidden="true"></span>
+      <figcaption>{{ kamiDexKami ? kamiDexKami.name : '' }}・{{ kamiDexZoomItem.label }}<small v-if="kamiDexGallery.length > 1">{{ kamiDexZoomIndex + 1 }} / {{ kamiDexGallery.length }}</small></figcaption>
     </figure>
+    <button v-if="kamiDexGallery.length > 1" type="button" class="kami-dex-zoom-nav next" aria-label="次の絵" @click.stop="kamiDexZoomStep(1)">›</button>
   </div>
 
   <!-- ===== 動作確認用ツール専用画面 ===== -->
@@ -12478,7 +12491,7 @@ new Vue({
     kamiDexShowEffects: false,   // カミの効果は、たたんだ状態で開く
     kamiDexShowVoices: false,    // ボイスも、たたんだ状態で開く
     kamiDexShowChibis: false,    // ちびキャラ一覧も、たたんだ状態で開く
-    kamiDexChibiZoom: null,      // 拡大表示中のちびキャラ { file, label }
+    kamiDexZoomIndex: -1,        // 拡大表示中のちびキャラ・エモートの番号（一覧の並び順。-1＝閉じている）
     pickCardListKami: null,      // ピックガイドのおすすめカード一覧を開いているカミの番号
     genesisStoryReplay: false,   // カミ図鑑からOPを見返している（終わったら創世決戦へ進まず図鑑へ戻る）
     kamiDexPreviewing: false,    // カミ図鑑から神技・創世神技の演出を再生中
@@ -12733,6 +12746,16 @@ new Vue({
     },
     kamiDexChibis() {
       return KAMI_DEX_CHIBIS[this.kamiDexNo] || [];
+    },
+    // 拡大表示で順にめくる絵：ちびキャラ → エモートの順
+    kamiDexGallery() {
+      return [
+        ...this.kamiDexChibis.map(c => ({ label: c.label, file: c.file })),
+        ...this.kamiDexEmotes.map(e => ({ label: 'エモート（' + e.label + '）', style: e.style })),
+      ];
+    },
+    kamiDexZoomItem() {
+      return this.kamiDexZoomIndex >= 0 ? (this.kamiDexGallery[this.kamiDexZoomIndex] || null) : null;
     },
     // カミのエモート6種（エモート用の画像があるカミだけ）
     kamiDexEmotes() {
@@ -14673,7 +14696,7 @@ new Vue({
     },
     closeKamiDex() {
       this._sfxPlay('cancel');
-      this.kamiDexChibiZoom = null;
+      this.kamiDexZoomIndex = -1;
       this._kamiDexStopVoice();
       this.kamiDexOpen = false;
       this.kamiDexOrochiConfirm = false;
@@ -14681,6 +14704,22 @@ new Vue({
     // 「｜」で区切った文を文節の配列にする（区切りの無い文はそのまま1つ）
     kamiDexPhrases(text) {
       return String(text || '').split('｜').filter(Boolean);
+    },
+    kamiDexOpenZoom(index) {
+      this._sfxPlay('decision');
+      this.kamiDexZoomIndex = index;
+      this.$nextTick(() => { if (this.$refs.kamiDexZoom) this.$refs.kamiDexZoom.focus(); });
+    },
+    kamiDexCloseZoom() {
+      this._sfxPlay('cancel');
+      this.kamiDexZoomIndex = -1;
+    },
+    // 前後の絵へ（端まで行ったら反対側へ戻る）
+    kamiDexZoomStep(delta) {
+      const n = this.kamiDexGallery.length;
+      if (!n || this.kamiDexZoomIndex < 0) return;
+      this._sfxPlay('menuselect');
+      this.kamiDexZoomIndex = (this.kamiDexZoomIndex + delta + n) % n;
     },
     kamiDexSelect(no) {
       no = String(no);
@@ -14691,7 +14730,7 @@ new Vue({
       this.kamiDexOrochiConfirm = false;
       this.kamiDexNo = no;
       this.kamiDexShowWins = false;
-      this.kamiDexChibiZoom = null;
+      this.kamiDexZoomIndex = -1;
     },
     kamiDexRevealOrochi() {
       this._sfxPlay('decision');
