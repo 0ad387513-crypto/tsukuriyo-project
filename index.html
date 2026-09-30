@@ -18315,6 +18315,8 @@ new Vue({
       const point = e.touches ? e.touches[0] : e;
       this._emoteDragStartX = point.clientX;
       this._emoteDragStartY = point.clientY;
+      // ホイールはカミの円の中心に出す（押した位置に出すと、円の端を押したときに輪がずれて見える）
+      this._emoteWheelCenter = this._battleEmoteWheelCenter(e, point);
       this._emoteDragMoved = false;
       this.emoteWheel = null;
       const move = ev => this._battleEmoteDragMove(ev);
@@ -18328,7 +18330,14 @@ new Vue({
     battleEmoteContextMenu(e) {
       if (this.battleNet && this.battleNet.spectating) return;
       if (!this.battleSample.self.kami || this.battleSample.result) return;
-      this.emoteWheel = { x: e.clientX, y: e.clientY, hoverKey: null, static: true };
+      const center = this._battleEmoteWheelCenter(e, e);
+      this.emoteWheel = { x: center.x, y: center.y, hoverKey: null, static: true };
+    },
+    // エモートホイールの中心：操作したカミの円（ポートレート）の中心。取れないときは押した位置
+    _battleEmoteWheelCenter(e, point) {
+      const el = e && e.currentTarget && e.currentTarget.getBoundingClientRect ? e.currentTarget : null;
+      const r = el ? el.getBoundingClientRect() : null;
+      return r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : { x: point.clientX, y: point.clientY };
     },
     battleEmoteWheelItemClick(key) {
       this.emoteWheel = null;
@@ -18342,10 +18351,12 @@ new Vue({
       if (!this.emoteWheel) {
         if (dist < 14) return; // ドラッグ判定の閾値未満はクリック扱いのままにする
         this._emoteDragMoved = true;
-        this.emoteWheel = { x: this._emoteDragStartX, y: this._emoteDragStartY, hoverKey: null };
+        const center = this._emoteWheelCenter || { x: this._emoteDragStartX, y: this._emoteDragStartY };
+        this.emoteWheel = { x: center.x, y: center.y, hoverKey: null };
       }
       if (e.cancelable) e.preventDefault();
-      if (dist < 30) {
+      // 選ぶ項目は、ホイールの中心から見た指の方向で決める（項目は中心の周りに並んでいるため）
+      if (dist < 30 || Math.hypot(point.clientX - this.emoteWheel.x, point.clientY - this.emoteWheel.y) < 30) {
         this.emoteWheel.hoverKey = null;
         return;
       }
