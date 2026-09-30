@@ -30059,10 +30059,21 @@ new Vue({
       const r = el.getBoundingClientRect();
       const sourceBottom = source.bottom != null ? source.bottom : source.top + source.height;
       const x = event.clientX, y = event.clientY;
-      if (y < source.top - 2 || y > sourceBottom + 2) return false;
-      if (r.left >= source.right - 2) return x >= source.right - 3 && x <= r.left + 3;  // 拡大表示が右側
-      if (r.right <= source.left + 2) return x >= r.right - 3 && x <= source.left + 3; // 拡大表示が左側
-      return false;
+      if (y >= source.top - 2 && y <= sourceBottom + 2) {
+        if (r.left >= source.right - 2 && x >= source.right - 3 && x <= r.left + 3) return true;  // 拡大表示が右側
+        if (r.right <= source.left + 2 && x >= r.right - 3 && x <= source.left + 3) return true; // 拡大表示が左側
+      }
+      // 元のカードからスライダーへ最短で向かう経路：両者の一番近い点どうしを結んだ線から、左右44px以内
+      const bar = el.querySelector('.card-hover-zoom-bar');
+      if (!bar) return false;
+      const b = bar.getBoundingClientRect();
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+      const ax = clamp((b.left + b.right) / 2, source.left, source.right), ay = clamp((b.top + b.bottom) / 2, source.top, sourceBottom);
+      const bx = clamp(ax, b.left, b.right), by = clamp(ay, b.top, b.bottom);
+      const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
+      const t = len2 ? clamp(((x - ax) * dx + (y - ay) * dy) / len2, 0, 1) : 0;
+      const px = ax + t * dx - x, py = ay + t * dy - y;
+      return px * px + py * py <= 44 * 44;
     },
     onCardHoverPointerMove(event) {
       const leaving = this._cardHoverLeaving;

@@ -1575,7 +1575,7 @@ test("the preview survives the gap between a card and its zoom slider, then clos
   const source={left:100,right:180,top:300,bottom:420,height:120};
   const preview={left:190,right:550,top:200,bottom:740};
   const vm={hoverCard:{no:1},_hoverSourceRect:source,appView:'guide',
-    $el:{querySelector:sel=>sel==='.card-hover-preview'?{getBoundingClientRect:()=>preview}:null}};
+    $el:{querySelector:sel=>sel==='.card-hover-preview'?{getBoundingClientRect:()=>preview,querySelector:q=>q==='.card-hover-zoom-bar'?{getBoundingClientRect:()=>({left:190,right:380,top:708,bottom:740})}:null}:null}};
   vm._cardHoverPointerInside=method('_cardHoverPointerInside','key,event').bind(vm);
   vm._cardHoverCorridor=method('_cardHoverCorridor','key,event').bind(vm);
   vm._cardHoverFinishLeaving=method('_cardHoverFinishLeaving').bind(vm);
@@ -1598,4 +1598,9 @@ test("the preview survives the gap between a card and its zoom slider, then clos
   vm.hoverCard={no:1};vm._hoverSourceRect=source;
   assert.equal(start.call(vm,'hover',{clientX:140,clientY:299}),false,'leaving through the top edge needs no grace period');
   assert.equal(start.call(vm,'hover',{clientX:181,clientY:360}),true,'leaving toward the preview keeps it briefly');
+  vm._cardHoverLeaving={key:'hover',token:{},over:false};
+  move.call(vm,{clientX:170,clientY:560,buttons:0});
+  assert.ok(vm.hoverCard,'the short diagonal route from the card down to the slider is allowed');
+  move.call(vm,{clientX:60,clientY:560,buttons:0});
+  assert.equal(vm.hoverCard,null,'straying far from that route closes the preview');
 });
