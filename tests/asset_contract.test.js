@@ -9,8 +9,8 @@ const crypto = require("node:crypto");
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 
-test("Uzume's fan moves continuously while red and white petals rise on staggered spiral paths", () => {
-  const {DIVINE_UZUME_FAN_FRAMES,divineUzumeSpiralPetalStyle,divineSkillAssetUrls}=require('../divine_effects.js');
+test("Uzume's fan, legible petals and four fading silk poses move in a widening breeze", () => {
+  const {DIVINE_UZUME_FAN_FRAMES,DIVINE_UZUME_HAGOROMO_POSES,divineUzumeSpiralPetalStyle,divineUzumeHagoromoPoseStyle,divineSkillAssetUrls}=require('../divine_effects.js');
   assert.equal(DIVINE_UZUME_FAN_FRAMES.length,1);
   for(const file of DIVINE_UZUME_FAN_FRAMES){
     assert.ok(divineSkillAssetUrls({no:6}).includes(file));
@@ -27,12 +27,20 @@ test("Uzume's fan moves continuously while red and white petals rise on staggere
   assert.notEqual(red['--petal-delay'],white['--petal-delay']);
   assert.notEqual(red['--petal-height-shift'],white['--petal-height-shift']);
   assert.ok(Array.from({length:11},(_,step)=>red[`--petal-orbit-${step}`]).every(Boolean));
+  assert.ok(parseFloat(red['--petal-radius-end'])>parseFloat(red['--petal-radius-start'])*3,'the petal vortex widens above its narrow base');
+  assert.ok(parseFloat(red['--petal-size'])>=38);
+  assert.ok(divineSkillAssetUrls({no:6}).includes(DIVINE_UZUME_HAGOROMO_POSES));
+  assert.ok(fs.statSync(path.join(root,DIVINE_UZUME_HAGOROMO_POSES)).size<=160000);
+  assert.equal(new Set(Array.from({length:4},(_,n)=>divineUzumeHagoromoPoseStyle(n+1).backgroundPosition)).size,4);
   const css=fs.readFileSync(path.join(root,'divine_effects.css'),'utf8');
   assert.match(css,/@keyframes fx-uzume-fan-sway/);
   assert.match(css,/@keyframes fx-uzume-fan-flight[\s\S]*?48%\s*\{[^}]*26vh/);
   assert.match(css,/@keyframes fx-uzume-petal-spiral[\s\S]*?100%\s*\{[^}]*-122vh/);
   assert.match(css,/@keyframes fx-uzume-petal-flutter/);
-  assert.match(css,/\.uzume-wind-threads \{[^}]*stroke:#fff1dd8c/);
+  assert.match(css,/@keyframes fx-uzume-hagoromo-pose/);
+  assert.match(css,/\.uzume-soft-gust \{/);
+  assert.doesNotMatch(css,/uzume-wind-threads/);
+  assert.match(fs.readFileSync(path.join(root,'divine_effects.js'),'utf8'),/v-for="i in 56"[^>]*spiral-petal/);
 });
 
 test("each genesis skill selects its own optimized art while skill 1 keeps the eye cut-in", () => {
@@ -227,7 +235,7 @@ test("new image imports enforce budgets and standalone Kami props avoid unused a
     assert.ok(fs.statSync(path.join(root,url)).size <= 120000);
   }
   const bytes = urls.reduce((sum,url) => sum + fs.statSync(path.join(root,url)).size, 0);
-  assert.ok(bytes <= 700000, `Uzume's battle textures exceed their budget: ${bytes}`);
+  assert.ok(bytes <= 820000, `Uzume's battle textures exceed their budget: ${bytes}`);
   const amaterasuUrls = divineSkillAssetUrls({no:8});
   const mirrorUrl = divineSpriteStyle('mirror').backgroundImage.match(/url\('([^']+)'\)/)[1];
   assert.ok(amaterasuUrls.includes(mirrorUrl), 'the new mirror is ready before the animation');

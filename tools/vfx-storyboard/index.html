@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ツクリヨ 演出設計室</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand"><span class="brand-mark">✦</span><div><span class="eyebrow">TSUKURIYO / VFX STORYBOARD</span><h1>演出設計室</h1></div></div>
+    <div class="header-actions">
+      <button id="copyInstructions" type="button">指示文をコピー</button>
+      <button id="exportProject" type="button" class="primary">設計データを保存</button>
+      <button id="importProject" type="button">設計データを開く</button>
+      <input id="projectFile" type="file" accept="application/json,.json" hidden>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="left-panel panel">
+      <div class="panel-heading"><h2>素材とオブジェクト</h2><span id="objectCount" class="counter"></span></div>
+      <p class="hint">追加してから、中央の画面でつかんで動かせます。</p>
+      <div class="palette">
+        <button type="button" data-add="fan"><span>扇</span><small>実際の画像</small></button>
+        <button type="button" data-add="silk1"><span>羽衣</span><small>4つの形から選択</small></button>
+        <button type="button" data-add="red"><span>赤い椿</span><small>花びらの群れ</small></button>
+        <button type="button" data-add="white"><span>白い椿</span><small>花びらの群れ</small></button>
+        <button type="button" data-add="wind"><span>風</span><small>淡い流れ</small></button>
+        <button type="button" data-add="text"><span>文字</span><small>台詞・注記</small></button>
+      </div>
+      <button id="addImage" type="button" class="wide-button">＋ 手元の画像を追加</button>
+      <input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+      <div class="panel-heading object-heading"><h2>重なり順</h2><span class="subtle">上が手前</span></div>
+      <div id="objectList" class="object-list" role="listbox" aria-label="オブジェクト一覧"></div>
+      <div class="list-actions"><button id="raiseObject" type="button" title="手前へ">↑ 手前</button><button id="lowerObject" type="button" title="奥へ">↓ 奥</button><button id="duplicateObject" type="button">複製</button><button id="deleteObject" type="button" class="danger">削除</button></div>
+    </aside>
+
+    <section class="center-panel">
+      <div class="scene-topline"><div><label for="projectTitle">演出名</label><input id="projectTitle" type="text" maxlength="100" aria-label="演出名"></div><div><label for="background">背景</label><select id="background"></select></div><label class="check"><input id="showGuides" type="checkbox" checked> ガイド表示</label></div>
+      <div class="scene-shell"><div id="scene" class="scene" aria-label="演出画面。オブジェクトをドラッグして位置を変更"><div id="sceneContent" class="scene-content"></div><div id="sceneGuides" class="scene-guides"><span class="safe-frame"></span><span class="center-x"></span><span class="center-y"></span></div><div id="selectionGuide" class="selection-guide" hidden></div></div></div>
+      <div class="scene-foot"><span>1280 × 720 を基準に配置</span><span>画面上でドラッグ → その時刻の位置を記録</span><span id="saveState" role="status">自動保存</span></div>
+      <div class="transport"><button id="play" type="button" class="play-button">▶ 再生</button><button id="stop" type="button">■ 最初へ</button><button id="undo" type="button" title="元に戻す (Ctrl+Z)">↶ 戻す</button><button id="redo" type="button" title="やり直す (Ctrl+Y)">↷ やり直す</button><span id="timeDisplay" class="time-display">0.00 / 7.00 秒</span><label for="duration">全体の長さ</label><input id="duration" type="number" min="1" max="30" step="0.5" value="7"><span>秒</span></div>
+      <div class="timeline panel"><div class="timeline-title"><strong>時間軸</strong><span>目盛りをクリックして移動・◆をクリックしてその位置を編集</span></div><div id="ruler" class="ruler" aria-label="再生位置を移動"></div><div id="tracks" class="tracks"></div><div id="scrubTrack" class="scrub-track"><div id="playhead" class="playhead"></div></div></div>
+    </section>
+
+    <aside class="right-panel panel"><div class="panel-heading"><h2>選択中の設定</h2><span id="selectedTime" class="counter"></span></div><div id="emptySelection" class="empty-selection">左の一覧か画面上の素材を選んでください。</div><div id="propertyPanel" hidden>
+      <label class="field">名前<input id="propName" type="text" maxlength="60"></label>
+      <div id="imageProperties"><label class="field">画像<select id="propAsset"></select></label></div>
+      <div id="petalProperties" hidden><div class="field-row"><label class="field">花びらの枚数<input id="propCount" type="number" min="1" max="40" step="1"></label><label class="field">広がり<input id="propSpread" type="number" min="10" max="800" step="10"></label></div></div>
+      <div id="textProperties" hidden><label class="field">表示する文字<input id="propText" type="text" maxlength="100"></label></div>
+      <div class="field-row"><label class="field">素材の幅<input id="propWidth" type="number" min="10" max="1200" step="10"></label><label class="field">素材の高さ<input id="propHeight" type="number" min="10" max="1000" step="10"></label></div>
+      <label class="field">点と点のつなぎ方<select id="propEasing"><option value="smooth">なめらか</option><option value="linear">一定の速さ</option><option value="hold">次の点で切替</option></select></label>
+      <hr><div class="field-subheading">この時刻の姿 <span id="frameStatus"></span></div>
+      <div class="field-row"><label class="field">横位置 X<input id="propX" type="number" step="1"></label><label class="field">縦位置 Y<input id="propY" type="number" step="1"></label></div>
+      <div class="field-row"><label class="field">大きさ %<input id="propScale" type="number" min="5" max="800" step="1"></label><label class="field">回転 °<input id="propRotation" type="number" step="1"></label></div>
+      <label class="field">見え方 <span id="opacityValue"></span><input id="propOpacity" type="range" min="0" max="100" step="1"></label>
+      <div class="frame-actions"><button id="addFrame" type="button" class="primary">◆ この時刻を記録</button><button id="deleteFrame" type="button">この点を削除</button></div>
+      <p class="hint">位置・大きさ・回転・見え方を変えると、この時刻に◆が自動で追加されます。点と点の間は自動的につながります。</p>
+    </div></aside>
+  </main>
+
+  <footer class="helpbar"><span>① 再生位置を決める</span><span>② 素材をドラッグする</span><span>③ 別の時刻でも位置を決める</span><span>④ 再生して確認する</span><span>⑤ 設計データを共有する</span><button id="resetExample" type="button">見本に戻す</button></footer>
+  <script src="storyboard_core.js"></script><script src="storyboard.js"></script>
+</body>
+</html>
