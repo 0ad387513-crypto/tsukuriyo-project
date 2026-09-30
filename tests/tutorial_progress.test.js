@@ -1591,4 +1591,11 @@ test("the preview survives the gap between a card and its zoom slider, then clos
   move.call(vm,{clientX:900,clientY:720,buttons:0});
   assert.equal(vm.hoverCard,null,'leaving both the card and the preview closes it');
   assert.match(html,/this\.hideCardHover\(e\); \/\/ 離れた後も/,'guide card names use the same grace period');
+  vm.hoverCard={no:1};vm._hoverSourceRect=source;vm._cardHoverLeaving={key:'hover',token:{},over:false};
+  move.call(vm,{clientX:140,clientY:250,buttons:0});
+  assert.equal(vm.hoverCard,null,'moving above the card (away from the preview) closes it at once');
+  const start=method('_cardHoverStartLeaving','key,event');
+  vm.hoverCard={no:1};vm._hoverSourceRect=source;
+  assert.equal(start.call(vm,'hover',{clientX:140,clientY:299}),false,'leaving through the top edge needs no grace period');
+  assert.equal(start.call(vm,'hover',{clientX:181,clientY:360}),true,'leaving toward the preview keeps it briefly');
 });
