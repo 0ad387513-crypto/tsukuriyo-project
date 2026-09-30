@@ -150,7 +150,7 @@ test("top menu preserves artwork ratios and scrolls on short screens", () => {
 test("play manual is separated from the pick guide and contains the revised rules", () => {
   assert.match(html, /manualModalOpen: false/);
   assert.match(html, /ツクリヨ プレイガイド/);
-  assert.match(html, /🧭 ピックガイド/);
+  assert.match(html, /ui-icon-pick-guide" aria-hidden="true"><\/span><span>ピックガイド/); // TOPのボタンは金色のアイコン画像と名前を別の行に並べる
   assert.match(html, /class="top-mode-guide-btn manual"/);
   assert.match(html, /class="top-mode-guide-btn pick"/);
   assert.match(html, /10枚束 × 3回[\s\S]*?<strong>30枚<\/strong>/);
