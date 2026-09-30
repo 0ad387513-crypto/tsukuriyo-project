@@ -1570,3 +1570,25 @@ test("life watchers ignore initial values and unchanged CPU orientations, but sh
   watch.call(vm,'selfLife',{board:newBoard,value:7},{board:newBoard,value:10});
   assert.deepEqual(changes,[['selfLife',7,10]]);
 });
+
+test("the preview survives the gap between a card and its zoom slider, then closes once the pointer leaves", () => {
+  const source={left:100,right:180,top:300,bottom:420,height:120};
+  const preview={left:190,right:550,top:200,bottom:740};
+  const vm={hoverCard:{no:1},_hoverSourceRect:source,appView:'guide',
+    $el:{querySelector:sel=>sel==='.card-hover-preview'?{getBoundingClientRect:()=>preview}:null}};
+  vm._cardHoverPointerInside=method('_cardHoverPointerInside','key,event').bind(vm);
+  vm._cardHoverCorridor=method('_cardHoverCorridor','key,event').bind(vm);
+  vm._cardHoverFinishLeaving=method('_cardHoverFinishLeaving').bind(vm);
+  let armed=0;vm._cardHoverArmLeaveTimer=()=>{armed++;};
+  const move=method('onCardHoverPointerMove','event');
+  vm._cardHoverLeaving={key:'hover',token:{},over:false};
+  move.call(vm,{clientX:185,clientY:360,buttons:0});
+  assert.ok(vm.hoverCard,'crossing the 10px gap keeps the preview');assert.equal(armed,1,'a pause in the gap still closes it later');
+  move.call(vm,{clientX:300,clientY:720,buttons:0});
+  assert.ok(vm.hoverCard);assert.equal(vm._cardHoverLeaving.over,true,'the slider row is part of the preview');
+  move.call(vm,{clientX:900,clientY:720,buttons:1});
+  assert.ok(vm.hoverCard,'dragging the slider past the edge keeps the preview');
+  move.call(vm,{clientX:900,clientY:720,buttons:0});
+  assert.equal(vm.hoverCard,null,'leaving both the card and the preview closes it');
+  assert.match(html,/this\.hideCardHover\(e\); \/\/ 離れた後も/,'guide card names use the same grace period');
+});
