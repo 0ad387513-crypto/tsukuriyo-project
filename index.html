@@ -1445,8 +1445,10 @@
   .top-logo-line.left::after { right: -3px; }
   .top-logo-line.right::after { left: -3px; }
   /* お知らせ・ヒントの帯 */
+  /* ロゴの下・モードの絵の上に置く */
   .top-info-band {
     position: relative; z-index: 1; flex: none;
+    margin-bottom: clamp(8px, 1.4vh, 16px);
     display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;
     width: min(1500px, 97vw);
   }
@@ -5873,6 +5875,24 @@
       <img class="top-logo-medallion" src="ui_decorations/top-logo-medallion-0c05be7b9a5b.webp" alt="ツクリヨ RETURN TO THE LEGACIES" draggable="false">
       <span class="top-logo-line right" aria-hidden="true"></span>
     </div>
+    <!-- お知らせ・ヒントの帯：長い文は横に流して最後まで見せ、読み終えたら次の項目へ移る（マウスを乗せると止まる） -->
+    <div class="top-info-band">
+      <button type="button" class="top-info-news" @click="openTopNews" title="お知らせを全部見る">
+        <span class="top-info-tag news">お知らせ</span>
+        <span ref="newsMarquee" class="top-info-marquee">
+          <span :key="'news' + topNewsIndex" class="top-info-scroll" :class="{ running: !!topInfoAnim.news }"
+                :style="topInfoAnimStyle('news')" @animationend="topInfoAdvance('news')">{{ topNews[topNewsIndex % topNews.length].text }}</span>
+        </span>
+      </button>
+      <div class="top-info-tip">
+        <span class="top-info-tag tip">ヒント</span>
+        <span ref="tipMarquee" class="top-info-marquee">
+          <span :key="'tip' + topTipIndex" class="top-info-scroll" :class="{ running: !!topInfoAnim.tip }"
+                :style="topInfoAnimStyle('tip')" @animationend="topInfoAdvance('tip')">{{ topTips[topTipIndex % topTips.length] }}</span>
+        </span>
+        <button type="button" class="top-info-next" @click="topTipNext" aria-label="次のヒントを表示">›</button>
+      </div>
+    </div>
     <div v-if="resumeSession" class="top-resume-banner">
       <span>進行中のセッションがあります（{{ resumeSession.kind === 'game' ? '創世決戦' : resumeSession.kind === 'shield' ? '星紡ぎ戦' : resumeSession.kind === 'construct' ? '理念構築戦' : '対戦テスト' }} / コード: {{ resumeSession.code }}）</span>
       <button class="top-resume-btn" @click="resumeActiveSession">↩ 戻る</button>
@@ -5914,24 +5934,6 @@
             ⛩ カミ図鑑
           </button>
         </div>
-      </div>
-    </div>
-    <!-- お知らせ・ヒントの帯：長い文は横に流して最後まで見せ、読み終えたら次の項目へ移る（マウスを乗せると止まる） -->
-    <div class="top-info-band">
-      <button type="button" class="top-info-news" @click="openTopNews" title="お知らせを全部見る">
-        <span class="top-info-tag news">お知らせ</span>
-        <span ref="newsMarquee" class="top-info-marquee">
-          <span :key="'news' + topNewsIndex" class="top-info-scroll" :class="{ running: !!topInfoAnim.news }"
-                :style="topInfoAnimStyle('news')" @animationend="topInfoAdvance('news')">{{ topNews[topNewsIndex % topNews.length].text }}</span>
-        </span>
-      </button>
-      <div class="top-info-tip">
-        <span class="top-info-tag tip">ヒント</span>
-        <span ref="tipMarquee" class="top-info-marquee">
-          <span :key="'tip' + topTipIndex" class="top-info-scroll" :class="{ running: !!topInfoAnim.tip }"
-                :style="topInfoAnimStyle('tip')" @animationend="topInfoAdvance('tip')">{{ topTips[topTipIndex % topTips.length] }}</span>
-        </span>
-        <button type="button" class="top-info-next" @click="topTipNext" aria-label="次のヒントを表示">›</button>
       </div>
     </div>
     <!-- 動作確認用ツールは一般のプレイヤーが使わないため、右下の小さなアイコンにまとめる -->
