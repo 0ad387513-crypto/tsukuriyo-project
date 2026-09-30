@@ -1673,15 +1673,47 @@
   .dex-preview-bar button.genesis { border-color: #c79a4a; background: linear-gradient(160deg, #6a4a22, #2d1f14); color: #fff3d6; }
   .dex-preview-bar button.back { border-color: #626b7c; background: #272d3a; color: #e4e8f0; }
   .dex-preview-bar button:hover { filter: brightness(1.18); }
-  .kami-dex-skill-preview { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-  .kami-dex-skill-preview-label { width: 100%; text-align: center; color: #cfb875; font-size: 11px; font-weight: 900; letter-spacing: .12em; }
+  /* 演出：開くと神技・創世神技の演出を選んで再生できる（ボタンは他の項目の中身と同じく枠の中に並べる） */
+  .kami-dex-skill-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .kami-dex-skill-preview button {
-    padding: 8px 18px; border: 1px solid #5d78a8; border-radius: 10px; background: linear-gradient(160deg, #2a3a5e, #161d30);
-    color: #eaf1ff; font-size: 13px; font-weight: 900; cursor: pointer;
+    padding: 7px 20px; border: 1px solid #5d78a8; border-radius: 999px; background: linear-gradient(160deg, #2a3a5e, #161d30);
+    color: #eaf1ff; font-size: 13px; font-weight: 900; letter-spacing: .06em; cursor: pointer;
   }
   .kami-dex-skill-preview button.genesis { border-color: #c79a4a; background: linear-gradient(160deg, #6a4a22, #2d1f14); color: #fff3d6; }
-  .kami-dex-skill-preview button:hover:not(:disabled) { filter: brightness(1.18); transform: translateY(-1px); }
+  .kami-dex-skill-preview button:hover:not(:disabled) { filter: brightness(1.18); }
   .kami-dex-skill-preview button:disabled { opacity: .5; cursor: wait; }
+  /* 図鑑の右欄の枠は少し詰め、開いた直後にスクロールなしで全体が見えるようにする */
+  .kami-dex-panel .gs-kami-info-section { margin-top: clamp(8px, 1.1vh, 12px); padding: clamp(8px, 1.1vh, 13px) 15px; }
+  .kami-dex-panel .gs-kami-info-kicker { display: none; }
+  /* 4つの項目は1つの枠にまとめ、区切り線で上から順に並べる（開くとその項目の下に内容が出る） */
+  .kami-dex-accordion { margin-top: clamp(8px, 1.1vh, 12px); border: 1px solid #343b4b; border-radius: 9px; background: rgba(20,24,34,.72); }
+  .kami-dex-panel .kami-dex-accordion > .gs-kami-info-section {
+    margin: 0; border: 0; border-radius: 0; background: none; padding: clamp(6px, 1vh, 11px) 15px;
+  }
+  .kami-dex-accordion > .gs-kami-info-section + .gs-kami-info-section { border-top: 1px solid #2c3242; }
+  /* 説明文と創生理念は行間を少し詰める */
+  .kami-dex-panel .kami-dex-summary { line-height: 1.65; margin: 5px 0 4px; }
+  .kami-dex-panel .gs-kami-philosophy p { line-height: 1.65; margin: 3px 0 0; }
+  /* 低い画面（ノートPC）でも開いた直後に全体が収まるよう、余白・一覧・名前を少し小さくする */
+  .kami-dex-panel .kami-dex-scroll { padding-top: clamp(10px, 1.4vh, 22px); padding-bottom: clamp(12px, 1.8vh, 30px); }
+  .kami-dex-panel .kami-dex-tab img, .kami-dex-panel .kami-dex-tab-lock { max-width: clamp(34px, 5vh, 72px); }
+  .kami-dex-panel .kami-dex-tabs { margin-bottom: clamp(8px, 1.2vh, 16px); }
+  .kami-dex-panel .kami-dex-name-row { margin: 0 0 6px; }
+  .kami-dex-panel .kami-dex-name-row .gs-kami-info-name { font-size: clamp(22px, 2.1vw, 34px); }
+  /* 名前の行：右端にピックガイドへのボタン */
+  .kami-dex-name-row { display: flex; align-items: center; gap: 12px; margin: 4px 0 10px; }
+  .kami-dex-name-row .gs-kami-info-name { margin: 0; flex: 1 1 auto; min-width: 0; }
+  .kami-dex-pickguide-btn {
+    flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #655b4d; border-radius: 999px;
+    background: #27231e; color: #eee4d4; font-size: 12px; font-weight: 800; cursor: pointer;
+  }
+  .kami-dex-pickguide-btn:hover { border-color: #c9a963; background: #383024; }
+  .kami-dex-pickguide-btn .ui-icon { width: 18px; height: 18px; }
+  /* 開いた直後にスクロールなしで全体が見えるよう、上段のカミの一覧と左の絵を画面の高さに合わせる */
+  .kami-dex-panel .kami-dex-tabs { margin-bottom: clamp(10px, 1.6vh, 16px); }
+  .kami-dex-panel .kami-dex-tab img, .kami-dex-panel .kami-dex-tab-lock { max-width: clamp(40px, 6vh, 72px); }
+  .kami-dex-panel .gs-kami-info-card-image { width: min(100%, calc((100vh - 330px) * 600 / 838), 520px); }
+  .kami-dex-panel .kami-dex-profile, .kami-dex-panel .gs-kami-philosophy { margin-top: 8px; }
   .kami-dex-muted { margin-left: 6px; color: #d9a36c; font-size: 11px; font-weight: 700; letter-spacing: 0; }
   .kami-dex-voices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .kami-dex-wins { grid-template-columns: 1fr; }
@@ -6291,15 +6323,13 @@
             <button type="button" :class="{ active: kamiDexView === 'illust' }" @click="kamiDexView = 'illust'">イラスト</button>
             <button type="button" :class="{ active: kamiDexView === 'card' }" @click="kamiDexView = 'card'">カード</button>
           </div>
-          <div class="kami-dex-skill-preview" role="group" aria-label="演出を見る">
-            <span class="kami-dex-skill-preview-label">演出を見る</span>
-            <button type="button" :disabled="kamiDexPreviewing" @click="kamiDexPreviewSkill(1)">✨ 神技</button>
-            <button type="button" class="genesis" :disabled="kamiDexPreviewing" @click="kamiDexPreviewSkill(2)">🌟 創世神技</button>
-          </div>
         </div>
         <div>
           <div class="gs-kami-info-kicker">KAMI ENCYCLOPEDIA</div>
-          <div id="kami-dex-title" class="gs-kami-info-name">{{ fullName(kamiDexKami) }}</div>
+          <div class="kami-dex-name-row">
+            <div id="kami-dex-title" class="gs-kami-info-name">{{ fullName(kamiDexKami) }}</div>
+            <button type="button" class="kami-dex-pickguide-btn" @click="kamiDexOpenPickGuide"><span class="ui-icon ui-icon-pick-guide" aria-hidden="true"></span>ピックガイド</button>
+          </div>
 
           <div v-if="kamiDexProfile" class="gs-kami-info-section kami-dex-profile">
             <div class="kami-dex-meta">
@@ -6323,6 +6353,8 @@
             <p>{{ gsKamiVisionParts(kamiDexKami).before }}<strong class="gs-kami-world-emphasis">{{ gsKamiVisionParts(kamiDexKami).world }}</strong>{{ gsKamiVisionParts(kamiDexKami).after }}</p>
           </div>
 
+          <!-- 4つの項目（カミの効果・演出・ボイス・ちびキャラ）は1つの枠にまとめ、区切り線で上から順に並べる -->
+          <div class="kami-dex-accordion">
           <div class="gs-kami-info-section">
             <button type="button" class="kami-dex-fold" :aria-expanded="kamiDexShowEffects ? 'true' : 'false'" @click="kamiDexShowEffects = !kamiDexShowEffects">
               {{ kamiDexShowEffects ? '▼' : '▶' }} カミの効果（天力トリガー・神技・創世神技）
@@ -6343,6 +6375,17 @@
             </div>
           </div>
 
+
+          <!-- 演出：ほかの項目と同じく、開くと神技・創世神技の演出を選んで再生できる -->
+          <div class="gs-kami-info-section">
+            <button type="button" class="kami-dex-fold" :aria-expanded="kamiDexShowSkills ? 'true' : 'false'" @click="kamiDexShowSkills = !kamiDexShowSkills">
+              {{ kamiDexShowSkills ? '▼' : '▶' }} 演出
+            </button>
+            <div v-if="kamiDexShowSkills" class="kami-dex-skill-preview" role="group" aria-label="演出を見る">
+              <button type="button" :disabled="kamiDexPreviewing" @click="kamiDexPreviewSkill(1)">神技</button>
+              <button type="button" class="genesis" :disabled="kamiDexPreviewing" @click="kamiDexPreviewSkill(2)">創世神技</button>
+            </div>
+          </div>
           <div class="gs-kami-info-section">
             <button type="button" class="kami-dex-fold" :aria-expanded="kamiDexShowVoices ? 'true' : 'false'" @click="kamiDexShowVoices = !kamiDexShowVoices">
               {{ kamiDexShowVoices ? '▼' : '▶' }} ボイス<small v-if="!(voiceVolume > 0)" class="kami-dex-muted">（ボイスの音量が0のため再生されません）</small>
@@ -6393,10 +6436,8 @@
               </div>
             </template>
           </div>
-
-          <div class="kami-dex-actions">
-            <button type="button" class="gs-kami-accept-btn" @click="kamiDexOpenPickGuide"><span class="ui-icon ui-icon-pick-guide" aria-hidden="true"></span> {{ kamiDexKami.name }}のピックガイドを見る</button>
           </div>
+
         </div>
       </div>
       </div>
@@ -12634,6 +12675,7 @@ new Vue({
     kamiDexShowEffects: false,   // カミの効果は、たたんだ状態で開く
     kamiDexShowVoices: false,    // ボイスも、たたんだ状態で開く
     kamiDexShowChibis: false,    // ちびキャラ一覧も、たたんだ状態で開く
+    kamiDexShowSkills: false,    // 演出（神技・創世神技の再生）も、たたんだ状態で開く
     kamiDexZoomIndex: -1,        // 拡大表示中のちびキャラ・エモートの番号（一覧の並び順。-1＝閉じている）
     pickCardListKami: null,      // ピックガイドのおすすめカード一覧を開いているカミの番号
     genesisStoryReplay: false,   // カミ図鑑からOPを見返している（終わったら創世決戦へ進まず図鑑へ戻る）
