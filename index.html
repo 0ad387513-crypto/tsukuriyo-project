@@ -3017,11 +3017,11 @@
     display: flex; align-items: center; justify-content: center; padding: 16px;
     background: radial-gradient(ellipse at center, rgba(28, 24, 40, .97), rgba(6, 7, 12, .99));
   }
-  .asset-loading-box { width: min(440px, 100%); text-align: center; color: #efe6cf; }
+  .asset-loading-box { width: min(600px, 100%); text-align: center; color: #efe6cf; }
   /* ロード画面（起動直後・画面の切り替え）の休憩中のカミ。画面の高さの半分近くまで大きく見せる */
-  .loading-kami-art { display: block; width: min(380px, 46vh, 80vw); height: min(380px, 46vh, 80vw); object-fit: contain; margin: 0 auto 6px; }
+  .loading-kami-art { display: block; width: min(470px, 52vh, 86vw); height: min(470px, 52vh, 86vw); object-fit: contain; margin: 0 auto 8px; }
   .loading-kami-name { color: #f1d58a; font-size: 15px; font-weight: 800; letter-spacing: .08em; }
-  .loading-kami-hint { min-height: 3em; margin: 7px auto 0; color: #eee7d9; font-size: 14px; line-height: 1.65; text-wrap: pretty; }
+  .loading-kami-hint { min-height: 3em; margin: 7px auto 0; color: #eee7d9; font-size: clamp(15px, 2.2vh, 19px); line-height: 1.65; text-wrap: pretty; }
   .asset-loading-title { margin-top: 14px; font-size: 18px; letter-spacing: .12em; }
   .asset-loading-bar { margin: 16px auto 12px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
   .asset-loading-bar > span { display: block; height: 100%; background: linear-gradient(90deg, #b8923a, #f1d58a); transition: width .25s ease; }
@@ -5896,7 +5896,7 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 8px; padding: 18px; text-align: center; background: #0b0e14; color: #cbd3de; font-size: 16px; font-weight: 700;
   }
-  #app-loading .loading-kami-hint { max-width: 440px; }
+  #app-loading .loading-kami-hint { max-width: min(600px, 92vw); }
   #app-loading .app-loading-spinner { margin-top: 6px; }
   #app-loading .app-loading-spinner {
     width: 34px; height: 34px; border-radius: 50%;
@@ -5917,7 +5917,6 @@
 <body>
 <div id="app-loading" role="status" aria-live="polite">
   <img class="loading-kami-art" alt="" decoding="async">
-  <div class="loading-kami-name"></div>
   <div class="loading-kami-hint"></div>
   <div class="app-loading-spinner" aria-hidden="true"></div>
   <div>読み込み中…</div>
@@ -5948,7 +5947,6 @@
   const art = loading.querySelector('.loading-kami-art');
   art.onerror = () => { art.style.display = 'none'; };
   art.src = scene.image;
-  loading.querySelector('.loading-kami-name').textContent = scene.name;
   loading.querySelector('.loading-kami-hint').textContent = 'ヒント：' + scene.hint;
 })();
 </script>
@@ -6312,7 +6310,7 @@
     <figure>
       <img v-if="kamiDexZoomItem.file" :key="kamiDexZoomItem.file" :src="kamiDexZoomItem.file" alt="" draggable="false">
       <span v-else :key="kamiDexZoomItem.label" class="kami-dex-emote-img zoom" :style="kamiDexZoomItem.style" aria-hidden="true"></span>
-      <figcaption>{{ kamiDexKami ? kamiDexKami.name : '' }}・{{ kamiDexZoomItem.label }}<small v-if="kamiDexGallery.length > 1">{{ kamiDexZoomIndex + 1 }} / {{ kamiDexGallery.length }}</small></figcaption>
+      <figcaption>{{ kamiDexZoomItem.label }}<small v-if="kamiDexGallery.length > 1">{{ kamiDexZoomIndex + 1 }} / {{ kamiDexGallery.length }}</small></figcaption>
     </figure>
     <button v-if="kamiDexGallery.length > 1" type="button" class="kami-dex-zoom-nav next" aria-label="次の絵" @click.stop="kamiDexZoomStep(1)">›</button>
   </div>
@@ -9514,7 +9512,6 @@
           <div class="genesis-cutin-copy">
             <div class="genesis-cutin-name">{{ battleSkillCloseupNameParts.main }}</div>
             <div v-if="battleSkillCloseupNameParts.furigana" class="genesis-cutin-reading">{{ battleSkillCloseupNameParts.furigana }}</div>
-            <div class="genesis-cutin-kami">{{ battleSkillCloseup.kamiName }}</div>
             <div v-if="battleSkillCloseup.line" class="genesis-cutin-line">「{{ battleSkillCloseup.line }}」</div>
           </div>
         </div>
@@ -9536,10 +9533,6 @@
         <img v-if="battleSkillCloseup.imgUrl" class="battle-skill-closeup-face"
              :class="{ 'fallback-zoom': battleSkillCloseup.mode === 'skill1' ? battleSkillCloseup.fallbackStage >= 2 : battleSkillCloseup.fallbackStage === 2 }"
              :src="battleSkillCloseup.imgUrl" alt="" @error="battleSkillCloseupImgError">
-        <div class="battle-skill-closeup-identity">
-          <div v-if="battleSkillCloseup.kamiNickname" class="battle-skill-closeup-nickname">{{ battleSkillCloseup.kamiNickname }}</div>
-          <div class="battle-skill-closeup-name">{{ battleSkillCloseup.kamiName }}</div>
-        </div>
         <div v-if="battleSkillCloseup.line" class="battle-skill-closeup-line">「{{ battleSkillCloseup.line }}」</div>
       </div>
     </div>
@@ -10448,7 +10441,6 @@
   <div v-if="assetLoading" class="asset-loading-screen" role="status" aria-live="polite">
     <div class="asset-loading-box">
       <img class="loading-kami-art" :src="assetLoading.scene.image" :alt="assetLoading.scene.name + 'のちびキャラ'" decoding="async">
-      <div class="loading-kami-name">{{ assetLoading.scene.name }}</div>
       <div class="loading-kami-hint">ヒント：{{ assetLoading.scene.hint }}</div>
       <span class="asset-loading-spinner" aria-hidden="true"></span>
       <div class="asset-loading-title">{{ assetLoading.title }}</div>
