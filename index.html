@@ -1628,6 +1628,23 @@
   .kami-dex-voice.playing { border-color: #e1c477; box-shadow: 0 0 12px rgba(225, 196, 119, .25); }
   .kami-dex-voice-label { color: #90bff2; font-size: 11px; font-weight: 900; }
   .kami-dex-voice-text { font-size: 13px; line-height: 1.6; }
+  .kami-dex-chibis { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-top: 10px; }
+  .kami-dex-chibi {
+    display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 6px 4px 8px;
+    border: 1px solid #343b4b; border-radius: 10px; background: rgba(12, 15, 23, .6); color: #cfd6e6; font-size: 11px; font-weight: 800; cursor: zoom-in;
+  }
+  .kami-dex-chibi img { width: 100%; max-width: 110px; aspect-ratio: 240 / 260; object-fit: contain; }
+  .kami-dex-chibi:hover { border-color: #e1c477; }
+  .kami-dex-chibi.placeholder { border-style: dashed; color: #7f889a; cursor: default; }
+  .kami-dex-chibi.placeholder:hover { border-color: #343b4b; }
+  .kami-dex-chibi-soon { display: grid; place-items: center; width: 100%; max-width: 110px; aspect-ratio: 240 / 260; font-size: 30px; font-weight: 900; color: #4a5268; }
+  .kami-dex-chibi-zoom {
+    position: fixed; inset: 0; z-index: 5200; display: grid; place-items: center; padding: 16px;
+    background: rgba(2, 4, 10, .88); cursor: zoom-out;
+  }
+  .kami-dex-chibi-zoom figure { margin: 0; text-align: center; }
+  .kami-dex-chibi-zoom img { max-width: min(520px, 90vw); max-height: 78vh; object-fit: contain; filter: drop-shadow(0 10px 30px rgba(0, 0, 0, .6)); }
+  .kami-dex-chibi-zoom figcaption { margin-top: 10px; color: #fff3c9; font-size: 15px; font-weight: 900; letter-spacing: .08em; }
   .kami-dex-fold { width: 100%; padding: 0; border: 0; background: none; color: #ecd895; font-size: 13px; font-weight: 900; letter-spacing: .08em; text-align: left; cursor: pointer; }
   .kami-dex-actions { margin-top: 16px; }
   .kami-dex-spoiler, .kami-dex-empty { max-width: 460px; margin: 40px auto; text-align: center; color: #fff2c8; font-size: 14px; font-weight: 800; line-height: 1.7; }
@@ -6076,12 +6093,37 @@
             </div>
           </div>
 
+          <div class="gs-kami-info-section">
+            <button type="button" class="kami-dex-fold" :aria-expanded="kamiDexShowChibis ? 'true' : 'false'" @click="kamiDexShowChibis = !kamiDexShowChibis">
+              {{ kamiDexShowChibis ? '▼' : '▶' }} ちびキャラ（{{ kamiDexChibis.length }}）
+            </button>
+            <div v-if="kamiDexShowChibis" class="kami-dex-chibis">
+              <button v-for="chibi in kamiDexChibis" :key="chibi.file" type="button" class="kami-dex-chibi"
+                      :title="chibi.label + '（押すと拡大）'" @click="kamiDexChibiZoom = chibi">
+                <img :src="chibi.file" :alt="kamiDexKami.name + 'のちびキャラ（' + chibi.label + '）'" loading="lazy" draggable="false">
+                <span>{{ chibi.label }}</span>
+              </button>
+              <div class="kami-dex-chibi placeholder" aria-label="今後追加予定">
+                <span class="kami-dex-chibi-soon" aria-hidden="true">？</span>
+                <span>追加予定</span>
+              </div>
+            </div>
+          </div>
+
           <div class="kami-dex-actions">
             <button type="button" class="gs-kami-accept-btn" @click="kamiDexOpenPickGuide">🧭 {{ kamiDexKami.name }}のピックガイドを見る</button>
           </div>
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- カミ図鑑：ちびキャラの拡大表示（押すか背景を押すと閉じる） -->
+  <div v-if="kamiDexOpen && kamiDexChibiZoom" class="kami-dex-chibi-zoom" role="dialog" aria-modal="true" :aria-label="kamiDexChibiZoom.label" @click="kamiDexChibiZoom = null">
+    <figure>
+      <img :src="kamiDexChibiZoom.file" alt="" draggable="false">
+      <figcaption>{{ kamiDexKami ? kamiDexKami.name : '' }}・{{ kamiDexChibiZoom.label }}</figcaption>
+    </figure>
   </div>
 
   <!-- ===== 動作確認用ツール専用画面 ===== -->
@@ -10875,6 +10917,27 @@ const KAMI_DEX_PROFILES = Object.freeze({
   },
 });
 const KAMI_DEX_DIFFICULTY_LABELS = Object.freeze({ 1: '初心者向け', 2: 'ふつう', 3: '上級者向け' });
+/* カミ図鑑のちびキャラ一覧。カミ番号ごとに { file: 画像のパス, label: 表情や衣装の名前 } を並べる。
+   新しいちびキャラを作ったら、画像を置いてここに1行足すだけで図鑑に並ぶ（並びはこの順番どおり） */
+const KAMI_DEX_CHIBIS = Object.freeze({
+  "1": [{ file: 'kami_chibi/susanoo-chibi.webp', label: '通常' }],
+  "2": [{ file: 'kami_chibi/yamato-takeru-chibi.webp', label: '通常' }],
+  "3": [{ file: 'kami_chibi/okuninushi-chibi.webp', label: '通常' }],
+  "4": [{ file: 'kami_chibi/takemikazuchi-chibi.webp', label: '通常' }],
+  "5": [{ file: 'kami_chibi/omoikane-chibi.webp', label: '通常' }],
+  "6": [{ file: 'kami_chibi/amenouzume-chibi.webp', label: '通常' }],
+  "7": [{ file: 'kami_chibi/hinokagutsuchi-chibi.webp', label: '通常' }],
+  "8": [
+    { file: 'tutorial_guide/amaterasu-chibi-01a4da0b3506.webp', label: '通常' },
+    { file: 'tutorial_guide/amaterasu-chibi-joy-63e66645cd1c.webp', label: '喜び' },
+    { file: 'tutorial_guide/amaterasu-chibi-celebrate-766227d7f491.webp', label: '祝福' },
+    { file: 'tutorial_guide/amaterasu-chibi-serious-2782c9e26bf4.webp', label: '真剣' },
+    { file: 'tutorial_guide/amaterasu-chibi-surprised-ff794f2f3437.webp', label: '驚き' },
+    { file: 'tutorial_guide/amaterasu-chibi-troubled-a4bb6ba4def3.webp', label: '困り顔' },
+  ],
+  "9": [{ file: 'kami_chibi/tsukuyomi-chibi.webp', label: '通常' }],
+  "10": [{ file: 'kami_chibi/yamata-no-orochi-chibi.webp', label: '通常' }],
+});
 
 /* 創世決戦（4人対戦）の終戦で、優勝したカミが告げる暫定セリフ。
    内容は後から精査しやすいよう、カミNo単位の独立データにしておく。 */
@@ -12224,6 +12287,8 @@ new Vue({
     kamiDexShowWins: false,
     kamiDexShowEffects: false,   // カミの効果は、たたんだ状態で開く
     kamiDexShowVoices: false,    // ボイスも、たたんだ状態で開く
+    kamiDexShowChibis: false,    // ちびキャラ一覧も、たたんだ状態で開く
+    kamiDexChibiZoom: null,      // 拡大表示中のちびキャラ { file, label }
     pickCardListKami: null,      // ピックガイドのおすすめカード一覧を開いているカミの番号
     genesisStoryReplay: false,   // カミ図鑑からOPを見返している（終わったら創世決戦へ進まず図鑑へ戻る）
     kamiDexPreviewing: false,    // カミ図鑑から神技・創世神技の演出を再生中
@@ -12475,6 +12540,9 @@ new Vue({
         { key: 'good', mark: '○', label: 'おすすめ', note: '方針に合い、見かけたら優先したいカード', cards: liked.slice(5, 15).map(r => r.c) },
         { key: 'avoid', mark: '✕', label: '避けたい・優先度が低い', note: '方針と噛み合わない、または効果を活かしにくいカード', cards: avoid.map(r => r.c) },
       ].filter(t => t.cards.length);
+    },
+    kamiDexChibis() {
+      return KAMI_DEX_CHIBIS[this.kamiDexNo] || [];
     },
     kamiDexProfile() {
       const profile = KAMI_DEX_PROFILES[this.kamiDexNo];
@@ -14399,6 +14467,7 @@ new Vue({
     },
     closeKamiDex() {
       this._sfxPlay('cancel');
+      this.kamiDexChibiZoom = null;
       this._kamiDexStopVoice();
       this.kamiDexOpen = false;
       this.kamiDexOrochiConfirm = false;
@@ -14416,6 +14485,7 @@ new Vue({
       this.kamiDexOrochiConfirm = false;
       this.kamiDexNo = no;
       this.kamiDexShowWins = false;
+      this.kamiDexChibiZoom = null;
     },
     kamiDexRevealOrochi() {
       this._sfxPlay('decision');

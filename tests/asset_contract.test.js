@@ -317,3 +317,12 @@ test("pick guide card list sorts by Kami fit and lists poor fits separately", ()
   assert.equal(tiers[2].cards[0].no, "41", "negative fits come first in the avoid tier");
   assert.ok(!tiers.some(t => t.cards.some(c => c.no === "42" || c.no === "43")));
 });
+
+test("every chibi listed in the Kami encyclopedia exists", () => {
+  const block = html.match(/const KAMI_DEX_CHIBIS = Object\.freeze\(\{([\s\S]*?)\n\}\);/);
+  assert.ok(block, "KAMI_DEX_CHIBIS");
+  const files = [...block[1].matchAll(/file: '([^']+)'/g)].map(m => m[1]);
+  assert.ok(files.length >= 10);
+  for (const file of files) assert.ok(fs.existsSync(path.join(root, file)), `ちびキャラの画像がありません: ${file}`);
+  for (let no = 1; no <= 10; no++) assert.match(block[1], new RegExp(`"${no}": \[`), `カミ${no}のちびキャラ一覧`);
+});
