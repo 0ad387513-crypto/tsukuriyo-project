@@ -20,7 +20,8 @@ const ASSET_DIRS = [
   { dir: "card_images", ext: /\.webp$/i },
   { dir: "kami_card_images", ext: /\.webp$/i },
   { dir: "kami_illustrations", ext: /\.(webp|png|jpe?g)$/i },
-  { dir: "voices", ext: /\.(mp3|wav)$/i, skip: /^(previews|_raw)\// },
+  // previews・trials（試し作り）・_raw はローカル専用で本番に出さないため、一覧に入れない
+  { dir: "voices", ext: /\.(mp3|wav)$/i, skip: /^(previews|trials|_raw)\// },
   { dir: "bgm", ext: /\.(mp3|ogg|wav|m4a)$/i, skip: /^op-candidates\// },
   { dir: "sfx", ext: /\.(mp3|ogg|wav|m4a)$/i },
 ];
