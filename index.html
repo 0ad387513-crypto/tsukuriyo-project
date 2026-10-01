@@ -19276,7 +19276,7 @@ new Vue({
         presentation.phase = phase.name;
         presentation._shownAt = Date.now();
         // 札がはがれて少女の全容が見えてから間を置き、八頭の龍が現れる瞬間に咆哮を鳴らす。
-        const roarTimer = phase.name === 'animation' && String(kami && kami.no) === '10' && !reducedMotion ? setTimeout(() => {
+        const roarTimer = phase.name === 'animation' && String(kami && kami.no) === '10' ? setTimeout(() => {
           if (this.battleSkillCloseup === presentation && presentation.phase === 'animation') this._sfxPlay('dragonHeavy', .35);
         }, this._battleMotionMs(phase.duration) * .82) : null;
         // 爪による引き込みと、相手カミへの爆発を別々の時刻で確定させる。
@@ -19306,7 +19306,7 @@ new Vue({
             this._battleSkillCloseupT = hold.timer;
           } else {
             // オロチは龍の絵を保持したまま、約3秒の咆哮が終わるまで次の札演出へ進まない。
-            const roarHoldMs = phase.name === 'animation' && effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal' && !reducedMotion ? 3200 : 0;
+            const roarHoldMs = phase.name === 'animation' && effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal' ? 3200 : 0;
             this._battleSkillCloseupT = setTimeout(finish, this._battleMotionMs(phase.duration) + roarHoldMs);
           }
         });

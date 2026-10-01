@@ -791,6 +791,18 @@ test("Windows reduced motion keeps battle timing short, effects readable and sta
   assert.match(html,/class="battle-reduced-cutin"/);
   assert.match(html,/\.orb-disc\.life \.stat-pop \{ animation: none !important; opacity: 1/);
 
+  const roarTimers=[],sounds=[];
+  vm._sfxPlay=(name)=>sounds.push(name);
+  const roarSchedule=(callback,delay)=>{roarTimers.push({callback,delay});return roarTimers.length};
+  const orochi=show.call(vm,{no:10},'創世神技',require('../divine_effects.js').divineSkillTheme,null,'self',null,roarSchedule,()=>{});
+  roarTimers[0].callback();await Promise.resolve();
+  assert.equal(vm.battleSkillCloseup.phase,'animation');
+  assert.equal(roarTimers[1].delay,615);
+  assert.equal(roarTimers[2].delay,3950,'the still image remains through the complete roar');
+  roarTimers[1].callback();
+  assert.deepEqual(sounds,['skill2','dragonHeavy']);
+  roarTimers[2].callback();await orochi;
+
   const display={selfLife:8},pops=[];
   const stat={battleStatDisplay:display,_battleReducedMotion:()=>true,$set:(o,k,v)=>{o[k]=v},_battlePushStatPop:(k,d)=>pops.push([k,d])};
   method('_battleTweenStat','dispKey,to,previous,performance,requestAnimationFrame').call(stat,'selfLife',6,8,{now:()=>0},()=>{throw Error('reduced motion should not request frames')});
