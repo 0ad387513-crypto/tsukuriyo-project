@@ -95,6 +95,17 @@ function voiceDescription(kami, name) {
 }
 const designModel = argValue("--design-model") || el.design_model;
 const API = "https://api.elevenlabs.io/v1";
+// 試し作りの名前を voices/trials/index.json に記録する（聞き比べページの選択肢になる）
+function rememberTrial() {
+  if (!trial) return;
+  const file = path.join(voiceDir, "trials", "index.json");
+  const list = readJson(file, { trials: [] });
+  if (!list.trials.includes(trial)) {
+    list.trials.push(trial);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    writeJson(file, list);
+  }
+}
 
 const onlyKami = argValue("--kami");
 const onlyKeys = argValue("--key") ? argValue("--key").split(",") : null; // 例：--key taunt,skill1
@@ -249,6 +260,7 @@ async function design() {
       });
       designs[no] = kept.concat(added);
       writeJson(designsFile, designs);
+      rememberTrial();
       console.log(`  → 候補${added.map(c => c.choice).join("・")}を作成しました`);
     } catch (e) {
       console.error(`  × 失敗：${String(e.message || e).slice(0, 300)}`);
@@ -380,6 +392,7 @@ function writeManifest(forTrial = !!trial) {
   }
   fs.mkdirSync(baseDir, { recursive: true });
   writeJson(path.join(baseDir, "manifest.json"), manifest);
+  if (forTrial) rememberTrial();
   console.log(`${base}/manifest.json を更新しました（${Object.keys(manifest.kami).length}柱分）`);
   if (forTrial) console.log(`聞き比べ：http://localhost:8765/tools/voice-compare/?trial=${trial}`);
 }

@@ -46,7 +46,7 @@
 <p class="lead">ゲームで使っている今のボイス（左）と、新しいモデルで試し作りしたボイス（右）を、台詞ごとに聞き比べます。「交互に聞く」は、今のボイス → 試し作りの順に続けて再生します。</p>
 <div class="controls">
   <label>カミ <select id="kami"></select></label>
-  <label>試し作りの名前 <input id="trial" size="8"></label>
+  <label>試し作りの名前 <input id="trial" size="14" list="trialList" placeholder="一覧から選ぶ"><datalist id="trialList"></datalist></label>
   <button id="reload" type="button">読み込み直す</button>
   <button id="playAll" type="button" class="gold">全部を交互に聞く</button>
   <button id="stop" type="button">停止</button>
@@ -145,6 +145,9 @@
 
   (async () => {
     script = await getJson('../../voices/voice_script.json');
+    // 試し作りの名前の一覧（生成スクリプトが voices/trials/index.json に記録している）
+    const trials = await getJson('../../voices/trials/index.json');
+    $('trialList').innerHTML = ((trials && trials.trials) || []).map(name => `<option value="${name}"></option>`).join('');
     if (!script) { $('status').textContent = 'voices/voice_script.json を読み込めませんでした。npm run preview で開いてください。'; return; }
     $('kami').innerHTML = Object.entries(script.kami).map(([no, k]) => `<option value="${no}">${no} ${k.name}</option>`).join('');
     $('kami').value = params.get('kami') || '3';
@@ -152,6 +155,7 @@
     $('kami').addEventListener('change', load);
     $('reload').addEventListener('click', load);
     $('trial').addEventListener('change', load);
+    $('trial').addEventListener('focus', () => { $('trial').select(); }); // 選び直しやすいよう、入力欄を押したら名前を選択状態にする
     $('stop').addEventListener('click', stopAll);
     $('playAll').addEventListener('click', async () => {
       stopAll();
