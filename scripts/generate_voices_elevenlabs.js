@@ -369,6 +369,7 @@ function adopt() {
   if (!trial) { console.error("adopt には --trial が必要です（例：adopt --kami 3 --trial v4）。"); process.exit(1); }
   const trialIds = readJson(trialIdsFile, {});
   const ids = readJson(idsFile, {});
+  const adoptedModel = argValue("--model") || readJson(path.join(trialDir, "manifest.json"), {}).model || lineModel; // 試し作りで使ったモデル
   const targets = kamiList().filter(no => fs.existsSync(path.join(trialDir, no)));
   let switched = 0; // 新しい声に切り替えたカミの数
   if (!targets.length) { console.error("採用できる試し作りの音声がありません。"); process.exit(1); }
@@ -383,7 +384,7 @@ function adopt() {
     if (trialIds[no]) {
       switched++;
       const previous = ids[no] && ids[no].id;
-      ids[no] = Object.assign({}, trialIds[no], { model: lineModel, adoptedFrom: trial, previousId: previous || undefined });
+      ids[no] = Object.assign({}, trialIds[no], { model: adoptedModel, adoptedFrom: trial, previousId: previous || undefined });
     }
     console.log(`${no} ${kami.name}：試し作り「${trial}」の音声${files.length}本をゲームのボイスにしました`);
   }
