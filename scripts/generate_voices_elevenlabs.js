@@ -35,6 +35,9 @@
     声の案を使い分ける：voice_script.json の voice.el_variants に説明文を並べ、--variant 名前 で選ぶ（候補は今ある候補の後ろに足す）
       node scripts/generate_voices_elevenlabs.js design --kami 4 --trial v4 --variant female
       node scripts/generate_voices_elevenlabs.js design --kami 4 --trial v4 --variant male
+    セリフや声を差し替えた別バージョン：--script ファイル で、そのファイルの voice・lines を台本に上書きして作る（ゲームの台本は変えない）
+      node scripts/generate_voices_elevenlabs.js design --kami 6 --trial uzume-playful --script tools/voice-variants/uzume-playful.json
+      node scripts/generate_voices_elevenlabs.js lines --kami 6 --trial uzume-playful --script tools/voice-variants/uzume-playful.json --model eleven_v4
     聞き比べ：確認用サーバー起動中に http://localhost:8765/tools/voice-compare/
     採用：聞き比べて良かったカミの試し作りの音声を、ゲームのボイスにする（声の登録も切り替わり、一覧も作り直す）
       node scripts/generate_voices_elevenlabs.js adopt --kami 3 --trial v4
@@ -63,6 +66,19 @@ if (trial && !/^[a-z0-9_-]+$/i.test(trial)) { console.error("--trial の名前�
 const trialDir = trial ? path.join(voiceDir, "trials", trial) : null;
 const previewDir = trial ? path.join(trialDir, "previews") : path.join(voiceDir, "previews");
 const script = JSON.parse(fs.readFileSync(path.join(voiceDir, "voice_script.json"), "utf8"));
+// --script：別バージョンの台本（カミごとの voice と lines）を上書きする。試し作り（--trial）と一緒に使う
+const overrideFile = argValue("--script");
+if (overrideFile) {
+  if (!trial) { console.error("--script は試し作り（--trial 名前）と一緒に使ってください（ゲームの台本は変えないため）。"); process.exit(1); }
+  const override = JSON.parse(fs.readFileSync(path.resolve(root, overrideFile), "utf8"));
+  for (const [no, k] of Object.entries(override.kami || {})) {
+    const base = script.kami[no];
+    if (!base) continue;
+    if (k.voice) base.voice = Object.assign({}, base.voice, k.voice);
+    if (k.lines) base.lines = Object.assign({}, base.lines, k.lines);
+  }
+  console.log(`台本を ${overrideFile} で差し替えて作ります（${Object.keys(override.kami || {}).join("・")}）`);
+}
 const el = script.elevenlabs;
 const idsFile = path.join(voiceDir, "elevenlabs_voice_ids.json");
 const trialIdsFile = trial ? path.join(trialDir, "voice_ids.json") : null;
@@ -346,6 +362,12 @@ function writeManifest(forTrial = !!trial) {
   const base = forTrial ? `voices/trials/${trial}` : "voices";
   const manifest = { version: 1, generatedAt: new Date().toISOString(), kami: {} };
   if (forTrial) Object.assign(manifest, { trial, model: lineModel }); // 聞き比べページに、どのモデルで作ったかを出す
+  if (forTrial) {
+    // 作ったときのセリフの文（別バージョンの台本で作ったときに、聞き比べページで文の違いを見せるため）
+    const previous = readJson(path.join(baseDir, "manifest.json"), {});
+    manifest.texts = Object.assign({}, previous.texts || {});
+    for (const no of kamiList()) manifest.texts[no] = Object.fromEntries(Object.entries(script.kami[no].lines).map(([key, line]) => [key, line.text]));
+  }
   for (const no of Object.keys(script.kami)) {
     const dir = path.join(baseDir, no);
     if (!fs.existsSync(dir)) continue;
