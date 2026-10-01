@@ -153,9 +153,22 @@ async function deleteVoice() {
   const hits = (json.voices || []).filter(v => v.category !== "premade" && norm(v.voice_id) === norm(voiceId));
   if (hits.length !== 1) { console.error(`声 ${voiceId} が見つかりません（voices-list で確認してください）`); process.exit(1); }
   const target = hits[0].voice_id;
-  const inUse = Object.entries(readJson(idsFile, {})).find(([, v]) => v.id === target);
-  if (inUse) { console.error(`この声は ${inUse[0]} ${inUse[1].name} で使用中のため削除しません。`); process.exit(1); }
+  const ids = readJson(idsFile, {});
+  const inUse = Object.entries(ids).find(([, v]) => v.id === target);
+  // 使用中の声は、--allow-in-use を付けたときだけ消す（新しい声に切り替えるため枠を空けるとき用）。
+  // 作成済みの音声ファイルはそのまま再生できるが、この声で台詞を作り直すことはできなくなる
+  if (inUse && !args.includes("--allow-in-use")) {
+    console.error(`この声は ${inUse[0]} ${inUse[1].name} で使用中のため削除しません。`);
+    console.error("新しい声に切り替えるため枠を空けるなら --allow-in-use を付けてください（作成済みの音声はそのまま使えます）。");
+    process.exit(1);
+  }
   await request("DELETE", `/voices/${target}`);
+  if (inUse) {
+    // 消した声で台詞を作ろうとして失敗しないよう、削除したことを記録しておく
+    ids[inUse[0]] = Object.assign({}, inUse[1], { deleted: new Date().toISOString() });
+    writeJson(idsFile, ids);
+    console.log(`  ${inUse[0]} ${inUse[1].name}：ゲームの声を削除しました。新しい声を pick --trial で登録し、adopt で切り替えてください。`);
+  }
   console.log(`声 ${target}（${hits[0].name}）を削除しました`);
 }
 
@@ -283,6 +296,7 @@ async function lines() {
   for (const no of kamiList()) {
     const kami = script.kami[no];
     if (!ids[no]) { console.warn(`${no} ${kami.name}：声が未登録です。先に design と pick を実行してください。`); continue; }
+    if (ids[no].deleted) { console.warn(`${no} ${kami.name}：ゲームの声は削除済みです。新しい声を pick${trial ? ` --trial ${trial}` : ""} で登録してください。`); continue; }
     // 試し作りで全カミを指定したときは、試し作り用の声を登録したカミだけ読ませる（古い声で無駄に作らない）
     if (trial && !onlyKami && !args.includes("--current-voice") && !readJson(trialIdsFile, {})[no]) { console.log(`${no} ${kami.name}：試し作り用の声が未登録のため飛ばします（今の声で作るなら --current-voice）`); continue; }
     // 新しい声の候補を作ったのに登録（pick）が済んでいないときは、今の声で作ることになるので知らせる
