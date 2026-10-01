@@ -5904,6 +5904,11 @@
       scroll-behavior: auto !important;
       transition-duration: 0.01ms !important;
     }
+    /* ライフの増減は移動させず、JS が消すまで数値と色を読めるようにする。 */
+    .orb-disc.life .stat-pop { animation: none !important; opacity: 1; translate: none; scale: 1; }
+    .battle-reduced-cutin { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .7; }
+    .battle-skill-closeup-overlay.reduced-motion-mode .divine-cinematic-title,
+    .battle-skill-closeup-overlay.reduced-motion-mode .divine-effect-caption { z-index: 2; opacity: 1; animation: none !important; }
   }
 
   /* ===== マリガン（引き直し）フェーズ ===== */
@@ -9550,7 +9555,7 @@
     <button type="button" class="back" @click="battleReturn">◀ カミ図鑑へ戻る</button>
   </div>
   <transition name="battle-skill-closeup-fade">
-    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :style="{ zIndex: battleCpuThinking ? 10001 : null, '--fx-duration': _battleMotionMs(battleSkillCloseup.phase === 'animation' ? (battleSkillCloseup.animationDuration || 2400) : 1800)+'ms' }" :class="{ 'genesis-dedicated-mode': battleSkillCloseup.dedicatedArt, 'divine-cinematic-mode': battleSkillCloseup.phase === 'animation', 'orochi-seal-arrival-mode': battleSkillCloseup.phase === 'sealArrival', 'divine-transfer-mode': battleSkillCloseup.phase === 'animation' && battleSkillCloseup.transfers && battleSkillCloseup.transfers.length > 0, 'divine-portrait-mode': battleSkillCloseup.phase === 'portrait', 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }"
+    <div v-if="battleSkillCloseup" class="battle-skill-closeup-overlay" :style="{ zIndex: battleCpuThinking ? 10001 : null, '--fx-duration': _battleMotionMs(battleSkillCloseup.phase === 'animation' ? (battleSkillCloseup.animationDuration || 2400) : 1800)+'ms' }" :class="{ 'genesis-dedicated-mode': battleSkillCloseup.dedicatedArt, 'divine-cinematic-mode': battleSkillCloseup.phase === 'animation', 'orochi-seal-arrival-mode': battleSkillCloseup.phase === 'sealArrival', 'divine-transfer-mode': battleSkillCloseup.phase === 'animation' && battleSkillCloseup.transfers && battleSkillCloseup.transfers.length > 0, 'divine-portrait-mode': battleSkillCloseup.phase === 'portrait', 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2', 'reduced-motion-mode': _battleReducedMotion() }"
          @click="battleSkillCloseupClickDismiss">
       <divine-skill1-sigil v-if="battleSkillCloseup.mode === 'skill1' && battleSkillCloseup.sigil && battleAnimationSpeed !== 'minimal'" :theme="battleSkillCloseup.sigil" :duration="_battleMotionMs(1800)"></divine-skill1-sigil>
       <!-- 創世神技のカットイン（暗い背景・絵・技名）はひとまとめにし、終わるときは画面の端から中央へ消えていく -->
@@ -9565,10 +9570,11 @@
         </div>
       </transition>
       <divine-skill-art v-if="battleSkillCloseup.phase === 'awakening'" stage="awakening" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(battleSkillCloseup.awakeningDuration)"></divine-skill-art>
-      <divine-skill-art v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'" :key="'effect-'+battleSkillCloseup._shownAt" :effect="battleSkillCloseup.effect" :layout="battleSkillCloseup.layout" :survivors="battleSkillCloseup.survivors" :targets="battleSkillCloseup.targets" :sword-landing="battleSkillCloseup.swordLanding" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-skill-art>
+      <img v-if="battleSkillCloseup.dedicatedArt && battleSkillCloseup.phase === 'animation' && _battleReducedMotion() && battleSkillCloseup.imgUrl" class="battle-reduced-cutin" :src="battleSkillCloseup.imgUrl" alt="" @error="battleSkillCloseupImgError">
+      <divine-skill-art v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal' && !_battleReducedMotion()" :key="'effect-'+battleSkillCloseup._shownAt" :effect="battleSkillCloseup.effect" :layout="battleSkillCloseup.layout" :survivors="battleSkillCloseup.survivors" :targets="battleSkillCloseup.targets" :sword-landing="battleSkillCloseup.swordLanding" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-skill-art>
       <divine-orochi-seal-arrival v-if="battleSkillCloseup.phase === 'sealArrival' && battleSkillCloseup.sealLanding" :landing="battleSkillCloseup.sealLanding" :duration="_battleMotionMs(1200)"></divine-orochi-seal-arrival>
-      <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal'"><divine-scroll-transfer v-for="(transfer,i) in battleSkillCloseup.transfers" :key="'scroll-transfer'+i" :transfer="transfer" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-scroll-transfer></template>
-      <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal' && battleSkillCloseup.effect.kamiNo !== '7'"><divine-target-impact v-for="(rect,i) in battleSkillCloseup.targets" :key="'impact'+i" :rect="rect" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-target-impact></template>
+      <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal' && !_battleReducedMotion()"><divine-scroll-transfer v-for="(transfer,i) in battleSkillCloseup.transfers" :key="'scroll-transfer'+i" :transfer="transfer" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-scroll-transfer></template>
+      <template v-if="battleSkillCloseup.phase === 'animation' && battleAnimationSpeed !== 'minimal' && !_battleReducedMotion() && battleSkillCloseup.effect.kamiNo !== '7'"><divine-target-impact v-for="(rect,i) in battleSkillCloseup.targets" :key="'impact'+i" :rect="rect" :effect="battleSkillCloseup.effect" :duration="_battleMotionMs(battleSkillCloseup.animationDuration || 2400)"></divine-target-impact></template>
       <div v-if="battleSkillCloseup.phase === 'animation' && battleSkillCloseup.effect" class="divine-cinematic-title">{{ battleSkillCloseupNameParts.main }}</div>
       <div v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation' && battleSkillCloseup.effect" class="divine-effect-caption">{{ battleSkillCloseup.effect.label }}</div>
       <div v-if="!battleSkillCloseup.dedicatedArt && battleSkillCloseup.phase !== 'animation'" class="battle-skill-closeup-card" :class="{ 'skill1-mode': battleSkillCloseup.mode === 'skill1', 'orochi-seal-four-mode': battleSkillCloseup.mode === 'orochi-seal-four', 'orochi-skill2-mode': battleSkillCloseup.mode === 'orochi-skill2' }">
@@ -18073,8 +18079,12 @@ new Vue({
     },
     _battleMotionMs(ms) {
       if (this.battleAnimationSpeed === 'minimal') return 10;
+      if (typeof this._battleReducedMotion === 'function' && this._battleReducedMotion()) return Math.min(750, Math.max(120, Math.round(ms * 0.4)));
       if (this.battleAnimationSpeed === 'fast') return Math.max(60, Math.round(ms * 0.4));
       return ms;
+    },
+    _battleReducedMotion() {
+      return typeof window !== 'undefined' && !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     },
     battleSkipActiveAnimation() {
       if (this.battleCoinFlip) this._battleFinishCoinFlip();
@@ -18993,6 +19003,12 @@ new Vue({
       const cur = this.battleStatDisplay[dispKey];
       // 実際の変更前の値を使い、カウント途中の値から誤った増減を算出しない。
       if (Number.isFinite(previous) && to !== previous) this._battlePushStatPop(dispKey, to - previous);
+      if (typeof this._battleReducedMotion === 'function' && this._battleReducedMotion()) {
+        const seq = (this._battleStatTweenSeq = this._battleStatTweenSeq || {});
+        seq[dispKey] = (seq[dispKey] || 0) + 1;
+        this.$set(this.battleStatDisplay, dispKey, to);
+        return;
+      }
       if (cur === undefined || cur === null || cur === to) { this.$set(this.battleStatDisplay, dispKey, to); return; }
 
       const from = cur;
@@ -19243,9 +19259,10 @@ new Vue({
       const presentation = this.battleSkillCloseup;
       // スサノオだけ、台詞の終了後に顔へ寄って開眼してから盤面の演出へ進む。
       const phases = [{ name: 'portrait', duration: 1800 }];
-      if (effect.awakening && this.battleAnimationSpeed !== 'minimal') phases.push({name:'awakening',duration:presentation.awakeningDuration});
+      const reducedMotion = typeof this._battleReducedMotion === 'function' && this._battleReducedMotion();
+      if (effect.awakening && this.battleAnimationSpeed !== 'minimal' && !reducedMotion) phases.push({name:'awakening',duration:presentation.awakeningDuration});
       phases.push({ name: 'animation', duration: presentation.animationDuration });
-      if (effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal') phases.push({name:'sealArrival',duration:1200});
+      if (effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal' && !reducedMotion) phases.push({name:'sealArrival',duration:1200});
       for (const phase of phases) {
         if (this.battleSkillCloseup !== presentation) break;
         if (phase.name === 'animation' && String(kami && kami.no) === '1' && typeof this._battleSusanooMarkRect === 'function') presentation.swordLanding = this._battleSusanooMarkRect(writerSide);
@@ -19259,7 +19276,7 @@ new Vue({
         presentation.phase = phase.name;
         presentation._shownAt = Date.now();
         // 札がはがれて少女の全容が見えてから間を置き、八頭の龍が現れる瞬間に咆哮を鳴らす。
-        const roarTimer = phase.name === 'animation' && String(kami && kami.no) === '10' ? setTimeout(() => {
+        const roarTimer = phase.name === 'animation' && String(kami && kami.no) === '10' && !reducedMotion ? setTimeout(() => {
           if (this.battleSkillCloseup === presentation && presentation.phase === 'animation') this._sfxPlay('dragonHeavy', .35);
         }, this._battleMotionMs(phase.duration) * .82) : null;
         // 爪による引き込みと、相手カミへの爆発を別々の時刻で確定させる。
@@ -19289,7 +19306,7 @@ new Vue({
             this._battleSkillCloseupT = hold.timer;
           } else {
             // オロチは龍の絵を保持したまま、約3秒の咆哮が終わるまで次の札演出へ進まない。
-            const roarHoldMs = phase.name === 'animation' && effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal' ? 3200 : 0;
+            const roarHoldMs = phase.name === 'animation' && effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal' && !reducedMotion ? 3200 : 0;
             this._battleSkillCloseupT = setTimeout(finish, this._battleMotionMs(phase.duration) + roarHoldMs);
           }
         });
@@ -32229,14 +32246,15 @@ new Vue({
         this._battleRecordHistoryEntry(v);
         clearTimeout(this._battleResultRevealT);
         clearTimeout(this._battleShatterT);
+        const reducedResult = this._battleReducedMotion();
         const skillDelay = this._battleDivineContext ? this._battleMotionMs(this._battleDivineContext.index === 2 ? 4200 : 1800) : 0;
         // ひび割れ→フラッシュのピーク直後（kamiShatterKfが一気に消え去るタイミングに合わせる）に
         // 粒子爆散を発生させ、同時に破壊音（delete）を鳴らす。粒子が完全に消えきってから
         // 一呼吸置いてから結果オーバーレイを出す（爆散→勝利演出が同時に重ならないようにする）
         this._battleShatterT = setTimeout(() => {
-          this._battleSpawnShatterParticles(v.outcome === 'win' ? 'opp' : 'self');
+          if (!reducedResult) this._battleSpawnShatterParticles(v.outcome === 'win' ? 'opp' : 'self');
           this._sfxPlay('delete');
-        }, 1050 + skillDelay);
+        }, (reducedResult ? 80 : 1050) + skillDelay);
         this._battleResultRevealT = setTimeout(() => {
           this.battleResultRevealReady = true;
           this.battleShatterParticles = null;
@@ -32248,7 +32266,7 @@ new Vue({
             const loser = this.battleResultLoserKami;
             if (this.battleContext.source !== 'tutorial' && this.battleSample.result === v && winner && loser) this.playKamiVoice(winner, 'win_' + parseInt(loser.no, 10));
           }, this._battleMotionMs(700));
-        }, 2900 + skillDelay);
+        }, (reducedResult ? 400 : 2900) + skillDelay);
       } else {
         this.battleResultRevealReady = false;
         this.battleShatterParticles = null;

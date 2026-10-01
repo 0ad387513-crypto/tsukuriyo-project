@@ -760,6 +760,44 @@ test("skill 2 completes a prominent portrait before starting its independent ani
   assert.match(html,/divine-skill-art v-if="battleSkillCloseup.effect && battleSkillCloseup.phase === 'animation'/);
 });
 
+test("Windows reduced motion keeps battle timing short, effects readable and stat changes immediate", async () => {
+  const media=method('_battleReducedMotion','window');
+  const motion=method('_battleMotionMs','ms');
+  const reduced={matchMedia:()=>({matches:true})};
+  const normal={matchMedia:()=>({matches:false})};
+  assert.equal(media.call({},reduced),true);
+  assert.equal(media.call({},normal),false);
+  const vm={battleAnimationSpeed:'normal',_battleReducedMotion:()=>true};
+  assert.equal(motion.call(vm,4300),750);
+  assert.equal(motion.call(vm,400),160);
+  vm._battleReducedMotion=()=>false;
+  assert.equal(motion.call(vm,4300),4300);
+  vm.battleAnimationSpeed='minimal';
+  assert.equal(motion.call(vm,4300),10);
+
+  const timers=[];
+  const show=method('_battleShowSkill2Closeup','kami,skillName,divineSkillTheme,remoteTransfers,writerSide,remoteTargets,setTimeout,clearTimeout',true);
+  Object.assign(vm,{battleAnimationSpeed:'normal',_battleReducedMotion:()=>true,_battleMotionMs:ms=>motion.call(vm,ms),
+    _battleEmoteLineFor:()=>'',playKamiVoice(){},_sfxPlay(){}});
+  const schedule=(callback,delay)=>{timers.push({callback,delay});return timers.length};
+  const using=show.call(vm,{no:1},'創世神技',require('../divine_effects.js').divineSkillTheme,null,'self',null,schedule,()=>{});
+  assert.equal(vm.battleSkillCloseup.phase,'portrait');
+  assert.equal(timers.at(-1).delay,720);
+  timers.at(-1).callback();await Promise.resolve();
+  assert.equal(vm.battleSkillCloseup.phase,'animation','eye animation is omitted when the OS disables motion');
+  assert.equal(timers.at(-1).delay,750);
+  timers.at(-1).callback();await using;
+  assert.equal(vm.battleSkillCloseup,null);
+  assert.match(html,/class="battle-reduced-cutin"/);
+  assert.match(html,/\.orb-disc\.life \.stat-pop \{ animation: none !important; opacity: 1/);
+
+  const display={selfLife:8},pops=[];
+  const stat={battleStatDisplay:display,_battleReducedMotion:()=>true,$set:(o,k,v)=>{o[k]=v},_battlePushStatPop:(k,d)=>pops.push([k,d])};
+  method('_battleTweenStat','dispKey,to,previous,performance,requestAnimationFrame').call(stat,'selfLife',6,8,{now:()=>0},()=>{throw Error('reduced motion should not request frames')});
+  assert.equal(display.selfLife,6);
+  assert.deepEqual(pops,[['selfLife',-2]]);
+});
+
 test("Susanoo opens his eyes and Orochi's seals arrive after the field effect, respecting speed and exit", async () => {
   const show=method('_battleShowSkill2Closeup','kami,skillName,divineSkillTheme,remoteTransfers,writerSide,remoteTargets,setTimeout,clearTimeout',true);
   const theme=require('../divine_effects.js').divineSkillTheme;
