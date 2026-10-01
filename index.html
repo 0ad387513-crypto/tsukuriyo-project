@@ -1676,15 +1676,47 @@
   .dex-preview-bar button.genesis { border-color: #c79a4a; background: linear-gradient(160deg, #6a4a22, #2d1f14); color: #fff3d6; }
   .dex-preview-bar button.back { border-color: #626b7c; background: #272d3a; color: #e4e8f0; }
   .dex-preview-bar button:hover { filter: brightness(1.18); }
-  .kami-dex-skill-preview { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-  .kami-dex-skill-preview-label { width: 100%; text-align: center; color: #cfb875; font-size: 11px; font-weight: 900; letter-spacing: .12em; }
+  /* 演出：開くと神技・創世神技の演出を選んで再生できる（ボタンは他の項目の中身と同じく枠の中に並べる） */
+  .kami-dex-skill-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .kami-dex-skill-preview button {
-    padding: 8px 18px; border: 1px solid #5d78a8; border-radius: 10px; background: linear-gradient(160deg, #2a3a5e, #161d30);
-    color: #eaf1ff; font-size: 13px; font-weight: 900; cursor: pointer;
+    padding: 7px 20px; border: 1px solid #5d78a8; border-radius: 999px; background: linear-gradient(160deg, #2a3a5e, #161d30);
+    color: #eaf1ff; font-size: 13px; font-weight: 900; letter-spacing: .06em; cursor: pointer;
   }
   .kami-dex-skill-preview button.genesis { border-color: #c79a4a; background: linear-gradient(160deg, #6a4a22, #2d1f14); color: #fff3d6; }
-  .kami-dex-skill-preview button:hover:not(:disabled) { filter: brightness(1.18); transform: translateY(-1px); }
+  .kami-dex-skill-preview button:hover:not(:disabled) { filter: brightness(1.18); }
   .kami-dex-skill-preview button:disabled { opacity: .5; cursor: wait; }
+  /* 図鑑の右欄の枠は少し詰め、開いた直後にスクロールなしで全体が見えるようにする */
+  .kami-dex-panel .gs-kami-info-section { margin-top: clamp(8px, 1.1vh, 12px); padding: clamp(8px, 1.1vh, 13px) 15px; }
+  .kami-dex-panel .gs-kami-info-kicker { display: none; }
+  /* 4つの項目は1つの枠にまとめ、区切り線で上から順に並べる（開くとその項目の下に内容が出る） */
+  .kami-dex-accordion { margin-top: clamp(8px, 1.1vh, 12px); border: 1px solid #343b4b; border-radius: 9px; background: rgba(20,24,34,.72); }
+  .kami-dex-panel .kami-dex-accordion > .gs-kami-info-section {
+    margin: 0; border: 0; border-radius: 0; background: none; padding: clamp(6px, 1vh, 11px) 15px;
+  }
+  .kami-dex-accordion > .gs-kami-info-section + .gs-kami-info-section { border-top: 1px solid #2c3242; }
+  /* 説明文と創生理念は行間を少し詰める */
+  .kami-dex-panel .kami-dex-summary { line-height: 1.65; margin: 5px 0 4px; }
+  .kami-dex-panel .gs-kami-philosophy p { line-height: 1.65; margin: 3px 0 0; }
+  /* 低い画面（ノートPC）でも開いた直後に全体が収まるよう、余白・一覧・名前を少し小さくする */
+  .kami-dex-panel .kami-dex-scroll { padding-top: clamp(10px, 1.4vh, 22px); padding-bottom: clamp(12px, 1.8vh, 30px); }
+  .kami-dex-panel .kami-dex-tab img, .kami-dex-panel .kami-dex-tab-lock { max-width: clamp(34px, 5vh, 72px); }
+  .kami-dex-panel .kami-dex-tabs { margin-bottom: clamp(8px, 1.2vh, 16px); }
+  .kami-dex-panel .kami-dex-name-row { margin: 0 0 6px; }
+  .kami-dex-panel .kami-dex-name-row .gs-kami-info-name { font-size: clamp(22px, 2.1vw, 34px); }
+  /* 名前の行：右端にピックガイドへのボタン */
+  .kami-dex-name-row { display: flex; align-items: center; gap: 12px; margin: 4px 0 10px; }
+  .kami-dex-name-row .gs-kami-info-name { margin: 0; flex: 1 1 auto; min-width: 0; }
+  .kami-dex-pickguide-btn {
+    flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #655b4d; border-radius: 999px;
+    background: #27231e; color: #eee4d4; font-size: 12px; font-weight: 800; cursor: pointer;
+  }
+  .kami-dex-pickguide-btn:hover { border-color: #c9a963; background: #383024; }
+  .kami-dex-pickguide-btn .ui-icon { width: 18px; height: 18px; }
+  /* 開いた直後にスクロールなしで全体が見えるよう、上段のカミの一覧と左の絵を画面の高さに合わせる */
+  .kami-dex-panel .kami-dex-tabs { margin-bottom: clamp(10px, 1.6vh, 16px); }
+  .kami-dex-panel .kami-dex-tab img, .kami-dex-panel .kami-dex-tab-lock { max-width: clamp(40px, 6vh, 72px); }
+  .kami-dex-panel .gs-kami-info-card-image { width: min(100%, calc((100vh - 330px) * 600 / 838), 520px); }
+  .kami-dex-panel .kami-dex-profile, .kami-dex-panel .gs-kami-philosophy { margin-top: 8px; }
   .kami-dex-muted { margin-left: 6px; color: #d9a36c; font-size: 11px; font-weight: 700; letter-spacing: 0; }
   .kami-dex-voices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .kami-dex-wins { grid-template-columns: 1fr; }
@@ -1981,10 +2013,7 @@
   }
   /* ===== チュートリアル（対戦画面内。モーダル(390〜)より下、盤面より上） ===== */
   .tutorial-layer { position: fixed; inset: 0; z-index: 380; pointer-events: none; }
-  /* チュートリアル中はライフ・天力・マナを手で増減するボタンを隠す（battleStat 側でも受け付けない） */
-  .battle-overlay.tutorial-active .orb-value-controls,
-  .battle-overlay.tutorial-active .orb-max-controls,
-  .battle-overlay.tutorial-active .mana-controls { visibility: hidden; pointer-events: none; }
+  /* チュートリアル中はライフ・天力・マナの手動調整（ヘッダーの調整パネル）の入口を出さない（battleStat 側でも受け付けない） */
   .tutorial-layer.finale { z-index: 760; } /* 勝利後は結果画面(700)の上で締めの台詞を出す */
   .tutorial-catcher { position: absolute; inset: 0; pointer-events: auto; cursor: pointer; }
   .tutorial-dim { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -2417,6 +2446,31 @@
     background: #27231e; color: #eee4d4; font-weight: 800; cursor: pointer;
   }
   .manual-close:hover { border-color: #c9a963; background: #383024; }
+  /* ===== 3つのガイド窓（プレイガイド・ピックガイド・カミ図鑑）の共通の枠 =====
+     大きさ・位置（画面中央）・角丸・枠線・背景・見出しをそろえる。見出しは .manual-header（丸い印＋題名＋副題＋「閉じる」）を共用し、
+     見出しの下だけがスクロールする */
+  .battle-zone-modal.manual-modal, .battle-zone-modal.pick-guide-modal, .gs-kami-info-overlay.kami-dex-overlay { padding: 16px; display: grid; place-items: center; }
+  .battle-zone-modal-panel.manual-panel, .battle-zone-modal-panel.pick-guide-panel, .gs-kami-info-panel.kami-dex-panel {
+    box-sizing: border-box; width: min(1320px, calc(100vw - 32px)); max-width: none; min-width: 0;
+    height: calc(100vh - 32px); height: calc(100dvh - 32px); max-height: none;
+    border: 1px solid #765e35; border-radius: 12px; padding: 0; overflow: hidden;
+    background:
+      radial-gradient(circle at 90% 5%, rgba(218,165,82,.13), transparent 30%),
+      linear-gradient(165deg, #17171d 0%, #0d1017 68%, #15110e 100%);
+    box-shadow: 0 24px 80px rgba(0,0,0,.75);
+  }
+  .gs-kami-info-panel.kami-dex-panel, .battle-zone-modal-panel.manual-panel { display: flex; flex-direction: column; }
+  .manual-panel > .manual-header { flex: none; }
+  .manual-panel > .manual-scroll { flex: 1 1 auto; min-height: 0; height: auto; } /* 見出しの高さに関係なく、残りの高さをちょうど使う */
+  .gs-kami-info-panel.kami-dex-panel.orochi { border-color: #853a42; }
+  .kami-dex-panel > .manual-header { flex: none; }
+  .kami-dex-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: clamp(14px, 2vh, 22px) clamp(18px, 2.4vw, 30px) clamp(18px, 3vh, 30px); }
+  .kami-dex-panel .kami-dex-op-btn { margin-left: auto; }
+  .kami-dex-panel .kami-dex-close { margin-left: 0; }
+  @media (max-width: 760px) {
+    .battle-zone-modal.manual-modal, .battle-zone-modal.pick-guide-modal, .gs-kami-info-overlay.kami-dex-overlay { padding: 0; }
+    .battle-zone-modal-panel.manual-panel, .battle-zone-modal-panel.pick-guide-panel, .gs-kami-info-panel.kami-dex-panel { width: 100vw; height: 100vh; height: 100dvh; border-radius: 0; }
+  }
   .manual-scroll { height: calc(100% - 69px); overflow-y: auto; scroll-behavior: smooth; }
   .manual-cover {
     position: relative; min-height: 430px; display: grid; grid-template-columns: minmax(0,1.2fr) minmax(250px,.8fr);
@@ -3391,6 +3445,29 @@
   .sp-btn-disabled { background: #333; color: #888; cursor: not-allowed; }
 
   .sp-divider { border: none; border-top: 1px solid #2a2f3d; margin: 8px 0; }
+  /* ===== ロビーの入口（3モード共通）：「相手と対戦」「CPUと対戦」を先に選べるよう2つの枠に分ける ===== */
+  .sp-lobby.lobby-split { max-width: 900px; margin: 24px auto; }
+  .lobby-choices { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 760px) { .lobby-choices { grid-template-columns: 1fr; } }
+  .lobby-card {
+    display: flex; flex-direction: column; gap: 10px; min-width: 0;
+    padding: 16px 18px 18px; border-radius: 10px;
+    background: #171b26; border: 1px solid #2e3548; border-top: 3px solid #b58d49;
+  }
+  .lobby-card-cpu { border-top-color: #6a5a8a; }
+  .lobby-card .lobby-card-title, .sp-lobby .lobby-card .lobby-card-title { margin: 0; font-size: 17px; font-weight: 800; color: #f2d894; letter-spacing: .06em; }
+  .lobby-card-cpu .lobby-card-title, .sp-lobby .lobby-card-cpu .lobby-card-title { color: #d8c8f8; }
+  .lobby-card-lead { margin: 0 0 2px; font-size: 13px; line-height: 1.6; color: #b9c2d2; word-break: keep-all; overflow-wrap: anywhere; }
+  .lobby-card-note { font-size: 12px; color: #8f9aad; }
+  .lobby-card .gm-public-room-list { margin-top: 0; }
+  .lobby-sub { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding-top: 12px; border-top: 1px solid #262b39; }
+  .lobby-sub-title { margin: 0; font-size: 14px; font-weight: 800; color: #dbe2ee; }
+  .lobby-join-row { display: flex; gap: 8px; }
+  .lobby-join-row .sp-input { flex: 1; min-width: 0; }
+  .sp-lobby .lobby-join-row .sp-btn { width: auto; flex: none; padding: 10px 18px; }
+  .lobby-cpu-toggle { margin-top: 2px; }
+  .gm-btn-find { background: #1565c0; border-color: #3d86d6; color: #fff; }
+  .gm-btn-find:hover:not(:disabled) { background: #1976d2; }
   .sp-room-code-display {
     background: #1a1d28; border: 2px solid #4a7a4a; border-radius: 6px;
     padding: 16px; text-align: center;
@@ -4121,22 +4198,15 @@
   }
   .dgc-cell.dgc-deck { cursor: pointer; }
   .dgc-cell:hover { background: #2a3548; }
+  /* デッキ・墓地・崩壊のアイコン（design_assets/battle-ui-icons-semantic-v3 の原画をインラインSVG化。
+     currentColor の単色なので、領域ごとの色は color で指定する） */
   .dgc-icon {
-    width: 22px; height: 28px;
+    width: 24px; height: 24px;
     color: #e8d4a0; flex-shrink: 0;
   }
-  /* デッキアイコン：CSS div で3枚カード重なりを描画（SVG描画失敗対策） */
-  .dgc-deck-icon { position: relative; }
-  .dgc-deck-icon .ddi-card {
-    position: absolute;
-    width: 12px; height: 18px;
-    background: #e8d4a0;
-    border: 1px solid #1a2030;
-    border-radius: 2px;
-  }
-  .dgc-deck-icon .ddi-card-1 { top: 8px; left: 0px; }
-  .dgc-deck-icon .ddi-card-2 { top: 5px; left: 5px; }
-  .dgc-deck-icon .ddi-card-3 { top: 2px; left: 10px; }
+  .dgc-icon.dgc-deck-icon { color: #b9d9f2; }
+  .dgc-icon.dgc-graveyard-icon { color: #d8c6e8; }
+  .dgc-icon.dgc-crumbled-icon { color: #e7b6ae; }
   .dgc-info {
     display: flex; flex-direction: column; gap: 0;
     line-height: 1.1;
@@ -4272,6 +4342,47 @@
   .battle-undo-btn .undo-count {
     font-size: 10px; color: #d8c8ff; margin-left: 4px; font-weight: 600;
   }
+  /* ヘッダーのアイコンボタン（時間設定・手動調整）：音量・戦績アイコンにそろえて常に金色。開いている間はボタンの地を明るくして示す */
+  .battle-header-icon-btn { display: inline-flex; align-items: center; justify-content: center; padding: 3px 9px; color: #e8c878; }
+  .battle-header-icon-btn:hover:not(:disabled) { color: #f3d993; }
+  .battle-header-icon-btn.is-open { background: #4a3f5a; border-color: #b89a5a; }
+  .battle-header-svg { width: 20px; height: 20px; display: block; }
+  /* バトルログ：戦績と同じアイコン（ui-icon-battle-record）を文字の前に置く */
+  .battle-log-btn { display: inline-flex; align-items: center; gap: 5px; padding-top: 3px; padding-bottom: 3px; }
+  .battle-undo-btn.battle-log-btn .ui-icon { width: 20px; height: 20px; }
+  /* 通信状態：状態名だけを常に出し、押すと詳細（コード・送受信・revision）を開く */
+  .battle-sync-detail-btn { cursor: pointer; font-family: inherit; color: inherit; }
+  .battle-sync-caret { font-size: 9px; opacity: .7; margin-left: 2px; }
+  .battle-net-detail { min-width: 190px; left: 0; right: auto; }
+  .battle-net-detail-title, .battle-adjust-title { font-size: 11px; font-weight: 800; color: #c9d2df; margin-bottom: 6px; }
+  .battle-net-detail dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 12px; }
+  .battle-net-detail dt { color: #8f9bb0; }
+  .battle-net-detail dd { margin: 0; color: #e8ecf3; font-variant-numeric: tabular-nums; word-break: break-all; }
+  .battle-net-detail-note { margin: 8px 0 0; font-size: 11px; color: #aab5c6; line-height: 1.5; }
+  /* 手動調整パネル：項目名・現在値・増減ボタンを1行ずつ並べる */
+  .battle-adjust-panel { width: 300px; box-sizing: border-box; }
+  .battle-adjust-row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
+    padding: 5px 0 5px 8px; border-left: 3px solid #5b6474;
+  }
+  .battle-adjust-row + .battle-adjust-row { margin-top: 3px; }
+  .battle-adjust-row.life { border-left-color: #d0485a; }
+  .battle-adjust-row.tenryoku { border-left-color: #3f7fcf; }
+  .battle-adjust-row.seal { border-left-color: #d63b48; }
+  .battle-adjust-row.mana { border-left-color: #2fbf6a; }
+  .battle-adjust-row.sub { padding-top: 2px; }
+  .battle-adjust-name { font-size: 12px; font-weight: 800; color: #e7ebf3; white-space: nowrap; }
+  .battle-adjust-name small { margin-left: 6px; font-size: 10px; font-weight: 600; color: #8f9bb0; }
+  .battle-adjust-row.sub .battle-adjust-name { font-weight: 700; color: #c9d2df; }
+  .battle-adjust-value { min-width: 44px; text-align: right; font-size: 15px; font-weight: 900; color: #fff; font-variant-numeric: tabular-nums; }
+  .battle-adjust-value small { font-size: 11px; color: #aab5c6; }
+  .battle-adjust-btns { display: flex; gap: 4px; }
+  .battle-adjust-btns button {
+    width: 32px; height: 28px; padding: 0; border-radius: 5px; cursor: pointer;
+    background: #26344d; border: 1px solid #5d7196; color: #fff; font-size: 14px; font-weight: 900;
+  }
+  .battle-adjust-btns button:hover { background: #34507a; }
+  .battle-adjust-btns button:focus-visible { outline: 2px solid #e8c878; outline-offset: 1px; }
   /* 相手クライアントへ判断を委ねて応答待ち中のインジケーター（守護確認・相手選択効果 等） */
   .battle-waiting-banner {
     position: absolute; top: 52px; left: 50%; transform: translateX(-50%);
@@ -4687,11 +4798,14 @@
   .battle-surrender-btn:hover { background: #b32b39; }
   .battle-board { gap: 6px; padding: 6px 8px; }
   .battle-main {
-    grid-template-rows: minmax(96px, .78fr) minmax(118px, 1.12fr) minmax(118px, 1.12fr) minmax(118px, .98fr);
+    /* 相手の段（伏せ手札・カミ・レリック）はカミの大きさ＋余白までに抑え、余った高さをレガシーの場と自分の段へ回す */
+    grid-template-rows: minmax(96px, calc(var(--kw) + 36px)) minmax(118px, 1.12fr) minmax(118px, 1.12fr) minmax(118px, .98fr);
     gap: 6px;
   }
   .battle-row-opp-top, .battle-row-self-bot {
     grid-template-columns: minmax(0, 1fr) var(--status-w) minmax(0, 1fr);
+    /* 段の高さを盤面の割り当てに固定する（中央のカミ列の中身が高くても、手札・レリック枠が画面下へはみ出さない） */
+    grid-template-rows: minmax(0, 1fr);
     gap: 8px;
   }
   .battle-zone {
@@ -4882,6 +4996,9 @@
   }
   .hand-disabled { opacity: .82; }
   .battle-center-col { justify-content: center; gap: 3px; }
+  /* 段の高さを固定しても、カミ・神技ボタン・カミ名は縮めずに従来どおり表示する */
+  .battle-center-col > * { flex-shrink: 0; }
+  .battle-center-col { justify-content: safe center; } /* 収まらないときは上端から並べ、従来の位置を保つ */
   .kami-hud {
     display: grid; grid-template-columns: 80px var(--kw) 80px;
     align-items: end; justify-content: center; gap: 4px; width: 100%;
@@ -4896,14 +5013,9 @@
     margin: 0 auto;
   }
   .hud-orb { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
-  /* ライフ赤丸の右に △▽（最大値ボタン）を配置するための横並びレイアウト */
   .life-row {
     position: relative; display: flex; align-items: center; justify-content: center;
     width: 44px; margin: 0 auto;
-  }
-  .life-row .orb-max-controls {
-    position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
-    flex-direction: column; gap: 0; margin: 0;
   }
   /* ===== カミ枠の段階表示（自分のみ）：通常=neutral, 神技可=silver, 創世神技可=gold点滅 ===== */
   .kami-portrait { border-color: #3a4258; box-shadow: 0 0 8px rgba(60,80,110,0.35); }
@@ -4936,15 +5048,6 @@
     box-shadow: inset 0 0 10px rgba(0,0,0,0.7), 0 0 12px rgba(180,30,40,0.55);
     text-shadow: 0 0 4px rgba(0,0,0,0.8);
   }
-  .orb-max-controls, .orb-value-controls { display: flex; align-items: center; justify-content: center; gap: 3px; }
-  .orb-max-controls { flex-direction: column; gap: 0; margin-bottom: 1px; }
-  .orb-max-controls button, .orb-value-controls button {
-    width: 22px; height: 18px; padding: 0; line-height: 1; border-radius: 9px;
-    border: 1px solid #7e94ba; background: #294c84; color: #fff; cursor: pointer;
-    font-size: 12px; font-weight: 900;
-  }
-  .orb-max-controls button { width: 14px; height: 12px; background: transparent; border: 0; color: #ff9a9f; }
-  .orb-value-controls button:hover { background: #3b68aa; }
   .kami-name {
     max-width: 100%; color: #d8deea; font-size: 11px; font-weight: 800;
     text-align: center; line-height: 1.25;
@@ -4989,13 +5092,6 @@
   /* 最大値を超えて使えるマナ（このターンのみ等）：通常の緑とは別の金色で目立たせる */
   .mana-orb.bonus { background: #e8b23a; border-color: #ffe29a; box-shadow: 0 0 8px rgba(232,178,58,.75); }
   .mana-empty { grid-column: 1 / -1; color: #687383; font-size: 10px; text-align: center; }
-  .mana-controls { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
-  .mana-controls span { color: #9ca9bb; font-size: 9px; }
-  .mana-control-group { display: flex; gap: 3px; }
-  .mana-controls button {
-    width: 24px; height: 20px; padding: 0; border-radius: 4px; cursor: pointer;
-    background: #264b38; border: 1px solid #5fa278; color: #d9ffe5; font-weight: 900;
-  }
   .dgc-stack { gap: 5px; padding: 5px; }
   .dgc-cell { min-height: 42px; gap: 8px; padding: 5px 7px; border: 1px solid transparent; }
   .dgc-cell.zone-deck { background: #18385d; border-color: #376ca3; }
@@ -5012,7 +5108,7 @@
   }
   .dgc-cell.disabled { cursor: not-allowed; filter: grayscale(.45); opacity: .75; }
   .dgc-cell.disabled:hover { background: #18385d; }
-  .dgc-icon { width: 30px; height: 34px; }
+  .dgc-icon { width: 24px; height: 24px; }
   .dgc-info { flex-direction: row; align-items: baseline; gap: 7px; }
   .dgc-name { color: #e7ebf3; font-size: 12px; font-weight: 800; }
   .dgc-count { color: #fff; font-size: 17px; }
@@ -5849,15 +5945,13 @@
     .battle-row-self-bot .battle-center-col { transform: translateY(-10px); }
     .orb-disc { width: 43px; height: 43px; font-size: 16px; }
     .life-row { width: 43px; }
-    .orb-max-controls button { height: 10px; }
-    .orb-value-controls button { width: 20px; height: 16px; }
     .kami-skill-btn { padding: 3px 10px; font-size: 12px; }
     .kami-name { font-size: 9px; }
     .mana-panel { padding: 4px 5px; gap: 3px; }
     .mana-orb { width: 13px; height: 13px; }
     .dgc-stack { gap: 3px; padding: 3px; }
     .dgc-cell { min-height: 34px; padding: 3px 6px; }
-    .dgc-icon { width: 25px; height: 28px; }
+    .dgc-icon { width: 22px; height: 22px; }
     .turn-middle { padding: 5px; }
     .battle-end-turn-btn { padding: 6px 4px; }
   }
@@ -6029,7 +6123,7 @@
   <!-- ===== SE/BGM音量設定（全画面共通のフローティングボタン。対戦画面は専用ヘッダーボタンと
        重なるため、対戦画面表示中はこちらを隠す。カードリスト画面ではBGM不要かつ他の
        ボタン群と重なるため非表示にする） ===== -->
-  <div v-if="appView !== 'battle' && appView !== 'cardlist' && !deckExpanded && !manualModalOpen && !howToPlayModalOpen" class="global-sound-settings" :class="{ 'on-top-header': appHeaderView }">
+  <div v-if="appView !== 'battle' && appView !== 'cardlist' && !deckExpanded && !manualModalOpen && !howToPlayModalOpen && !kamiDexOpen" class="global-sound-settings" :class="{ 'on-top-header': appHeaderView }">
     <!-- 共通ヘッダーのある画面（TOP・モード紹介）では、ヘッダーの右端に「戦績」「音量」を文字付きで出す。
          ガイドの2つはTOPの右下にあるので、ヘッダーの無い画面（ロビー・ピック等）だけで出す -->
     <button v-if="!appHeaderView" class="global-sound-btn howto-open-btn" @click.stop="openPlayManual" title="プレイガイド（説明書）"><span class="ui-icon ui-icon-play-guide" aria-hidden="true"></span></button>
@@ -6213,13 +6307,17 @@
   <!-- ===== カミ図鑑：各カミの理念・効果・ボイスをまとめて見られる図鑑 ===== -->
   <div v-if="kamiDexOpen" class="gs-kami-info-overlay kami-dex-overlay" role="dialog" aria-modal="true" aria-labelledby="kami-dex-title" @click.self="closeKamiDex">
     <div class="gs-kami-info-panel kami-dex-panel" :class="{ orochi: kamiDexKami && kamiDexKami.type === 'ヤマタノオロチ' }">
-      <button type="button" class="gs-kami-info-close" @click="closeKamiDex" aria-label="カミ図鑑を閉じる">×</button>
-      <div class="kami-dex-head">
-        <span class="kami-dex-title-mark" aria-hidden="true">⛩</span>
-        <span class="kami-dex-title">カミ図鑑</span>
-        <span class="kami-dex-sub">カミの理念・効果・声を確かめる</span>
+      <!-- プレイガイド・ピックガイドと同じ見出し（丸い印＋題名＋副題＋右端に「閉じる」）。下の本文だけがスクロールする -->
+      <div class="manual-header">
+        <div class="manual-header-mark" aria-hidden="true"><span class="ui-icon ui-icon-kami-encyclopedia" aria-hidden="true"></span></div>
+        <div class="manual-header-copy">
+          <div class="manual-header-title">カミ図鑑</div>
+          <div class="manual-header-sub">カミの理念・効果・声を確かめる</div>
+        </div>
         <button type="button" class="kami-dex-op-btn" @click="replayGenesisStoryFromDex">🎬 創世決戦のOPを見る</button>
+        <button type="button" class="manual-close kami-dex-close" @click="closeKamiDex" aria-label="カミ図鑑を閉じる">閉じる</button>
       </div>
+      <div class="kami-dex-scroll">
       <div class="kami-dex-tabs" role="tablist" aria-label="カミを選ぶ">
         <button v-for="entry in kamiDexEntries" :key="'dex' + entry.no" type="button" role="tab"
                 class="kami-dex-tab" :class="{ active: entry.no === kamiDexNo, locked: entry.locked }"
@@ -6245,15 +6343,13 @@
             <button type="button" :class="{ active: kamiDexView === 'illust' }" @click="kamiDexView = 'illust'">イラスト</button>
             <button type="button" :class="{ active: kamiDexView === 'card' }" @click="kamiDexView = 'card'">カード</button>
           </div>
-          <div class="kami-dex-skill-preview" role="group" aria-label="演出を見る">
-            <span class="kami-dex-skill-preview-label">演出を見る</span>
-            <button type="button" :disabled="kamiDexPreviewing" @click="kamiDexPreviewSkill(1)">✨ 神技</button>
-            <button type="button" class="genesis" :disabled="kamiDexPreviewing" @click="kamiDexPreviewSkill(2)">🌟 創世神技</button>
-          </div>
         </div>
         <div>
           <div class="gs-kami-info-kicker">KAMI ENCYCLOPEDIA</div>
-          <div id="kami-dex-title" class="gs-kami-info-name">{{ fullName(kamiDexKami) }}</div>
+          <div class="kami-dex-name-row">
+            <div id="kami-dex-title" class="gs-kami-info-name">{{ fullName(kamiDexKami) }}</div>
+            <button type="button" class="kami-dex-pickguide-btn" @click="kamiDexOpenPickGuide"><span class="ui-icon ui-icon-pick-guide" aria-hidden="true"></span>ピックガイド</button>
+          </div>
 
           <div v-if="kamiDexProfile" class="gs-kami-info-section kami-dex-profile">
             <div class="kami-dex-meta">
@@ -6277,6 +6373,8 @@
             <p>{{ gsKamiVisionParts(kamiDexKami).before }}<strong class="gs-kami-world-emphasis">{{ gsKamiVisionParts(kamiDexKami).world }}</strong>{{ gsKamiVisionParts(kamiDexKami).after }}</p>
           </div>
 
+          <!-- 4つの項目（カミの効果・演出・ボイス・ちびキャラ）は1つの枠にまとめ、区切り線で上から順に並べる -->
+          <div class="kami-dex-accordion">
           <div class="gs-kami-info-section">
             <button type="button" class="kami-dex-fold" :aria-expanded="kamiDexShowEffects ? 'true' : 'false'" @click="kamiDexShowEffects = !kamiDexShowEffects">
               {{ kamiDexShowEffects ? '▼' : '▶' }} カミの効果（天力トリガー・神技・創世神技）
@@ -6297,6 +6395,17 @@
             </div>
           </div>
 
+
+          <!-- 演出：ほかの項目と同じく、開くと神技・創世神技の演出を選んで再生できる -->
+          <div class="gs-kami-info-section">
+            <button type="button" class="kami-dex-fold" :aria-expanded="kamiDexShowSkills ? 'true' : 'false'" @click="kamiDexShowSkills = !kamiDexShowSkills">
+              {{ kamiDexShowSkills ? '▼' : '▶' }} 演出
+            </button>
+            <div v-if="kamiDexShowSkills" class="kami-dex-skill-preview" role="group" aria-label="演出を見る">
+              <button type="button" :disabled="kamiDexPreviewing" @click="kamiDexPreviewSkill(1)">神技</button>
+              <button type="button" class="genesis" :disabled="kamiDexPreviewing" @click="kamiDexPreviewSkill(2)">創世神技</button>
+            </div>
+          </div>
           <div class="gs-kami-info-section">
             <button type="button" class="kami-dex-fold" :aria-expanded="kamiDexShowVoices ? 'true' : 'false'" @click="kamiDexShowVoices = !kamiDexShowVoices">
               {{ kamiDexShowVoices ? '▼' : '▶' }} ボイス<small v-if="!(voiceVolume > 0)" class="kami-dex-muted">（ボイスの音量が0のため再生されません）</small>
@@ -6347,11 +6456,10 @@
               </div>
             </template>
           </div>
-
-          <div class="kami-dex-actions">
-            <button type="button" class="gs-kami-accept-btn" @click="kamiDexOpenPickGuide"><span class="ui-icon ui-icon-pick-guide" aria-hidden="true"></span> {{ kamiDexKami.name }}のピックガイドを見る</button>
           </div>
+
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -6623,7 +6731,7 @@
           <a href="#manual-battle">星戦</a>
           <a href="#manual-keywords">用語</a>
           <a href="#manual-faq">細則Q&amp;A</a>
-          <a href="#manual-kami">カミ</a>
+          <a href="#manual-shortcuts">操作</a>
         </nav>
 
         <main class="manual-main manual-copy">
@@ -6652,10 +6760,10 @@
               <article class="manual-card">
                 <div class="manual-card-icon">★</div>
                 <h3>カードを還元する</h3>
-                <p>ゲーム終了時、集めた全カードにある<strong>変換値（0～2）</strong>の合計が星魂になります。途中で返還したカードの変換値も集計します。</p>
+                <p>ゲーム終了時、集めた全カードにある<strong>返還値（0～2）</strong>の合計が星魂になります。途中で返還したカードの返還値も集計します。</p>
               </article>
             </div>
-            <div class="manual-callout"><strong>強さと星魂のバランスが重要です。</strong> 強力な能力を持つ代わりに変換値が低いカードもあります。強いカードだけでは終戦時の星魂が伸びず、変換値の高いカードだけでは星戦に勝ちにくくなります。星戦の勝利とカードから得る星魂の両方を見据えて構築しましょう。</div>
+            <div class="manual-callout"><strong>強さと星魂のバランスが重要です。</strong> 強力な能力を持つ代わりに返還値が低いカードもあります。強いカードだけでは終戦時の星魂が伸びず、返還値の高いカードだけでは星戦に勝ちにくくなります。星戦の勝利とカードから得る星魂の両方を見据えて構築しましょう。</div>
           </section>
 
           <section id="manual-modes" class="manual-chapter">
@@ -6665,7 +6773,7 @@
             </div>
             <p>共通の星戦ルールを、カードの集め方が異なる3つのモードで遊べます。初めて遊ぶ場合は、すぐ対戦できるストラクチャーデッキを使った理念構築戦がおすすめです。</p>
             <div class="manual-mode-grid">
-              <article class="manual-mode-card"><div class="manual-mode-meta">4人対戦（CPU参加時は2人から）</div><b>創世決戦</b><p>神託でカミを選び、3回の選別と深化を行いながら星戦を3回行います。星戦の勝利点と、集めたカードの変換値から得る星魂で最終順位を決めます。</p></article>
+              <article class="manual-mode-card"><div class="manual-mode-meta">4人対戦（CPU参加時は2人から）</div><b>創世決戦</b><p>神託でカミを選び、3回の選別と深化を行いながら星戦を3回行います。星戦の勝利点と、集めたカードの返還値から得る星魂で最終順位を決めます。</p></article>
               <article class="manual-mode-card"><div class="manual-mode-meta">2人対戦</div><b>理念構築戦</b><p>全カードプールから35枚を自由に選んで構築し、選んだカミとデッキで1回の星戦を行います。用意済みのストラクチャーデッキでも開始できます。</p></article>
               <article class="manual-mode-card"><div class="manual-mode-meta">2人対戦</div><b>星紡ぎ戦</b><p>提示されたパックを交互に選び、合計48枚のカードを集めます。集めた48枚をそのままデッキとして使い、最後に選んだカミと1回の星戦を行います。</p></article>
             </div>
@@ -6700,7 +6808,7 @@
                 <li><strong>種類・種族</strong>：レガシーの種族は、忍者・侍・人獣・神使・妖怪・龍の6種です。</li>
                 <li><strong>戦闘力</strong>：戦闘で比較する値。0以下になったレガシーは破壊されます。</li>
                 <li><strong>神攻力</strong>：神攻で相手カミに与えるダメージです。</li>
-                <li><strong>変換値</strong>：終戦時に星魂へ還元される値（0～2）です。</li>
+                <li><strong>返還値</strong>：終戦時に星魂へ還元される値（0～2）です。</li>
                 <li><strong>効果</strong>：カード固有の能力です。</li>
                 <li><strong>カード枠</strong>：銀枠は各種2枚、金枠は各種<strong>1枚</strong>存在します。</li>
               </ol>
@@ -6721,7 +6829,7 @@
               <div class="manual-flow-step"><span>伍</span><b>深化の刻②</b>見識で強化して、組み合わせを変え星戦②へ。</div>
               <div class="manual-flow-step"><span>陸</span><b>選別の儀③</b>5枚を追加し、2枚を無料返還します。</div>
               <div class="manual-flow-step"><span>漆</span><b>深化の刻③</b>最後の調整を行い、星戦③を戦います。</div>
-              <div class="manual-flow-step"><span>捌</span><b>終戦</b>勝利点と全カードの変換値を合計します。</div>
+              <div class="manual-flow-step"><span>捌</span><b>終戦</b>勝利点と全カードの返還値を合計します。</div>
             </div>
             <div class="manual-callout">オンライン版では、CPUを加えることで2人から創世決戦を開始できます。人間2人＋CPU2人の場合、星戦は人間同士の卓とCPU同士の卓に分かれ、人間だけで最終順位を競います。</div>
           </section>
@@ -6743,7 +6851,7 @@
                 <tr><td>第3ラウンド</td><td>5枚束 × 1回</td><td><strong>5枚</strong></td><td><strong>2枚</strong></td></tr>
               </tbody>
             </table></div>
-            <div class="manual-callout red"><strong>デフォルトデッキ削除（無料返還）</strong>は、各ラウンドの選別が終わった直後、深化の刻へ入る前に行います。返還したカードはデッキから取り除かれますが、その変換値は星魂として保持されます。</div>
+            <div class="manual-callout red"><strong>デフォルトデッキ削除（無料返還）</strong>は、各ラウンドの選別が終わった直後、深化の刻へ入る前に行います。返還したカードはデッキから取り除かれますが、その返還値は星魂として保持されます。</div>
             <div v-if="manualOrochiRevealed" class="manual-callout blue"><strong>ヤマタノオロチ専用：</strong>第3ラウンドの選別が完了すると、「終焉龍・ディエスイレ」1枚が専用枠としてデッキへ自動的に加わります。</div>
             <h3>深化の刻</h3>
             <p>ゲーム開始時は全員が見識1を獲得します。第2・第3ラウンドの深化開始時は、直前の星戦の勝者が見識1、敗者が見識3を獲得します。見識は次のラウンドへ持ち越せます。</p>
@@ -6856,27 +6964,14 @@
               <div><div class="manual-chapter-tag">CHAPTER 10</div><h2>終戦・星魂の集計</h2></div>
               <figure class="manual-chapter-mascot"><img src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
-            <p><strong>星魂 ＝ 星戦の勝利点（1勝につき10）＋ 集めた全カードの変換値</strong>です。デッキに残したカードと、無料返還／省察で星魂に変換したカードをすべて合計します。</p>
+            <p><strong>星魂 ＝ 星戦の勝利点（1勝につき10）＋ 集めた全カードの返還値</strong>です。デッキに残したカードと、無料返還／省察で星魂に変換したカードをすべて合計します。</p>
             <p>星魂が最も多いプレイヤーが勝者です。同点なら星戦の勝利数が多いプレイヤー、勝利数も同じなら該当プレイヤー同士の星戦に勝ったプレイヤーが上位です。</p>
           </section>
 
-          <section id="manual-kami" class="manual-chapter">
+          <!-- カミの一覧と難易度はカミ図鑑と重なるため、ユーザー指定で削除。この章は操作のショートカットだけにした -->
+          <section id="manual-shortcuts" class="manual-chapter">
             <div class="manual-chapter-tag">CHAPTER 11</div>
-            <h2>カミと難易度</h2>
-            <div class="manual-kami-grid">
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/susanoo-chibi.webp" alt="スサノオのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>スサノオ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>変化を受け入れる、変幻自在の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/yamato-takeru-chibi.webp" alt="ヤマトタケルのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>ヤマトタケル</b><div class="manual-kami-difficulty">難易度 ★★★★★</div><p>他者に依らない、孤高利己の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/okuninushi-chibi.webp" alt="オオクニヌシのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>オオクニヌシ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>すべての生命と繁栄する、他種共存の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/takemikazuchi-chibi.webp" alt="タケミカヅチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>タケミカヅチ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>絶対的な力が支配する、武威震天の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/omoikane-chibi.webp" alt="オモイカネのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>オモイカネ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>知識を求め理解を深める、温故知新の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/amenouzume-chibi.webp" alt="アメノウズメのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>アメノウズメ</b><div class="manual-kami-difficulty">難易度 ★★</div><p>困難より快楽を求める、悦楽至上の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/hinokagutsuchi-chibi.webp" alt="ヒノカグツチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>ヒノカグツチ</b><div class="manual-kami-difficulty">難易度 ★★★</div><p>欲望に素直に生きる、天衣無縫の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="tutorial_guide/amaterasu-chibi-01a4da0b3506.webp" alt="アマテラスのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>アマテラス</b><div class="manual-kami-difficulty">難易度 ★</div><p>慈愛をもって接する、慈悲深厚の世界を目指すカミ。</p></div></article>
-              <article class="manual-kami"><figure class="guide-chibi"><img src="kami_chibi/tsukuyomi-chibi.webp" alt="ツクヨミのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b>ツクヨミ</b><div class="manual-kami-difficulty">難易度 ★★★★</div><p>統制された生命だけの、静寂閑雅の世界を目指すカミ。</p></div></article>
-              <article v-if="manualOrochiRevealed" class="manual-kami manual-kami-secret"><figure class="guide-chibi"><img src="kami_chibi/yamata-no-orochi-chibi.webp" alt="ヤマタノオロチのちびキャラ" width="120" height="148" loading="lazy" decoding="async" draggable="false"></figure><div><b ref="manualOrochiTitle" tabindex="-1">ヤマタノオロチ</b><div class="manual-kami-difficulty">難易度 ★</div><p>龍こそ真の支配者とする、龍の世界を目指す邪なる存在。</p><button class="manual-kami-hide" @click="manualHideOrochi">隠す</button></div></article>
-              <button v-else ref="manualOrochiReveal" type="button" class="manual-kami manual-kami-hidden" aria-label="隠しカミを表示" @click="manualRequestOrochi"><span class="manual-kami-mystery" aria-hidden="true">？</span><span class="manual-kami-hidden-copy"><b>？？？</b><span>隠しカミ<br>クリックして表示</span></span></button>
-            </div>
-            <h3>オンライン操作のショートカット</h3>
+            <h2>操作のショートカット</h2>
             <div class="manual-table-wrap"><table class="manual-table"><tbody><tr><th>Space / Enter</th><td>ターン終了</td></tr><tr><th>Z</th><td>一手戻る（Undo）</td></tr><tr><th>L</th><td>バトルログを表示</td></tr><tr><th>Q / E</th><td>カーソルを当てたフィールドカードのタップ状態を切り替え</td></tr><tr><th>Esc</th><td>開いているメニュー／モーダルを閉じる</td></tr></tbody></table></div>
           </section>
         </main>
@@ -7623,75 +7718,67 @@
       <div class="sp-body">
 
         <!-- ======= ロビー ======= -->
-        <div v-if="sb.phase === 'lobby'" class="sp-lobby">
+        <div v-if="sb.phase === 'lobby'" class="sp-lobby lobby-split">
           <div>
             <h3>プレイヤー名</h3>
             <input class="sp-input" v-model="sb.myName" placeholder="名前を入力（任意）" maxlength="20">
           </div>
 
-          <!-- 部屋を立てる -->
-          <div>
-            <h3>部屋を立てる</h3>
-            <label class="cpu-auto-play-toggle">
-              <input type="checkbox" v-model="sbCreatePublic">
-              この部屋を公開する（見知らぬ相手も一覧・ランダムマッチから参加できます）
-            </label>
-            <button class="sp-btn sp-btn-create" @click="onCreateRoom"
-                    :disabled="sb.connecting">
-              {{ sb.connecting ? '接続中…' : '新しい部屋を作成' }}
-            </button>
-          </div>
-
-          <hr class="sp-divider">
-
-          <!-- 公開中の部屋一覧・ランダムマッチ -->
-          <div>
-            <h3>公開中の部屋から参加</h3>
-            <button v-if="!sbMatchToken" class="sp-btn sp-btn-join" :disabled="sb.connecting" @click="sbRandomMatch">
-              🎲 対戦相手を探す
-            </button>
-            <button v-else class="sp-btn" @click="sbCancelMatch">検索をキャンセル</button>
-            <div v-if="sbPublicRooms.length" class="gm-public-room-list" style="margin-top:10px;">
-              <div class="gm-public-room-title">公開中の部屋（{{ sbPublicRooms.length }}件）</div>
-              <div v-for="r in sbPublicRooms.slice(0, sbPublicVisibleLimit)" :key="r.code" class="gm-public-room-row">
-                <span>{{ r.hostName }}の部屋</span>
-                <button class="gm-btn" :disabled="sb.connecting" @click="sbJoinPublic(r.code)">参加する</button>
+          <!-- 遊び方を先に選ぶ：左＝オンラインで相手と対戦、右＝CPUと対戦 -->
+          <div class="lobby-choices">
+            <section class="lobby-card">
+              <h3 class="lobby-card-title">相手と対戦</h3>
+              <p class="lobby-card-lead">オンラインで、ほかのプレイヤーと対戦します。</p>
+              <button v-if="!sbMatchToken" class="sp-btn sp-btn-join" :disabled="sb.connecting" @click="sbRandomMatch">
+                🎲 対戦相手を探す
+              </button>
+              <button v-else class="sp-btn" @click="sbCancelMatch">検索をキャンセル</button>
+              <div v-if="sbPublicRooms.length" class="gm-public-room-list">
+                <div class="gm-public-room-title">公開中の部屋（{{ sbPublicRooms.length }}件）</div>
+                <div v-for="r in sbPublicRooms.slice(0, sbPublicVisibleLimit)" :key="r.code" class="gm-public-room-row">
+                  <span>{{ r.hostName }}の部屋</span>
+                  <button class="gm-btn" :disabled="sb.connecting" @click="sbJoinPublic(r.code)">参加する</button>
+                </div>
+                <button v-if="sbPublicHasMore" class="gm-btn gm-btn-ghost" :disabled="sbPublicLoading" @click="sbLoadMorePublic">{{ sbPublicLoading ? '読込中…' : 'さらに表示' }}</button>
               </div>
-              <button v-if="sbPublicHasMore" class="gm-btn gm-btn-ghost" :disabled="sbPublicLoading" @click="sbLoadMorePublic">{{ sbPublicLoading ? '読込中…' : 'さらに表示' }}</button>
-            </div>
-            <div v-else style="font-size:11px; color:#9aa; margin-top:6px;">現在公開中の部屋はありません</div>
-          </div>
+              <div v-else class="lobby-card-note">現在公開中の部屋はありません</div>
 
-          <hr class="sp-divider">
+              <div class="lobby-sub">
+                <h4 class="lobby-sub-title">部屋を作って相手を待つ</h4>
+                <label class="cpu-auto-play-toggle">
+                  <input type="checkbox" v-model="sbCreatePublic">
+                  この部屋を公開する（部屋コードを知らない相手も、一覧や「対戦相手を探す」から参加できます）
+                </label>
+                <button class="sp-btn sp-btn-create" @click="onCreateRoom" :disabled="sb.connecting">
+                  {{ sb.connecting ? '接続中…' : '新しい部屋を作成' }}
+                </button>
+              </div>
 
-          <!-- 既存の部屋に入る -->
-          <div>
-            <h3>部屋に入る</h3>
-            <input class="sp-input" v-model="sb.joinCode"
-                   placeholder="部屋コード（6文字）" maxlength="6"
-                   style="text-transform:uppercase; letter-spacing:0.15em; margin-bottom:8px;">
-            <button class="sp-btn sp-btn-join" @click="onJoinRoom"
-                    :disabled="sb.connecting || sb.joinCode.length < 4">
-              {{ sb.connecting ? '接続中…' : '入室する' }}
-            </button>
-          </div>
+              <div class="lobby-sub">
+                <h4 class="lobby-sub-title">部屋コードで入る</h4>
+                <div class="lobby-join-row">
+                  <input class="sp-input" v-model="sb.joinCode"
+                         placeholder="部屋コード（6文字）" maxlength="6"
+                         style="text-transform:uppercase; letter-spacing:0.15em;">
+                  <button class="sp-btn sp-btn-join" @click="onJoinRoom"
+                          :disabled="sb.connecting || sb.joinCode.length < 4">
+                    {{ sb.connecting ? '接続中…' : '入室する' }}
+                  </button>
+                </div>
+              </div>
+            </section>
 
-          <hr class="sp-divider">
-
-          <!-- ソロテスト -->
-          <div>
-            <h3>ソロテスト</h3>
-            <label class="cpu-auto-play-toggle">
-              <input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay">
-              CPUが自律して行動する（OFF＝従来通り待機のみ）
-            </label>
-            <button class="sp-btn sp-btn-solo" @click="sbSoloStart"
-                    :disabled="sb.connecting">
-              🤖 CPUと開始（ソロテスト）
-            </button>
-            <div style="font-size:11px; color:#9aa; margin-top:6px; text-align:center;">
-              相手をCPUにして1人で動作確認できます
-            </div>
+            <section class="lobby-card lobby-card-cpu">
+              <h3 class="lobby-card-title">CPUと対戦</h3>
+              <p class="lobby-card-lead">CPUを相手に、1人で遊べます。パック選択からCPUと交互に進めます。</p>
+              <button class="sp-btn sp-btn-solo" @click="sbSoloStart" :disabled="sb.connecting">
+                🤖 CPUと対戦を始める
+              </button>
+              <label class="cpu-auto-play-toggle lobby-cpu-toggle">
+                <input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay">
+                CPUが自分でカードを使い、攻撃する（オフにすると、CPUは何もせずに手番を返します）
+              </label>
+            </section>
           </div>
 
           <div v-if="sb.error" style="color:#f88; font-size:13px; text-align:center;">{{ sb.error }}</div>
@@ -7882,7 +7969,7 @@
           <div v-if="sb.tempKami && sb.tempKami.type === 'ヤマタノオロチ' && sbOrochiBonus"
                class="sp-orochi-bonus-bar">
             <div class="sp-orochi-bonus-label">
-              シールド戦限定：このカミを選択するとデッキに自動追加されます
+              星紡ぎ戦限定：このカミを選択するとデッキに自動追加されます
             </div>
             <div class="sp-orochi-bonus-card">
               <div class="sp-orochi-bonus-thumb"
@@ -7959,68 +8046,66 @@
 
       <div class="sp-body">
         <!-- ======= ルーム未作成：ロビーフォーム ======= -->
-        <div v-if="!cb.roomCode" class="sp-lobby">
+        <div v-if="!cb.roomCode" class="sp-lobby lobby-split">
           <div>
             <h3>プレイヤー名</h3>
             <input class="sp-input" v-model="cb.myName" placeholder="名前を入力（任意）" maxlength="20">
           </div>
 
-          <div>
-            <h3>部屋を立てる</h3>
-            <label class="cpu-auto-play-toggle">
-              <input type="checkbox" v-model="cbCreatePublic">
-              この部屋を公開する（見知らぬ相手も一覧・ランダムマッチから参加できます）
-            </label>
-            <button class="sp-btn sp-btn-create" @click="cbCreateRoom" :disabled="cb.connecting">
-              {{ cb.connecting ? '接続中…' : '新しい部屋を作成' }}
-            </button>
-          </div>
-
-          <hr class="sp-divider">
-
-          <div>
-            <h3>公開中の部屋から参加</h3>
-            <button v-if="!cbMatchToken" class="sp-btn sp-btn-join" :disabled="cb.connecting" @click="cbRandomMatch">
-              🎲 対戦相手を探す
-            </button>
-            <button v-else class="sp-btn" @click="cbCancelMatch">検索をキャンセル</button>
-            <div v-if="cbPublicRooms.length" class="gm-public-room-list" style="margin-top:10px;">
-              <div class="gm-public-room-title">公開中の部屋（{{ cbPublicRooms.length }}件）</div>
-              <div v-for="r in cbPublicRooms.slice(0, cbPublicVisibleLimit)" :key="r.code" class="gm-public-room-row">
-                <span>{{ r.hostName }}の部屋</span>
-                <button class="gm-btn" :disabled="cb.connecting" @click="cbJoinPublic(r.code)">参加する</button>
+          <!-- 遊び方を先に選ぶ：左＝オンラインで相手と対戦、右＝CPUと対戦 -->
+          <div class="lobby-choices">
+            <section class="lobby-card">
+              <h3 class="lobby-card-title">相手と対戦</h3>
+              <p class="lobby-card-lead">オンラインで、ほかのプレイヤーと対戦します。</p>
+              <button v-if="!cbMatchToken" class="sp-btn sp-btn-join" :disabled="cb.connecting" @click="cbRandomMatch">
+                🎲 対戦相手を探す
+              </button>
+              <button v-else class="sp-btn" @click="cbCancelMatch">検索をキャンセル</button>
+              <div v-if="cbPublicRooms.length" class="gm-public-room-list">
+                <div class="gm-public-room-title">公開中の部屋（{{ cbPublicRooms.length }}件）</div>
+                <div v-for="r in cbPublicRooms.slice(0, cbPublicVisibleLimit)" :key="r.code" class="gm-public-room-row">
+                  <span>{{ r.hostName }}の部屋</span>
+                  <button class="gm-btn" :disabled="cb.connecting" @click="cbJoinPublic(r.code)">参加する</button>
+                </div>
+                <button v-if="cbPublicHasMore" class="gm-btn gm-btn-ghost" :disabled="cbPublicLoading" @click="cbLoadMorePublic">{{ cbPublicLoading ? '読込中…' : 'さらに表示' }}</button>
               </div>
-              <button v-if="cbPublicHasMore" class="gm-btn gm-btn-ghost" :disabled="cbPublicLoading" @click="cbLoadMorePublic">{{ cbPublicLoading ? '読込中…' : 'さらに表示' }}</button>
-            </div>
-            <div v-else style="font-size:11px; color:#9aa; margin-top:6px;">現在公開中の部屋はありません</div>
-          </div>
+              <div v-else class="lobby-card-note">現在公開中の部屋はありません</div>
 
-          <hr class="sp-divider">
+              <div class="lobby-sub">
+                <h4 class="lobby-sub-title">部屋を作って相手を待つ</h4>
+                <label class="cpu-auto-play-toggle">
+                  <input type="checkbox" v-model="cbCreatePublic">
+                  この部屋を公開する（部屋コードを知らない相手も、一覧や「対戦相手を探す」から参加できます）
+                </label>
+                <button class="sp-btn sp-btn-create" @click="cbCreateRoom" :disabled="cb.connecting">
+                  {{ cb.connecting ? '接続中…' : '新しい部屋を作成' }}
+                </button>
+              </div>
 
-          <div>
-            <h3>部屋に入る</h3>
-            <input class="sp-input" v-model="cb.joinCode"
-                   placeholder="部屋コード（6文字）" maxlength="6"
-                   style="text-transform:uppercase; letter-spacing:0.15em; margin-bottom:8px;">
-            <button class="sp-btn sp-btn-join" @click="cbJoinRoom" :disabled="cb.connecting || cb.joinCode.length < 4">
-              {{ cb.connecting ? '接続中…' : '入室する' }}
-            </button>
-          </div>
+              <div class="lobby-sub">
+                <h4 class="lobby-sub-title">部屋コードで入る</h4>
+                <div class="lobby-join-row">
+                  <input class="sp-input" v-model="cb.joinCode"
+                         placeholder="部屋コード（6文字）" maxlength="6"
+                         style="text-transform:uppercase; letter-spacing:0.15em;">
+                  <button class="sp-btn sp-btn-join" @click="cbJoinRoom" :disabled="cb.connecting || cb.joinCode.length < 4">
+                    {{ cb.connecting ? '接続中…' : '入室する' }}
+                  </button>
+                </div>
+              </div>
+            </section>
 
-          <hr class="sp-divider">
-
-          <div>
-            <h3>ソロプレイ</h3>
-            <select class="sp-input" v-model="cb.soloCpuDeckId" style="margin-bottom:8px;">
-              <option value="">🎲 CPUのデッキ：ランダム</option>
-              <option v-for="sd in cbStructureDecks" :key="sd.id" :value="sd.id">CPUのデッキ：{{ sd.name }}</option>
-            </select>
-            <button class="sp-btn sp-btn-solo" @click="cbSoloStart" :disabled="cb.connecting">
-              🤖 CPUと開始（ソロプレイ）
-            </button>
-            <div style="font-size:11px; color:#9aa; margin-top:6px; text-align:center;">
-              相手をCPUにして1人で動作確認できます（CPUのデッキ・カミはストラクチャーデッキから選べます）
-            </div>
+            <section class="lobby-card lobby-card-cpu">
+              <h3 class="lobby-card-title">CPUと対戦</h3>
+              <p class="lobby-card-lead">CPUを相手に、1人で遊べます。CPUは構築済みデッキ（ストラクチャーデッキ）とそのカミを使います。</p>
+              <select class="sp-input" v-model="cb.soloCpuDeckId">
+                <option value="">🎲 CPUのデッキ：ランダム</option>
+                <option v-for="sd in cbStructureDecks" :key="sd.id" :value="sd.id">CPUのデッキ：{{ sd.name }}</option>
+              </select>
+              <button class="sp-btn sp-btn-solo" @click="cbSoloStart" :disabled="cb.connecting">
+                🤖 CPUと対戦を始める
+              </button>
+            </section>
           </div>
 
           <div v-if="cb.error" style="color:#f88; font-size:13px; text-align:center;">{{ cb.error }}</div>
@@ -8134,27 +8219,35 @@
            :style="{ left: l.x + 'px', top: l.y + 'px', width: l.length + 'px', transform: 'rotate(' + l.angle + 'deg)', '--link-ms': l.duration + 'ms' }"></div>
       <div class="battle-header">
       <button class="battle-back-btn" @click="battleReturn">◀ {{ battleReturnLabel }}</button>
-      <h2>⚔ 対戦画面</h2>
+      <!-- 見出しは読み上げ用にのみ残す（「◀ 戻る」と対戦カードの表示で画面は分かるため、見た目の重複を避ける） -->
+      <h2 class="sr-only">対戦画面</h2>
       <span class="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {{ battleView.result ? '対戦終了' : (battleView.activeSide === 'self' ? 'あなたのターンです' : '相手のターンです') }}
       </span>
       <span class="battle-matchup">{{ battleContext.selfName }} vs {{ battleContext.oppName }}</span>
       <span class="battle-phase">{{ battleContext.round ? 'ラウンド' + battleContext.round : battleContext.modeLabel }}</span>
-      <span class="battle-setup-note">マリガン 自分{{ battleContext.selfMulligans }}回/相手{{ battleContext.oppMulligans }}回</span>
-      <!-- 観戦モード表示（書き込み不可・両者手札全公開） -->
-      <span v-if="battleNet.on && battleNet.spectating" class="battle-sync-status ready" title="観戦モード：操作はできません（両者の手札が全公開されています）">
-        🔍 観戦中 <span style="opacity:.7;margin-left:6px;">[コード: {{ battleNet.code }}]</span>
-        <span v-if="battleNet.lastReceivedAt" style="opacity:.6;margin-left:6px;">↓ {{ battleNetReceivedAgo }}</span>
-      </span>
-      <!-- オンライン同期ステータス（対戦テストモードのみ表示） -->
-      <span v-if="battleNet.on && !battleNet.spectating" class="battle-sync-status" role="status" aria-live="polite"
-            :class="battleNetHealth.kind" :title="battleNetHealth.detail || ''">
-        <span class="battle-sync-dot"></span> {{ battleNetHealth.label }}
-        <span style="opacity:.7;margin-left:6px;">[コード: {{ battleNet.code }} / 席{{ battleNet.mySeat }}]</span>
-        <span v-if="battleNet.lastPublishedAt" style="opacity:.6;margin-left:6px;">↑ {{ battleNetPublishedAgo }}</span>
-        <span v-if="battleNet.lastReceivedAt" style="opacity:.6;margin-left:6px;">↓ {{ battleNetReceivedAgo }}</span>
-        <span v-if="battleNet.lastRevision" style="opacity:.6;margin-left:6px;">rev.{{ battleNet.lastRevision }}</span>
-      </span>
+      <!-- 観戦中・通信状態は常に表示し、コード・送受信時刻・revision は押したときだけ開く「通信の詳細」へまとめる -->
+      <div v-if="battleNet.on" class="battle-header-sound-wrap">
+        <button type="button" class="battle-sync-status battle-sync-detail-btn" :class="battleNet.spectating ? 'ready' : battleNetHealth.kind"
+                :title="battleNet.spectating ? '観戦モード：操作はできません（両者の手札が全公開されています）' : (battleNetHealth.detail || '')"
+                :aria-expanded="battleNetDetailOpen ? 'true' : 'false'" aria-label="通信の詳細を開く"
+                @click.stop="_sfxPlay('cancel'); battleToggleHeaderPanel('battleNetDetailOpen')">
+          <span v-if="battleNet.spectating">🔍 観戦中</span>
+          <span v-else role="status" aria-live="polite"><span class="battle-sync-dot"></span> {{ battleNetHealth.label }}</span>
+          <span class="battle-sync-caret" aria-hidden="true">▾</span>
+        </button>
+        <div v-if="battleNetDetailOpen" class="global-sound-popover battle-header-sound-popover battle-net-detail" @click.stop>
+          <div class="battle-net-detail-title">通信の詳細</div>
+          <dl>
+            <dt>コード</dt><dd>{{ battleNet.code }}</dd>
+            <template v-if="!battleNet.spectating"><dt>席</dt><dd>{{ battleNet.mySeat }}</dd></template>
+            <template v-if="!battleNet.spectating"><dt>送信</dt><dd>{{ battleNet.lastPublishedAt ? battleNetPublishedAgo : '—' }}</dd></template>
+            <dt>受信</dt><dd>{{ battleNet.lastReceivedAt ? battleNetReceivedAgo : '—' }}</dd>
+            <template v-if="!battleNet.spectating"><dt>revision</dt><dd>{{ battleNet.lastRevision || '—' }}</dd></template>
+          </dl>
+          <p v-if="!battleNet.spectating && battleNetHealth.detail" class="battle-net-detail-note">{{ battleNetHealth.detail }}</p>
+        </div>
+      </div>
       <span v-if="battleNet.on && battleNet.syncWarning" class="battle-sync-status waiting" role="status">
         ⚠️ {{ battleNet.syncWarning }}
       </span>
@@ -8179,7 +8272,7 @@
       <!-- SE/BGM音量設定：フローティング版だと降参ボタン等と重なるため、対戦画面ではヘッダー内に配置する -->
       <div class="battle-header-sound-wrap">
         <transition name="bgm-now-fade"><span v-if="bgmNowPlaying" :key="bgmNowPlaying.id" class="bgm-current-name" :title="bgmNowPlaying.name" role="status" aria-live="polite">♪ {{ bgmNowPlaying.name }}</span></transition>
-        <button class="battle-undo-btn" @click.stop="_sfxPlay('cancel'); soundSettingsOpen = !soundSettingsOpen" title="音量設定" aria-label="音量と演出設定を開く"><span class="ui-icon ui-icon-volume" aria-hidden="true"></span></button>
+        <button class="battle-undo-btn" @click.stop="_sfxPlay('cancel'); battleToggleHeaderPanel('soundSettingsOpen')" title="音量設定" aria-label="音量と演出設定を開く"><span class="ui-icon ui-icon-volume" aria-hidden="true"></span></button>
         <div v-if="soundSettingsOpen" class="global-sound-popover battle-header-sound-popover" @click.stop>
           <div class="global-sound-row">
             <span class="global-sound-label">SE音量</span>
@@ -8215,7 +8308,11 @@
         </div>
       </div>
       <div class="battle-header-sound-wrap">
-        <button class="battle-undo-btn" @click.stop="_sfxPlay('cancel'); turnTimerSettingsOpen = !turnTimerSettingsOpen" title="ターン経過時間の設定" aria-label="ターン時間設定を開く">⏱</button>
+        <button class="battle-undo-btn battle-header-icon-btn" :class="{ 'is-open': turnTimerSettingsOpen }" :aria-expanded="turnTimerSettingsOpen ? 'true' : 'false'"
+                @click.stop="_sfxPlay('cancel'); battleToggleHeaderPanel('turnTimerSettingsOpen')" title="ターン経過時間の設定" aria-label="ターン時間設定を開く">
+          <!-- design_assets/battle-ui-icons-semantic-v3/timer.svg をインライン化（色は currentColor） -->
+          <svg class="battle-header-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M25 7h14M32 7v8"/><circle cx="32" cy="37" r="21"/><path d="M32 37V24M32 37l10 7"/></svg>
+        </button>
         <div v-if="turnTimerSettingsOpen" class="global-sound-popover battle-header-sound-popover" @click.stop>
           <div class="global-sound-row">
             <label class="battle-turn-timer-toggle">
@@ -8231,8 +8328,61 @@
           </div>
         </div>
       </div>
-      <button class="battle-undo-btn" @click="battleOpenLogModal('log')" title="バトルログを表示" aria-label="バトルログを開く">
-        📜 バトルログ
+      <!-- 手動調整：ライフ・天力／封印・マナの増減ボタンは盤面に常時並べず、ここから開くパネルにまとめる。
+           チュートリアル中と観戦中は手動調整できないため、入口ごと出さない。
+           上限に達していてもボタンは押せるままにする（増加を試みたこと自体で発火する天力トリガーがあるため） -->
+      <div v-if="!tutorial && !battleNet.spectating" class="battle-header-sound-wrap">
+        <button class="battle-undo-btn battle-header-icon-btn" :class="{ 'is-open': battleAdjustOpen }" :aria-expanded="battleAdjustOpen ? 'true' : 'false'"
+                @click.stop="_sfxPlay('cancel'); battleToggleHeaderPanel('battleAdjustOpen')" title="ライフ・天力・マナの手動調整" aria-label="手動調整を開く">
+          <!-- design_assets/battle-ui-icons-semantic-v3/adjustment.svg をインライン化（色は currentColor） -->
+          <svg class="battle-header-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 9v46M44 9v46"/><path d="M12 23h16v9H12zM36 36h16v9H36z" fill="currentColor"/></svg>
+        </button>
+        <div v-if="battleAdjustOpen" class="global-sound-popover battle-header-sound-popover battle-adjust-panel" role="group" aria-labelledby="battle-adjust-title" @click.stop>
+          <div id="battle-adjust-title" class="battle-adjust-title">手動調整（自分）</div>
+          <div class="battle-adjust-row life">
+            <span class="battle-adjust-name">ライフ</span>
+            <span class="battle-adjust-value">{{ battleStatNum('self','life') }}<small> / {{ battleView.self.lifeMax }}</small></span>
+            <span class="battle-adjust-btns">
+              <button type="button" aria-label="ライフを1減らす" @click="battleStat('self','life',-1)">−</button>
+              <button type="button" aria-label="ライフを1増やす" @click="battleStat('self','life',1)">＋</button>
+            </span>
+          </div>
+          <div class="battle-adjust-row life sub">
+            <span class="battle-adjust-name">最大ライフ<small>上限10</small></span>
+            <span class="battle-adjust-value">{{ battleView.self.lifeMax }}</span>
+            <span class="battle-adjust-btns">
+              <button type="button" aria-label="最大ライフを1減らす" @click="battleStat('self','lifeMax',-1)">▽</button>
+              <button type="button" aria-label="最大ライフを1増やす（上限10）" @click="battleStat('self','lifeMax',1)">△</button>
+            </span>
+          </div>
+          <div class="battle-adjust-row" :class="battleViewIsOrochi('self') ? 'seal' : 'tenryoku'">
+            <span class="battle-adjust-name">{{ battleViewIsOrochi('self') ? '封印' : '天力' }}<small>上限{{ battleViewIsOrochi('self') ? 8 : 10 }}</small></span>
+            <span class="battle-adjust-value">{{ battleViewIsOrochi('self') ? battleStatNum('self','seal') : battleStatNum('self','tenryoku') }}</span>
+            <span class="battle-adjust-btns">
+              <button type="button" :aria-label="(battleViewIsOrochi('self') ? '封印' : '天力') + 'を1減らす'" @click="battleStat('self', battleViewIsOrochi('self') ? 'seal' : 'tenryoku', -1)">−</button>
+              <button type="button" :aria-label="(battleViewIsOrochi('self') ? '封印' : '天力') + 'を1増やす'" @click="battleStat('self', battleViewIsOrochi('self') ? 'seal' : 'tenryoku', 1)">＋</button>
+            </span>
+          </div>
+          <div class="battle-adjust-row mana">
+            <span class="battle-adjust-name">使用可能マナ</span>
+            <span class="battle-adjust-value">{{ battleStatNum('self','mana') }}<small> / {{ battleView.self.manaMax }}</small></span>
+            <span class="battle-adjust-btns">
+              <button type="button" aria-label="使用可能マナを1減らす" @click="battleStat('self','mana',-1)">−</button>
+              <button type="button" aria-label="使用可能マナを1増やす" @click="battleStat('self','mana',1)">＋</button>
+            </span>
+          </div>
+          <div class="battle-adjust-row mana sub">
+            <span class="battle-adjust-name">最大マナ<small>上限10</small></span>
+            <span class="battle-adjust-value">{{ battleView.self.manaMax }}</span>
+            <span class="battle-adjust-btns">
+              <button type="button" aria-label="最大マナを1減らす" @click="battleStat('self','manaMax',-1)">▽</button>
+              <button type="button" aria-label="最大マナを1増やす（上限10）" @click="battleStat('self','manaMax',1)">△</button>
+            </span>
+          </div>
+        </div>
+      </div>
+      <button class="battle-undo-btn battle-log-btn" @click="battleOpenLogModal('log')" title="バトルログを表示" aria-label="バトルログを開く">
+        <span class="ui-icon ui-icon-battle-record" aria-hidden="true"></span> バトルログ
       </button>
       <button class="battle-undo-btn" @click="battleUndo" :disabled="!battleCanUndo"
               :title="battleUndoDisabledReason">
@@ -8571,10 +8721,7 @@
                   {{ battleViewIsOrochi('self') ? battleStatNum('self','seal') : battleStatNum('self','tenryoku') }}
                   <span v-if="battleViewPops[battleViewIsOrochi('self') ? 'selfSeal' : 'selfTenryoku']" class="stat-pop" :class="battleViewPops[battleViewIsOrochi('self') ? 'selfSeal' : 'selfTenryoku'].cls">{{ battleViewPops[battleViewIsOrochi('self') ? 'selfSeal' : 'selfTenryoku'].text }}</span>
                 </div>
-                <div class="orb-value-controls">
-                  <button @click="battleStat('self', battleViewIsOrochi('self') ? 'seal' : 'tenryoku', -1)">−</button>
-                  <button @click="battleStat('self', battleViewIsOrochi('self') ? 'seal' : 'tenryoku', 1)">+</button>
-                </div>
+                <!-- 手動の増減はヘッダーの「手動調整」パネルへ移した -->
               </div>
               <!-- 中央：カミ（X軸基準、神技段階で枠色変化） -->
               <div class="kami-portrait"
@@ -8613,21 +8760,13 @@
                   <div v-for="p in battleShatterParticles.particles" :key="p.id" class="kami-shatter-particle" :style="p.style"></div>
                 </div>
               </div>
-              <!-- 右：ライフ（赤丸の右に △▽、下に - +） -->
+              <!-- 右：ライフ（手動の増減・最大値の変更はヘッダーの「手動調整」パネルへ移した） -->
               <div class="hud-orb">
                 <span class="orb-label">ライフ</span>
                 <div class="life-row">
                   <div class="orb-disc life stat-pop-wrap" :class="{ 'life-warning': battleLifeWarning('self') }">{{ battleStatNum('self','life') }}<small>/ {{ battleView.self.lifeMax }}</small>
                     <span v-if="battleViewPops.selfLife" :key="battleViewPops.selfLife.id" class="stat-pop" :class="battleViewPops.selfLife.cls">{{ battleViewPops.selfLife.text }}</span>
                   </div>
-                  <div class="orb-max-controls">
-                    <button title="最大ライフを増やす（上限10）" @click="battleStat('self','lifeMax',1)">△</button>
-                    <button title="最大ライフを減らす" @click="battleStat('self','lifeMax',-1)">▽</button>
-                  </div>
-                </div>
-                <div class="orb-value-controls">
-                  <button @click="battleStat('self','life',-1)">−</button>
-                  <button @click="battleStat('self','life',1)">+</button>
                 </div>
               </div>
             </div>
@@ -8676,20 +8815,17 @@
         <!-- 相手 デッキ・墓地・崩壊 -->
         <div class="dgc-stack">
           <div class="dgc-cell dgc-deck zone-deck disabled" title="相手のデッキは操作できません">
-            <div class="dgc-icon dgc-deck-icon">
-              <div class="ddi-card ddi-card-1"></div>
-              <div class="ddi-card ddi-card-2"></div>
-              <div class="ddi-card ddi-card-3"></div>
-            </div>
+            <svg class="dgc-icon dgc-deck-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none">
+              <g stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 7h29a3 3 0 0 1 3 3v39"/><path d="M17 12h29a3 3 0 0 1 3 3v39"/><rect x="10" y="17" width="33" height="40" rx="3"/></g>
+            </svg>
             <div class="dgc-info">
               <span class="dgc-name">デッキ</span>
               <span class="dgc-count">{{ battleView.opp.deckCount }}</span>
             </div>
           </div>
           <div class="dgc-cell zone-graveyard opp-graveyard-drop" :class="{ 'graveyard-glow': battleView.opp._glowActive }" title="相手の墓地は閲覧のみ" @click="battleOpenZone('opp','graveyard')">
-            <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
-              <path d="M 8 41 H 32 V 46 H 8 Z"/>
-              <path d="M 12 41 V 19 a 8 8 0 0 1 16 0 V 41 Z"/>
+            <svg class="dgc-icon dgc-graveyard-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none">
+              <g stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 41V13l6-6h6l6 6v28z"/><path d="M17 43h30v7H17z"/><path d="M10 51h44v7H10z"/></g>
             </svg>
             <div class="dgc-info">
               <span class="dgc-name">墓地</span>
@@ -8697,17 +8833,9 @@
             </div>
           </div>
           <div class="dgc-cell zone-crumbled opp-crumbled-drop" title="相手の崩壊は閲覧のみ" @click="battleOpenZone('opp','crumbled')">
-            <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
-              <ellipse cx="17" cy="24" rx="13" ry="14"/>
-              <ellipse cx="13" cy="24" rx="2.5" ry="3.5" fill="#1a2030"/>
-              <ellipse cx="21" cy="24" rx="2.5" ry="3.5" fill="#1a2030"/>
-              <path d="M 17 30 L 15.5 34 L 18.5 34 Z" fill="#1a2030"/>
-              <rect x="28" y="10" width="3" height="3"/>
-              <rect x="32" y="14" width="2.5" height="2.5"/>
-              <rect x="31" y="20" width="3" height="3"/>
-              <rect x="35" y="11" width="2.5" height="2.5"/>
-              <rect x="36" y="18" width="3" height="3"/>
-              <rect x="33" y="26" width="2.5" height="2.5"/>
+            <svg class="dgc-icon dgc-crumbled-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none">
+              <g stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 9h26v11l-5 5 5 6-6 7 4 5v11H11a3 3 0 0 1-3-3V12a3 3 0 0 1 3-3z"/></g>
+              <g fill="currentColor"><path d="m45 13 5 2-2 5-5-2z"/><path d="m48 27 6 1-2 6-6-1z"/><path d="m44 44 5 4-4 5-5-4z"/></g>
             </svg>
             <div class="dgc-info">
               <span class="dgc-name">崩壊</span>
@@ -8740,10 +8868,6 @@
             <span v-for="n in Math.max(battleView.self.manaMax, battleView.self.mana)" :key="'sm'+n" class="mana-orb" :class="{ available: n <= battleView.self.mana, bonus: n > battleView.self.manaMax && n <= battleView.self.mana }"></span>
             <span v-if="battleView.self.manaMax === 0 && battleView.self.mana === 0" class="mana-empty">0</span>
           </div>
-          <div class="mana-controls">
-            <div><span>最大</span><div class="mana-control-group"><button @click="battleStat('self','manaMax',-1)">▽</button><button @click="battleStat('self','manaMax',1)">△</button></div></div>
-            <div><span>使用可能</span><div class="mana-control-group"><button @click="battleStat('self','mana',-1)">−</button><button @click="battleStat('self','mana',1)">＋</button></div></div>
-          </div>
         </div>
 
         <!-- 自分 デッキ・墓地・崩壊 -->
@@ -8751,11 +8875,9 @@
           <div class="dgc-cell dgc-deck zone-deck self-deck-drop"
                @click="battleAskDrawConfirm('self')"
                @contextmenu.prevent="deckClick('self', $event)">
-            <div class="dgc-icon dgc-deck-icon">
-              <div class="ddi-card ddi-card-1"></div>
-              <div class="ddi-card ddi-card-2"></div>
-              <div class="ddi-card ddi-card-3"></div>
-            </div>
+            <svg class="dgc-icon dgc-deck-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none">
+              <g stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 7h29a3 3 0 0 1 3 3v39"/><path d="M17 12h29a3 3 0 0 1 3 3v39"/><rect x="10" y="17" width="33" height="40" rx="3"/></g>
+            </svg>
             <div class="dgc-info">
               <span class="dgc-name">デッキ</span>
               <span class="dgc-count">{{ battleView.self.deckCount }}</span>
@@ -8766,9 +8888,8 @@
                @dragover.prevent="battleUpdateDragOverZone($event); battleUpdateFieldAttackTarget($event)"
                @drop.prevent="battleFieldDragEnd($event)"
                @click="battleOpenZone('self','graveyard')">
-            <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
-              <path d="M 8 41 H 32 V 46 H 8 Z"/>
-              <path d="M 12 41 V 19 a 8 8 0 0 1 16 0 V 41 Z"/>
+            <svg class="dgc-icon dgc-graveyard-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none">
+              <g stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 41V13l6-6h6l6 6v28z"/><path d="M17 43h30v7H17z"/><path d="M10 51h44v7H10z"/></g>
             </svg>
             <div class="dgc-info">
               <span class="dgc-name">墓地</span>
@@ -8780,17 +8901,9 @@
                @dragover.prevent="battleUpdateFieldAttackTarget($event)"
                @drop.prevent="battleFieldDragEnd($event)"
                @click="battleOpenZone('self','crumbled')">
-            <svg class="dgc-icon" viewBox="0 0 40 50" fill="#e8d4a0">
-              <ellipse cx="17" cy="24" rx="13" ry="14"/>
-              <ellipse cx="13" cy="24" rx="2.5" ry="3.5" fill="#1a2030"/>
-              <ellipse cx="21" cy="24" rx="2.5" ry="3.5" fill="#1a2030"/>
-              <path d="M 17 30 L 15.5 34 L 18.5 34 Z" fill="#1a2030"/>
-              <rect x="28" y="10" width="3" height="3"/>
-              <rect x="32" y="14" width="2.5" height="2.5"/>
-              <rect x="31" y="20" width="3" height="3"/>
-              <rect x="35" y="11" width="2.5" height="2.5"/>
-              <rect x="36" y="18" width="3" height="3"/>
-              <rect x="33" y="26" width="2.5" height="2.5"/>
+            <svg class="dgc-icon dgc-crumbled-icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false" fill="none">
+              <g stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 9h26v11l-5 5 5 6-6 7 4 5v11H11a3 3 0 0 1-3-3V12a3 3 0 0 1 3-3z"/></g>
+              <g fill="currentColor"><path d="m45 13 5 2-2 5-5-2z"/><path d="m48 27 6 1-2 6-6-1z"/><path d="m44 44 5 4-4 5-5-4z"/></g>
             </svg>
             <div class="dgc-info">
               <span class="dgc-name">崩壊</span>
@@ -9393,7 +9506,7 @@
                   :disabled="battleWaitingForRematch" @click="battleRequestRematch">
             {{ battleWaitingForRematch ? '相手の応答を待っています…' : ((battleContext.returnView === 'shield' || battleContext.returnView === 'construct') ? '🔁 同じデッキで再戦する' : '🔁 もう一度対戦する') }}
           </button>
-          <button v-if="battleContext.returnView === 'shield'" @click="battleReturn">🎴 パック選択からやり直す（シールド戦のトップへ）</button>
+          <button v-if="battleContext.returnView === 'shield'" @click="battleReturn">🎴 パック選択からやり直す</button>
           <button v-else @click="battleReturn">{{ battleContext.returnView === 'top' ? 'トップへ戻る' : (battleContext.returnView === 'game' ? '次へ進む' : battleReturnLabel + 'へ戻る') }}</button>
         </div>
       </div>
@@ -9409,7 +9522,7 @@
           外伝 選別の儀（練習）<span class="gm-draft-set">束 {{ tutorialPick.packIndex + 1 }} / {{ tutorialPick.packs.length }}</span>
         </div>
         <div class="gm-draft-headright">
-          <span class="gm-draft-return-total tutorial-pick-soul" title="選んだカードの変換値の合計です">
+          <span class="gm-draft-return-total tutorial-pick-soul" title="選んだカードの返還値の合計です">
             <span class="gm-soul-icon">★</span>星魂の見込み <b>{{ tutorialPickSoul }}</b>
           </span>
           <span class="gm-draft-progress">あなたの取得 <b>{{ tutorialPick.picks.length }}</b> / {{ tutorialPick.packs.length }}</span>
@@ -9442,7 +9555,7 @@
                 <span v-for="reason in tutorialPickRecommendations.reasons[String(card.no)]" :key="reason" class="pick-assist-reason">{{ reason }}</span>
               </div>
               <div class="gm-pack-img" :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}">
-                <span class="gm-pack-return-overlay" title="このカードの変換値">
+                <span class="gm-pack-return-overlay" title="このカードの返還値">
                   <span class="gm-soul-icon">★</span><span>×</span><b>{{ Number(card.return) || 0 }}</b>
                 </span>
               </div>
@@ -9934,50 +10047,65 @@
 
       <!-- ===== メニュー ===== -->
       <div v-if="gs.view === 'menu'" class="gm-body gm-menu">
-        <p class="gm-lead">4人で「壱 神託の儀（カミ選択）」を行います。代表者が「セッションを作成」し、表示された6文字コードを他の3人が入力して参加します。</p>
+        <p class="gm-lead">4人で遊ぶモードです。オンラインで相手と対戦するか、CPUと対戦するかを選んでください。</p>
         <label class="gm-field">
           <span>あなたの名前（任意）</span>
           <input type="text" v-model="gs.myName" maxlength="12" placeholder="プレイヤー名">
         </label>
-        <div class="gm-menu-actions">
-          <label class="cpu-auto-play-toggle">
-            <input type="checkbox" v-model="gsCreatePublic">
-            このセッションを公開する（見知らぬ相手も一覧・ランダムマッチから参加できます）
-          </label>
-          <button class="gm-btn gm-btn-primary" :disabled="gs.connecting" @click="gsCreate">
-            {{ gs.connecting ? '通信中…' : 'セッションを作成' }}
-          </button>
-          <div class="gm-or">または</div>
-          <div class="gm-join-row">
-            <input type="text" v-model="gs.joinCode" maxlength="6"
-                   placeholder="コード(6文字)" class="gm-code-input"
-                   style="text-transform:uppercase;">
-            <button class="gm-btn" :disabled="gs.connecting" @click="gsJoin">コードで参加</button>
-          </div>
-          <button v-if="!gsMatchToken" class="gm-btn" :disabled="gs.connecting" @click="gsRandomMatch">
-            🎲 対戦相手を探す
-          </button>
-          <button v-else class="gm-btn" @click="gsCancelMatch">検索をキャンセル</button>
+        <!-- 遊び方を先に選ぶ：左＝オンラインで相手と対戦、右＝CPUと対戦 -->
+        <div class="lobby-choices">
+          <section class="lobby-card">
+            <h3 class="lobby-card-title">相手と対戦</h3>
+            <p class="lobby-card-lead">オンラインで、ほかのプレイヤーと4人で対戦します。2人しか集まらないときは、セッションを作った人が席3・4にCPUを追加できます。</p>
+            <button v-if="!gsMatchToken" class="gm-btn gm-btn-find" :disabled="gs.connecting" @click="gsRandomMatch">
+              🎲 対戦相手を探す
+            </button>
+            <button v-else class="gm-btn" @click="gsCancelMatch">検索をキャンセル</button>
+            <div v-if="gsPublicSessions.length" class="gm-public-room-list">
+              <div class="gm-public-room-title">公開中のセッション（{{ gsPublicSessions.length }}件）</div>
+              <div v-for="r in gsPublicSessions.slice(0, gsPublicVisibleLimit)" :key="r.code" class="gm-public-room-row">
+                <span>{{ r.hostName }}のセッション（{{ r.seatsFilled || 1 }}/4人）</span>
+                <button class="gm-btn" :disabled="gs.connecting" @click="gsJoinPublic(r.code)">参加する</button>
+              </div>
+              <button v-if="gsPublicHasMore" class="gm-btn gm-btn-ghost" :disabled="gsPublicLoading" @click="gsLoadMorePublic">{{ gsPublicLoading ? '読込中…' : 'さらに表示' }}</button>
+            </div>
+            <div v-else class="lobby-card-note">現在公開中のセッションはありません</div>
+
+            <div class="lobby-sub">
+              <h4 class="lobby-sub-title">セッションを作って相手を待つ</h4>
+              <label class="cpu-auto-play-toggle">
+                <input type="checkbox" v-model="gsCreatePublic">
+                このセッションを公開する（コードを知らない相手も、一覧や「対戦相手を探す」から参加できます）
+              </label>
+              <button class="gm-btn gm-btn-primary" :disabled="gs.connecting" @click="gsCreate">
+                {{ gs.connecting ? '通信中…' : 'セッションを作成' }}
+              </button>
+            </div>
+
+            <div class="lobby-sub">
+              <h4 class="lobby-sub-title">コードで参加する</h4>
+              <div class="gm-join-row">
+                <input type="text" v-model="gs.joinCode" maxlength="6"
+                       placeholder="コード(6文字)" class="gm-code-input"
+                       style="text-transform:uppercase;">
+                <button class="gm-btn" :disabled="gs.connecting" @click="gsJoin">参加する</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="lobby-card lobby-card-cpu">
+            <h3 class="lobby-card-title">CPUと対戦</h3>
+            <p class="lobby-card-lead">CPU3体と4人で対戦します。CPUの神託・選別・深化は自動で進みます。</p>
+            <button class="gm-btn gm-btn-solo" :disabled="gs.connecting" @click="gsSoloTest">
+              🤖 CPUと対戦を始める
+            </button>
+            <label class="cpu-auto-play-toggle lobby-cpu-toggle">
+              <input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay">
+              星戦でCPUが自分でカードを使い、攻撃する（オフにすると、CPUは何もせずに手番を返します）
+            </label>
+          </section>
         </div>
         <div v-if="gs.error" class="gm-error">{{ gs.error }}</div>
-        <div v-if="gsPublicSessions.length" class="gm-public-room-list">
-          <div class="gm-public-room-title">公開中のセッション（{{ gsPublicSessions.length }}件）</div>
-          <div v-for="r in gsPublicSessions.slice(0, gsPublicVisibleLimit)" :key="r.code" class="gm-public-room-row">
-            <span>{{ r.hostName }}のセッション（{{ r.seatsFilled || 1 }}/4人）</span>
-            <button class="gm-btn" :disabled="gs.connecting" @click="gsJoinPublic(r.code)">参加する</button>
-          </div>
-          <button v-if="gsPublicHasMore" class="gm-btn gm-btn-ghost" :disabled="gsPublicLoading" @click="gsLoadMorePublic">{{ gsPublicLoading ? '読込中…' : 'さらに表示' }}</button>
-        </div>
-        <div class="gm-solo-row">
-          <label class="cpu-auto-play-toggle">
-            <input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay">
-            CPUが自律して行動する（OFF＝従来通り待機のみ）
-          </label>
-          <button class="gm-btn gm-btn-solo" :disabled="gs.connecting" @click="gsSoloTest">
-            🤖 ソロテスト（CPU3体と開始）
-          </button>
-          <div class="gm-deepen-hint">動作確認用：あなたは席1。神託・ドラフト・深化はCPUが自動進行します。</div>
-        </div>
       </div>
 
       <!-- ===== ロビー ===== -->
@@ -11399,7 +11527,7 @@ const MODE_DETAIL_INFO = {
       { name: '選別の儀', text: '配られた束から1枚ずつ選び、カードを集めます。', repeat: true },
       { name: '深化の刻', text: '見識を使って、デッキを調整・強化します。', repeat: true },
       { name: '星戦', text: '組み合わせを変えながら、1対1で対戦します。', repeat: true },
-      { name: '終戦', text: '勝利点と、集めたカードの変換値を星魂として合計し、最終順位を決めます。' },
+      { name: '終戦', text: '勝利点と、集めたカードの返還値を星魂として合計し、最終順位を決めます。' },
     ],
     repeatNote: '選別の儀 → 深化の刻 → 星戦 を3回くり返します',
     note: 'CPUを加えれば、2人からでも開始できます。',
@@ -11477,7 +11605,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
   "learn": [
     "選別の儀",
     "星魂",
-    "変換値",
+    "返還値",
     "ユニークと基本",
     "龍のカード",
     "理念との同調",
@@ -11523,27 +11651,27 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "focus": "pickPack"
     },
     { "face": "serious",
-      "say": "創世決戦の順位は「星魂（せいこん）」で決まります。星戦に1回勝つごとに星魂10。それに加えて、集めたカードの「変換値」の合計も、終戦のときに星魂になるのです。",
+      "say": "創世決戦の順位は「星魂（せいこん）」で決まります。星戦に1回勝つごとに星魂10。それに加えて、集めたカードの「返還値」の合計も、終戦のときに星魂になるのです。",
       "focus": "pickSoul"
     },
     { "face": "serious",
-      "say": "カードにある、★のついた数字が「変換値」。0から2まであります。強さだけでなく、この数字もよく見てくださいね。",
+      "say": "カードにある、★のついた数字が「返還値」。0から2まであります。強さだけでなく、この数字もよく見てくださいね。",
       "focus": "pickReturn"
     },
     {
-      "say": "「平穏の祈り手」のような銀枠のカードは「基本カード」。カードプールに同じカードが2枚ずつあります。ユニークほど強くはありませんが、変換値は2。星魂をしっかり稼いでくれます。",
+      "say": "「平穏の祈り手」のような銀枠のカードは「基本カード」。カードプールに同じカードが2枚ずつあります。ユニークほど強くはありませんが、返還値は2。星魂をしっかり稼いでくれます。",
       "cards": [
         "pack:平穏の祈り手"
       ]
     },
     {
-      "say": "「慈愛の忍・イロハ」のような金枠のカードは「ユニークカード」。カードプールに1枚しかない、強力なカードです。そのかわり、変換値は1しかありません。",
+      "say": "「慈愛の忍・イロハ」のような金枠のカードは「ユニークカード」。カードプールに1枚しかない、強力なカードです。そのかわり、返還値は1しかありません。",
       "cards": [
         "pack:慈愛の忍・イロハ"
       ]
     },
     { "face": "troubled",
-      "say": "そして「猛き赤の眷属」のような「龍」のレガシー。とても強力で、星戦の勝利に大きく貢献してくれます。ですが変換値は0。星魂を1つも生まない、代償の大きな危険なカードなのです。",
+      "say": "そして「猛き赤の眷属」のような「龍」のレガシー。とても強力で、星戦の勝利に大きく貢献してくれます。ですが返還値は0。星魂を1つも生まない、代償の大きな危険なカードなのです。",
       "cards": [
         "pack:猛き赤の眷属"
       ]
@@ -11581,7 +11709,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "focus": "pickPack"
     },
     {
-      "task": "この束では、私の理念に同調する【守護】を持ち、変換値も2の「平穏の祈り手」を選んでみましょう。",
+      "task": "この束では、私の理念に同調する【守護】を持ち、返還値も2の「平穏の祈り手」を選んでみましょう。",
       "focus": "pickPack",
       "allow": {
         "pick": [
@@ -11591,7 +11719,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "done": vm => vm.tutorialPick && vm.tutorialPick.picks.some(c => vm.fullName(c).includes('平穏の祈り手'))
     },
     { "face": "joy",
-      "say": "変換値2が、そのまま星魂の見込みに加わりました。残りのカードは、隣の方へ渡されます。",
+      "say": "返還値2が、そのまま星魂の見込みに加わりました。残りのカードは、隣の方へ渡されます。",
       "focus": "pickSoul"
     },
     {
@@ -11604,14 +11732,14 @@ const TUTORIAL_PRACTICE = Object.freeze({
       ]
     },
     {
-      "say": "変換値は1と少し低めです。でも星戦に勝てば星魂10。強いカードで星戦を勝ち抜くのも、立派な作戦ですよ。",
+      "say": "返還値は1と少し低めです。でも星戦に勝てば星魂10。強いカードで星戦を勝ち抜くのも、立派な作戦ですよ。",
       "focus": "pickSoul",
       "cards": [
         "pack:平和を願う剣・アヤト"
       ]
     },
     {
-      "say": "同じ【守護】を持つ基本カードの「逢魔ヶ淵の渡し守」なら、変換値は2。こちらを選ぶ考え方もあります。どちらが正解ということはないのです。",
+      "say": "同じ【守護】を持つ基本カードの「逢魔ヶ淵の渡し守」なら、返還値は2。こちらを選ぶ考え方もあります。どちらが正解ということはないのです。",
       "cards": [
         "pack:逢魔ヶ淵の渡し守"
       ]
@@ -11630,7 +11758,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "action": "nextPack"
     },
     { "face": "serious",
-      "say": "最後の束です。龍の「昏き紫の眷属」は強力ですが、変換値は0。選ぶなら、星魂を手放してでも星戦の勝利を取りにいく覚悟が必要ですね。",
+      "say": "最後の束です。龍の「昏き紫の眷属」は強力ですが、返還値は0。選ぶなら、星魂を手放してでも星戦の勝利を取りにいく覚悟が必要ですね。",
       "cards": [
         "pack:昏き紫の眷属"
       ]
@@ -11648,7 +11776,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "done": vm => vm.tutorialPick && vm.tutorialPick.picks.length >= 3
     },
     { "face": "joy",
-      "say": "選び終わりました。選んだカードの変換値の合計が、今の星魂の見込みです。",
+      "say": "選び終わりました。選んだカードの返還値の合計が、今の星魂の見込みです。",
       "focus": "pickSoul"
     },
     { "face": "surprised",
@@ -11656,7 +11784,7 @@ const TUTORIAL_PRACTICE = Object.freeze({
       "focus": "pickPool"
     },
     {
-      "say": "また、各ラウンドの選別が終わると、デッキから数枚を無料で返還できます。返還したカードの変換値も、ちゃんと星魂として残りますよ。",
+      "say": "また、各ラウンドの選別が終わると、デッキから数枚を無料で返還できます。返還したカードの返還値も、ちゃんと星魂として残りますよ。",
       "focus": "pickPool"
     },
     { "face": "joy",
@@ -12032,7 +12160,7 @@ function splitTutorialPhrases(text) {
 const TUTORIAL_KEYWORDS = Object.freeze([
   '天力トリガー', '疲労ダメージ', '手札の上限', '山札切れ', '神攻力', '戦闘力', '創世神技', '神技', '神技', '神攻', '戦闘',
   'ライフ', 'マナ', '天力', 'コスト', 'タップ', 'アンタップ', 'マリガン', 'リロール', '進化', '昇華', '選定', '疾駆', '奇襲',
-  '守護', '不可侵', '墓地', '崩壊', '変換値', '星魂', '理念', 'ユニークカード', '基本カード', '勝利', '社の施し', 'オラクル',
+  '守護', '不可侵', '墓地', '崩壊', '返還値', '星魂', '理念', 'ユニークカード', '基本カード', '勝利', '社の施し', 'オラクル',
   '選別の儀', '深化の刻', '見識',
 ].sort((a, b) => b.length - a.length));
 function markTutorialKeywords(text) {
@@ -12595,6 +12723,7 @@ new Vue({
     kamiDexShowEffects: false,   // カミの効果は、たたんだ状態で開く
     kamiDexShowVoices: false,    // ボイスも、たたんだ状態で開く
     kamiDexShowChibis: false,    // ちびキャラ一覧も、たたんだ状態で開く
+    kamiDexShowSkills: false,    // 演出（神技・創世神技の再生）も、たたんだ状態で開く
     kamiDexZoomIndex: -1,        // 拡大表示中のちびキャラ・エモートの番号（一覧の並び順。-1＝閉じている）
     pickCardListKami: null,      // ピックガイドのおすすめカード一覧を開いているカミの番号
     genesisStoryReplay: false,   // カミ図鑑からOPを見返している（終わったら創世決戦へ進まず図鑑へ戻る）
@@ -12606,6 +12735,8 @@ new Vue({
     battleAnimationSpeed: loadStoredChoice('tsukuriyo_animationSpeed', ['normal','fast','minimal'], 'normal'),
     soundSettingsOpen: false,   // SE/BGM音量設定ポップオーバーの開閉（全画面共通）
     turnTimerSettingsOpen: false, // ターン経過時間設定ポップオーバーの開閉（対戦画面ヘッダー）
+    battleAdjustOpen: false,      // ライフ・天力・マナの手動調整パネルの開閉（対戦画面ヘッダー）
+    battleNetDetailOpen: false,   // 通信の詳細（コード・送受信時刻・revision）の開閉（対戦画面ヘッダー）
     bgmVolume: loadStoredVolume(BGM_VOLUME_STORAGE_KEY), // BGM音量（0〜1）。既定50%
     bgmNowPlaying: null, // 曲名の一時表示 { id, name }（BGMメニュー横に約4秒）
     bgmCurrentKey: null, // 現在再生中のBGMキー（BGM_FILESのキー）。null=未再生
@@ -13033,7 +13164,7 @@ new Vue({
       });
     },
     battleReturnLabel() {
-      if (this.battleContext.returnView === 'shield') return 'シールド戦';
+      if (this.battleContext.returnView === 'shield') return '星紡ぎ戦';
       if (this.battleContext.returnView === 'game') return '星戦';
       if (this.battleContext.returnView === 'construct') return '理念構築戦';
       if (this.battleContext.returnView === 'kamiDex') return 'カミ図鑑';
@@ -16145,7 +16276,7 @@ new Vue({
         }
       }
       this._battleInitialize({
-        source: 'shield', modeLabel: 'シールド戦', returnView: 'shield',
+        source: 'shield', modeLabel: '星紡ぎ戦', returnView: 'shield',
         selfName: selfInfo.name || this.sb.myName || '自分',
         oppName: oppInfo.name || '相手', firstSide, life: 10,
         selfDeck,
@@ -16527,7 +16658,7 @@ new Vue({
         for (let i = 0; i < this.deck[no]; i++) editedDeck.push(card);
       }
       this._battleInitialize({
-        source: 'shield', modeLabel: 'シールド戦', returnView: 'shield',
+        source: 'shield', modeLabel: '星紡ぎ戦', returnView: 'shield',
         selfName: selfInfo.name || this.sb.myName || '自分',
         oppName: oppInfo.name || '相手', firstSide, life: 10,
         selfDeck: editedDeck.length ? editedDeck : this.sbMyFinalDeck,
@@ -16550,7 +16681,7 @@ new Vue({
         for (let i = 0; i < this.deck[no]; i++) editedDeck.push(card);
       }
       this._battleInitialize({
-        source: 'shield', modeLabel: 'シールド戦', returnView: 'shield',
+        source: 'shield', modeLabel: '星紡ぎ戦', returnView: 'shield',
         selfName: this.sb.myName || '自分', oppName: '相手', firstSide, life: 10,
         selfDeck: editedDeck.length ? editedDeck : this.sbMyFinalDeck, oppDeck: this.sbOpponentFinalDeck,
         selfKami: this.sbMySelectedKami, oppKami: this.sbOpponentSelectedKami,
@@ -16633,7 +16764,7 @@ new Vue({
       // 対戦テスト/シールド戦/創世決戦のいずれも battleTables/{code}/{table}/state を
       // 共通の同期経路として使っているため、モードに応じてtableだけを切り替えれば観戦できる。
       const modeInput = (window.prompt(
-        '観戦するモードを番号で選んでください：\n1 = 対戦テスト\n2 = 星紡ぎ戦（シールド戦）\n3 = 創世決戦・卓1\n4 = 創世決戦・卓2\n5 = 理念構築戦',
+        '観戦するモードを番号で選んでください：\n1 = 対戦テスト\n2 = 星紡ぎ戦\n3 = 創世決戦・卓1\n4 = 創世決戦・卓2\n5 = 理念構築戦',
         '1'
       ) || '').trim();
       const tableMap = { '1': 'test', '2': 'shield', '3': 1, '4': 2, '5': 'construct' };
@@ -30958,6 +31089,15 @@ new Vue({
       this.battleHandMenu = null;
       this.battleZoneCardMenu = null;
       this.soundSettingsOpen = false; // SE/BGM音量設定ポップオーバーを閉じる
+      this.turnTimerSettingsOpen = false;
+      this.battleAdjustOpen = false;
+      this.battleNetDetailOpen = false;
+    },
+    /* 対戦画面ヘッダーのパネル（音量・時間設定・手動調整・通信の詳細）は1つずつ開く */
+    battleToggleHeaderPanel(key) {
+      const next = !this[key];
+      for (const k of ['soundSettingsOpen', 'turnTimerSettingsOpen', 'battleAdjustOpen', 'battleNetDetailOpen']) this[k] = false;
+      this[key] = next;
     },
     addCard(card) {
       if (this.appView === 'shield' || this.appView === 'game') return; // モード中はガード
@@ -31354,7 +31494,7 @@ new Vue({
 
     tryCloseShield() {
       if (['picking', 'excluding', 'kami_select'].includes(this.sb.phase)) {
-        if (!confirm('シールド戦を中断しますか？')) return;
+        if (!confirm('星紡ぎ戦を中断しますか？')) return;
       }
       this._sfxPlay('cancel');
       if (this._deckLoadedFromSession) {
