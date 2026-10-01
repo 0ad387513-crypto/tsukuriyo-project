@@ -129,7 +129,7 @@
     // 声を作り直したとき（design --trial）：声の候補を並べる
     const cands = (designs && designs[no]) || [];
     $('candidates').innerHTML = cands.length ? `<h2>声の候補（${trial}）</h2><div class="cands">${cands.map(c => `
-      <div class="cand">候補${c.choice}${c.ref ? `（候補${c.ref}が手本）` : ''}<br>
+      <div class="cand">候補${c.choice}${c.variant ? `【${c.variant === 'female' ? '女性の声' : c.variant === 'male' ? '男性の声' : c.variant}】` : ''}${c.ref ? `（候補${c.ref}が手本）` : ''}<br>
         <audio controls preload="none" src="../../voices/trials/${trial}/previews/${c.file}${bust()}"></audio>
         <code>pick --kami ${no} --choice ${c.choice} --trial ${trial}</code></div>`).join('')}</div>` : '';
     // Gemini 版の声の見本（残っているカミだけ）

@@ -32,6 +32,9 @@
       node scripts/generate_voices_elevenlabs.js lines --trial v4 --model eleven_v4 --current-voice   # 全カミを今の声のまま v4 で読ませる
       node scripts/generate_voices_elevenlabs.js design --trial v4
       node scripts/generate_voices_elevenlabs.js lines --trial v4 --model eleven_v4
+    声の案を使い分ける：voice_script.json の voice.el_variants に説明文を並べ、--variant 名前 で選ぶ（候補は今ある候補の後ろに足す）
+      node scripts/generate_voices_elevenlabs.js design --kami 4 --trial v4 --variant female
+      node scripts/generate_voices_elevenlabs.js design --kami 4 --trial v4 --variant male
     聞き比べ：確認用サーバー起動中に http://localhost:8765/tools/voice-compare/
     採用：聞き比べて良かったカミの試し作りの音声を、ゲームのボイスにする（声の登録も切り替わり、一覧も作り直す）
       node scripts/generate_voices_elevenlabs.js adopt --kami 3 --trial v4
@@ -66,6 +69,14 @@ const trialIdsFile = trial ? path.join(trialDir, "voice_ids.json") : null;
 const registerIdsFile = trialIdsFile || idsFile; // design・pick・use で声を登録する先（試し作りなら試し作り用の一覧）
 const designsFile = path.join(previewDir, "el_designs.json");
 const lineModel = argValue("--model") || el.model;
+const variant = argValue("--variant"); // 声の案（voice.el_variants の名前）
+// 声の説明文：--variant があればその案、なければ el_description
+function voiceDescription(kami, name) {
+  if (!name) return kami.voice.el_description;
+  const text = kami.voice.el_variants && kami.voice.el_variants[name];
+  if (!text) { console.error(`${kami.name} に声の案「${name}」がありません（voice.el_variants を確認してください）`); process.exit(1); }
+  return text;
+}
 const designModel = argValue("--design-model") || el.design_model;
 const API = "https://api.elevenlabs.io/v1";
 
@@ -182,12 +193,12 @@ async function design() {
     if (ref && !refFile) { console.error(`${no} ${kami.name}：候補${ref}が見つかりません`); continue; }
     const keepArg = args.includes("--keep");
     if (!ref && !keepArg && registered[no] && !force) { console.log(`${no} ${kami.name}：声を登録済み（作り直すなら --force）`); continue; }
-    const keep = args.includes("--keep"); // 既存の候補を残したまま、手本なしで候補を追加する
+    const keep = args.includes("--keep") || !!variant; // 既存の候補を残したまま、手本なしで候補を追加する（声の案を指定したときも足す）
     if (!ref && !keep && designs[no] && !force) { console.log(`${no} ${kami.name}：候補作成済み（作り直すなら --force）`); continue; }
     try {
-      console.log(`${no} ${kami.name}：声の候補を作成中…`);
+      console.log(`${no} ${kami.name}：声の候補を作成中…${variant ? `（声の案：${variant}）` : ""}`);
       const body = {
-        voice_description: kami.voice.el_description,
+        voice_description: voiceDescription(kami, variant || (refFile && refFile.variant)),
         model_id: designModel,
         text: designText(kami),
       };
@@ -205,7 +216,7 @@ async function design() {
         const n = start + i + 1;
         const file = `el-${no}-${n}.mp3`;
         fs.writeFileSync(path.join(previewDir, file), Buffer.from(p.audio_base_64, "base64"));
-        return { choice: n, generated_voice_id: p.generated_voice_id, file, ref: refFile ? refFile.choice : undefined };
+        return { choice: n, generated_voice_id: p.generated_voice_id, file, ref: refFile ? refFile.choice : undefined, variant: variant || (refFile && refFile.variant) || undefined };
       });
       designs[no] = kept.concat(added);
       writeJson(designsFile, designs);
@@ -228,7 +239,7 @@ async function pick() {
   if (!kami || !cand) { console.error("その候補が見つかりません。先に design を実行してください。"); process.exit(1); }
   const json = await call("/text-to-voice", {
     voice_name: `tsukuriyo-${onlyKami}-${kami.name}${trial ? "-" + trial : ""}`,
-    voice_description: kami.voice.el_description.slice(0, 500), // 保存時の説明は500字まで
+    voice_description: voiceDescription(kami, cand.variant).slice(0, 500), // 保存時の説明は500字まで（候補を作った声の案の説明）
     generated_voice_id: cand.generated_voice_id,
   });
   const ids = readJson(registerIdsFile, {});
