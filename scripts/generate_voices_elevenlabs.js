@@ -28,7 +28,14 @@
       node scripts/generate_voices_elevenlabs.js design --kami 3 --trial v4
       node scripts/generate_voices_elevenlabs.js pick --kami 3 --choice 2 --trial v4
       node scripts/generate_voices_elevenlabs.js lines --kami 3 --trial v4 --model eleven_v4 --force
-    聞き比べ：npm run preview 中に http://localhost:8765/tools/voice-compare/
+    全カミをまとめて：--kami を省くと、候補づくりはまだ候補の無いカミだけ、読み上げは試し作り用の声を登録したカミだけが対象
+      node scripts/generate_voices_elevenlabs.js lines --trial v4 --model eleven_v4 --current-voice   # 全カミを今の声のまま v4 で読ませる
+      node scripts/generate_voices_elevenlabs.js design --trial v4
+      node scripts/generate_voices_elevenlabs.js lines --trial v4 --model eleven_v4
+    聞き比べ：確認用サーバー起動中に http://localhost:8765/tools/voice-compare/
+    採用：聞き比べて良かったカミの試し作りの音声を、ゲームのボイスにする（声の登録も切り替わり、一覧も作り直す）
+      node scripts/generate_voices_elevenlabs.js adopt --kami 3 --trial v4
+      → 前の声はゲームで使わなくなるので、声の枠が足りなければ voices-list で確認して voice-delete で消せる
 
   出力：
     voices/previews/el-{No}-{1..3}.mp3  声の候補（試聴用。配信しない）
@@ -265,6 +272,8 @@ async function lines() {
   for (const no of kamiList()) {
     const kami = script.kami[no];
     if (!ids[no]) { console.warn(`${no} ${kami.name}：声が未登録です。先に design と pick を実行してください。`); continue; }
+    // 試し作りで全カミを指定したときは、試し作り用の声を登録したカミだけ読ませる（古い声で無駄に作らない）
+    if (trial && !onlyKami && !args.includes("--current-voice") && !readJson(trialIdsFile, {})[no]) { console.log(`${no} ${kami.name}：試し作り用の声が未登録のため飛ばします（今の声で作るなら --current-voice）`); continue; }
     fs.mkdirSync(path.join(outRoot, no), { recursive: true });
     for (const [key, line] of Object.entries(kami.lines)) {
       if (onlyKeys && !onlyKeys.includes(key)) continue;
@@ -302,11 +311,11 @@ async function lines() {
 }
 
 // ゲームは manifest.json に載っている台詞だけ再生する（未生成の台詞で404を出さないため）
-function writeManifest() {
-  const baseDir = trialDir || voiceDir;
-  const base = trial ? `voices/trials/${trial}` : "voices";
+function writeManifest(forTrial = !!trial) {
+  const baseDir = forTrial ? trialDir : voiceDir;
+  const base = forTrial ? `voices/trials/${trial}` : "voices";
   const manifest = { version: 1, generatedAt: new Date().toISOString(), kami: {} };
-  if (trial) Object.assign(manifest, { trial, model: lineModel }); // 聞き比べページに、どのモデルで作ったかを出す
+  if (forTrial) Object.assign(manifest, { trial, model: lineModel }); // 聞き比べページに、どのモデルで作ったかを出す
   for (const no of Object.keys(script.kami)) {
     const dir = path.join(baseDir, no);
     if (!fs.existsSync(dir)) continue;
@@ -320,11 +329,45 @@ function writeManifest() {
   fs.mkdirSync(baseDir, { recursive: true });
   writeJson(path.join(baseDir, "manifest.json"), manifest);
   console.log(`${base}/manifest.json を更新しました（${Object.keys(manifest.kami).length}柱分）`);
-  if (trial) console.log(`聞き比べ：http://localhost:8765/tools/voice-compare/?trial=${trial}`);
+  if (forTrial) console.log(`聞き比べ：http://localhost:8765/tools/voice-compare/?trial=${trial}`);
+}
+
+/* 採用：試し作りの音声をゲームのボイスにする。
+   voices/trials/名前/{No}/*.mp3 を voices/{No}/ へ上書きし、ゲームの声の登録も試し作りの声に切り替える。
+   ゲーム用の一覧（voices/manifest.json）と、本番で使う音声の識別子の一覧（asset_hashes.js）も作り直す */
+function adopt() {
+  if (!trial) { console.error("adopt には --trial が必要です（例：adopt --kami 3 --trial v4）。"); process.exit(1); }
+  const trialIds = readJson(trialIdsFile, {});
+  const ids = readJson(idsFile, {});
+  const targets = kamiList().filter(no => fs.existsSync(path.join(trialDir, no)));
+  let switched = 0; // 新しい声に切り替えたカミの数
+  if (!targets.length) { console.error("採用できる試し作りの音声がありません。"); process.exit(1); }
+  for (const no of targets) {
+    const kami = script.kami[no];
+    const files = fs.readdirSync(path.join(trialDir, no)).filter(f => /\.mp3$/.test(f));
+    // 試し作りに無い台詞がゲームに残っていると、声が混ざるので知らせる
+    const missing = Object.keys(kami.lines).filter(key => !files.includes(`${key}.mp3`));
+    if (missing.length) console.warn(`  ${no} ${kami.name}：試し作りに無い台詞は前の音声のままです（${missing.join("、")}）`);
+    fs.mkdirSync(path.join(voiceDir, no), { recursive: true });
+    for (const f of files) fs.copyFileSync(path.join(trialDir, no, f), path.join(voiceDir, no, f));
+    if (trialIds[no]) {
+      switched++;
+      const previous = ids[no] && ids[no].id;
+      ids[no] = Object.assign({}, trialIds[no], { model: lineModel, adoptedFrom: trial, previousId: previous || undefined });
+    }
+    console.log(`${no} ${kami.name}：試し作り「${trial}」の音声${files.length}本をゲームのボイスにしました`);
+  }
+  writeJson(idsFile, ids);
+  writeManifest(false);
+  const { writeAssetHashes, OUTPUT } = require("./build_asset_hashes");
+  writeAssetHashes(root);
+  console.log(`${OUTPUT} を更新しました。確認用サーバーで聞いて問題なければ、コミットして本番へ。`);
+  if (switched) console.log("前の声は使わなくなりました。声の枠が足りなければ voices-list で確認し、voice-delete --voice-id 前の声のID で消せます。");
 }
 
 (async () => {
   if (command === "design") await design();
+  else if (command === "adopt") adopt();
   else if (command === "pick") await pick();
   else if (command === "use") useVoice();
   else if (command === "voices-list") await listVoices();
