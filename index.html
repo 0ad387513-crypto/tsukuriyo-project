@@ -1538,6 +1538,8 @@
   @media (prefers-reduced-motion: reduce) { .top-info-new { animation: none; } }
   .top-info-marquee { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
   .top-info-scroll { display: inline-block; white-space: nowrap; opacity: 0; will-change: transform; }
+  /* お知らせは常に最新の1件を静止表示する。長文は一覧から全文を読める。 */
+  .top-info-static { display: block; flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .top-info-scroll.running { animation-name: top-info-marquee; animation-timing-function: linear; animation-fill-mode: both; }
   .top-info-band:hover .top-info-scroll.running { animation-play-state: paused; }
   @keyframes top-info-marquee {
@@ -6161,15 +6163,12 @@
         </div>
       </div>
     </div>
-    <!-- お知らせ・ヒントの帯（モード選択の下）：長い文は横に流して最後まで見せ、読み終えたら次の項目へ移る（マウスを乗せると止まる） -->
+    <!-- お知らせは静止表示し、全文は一覧で読む。ヒントだけ文字送りと次へボタンを使う。 -->
     <div class="top-info-band">
       <button type="button" class="top-info-news" @click="openTopNews" title="お知らせを全部見る">
         <span class="top-info-tag news">お知らせ</span>
         <span v-if="topNewsUnread" class="top-info-new" aria-label="新しいお知らせ">NEW</span>
-        <span ref="newsMarquee" class="top-info-marquee">
-          <span :key="'news' + topNewsIndex" class="top-info-scroll" :class="{ running: !!topInfoAnim.news }"
-                :style="topInfoAnimStyle('news')" @animationend="topInfoAdvance('news')">{{ topNews[topNewsIndex % topNews.length].text }}</span>
-        </span>
+        <span class="top-info-static">{{ topNews[0].text }}</span>
       </button>
       <div class="top-info-tip">
         <span class="top-info-tag tip">ヒント</span>
@@ -12579,9 +12578,8 @@ new Vue({
     topTips: TOP_TIPS,
     topNewsOpen: false,
     topNewsSeenVersion: (() => { try { return localStorage.getItem(TOP_NEWS_SEEN_STORAGE_KEY) || ''; } catch (e) { return ''; } })(),
-    topNewsIndex: 0,
     topTipIndex: 0,
-    topInfoAnim: { news: null, tip: null }, // 帯の文字送り { shift: 流す距離px, duration: 秒 }
+    topInfoAnim: { tip: null }, // ヒントの文字送り { shift: 流す距離px, duration: 秒 }
     kamiDexOpen: false,          // カミ図鑑
     kamiDexNo: '1',
     kamiDexView: 'illust',       // 'illust'（イラスト） / 'card'（カード）
@@ -14756,7 +14754,7 @@ new Vue({
       this._sfxPlay('menuselect');
       this.topInfoAdvance('tip');
     },
-    /* 帯の文字送り：枠に収まらない文は、少し止めてから末尾まで横に流し、また少し止めて次の項目へ。
+    /* ヒントの文字送り：枠に収まらない文は、少し止めてから末尾まで横に流し、また少し止めて次の項目へ。
        収まる文は7秒表示してから次へ。流す速さは1秒あたり約55px */
     topInfoAnimStyle(kind) {
       const anim = this.topInfoAnim[kind];
@@ -14772,15 +14770,14 @@ new Vue({
       this.$set(this.topInfoAnim, kind, { shift, duration });
     },
     topInfoAdvance(kind) {
-      if (kind === 'news') this.topNewsIndex = (this.topNewsIndex + 1) % TOP_NEWS.length;
-      else this.topTipIndex = (this.topTipIndex + 1) % TOP_TIPS.length;
+      this.topTipIndex = (this.topTipIndex + 1) % TOP_TIPS.length;
       this.$set(this.topInfoAnim, kind, null);
       this.$nextTick(() => this._topInfoMeasure(kind));
     },
     _topInfoRestart() {
       if (this.appView !== 'top') return;
-      this.topInfoAnim = { news: null, tip: null };
-      this.$nextTick(() => { this._topInfoMeasure('news'); this._topInfoMeasure('tip'); });
+      this.topInfoAnim = { tip: null };
+      this.$nextTick(() => this._topInfoMeasure('tip'));
     },
     async openKamiDex(no = '1') {
       this._sfxPlay('decision');
