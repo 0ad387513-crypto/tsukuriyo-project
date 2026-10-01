@@ -285,6 +285,11 @@ async function lines() {
     if (!ids[no]) { console.warn(`${no} ${kami.name}：声が未登録です。先に design と pick を実行してください。`); continue; }
     // 試し作りで全カミを指定したときは、試し作り用の声を登録したカミだけ読ませる（古い声で無駄に作らない）
     if (trial && !onlyKami && !args.includes("--current-voice") && !readJson(trialIdsFile, {})[no]) { console.log(`${no} ${kami.name}：試し作り用の声が未登録のため飛ばします（今の声で作るなら --current-voice）`); continue; }
+    // 新しい声の候補を作ったのに登録（pick）が済んでいないときは、今の声で作ることになるので知らせる
+    if (trial && !readJson(trialIdsFile, {})[no] && (readJson(designsFile, {})[no] || []).length) {
+      console.warn(`  ！ ${no} ${kami.name}：試し作り用の新しい声が登録されていないため、ゲームの今の声で作ります。`);
+      console.warn(`    新しい声で作るなら、先に pick --kami ${no} --choice 候補番号 --trial ${trial} を成功させてください（「登録しました」と出れば成功）。`);
+    }
     fs.mkdirSync(path.join(outRoot, no), { recursive: true });
     for (const [key, line] of Object.entries(kami.lines)) {
       if (onlyKeys && !onlyKeys.includes(key)) continue;
