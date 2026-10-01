@@ -1537,7 +1537,7 @@
   @keyframes top-info-new-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(232, 195, 90, .5); } 50% { box-shadow: 0 0 0 5px rgba(232, 195, 90, 0); } }
   @media (prefers-reduced-motion: reduce) { .top-info-new { animation: none; } }
   .top-info-marquee { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
-  .top-info-scroll { display: inline-block; white-space: nowrap; opacity: 0; will-change: transform; }
+  .top-info-scroll { display: inline-block; white-space: nowrap; opacity: 1; will-change: transform; }
   /* お知らせは常に最新の1件を静止表示する。長文は一覧から全文を読める。 */
   .top-info-static { display: block; flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .top-info-scroll.running { animation-name: top-info-marquee; animation-timing-function: linear; animation-fill-mode: both; }
@@ -1551,10 +1551,11 @@
     100% { opacity: 0; transform: translateX(var(--marquee-shift, 0px)); }
   }
   @media (prefers-reduced-motion: reduce) {
-    .top-info-marquee { white-space: normal; }
-    .top-info-scroll { white-space: normal; }
-    .top-info-scroll.running { animation-name: top-info-fade; }
-    @keyframes top-info-fade { 0%, 100% { opacity: 0; } 4%, 96% { opacity: 1; } }
+    /* OS側で全アニメーションが即時終了しても、animationendによる高速な項目送りを起こさない。 */
+    .top-info-scroll, .top-info-scroll.running {
+      display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+      opacity: 1; transform: none; will-change: auto; animation: none !important;
+    }
   }
   .top-info-next {
     flex: none; width: 28px; height: 28px; border: 1px solid #4a5268; border-radius: 50%;
@@ -6174,7 +6175,8 @@
         <span class="top-info-tag tip">ヒント</span>
         <span ref="tipMarquee" class="top-info-marquee">
           <span :key="'tip' + topTipIndex" class="top-info-scroll" :class="{ running: !!topInfoAnim.tip }"
-                :style="topInfoAnimStyle('tip')" @animationend="topInfoAdvance('tip')">{{ topTips[topTipIndex % topTips.length] }}</span>
+                :style="topInfoAnimStyle('tip')" :title="topTips[topTipIndex % topTips.length]"
+                @animationend="topInfoAdvance('tip', true)">{{ topTips[topTipIndex % topTips.length] }}</span>
         </span>
         <button type="button" class="top-info-next" @click="topTipNext" aria-label="次のヒントを表示">›</button>
       </div>
@@ -14761,7 +14763,11 @@ new Vue({
       if (!anim) return {};
       return { '--marquee-shift': (-anim.shift) + 'px', animationDuration: anim.duration + 's' };
     },
+    _topInfoReducedMotion() {
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    },
     _topInfoMeasure(kind) {
+      if (this._topInfoReducedMotion()) return;
       const box = this.$refs[kind + 'Marquee'];
       const text = box && box.querySelector('.top-info-scroll');
       if (!text || !box.clientWidth) return;
@@ -14769,7 +14775,8 @@ new Vue({
       const duration = shift ? Math.max(9, (shift / 55) / 0.7) : 7; // 流れている時間が全体の7割
       this.$set(this.topInfoAnim, kind, { shift, duration });
     },
-    topInfoAdvance(kind) {
+    topInfoAdvance(kind, fromAnimation = false) {
+      if (fromAnimation && this._topInfoReducedMotion()) return;
       this.topTipIndex = (this.topTipIndex + 1) % TOP_TIPS.length;
       this.$set(this.topInfoAnim, kind, null);
       this.$nextTick(() => this._topInfoMeasure(kind));
@@ -31998,6 +32005,9 @@ new Vue({
   mounted() {
     // TOPに戻ったとき・画面の幅が変わったときは、帯の文字送りを測り直す
     this.$watch(() => this.appView === 'top' && !this.titleScreenOpen, (shown) => { if (shown) this._topInfoRestart(); }, { immediate: true });
+    this._topInfoMotionQuery = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+    this._topInfoMotionChange = () => this._topInfoRestart();
+    if (this._topInfoMotionQuery && this._topInfoMotionQuery.addEventListener) this._topInfoMotionQuery.addEventListener('change', this._topInfoMotionChange);
     window.addEventListener('resize', () => {
       clearTimeout(this._topInfoResizeTimer);
       this._topInfoResizeTimer = setTimeout(() => this._topInfoRestart(), 300);
@@ -32299,6 +32309,8 @@ new Vue({
     document.addEventListener('visibilitychange', this._onVisibilityChangeForTurnFlash);
   },
   beforeDestroy() {
+    if (this._topInfoMotionQuery && this._topInfoMotionQuery.removeEventListener) this._topInfoMotionQuery.removeEventListener('change', this._topInfoMotionChange);
+    clearTimeout(this._topInfoResizeTimer);
     window.removeEventListener('wheel', this.onCardPreviewWheel, true);
     window.removeEventListener('resize', this._battleUpdateNoticeBounds);
     window.removeEventListener('scroll', this._battleUpdateNoticeBounds, true);
