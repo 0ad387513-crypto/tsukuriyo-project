@@ -56,6 +56,8 @@
   <tbody id="rows"></tbody>
 </table>
 <div id="candidates"></div>
+<!-- 最初に作った Gemini 版の声の見本（1柱1本）。voices/trials/gemini/samples/{No}.wav に置いたものだけ表示する -->
+<div id="gemini"></div>
 <script>
 (() => {
   const params = new URLSearchParams(location.search);
@@ -130,6 +132,12 @@
       <div class="cand">候補${c.choice}${c.ref ? `（候補${c.ref}が手本）` : ''}<br>
         <audio controls preload="none" src="../../voices/trials/${trial}/previews/${c.file}${bust()}"></audio>
         <code>pick --kami ${no} --choice ${c.choice} --trial ${trial}</code></div>`).join('')}</div>` : '';
+    // Gemini 版の声の見本（残っているカミだけ）
+    const geminiUrl = `../../voices/trials/gemini/samples/${no}.wav`;
+    const hasGemini = await fetch(geminiUrl, { method: 'HEAD', cache: 'no-store' }).then(r => r.ok).catch(() => false);
+    $('gemini').innerHTML = hasGemini ? `<h2>Gemini版の声の見本</h2>
+      <p class="lead">最初に Gemini で作った声の見本です（台詞ごとの音声は残っていないため、声を作ったときの見本だけ）。</p>
+      <div class="cands"><div class="cand">${kami.name}<br><audio controls preload="none" src="${geminiUrl}${bust()}"></audio></div></div>` : '';
   }
 
   (async () => {
