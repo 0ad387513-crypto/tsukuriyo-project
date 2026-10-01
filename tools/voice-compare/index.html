@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ボイス聞き比べ</title>
+<!--
+  カミのボイスの聞き比べ（ローカル専用。本番では /tools/* を 404 にしている）。
+  左：ゲームで使っている今のボイス（voices/{No}/）
+  右：試し作りのボイス（generate_voices_elevenlabs.js --trial 名前 → voices/trials/名前/{No}/）
+  使い方：npm run preview 中に http://localhost:8765/tools/voice-compare/?trial=v4&kami=3
+-->
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 16px 60px; background: #0e1119; color: #e6e9f0; font-family: 'Hiragino Sans', 'Meiryo', sans-serif; }
+  h1 { margin: 0 0 4px; font-size: 22px; color: #f1d58a; letter-spacing: .08em; }
+  .lead { margin: 0 0 16px; color: #9aa4b6; font-size: 13px; line-height: 1.7; }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 14px; }
+  .controls label { display: flex; gap: 6px; align-items: center; font-size: 13px; color: #cfd6e6; }
+  select, input { background: #1a2030; color: #e6e9f0; border: 1px solid #3a4256; border-radius: 6px; padding: 6px 8px; font-size: 14px; }
+  button { cursor: pointer; border-radius: 8px; border: 1px solid #5d78a8; background: linear-gradient(160deg, #2a3a5e, #161d30); color: #eaf1ff; font-weight: 800; padding: 6px 12px; font-size: 13px; }
+  button:hover { filter: brightness(1.15); }
+  button.gold { border-color: #c79a4a; background: linear-gradient(160deg, #6a4a22, #2d1f14); color: #fff3d6; }
+  .status { margin: 0 0 14px; padding: 10px 12px; border: 1px solid #3a4256; border-radius: 8px; background: #151a26; font-size: 13px; line-height: 1.8; }
+  .status code { background: #0b0d14; padding: 1px 6px; border-radius: 4px; color: #ffe3a0; word-break: break-all; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border-bottom: 1px solid #262d3d; padding: 8px 6px; vertical-align: middle; text-align: left; }
+  th { color: #cfb875; font-size: 12px; letter-spacing: .08em; position: sticky; top: 0; background: #0e1119; z-index: 1; }
+  td.label { white-space: nowrap; color: #90bff2; font-size: 12px; font-weight: 800; }
+  td.text { font-size: 14px; line-height: 1.6; min-width: 220px; }
+  td.text small { display: block; color: #7f889a; font-size: 11px; }
+  audio { width: 220px; height: 34px; }
+  .missing { color: #7f889a; font-size: 12px; }
+  .ab { white-space: nowrap; }
+  h2 { margin: 26px 0 8px; font-size: 16px; color: #f1d58a; }
+  .cands { display: flex; flex-wrap: wrap; gap: 10px; }
+  .cand { border: 1px solid #343b4b; border-radius: 10px; padding: 8px 10px; background: #151a26; font-size: 13px; }
+  .cand code { display: block; margin-top: 6px; font-size: 11px; color: #ffe3a0; }
+  @media (max-width: 760px) { audio { width: 160px; } td.text { min-width: 0; } }
+</style>
+</head>
+<body>
+<h1>ボイス聞き比べ</h1>
+<p class="lead">ゲームで使っている今のボイス（左）と、新しいモデルで試し作りしたボイス（右）を、台詞ごとに聞き比べます。「交互に聞く」は、今のボイス → 試し作りの順に続けて再生します。</p>
+<div class="controls">
+  <label>カミ <select id="kami"></select></label>
+  <label>試し作りの名前 <input id="trial" size="8"></label>
+  <button id="reload" type="button">読み込み直す</button>
+  <button id="playAll" type="button" class="gold">全部を交互に聞く</button>
+  <button id="stop" type="button">停止</button>
+</div>
+<div id="status" class="status"></div>
+<table>
+  <thead><tr><th>台詞</th><th>文</th><th>今のボイス</th><th id="trialHead">試し作り</th><th></th></tr></thead>
+  <tbody id="rows"></tbody>
+</table>
+<div id="candidates"></div>
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  const $ = id => document.getElementById(id);
+  const LABELS = { greeting: '挨拶', confusion: '困惑', praise: '称賛', surprise: '驚き', taunt: '挑発', boast: '理念', skill1: '神技', skill2: '創世神技', win_gs: '創世決戦で優勝' };
+  const bust = () => '?t=' + Date.now(); // 作り直した音声を、ブラウザに残った古い音声で鳴らさないため
+  const getJson = url => fetch(url + bust(), { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  let script = null, current = null, trialManifest = null, designs = null;
+  let playToken = 0;
+
+  function label(key, names) {
+    if (LABELS[key]) return LABELS[key];
+    const m = key.match(/^win_(\d+)$/);
+    if (m) return (names[m[1]] || 'カミ' + m[1]) + 'に勝ったとき';
+    return key;
+  }
+  function audioCell(src) {
+    if (!src) return '<span class="missing">（なし）</span>';
+    return `<audio controls preload="none" src="../../${src}${bust()}"></audio>`;
+  }
+  function stopAll() {
+    playToken++;
+    document.querySelectorAll('audio').forEach(a => { a.pause(); a.currentTime = 0; });
+  }
+  // 今のボイス → 試し作り の順に鳴らす
+  async function playPair(row, token) {
+    for (const audio of row.querySelectorAll('audio')) {
+      if (token !== playToken) return;
+      audio.currentTime = 0;
+      try { await audio.play(); } catch (e) { continue; }
+      await new Promise(resolve => { audio.onended = resolve; audio.onpause = resolve; });
+      await new Promise(r => setTimeout(r, 350));
+    }
+  }
+
+  async function load() {
+    stopAll();
+    const trial = ($('trial').value || 'v4').trim();
+    const no = $('kami').value || params.get('kami') || '3';
+    history.replaceState(null, '', `?trial=${encodeURIComponent(trial)}&kami=${encodeURIComponent(no)}`);
+    [current, trialManifest, designs] = await Promise.all([
+      getJson('../../voices/manifest.json'),
+      getJson(`../../voices/trials/${trial}/manifest.json`),
+      getJson(`../../voices/trials/${trial}/previews/el_designs.json`),
+    ]);
+    const kami = script.kami[no];
+    const names = Object.fromEntries(Object.entries(script.kami).map(([k, v]) => [k, v.name]));
+    const now = (current && current.kami && current.kami[no]) || {};
+    const tri = (trialManifest && trialManifest.kami && trialManifest.kami[no]) || {};
+    $('trialHead').textContent = `試し作り（${trial}${trialManifest && trialManifest.model ? '・' + trialManifest.model : ''}）`;
+    const made = Object.keys(tri).length;
+    $('status').innerHTML = made
+      ? `今のボイス：${script.elevenlabs.model}（${Object.keys(now).length}本）／ 試し作り「${trial}」：${trialManifest.model || '不明'}（${made}本、${new Date(trialManifest.generatedAt).toLocaleString('ja-JP')} 作成）`
+      : `試し作り「${trial}」の${kami.name}のボイスはまだありません。PowerShell で次を実行すると作れます（APIキーは $env:ELEVENLABS_API_KEY に入れておく）：<br>
+         <code>node scripts/generate_voices_elevenlabs.js lines --kami ${no} --trial ${trial} --model eleven_v4</code>`;
+    const rows = Object.entries(kami.lines).map(([key, line]) => `
+      <tr data-key="${key}">
+        <td class="label">${label(key, names)}</td>
+        <td class="text">${line.text}${line.el ? `<small>読み上げ文：${line.el}</small>` : ''}</td>
+        <td>${audioCell(now[key])}</td>
+        <td>${audioCell(tri[key])}</td>
+        <td class="ab"><button type="button" data-ab>交互に聞く</button></td>
+      </tr>`).join('');
+    $('rows').innerHTML = rows;
+    $('rows').querySelectorAll('[data-ab]').forEach(btn => btn.addEventListener('click', () => {
+      stopAll();
+      playPair(btn.closest('tr'), playToken);
+    }));
+    // 声を作り直したとき（design --trial）：声の候補を並べる
+    const cands = (designs && designs[no]) || [];
+    $('candidates').innerHTML = cands.length ? `<h2>声の候補（${trial}）</h2><div class="cands">${cands.map(c => `
+      <div class="cand">候補${c.choice}${c.ref ? `（候補${c.ref}が手本）` : ''}<br>
+        <audio controls preload="none" src="../../voices/trials/${trial}/previews/${c.file}${bust()}"></audio>
+        <code>pick --kami ${no} --choice ${c.choice} --trial ${trial}</code></div>`).join('')}</div>` : '';
+  }
+
+  (async () => {
+    script = await getJson('../../voices/voice_script.json');
+    if (!script) { $('status').textContent = 'voices/voice_script.json を読み込めませんでした。npm run preview で開いてください。'; return; }
+    $('kami').innerHTML = Object.entries(script.kami).map(([no, k]) => `<option value="${no}">${no} ${k.name}</option>`).join('');
+    $('kami').value = params.get('kami') || '3';
+    $('trial').value = params.get('trial') || 'v4';
+    $('kami').addEventListener('change', load);
+    $('reload').addEventListener('click', load);
+    $('trial').addEventListener('change', load);
+    $('stop').addEventListener('click', stopAll);
+    $('playAll').addEventListener('click', async () => {
+      stopAll();
+      const token = playToken;
+      for (const row of document.querySelectorAll('#rows tr')) {
+        if (token !== playToken) return;
+        row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        await playPair(row, token);
+      }
+    });
+    await load();
+  })();
+})();
+</script>
+</body>
+</html>

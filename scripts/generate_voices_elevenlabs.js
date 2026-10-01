@@ -18,28 +18,50 @@
     node scripts/generate_voices_elevenlabs.js manifest          # voices/manifest.json だけ作り直す
   --kami を省くと全カミが対象。
 
+  新しいモデルの試し作り（ゲームのボイスは書き換えない）：
+    --trial 名前   結果を voices/trials/名前/ に保存する（ゲーム用の voices/{No}/ と manifest.json は触らない）
+    --model ID     台詞の読み上げに使うモデル（省略時は voice_script.json の elevenlabs.model）
+    --design-model ID   声の候補づくりに使うモデル（省略時は elevenlabs.design_model）
+    例）今の声のまま、v4 で読ませて聞き比べる：
+      node scripts/generate_voices_elevenlabs.js lines --kami 3 --trial v4 --model eleven_v4
+    例）v4 用に声も作り直す（候補づくり → 登録 → 読み上げ。登録は試し作り用の一覧にだけ入る）：
+      node scripts/generate_voices_elevenlabs.js design --kami 3 --trial v4
+      node scripts/generate_voices_elevenlabs.js pick --kami 3 --choice 2 --trial v4
+      node scripts/generate_voices_elevenlabs.js lines --kami 3 --trial v4 --model eleven_v4 --force
+    聞き比べ：npm run preview 中に http://localhost:8765/tools/voice-compare/
+
   出力：
     voices/previews/el-{No}-{1..3}.mp3  声の候補（試聴用。配信しない）
     voices/previews/el_designs.json     候補のID（pick で使う）
     voices/elevenlabs_voice_ids.json    登録した声のID
     voices/{No}/{key}.mp3               ゲームで使う音声
     voices/manifest.json                ゲームが読む「どの台詞に音声があるか」の一覧
+    voices/trials/{名前}/...            試し作り（--trial）の結果。git に入れず、本番にも出さない
 */
 const fs = require("node:fs");
 const path = require("node:path");
 
-const root = path.resolve(__dirname, "..");
-const voiceDir = path.join(root, "voices");
-const previewDir = path.join(voiceDir, "previews");
-const script = JSON.parse(fs.readFileSync(path.join(voiceDir, "voice_script.json"), "utf8"));
-const el = script.elevenlabs;
-const idsFile = path.join(voiceDir, "elevenlabs_voice_ids.json");
-const designsFile = path.join(previewDir, "el_designs.json");
-const API = "https://api.elevenlabs.io/v1";
-
 const args = process.argv.slice(2);
 const command = args[0] || "help";
 const argValue = name => { const i = args.indexOf(name); return i >= 0 ? String(args[i + 1]) : null; };
+
+const root = path.resolve(__dirname, "..");
+const voiceDir = path.join(root, "voices");
+// 試し作り（--trial 名前）：結果を voices/trials/名前/ に分けて保存し、ゲームのボイスは書き換えない
+const trial = argValue("--trial");
+if (trial && !/^[a-z0-9_-]+$/i.test(trial)) { console.error("--trial の名前は半角英数字・-・_ で指定してください（例：v4）"); process.exit(1); }
+const trialDir = trial ? path.join(voiceDir, "trials", trial) : null;
+const previewDir = trial ? path.join(trialDir, "previews") : path.join(voiceDir, "previews");
+const script = JSON.parse(fs.readFileSync(path.join(voiceDir, "voice_script.json"), "utf8"));
+const el = script.elevenlabs;
+const idsFile = path.join(voiceDir, "elevenlabs_voice_ids.json");
+const trialIdsFile = trial ? path.join(trialDir, "voice_ids.json") : null;
+const registerIdsFile = trialIdsFile || idsFile; // design・pick・use で声を登録する先（試し作りなら試し作り用の一覧）
+const designsFile = path.join(previewDir, "el_designs.json");
+const lineModel = argValue("--model") || el.model;
+const designModel = argValue("--design-model") || el.design_model;
+const API = "https://api.elevenlabs.io/v1";
+
 const onlyKami = argValue("--kami");
 const onlyKeys = argValue("--key") ? argValue("--key").split(",") : null; // 例：--key taunt,skill1
 const choice = argValue("--choice");
@@ -143,7 +165,7 @@ function designText(kami) {
 async function design() {
   fs.mkdirSync(previewDir, { recursive: true });
   const designs = readJson(designsFile, {});
-  const registered = readJson(idsFile, {});
+  const registered = readJson(registerIdsFile, {});
   const failed = [];
   for (const no of kamiList()) {
     const kami = script.kami[no];
@@ -159,7 +181,7 @@ async function design() {
       console.log(`${no} ${kami.name}：声の候補を作成中…`);
       const body = {
         voice_description: kami.voice.el_description,
-        model_id: el.design_model,
+        model_id: designModel,
         text: designText(kami),
       };
       if (refFile) {
@@ -187,7 +209,9 @@ async function design() {
     }
   }
   if (failed.length) console.error(`候補を作れなかったカミ：${failed.join("、")}`);
-  console.log("試聴：http://localhost:8765/voices/preview.html　気に入った候補は pick --kami 番号 --choice 候補番号 で登録します。");
+  console.log(trial
+    ? `試聴：http://localhost:8765/tools/voice-compare/?trial=${trial}　気に入った候補は pick --kami 番号 --choice 候補番号 --trial ${trial} で登録します。`
+    : "試聴：http://localhost:8765/voices/preview.html　気に入った候補は pick --kami 番号 --choice 候補番号 で登録します。");
 }
 
 async function pick() {
@@ -196,13 +220,13 @@ async function pick() {
   const cand = (readJson(designsFile, {})[onlyKami] || []).find(c => String(c.choice) === choice);
   if (!kami || !cand) { console.error("その候補が見つかりません。先に design を実行してください。"); process.exit(1); }
   const json = await call("/text-to-voice", {
-    voice_name: `tsukuriyo-${onlyKami}-${kami.name}`,
+    voice_name: `tsukuriyo-${onlyKami}-${kami.name}${trial ? "-" + trial : ""}`,
     voice_description: kami.voice.el_description.slice(0, 500), // 保存時の説明は500字まで
     generated_voice_id: cand.generated_voice_id,
   });
-  const ids = readJson(idsFile, {});
+  const ids = readJson(registerIdsFile, {});
   ids[onlyKami] = { id: json.voice_id, name: kami.name, choice: cand.choice, created: new Date().toISOString() };
-  writeJson(idsFile, ids);
+  writeJson(registerIdsFile, ids);
   console.log(`${onlyKami} ${kami.name}：候補${cand.choice}を登録しました（${json.voice_id}）`);
 }
 
@@ -211,9 +235,9 @@ function useVoice() {
   const voiceId = argValue("--voice-id");
   const kami = onlyKami && script.kami[onlyKami];
   if (!kami || !voiceId) { console.error("use には --kami と --voice-id が必要です。"); process.exit(1); }
-  const ids = readJson(idsFile, {});
+  const ids = readJson(registerIdsFile, {});
   ids[onlyKami] = { id: voiceId, name: kami.name, choice: null, created: new Date().toISOString() };
-  writeJson(idsFile, ids);
+  writeJson(registerIdsFile, ids);
   console.log(`${onlyKami} ${kami.name}：声 ${voiceId} を登録しました`);
 }
 
@@ -232,33 +256,38 @@ ${designText(kami)}
 }
 
 async function lines() {
-  const ids = readJson(idsFile, {});
+  // 試し作りで声を登録していればその声、なければゲームで使っている声で読ませる
+  const ids = Object.assign({}, readJson(idsFile, {}), trialIdsFile ? readJson(trialIdsFile, {}) : {});
+  const outRoot = trialDir || voiceDir;
+  if (trial) console.log(`試し作り「${trial}」：モデル ${lineModel}、保存先 voices/trials/${trial}/`);
   const failed = [];
   let chars = 0;
   for (const no of kamiList()) {
     const kami = script.kami[no];
     if (!ids[no]) { console.warn(`${no} ${kami.name}：声が未登録です。先に design と pick を実行してください。`); continue; }
-    fs.mkdirSync(path.join(voiceDir, no), { recursive: true });
+    fs.mkdirSync(path.join(outRoot, no), { recursive: true });
     for (const [key, line] of Object.entries(kami.lines)) {
       if (onlyKeys && !onlyKeys.includes(key)) continue;
-      const out = path.join(voiceDir, no, `${key}.mp3`);
+      const out = path.join(outRoot, no, `${key}.mp3`);
       if (fs.existsSync(out) && !force) continue;
       const text = lineText(key, line);
       console.log(`${no} ${kami.name} ${key}：${text}`);
       try {
+        const stability = line.el_stability ?? kami.voice.el_stability ?? el.stability; // カミごとは voice.el_stability // 台詞ごとに el_stability で上書きできる（0＝Creative、0.5＝Natural）
+        // v4 では話す速さ（speed）の調整がなくなったため、stability だけを渡す
+        const voiceSettings = /^eleven_v4/.test(lineModel)
+          ? { stability }
+          : { stability, speed: line.el_speed ?? kami.voice.el_speed ?? 1 }; // 話す速さ（0.7〜1.2）。カミごと voice.el_speed、台詞ごと el_speed
         const audio = await call(`/text-to-speech/${ids[no].id}?output_format=mp3_44100_64`, {
           text,
-          model_id: el.model,
+          model_id: lineModel,
           language_code: el.language_code,
-          voice_settings: {
-            stability: line.el_stability ?? kami.voice.el_stability ?? el.stability, // カミごとは voice.el_stability // 台詞ごとに el_stability で上書きできる（0＝Creative、0.5＝Natural）
-            speed: line.el_speed ?? kami.voice.el_speed ?? 1, // 話す速さ（0.7〜1.2）。カミごと voice.el_speed、台詞ごと el_speed
-          },
+          voice_settings: voiceSettings,
         }, true);
         fs.writeFileSync(out, audio);
-        // Gemini 版の WAV が残っていると manifest が迷うので消す
+        // Gemini 版の WAV が残っていると manifest が迷うので消す（ゲームのボイスを作るときだけ）
         const oldWav = path.join(voiceDir, no, `${key}.wav`);
-        if (fs.existsSync(oldWav)) fs.unlinkSync(oldWav);
+        if (!trial && fs.existsSync(oldWav)) fs.unlinkSync(oldWav);
         chars += text.length;
       } catch (e) {
         console.error(`  × 失敗：${String(e.message || e).slice(0, 300)}`);
@@ -274,19 +303,24 @@ async function lines() {
 
 // ゲームは manifest.json に載っている台詞だけ再生する（未生成の台詞で404を出さないため）
 function writeManifest() {
+  const baseDir = trialDir || voiceDir;
+  const base = trial ? `voices/trials/${trial}` : "voices";
   const manifest = { version: 1, generatedAt: new Date().toISOString(), kami: {} };
+  if (trial) Object.assign(manifest, { trial, model: lineModel }); // 聞き比べページに、どのモデルで作ったかを出す
   for (const no of Object.keys(script.kami)) {
-    const dir = path.join(voiceDir, no);
+    const dir = path.join(baseDir, no);
     if (!fs.existsSync(dir)) continue;
     const files = {};
     for (const f of fs.readdirSync(dir)) {
       const m = f.match(/^(\w+)\.(mp3|wav)$/);
-      if (m && !(m[2] === "wav" && files[m[1]])) files[m[1]] = `voices/${no}/${f}`;
+      if (m && !(m[2] === "wav" && files[m[1]])) files[m[1]] = `${base}/${no}/${f}`;
     }
     if (Object.keys(files).length) manifest.kami[no] = files;
   }
-  writeJson(path.join(voiceDir, "manifest.json"), manifest);
-  console.log(`voices/manifest.json を更新しました（${Object.keys(manifest.kami).length}柱分）`);
+  fs.mkdirSync(baseDir, { recursive: true });
+  writeJson(path.join(baseDir, "manifest.json"), manifest);
+  console.log(`${base}/manifest.json を更新しました（${Object.keys(manifest.kami).length}柱分）`);
+  if (trial) console.log(`聞き比べ：http://localhost:8765/tools/voice-compare/?trial=${trial}`);
 }
 
 (async () => {
