@@ -201,7 +201,7 @@ test("Kami voice completes its hold on playback failure or interruption", async 
     play(){return this.reject?Promise.reject(Error('autoplay blocked')):Promise.resolve()}
   }
   const play=method('playKamiVoice','kami,key,Audio');
-  const vm={kamiVoiceManifest:{kami:{'1':{greeting:'voice.mp3'}}},voiceVolume:1,BUILD_VERSION:'test'};
+  const vm={kamiVoiceManifest:{kami:{'1':{greeting:'voice.mp3'}}},voiceVolume:1,BUILD_VERSION:'test',_effectiveVolume:v=>v};
   const first=play.call(vm,{no:1},'greeting',Voice);
   const second=play.call(vm,{no:1},'greeting',Voice);
   assert.equal(await first.done,false);assert.deepEqual(first.audio.listeners,{});
@@ -1748,4 +1748,28 @@ test("the wheel hint appears only once the wheel can zoom (0.5s after the previe
   assert.equal(vm.hoverZoomReady,true,'the hint appears after 0.5s');
   show.call(vm,{no:8},event);assert.equal(vm.hoverZoomReady,false,'a new card restarts the wait');
   assert.match(html,/class="card-hover-zoom-note" :class="\{ ready: hoverZoomReady \}"/);
+});
+
+test("settings mute silences every output without overwriting the saved volumes", () => {
+  const muted=method('_audioMuted'),effective=method('_effectiveVolume','v'),apply=method('_applyAudioVolumes');
+  const vm={masterMuted:false,muteWhenHidden:false,pageHidden:false,battleSfxVolume:.4,bgmVolume:.3,voiceVolume:.6,
+    _sfxGain:{gain:{value:0}},_bgmGain:{gain:{value:0}},_kamiVoiceAudio:{volume:0}};
+  vm._audioMuted=muted;vm._effectiveVolume=effective;
+  apply.call(vm);
+  assert.deepEqual([vm._sfxGain.gain.value,vm._bgmGain.gain.value,vm._kamiVoiceAudio.volume],[.4,.3,.6]);
+  vm.masterMuted=true;apply.call(vm);
+  assert.deepEqual([vm._sfxGain.gain.value,vm._bgmGain.gain.value,vm._kamiVoiceAudio.volume],[0,0,0]);
+  assert.deepEqual([vm.battleSfxVolume,vm.bgmVolume,vm.voiceVolume],[.4,.3,.6],'saved volumes are kept');
+  vm.masterMuted=false;vm.pageHidden=true;apply.call(vm);
+  assert.equal(vm._bgmGain.gain.value,.3,'hidden page plays unless the option is on');
+  vm.muteWhenHidden=true;apply.call(vm);assert.equal(vm._bgmGain.gain.value,0);
+  vm.pageHidden=false;apply.call(vm);assert.equal(vm._bgmGain.gain.value,.3);
+});
+
+test("forced reduced motion overrides the device setting for battle and top animations", () => {
+  for(const name of ['_battleReducedMotion','_topInfoReducedMotion']){
+    const fn=method(name);
+    assert.equal(fn.call({reduceMotionPref:'on'}),true,name);
+  }
+  assert.match(html,/'force-reduce-motion': reduceMotionPref === 'on'/);
 });

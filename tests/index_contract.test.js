@@ -521,3 +521,15 @@ test("Kashima disables choices whose required targets do not exist", () => {
   assert.equal(choice.選択肢[1].処理[0].対象.比較, "untapped");
   assert.equal(choice.選択肢[2].条件.存在.領域, "hand");
 });
+
+test("settings screen gathers sound, motion, battle and data options", () => {
+  assert.match(html, /<div v-if="settingsModalOpen" class="battle-zone-modal settings-modal" role="dialog" aria-modal="true"/);
+  for (const handler of ["toggleMasterMute", "toggleMuteWhenHidden", "battleSetAnimationSpeed", "setReduceMotionPref",
+    "battleToggleTurnTimer", "battleToggleEndTurnAssist", "togglePickAssist", "toggleCpuAutoPlay",
+    "resetTutorialProgress", "resetSettingsToDefault"]) {
+    assert.ok(html.includes(`@change="${handler}`) || html.includes(`@click="${handler}`), handler);
+  }
+  assert.match(html, /@click\.stop="openSettings\('sound'\)"/, "top header opens settings");
+  assert.match(html, /settings-open-btn" @click\.stop="openSettings\('battle'\)"/, "battle header opens settings");
+  for (const key of ["tsukuriyo_masterMuted", "tsukuriyo_muteWhenHidden", "tsukuriyo_reduceMotion"]) assert.ok(html.includes(key), key);
+});

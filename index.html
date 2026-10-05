@@ -4421,6 +4421,8 @@
   .ui-icon-battle-record { background-image: url('ui_icons/battle-record-abb6934c480c.webp'); }
   .ui-icon-volume { background-image: url('ui_icons/volume-8444d4a95bef.webp'); }
   .ui-icon-dev-tools { background-image: url('ui_icons/dev-tools-edfebb44fae3.webp'); }
+  /* 設定（歯車）：専用画像がまだ無いので、ほかの機能アイコンと同じ金色の線画をSVGで描く */
+  .ui-icon-settings { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e6c27a' stroke-width='1.6' stroke-linejoin='round'%3E%3Cpath d='M10.3 2.5h3.4l.5 2.6 1.9.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.9 2.6.5v3.4l-2.6.5-.8 1.9 1.5 2.2-2.4 2.4-2.2-1.5-1.9.8-.5 2.6h-3.4l-.5-2.6-1.9-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.9-2.6-.5v-3.4l2.6-.5.8-1.9-1.5-2.2 2.4-2.4 2.2 1.5 1.9-.8z'/%3E%3Ccircle cx='12' cy='12' r='3.4'/%3E%3C/svg%3E"); }
   .global-sound-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
   .global-sound-btn .ui-icon, .battle-undo-btn .ui-icon { width: 22px; height: 22px; vertical-align: middle; }
   .top-corner-devtools .ui-icon { width: 17px; height: 17px; vertical-align: middle; }
@@ -4547,6 +4549,47 @@
   }
   .battle-zone-modal-empty {
     color: #889; font-size: 13px; text-align: center; padding: 32px;
+  }
+  /* ===== 設定画面 =====
+     右上の共通ボタン（重なり順9500）より手前に出す */
+  .battle-zone-modal.settings-modal { z-index: 9600; }
+  .battle-zone-modal-panel.settings-panel { width: min(560px, 96vw); max-height: 88vh; }
+  .settings-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; }
+  .settings-body { flex: 1; overflow-y: auto; padding-right: 4px; }
+  .settings-section { margin: 0 0 14px; }
+  .settings-section:last-child { margin-bottom: 0; }
+  .settings-row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-bottom: 6px;
+    background: #222a3b; border: 1px solid #343d52; border-radius: 6px;
+  }
+  .settings-row.disabled { opacity: .5; }
+  .settings-row-text { flex: 1; min-width: 0; }
+  .settings-row-label { display: block; font-size: 13px; font-weight: 700; color: #e8e8f0; }
+  .settings-row-desc { display: block; margin-top: 2px; font-size: 11px; line-height: 1.5; color: #9aa5ba; }
+  .settings-row-control { flex: none; display: flex; align-items: center; gap: 8px; }
+  .settings-row-control input[type="range"] { width: 150px; }
+  .settings-row-control .global-sound-select { width: 168px; }
+  .settings-row-control .global-sound-value { width: 36px; text-align: right; }
+  .settings-row-control input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+  .settings-row-btn {
+    background: #2a2f3d; border: 1px solid #4a4f5d; color: #e8e8f0;
+    padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
+  .settings-row-btn:hover { background: #3a3f4d; }
+  .settings-row-btn.danger { background: #4a2626; border-color: #a06060; }
+  .settings-row-btn.danger:hover { background: #5a2e2e; }
+  .settings-version { margin-top: 10px; font-size: 11px; color: #7d889c; text-align: right; }
+  .global-sound-popover .settings-open-link { margin-top: 2px; }
+  @media (max-width: 560px) {
+    .settings-row { flex-wrap: wrap; }
+    .settings-row-control { width: 100%; justify-content: flex-end; }
+    .settings-row-control input[type="range"] { flex: 1; width: auto; }
+  }
+  /* 設定の「動きを減らす：常に減らす」。端末の「視差効果を減らす」と同じく、アニメーションと切替の動きをほぼ止める。
+     終了イベントを待つ処理が止まらないよう、時間を0ではなくごく短くして最後の状態で止める */
+  .app.force-reduce-motion *, .app.force-reduce-motion *::before, .app.force-reduce-motion *::after {
+    animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important; transition-delay: 0s !important; scroll-behavior: auto !important;
   }
   .battle-log-play-name { font-size: 12px; color: #e8e8f0; font-weight: 600; margin-top: 4px; }
   .battle-log-play-meta { font-size: 11px; color: #9aa; }
@@ -6099,7 +6142,7 @@
   loading.querySelector('.loading-kami-hint').textContent = 'ヒント：' + scene.hint;
 })();
 </script>
-<div id="app" v-cloak class="app" @click.capture="tutorialSurfaceClick($event)" @pointerdown.capture="tutorialCompletionInput($event)" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek }">
+<div id="app" v-cloak class="app" @click.capture="tutorialSurfaceClick($event)" @pointerdown.capture="tutorialCompletionInput($event)" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek, 'force-reduce-motion': reduceMotionPref === 'on' }">
 
   <!-- ===== タイトル画面：起動直後に一度だけ表示し、クリックでトップメニューへ入る =====
        クリックを挟むことで、ブラウザの自動再生制限で止まっているオーディオも同時に解禁できる。 -->
@@ -6133,6 +6176,7 @@
     <transition name="bgm-now-fade"><span v-if="bgmNowPlaying" :key="bgmNowPlaying.id" class="bgm-current-name" :title="bgmNowPlaying.name" role="status" aria-live="polite">♪ {{ bgmNowPlaying.name }}</span></transition>
     <!-- TOPでは戦績と同じ「アイコン＋文字」の形にそろえる -->
     <button class="global-sound-btn" :class="{ 'with-label': appHeaderView }" @click.stop="_sfxPlay('cancel'); soundSettingsOpen = !soundSettingsOpen" title="音量設定"><span class="ui-icon ui-icon-volume" aria-hidden="true"></span><span v-if="appHeaderView" class="global-sound-btn-label">音量</span></button>
+    <button class="global-sound-btn" :class="{ 'with-label': appHeaderView }" @click.stop="openSettings('sound')" title="設定" aria-label="設定を開く"><span class="ui-icon ui-icon-settings" aria-hidden="true"></span><span v-if="appHeaderView" class="global-sound-btn-label">設定</span></button>
     <div v-if="soundSettingsOpen" class="global-sound-popover" @click.stop>
       <div class="global-sound-row">
         <span class="global-sound-label">SE音量</span>
@@ -7242,6 +7286,152 @@
         <button v-if="battleHistoryList.length" class="modal-peek-btn" @click="downloadBattleHistory">履歴JSONを保存</button>
         <button v-if="battleHistoryList.length" class="battle-back-btn" style="background:#5a2a2a;border-color:#a06060;" @click="clearBattleHistory">履歴を消去</button>
         <button class="battle-back-btn" @click="closeBattleHistory">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 設定画面（音・演出・対戦・データ） =====
+       右上の「音量」・対戦ヘッダーの「⏱」に分かれていた設定もここにまとめる。各ポップオーバーは手早い調整用に残す -->
+  <div v-if="settingsModalOpen" class="battle-zone-modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title" tabindex="-1" @click.self="closeSettings">
+    <div class="battle-zone-modal-panel settings-panel">
+      <h3 id="settings-modal-title" class="battle-zone-modal-title"><span class="ui-icon ui-icon-settings" aria-hidden="true"></span>設定</h3>
+      <div class="settings-tabs" role="tablist" aria-label="設定の種類">
+        <button v-for="tab in [{ id: 'sound', label: '音' }, { id: 'motion', label: '演出・表示' }, { id: 'battle', label: '対戦' }, { id: 'data', label: 'データ' }]" :key="tab.id"
+                class="battle-zone-sort-btn" :class="{ active: settingsTab === tab.id }" role="tab" :aria-selected="settingsTab === tab.id ? 'true' : 'false'"
+                @click="settingsTab = tab.id">{{ tab.label }}</button>
+      </div>
+      <div class="settings-body">
+        <div v-if="settingsTab === 'sound'" class="settings-section" role="tabpanel">
+          <label class="settings-row">
+            <span class="settings-row-text">
+              <span class="settings-row-label">すべての音を消す</span>
+              <span class="settings-row-desc">SE・ボイス・BGMをまとめて消します。<wbr>下の音量は<wbr>そのまま残ります。</span>
+            </span>
+            <span class="settings-row-control"><input type="checkbox" :checked="masterMuted" @change="toggleMasterMute"></span>
+          </label>
+          <div class="settings-row" :class="{ disabled: masterMuted }">
+            <span class="settings-row-text"><span class="settings-row-label">SE音量</span></span>
+            <span class="settings-row-control">
+              <input type="range" min="0" max="1" step="0.05" :value="battleSfxVolume" aria-label="SE音量" @input="battleSetSfxVolume($event.target.value)">
+              <span class="global-sound-value">{{ Math.round(battleSfxVolume * 100) }}%</span>
+            </span>
+          </div>
+          <div class="settings-row" :class="{ disabled: masterMuted }">
+            <span class="settings-row-text"><span class="settings-row-label">ボイス音量</span></span>
+            <span class="settings-row-control">
+              <input type="range" min="0" max="1" step="0.05" :value="voiceVolume" aria-label="ボイス音量" @input="setVoiceVolume($event.target.value)">
+              <span class="global-sound-value">{{ Math.round(voiceVolume * 100) }}%</span>
+            </span>
+          </div>
+          <div class="settings-row" :class="{ disabled: masterMuted }">
+            <span class="settings-row-text"><span class="settings-row-label">BGM音量</span></span>
+            <span class="settings-row-control">
+              <input type="range" min="0" max="1" step="0.05" :value="bgmVolume" aria-label="BGM音量" @input="bgmSetVolume($event.target.value)">
+              <span class="global-sound-value">{{ Math.round(bgmVolume * 100) }}%</span>
+            </span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-text"><span class="settings-row-label">BGM選択</span></span>
+            <span class="settings-row-control">
+              <select class="global-sound-select" aria-label="BGM選択" :value="bgmAuto ? 'auto' : (bgmCurrentKey || 'none')" @change="bgmSelectTrack($event.target.value)">
+                <option value="auto">自動（ランダム）</option>
+                <option value="none">なし（停止）</option>
+                <option v-for="opt in bgmTrackOptions" :key="opt.key" :value="opt.key">{{ opt.name }}</option>
+              </select>
+            </span>
+          </div>
+          <label class="settings-row">
+            <span class="settings-row-text">
+              <span class="settings-row-label">ほかの画面を見ている間は音を消す</span>
+              <span class="settings-row-desc">別のタブや<wbr>アプリに<wbr>切り替えている間だけ、<wbr>音を止めます。</span>
+            </span>
+            <span class="settings-row-control"><input type="checkbox" :checked="muteWhenHidden" @change="toggleMuteWhenHidden"></span>
+          </label>
+        </div>
+        <div v-else-if="settingsTab === 'motion'" class="settings-section" role="tabpanel">
+          <div class="settings-row">
+            <span class="settings-row-text">
+              <span class="settings-row-label">演出速度</span>
+              <span class="settings-row-desc">対戦中の<wbr>カットインや<wbr>カードの動きの速さです。<wbr>「最小」は<wbr>ほぼ省略します。</span>
+            </span>
+            <span class="settings-row-control">
+              <select class="global-sound-select" aria-label="演出速度" :value="battleAnimationSpeed" @change="battleSetAnimationSpeed($event.target.value)">
+                <option value="normal">標準</option>
+                <option value="fast">高速</option>
+                <option value="minimal">最小</option>
+              </select>
+            </span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-text">
+              <span class="settings-row-label">動きを減らす</span>
+              <span class="settings-row-desc">画面の揺れや<wbr>点滅、<wbr>文字送りなどの<wbr>動きを抑えます。<wbr>乗り物酔いしやすい方に<wbr>おすすめです。</span>
+            </span>
+            <span class="settings-row-control">
+              <select class="global-sound-select" aria-label="動きを減らす" :value="reduceMotionPref" @change="setReduceMotionPref($event.target.value)">
+                <option value="system">端末の設定に従う</option>
+                <option value="on">常に減らす</option>
+              </select>
+            </span>
+          </div>
+        </div>
+        <div v-else-if="settingsTab === 'battle'" class="settings-section" role="tabpanel">
+          <label class="settings-row">
+            <span class="settings-row-text">
+              <span class="settings-row-label">ターンの経過時間を表示</span>
+              <span class="settings-row-desc">オンライン対戦の<wbr>3分制限は、<wbr>表示しない場合も<wbr>有効です。</span>
+            </span>
+            <span class="settings-row-control"><input type="checkbox" :checked="battleTurnTimerEnabled" @change="battleToggleTurnTimer"></span>
+          </label>
+          <label class="settings-row">
+            <span class="settings-row-text">
+              <span class="settings-row-label">ターン終了前に確認する</span>
+              <span class="settings-row-desc">使えるカードや<wbr>神技が<wbr>残っているときに、<wbr>終了してよいか<wbr>確認します。</span>
+            </span>
+            <span class="settings-row-control"><input type="checkbox" :checked="battleEndTurnAssistEnabled" @change="battleToggleEndTurnAssist"></span>
+          </label>
+          <label class="settings-row">
+            <span class="settings-row-text">
+              <span class="settings-row-label">選別の儀で<wbr>おすすめを表示</span>
+              <span class="settings-row-desc">創世決戦の<wbr>ピックで、<wbr>おすすめのカードに<wbr>⭐と理由を出します。</span>
+            </span>
+            <span class="settings-row-control"><input type="checkbox" :checked="pickAssistEnabled" @change="togglePickAssist"></span>
+          </label>
+          <label class="settings-row">
+            <span class="settings-row-text">
+              <span class="settings-row-label">CPUが自分で<wbr>カードを使う</span>
+              <span class="settings-row-desc">ひとりで試す対戦で、<wbr>CPUが<wbr>カードの使用や<wbr>攻撃を行います。<wbr>オフにすると<wbr>待機するだけになります。</span>
+            </span>
+            <span class="settings-row-control"><input type="checkbox" :checked="cpuAutoPlayEnabled" @change="toggleCpuAutoPlay"></span>
+          </label>
+        </div>
+        <div v-else class="settings-section" role="tabpanel">
+          <div class="settings-row">
+            <span class="settings-row-text">
+              <span class="settings-row-label">戦績・対戦履歴</span>
+              <span class="settings-row-desc">この端末に<wbr>保存された<wbr>勝敗記録を<wbr>確認・保存・消去できます。</span>
+            </span>
+            <span class="settings-row-control"><button class="settings-row-btn" @click="settingsModalOpen = false; openBattleHistory()">開く</button></span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-text">
+              <span class="settings-row-label">チュートリアルの<wbr>記録を消す</span>
+              <span class="settings-row-desc">講座の<wbr>「済」の判子を<wbr>すべて消して、<wbr>最初から<wbr>やり直せるようにします。</span>
+            </span>
+            <span class="settings-row-control"><button class="settings-row-btn danger" @click="resetTutorialProgress">消す</button></span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-text">
+              <span class="settings-row-label">設定を<wbr>初期値に戻す</span>
+              <span class="settings-row-desc">音量・演出・対戦の<wbr>設定を戻します。<wbr>デッキ・戦績・<wbr>チュートリアルの記録は<wbr>消えません。</span>
+            </span>
+            <span class="settings-row-control"><button class="settings-row-btn danger" @click="resetSettingsToDefault">戻す</button></span>
+          </div>
+          <div class="settings-version">ツクリヨ オンライン v{{ BUILD_VERSION }}</div>
+        </div>
+      </div>
+      <div class="battle-zone-modal-actions">
+        <button class="battle-back-btn" @click="closeSettings">閉じる</button>
       </div>
     </div>
   </div>
@@ -8381,6 +8571,7 @@
           </div>
         </div>
       </div>
+      <button class="battle-undo-btn battle-header-icon-btn settings-open-btn" @click.stop="openSettings('battle')" title="設定" aria-label="設定を開く"><span class="ui-icon ui-icon-settings" aria-hidden="true"></span></button>
       <button class="battle-undo-btn battle-log-btn" @click="battleOpenLogModal('log')" title="バトルログを表示" aria-label="バトルログを開く">
         <span class="ui-icon ui-icon-battle-record" aria-hidden="true"></span> バトルログ
       </button>
@@ -12734,6 +12925,12 @@ new Vue({
     battleSfxVolume: loadStoredVolume(SFX_VOLUME_STORAGE_KEY), // SE音量（0〜1）。既定50%、localStorageに保存して次回以降も復元
     battleAnimationSpeed: loadStoredChoice('tsukuriyo_animationSpeed', ['normal','fast','minimal'], 'normal'),
     soundSettingsOpen: false,   // SE/BGM音量設定ポップオーバーの開閉（全画面共通）
+    settingsModalOpen: false,   // 設定画面（音・演出・対戦・データをまとめたモーダル）の開閉
+    settingsTab: 'sound',       // 設定画面の表示中タブ：sound / motion / battle / data
+    masterMuted: loadStoredBool('tsukuriyo_masterMuted', false), // 全体ミュート。各音量の値は変えずに、出力だけ0にする
+    muteWhenHidden: loadStoredBool('tsukuriyo_muteWhenHidden', false), // 別のタブ・アプリを見ている間は音を消す
+    pageHidden: false,          // document.hidden の写し（muteWhenHidden の判定用）
+    reduceMotionPref: loadStoredChoice('tsukuriyo_reduceMotion', ['system','on'], 'system'), // 動きを減らす：system＝端末の設定に従う／on＝常に減らす
     turnTimerSettingsOpen: false, // ターン経過時間設定ポップオーバーの開閉（対戦画面ヘッダー）
     battleAdjustOpen: false,      // ライフ・天力・マナの手動調整パネルの開閉（対戦画面ヘッダー）
     battleNetDetailOpen: false,   // 通信の詳細（コード・送受信時刻・revision）の開閉（対戦画面ヘッダー）
@@ -14901,6 +15098,7 @@ new Vue({
       return { '--marquee-shift': (-anim.shift) + 'px', animationDuration: anim.duration + 's' };
     },
     _topInfoReducedMotion() {
+      if (this.reduceMotionPref === 'on') return true;
       return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     },
     _topInfoMeasure(kind) {
@@ -15948,7 +16146,8 @@ new Vue({
     },
     tutorialSurfaceClick(event) {
       if (this.tutorialCompletion) { this.tutorialCompletionInput(event); return; }
-      if (!this.tutorial || this.tutorialMode !== 'say' || this.previewCard || this.battleSkillCloseup || this._battleHasBlockingModal()) return;
+      if (!this.tutorial || this.tutorialMode !== 'say' || this.previewCard || this.battleSkillCloseup || this.settingsModalOpen || this._battleHasBlockingModal()) return;
+      if (event.target.closest('.settings-open-btn, .settings-modal')) return; // 設定画面の開閉・操作は説明を進めない
       if (this.tutorialStep && this.tutorialStep.emoteIntro && (this._suppressNextKamiClick || event.target.closest('.emote-wheel, .emote-wheel-backdrop'))) return;
       // パネル内の確認ボタン・終了ボタンは既存の操作に任せる。
       if (event.target.closest('.tutorial-panel, .tutorial-quit')) return;
@@ -18056,7 +18255,7 @@ new Vue({
       if (!this._sfxGain) {
         const ctx = this._bgmAudioCtx();
         this._sfxGain = ctx.createGain();
-        this._sfxGain.gain.value = this.battleSfxVolume;
+        this._sfxGain.gain.value = this._effectiveVolume(this.battleSfxVolume);
         this._sfxGain.connect(ctx.destination);
       }
       return this._sfxGain;
@@ -18145,11 +18344,11 @@ new Vue({
     playKamiVoice(kami, key) {
       const files = kami && this.kamiVoiceManifest && this.kamiVoiceManifest.kami[String(parseInt(kami.no, 10))];
       const src = files && files[key];
-      if (!src || !(this.voiceVolume > 0)) return;
+      if (!src || !(this._effectiveVolume(this.voiceVolume) > 0)) return;
       try {
         if (this._kamiVoiceAudio) this._kamiVoiceAudio.pause();
         const audio = new Audio(typeof assetUrl === 'function' ? assetUrl(src) : src); // 中身の識別子付きURL（単体テストでは素のURL）
-        audio.volume = this.voiceVolume;
+        audio.volume = this._effectiveVolume(this.voiceVolume);
         this._kamiVoiceAudio = audio;
         // 読み上げ終了・中断・再生失敗を、台詞の表示側でも待てるようにする。
         let finish;
@@ -18193,14 +18392,76 @@ new Vue({
     setVoiceVolume(v) {
       const n = Math.min(1, Math.max(0, Number(v)));
       this.voiceVolume = isNaN(n) ? this.voiceVolume : n;
-      if (this._kamiVoiceAudio) this._kamiVoiceAudio.volume = this.voiceVolume;
+      this._applyAudioVolumes();
       try { localStorage.setItem(VOICE_VOLUME_STORAGE_KEY, String(this.voiceVolume)); } catch (e) { /* 保存できなくても続行 */ }
     },
     battleSetSfxVolume(v) {
       const n = Math.min(1, Math.max(0, Number(v)));
       this.battleSfxVolume = isNaN(n) ? this.battleSfxVolume : n;
-      if (this._sfxGain) this._sfxGain.gain.value = this.battleSfxVolume;
+      this._applyAudioVolumes();
       try { localStorage.setItem(SFX_VOLUME_STORAGE_KEY, String(this.battleSfxVolume)); } catch (e) { /* 保存できなくても続行 */ }
+    },
+    /* ===== 設定画面 =====
+       音量・演出・対戦・データの設定をひとつの画面にまとめる。各設定の保存は従来どおり個別のキーで行う */
+    _audioMuted() {
+      return !!(this.masterMuted || (this.muteWhenHidden && this.pageHidden));
+    },
+    // 実際に鳴らす音量。ミュート中は保存済みの音量を変えずに0を返す
+    _effectiveVolume(v) {
+      return this._audioMuted() ? 0 : v;
+    },
+    _applyAudioVolumes() {
+      if (this._sfxGain) this._sfxGain.gain.value = this._effectiveVolume(this.battleSfxVolume);
+      if (this._bgmGain) this._bgmGain.gain.value = this._effectiveVolume(this.bgmVolume);
+      if (this._kamiVoiceAudio) this._kamiVoiceAudio.volume = this._effectiveVolume(this.voiceVolume);
+    },
+    openSettings(tab) {
+      this._sfxPlay('decision');
+      for (const k of ['soundSettingsOpen', 'turnTimerSettingsOpen', 'battleAdjustOpen', 'battleNetDetailOpen']) this[k] = false;
+      this.settingsTab = ['sound','motion','battle','data'].includes(tab) ? tab : 'sound';
+      this.settingsModalOpen = true;
+    },
+    closeSettings() {
+      this._sfxPlay('cancel');
+      this.settingsModalOpen = false;
+    },
+    toggleMasterMute() {
+      this.masterMuted = !this.masterMuted;
+      this._applyAudioVolumes();
+      try { localStorage.setItem('tsukuriyo_masterMuted', String(this.masterMuted)); } catch (e) { /* 保存できなくても続行 */ }
+    },
+    toggleMuteWhenHidden() {
+      this.muteWhenHidden = !this.muteWhenHidden;
+      this._applyAudioVolumes();
+      try { localStorage.setItem('tsukuriyo_muteWhenHidden', String(this.muteWhenHidden)); } catch (e) { /* 保存できなくても続行 */ }
+    },
+    setReduceMotionPref(value) {
+      this.reduceMotionPref = value === 'on' ? 'on' : 'system';
+      try { localStorage.setItem('tsukuriyo_reduceMotion', this.reduceMotionPref); } catch (e) { /* 保存できなくても続行 */ }
+      if (this._topInfoMotionChange) this._topInfoMotionChange();
+    },
+    resetTutorialProgress() {
+      if (!confirm('チュートリアルのクリア記録（済の判子）をすべて消しますか？')) return;
+      this._sfxPlay('cancel');
+      this.tutorialProgress = {};
+      try { localStorage.removeItem(TUTORIAL_PROGRESS_STORAGE_KEY); } catch (e) { /* noop */ }
+    },
+    /* 設定を初期値に戻す。デッキ・戦績・チュートリアルの記録は消さない */
+    resetSettingsToDefault() {
+      if (!confirm('音量・演出・対戦の設定を初期値に戻しますか？\n（デッキ・戦績・チュートリアルの記録は消えません）')) return;
+      this.battleSetSfxVolume(0.1);
+      this.setVoiceVolume(0.6);
+      this.bgmSetVolume(0.1);
+      if (!this.bgmAuto) this.bgmSelectTrack('auto');
+      if (this.masterMuted) this.toggleMasterMute();
+      if (this.muteWhenHidden) this.toggleMuteWhenHidden();
+      this.battleSetAnimationSpeed('normal');
+      this.setReduceMotionPref('system');
+      if (!this.battleTurnTimerEnabled) this.battleToggleTurnTimer();
+      if (!this.battleEndTurnAssistEnabled) this.battleToggleEndTurnAssist();
+      if (!this.pickAssistEnabled) this.togglePickAssist();
+      if (!this.cpuAutoPlayEnabled) this.toggleCpuAutoPlay();
+      this._sfxPlay('decision');
     },
     battleSetAnimationSpeed(value) {
       const speed = ['normal','fast','minimal'].includes(value) ? value : 'normal';
@@ -18215,6 +18476,7 @@ new Vue({
       return ms;
     },
     _battleReducedMotion() {
+      if (this.reduceMotionPref === 'on') return true;
       return typeof window !== 'undefined' && !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     },
     battleSkipActiveAnimation() {
@@ -18243,7 +18505,7 @@ new Vue({
         const Ctx = window.AudioContext || window.webkitAudioContext;
         this._bgmCtx = new Ctx();
         this._bgmGain = this._bgmCtx.createGain();
-        this._bgmGain.gain.value = this.bgmVolume;
+        this._bgmGain.gain.value = this._effectiveVolume(this.bgmVolume);
         this._bgmGain.connect(this._bgmCtx.destination);
       }
       return this._bgmCtx;
@@ -18780,7 +19042,7 @@ new Vue({
     bgmSetVolume(v) {
       const n = Math.min(1, Math.max(0, Number(v)));
       this.bgmVolume = isNaN(n) ? this.bgmVolume : n;
-      if (this._bgmGain) this._bgmGain.gain.value = this.bgmVolume;
+      this._applyAudioVolumes();
       try { localStorage.setItem(BGM_VOLUME_STORAGE_KEY, String(this.bgmVolume)); } catch (e) { /* 保存できなくても続行 */ }
     },
     /* ===== BGMループ調整ツール（開発用） =====
@@ -30997,6 +31259,11 @@ new Vue({
         } else if (e.key === 'Tab') this._battleTrapModalFocus(e);
         return;
       }
+      if (this.settingsModalOpen) {
+        if (e.key === 'Escape') { e.preventDefault(); this.closeSettings(); }
+        else if (e.key === 'Tab') this._battleTrapModalFocus(e);
+        return;
+      }
       if (this.tutorialCompletion) { this.tutorialCompletionInput(e); return; }
       const key = String(e.key || '').toLowerCase();
       if (key === 'tab' && this._battleTrapModalFocus(e)) return;
@@ -32456,6 +32723,8 @@ new Vue({
     window.addEventListener('keydown', unlockBgm);
     // 手番通知：タブに戻ってきたら点滅を止め、まだ自分の番のままタブを離れたら点滅を再開する
     this._onVisibilityChangeForTurnFlash = () => {
+      this.pageHidden = !!document.hidden;
+      if (this.muteWhenHidden) this._applyAudioVolumes();
       if (document.hidden) {
         if (this.appView === 'battle' && this.battleSample.activeSide === 'self' && !this.battleSample.result) {
           this._battleStartTurnTitleFlash();
