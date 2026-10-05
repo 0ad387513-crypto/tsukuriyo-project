@@ -1,5 +1,15 @@
 # Claude → Codex 引き継ぎメモ（2026-09-26 時点）
 
+## Claude 追記：カミの立ち絵モーションの仕組み（v1.15.380・ブランチ claude/kami-motion、本番未反映）
+
+- ユーザー依頼：対戦画面のカミをシャドウバースのキャラクターのように、待機中は呼吸などで動かし、ダメージ・天力獲得などで特別なモーションを出したい。**画像は Codex が作る**ので、画像さえあれば動く状態まで準備。
+- 追加：`kami_motion.js`（登録表 `KAMI_MOTION_SETS`・反応の定義 `KAMI_MOTION_EVENTS`・判定関数・`<kami-motion>` 部品）、`kami_motion.css`、`kami_motion/README.md`（**画像の仕様・登録方法。画像を作る前に必ず読む**）、`kami_motion_preview.html`（登録前の画像もファイル選択で試せる確認ページ）、`tests/kami_motion.test.js`、`_headers` に `/kami_motion/*.webp` の長期キャッシュ。
+- 対戦画面の両肖像（`.kami-portrait`）に `<kami-motion>` を設置。`KAMI_MOTION_SETS` に登録したカミだけ `.has-kami-motion` で背景の1枚絵を隠してパーツ表示。**未登録のカミは従来どおりで見た目の変化なし**（現時点で登録0件）。
+- 反応のきっかけ：ライフ・天力・封印の増減（`_battleWatchStat`→`kamiMotionEventForStat`：damage／damageHeavy（3以上）／heal／tenryoku／sealBreak）、エモート（`_battleShowEmoteBubble`、種類別差分 `emote:taunt` 等）、神技（`battleSkillCloseup` が閉じた直後に skill1／skill2）、手番開始（`activeSide`）、勝敗（`result.outcome`→win／lose を決着中ずっと表示）。表示上の側（下段self・上段opp）単位。オンラインでも同期済みの盤面から各端末が検知するので通信は増えない。対戦開始時・決着取り消し時に反応をリセット。
+- 待機：layers ごとに idle（breathe／sway／sway-slow／float）、blink（目を閉じた差分を2.5〜6秒おきに0.14秒）、ライフ警告中は poses.pinch を待機に使い呼吸を速める。差分が無い反応は fallback（damageHeavy→damage、skill2→skill1、lose→damageHeavy、sealBreak→tenryoku）→待機の絵に画面効果だけ。priority の低い反応は割り込まない。演出速度「高速」と「動きを減らす」で0.6倍、「最小」は勝敗以外反応しない。
+- テスト：登録された画像が `kami_motion/名前-12桁ハッシュ.webp` で実在すること、pose のキーが既知であることを検証（登録したら npm test が通るか確認）。全187テスト成功。Vue の部品は Node 上でテンプレートの解釈・描画・反応の割り込み/連番/終了/勝敗の保持を確認。ブラウザでの目視は未実施（ユーザー指定で Claude の内蔵ブラウザは使わない）。
+- **画像を作ったら**：README の「3. 登録のしかた」に従って `KAMI_MOTION_SETS` に追記 → `kami_motion_preview.html` で全反応を確認 → npm test → version を上げる。
+
 ## Claude 追記：v1.15.294（2026-10-01）※未コミット（ユーザー確認待ち）
 
 - 星戦画面の整理（ChatGPTの依頼文「A案」、`design_assets/battle-ui-icons-semantic-v3/CLAUDE_PROMPT.md`）。ルール・対戦処理は変更なし。

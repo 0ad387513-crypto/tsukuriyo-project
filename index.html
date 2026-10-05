@@ -6121,6 +6121,7 @@
 <link rel="preload" as="image" href="top_mode_icons/construct2p-duel-66cbc68dc967.webp" fetchpriority="high">
 <link rel="preload" as="image" href="top_mode_icons/shield2p-oblong.webp" fetchpriority="high">
 <link rel="stylesheet" href="divine_effects.css">
+<link rel="stylesheet" href="kami_motion.css">
 </head>
 <body>
 <div id="app-loading" role="status" aria-live="polite">
@@ -8718,7 +8719,7 @@
               </div>
               <!-- 中央：カミ（X軸基準） -->
               <div class="kami-portrait"
-                   :class="['kami-tier-' + battleOpponentSkillTone, { 'orochi-awakened': battleViewIsOrochi('opp') && battleView.opp.seal === 0, 'battle-target-kami': battleCanFieldDragToAttackTargets, 'kami-shattering': battleView.result && battleView.result.outcome === 'win' }]"
+                   :class="['kami-tier-' + battleOpponentSkillTone, { 'orochi-awakened': battleViewIsOrochi('opp') && battleView.opp.seal === 0, 'battle-target-kami': battleCanFieldDragToAttackTargets, 'kami-shattering': battleView.result && battleView.result.outcome === 'win', 'has-kami-motion': kamiMotionAvailable(battleView.opp.kami) }]"
                    :style="battleView.opp.kami && kamiIllustrationUrl(battleView.opp.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleView.opp.kami) + ')' } : {}"
                    @click="battleOpponentKamiClick"
                    @dragover.prevent="battleUpdateFieldAttackTarget($event)"
@@ -8727,6 +8728,9 @@
                    @mouseleave="hideCardHover">
                 <div v-if="!battleView.opp.kami" class="kami-placeholder">カミ(相手)</div>
                 <div v-else-if="!hasKamiIllustration(battleView.opp.kami)" class="kami-illust-missing">イラスト未登録</div>
+                <!-- 立ち絵モーション（kami_motion.js）。画像を登録したカミだけ表示し、未登録なら従来の1枚絵のまま -->
+                <kami-motion v-if="kamiMotionAvailable(battleView.opp.kami)" :kami-no="battleView.opp.kami.no" :event="kamiMotionEvents.opp"
+                             :pinch="battleLifeWarning('opp')" :speed="battleAnimationSpeed" :reduced="_battleReducedMotion()"></kami-motion>
                 <div v-if="battleView.opp.graveyardEvolutionEnabled && battleView.opp.kami && String(battleView.opp.kami.no) === '1'" class="kami-susanoo-mark kami-susanoo-mark-opp" :class="{'susanoo-mark-pending':battleSusanooMarkPending('opp')}" tabindex="0" role="button"
                      aria-label="付与された能力を確認：墓地からの進化" aria-describedby="susanoo-ability-opp"
                      @mouseenter.stop="hideCardHover" @focus="hideCardHover" @mousedown.stop @touchstart.stop
@@ -8916,7 +8920,7 @@
               </div>
               <!-- 中央：カミ（X軸基準、神技段階で枠色変化） -->
               <div class="kami-portrait"
-                   :class="['kami-tier-' + battleSkillTone, { 'orochi-awakened': battleViewIsOrochi('self') && battleView.self.seal === 0, 'kami-shattering': battleView.result && battleView.result.outcome === 'loss' }]"
+                   :class="['kami-tier-' + battleSkillTone, { 'orochi-awakened': battleViewIsOrochi('self') && battleView.self.seal === 0, 'kami-shattering': battleView.result && battleView.result.outcome === 'loss', 'has-kami-motion': kamiMotionAvailable(battleView.self.kami) }]"
                    :style="battleView.self.kami && kamiIllustrationUrl(battleView.self.kami) ? { backgroundImage: 'url(' + kamiIllustrationUrl(battleView.self.kami) + ')' } : {}"
                    @click="battleSelfKamiClick"
                    @mousedown="battleEmoteDragStart"
@@ -8926,6 +8930,9 @@
                    @mouseleave="hideCardHover">
                 <div v-if="!battleView.self.kami" class="kami-placeholder">カミ</div>
                 <div v-else-if="!hasKamiIllustration(battleView.self.kami)" class="kami-illust-missing">イラスト未登録</div>
+                <!-- 立ち絵モーション（kami_motion.js）。画像を登録したカミだけ表示し、未登録なら従来の1枚絵のまま -->
+                <kami-motion v-if="kamiMotionAvailable(battleView.self.kami)" :kami-no="battleView.self.kami.no" :event="kamiMotionEvents.self"
+                             :pinch="battleLifeWarning('self')" :speed="battleAnimationSpeed" :reduced="_battleReducedMotion()"></kami-motion>
                 <div v-if="battleView.self.graveyardEvolutionEnabled && battleView.self.kami && String(battleView.self.kami.no) === '1'" class="kami-susanoo-mark" :class="{'susanoo-mark-pending':battleSusanooMarkPending('self')}" tabindex="0" role="button"
                      aria-label="付与された能力を確認：墓地からの進化" aria-describedby="susanoo-ability-self"
                      @mouseenter.stop="hideCardHover" @focus="hideCardHover" @mousedown.stop @touchstart.stop
@@ -11013,6 +11020,7 @@
 <!-- 画像・音声の中身の識別子（node scripts/build_asset_hashes.js で作る）。assetUrl() が URL に付ける -->
 <script src="asset_hashes.js"></script>
 <script src="divine_effects.js"></script>
+<script src="kami_motion.js"></script>
 <script src="firebase.js"></script>
 <script src="sync_core.js"></script>
 <script src="pack_generator.js"></script>
@@ -12897,6 +12905,7 @@ new Vue({
     battleSkillCloseup: null,   // 創世神技発動時の顔アップ演出：{ imgUrl, kamiName, skillName }
     battleStatDisplay: {},      // ライフ/マナ/天力/封印のカウントアップ表示用（実データとは別に保持）
     battleStatPops: {},         // ライフ/マナ等の増減ポップ表示：{ dispKey: { id, text, cls } }
+    kamiMotionEvents: { self: null, opp: null }, // 立ち絵モーションへ渡す反応：{ id, type, detail }（表示上の側ごと）
     battleDragTrail: [],        // ドラッグ中に追従する光の尾：[{ id, x, y, color }]
     battleAttackVisual: null,   // 神攻＝ビーム／戦闘＝クラッシュの一撃演出：{ id, kind, x, y, length, angle, midX, midY }
     voiceVolume: loadStoredVolume(VOICE_VOLUME_STORAGE_KEY, 0.6), // カミのボイス音量（0〜1）
@@ -18045,7 +18054,8 @@ new Vue({
     // カミの神技・創世神技の演出素材の一覧（実際に登場するカミの分だけ先読みするため）
     _kamiVisualUrls(kami) {
       if (!kami || !/^(?:[1-9]|10)$/.test(String(kami.no))) return [];
-      return [`kami_cutin/${kami.no}.webp`, `kami_cutin_eyes/${kami.no}.png`, ...divineSkillAssetUrls(kami), KAMI_EMOTE_ICONS[String(kami.no)]].filter(Boolean);
+      return [`kami_cutin/${kami.no}.webp`, `kami_cutin_eyes/${kami.no}.png`, ...divineSkillAssetUrls(kami), KAMI_EMOTE_ICONS[String(kami.no)],
+        ...(typeof kamiMotionUrls === 'function' ? kamiMotionUrls(kami.no) : [])].filter(Boolean);
     },
     /* 画像の読み込み係。画面に今すぐ必要な画像（ロード画面・ピック中の束）を先に、4本ずつ読む。
        裏で用意しておく画像（カミの演出素材・ドラフトで出うるカード）は、今すぐ必要な画像が無いときだけ1本ずつ読み、
@@ -19383,13 +19393,30 @@ new Vue({
       const board = this.battleView || this.battleSample;
       return Number(board && board[side] && board[side][key]) || 0;
     },
+    /* ===== カミの立ち絵モーション（kami_motion.js） =====
+       side は表示上の側（下段＝self、上段＝opp）。画像を登録したカミだけが反応し、未登録なら何もしない */
+    kamiMotionAvailable(kami) {
+      return !!(kami && kami.isKami !== false && typeof kamiMotionSet === 'function' && kamiMotionSet(kami.no));
+    },
+    _kamiMotionPlay(side, type, detail = null) {
+      if (!type || this.appView !== 'battle' || (side !== 'self' && side !== 'opp')) return;
+      const kami = this.battleView && this.battleView[side] && this.battleView[side].kami;
+      if (!this.kamiMotionAvailable(kami)) return;
+      const id = (this._kamiMotionSeq = (this._kamiMotionSeq || 0) + 1);
+      this.$set(this.kamiMotionEvents, side, { id, type, detail });
+    },
     _battleWatchStat(dispKey, next, previous) {
       // 新しい対戦の初期値を回復・ダメージとして見せない。
       if (!previous || next.board !== previous.board) {
         this.$set(this.battleStatDisplay, dispKey, next.value);
         return;
       }
-      if (next.value !== previous.value) this._battleTweenStat(dispKey, next.value, previous.value);
+      if (next.value !== previous.value) {
+        this._battleTweenStat(dispKey, next.value, previous.value);
+        const side = dispKey.startsWith('self') ? 'self' : 'opp';
+        const key = dispKey.slice(side.length).toLowerCase();
+        if (typeof kamiMotionEventForStat === 'function') this._kamiMotionPlay(side, kamiMotionEventForStat(key, Number(next.value) - Number(previous.value)));
+      }
     },
     _battleTweenStat(dispKey, to, previous) {
       if (to === null || to === undefined) { this.$set(this.battleStatDisplay, dispKey, to); return; }
@@ -19445,6 +19472,7 @@ new Vue({
       if (this._battleStatTweenSeq) Object.keys(this._battleStatTweenSeq).forEach(key => { this._battleStatTweenSeq[key]++; });
       this.battleStatDisplay = vals;
       this.battleStatPops = {};
+      this.kamiMotionEvents = { self: null, opp: null }; // 前の対戦の反応を持ち越さない
     },
     _battleShowDivineResolution(kami, index, rect) {
       if (this.appView !== 'battle' || this.battleAnimationSpeed === 'minimal') return;
@@ -19938,6 +19966,7 @@ new Vue({
       if (pos && typeof window !== 'undefined' && pos.y + bubbleHeight > window.innerHeight) Object.assign(pos, { y: rect.top - 10, above: true });
       // speechOptions.emote（{ kamiNo, key }）があれば、吹き出しにそのカミの表情アイコンを添える
       this.$set(this.emoteBubbles, side, { text, id, pos, emote: speechOptions.emote || null });
+      if (typeof this._kamiMotionPlay === 'function') this._kamiMotionPlay(side, 'emote', speechOptions.emote ? speechOptions.emote.key : null);
       this._emoteSpeechHolds = this._emoteSpeechHolds || {};
       if (this._emoteSpeechHolds[side]) this._emoteSpeechHolds[side].cancel();
       this._emoteSpeechHolds[side] = this._battleHoldSpeech(text, voice, () => {
@@ -32529,6 +32558,22 @@ new Vue({
         this.$watch(() => ({board:this.battleSample,value:this.battleView && this.battleView[side] && this.battleView[side][key]}),
           (next, previous) => this._battleWatchStat(dispKey, next, previous));
       });
+    });
+    // 立ち絵モーション：手番の開始・神技・決着をきっかけにする（増減とエモートは各処理から呼ぶ）
+    this.$watch(() => ({ board: this.battleSample, side: this.battleView && this.battleView.activeSide }), (next, previous) => {
+      if (previous && next.board === previous.board && next.side && next.side !== previous.side) this._kamiMotionPlay(next.side, 'turnStart');
+    });
+    this.$watch('battleSkillCloseup', (next, previous) => {
+      // カットインが閉じた直後に、使った側の肖像で反応する（カットイン中は肖像が隠れているため）
+      if (next || !previous || !previous.kami || !this.battleView) return;
+      const side = ['self', 'opp'].find(s => this.battleView[s] && this.battleView[s].kami === previous.kami);
+      this._kamiMotionPlay(side, /skill2/.test(String(previous.mode || '')) ? 'skill2' : 'skill1');
+    });
+    this.$watch(() => this.battleView && this.battleView.result && this.battleView.result.outcome, (outcome) => {
+      // 再戦などで決着が取り消されたら、勝敗の差分を外して待機に戻す
+      if (outcome !== 'win' && outcome !== 'loss') { this.kamiMotionEvents = { self: null, opp: null }; return; }
+      this._kamiMotionPlay('self', outcome === 'win' ? 'win' : 'lose');
+      this._kamiMotionPlay('opp', outcome === 'win' ? 'lose' : 'win');
     });
     // BGM：TOP画像の初期表示を優先し、初回の曲読み込みだけ少し後ろへ回す。
     this.$watch('appView', (v) => { this._bgmRestoreAfterBattle(v); });

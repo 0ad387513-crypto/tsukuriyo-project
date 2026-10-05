@@ -1,0 +1,81 @@
+/* カミの立ち絵モーション（kami_motion.js の <kami-motion>）。見た目だけを定義する。 */
+
+/* 登録済みのカミは、肖像の背景の1枚絵の代わりにパーツを重ねて表示する */
+.kami-portrait.has-kami-motion { background-image: none !important; }
+.kami-motion {
+  position: absolute; inset: 0; border-radius: 50%; overflow: hidden;
+  pointer-events: none; z-index: 0;
+}
+.kami-motion-base, .kami-motion-layer { position: absolute; inset: 0; width: 100%; height: 100%; }
+.kami-motion-layer { object-fit: cover; user-select: none; -webkit-user-drag: none; }
+.kami-motion-base { transition: opacity .12s ease-out; }
+.kami-motion-pose { animation: kamiMotionPoseIn .12s ease-out both; }
+.kami-motion.is-posing .kami-motion-base { opacity: 0; }
+@keyframes kamiMotionPoseIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ===== 待機中の動き（パーツごとに idle で指定） =====
+   丸枠の外へはみ出さない程度のごく小さな動きにする */
+.kami-motion-idle-breathe { transform-origin: 50% 100%; animation: kamiMotionBreathe 4.2s ease-in-out infinite; }
+.kami-motion-idle-sway { transform-origin: 50% 0%; animation: kamiMotionSway 5.6s ease-in-out infinite; }
+.kami-motion-idle-sway-slow { transform-origin: 50% 0%; animation: kamiMotionSway 8.4s ease-in-out infinite; }
+.kami-motion-idle-float { animation: kamiMotionFloat 6.4s ease-in-out infinite; }
+.kami-motion.is-pinch .kami-motion-idle-breathe { animation-duration: 2.6s; }
+@keyframes kamiMotionBreathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.006, 1.016); }
+}
+@keyframes kamiMotionSway {
+  0%, 100% { transform: rotate(-.7deg); }
+  50% { transform: rotate(.7deg); }
+}
+@keyframes kamiMotionFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.2%); }
+}
+.kami-motion-blink { animation: none; }
+
+/* ===== 反応の画面効果 ===== */
+.kami-motion-fx { position: absolute; inset: 0; border-radius: 50%; opacity: 0; pointer-events: none; }
+/* 揺れは丸枠ではなく中の絵だけを動かす（少し拡大して、ずれた縁に隙間を見せない） */
+.kami-motion-fx-shake .kami-motion-base, .kami-motion-fx-shake .kami-motion-pose { animation: kamiMotionShake .42s linear both; }
+.kami-motion-fx-shake-heavy .kami-motion-base, .kami-motion-fx-shake-heavy .kami-motion-pose { animation: kamiMotionShake .3s linear 2 both; }
+.kami-motion-fx-shake .kami-motion-fx, .kami-motion-fx-shake-heavy .kami-motion-fx {
+  background: radial-gradient(circle, rgba(255,60,60,0) 35%, rgba(255,40,40,.55) 100%);
+  animation: kamiMotionFlash .6s ease-out both;
+}
+.kami-motion-fx-heal .kami-motion-fx {
+  background: radial-gradient(circle at 50% 80%, rgba(120,255,170,.5), rgba(120,255,170,0) 70%);
+  animation: kamiMotionGlow 1s ease-out both;
+}
+.kami-motion-fx-tenryoku .kami-motion-fx {
+  background: radial-gradient(circle at 50% 85%, rgba(255,214,110,.6), rgba(255,214,110,0) 70%);
+  animation: kamiMotionGlow 1s ease-out both;
+}
+.kami-motion-fx-seal .kami-motion-fx {
+  background: radial-gradient(circle, rgba(230,99,121,.55), rgba(230,99,121,0) 72%);
+  animation: kamiMotionGlow 1.2s ease-out both;
+}
+.kami-motion-fx-skill .kami-motion-fx {
+  background: radial-gradient(circle, rgba(255,245,210,.55), rgba(255,245,210,0) 70%);
+  animation: kamiMotionGlow 1.4s ease-out both;
+}
+.kami-motion-fx-nod .kami-motion-base, .kami-motion-fx-nod .kami-motion-pose { animation: kamiMotionNod .6s ease-out both; }
+@keyframes kamiMotionShake {
+  0%, 100% { transform: scale(1.06) translate(0, 0); }
+  20% { transform: scale(1.06) translate(-3%, 1%); }
+  40% { transform: scale(1.06) translate(3%, -1%); }
+  60% { transform: scale(1.06) translate(-2%, 0); }
+  80% { transform: scale(1.06) translate(1.5%, 1%); }
+}
+@keyframes kamiMotionFlash { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes kamiMotionGlow { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes kamiMotionNod {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(1.5%); }
+}
+
+/* 動きを減らす設定・演出速度「最小」：待機の動きと揺れを止め、差分の切り替えだけを見せる */
+.kami-motion.reduced, .kami-motion.reduced * { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .kami-motion *, .kami-motion { animation: none !important; transition: none !important; }
+}

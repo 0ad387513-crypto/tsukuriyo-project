@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ツクリヨ · カミの立ち絵モーション確認</title>
+<link rel="stylesheet" href="kami_motion.css">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080b13;color:#ebddc3;font-family:serif}
+header{padding:16px 24px;border-bottom:1px solid #75644855;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+h1{font-size:20px;margin:0}a{color:#e7c87e}
+button,select{font:inherit;color:#e6d2ab;border:1px solid #7b6741;border-radius:5px;background:#171a26;padding:7px 12px;cursor:pointer}
+button:hover{background:#303042}button.on{background:#4a3f5a;border-color:#b89a5a}
+main{display:grid;grid-template-columns:minmax(280px,1fr) minmax(320px,1.2fr);gap:24px;padding:20px 24px;max-width:1280px}
+@media (max-width:820px){main{grid-template-columns:1fr}}
+.stage{display:flex;gap:28px;align-items:center;justify-content:center;flex-wrap:wrap;padding:28px;border:1px solid #3a4256;border-radius:8px;
+  background:linear-gradient(#080b13aa,#080b13cc),url('battle_fields/shinshi.webp') center/cover}
+.portrait{position:relative;border-radius:50%;border:3px solid #dc9f50;box-shadow:0 0 16px rgba(220,159,80,.45);background:#1a1d28 center/cover no-repeat}
+.portrait.big{width:260px;height:260px}.portrait.small{width:120px;height:120px}
+.size-note{text-align:center;font-size:12px;color:#9aa5ba;margin-top:6px}
+.buttons{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
+.status{font-size:13px;line-height:1.7;color:#c9d2df}
+.status .ok{color:#8fe3a8}.status .missing{color:#e9a27a}.status .fallback{color:#d9c37a}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px}
+td,th{border-bottom:1px solid #2c3446;padding:6px 6px;text-align:left;vertical-align:middle}
+th{color:#e8d4a0;font-weight:700}
+input[type=file]{font-size:12px;max-width:220px;color:#c9d2df}
+.note{font-size:12px;color:#9aa5ba;line-height:1.7}
+h2{font-size:16px;color:#e8d4a0;margin:18px 0 6px}
+.log{font-size:12px;color:#9aa5ba;min-height:1.5em}
+</style></head><body><div id="preview">
+<header>
+  <h1>カミの立ち絵モーション · 確認</h1><a href="index.html">ゲームへ戻る</a>
+  <select v-model="kamiNo" aria-label="カミ" @change="resetLocal"><option v-for="(name,i) in names" :key="i" :value="String(i+1)">{{ i+1 }}. {{ name }}</option></select>
+  <select v-model="speed" aria-label="演出速度"><option value="normal">演出速度：標準</option><option value="fast">高速</option><option value="minimal">最小</option></select>
+  <button :class="{on:pinch}" @click="pinch=!pinch">ライフ残りわずか</button>
+  <button :class="{on:reduced}" @click="reduced=!reduced">動きを減らす</button>
+</header>
+<main>
+  <section>
+    <div class="stage">
+      <div><div class="portrait big" :class="{'has-kami-motion':!!activeSet}" :style="activeSet?{}:{backgroundImage:'url('+illustration+')'}">
+        <kami-motion v-if="activeSet" :kami-no="kamiNo" :sets="previewSets" :event="event" :pinch="pinch" :speed="speed" :reduced="reduced" @motion="onMotion"></kami-motion>
+      </div><div class="size-note">拡大表示</div></div>
+      <div><div class="portrait small" :class="{'has-kami-motion':!!activeSet}" :style="activeSet?{}:{backgroundImage:'url('+illustration+')'}">
+        <kami-motion v-if="activeSet" :kami-no="kamiNo" :sets="previewSets" :event="event" :pinch="pinch" :speed="speed" :reduced="reduced"></kami-motion>
+      </div><div class="size-note">対戦画面に近い大きさ</div></div>
+    </div>
+    <div class="buttons">
+      <button v-for="(ev,type) in events" :key="type" @click="fire(type)">{{ ev.label }}</button>
+    </div>
+    <div class="buttons">
+      <span class="note" style="align-self:center">エモート：</span>
+      <button v-for="key in emoteKeys" :key="key" @click="fire('emote', key)">{{ emoteNames[key] || key }}</button>
+    </div>
+    <div class="log">{{ log }}</div>
+  </section>
+  <section>
+    <div class="status">
+      <div v-if="registered">このカミは <span class="ok">kami_motion.js に登録済み</span> です（ゲームでも動きます）。</div>
+      <div v-else-if="localSet">登録前の画像で試しています（このページだけの表示です）。</div>
+      <div v-else-if="demo">素材が無いため、<span class="fallback">今の1枚絵を体全体として呼吸させた仮の表示</span>です。</div>
+      <div v-else>このカミはまだ登録されていません。下で画像を選ぶか、仮の表示で動きを確かめられます。
+        <div class="buttons"><button @click="demo=true">今の1枚絵で仮に動かす</button></div></div>
+    </div>
+    <h2>画像を選んで試す（登録前の確認用）</h2>
+    <p class="note">すべて同じ大きさの正方形・透過PNG/WebPで、丸い枠に収まる同じ位置の絵を選んでください。選んだ画像はこの端末の中だけで使い、どこにも送信しません。</p>
+    <table>
+      <tr><th>部品</th><th>状態</th><th>画像</th></tr>
+      <tr v-for="slot in slots" :key="slot.key">
+        <td>{{ slot.label }}<div v-if="slot.hint" class="note">{{ slot.hint }}</div></td>
+        <td><span v-if="slotStatus(slot)==='ok'" class="status ok">あり</span>
+            <span v-else-if="slotStatus(slot)==='fallback'" class="status fallback">代用：{{ fallbackLabel(slot) }}</span>
+            <span v-else class="status missing">{{ slot.required ? '必須' : 'なし' }}</span></td>
+        <td><input type="file" accept="image/png,image/webp,image/jpeg" @change="pick(slot, $event)"></td>
+      </tr>
+    </table>
+    <p class="note">呼吸だけなら「体」1枚で動きます。「後ろ髪・衣」「前髪・袖」を分けると、なびきが加わります。反応の差分が無いものは、近い反応の差分（例：大ダメージ→ダメージ）か待機の絵に揺れや光を重ねて代わりにします。仕様は kami_motion/README.md を参照してください。</p>
+  </section>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14"></script><script src="kami_motion.js"></script><script>
+const NAMES=['スサノオ','ヤマトタケル','オオクニヌシ','タケミカヅチ','オモイカネ','アメノウズメ','ヒノカグツチ','アマテラス','ツクヨミ','ヤマタノオロチ'];
+const ILLUSTRATIONS={1:'スサノオ',2:'ヤマトタケル',3:'オオクニヌシ',4:'タケミカズチ',5:'オモイカネ',6:'アメノウズメ',7:'ヒノカグツチ',8:'アマテラス',9:'ツクヨミ',10:'ヤマタノオロチ'};
+const SLOTS=[
+  {key:'layer:back',label:'後ろ髪・衣（なびき）',hint:'体より奥に描くパーツ。任意',layer:'sway',order:0},
+  {key:'layer:body',label:'体（呼吸）',hint:'待機の絵の本体',layer:'breathe',order:1,required:true},
+  {key:'layer:front',label:'前髪・袖（なびき）',hint:'体より手前に描くパーツ。任意',layer:'sway-slow',order:2},
+  {key:'blink',label:'まばたき',hint:'目を閉じた顔の部分だけ'},
+  ...Object.keys(KAMI_MOTION_EVENTS).map(type=>({key:'pose:'+type,label:'反応：'+KAMI_MOTION_EVENTS[type].label,pose:type})),
+  {key:'pose:pinch',label:'ライフが少ないときの待機',hint:'任意',pose:'pinch'},
+  {key:'pose:emote',label:'エモート（共通）',pose:'emote'},
+];
+new Vue({el:'#preview',data:{names:NAMES,kamiNo:'1',speed:'normal',pinch:false,reduced:false,demo:false,local:{},event:null,seq:0,log:'',
+  events:KAMI_MOTION_EVENTS,emoteKeys:KAMI_MOTION_EMOTE_KEYS,slots:SLOTS,
+  emoteNames:{greeting:'あいさつ',confusion:'困惑',praise:'称賛',surprise:'驚き',taunt:'挑発',boast:'自信'}},
+computed:{
+  illustration(){return 'kami_illustrations/'+ILLUSTRATIONS[this.kamiNo]+'.webp'},
+  registered(){return !!kamiMotionSet(this.kamiNo)},
+  localSet(){
+    if(!this.local['layer:body'])return null;
+    const layers=SLOTS.filter(s=>s.layer && this.local[s.key]).sort((a,b)=>a.order-b.order).map(s=>({src:this.local[s.key],idle:s.layer}));
+    const poses={};for(const s of SLOTS)if(s.pose && this.local[s.key])poses[s.pose]=this.local[s.key];
+    return {layers,blink:this.local.blink||'',poses};
+  },
+  demoSet(){return {layers:[{src:this.illustration,idle:'breathe'}],poses:{}}},
+  activeSet(){return this.localSet || (this.registered ? kamiMotionSet(this.kamiNo) : (this.demo ? this.demoSet : null))},
+  previewSets(){return this.activeSet ? {[this.kamiNo]:this.activeSet} : {}},
+},
+methods:{
+  fire(type,detail=null){this.event={id:++this.seq,type,detail};},
+  onMotion(type){const pose=kamiMotionResolvePose(this.activeSet,type,this.event&&this.event.detail);this.log=KAMI_MOTION_EVENTS[type].label+'：'+(pose?'差分を表示':'差分なし（待機の絵に効果だけ）');},
+  pick(slot,e){const f=e.target.files&&e.target.files[0];if(!f)return;if(this.local[slot.key])URL.revokeObjectURL(this.local[slot.key]);this.$set(this.local,slot.key,URL.createObjectURL(f));},
+  resetLocal(){for(const u of Object.values(this.local))URL.revokeObjectURL(u);this.local={};this.demo=false;this.event=null;},
+  slotStatus(slot){
+    const set=this.activeSet;if(!set)return 'missing';
+    // 登録済み・仮の表示では部品の内訳までは分からないので、体があるものとして扱う
+    if(slot.layer)return (this.localSet?this.local[slot.key]:slot.key==='layer:body')?'ok':'missing';
+    if(slot.key==='blink')return set.blink?'ok':'missing';
+    if(slot.pose==='pinch')return set.poses&&set.poses.pinch?'ok':'missing';
+    if(set.poses&&set.poses[slot.pose])return 'ok';
+    return kamiMotionResolvePose(set,slot.pose)?'fallback':'missing';
+  },
+  fallbackLabel(slot){let t=KAMI_MOTION_EVENTS[slot.pose]&&KAMI_MOTION_EVENTS[slot.pose].fallback;const p=(this.activeSet&&this.activeSet.poses)||{};while(t&&!p[t])t=KAMI_MOTION_EVENTS[t]&&KAMI_MOTION_EVENTS[t].fallback;return t?KAMI_MOTION_EVENTS[t].label:'';},
+}});
+</script></body></html>
