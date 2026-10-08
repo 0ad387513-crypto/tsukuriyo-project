@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEの試聴</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 20px 16px 48px; background: #0c0d14; color: #eadfca; font-family: 'Hiragino Sans', 'Meiryo', sans-serif; }
+  h1 { margin: 0 0 4px; font-size: 22px; color: #f2cd7a; }
+  h2 { margin: 26px 0 8px; font-size: 16px; color: #e2c47e; border-bottom: 1px solid #3a3226; padding-bottom: 4px; }
+  .lead { margin: 0 0 12px; font-size: 13px; color: #b9ad94; line-height: 1.7; }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0 0 8px; font-size: 13px; }
+  input[type=range] { width: 160px; }
+  table { border-collapse: collapse; width: 100%; max-width: 1100px; font-size: 13px; }
+  th, td { border-bottom: 1px solid #2a2530; padding: 7px 8px; text-align: left; vertical-align: top; }
+  th { color: #b9ad94; font-weight: 600; }
+  .key { font-family: Consolas, monospace; color: #c9b88e; font-size: 12px; }
+  .use { color: #eadfca; }
+  .prompt { color: #8f8574; font-size: 11px; line-height: 1.5; margin-top: 3px; max-width: 420px; }
+  button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 4px; border: 1px solid #74684f; background: #242118; color: #f1e5c6; cursor: pointer; margin: 0 4px 4px 0; }
+  button:hover { border-color: #d9b46a; }
+  button.now { border-color: #6b7a96; background: #1b2130; }
+  button.used { border-color: #8fe08f; color: #c8f5c8; }
+  .copy { font-size: 11px; padding: 2px 6px; color: #b9ad94; }
+  .none { color: #6f665a; font-size: 12px; }
+  .toast { position: fixed; left: 50%; bottom: 20px; translate: -50% 0; background: #2a2117; border: 1px solid #d9b46a; padding: 8px 14px; border-radius: 4px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+<h1>SEの試聴</h1>
+<p class="lead">
+  今のSE（青い枠）と、ElevenLabs で作った候補（金の枠）を聞き比べます。候補の横の「使う」を押すと、差し替えのコマンドをコピーします（PowerShell に貼って実行）。<br>
+  候補を作るには：<code>node scripts/generate_sfx_elevenlabs.js make --new</code>（まだ無い場面のSE）／ <code>make --keys hit,draw</code>（指定したSE）。作った後はこのページを再読み込み。
+</p>
+<div class="bar">
+  <label>音量 <input id="vol" type="range" min="0" max="1" step="0.05" value="0.4"></label>
+  <label><input id="onlyCand" type="checkbox"> 候補があるSEだけ表示</label>
+</div>
+<div id="root"></div>
+<div id="toast" class="toast"></div>
+<script>
+(async () => {
+  const plan = await fetch('plan.json', { cache: 'no-store' }).then(r => r.json());
+  const index = await fetch('../../sfx/candidates/index.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : { candidates: {} }).catch(() => ({ candidates: {} }));
+  const vol = document.getElementById('vol');
+  const only = document.getElementById('onlyCand');
+  let current = null;
+  const play = (src) => {
+    if (current) { current.pause(); current = null; }
+    const a = new Audio(src + (src.includes('?') ? '&' : '?') + 't=' + Date.now());
+    a.volume = Number(vol.value);
+    a.play().catch(() => {});
+    current = a;
+  };
+  const toast = (text) => { const t = document.getElementById('toast'); t.textContent = text; t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 1600); };
+  const exists = async (src) => { try { const r = await fetch(src, { method: 'HEAD', cache: 'no-store' }); return r.ok; } catch (e) { return false; } };
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+  async function render() {
+    const root = document.getElementById('root');
+    root.innerHTML = '';
+    for (const [status, title] of [['new', 'まだ無い場面のSE（作ってからゲームに配線する）'], ['existing', '今あるSE（作り直しの候補）']]) {
+      const items = plan.items.filter(it => it.status === status && (!only.checked || (index.candidates[it.key] || []).length));
+      if (!items.length) continue;
+      root.appendChild(el('h2', '', title));
+      const table = el('table');
+      const head = el('tr'); ['SE', '鳴る場面', '今の音', '候補'].forEach(h => head.appendChild(el('th', '', h)));
+      table.appendChild(head);
+      for (const it of items) {
+        const tr = el('tr');
+        const k = el('td'); k.appendChild(el('div', 'key', it.key)); k.appendChild(el('div', 'key', it.file)); tr.appendChild(k);
+        const u = el('td'); u.appendChild(el('div', 'use', it.use)); u.appendChild(el('div', 'prompt', it.prompt)); tr.appendChild(u);
+        const now = el('td');
+        const src = '../../sfx/' + it.file;
+        if (await exists(src)) { const b = el('button', 'now', '▶ 今の音'); b.onclick = () => play(src); now.appendChild(b); }
+        else now.appendChild(el('span', 'none', '（まだ無い）'));
+        tr.appendChild(now);
+        const cand = el('td');
+        const list = index.candidates[it.key] || [];
+        if (!list.length) cand.appendChild(el('span', 'none', '（候補なし）'));
+        list.forEach((c, i) => {
+          const wrap = el('span');
+          const used = index.used && index.used[it.key] && index.used[it.key].file === c.file;
+          const b = el('button', used ? 'used' : '', '▶ 候補' + (i + 1) + (used ? '（使用中）' : ''));
+          b.title = c.file;
+          b.onclick = () => play('../../sfx/candidates/' + it.key + '/' + c.file);
+          const cp = el('button', 'copy', '使う');
+          cp.onclick = async () => {
+            const cmd = `node scripts/generate_sfx_elevenlabs.js use --key ${it.key} --file ${c.file}`;
+            try { await navigator.clipboard.writeText(cmd); toast('コマンドをコピーしました'); } catch (e) { prompt('このコマンドを実行してください', cmd); }
+          };
+          wrap.appendChild(b); wrap.appendChild(cp); cand.appendChild(wrap);
+        });
+        tr.appendChild(cand);
+        table.appendChild(tr);
+      }
+      root.appendChild(table);
+    }
+  }
+  only.onchange = render;
+  render();
+})();
+</script>
+</body>
+</html>

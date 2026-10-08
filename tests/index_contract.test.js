@@ -407,7 +407,7 @@ test("mulligan, reroll, evolution and kami image replacement UX stays intentiona
   const mulligan = html.match(/<div v-if="battleMulligan"[\s\S]*?<div class="battle-board">/);
   assert.ok(mulligan);
   assert.doesNotMatch(mulligan[0], /フィールドを確認/);
-  assert.match(html, /リロールに使用できるカード/);
+  assert.match(html, /<div class="reroll-candidate-list">\s*<div v-for="\(card, i\) in dslOptionalModal\.cards"/);
   assert.match(html, /cards: Array\.isArray\(options\.cards\)/);
   assert.match(html, /'reroll',\s*\{ cards: candidates \}/);
   assert.doesNotMatch(html, /\.battle-card\.field-card\.evolved::after/);
@@ -532,4 +532,19 @@ test("settings screen gathers sound, motion, battle and data options", () => {
   assert.match(html, /@click\.stop="openSettings\('sound'\)"/, "top header opens settings");
   assert.match(html, /settings-open-btn" @click\.stop="openSettings\('battle'\)"/, "battle header opens settings");
   for (const key of ["tsukuriyo_masterMuted", "tsukuriyo_muteWhenHidden", "tsukuriyo_reduceMotion"]) assert.ok(html.includes(key), key);
+});
+
+test("field zones hold up to 7 legacies and 5 relics", () => {
+  const methodMatch = html.match(/\n    battleFieldLimit\(zone\) \{\n([\s\S]*?)\n    \},/);
+  assert.ok(methodMatch, "battleFieldLimit was not found");
+  const battleFieldLimit = new Function("zone", methodMatch[1]);
+  assert.equal(battleFieldLimit("legacies"), 7);
+  assert.equal(battleFieldLimit("relics"), 5);
+  // 置き場の上限はすべて battleFieldLimit を通す（レガシー専用の判定だけが7を直接使う）
+  const literalChecks = Array.from(html.matchAll(/^.*\.length\s*(?:>=|<)\s*7\b.*$/gm), match => match[0].trim());
+  for (const line of literalChecks) assert.match(line, /legacies/, line);
+  assert.match(html, /\(me\.relics \|\| \[\]\)\.length >= this\.battleFieldLimit\('relics'\)/, "hand glow and end-turn warnings use the relic limit");
+  assert.doesNotMatch(html, /(?:\}|レリック)フィールドには7枚まで配置できます/, "notices show the limit of each zone");
+  assert.match(html, /フィールドには、レガシーは7枚まで、レリックは5枚まで置けます。/);
+  assert.match(html, /上限5枚です。/);
 });

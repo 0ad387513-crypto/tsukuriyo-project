@@ -23,7 +23,8 @@ const ASSET_DIRS = [
   // previews・trials（試し作り）・_raw はローカル専用で本番に出さないため、一覧に入れない
   { dir: "voices", ext: /\.(mp3|wav)$/i, skip: /^(previews|trials|_raw)\// },
   { dir: "bgm", ext: /\.(mp3|ogg|wav|m4a)$/i, skip: /^op-candidates\// },
-  { dir: "sfx", ext: /\.(mp3|ogg|wav|m4a)$/i },
+  // candidates（ElevenLabs で作ったSEの候補）はローカル専用で本番に出さないため、一覧に入れない
+  { dir: "sfx", ext: /\.(mp3|ogg|wav|m4a)$/i, skip: /^candidates\// },
 ];
 const OUTPUT = "asset_hashes.js";
 
