@@ -535,7 +535,7 @@ test("settings screen gathers sound, motion, battle and data options", () => {
 });
 
 test("field zones hold up to 7 legacies and 5 relics", () => {
-  const methodMatch = html.match(/\n    battleFieldLimit\(zone\) \{\n([\s\S]*?)\n    \},/);
+  const methodMatch = html.match(/\r?\n    battleFieldLimit\(zone\) \{\r?\n([\s\S]*?)\r?\n    \},/);
   assert.ok(methodMatch, "battleFieldLimit was not found");
   const battleFieldLimit = new Function("zone", methodMatch[1]);
   assert.equal(battleFieldLimit("legacies"), 7);
