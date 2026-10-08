@@ -61,6 +61,8 @@ function writeArtFile(no, base, ext, data) {
   }
   return file;
 }
+const voiceScriptFile = path.join(root, "tools", "voice-script", "card_voice_script.json");
+const VOICE_SCRIPT_FIELDS = ["summon", "attack", "death", "use", "reading", "note", "memo", "status"];
 async function handleDev(req, res, url) {
   // 他のサイトから localhost へ送り込まれるのを防ぐため、同じ確認用サーバーのページからの要求だけ受け付ける
   const origin = req.headers.origin;
@@ -115,6 +117,31 @@ async function handleDev(req, res, url) {
   if (url.pathname === "/__dev/card-art-list") {
     const files = artFiles();
     return sendJson(res, 200, { ok: true, nos: Object.keys(files), files });
+  }
+  // ===== カードボイス台本（tools/voice-script）=====
+  // 台本は tools/voice-script/card_voice_script.json の1ファイル。読み込みは全体、保存は1件ずつ書き換える項目だけを送る
+  if (url.pathname === "/__dev/voice-script" && req.method === "GET") {
+    try { return sendJson(res, 200, { ok: true, script: JSON.parse(fs.readFileSync(voiceScriptFile, "utf8")) }); }
+    catch (e) { return sendJson(res, 500, { ok: false, message: "台本ファイルを読めませんでした: " + e.message }); }
+  }
+  if (url.pathname === "/__dev/voice-script" && req.method === "POST") {
+    const id = url.searchParams.get("id");
+    if (!/^n\d{3}$/.test(id || "")) return sendJson(res, 400, { ok: false, message: "カードの指定が正しくありません" });
+    let patch;
+    try { patch = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "保存する内容の形式が正しくありません" }); }
+    const entries = Object.entries(patch || {}).filter(([k, v]) => VOICE_SCRIPT_FIELDS.includes(k) && typeof v === "string" && v.length <= 300);
+    if (!entries.length) return sendJson(res, 400, { ok: false, message: "保存できる項目がありません" });
+    if (patch.status !== undefined && !["draft", "ok", "fix"].includes(patch.status)) return sendJson(res, 400, { ok: false, message: "確認状態の値が正しくありません" });
+    const script = JSON.parse(fs.readFileSync(voiceScriptFile, "utf8"));
+    const line = script.lines && script.lines[id];
+    if (!line) return sendJson(res, 404, { ok: false, message: "そのカードは台本にありません" });
+    Object.assign(line, Object.fromEntries(entries), { updatedAt: new Date().toISOString() });
+    // 書きかけのファイルが残らないよう、一時ファイルに書いてから置き換える
+    const tmp = voiceScriptFile + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify(script, null, 1) + "\n");
+    fs.renameSync(tmp, voiceScriptFile);
+    console.log(`[voice-script] ${id}（${line.card}）の ${entries.map(([k]) => k).join("・")} を保存`);
+    return sendJson(res, 200, { ok: true, line });
   }
   return sendJson(res, 404, { ok: false, message: "not found" });
 }

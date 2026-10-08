@@ -1,5 +1,11 @@
 # Claude → Codex 引き継ぎメモ（2026-09-26 時点）
 
+## Claude 追記：カードボイス台本の編集ページ（2026-10-09・ブランチ claude/kami-motion）
+
+- ユーザー依頼で、カード使用時ボイスの台本をブラウザで一覧・編集・保存できるローカル専用ページを追加。`tools/voice-script/index.html`（http://localhost:8765/tools/voice-script/）。台本の正本は `tools/voice-script/card_voice_script.json`（143件、キー n+先頭No.3桁）。`tools/` は本番では `_redirects` で404。
+- `scripts/serve.js` に `/__dev/voice-script`（GET＝全体、POST ?id=n001＝summon/attack/death/use/reading/note/memo/status だけを1件ずつ上書き、一時ファイル経由で置換）を追加。既存の送信元チェック（localhost:8765 以外は403）を通る。
+- `.release-worktree` にも同じ3ファイルを置き、確認用サーバー（node scripts/serve.js）を同じフォルダで再起動済み。
+
 ## Claude 追記：カミの立ち絵モーションの仕組み（v1.15.380・ブランチ claude/kami-motion、本番未反映）
 
 - ユーザー依頼：対戦画面のカミをシャドウバースのキャラクターのように、待機中は呼吸などで動かし、ダメージ・天力獲得などで特別なモーションを出したい。**画像は Codex が作る**ので、画像さえあれば動く状態まで準備。

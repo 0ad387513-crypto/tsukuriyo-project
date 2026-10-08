@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- カードボイス台本の編集ページ（ローカル専用。npm run preview 中に http://localhost:8765/tools/voice-script/ で開く。本番では _redirects で404）。
+     台本は tools/voice-script/card_voice_script.json。保存は scripts/serve.js の /__dev/voice-script -->
+<title>ツクリヨ カードボイス台本</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+  /* レイアウト：上に見出しと集計、その下に絞り込みの帯（スクロールしても上に残る）、本文はカード1枚＝1行の台本 */
+  :root {
+    --bg: #f3f1ea;
+    --panel: #fbfaf6;
+    --line: #d9d3c2;
+    --ink: #1c2233;
+    --muted: #6b6f7d;
+    --gold: #9a6d1c;
+    --gold-soft: #f1e3c2;
+    --field: #ffffff;
+    --ok: #2f7a4f;
+    --ok-soft: #dcefe3;
+    --fix: #b23b2c;
+    --fix-soft: #f7dedb;
+    --focus: #3c5fa8;
+    --display: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+    --body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12172a; --panel: #1a2133; --line: #323b54; --ink: #ece6d6; --muted: #9aa3b8;
+      --gold: #e3bf6e; --gold-soft: #3a3324; --field: #10162a; --ok: #7fd3a0; --ok-soft: #1f3a2b;
+      --fix: #f19584; --fix-soft: #43231f; --focus: #8fb0f0; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12172a; --panel: #1a2133; --line: #323b54; --ink: #ece6d6; --muted: #9aa3b8;
+    --gold: #e3bf6e; --gold-soft: #3a3324; --field: #10162a; --ok: #7fd3a0; --ok-soft: #1f3a2b;
+    --fix: #f19584; --fix-soft: #43231f; --focus: #8fb0f0; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.6; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; }
+  @media (max-width: 560px) { .wrap { padding-inline: 16px; } }
+
+  header.top { display: grid; gap: 14px; }
+  .eyebrow { font-size: 12px; letter-spacing: .14em; color: var(--gold); font-weight: 700; }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(26px, 4vw, 36px); margin: 0; text-wrap: balance; letter-spacing: .04em; }
+  .lead { margin: 0; color: var(--muted); max-width: 62ch; }
+  .stats { display: flex; flex-wrap: wrap; gap: 8px 22px; font-variant-numeric: tabular-nums; }
+  .stat { display: flex; align-items: baseline; gap: 6px; }
+  .stat b { font-family: var(--display); font-size: 24px; }
+  .stat span { font-size: 13px; color: var(--muted); }
+  .stat.ok b { color: var(--ok); } .stat.fix b { color: var(--fix); }
+  .progress { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; display: flex; }
+  .progress i { display: block; height: 100%; }
+  .progress .p-ok { background: var(--ok); } .progress .p-fix { background: var(--fix); }
+
+  .bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 12px; margin-top: 18px;
+         border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font: inherit; font-size: 13px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .chip small { color: inherit; opacity: .7; margin-left: 4px; font-variant-numeric: tabular-nums; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+  .filters input[type="search"] { font: inherit; flex: 1 1 220px; min-width: 0; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--field); color: var(--ink); }
+  .filters label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .filters select { font: inherit; font-size: 13px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--field); color: var(--ink); }
+  .notice { margin: 0; font-size: 13px; color: var(--muted); }
+  .notice.warn { color: var(--fix); }
+
+  .list { display: grid; gap: 0; margin-top: 4px; }
+  .group-head { font-family: var(--display); font-size: 18px; margin: 26px 0 6px; display: flex; align-items: baseline; gap: 10px; }
+  .group-head small { font-family: var(--body); font-size: 12px; color: var(--muted); }
+  .row { display: grid; grid-template-columns: minmax(170px, 230px) minmax(0, 1fr); gap: 10px 18px; padding: 14px 0; border-top: 1px solid var(--line); }
+  .row.st-ok { box-shadow: inset 3px 0 0 var(--ok); padding-left: 12px; }
+  .row.st-fix { box-shadow: inset 3px 0 0 var(--fix); padding-left: 12px; }
+  @media (max-width: 760px) { .row { grid-template-columns: minmax(0, 1fr); } }
+  .meta { display: grid; gap: 4px; align-content: start; min-width: 0; }
+  .nos { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .card { font-family: var(--display); font-weight: 600; font-size: 17px; line-height: 1.35; }
+  .speaker { font-size: 13px; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 4px; background: var(--gold-soft); color: var(--gold); justify-self: start; letter-spacing: .06em; }
+  .status { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+  .status button { font: inherit; font-size: 12px; padding: 2px 9px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+  .status button[aria-pressed="true"][data-v="draft"] { background: var(--line); color: var(--ink); }
+  .status button[aria-pressed="true"][data-v="ok"] { background: var(--ok-soft); color: var(--ok); border-color: var(--ok); }
+  .status button[aria-pressed="true"][data-v="fix"] { background: var(--fix-soft); color: var(--fix); border-color: var(--fix); }
+
+  .lines { display: grid; gap: 8px; min-width: 0; }
+  .line { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+  .line .k { font-size: 12px; color: var(--gold); font-weight: 700; padding-top: 8px; }
+  .line .count { font-size: 11px; color: var(--muted); padding-top: 9px; font-variant-numeric: tabular-nums; min-width: 40px; text-align: right; }
+  .line .count.over { color: var(--fix); font-weight: 700; }
+  textarea, .sub input { font: inherit; width: 100%; min-width: 0; color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 8px; }
+  textarea { font-size: 16px; padding: 6px 10px; resize: vertical; min-height: 38px; line-height: 1.5; field-sizing: content; }
+  .sfx textarea { font-size: 14px; color: var(--muted); }
+  .sub { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px 10px; margin-top: 2px; }
+  .sub label { display: grid; gap: 2px; font-size: 11px; color: var(--muted); min-width: 0; }
+  .sub input { font-size: 13px; padding: 4px 8px; }
+  textarea:focus-visible, .sub input:focus-visible, .chip:focus-visible, .status button:focus-visible, select:focus-visible, input[type="search"]:focus-visible {
+    outline: 2px solid var(--focus); outline-offset: 1px; }
+  textarea[readonly], .sub input[readonly] { background: transparent; border-style: dashed; }
+  .saved { font-size: 11px; color: var(--ok); min-height: 1em; }
+  .saved.err { color: var(--fix); }
+  .empty { padding: 40px 0; color: var(--muted); text-align: center; }
+  @media (prefers-reduced-motion: no-preference) { .row { transition: box-shadow .2s; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">ツクリヨ オンライン ｜ 音声制作</div>
+    <h1>カードボイス台本</h1>
+    <p class="lead">対戦中にカードを使ったときに流す台詞の台本です。キャラクターは召喚時・攻撃時・死亡時、オラクル・レリックは使ったときの台詞。台詞を直すと、欄から離れたときに自動で保存されます。確認したカードは「OK」、直してほしいところは「要修正」と修正メモで伝えてください。</p>
+    <div class="stats" id="stats" aria-live="polite">
+      <div class="stat"><b id="s-lines">–</b><span>本の台詞</span></div>
+      <div class="stat ok"><b id="s-ok">–</b><span>OK</span></div>
+      <div class="stat fix"><b id="s-fix">–</b><span>要修正</span></div>
+      <div class="stat"><b id="s-draft">–</b><span>未確認</span></div>
+    </div>
+    <div class="progress" aria-hidden="true"><i class="p-ok" id="p-ok" style="width:0"></i><i class="p-fix" id="p-fix" style="width:0"></i></div>
+  </header>
+
+  <div class="bar">
+    <div class="chips" id="chips" role="group" aria-label="カードの種類で絞り込む"></div>
+    <div class="filters">
+      <input type="search" id="q" placeholder="カード名・話す人・台詞で探す" aria-label="カード名・話す人・台詞で探す">
+      <label for="st">確認状態
+        <select id="st">
+          <option value="all">すべて</option>
+          <option value="draft">未確認</option>
+          <option value="ok">OK</option>
+          <option value="fix">要修正</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="sfx" checked> 効果音の行も表示</label>
+    </div>
+    <p class="notice" id="notice">台本を読み込んでいます…</p>
+  </div>
+
+  <main class="list" id="list">
+    <div class="empty" id="empty">台本を読み込んでいます。読み込めると、カードごとの台詞がここに並びます。</div>
+  </main>
+</div>
+
+<script>
+(() => {
+  const SECTIONS = ["忍者", "侍", "人獣", "神使", "妖怪", "龍", "オラクル", "ジェネシス", "レリック"];
+  const FIELDS = {
+    legacy: [["summon", "召喚時", 15], ["attack", "攻撃時", 10], ["death", "死亡時", 15]],
+    oracle: [["use", "使用時", 15]], genesis: [["use", "使用時", 15]], relic: [["use", "使用時", 15]],
+  };
+  const STATUS = [["draft", "未確認"], ["ok", "OK"], ["fix", "要修正"]];
+  const state = { rows: new Map(), section: "all", q: "", status: "all", sfx: true, canWrite: true };
+  const els = new Map(); // id -> { root, inputs: {field: el}, saved, statusBtns }
+  const $ = id => document.getElementById(id);
+  const list = $("list"), notice = $("notice");
+
+  // 台詞の文字数（「……」も1文字ずつ数える。ふりがなの目安なので記号も含める）
+  const len = s => Array.from(String(s || "")).length;
+  const fieldsOf = r => r.kind === "sfx" ? (r.summon !== undefined ? FIELDS.legacy : FIELDS.oracle) : (FIELDS[r.kind] || FIELDS.oracle);
+
+  function lineCount(r) {
+    if (r.kind === "sfx") return 0;
+    return fieldsOf(r).filter(([f]) => String(r[f] || "").trim()).length;
+  }
+
+  function renderChips() {
+    const chips = $("chips");
+    const counts = {};
+    for (const r of state.rows.values()) counts[r.section] = (counts[r.section] || 0) + 1;
+    const all = [["all", "すべて", state.rows.size], ...SECTIONS.map(s => [s, s, counts[s] || 0])];
+    chips.replaceChildren(...all.map(([v, label, n]) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "chip"; b.setAttribute("aria-pressed", String(state.section === v));
+      b.append(label); const sm = document.createElement("small"); sm.textContent = n; b.append(sm);
+      b.addEventListener("click", () => { state.section = v; renderChips(); applyFilter(); });
+      return b;
+    }));
+  }
+
+  function renderStats() {
+    let lines = 0, ok = 0, fix = 0, draft = 0;
+    for (const r of state.rows.values()) {
+      if (r.kind === "sfx") continue;
+      lines += lineCount(r);
+      if (r.status === "ok") ok++; else if (r.status === "fix") fix++; else draft++;
+    }
+    const total = ok + fix + draft || 1;
+    $("s-lines").textContent = lines; $("s-ok").textContent = ok; $("s-fix").textContent = fix; $("s-draft").textContent = draft;
+    $("p-ok").style.width = (ok / total * 100) + "%"; $("p-fix").style.width = (fix / total * 100) + "%";
+  }
+
+  function makeRow(r) {
+    const root = document.createElement("article");
+    root.className = "row" + (r.kind === "sfx" ? " sfx" : "");
+    root.dataset.id = r.id;
+    const meta = document.createElement("div"); meta.className = "meta";
+    const nos = document.createElement("div"); nos.className = "nos"; nos.textContent = "No. " + r.nos.replace(/,/g, "・");
+    const card = document.createElement("div"); card.className = "card"; card.textContent = r.card;
+    const speaker = document.createElement("div"); speaker.className = "speaker"; speaker.textContent = "話す人：" + r.speaker;
+    const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = r.kind === "sfx" ? "効果音" : r.section;
+    const status = document.createElement("div"); status.className = "status"; status.setAttribute("role", "group"); status.setAttribute("aria-label", "確認状態");
+    const statusBtns = STATUS.map(([v, label]) => {
+      const b = document.createElement("button"); b.type = "button"; b.dataset.v = v; b.textContent = label;
+      b.addEventListener("click", () => save(r.id, { status: v }));
+      status.append(b); return b;
+    });
+    const saved = document.createElement("div"); saved.className = "saved"; saved.setAttribute("aria-live", "polite");
+    meta.append(nos, card, speaker, tag, status, saved);
+
+    const lines = document.createElement("div"); lines.className = "lines";
+    const inputs = {};
+    for (const [f, label, limit] of fieldsOf(r)) {
+      const line = document.createElement("div"); line.className = "line";
+      const k = document.createElement("label"); k.className = "k"; k.textContent = label; k.htmlFor = "f-" + r.id + "-" + f;
+      const ta = document.createElement("textarea"); ta.id = "f-" + r.id + "-" + f; ta.rows = 1; ta.dataset.field = f; ta.dataset.limit = limit;
+      const count = document.createElement("span"); count.className = "count";
+      ta.addEventListener("input", () => updateCount(ta, count));
+      ta.addEventListener("change", () => save(r.id, { [f]: ta.value.trim() }));
+      ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); ta.blur(); } });
+      line.append(k, ta, count); lines.append(line); inputs[f] = ta; ta._count = count;
+    }
+    const sub = document.createElement("div"); sub.className = "sub";
+    for (const [f, label, ph] of [["reading", "読み（読み上げ用）", "例：しっぷうれっか"], ["note", "演技メモ", "例：元気・生意気"], ["memo", "修正メモ", "直してほしい点を書く"]]) {
+      const l = document.createElement("label"); l.append(label);
+      const inp = document.createElement("input"); inp.type = "text"; inp.id = "f-" + r.id + "-" + f; inp.placeholder = ph; inp.dataset.field = f;
+      inp.addEventListener("change", () => save(r.id, { [f]: inp.value.trim() }));
+      l.append(inp); sub.append(l); inputs[f] = inp;
+    }
+    lines.append(sub);
+    root.append(meta, lines);
+    const rec = { root, inputs, saved, statusBtns };
+    els.set(r.id, rec);
+    return rec;
+  }
+
+  function updateCount(ta, count) {
+    const n = len(ta.value), limit = Number(ta.dataset.limit);
+    const isSfx = ta.closest(".sfx");
+    count.textContent = isSfx ? "" : n + "/" + limit;
+    count.classList.toggle("over", !isSfx && n > limit);
+    count.title = !isSfx && n > limit ? "目安の文字数を超えています（続けて鳴ると重なりやすい）" : "";
+  }
+
+  function fillRow(r) {
+    const rec = els.get(r.id) || makeRow(r);
+    for (const [f, el] of Object.entries(rec.inputs)) {
+      if (document.activeElement === el) continue; // 入力中の欄は上書きしない
+      const v = String(r[f] ?? "");
+      if (el.value !== v) el.value = v;
+      el.readOnly = !state.canWrite;
+      if (el._count) updateCount(el, el._count);
+    }
+    const st = r.status || "draft";
+    rec.statusBtns.forEach(b => { b.setAttribute("aria-pressed", String(b.dataset.v === st)); b.disabled = !state.canWrite; });
+    rec.root.classList.toggle("st-ok", st === "ok");
+    rec.root.classList.toggle("st-fix", st === "fix");
+    return rec;
+  }
+
+  function renderAll() {
+    const sorted = [...state.rows.values()].sort((a, b) => SECTIONS.indexOf(a.section) - SECTIONS.indexOf(b.section) || a.order - b.order);
+    const frag = document.createDocumentFragment();
+    let current = null;
+    for (const r of sorted) {
+      if (r.section !== current) {
+        current = r.section;
+        const h = document.createElement("h2"); h.className = "group-head"; h.dataset.section = current;
+        h.append(current.length <= 2 ? "レガシー：" + current : current);
+        const sm = document.createElement("small"); h.append(sm); h._small = sm;
+        frag.append(h);
+      }
+      frag.append(fillRow(r).root);
+    }
+    list.replaceChildren(frag);
+    if (!sorted.length) list.replaceChildren(Object.assign(document.createElement("div"), { className: "empty", textContent: "台本がまだ登録されていません。" }));
+    renderChips(); renderStats(); applyFilter();
+  }
+
+  function applyFilter() {
+    const q = state.q.trim().toLowerCase();
+    const visibleBySection = {};
+    for (const r of state.rows.values()) {
+      const rec = els.get(r.id); if (!rec) continue;
+      const text = [r.card, r.speaker, r.summon, r.attack, r.death, r.use, r.nos].join(" ").toLowerCase();
+      const show = (state.section === "all" || r.section === state.section)
+        && (state.status === "all" || (r.status || "draft") === state.status)
+        && (state.sfx || r.kind !== "sfx")
+        && (!q || text.includes(q));
+      rec.root.hidden = !show;
+      if (show) visibleBySection[r.section] = (visibleBySection[r.section] || 0) + 1;
+    }
+    list.querySelectorAll(".group-head").forEach(h => {
+      const n = visibleBySection[h.dataset.section] || 0;
+      h.hidden = !n; h._small && (h._small.textContent = n + "件");
+    });
+  }
+
+  async function save(id, patch) {
+    const r = state.rows.get(id); const rec = els.get(id);
+    if (!r || !state.canWrite) return;
+    const changed = Object.entries(patch).some(([k, v]) => String(r[k] ?? "") !== String(v));
+    if (!changed) return;
+    Object.assign(r, patch); // 先に画面へ反映
+    fillRow(r); renderStats(); applyFilter();
+    rec.saved.classList.remove("err"); rec.saved.textContent = "保存しています…";
+    try {
+      const res = await fetch("/__dev/voice-script?id=" + encodeURIComponent(id), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.ok) throw new Error(body.message || "保存できませんでした");
+      if (body.line) Object.assign(r, body.line);
+      rec.saved.textContent = "保存しました";
+      setTimeout(() => { if (rec.saved.textContent === "保存しました") rec.saved.textContent = ""; }, 2500);
+    } catch (e) {
+      rec.saved.classList.add("err");
+      rec.saved.textContent = "保存できませんでした（" + (e && e.message || "確認用サーバーに接続できません") + "）。もう一度変更してください。";
+    }
+  }
+
+  $("q").addEventListener("input", e => { state.q = e.target.value; applyFilter(); });
+  $("st").addEventListener("change", e => { state.status = e.target.value; applyFilter(); });
+  $("sfx").addEventListener("change", e => { state.sfx = e.target.checked; applyFilter(); });
+  renderChips();
+
+  async function start() {
+    try {
+      const res = await fetch("/__dev/voice-script", { cache: "no-store" });
+      const body = await res.json();
+      if (!res.ok || !body.ok) throw new Error(body.message || "読み込めませんでした");
+      state.rows.clear();
+      for (const [id, line] of Object.entries(body.script.lines || {})) state.rows.set(id, { ...line, id });
+      notice.classList.remove("warn");
+      notice.textContent = "台詞を直すと tools/voice-script/card_voice_script.json に自動で保存されます（Enterで確定、Shift+Enterで改行）。";
+      renderAll();
+    } catch (e) {
+      notice.textContent = "台本を読み込めませんでした。確認用サーバー（npm run preview）で開いているか確認してください。（" + e.message + "）";
+      notice.classList.add("warn");
+      list.replaceChildren(Object.assign(document.createElement("div"), { className: "empty", textContent: "台本を表示できません。" }));
+    }
+  }
+  // 別のタブで直した内容を取り込む（このタブに戻ったとき、入力中でなければ読み直す）
+  document.addEventListener("visibilitychange", () => {
+    const tag = document.activeElement && document.activeElement.tagName;
+    if (document.visibilityState === "visible" && tag !== "TEXTAREA" && tag !== "INPUT") start();
+  });
+  start();
+})();
+</script>
+
+</body>
+</html>
