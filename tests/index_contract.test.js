@@ -484,11 +484,11 @@ test("Genesis mode opens an eight-scene illustrated world prologue", () => {
     "01-five-regions.webp",
     "02-dragon-awakens.webp",
     "03-world-falls.webp",
-    "04-kami-battle.webp",
-    "05-empty-victory.webp",
-    "06-legacy-found.webp",
-    "07-legacy-council.webp",
-    "08-genesis-decision.webp",
+    "op-0-op-c6f7dbcb47b7.webp",
+    "op-1-op-d1732c6ff49e.webp",
+    "op-2-op-650e165e2d7b.webp",
+    "op-3-op-8841893cee04.webp",
+    "op-4-op-4a633f2fb22c.webp",
   ];
   for (const asset of assets) {
     assert.equal(fs.existsSync(path.join(root, asset)), true, `${asset} is missing`);

@@ -12,15 +12,15 @@
      → 初回起動でも、ロード画面のちびキャラが空白にならない */
 (() => {
   const scenes = Object.freeze([
-    { name: 'スサノオ', image: 'loading_chibi/susanoo-rest-c8d7dafddecd.webp', hint: '最初の手札は引き直せる。序盤に使うカードを考えて選ぼう。' },
-    { name: 'ヤマトタケル', image: 'loading_chibi/yamato-takeru-rest-1a579987af7b.webp', hint: '残りのマナを見ながら、カードを出す順番を考えよう。' },
-    { name: 'オオクニヌシ', image: 'loading_chibi/okuninushi-rest-077817e82a0e.webp', hint: 'レガシーの能力を確認し、仲間同士の力を生かそう。' },
-    { name: 'タケミカヅチ', image: 'loading_chibi/takemikazuchi-rest-fc71fcd56c88.webp', hint: '戦闘力と神攻力は別の数値。戦う相手に合わせて確かめよう。' },
-    { name: 'オモイカネ', image: 'loading_chibi/omoikane-rest-5459d8e24381.webp', hint: 'オラクルを使う前に、対象や効果の選択肢を確認しよう。' },
-    { name: 'アメノウズメ', image: 'loading_chibi/amenouzume-rest-8cd886a79256.webp', hint: '効果を発動するか選べるときは、今の盤面を見て判断しよう。' },
-    { name: 'ヒノカグツチ', image: 'loading_chibi/hinokagutsuchi-rest-9a3bc9d78c0b.webp', hint: '天力がたまる条件はカミによって違う。神技を使う前に確認しよう。' },
-    { name: 'アマテラス', image: 'loading_chibi/amaterasu-rest-c8488a613337.webp', hint: '自分の理念に同調するレガシーを集めることが大切。' },
-    { name: 'ツクヨミ', image: 'loading_chibi/tsukuyomi-rest-cd32de2b7937.webp', hint: 'レリックの起動効果は、使うタイミングを見極めよう。' },
+    { name: 'スサノオ', image: 'loading_chibi/susanoo-rest-da6cf972cc04.webp', hint: '最初の手札は引き直せる。序盤に使うカードを考えて選ぼう。' },
+    { name: 'ヤマトタケル', image: 'loading_chibi/yamato-takeru-rest-541aba6e06f3.webp', hint: '残りのマナを見ながら、カードを出す順番を考えよう。' },
+    { name: 'オオクニヌシ', image: 'loading_chibi/okuninushi-rest-bb789ac5c8d8.webp', hint: 'レガシーの能力を確認し、仲間同士の力を生かそう。' },
+    { name: 'タケミカヅチ', image: 'loading_chibi/takemikazuchi-rest-hair-0278c16fbb02.webp', hint: '戦闘力と神攻力は別の数値。戦う相手に合わせて確かめよう。' },
+    { name: 'オモイカネ', image: 'loading_chibi/omoikane-rest-7acacc22efc0.webp', hint: 'オラクルを使う前に、対象や効果の選択肢を確認しよう。' },
+    { name: 'アメノウズメ', image: 'loading_chibi/amenouzume-rest-4b7395253820.webp', hint: '効果を発動するか選べるときは、今の盤面を見て判断しよう。' },
+    { name: 'ヒノカグツチ', image: 'loading_chibi/hinokagutsuchi-rest-eye-ornament-b4dd1f0fa361.webp', hint: '天力がたまる条件はカミによって違う。神技を使う前に確認しよう。' },
+    { name: 'アマテラス', image: 'loading_chibi/amaterasu-rest-faedb6f14a0c.webp', hint: '自分の理念に同調するレガシーを集めることが大切。' },
+    { name: 'ツクヨミ', image: 'loading_chibi/tsukuyomi-rest-6c594cbae0be.webp', hint: 'レリックの起動効果は、使うタイミングを見極めよう。' },
   ]);
   const ready = new Set();
   const warm = scene => {
@@ -1484,7 +1484,7 @@
   .top-mode-guide-btn.tutorial { position: relative; padding-left: 88px; }
   .top-tutorial-face {
     position: absolute; left: 6px; bottom: 0; width: 76px; height: 108px; pointer-events: none;
-    background: url(tutorial_guide/amaterasu-chibi-01a4da0b3506.webp) center bottom / contain no-repeat;
+    background: url(tutorial_guide/tutorial-normal-tutorial-84230f6f518a.webp) center bottom / contain no-repeat;
     filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .5)); transition: transform .15s;
   }
   .top-mode-guide-btn.tutorial:hover:not(:disabled) .top-tutorial-face { transform: translateY(-3px) rotate(-3deg); }
@@ -1973,7 +1973,7 @@
   /* 案内役の全身を見出しの横に立たせる（一覧はスクロールするので、枠の外へははみ出させない） */
   .tutorial-menu-face {
     flex: none; width: 84px; height: 118px; margin: -8px 0 -6px;
-    background: url(tutorial_guide/amaterasu-chibi-01a4da0b3506.webp) center bottom / contain no-repeat;
+    background: url(tutorial_guide/tutorial-normal-tutorial-84230f6f518a.webp) center bottom / contain no-repeat;
     filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .5));
     animation: tutorialGuideIdle 3.2s ease-in-out infinite;
   }
@@ -7598,13 +7598,12 @@
     background: var(--mana-ring-relic) center / 100% 100% no-repeat;
   }
 </style>
-<!-- TOP の4枚は Vue の初期化や音声処理より先に読み込みを開始する。 -->
+<!-- 起動時の先読みは容量上限内に抑える。カードリストの画像は表示時に読み込む。 -->
 <link rel="preload" as="image" href="ui_decorations/title-key-visual.webp" fetchpriority="high">
-<link rel="preload" as="image" href="top_mode_icons/cardlist.webp" fetchpriority="high">
-<link rel="preload" as="image" href="top_mode_icons/genesis4p.webp" fetchpriority="high">
+<link rel="preload" as="image" href="top_mode_icons/genesis4p-menu-310e123149ba.webp" fetchpriority="high">
 <link rel="preload" as="image" href="genesis_story/01-five-regions.webp">
-<link rel="preload" as="image" href="top_mode_icons/construct2p-duel-66cbc68dc967.webp" fetchpriority="high">
-<link rel="preload" as="image" href="top_mode_icons/shield2p-oblong.webp" fetchpriority="high">
+<link rel="preload" as="image" href="top_mode_icons/construct2p-style-9f261d899256.webp" fetchpriority="high">
+<link rel="preload" as="image" href="top_mode_icons/shield2p-menu-63550a24f4eb.webp" fetchpriority="high">
 <link rel="stylesheet" href="divine_effects.css">
 </head>
 <body>
@@ -7751,26 +7750,26 @@
     <div class="top-mode-grid">
       <div class="top-mode-column top-mode-column-game">
         <button class="top-mode-card game" @click="openModeDetail('game')">
-          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/genesis4p.webp)' }"></span>
+          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/genesis4p-menu-310e123149ba.webp)' }"></span>
           <span class="top-mode-label">創世決戦</span>
           <span class="top-mode-sub">4人でカードを選び、3回の対戦と星魂で競う</span>
         </button>
       </div>
       <div class="top-mode-column top-mode-column-center">
         <button class="top-mode-card construct" @click="openModeDetail('construct')">
-          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/construct2p-duel-66cbc68dc967.webp)' }"></span>
+          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/construct2p-style-9f261d899256.webp)' }"></span>
           <span class="top-mode-label">理念構築戦</span>
           <span class="top-mode-sub">2人対戦・35枚デッキ／構築済みデッキでも遊べる</span>
         </button>
         <button class="top-mode-card shield" @click="openModeDetail('shield')">
-          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/shield2p-oblong.webp)' }"></span>
+          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/shield2p-menu-63550a24f4eb.webp)' }"></span>
           <span class="top-mode-label">星紡ぎ戦</span>
           <span class="top-mode-sub">2人でパックを選び、集めた48枚で対戦</span>
         </button>
       </div>
       <div class="top-mode-column top-mode-column-side">
         <button class="top-mode-card cardlist" @click="openModeDetail('cardlist')">
-          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/cardlist.webp)' }"></span>
+          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/cardlist-style-e5bf5eca0731.webp)' }"></span>
           <span class="top-mode-label">カードリスト</span>
           <span class="top-mode-sub">全カードの確認と、デッキの作成・管理</span>
         </button>
@@ -8267,7 +8266,7 @@
           <section id="manual-world" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 01</div><h2>終焉の先に、次の世を</h2></div>
-              <figure class="manual-chapter-mascot"><img src="tutorial_guide/amaterasu-chibi-01a4da0b3506.webp" alt="アマテラスのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
+              <figure class="manual-chapter-mascot"><img src="tutorial_guide/tutorial-normal-tutorial-84230f6f518a.webp" alt="アマテラスのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
             <p>突如飛来した無数の巨龍は文明を蹂躙し、生命を滅亡の淵へ追いやりました。古き神々は永い死闘の末に巨龍を打ち倒しましたが、その代償として星から生命の息吹は失われます。</p>
             <p>神々が星の深淵で見つけたのは、かつて存在した生命の記憶の残滓――<strong>「レガシー」</strong>。神秘のエネルギー<strong>「星魂」</strong>によってレガシーに命を吹き込めば、新たな世界を創ることができます。</p>
@@ -8639,7 +8638,7 @@
 ・「瞬速の死闘」は強力な選定除去で、天力を大きく稼げる可能性があるため最優先でピックしたいカードです。</div><button type="button" class="pick-card-list-btn" @click="openPickCardList('7')">🃏 おすすめカード一覧を見る</button></div>
         </section>
         <section id="pick-amaterasu" class="howto-section pick-kami-section">
-          <figure class="pick-kami-figure"><img class="pick-kami-image" src="tutorial_guide/amaterasu-chibi-01a4da0b3506.webp" alt="アマテラスのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(8, $event)" @focus="showGuideKami(8, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
+          <figure class="pick-kami-figure"><img class="pick-kami-image" src="tutorial_guide/tutorial-normal-tutorial-84230f6f518a.webp" alt="アマテラスのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(8, $event)" @focus="showGuideKami(8, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
           <div class="pick-kami-copy"><h2 class="howto-heading"><span>アマテラス</span><small>守護</small></h2>
           <div class="howto-body">・基本方針として、守護を持つレガシーをピックするとよいです。守護を持つトークン（ヨリシロちゃん、巨躯なる獣霊）を招来するカードの優先度も上がります。「獣霊」を招来できるカードは、文言が「いずれかの獣霊」「異なる獣霊N種」等どのような形であっても、選択肢の中に守護持ちの巨躯なる獣霊が含まれ得るため優先度は高いです（厳格なる森の長・ハクレン、晴れ空の門出、もふもふ探求者など）。
 ・創世神技は墓地からカードを蘇生する効果なので、自然と墓地が増える霊視持ちのカードの優先度が少し上がります。
@@ -12809,16 +12808,16 @@ const GS_KAMI_SELECTION_GUIDES = Object.freeze({
 /* キーはカミNo（kamiPositionMap等と同じ "1"〜"10"）。                  */
 /* ================================================================== */
 const KAMI_CHIBI_FILES = Object.freeze({
-  '1': 'kami_chibi/susanoo-chibi.webp',
-  '2': 'kami_chibi/yamato-takeru-chibi.webp',
-  '3': 'kami_chibi/okuninushi-chibi.webp',
-  '4': 'kami_chibi/takemikazuchi-chibi.webp',
-  '5': 'kami_chibi/omoikane-chibi.webp',
-  '6': 'kami_chibi/amenouzume-chibi.webp',
-  '7': 'kami_chibi/hinokagutsuchi-chibi.webp',
-  '8': 'tutorial_guide/amaterasu-chibi-01a4da0b3506.webp',
-  '9': 'kami_chibi/tsukuyomi-chibi.webp',
-  '10': 'kami_chibi/yamata-no-orochi-chibi.webp'
+  '1': 'kami_chibi/susanoo-chibi-44bc7e74782d.webp',
+  '2': 'kami_chibi/yamato-takeru-chibi-d1e20004103f.webp',
+  '3': 'kami_chibi/okuninushi-chibi-d8d6938583fd.webp',
+  '4': 'kami_chibi/takemikazuchi-chibi-soft-hair-94091bc89bb9.webp',
+  '5': 'kami_chibi/omoikane-7f21be1fc0ed.webp',
+  '6': 'kami_chibi/amenouzume-chibi-cbb1fa32e87a.webp',
+  '7': 'kami_chibi/hinokagutsuchi-chibi-eye-ornament-223149539520.webp',
+  '8': 'kami_chibi/amaterasu-chibi-b3d95116171a.webp',
+  '9': 'kami_chibi/tsukuyomi-ad8028e7bb9e.webp',
+  '10': 'kami_chibi/yamata-no-orochi-chibi-4a5140b7399d.webp',
 });
 const KAMI_EMOTE_LINES = {
   "1": { // スサノオ
@@ -13039,27 +13038,27 @@ const KAMI_DEX_CHIBIS = Object.freeze({
   "6": [{ file: 'kami_chibi/amenouzume-chibi.webp', label: '通常' }],
   "7": [{ file: 'kami_chibi/hinokagutsuchi-chibi.webp', label: '通常' }],
   "8": [
-    { file: 'tutorial_guide/amaterasu-chibi-01a4da0b3506.webp', label: '通常' },
-    { file: 'tutorial_guide/amaterasu-chibi-joy-63e66645cd1c.webp', label: '喜び' },
-    { file: 'tutorial_guide/amaterasu-chibi-celebrate-766227d7f491.webp', label: '祝福' },
-    { file: 'tutorial_guide/amaterasu-chibi-serious-2782c9e26bf4.webp', label: '真剣' },
-    { file: 'tutorial_guide/amaterasu-chibi-surprised-ff794f2f3437.webp', label: '驚き' },
-    { file: 'tutorial_guide/amaterasu-chibi-troubled-a4bb6ba4def3.webp', label: '困り顔' },
+    { file: 'tutorial_guide/tutorial-normal-tutorial-84230f6f518a.webp', label: '通常' },
+    { file: 'tutorial_guide/tutorial-joy-tutorial-a51266a6640e.webp', label: '喜び' },
+    { file: 'tutorial_guide/tutorial-celebrate-e3b0de49814b.webp', label: '祝福' },
+    { file: 'tutorial_guide/tutorial-serious-tutorial-25cf3a5ea3b9.webp', label: '真剣' },
+    { file: 'tutorial_guide/tutorial-surprised-tutorial-4d5f3d2c074d.webp', label: '驚き' },
+    { file: 'tutorial_guide/tutorial-troubled-tutorial-17eba78cccf9.webp', label: '困り顔' },
   ],
   "9": [{ file: 'kami_chibi/tsukuyomi-chibi.webp', label: '通常' }],
   "10": [{ file: 'kami_chibi/yamata-no-orochi-chibi.webp', label: '通常' }],
 });
 /* ロード画面用の休憩差分は、図鑑の既存差分の後ろへ足す。ヤマタノオロチには用意しない。 */
 const KAMI_DEX_REST_CHIBIS = Object.freeze({
-  "1": { file: 'loading_chibi/susanoo-rest-c8d7dafddecd.webp', label: 'おにぎり' },
-  "2": { file: 'loading_chibi/yamato-takeru-rest-1a579987af7b.webp', label: '盆栽' },
-  "3": { file: 'loading_chibi/okuninushi-rest-077817e82a0e.webp', label: '団子は……？' },
-  "4": { file: 'loading_chibi/takemikazuchi-rest-fc71fcd56c88.webp', label: '修行中' },
-  "5": { file: 'loading_chibi/omoikane-rest-5459d8e24381.webp', label: '巻物の山' },
-  "6": { file: 'loading_chibi/amenouzume-rest-8cd886a79256.webp', label: 'お昼寝' },
-  "7": { file: 'loading_chibi/hinokagutsuchi-rest-9a3bc9d78c0b.webp', label: '焼き餅' },
-  "8": { file: 'loading_chibi/amaterasu-rest-c8488a613337.webp', label: 'お茶の時間' },
-  "9": { file: 'loading_chibi/tsukuyomi-rest-cd32de2b7937.webp', label: '無気力' },
+  "1": { file: 'loading_chibi/susanoo-rest-da6cf972cc04.webp', label: 'おにぎり' },
+  "2": { file: 'loading_chibi/yamato-takeru-rest-541aba6e06f3.webp', label: '盆栽' },
+  "3": { file: 'loading_chibi/okuninushi-rest-bb789ac5c8d8.webp', label: '団子は……？' },
+  "4": { file: 'loading_chibi/takemikazuchi-rest-hair-0278c16fbb02.webp', label: '修行中' },
+  "5": { file: 'loading_chibi/omoikane-rest-7acacc22efc0.webp', label: '巻物の山' },
+  "6": { file: 'loading_chibi/amenouzume-rest-4b7395253820.webp', label: 'お昼寝' },
+  "7": { file: 'loading_chibi/hinokagutsuchi-rest-eye-ornament-b4dd1f0fa361.webp', label: '焼き餅' },
+  "8": { file: 'loading_chibi/amaterasu-rest-faedb6f14a0c.webp', label: 'お茶の時間' },
+  "9": { file: 'loading_chibi/tsukuyomi-rest-6c594cbae0be.webp', label: '無気力' },
 });
 
 /* 創世決戦（4人対戦）の終戦で、優勝したカミが告げる暫定セリフ。
@@ -13203,16 +13202,16 @@ const EMOTE_TYPES = [
 // カミごとのエモートアイコン（3列×2行のアトラス。並びは EMOTE_TYPES と同じ：あいさつ・賞賛・驚き／疑問・困惑・大見栄）。
 // アイコンの無いカミは絵文字のまま表示する。作り方は emote_icons/README.md
 const KAMI_EMOTE_ICONS = Object.freeze({
-  '1': 'emote_icons/susanoo-emotes-f5fcfa47d2b2.webp',
-  '2': 'emote_icons/yamato-takeru-emotes-2988aa492745.webp',
-  '3': 'emote_icons/okuninushi-emotes-4af0fe94b5cd.webp',
-  '4': 'emote_icons/takemikazuchi-emotes-060508c3abbc.webp',
-  '5': 'emote_icons/omoikane-emotes-18529c459f08.webp',
-  '6': 'emote_icons/amenouzume-emotes-14bb0cef54e0.webp',
-  '7': 'emote_icons/hinokagutsuchi-emotes-4b8beb3ffba2.webp',
-  '8': 'emote_icons/amaterasu-emotes-08c64197c446.webp',
-  '9': 'emote_icons/tsukuyomi-emotes-c475ad817c3b.webp',
-  '10': 'emote_icons/yamata-no-orochi-emotes-1910188d9e83.webp',
+  '1': 'emote_icons/susanoo-emoteAtlas-26673c22b4ff.webp',
+  '2': 'emote_icons/yamato-takeru-emoteAtlas-896f6fe6e1ff.webp',
+  '3': 'emote_icons/okuninushi-emoteAtlas-fcb015c96aa2.webp',
+  '4': 'emote_icons/takemikazuchi-emoteAtlas-0e572f9f7204.webp',
+  '5': 'emote_icons/omoikane-emoteAtlas-18a6c2dbff9b.webp',
+  '6': 'emote_icons/amenouzume-emoteAtlas-996cb76d9622.webp',
+  '7': 'emote_icons/hinokagutsuchi-emoteAtlas-4bbcdfdf259a.webp',
+  '8': 'emote_icons/amaterasu-emoteAtlas-0fb54de9fcce.webp',
+  '9': 'emote_icons/tsukuyomi-emoteAtlas-af669750f9ed.webp',
+  '10': 'emote_icons/yamata-no-orochi-emoteAtlas-7a31cf6e15ee.webp',
 });
 function emoteIconStyle(kamiNo, key) {
   const url = KAMI_EMOTE_ICONS[String(kamiNo)];
@@ -13227,7 +13226,7 @@ function emoteIconStyle(kamiNo, key) {
 const MODE_DETAIL_INFO = {
   cardlist: {
     title: 'カードリスト',
-    image: 'top_mode_icons/cardlist.webp',
+    image: 'top_mode_icons/cardlist-style-e5bf5eca0731.webp',
     lead: 'カードを調べて、デッキを組む。',
     points: [
       { name: '絞り込み', text: '色・カード種別・種族・コストなどで、目的のカードを素早く探せます。' },
@@ -13239,7 +13238,7 @@ const MODE_DETAIL_INFO = {
   },
   game: {
     title: '創世決戦', players: '4人対戦',
-    image: 'top_mode_icons/genesis4p.webp',
+    image: 'top_mode_icons/genesis4p-menu-310e123149ba.webp',
     lead: 'カミを選び、カードを集め、三度の星戦へ。',
     steps: [
       { name: '神託の儀', text: '3枚の候補から、自分のカミを1体選びます。' },
@@ -13254,7 +13253,7 @@ const MODE_DETAIL_INFO = {
   },
   construct: {
     title: '理念構築戦', players: '2人対戦',
-    image: 'top_mode_icons/construct2p-duel-66cbc68dc967.webp',
+    image: 'top_mode_icons/construct2p-style-9f261d899256.webp',
     lead: '好きな35枚で、自分だけの戦い方を。',
     points: [
       { name: '自由に構築', text: 'パックのドラフトは行わず、全カードプールからちょうど35枚を選んでデッキを作ります。' },
@@ -13265,7 +13264,7 @@ const MODE_DETAIL_INFO = {
   },
   shield: {
     title: '星紡ぎ戦', players: '2人対戦',
-    image: 'top_mode_icons/shield2p.webp',
+    image: 'top_mode_icons/shield2p-menu-63550a24f4eb.webp',
     lead: '選んだ48枚、そのまま勝負へ。',
     stepsLayout: 'row', // 手順が3つと少ないので、縦の一覧ではなく横に並べたカードで流れを見せる
     steps: [
@@ -13308,11 +13307,11 @@ const MODE_DETAIL_INFO = {
 const TUTORIAL_TASK_CLOSE_NOTE = '表示されたカードは「閉じる」で閉じられます。';
 // 案内役の表情差分（どれも同じ構図・同じ大きさで切り出してあるので、重ねて切り替えても位置がずれない）
 const TUTORIAL_GUIDE_FACES = Object.freeze({
-  normal: 'tutorial_guide/amaterasu-chibi-01a4da0b3506.webp',
-  serious: 'tutorial_guide/amaterasu-chibi-serious-2782c9e26bf4.webp',
-  troubled: 'tutorial_guide/amaterasu-chibi-troubled-a4bb6ba4def3.webp',
-  surprised: 'tutorial_guide/amaterasu-chibi-surprised-ff794f2f3437.webp',
-  joy: 'tutorial_guide/amaterasu-chibi-joy-63e66645cd1c.webp',
+  normal: 'tutorial_guide/tutorial-normal-tutorial-84230f6f518a.webp',
+  serious: 'tutorial_guide/tutorial-serious-tutorial-25cf3a5ea3b9.webp',
+  troubled: 'tutorial_guide/tutorial-troubled-tutorial-17eba78cccf9.webp',
+  surprised: 'tutorial_guide/tutorial-surprised-tutorial-4d5f3d2c074d.webp',
+  joy: 'tutorial_guide/tutorial-joy-tutorial-a51266a6640e.webp',
 });
 const TUTORIAL_PRACTICE = Object.freeze({
   "id": "draft",
@@ -13949,31 +13948,31 @@ const GENESIS_STORY_SCENES = Object.freeze([
   }),
   Object.freeze({
     id: 'kami-battle', duration: GENESIS_STORY_SCENE_DURATIONS_MS[3],
-    image: 'genesis_story/04-kami-battle.webp',
+    image: 'genesis_story/op-0-op-c6f7dbcb47b7.webp',
     alt: '異なる色と力をまとう九柱のカミが、世界を覆う龍群に立ち向かう水墨画',
     text: '滅びの淵に、九柱のカミが現れた。古い伝承の中だけに存在すると信じられていた彼らは、人々を守るため龍群との戦いへ身を投じた。'
   }),
   Object.freeze({
     id: 'empty-victory', duration: GENESIS_STORY_SCENE_DURATIONS_MS[4],
-    image: 'genesis_story/05-empty-victory.webp',
+    image: 'genesis_story/op-1-op-d1732c6ff49e.webp',
     alt: '滅びた邦々を見下ろし、勝利の空しさに立ち尽くす九柱のカミを描いた水墨画',
     text: '長い死闘の末、九柱は龍群を討ち滅ぼした。だが、人々も町も失われ、静まり返った星には傷ついたカミだけが残された。'
   }),
   Object.freeze({
     id: 'legacy-found', duration: GENESIS_STORY_SCENE_DURATIONS_MS[5],
-    image: 'genesis_story/06-legacy-found.webp',
+    image: 'genesis_story/op-2-op-650e165e2d7b.webp',
     alt: '廃墟の中で輝く巨大な結晶と、それを取り囲む九柱のカミを描いた水墨画',
     text: '滅びた大地に、光を宿す結晶が残っていた。そこには失われた命の記憶と未来への願いがあり、カミたちはそれをレガシーと名付けた。'
   }),
   Object.freeze({
     id: 'legacy-council', duration: GENESIS_STORY_SCENE_DURATIONS_MS[6],
-    image: 'genesis_story/07-legacy-council.webp',
+    image: 'genesis_story/op-3-op-8841893cee04.webp',
     alt: '円形の議事場に集い、星の記憶の使い道を議論する九柱のカミを描いた水墨画',
     text: 'カミたちはレガシーで新たな世界を創ろうとした。しかし、何を蘇らせ、どのような世界を創るか、九柱の答えは一つにならなかった。'
   }),
   Object.freeze({
     id: 'genesis-decision', duration: GENESIS_STORY_SCENE_DURATIONS_MS[7],
-    image: 'genesis_story/08-genesis-decision.webp',
+    image: 'genesis_story/op-4-op-4a633f2fb22c.webp',
     alt: '廃墟を背にそれぞれの理念を掲げ、別々の高台で向かい合う九柱のカミを描いた水墨画',
     text: '次の世界を決められるのはカミだけだった。九柱は自らの理念を信じ、創世を担う者を戦いで定める。星の未来を懸けた創世決戦が始まろうとしていた。'
   }),
@@ -14091,7 +14090,7 @@ function buildTutorialFocusSegments(text, glossary, tokens, highlights) {
 // 練習終了時はアマテラス（案内役のデフォルメ）がクラッカーで祝う。通常の勝敗画面とは共有しない。
 Vue.component("tutorial-ending-art", {
   props: { title: { type: String, default: "チュートリアル" }, build: { type: String, default: "" } },
-  computed: { imageUrl() { return "tutorial_guide/amaterasu-chibi-celebrate-766227d7f491.webp?v=" + this.build; } },
+  computed: { imageUrl() { return "tutorial_guide/tutorial-celebrate-e3b0de49814b.webp?v=" + this.build; } },
   template: '<section class="tutorial-ending-art" aria-label="チュートリアル終了画面">' +
     '<div class="tutorial-ending-figure"><img class="tutorial-ending-image" :src="imageUrl" alt="クラッカーで祝うアマテラス"></div>' +
     '<div class="tutorial-ending-caption"><strong>よくできました</strong><span>{{ title }} · 練習完了</span></div><slot></slot></section>',

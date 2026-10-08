@@ -942,7 +942,7 @@ test('Orochi gathers eight seals into the same ability mark on either side', () 
   assert.match(html,/divine-orochi-seal-arrival/);
 });
 
-test("Orochi keeps the original cut-in and reveals a separate seamless painting after eight seals peel", () => {
+test("Orochi uses the approved painting throughout the eight-seal animation", () => {
   const {divineSkillAssetUrls,DIVINE_OROCHI_UNIFIED_SCENE,DIVINE_SKILL_CUTINS}=require('../divine_effects.js');
   const components={};
   Function('Vue',fs.readFileSync(path.join(__dirname,'..','divine_effects.js'),'utf8'))({component(name,definition){components[name]=definition}});
@@ -953,8 +953,8 @@ test("Orochi keeps the original cut-in and reveals a separate seamless painting 
   assert.doesNotMatch(components['divine-skill-art'].template,/class="genesis-broken-seal"/);
   assert.doesNotMatch(components['divine-skill-art'].template,/orochi-dragon-eye-pair/);
   assert.ok(divineSkillAssetUrls({no:10}).includes(DIVINE_OROCHI_UNIFIED_SCENE));
-  assert.equal(DIVINE_SKILL_CUTINS['10'],'kami_cutin/yamata-no-orochi-genesis-wide-8d35ef840ea7.webp');
-  assert.notEqual(DIVINE_OROCHI_UNIFIED_SCENE,DIVINE_SKILL_CUTINS['10']);
+  assert.equal(DIVINE_SKILL_CUTINS['10'],'kami_cutin/yamata-no-orochi-cutin-770a16e40338.webp');
+  assert.equal(DIVINE_OROCHI_UNIFIED_SCENE,DIVINE_SKILL_CUTINS['10']);
   assert.ok(divineSkillAssetUrls({no:10}).includes(DIVINE_SKILL_CUTINS['10']));
   assert.equal(divineSkillAssetUrls({no:10}).filter(url=>url===DIVINE_OROCHI_UNIFIED_SCENE).length,1);
   assert.ok(!divineSkillAssetUrls({no:10}).some(url=>url.includes('orochi-silhouette-')||url.includes('orochi-awakened-expression-')||url.includes('orochi-eight-dragons-wide-')));

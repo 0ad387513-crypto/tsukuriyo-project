@@ -1,7 +1,7 @@
 /* 神技の見た目だけを定義する。カードの効果・勝敗判定は変更しない。 */
 "use strict";
 const DIVINE_SKILL_THEMES = Object.freeze({
-  '1': { motif: 'storm', color: '#72e6de', accent: '#d5fff8', skills: ['風が記憶を運ぶ', '天叢雲が新たな姿を結ぶ'] },
+  '1': { motif: 'storm', color: '#f3ae77', accent: '#fff0dd', skills: ['風が記憶を運ぶ', '天叢雲が新たな姿を結ぶ'] },
   '2': { motif: 'blade', color: '#c6e4ff', accent: '#ffffff', skills: ['一閃が道を開く', '孤高の刃が戦場を断つ'] },
   '3': { motif: 'grove', color: '#7ce598', accent: '#ffe4a0', skills: ['獣霊の足音が響く', '大地から眷属が集う'] },
   '4': { motif: 'thunder', color: '#ffd83d', accent: '#fff5a8', skills: ['雷をその身に纏う', '布都御魂が轟く'] },
@@ -13,22 +13,22 @@ const DIVINE_SKILL_THEMES = Object.freeze({
   '10': { motif: 'dragon', color: '#e66379', accent: '#ffbf69', skills: ['龍血が封印から溢れる', '八つの影が天を喰らう'] },
 });
 const DIVINE_SKILL_CUTINS = Object.freeze({
-  "1": "kami_cutin/susanoo-genesis-wide-413828a8d7da.webp",
-  "2": "kami_cutin/yamato-takeru-genesis-wide-8f1979db2bd7.webp",
-  "3": "kami_cutin/okuninushi-genesis-wide-74ffd381fe8a.webp",
-  "4": "kami_cutin/takemikazuchi-genesis-wide-53185a601ecf.webp",
-  "5": "kami_cutin/omoikane-genesis-wide-a5784234189d.webp",
-  "6": "kami_cutin/amenouzume-genesis-wide-de6bb559c748.webp",
-  "7": "kami_cutin/hinokagutsuchi-genesis-wide-ae9e5598c17a.webp",
-  "8": "kami_cutin/amaterasu-genesis-wide-29f2370afeca.webp",
-  "9": "kami_cutin/tsukuyomi-genesis-wide-a8e7806f5483.webp",
-  "10": "kami_cutin/yamata-no-orochi-genesis-wide-8d35ef840ea7.webp"
+  "1": "kami_cutin/susanoo-cutin-ad6e2e8270ec.webp",
+  "2": "kami_cutin/yamato-takeru-cutin-107d9d71a240.webp",
+  "3": "kami_cutin/okuninushi-cutin-e6494f8fcb65.webp",
+  "4": "kami_cutin/takemikazuchi-cutin-fa6f656e6b96.webp",
+  "5": "kami_cutin/omoikane-cutin-114849a0db96.webp",
+  "6": "kami_cutin/amenouzume-cutin-2614c1923e1f.webp",
+  "7": "kami_cutin/hinokagutsuchi-cutin-6c509856aba2.webp",
+  "8": "kami_cutin/amaterasu-cutin-8ec22a9e9639.webp",
+  "9": "kami_cutin/tsukuyomi-hand-B-5451adc68469.webp",
+  "10": "kami_cutin/yamata-no-orochi-cutin-770a16e40338.webp"
 });
 const DIVINE_SKILL_AWAKENINGS = Object.freeze({
-  '1': 'kami_cutin/susanoo-genesis-eyes-open-c63103e1dda9.webp',
+  '1': 'kami_cutin/susanoo-cutin-ad6e2e8270ec.webp',
 });
 const DIVINE_SKILL_AWAKENING_FRAMES = Object.freeze({
-  '1': Object.freeze(['kami_cutin/susanoo-genesis-eyes-narrow-0743a8e06ef7.webp','kami_cutin/susanoo-genesis-eyes-half-9691085fdf3f.webp','kami_cutin/susanoo-genesis-eyes-threequarter-dc80502018ac.webp']),
+  '1': Object.freeze(['kami_cutin/susanoo-cutin-ad6e2e8270ec.webp','kami_cutin/susanoo-cutin-ad6e2e8270ec.webp','kami_cutin/susanoo-cutin-ad6e2e8270ec.webp']),
 });
 const DIVINE_CAMELLIA_ATLAS = 'divine_assets/camellia-atlas-e11e33d1fe46.webp';
 const DIVINE_UZUME_PETAL_ATLAS = 'divine_assets/camellia-petals-eight-6cabafaedf28.webp';
@@ -46,8 +46,8 @@ const DIVINE_HINO_FIRE_WALL_FRAMES = Object.freeze([
   'divine_assets/hinokagutsuchi-fire-wall-decay-f6399d6e3bd4.webp',
 ]);
 const DIVINE_YATA_MIRROR = 'divine_assets/yata-golden-mirror-back-2d2896c377be.webp';
-// カットインは元の絵。封印解除後は少女と八頭の龍が描かれた現行の一枚絵を使用する。
-const DIVINE_OROCHI_UNIFIED_SCENE = 'kami_cutin/yamata-no-orochi-genesis-wide-87b8557cfe2b.webp';
+// 封印解除の前後とも、仮面の破片と八頭の龍を描いた現行の確定画像を使用する。
+const DIVINE_OROCHI_UNIFIED_SCENE = 'kami_cutin/yamata-no-orochi-cutin-770a16e40338.webp';
 // 赤と白の椿と花びらを交互に切り出す。花は周辺へ置き、中央を塞がない。
 function divineCamelliaStyle(i, blossom = false) {
   const anchors = [[5,22],[88,16],[14,70],[85,68],[42,85],[91,43]];
@@ -60,7 +60,7 @@ function divineCamelliaStyle(i, blossom = false) {
 }
 function divineSkillTheme(kami, index) {
   const theme = DIVINE_SKILL_THEMES[String(kami && kami.no)] || DIVINE_SKILL_THEMES['8'];
-  return { kamiNo: String(kami && kami.no), cutin: index === 2 ? DIVINE_SKILL_CUTINS[String(kami && kami.no)] : null, awakening: index === 2 ? DIVINE_SKILL_AWAKENINGS[String(kami && kami.no)] || null : null, awakeningFrames: index === 2 ? DIVINE_SKILL_AWAKENING_FRAMES[String(kami && kami.no)] || [] : [], motif: theme.motif, color: index === 2 && String(kami && kami.no) === '1' ? '#dd354b' : theme.color, accent: theme.accent, label: theme.skills[index === 2 ? 1 : 0], index };
+  return { kamiNo: String(kami && kami.no), cutin: index === 2 ? DIVINE_SKILL_CUTINS[String(kami && kami.no)] : null, awakening: index === 2 ? DIVINE_SKILL_AWAKENINGS[String(kami && kami.no)] || null : null, awakeningFrames: index === 2 ? DIVINE_SKILL_AWAKENING_FRAMES[String(kami && kami.no)] || [] : [], motif: theme.motif, color: theme.color, accent: theme.accent, label: theme.skills[index === 2 ? 1 : 0], index };
 }
 
 // Atlas cells are native painted sprites; movements and lighting stay code-driven.

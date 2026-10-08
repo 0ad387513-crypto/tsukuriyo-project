@@ -10,6 +10,40 @@ const nodeVm = require("node:vm");
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 
+test("approved production art retains its source bytes and is wired into every display group", () => {
+  const record = JSON.parse(fs.readFileSync(path.join(root, 'production_art.json'), 'utf8'));
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'kami_illustrations/manifest.json'), 'utf8'));
+  const { DIVINE_SKILL_CUTINS, divineSkillTheme } = require('../divine_effects.js');
+  const limits = { scene:300000, cutin:300000, sprite:120000, atlas:160000 };
+  for (const entry of record.assets) {
+    const bytes = fs.readFileSync(path.join(root, entry.file));
+    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), entry.sha256, entry.file);
+    assert.equal(bytes.length, entry.bytes, entry.file);
+    assert.ok(bytes.length <= limits[entry.profile], entry.file);
+    assert.ok(!/rejected|no-scythe|revisions/.test(entry.file), entry.file);
+    if (!['character','framedCard','card'].includes(entry.group)) {
+      const source = entry.group === 'cutin' ? fs.readFileSync(path.join(root, 'divine_effects.js'), 'utf8') : html;
+      assert.ok(source.includes(entry.file), entry.file);
+    }
+  }
+  const portraits = record.assets.filter(e => e.group === 'character' && !e.file.includes('/selection/'));
+  const cutins = record.assets.filter(e => e.group === 'cutin');
+  assert.equal(portraits.length, 10);
+  assert.equal(cutins.length, 10);
+  for (let no=1; no<=10; no++) {
+    assert.equal('kami_illustrations/'+manifest[no], portraits[no-1].file);
+    assert.equal(DIVINE_SKILL_CUTINS[no], cutins[no-1].file);
+  }
+  // Eye-opening phases must never swap the selected orange Susanoo back to an old painting.
+  const susanoo = divineSkillTheme({no:1}, 2);
+  assert.equal(susanoo.awakening, susanoo.cutin);
+  assert.ok(susanoo.awakeningFrames.every(file => file === susanoo.cutin));
+  for (const [group,count] of [['card',9],['chibi',10],['rest',9],['emotes',10],['menus',4],['op',5],['tutorial',6],['framedCard',20]]) {
+    assert.equal(record.assets.filter(e => e.group === group).length, count, group);
+  }
+  assert.equal(record.assets.find(e=>e.group==='tutorial'&&e.slug==='tutorial-celebrate').file, 'tutorial_guide/tutorial-celebrate-e3b0de49814b.webp');
+});
+
 test("Uzume's fan, legible petals and four fading silk poses move in a widening breeze", () => {
   const {DIVINE_UZUME_FAN_FRAMES,DIVINE_UZUME_HAGOROMO_POSES,divineUzumeSpiralPetalStyle,divineUzumeHagoromoPoseStyle,divineSkillAssetUrls}=require('../divine_effects.js');
   assert.equal(DIVINE_UZUME_FAN_FRAMES.length,1);
@@ -243,7 +277,10 @@ test("optimized visual URLs are content-addressed and every Kami texture exists"
     const hash = crypto.createHash("sha256").update(bytes).digest("hex").slice(0, 12);
     assert.ok(asset.file.endsWith(`-${hash}.webp`), asset.file);
     assert.equal(bytes.length, asset.bytes);
-    assert.ok(asset.bytes < asset.sourceBytes, asset.file);
+    if (asset.preservedWebP) {
+      assert.equal(asset.bytes, asset.sourceBytes, asset.file);
+      assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), asset.sha256, asset.file);
+    } else assert.ok(asset.bytes < asset.sourceBytes, asset.file);
   }
   const { divineSkillAssetUrls, divineSpriteStyle } = require("../divine_effects.js");
   for (let no = 1; no <= 10; no++) for (const url of divineSkillAssetUrls({ no })) {
