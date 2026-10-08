@@ -1,6 +1,6 @@
 # カード使用時ボイス 台本（たたき）
 
-> **2026-10-09 以降の正本は `tools/voice-script/card_voice_script.json`**。確認用サーバー（`npm run preview`）で http://localhost:8765/tools/voice-script/ を開くと、一覧・検索・台詞の編集・確認状態（未確認／OK／要修正）の記録ができ、編集は自動でこのJSONに保存される。このMarkdownは作成時のたたきと方針の記録。
+> **台本の編集はメンバー共有の Claude のページ https://claude.ai/artifact/FhjJWGhKHFPbH2yiuGJFtj で行う（2026-10-09〜）**。音声を作る前に、Claude がそのページの内容を `tools/voice-script/card_voice_script.json` に取り込む。確認用サーバーの http://localhost:8765/tools/voice-script/ は閲覧専用。
 > 下の表は 2026-10-09、ユーザーが編集を完了した card_voice_script.json から作り直したもの。以後の編集はページで行い、この表は必要なときに作り直す。
 
 作成日: 2026-10-08（10-09 改訂：キャラクターは召喚時・攻撃時・死亡時の3種類） ／ 状態: **確定（2026-10-09 ユーザーが編集を完了）**。カードデータ（スプレッドシート「カード設定」198枚）の二つ名・効果・フレーバーを元に作成。

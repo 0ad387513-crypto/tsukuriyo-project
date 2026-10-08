@@ -335,7 +335,9 @@
       state.rows.clear();
       for (const [id, line] of Object.entries(body.script.lines || {})) state.rows.set(id, { ...line, id });
       notice.classList.remove("warn");
-      notice.textContent = "台詞を直すと tools/voice-script/card_voice_script.json に自動で保存されます（Enterで確定、Shift+Enterで改行）。";
+      // 2026-10-09 から台本の編集はメンバー共有の Claude のページで行う。このページは閲覧専用（内容は Claude が取り込んだ時点のもの）
+      state.canWrite = false;
+      notice.textContent = "このページは閲覧専用です。台詞の編集は、メンバー共有のページ（https://claude.ai/artifact/FhjJWGhKHFPbH2yiuGJFtj）で行ってください。";
       renderAll();
     } catch (e) {
       notice.textContent = "台本を読み込めませんでした。確認用サーバー（npm run preview）で開いているか確認してください。（" + e.message + "）";
