@@ -21,6 +21,11 @@ function voiceRunArgs(step, castKeys) {
   const refOk = r => /^[np]\d{2,3}-[a-z]+(-\d+)?$/.test(r || "");
   if (step.command === "design" && castOk(step.cast)) return ["design", "--cast", step.cast].concat(step.keep ? ["--keep"] : []);
   if (step.command === "pick" && castOk(step.cast) && /^\d{1,3}$/.test(String(step.choice))) return ["pick", "--cast", step.cast, "--choice", String(step.choice)];
+  if (step.command === "lines" && step.ref && refOk(step.ref) && step.takes) return /^[2-5]$/.test(String(step.takes)) ? ["lines", "--ref", step.ref, "--takes", String(step.takes)] : null;
+  if (step.command === "lines" && step.word) {
+    const readings = fs.existsSync(voiceReadingsFile) ? JSON.parse(fs.readFileSync(voiceReadingsFile, "utf8")) : {};
+    return Object.prototype.hasOwnProperty.call(readings, step.word) ? ["lines", "--word", step.word, "--force"] : null;
+  }
   if (step.command === "lines" && step.ref && refOk(step.ref)) return ["lines", "--ref", step.ref].concat(step.force ? ["--force"] : []);
   if (step.command === "lines" && !step.ref && castOk(step.cast)) return ["lines", "--cast", step.cast].concat(step.force ? ["--force"] : []);
   return null;
@@ -101,6 +106,7 @@ function writeArtFile(no, base, ext, data) {
 }
 const voiceScriptFile = path.join(root, "tools", "voice-script", "card_voice_script.json");
 const voiceCastFile = path.join(root, "tools", "voice-script", "card_voice_cast.json");
+const voiceReadingsFile = path.join(root, "tools", "voice-script", "card_voice_readings.json");
 const voiceDirectionFile = path.join(root, "tools", "voice-script", "card_voice_direction.json");
 const VOICE_SCRIPT_FIELDS = ["summon", "attack", "death", "use", "reading", "note", "memo", "status"];
 async function handleDev(req, res, url) {
@@ -203,6 +209,54 @@ async function handleDev(req, res, url) {
     console.log(`[voice-run] ${voiceJob.label}：${queue.map(q => q.join(" ")).join(" → ")}`);
     runVoiceSteps(voiceJob, key);
     return sendJson(res, 200, { ok: true, id: voiceJob.id });
+  }
+  // ===== 言い方の候補（同じ台詞を何通りか作ったもの）：一覧と、選んだものを本番の音声にする =====
+  if (url.pathname === "/__dev/voice-takes" && req.method === "GET") {
+    const ref = url.searchParams.get("ref") || "";
+    const dir = path.join(root, "voices", "cards", "takes");
+    // ref なし：すべての台詞の候補番号を { 台詞ID: [1,2,3] } で返す
+    if (!ref) {
+      const all = {};
+      if (fs.existsSync(dir)) for (const n of fs.readdirSync(dir)) { const m = /^([np]\d{2,3}-[a-z]+(?:-\d+)?)-(\d+)\.mp3$/.exec(n); if (m) (all[m[1]] = all[m[1]] || []).push(Number(m[2])); }
+      for (const k of Object.keys(all)) all[k].sort((a, b) => a - b);
+      return sendJson(res, 200, { ok: true, takes: all });
+    }
+    if (!/^[np]\d{2,3}-[a-z]+(-\d+)?$/.test(ref)) return sendJson(res, 400, { ok: false, message: "台詞IDが正しくありません" });
+    const takes = fs.existsSync(dir) ? fs.readdirSync(dir).map(n => (new RegExp("^" + ref + "-(\\d+)\\.mp3$").exec(n) || [])[1]).filter(Boolean).map(Number).sort((a, b) => a - b) : [];
+    return sendJson(res, 200, { ok: true, takes });
+  }
+  if (url.pathname === "/__dev/voice-take-adopt" && req.method === "POST") {
+    if (!req.headers.origin) return sendJson(res, 403, { ok: false, message: "試聴室のページから操作してください" });
+    let body;
+    try { body = JSON.parse((await readBody(req, 4096)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "形式が正しくありません" }); }
+    const ref = String(body.ref || ""), take = Number(body.take);
+    if (!/^[np]\d{2,3}-[a-z]+(-\d+)?$/.test(ref) || !(take >= 1 && take <= 5)) return sendJson(res, 400, { ok: false, message: "指定が正しくありません" });
+    const cards = path.join(root, "voices", "cards");
+    const src = path.join(cards, "takes", `${ref}-${take}.mp3`);
+    if (!fs.existsSync(src)) return sendJson(res, 404, { ok: false, message: "その候補の音声がありません" });
+    const dest = path.join(cards, `${ref}.mp3`);
+    if (fs.existsSync(dest)) { fs.mkdirSync(path.join(cards, "_old"), { recursive: true }); fs.copyFileSync(dest, path.join(cards, "_old", `${ref}.before-take.mp3`)); }
+    fs.copyFileSync(src, dest);
+    console.log(`[voice-takes] ${ref} を言い方の候補${take}にした`);
+    return sendJson(res, 200, { ok: true });
+  }
+  // ===== 読み方の辞書（{ 言葉: 読み方 }）。読み上げるときだけ置き換える =====
+  if (url.pathname === "/__dev/voice-readings" && req.method === "GET") {
+    return sendJson(res, 200, { ok: true, readings: fs.existsSync(voiceReadingsFile) ? JSON.parse(fs.readFileSync(voiceReadingsFile, "utf8")) : {} });
+  }
+  if (url.pathname === "/__dev/voice-readings" && req.method === "POST") {
+    if (!req.headers.origin) return sendJson(res, 403, { ok: false, message: "試聴室のページから操作してください" });
+    let body;
+    try { body = JSON.parse((await readBody(req, 4096)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "形式が正しくありません" }); }
+    const word = String(body.word || "").trim(), reading = String(body.reading || "").trim();
+    if (!word || word.length > 30 || reading.length > 60 || /[<>{}]/.test(word + reading)) return sendJson(res, 400, { ok: false, message: "言葉は30文字、読み方は60文字までで入れてください" });
+    const all = fs.existsSync(voiceReadingsFile) ? JSON.parse(fs.readFileSync(voiceReadingsFile, "utf8")) : {};
+    if (reading) all[word] = reading; else delete all[word];
+    const tmp = voiceReadingsFile + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify(all, null, 1) + "\n");
+    fs.renameSync(tmp, voiceReadingsFile);
+    console.log(`[voice-readings] ${word} → ${reading || "（削除）"}`);
+    return sendJson(res, 200, { ok: true, readings: all });
   }
   // ===== 演技の方針を複数の台詞にまとめて入れる（試聴室の「このキャラの全台詞に同じ方針を入れる」）=====
   // 方針（direction）だけを書き換え、台詞の言い換えや安定度などほかの指定は残す。空なら方針を消す

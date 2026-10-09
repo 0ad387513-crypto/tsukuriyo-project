@@ -50,6 +50,15 @@ const castFile = path.join(scriptDir, "card_voice_cast.json");
 const audioDir = path.join(scriptDir, "audio");
 // 台詞ごとの読み替え・演技指定（試聴室で保存。{ "n051-summon": { text: "読み上げる文", direction: "演技の方針（日本語）", tags: "[confident]", stability: 0.4 } }）
 const directionFile = path.join(scriptDir, "card_voice_direction.json");
+// 読み方の辞書（試聴室で登録。{ "父上": "ちちうえ" }）。読み上げる直前に置き換える。台本の表示は変えない
+const readingsFile = path.join(scriptDir, "card_voice_readings.json");
+const takesDir = path.join(outDir, "takes");
+function applyReadings(text, readings) {
+  const words = Object.keys(readings).filter(Boolean).sort((a, b) => b.length - a.length);
+  let out = text;
+  for (const w of words) out = out.split(w).join(readings[w]);
+  return out;
+}
 
 const readJson = (file, fallback) => { try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return fallback; } };
 const writeJson = (file, data) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(data, null, 2) + "\n"); };
@@ -319,22 +328,30 @@ async function lines() {
   const record = readJson(recordFile, {});
   const kamiIds = readJson(path.join(root, "voices", "elevenlabs_voice_ids.json"), {});
   const directions = readJson(directionFile, {});
+  const readings = readJson(readingsFile, {});
   const { items } = collectLines();
   const onlyRef = argValue("--ref");
-  const targets = items.filter(i => onlyRef ? (i.ref === onlyRef || i.group === onlyRef) : i.cast === castArg());
-  if (!targets.length) { console.error("lines には --cast 名前 か --ref 台詞ID が必要です。"); process.exit(1); }
+  // --word 父上：その言葉を含む台詞だけ（読み方の辞書を直したあと、まとめて作り直す）
+  const word = argValue("--word");
+  // --takes 3：同じ台詞を何通りか作り、voices/cards/takes/台詞ID-番号.mp3 に置く（試聴室で聴き比べて選ぶ）
+  const takes = Math.min(5, Math.max(0, parseInt(argValue("--takes") || "0", 10) || 0));
+  const spoken = it => (directions[it.ref] || {}).text || it.text;
+  const targets = items.filter(i => word ? spoken(i).includes(word) : onlyRef ? (i.ref === onlyRef || i.group === onlyRef) : i.cast === castArg());
+  if (!targets.length) { console.error(word ? `「${word}」を含む台詞はありません` : "lines には --cast 名前 か --ref 台詞ID が必要です。"); process.exitCode = 1; return; }
+  if (takes && !onlyRef) { console.error("--takes は --ref と一緒に使ってください"); process.exitCode = 1; return; }
   fs.mkdirSync(outDir, { recursive: true });
+  if (takes) fs.mkdirSync(takesDir, { recursive: true });
   let chars = 0; const failed = [];
   for (const it of targets) {
     const out = path.join(outDir, `${it.ref}.mp3`);
-    if (fs.existsSync(out) && !force) continue;
+    if (!takes && fs.existsSync(out) && !force) continue;
     const c = cast[it.cast] || {};
     const voiceId = c.kami ? (kamiIds[c.kami] && kamiIds[c.kami].id) : (record[it.cast] && record[it.cast].voiceId);
     if (!voiceId) { console.warn(`${it.ref}：${it.cast} の声が未登録です（design → pick を先に）`); failed.push(it.ref); continue; }
     if (record[it.cast] && record[it.cast].released) { console.warn(`${it.ref}：${it.cast} の声は削除済みのため作れません`); failed.push(it.ref); continue; }
     // 台詞ごとの読み上げ文の上書き（card_voice_cast.json の tts に { "n051-summon": "…" } と書く）
     const dir = directions[it.ref] || {};
-    const text = (dir.tags ? dir.tags.trim() + " " : "") + speechText(dir.text || (c.tts && c.tts[it.ref]) || it.text);
+    const text = (dir.tags ? dir.tags.trim() + " " : "") + speechText(applyReadings(dir.text || (c.tts && c.tts[it.ref]) || it.text, readings));
     const stability = Number.isFinite(dir.stability) ? dir.stability : el.stability;
     console.log(`${it.ref}（${it.cast}）：${text}${stability !== el.stability ? `（安定度${stability}）` : ""}`);
     try {
@@ -342,17 +359,29 @@ async function lines() {
       // 演技の方針（日本語の自由記述）は「台詞の直前の文脈」として渡す。読み上げられず、言い方だけに効く
       const direction = (dir.direction || "").trim();
       if (direction) { body.previous_text = direction.replace(/[。．.]?$/, "。"); console.log(`  演技の方針：${direction}`); }
-      let audio;
-      try { audio = await call(`/text-to-speech/${voiceId}?output_format=mp3_44100_64`, body, true); }
-      catch (e) {
-        // モデルが文脈の指定に対応していないときは、方針を演技タグとして台詞の頭に付けて作り直す
-        if (!direction || !/previous_text|not supported|unsupported/i.test(String(e.message))) throw e;
-        console.warn("  このモデルは文脈の指定に対応していないため、方針を [ ] の演技指定として付けて作ります。方針が読み上げられていないか聴いて確認してください");
-        delete body.previous_text; body.text = `[${direction}] ` + text;
-        audio = await call(`/text-to-speech/${voiceId}?output_format=mp3_44100_64`, body, true);
+      const speak = async () => {
+        try { return await call(`/text-to-speech/${voiceId}?output_format=mp3_44100_64`, body, true); }
+        catch (e) {
+          // モデルが文脈の指定に対応していないときは、方針を演技タグとして台詞の頭に付けて作り直す
+          if (!direction || !/previous_text|not supported|unsupported/i.test(String(e.message))) throw e;
+          console.warn("  このモデルは文脈の指定に対応していないため、方針を [ ] の演技指定として付けて作ります。方針が読み上げられていないか聴いて確認してください");
+          delete body.previous_text; body.text = `[${direction}] ` + text;
+          return call(`/text-to-speech/${voiceId}?output_format=mp3_44100_64`, body, true);
+        }
+      };
+      if (takes) {
+        // 言い方の候補：毎回ちがう seed で作る
+        for (const old of fs.readdirSync(takesDir)) if (old.startsWith(it.ref + "-") && /^\d+\.mp3$/.test(old.slice(it.ref.length + 1))) fs.unlinkSync(path.join(takesDir, old));
+        for (let k = 1; k <= takes; k++) {
+          body.seed = Math.floor(Math.random() * 4294967295);
+          fs.writeFileSync(path.join(takesDir, `${it.ref}-${k}.mp3`), await speak());
+          chars += text.length;
+          console.log(`  → 言い方の候補${k}`);
+        }
+      } else {
+        fs.writeFileSync(out, await speak());
+        chars += text.length;
       }
-      fs.writeFileSync(out, audio);
-      chars += text.length;
     } catch (e) { console.error(`  × 失敗：${String(e.message || e).slice(0, 300)}`); failed.push(it.ref); }
     await sleep(300);
   }

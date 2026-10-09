@@ -109,6 +109,16 @@
   .empty { color: var(--muted); padding: 30px 0; }
   .line-acts { display: flex; gap: 6px; }
   .dir-tag { font-size: 11px; color: var(--gold); margin-left: 6px; }
+  .takes { margin-top: 6px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--ok); background: var(--ok-soft); display: grid; gap: 6px; font-size: 12px; }
+  .takes-head { font-weight: 700; color: var(--ok); font-size: 11px; }
+  .take { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+  .take audio { height: 30px; }
+  .readings { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin-top: 10px; }
+  .readings > summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--gold); }
+  .readings[open] > summary { margin-bottom: 8px; }
+  .reading-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: 13px; border-top: 1px dashed var(--line); padding-top: 6px; margin-top: 6px; }
+  .reading-row small { color: var(--muted); }
+  .readings input { font: inherit; font-size: 13px; padding: 5px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); min-width: 0; }
   .multi { margin-top: 6px; padding: 6px 8px; border-radius: 8px; border: 1px dashed var(--gold); background: var(--gold-soft); display: grid; gap: 2px; font-size: 12px; }
   .multi-head { font-weight: 700; color: var(--gold); font-size: 11px; }
   .multi-part { color: var(--muted); }
@@ -154,6 +164,11 @@
     <div class="cast-tabs" role="tablist" aria-label="キャスト" id="castTabs"></div>
     <div class="bar-foot"><button type="button" id="reload">最新の状態に更新</button><label class="vol" for="volume">音量 <input type="range" id="volume" min="0" max="100" step="5" value="80"> <output id="volumeText" for="volume">80</output></label><span class="summary" id="summary"></span></div>
   </div>
+  <details class="readings" id="readings"><summary>読み方の辞書（イントネーション・読み間違いを直す）</summary>
+    <p class="dir-note">言葉の書き方を変えると、読み方やイントネーションが変わります。たとえば「父上」→「ちちうえ」「チチウエ」「ちち、うえ」など。ここに入れた置き換えは、その言葉を含む全部の台詞に、読み上げるときだけ使われます（台本の表示は変わりません）。入れたあとは「この言葉の台詞を作り直す」で作り直してください。うまくいかないときは、台詞ごとの「直す・作り直す」の「言い方を3通り作って選ぶ」も試してください。</p>
+    <div class="dir-row"><input type="text" id="readingWord" placeholder="言葉（例：父上）" aria-label="言葉"> → <input type="text" id="readingText" placeholder="読み方（例：ちちうえ）" aria-label="読み方"><button type="button" class="copy small" id="readingAdd">辞書に入れる</button></div>
+    <div id="readingList"></div>
+  </details>
   <main id="list"><div class="empty">読み込んでいます…</div></main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -190,6 +205,57 @@
   }
   // 実際に読み上げる文（その台詞だけの言い換えがあればそれ）
   const spokenOf = i => (data.directions[i.ref] || {}).text || i.text;
+  // 同じ台詞を何通りか作ったもの（言い方の候補）。聴き比べて「これにする」で本番の音声にする
+  function takesBox(it) {
+    const nums = (data.takes || {})[it.ref] || [];
+    if (!nums.length) return null;
+    const box = el("div", "takes");
+    box.append(el("span", "takes-head", "言い方の候補（聴き比べて、良いものを選んでください）"));
+    for (const n of nums) {
+      const row = el("div", "take");
+      const au = el("audio"); au.controls = true; au.preload = "none"; au.src = "/voices/cards/takes/" + encodeURIComponent(it.ref + "-" + n + ".mp3") + bust();
+      const pick = el("button", "copy small", "これにする"); pick.type = "button";
+      pick.addEventListener("click", async () => {
+        try {
+          const res = await fetch("/__dev/voice-take-adopt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ref: it.ref, take: n }) });
+          const j = await res.json().catch(() => ({}));
+          if (!res.ok || !j.ok) throw new Error(j.message || "できませんでした");
+          rememberScroll(); await load(); restoreScroll();
+          toast("候補" + n + "をこの台詞の音声にしました");
+        } catch (e) { toast(e.message); }
+      });
+      row.append(el("b", "", "候補" + n), au, pick);
+      box.append(row);
+    }
+    return box;
+  }
+  // 読み方の辞書
+  function renderReadings() {
+    const list = $("readingList"); if (!list) return;
+    const entries = Object.entries(data.readings || {});
+    const spoken = i => (data.directions[i.ref] || {}).text || i.text;
+    list.replaceChildren(...(entries.length ? entries.map(([w, r]) => {
+      const hits = (data.items || []).filter(i => spoken(i).includes(w));
+      const row = el("div", "reading-row");
+      const label = el("span", "", w + " → " + r + "　");
+      label.append(el("small", "", hits.length + "本の台詞（" + [...new Set(hits.map(i => displayName(i.cast)))].join("・") + "）"));
+      const redo = el("button", "copy small", "この言葉の台詞を作り直す"); redo.type = "button";
+      redo.addEventListener("click", () => runCommand(TOOL + " lines --word " + w + " --force", "「" + w + "」の台詞を作り直す"));
+      const del = el("button", "copy small danger", "辞書から外す"); del.type = "button";
+      del.addEventListener("click", () => saveReading(w, ""));
+      row.append(label, redo, del);
+      return row;
+    }) : [el("p", "dir-note", "まだ入っていません。")]));
+  }
+  async function saveReading(word, reading) {
+    try {
+      const res = await fetch("/__dev/voice-readings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ word, reading }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
+      data.readings = j.readings; renderReadings();
+      toast(reading ? "「" + word + "」を「" + reading + "」と読むようにしました" : "「" + word + "」を辞書から外しました");
+    } catch (e) { toast(e.message); }
+  }
   function multiBox(it) {
     const parts = partsOf(it);
     if (parts.length < 2) return null;
@@ -288,7 +354,18 @@
     const save = el("button", "copy main", "保存して作り直す"); save.type = "button";
     const clear = el("button", "copy small", "①②の指定をすべて消す"); clear.type = "button";
     const code = el("code", "cmd", cmd);
-    const btns = el("div", "btns"); btns.append(save, clear);
+    // イントネーションなどが気になるときは、同じ指定で何通りか作って選ぶ（1通りずつ読み方が少し変わる）
+    const takesBtn = el("button", "copy", "保存して、言い方を3通り作って選ぶ"); takesBtn.type = "button";
+    takesBtn.title = "イントネーションが気になるときに。3通り作り、聴き比べて「これにする」を押した音声が使われます";
+    takesBtn.addEventListener("click", async () => {
+      try {
+        const t = text.value.trim();
+        await saveDirection(it.ref, { text: t && t !== it.text && !MULTI_SYNTAX.test(t) ? t : "", direction: direction.value.trim(), tags: tags.value.trim(), stability: sel.value === "" ? null : Number(sel.value) });
+        refresh();
+        await runCommand(TOOL + " lines --ref " + it.ref + " --takes 3", "言い方を3通り作る");
+      } catch (e) { toast(e.message); }
+    });
+    const btns = el("div", "btns"); btns.append(save, takesBtn, clear);
     save.addEventListener("click", async () => {
       try {
         const t = text.value.trim();
@@ -498,6 +575,8 @@
         else if (t[i] === "--choice") st.choice = t[++i];
         else if (t[i] === "--keep") st.keep = true;
         else if (t[i] === "--force") st.force = true;
+        else if (t[i] === "--takes") st.takes = t[++i];
+        else if (t[i] === "--word") st.word = t[++i];
       }
       steps.push(st);
     }
@@ -764,7 +843,7 @@
           t.append(spoken, orig);
           const small = document.createElement("small"); small.textContent = `${it.card}｜${it.field}｜${it.ref}`;
           const pairBox = pairInfo(it);
-          const dirLabel = document.createElement("span"); dirLabel.className = "dir-tag"; dirLabel.textContent = describe(it.ref); small.append(dirLabel); t.append(small); const mb = multiBox(it); if (mb) t.append(mb); if (pairBox) t.append(pairBox);
+          const dirLabel = document.createElement("span"); dirLabel.className = "dir-tag"; dirLabel.textContent = describe(it.ref); small.append(dirLabel); t.append(small); const mb = multiBox(it); if (mb) t.append(mb); const tb = takesBox(it); if (tb) t.append(tb); if (pairBox) t.append(pairBox);
           const holder = document.createElement("div"); holder.className = "missing"; holder.textContent = "確認中…";
           const refresh = () => showLine(it, spoken, orig, dirLabel); refresh();
           const panel = fixPanel(it, refresh);
@@ -790,19 +869,23 @@
   }
 
   async function load() {
-    const [cast, record, script, pairs, list, dirs] = await Promise.all([
+    const [cast, record, script, pairs, list, dirs, takesRes, readingsRes] = await Promise.all([
       getJson("/tools/voice-script/card_voice_cast.json", { cast: {} }),
       getJson("/voices/cards/voices.json", {}),
       getJson("/tools/voice-script/card_voice_script.json", { lines: {} }),
       getJson("/tools/voice-script/card_voice_pairs.json", { pairs: {} }),
       getJson("/tools/voice-script/card_voice_lines.json", null),
       getJson("/__dev/voice-direction", { directions: {} }),
+      getJson("/__dev/voice-takes", { takes: {} }),
+      getJson("/__dev/voice-readings", { readings: {} }),
     ]);
-    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {} };
+    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {} };
+    renderReadings();
     await render();
   }
   $("viewer").addEventListener("click", () => $("viewer").close());
   $("runnerClose").addEventListener("click", () => { $("runner").hidden = true; });
+  $("readingAdd").addEventListener("click", () => { const w = $("readingWord").value.trim(), r = $("readingText").value.trim(); if (!w || !r) { toast("言葉と読み方の両方を入れてください"); return; } saveReading(w, r); $("readingWord").value = ""; $("readingText").value = ""; });
   $("runnerCopy").addEventListener("click", () => { if (runnerCmd) copy(runnerCmd); });
   // ページを開き直したとき、動いている処理があれば進み具合を出す
   fetch("/__dev/voice-run").then(r => r.json()).then(j => { if (j.job && j.job.running) pollRunner(); }).catch(() => {});
