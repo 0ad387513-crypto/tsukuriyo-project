@@ -131,20 +131,28 @@ function collectLines() {
 }
 
 /* ===== キャスト ===== */
-// 話す人の表記（性別・年齢・印象）から、ボイスデザイン用の英語の説明の下書きを作る。気になる人は card_voice_cast.json で直す
+// 話す人の表記（性別・印象）から、ボイスデザイン用の英語の説明の下書きを作る。気になる人は card_voice_cast.json で直す
+// ElevenLabs は未成年の年齢指定や幼さを強調した声づくりを安全上の理由で断るため、少女・少年・子どもの役も
+// 「20代前半の大人の、明るく高めの声」として説明し、年齢・未成年を表す言葉は説明に入れない（回避はしない）
+const MINOR_WORDS = /少女|少年|子ども|子供|幼|童|歳|ロリ|ショタ|キッズ|小学|中学|高校/g;
 function draftDescription(cast, labels, notes) {
-  const all = labels.join(" ") + " " + notes.join(" ");
+  const all = labels.join(' ') + ' ' + notes.join(' ');
   const has = re => re.test(all);
-  const gender = has(/女性|少女|女|姫|乙女|淑女|侍女|修道女|若女将|母/) && !has(/男性|少年|青年/) ? "female" : (has(/男性|少年|青年|老人|壮年/) ? "male" : "neutral");
-  let who = gender === "female" ? "a Japanese woman" : gender === "male" ? "a Japanese man" : "a Japanese person";
-  if (has(/子ども|童/)) who = gender === "female" ? "a young Japanese girl (child)" : "a young Japanese child";
-  else if (has(/少女/)) who = "a Japanese teenage girl";
-  else if (has(/少年/)) who = "a Japanese teenage boy";
-  else if (has(/青年/)) who = "a Japanese young man in his twenties";
-  else if (has(/30代/)) who = gender === "female" ? "a Japanese woman in her thirties" : "a Japanese man in his thirties";
-  else if (has(/壮年/)) who = gender === "female" ? "a Japanese woman in her forties" : "a Japanese man in his forties";
-  else if (has(/老人/)) who = "an elderly Japanese man";
-  return `Japanese voice. Native Japanese speaker who speaks only Japanese, with natural standard Japanese pronunciation. ${who}, a character from a Japanese mythological fantasy card game. Natural yet expressive acting, like a Japanese anime voice actor. Character notes (Japanese): ${[...new Set(labels)].join(" / ")}。${[...new Set(notes.filter(Boolean))].join("／")}`.slice(0, 1000);
+  const female = has(/女性|少女|女|姫|乙女|淑女|侍女|修道女|若女将|母/) && !has(/男性|少年|青年/);
+  const male = !female && has(/男性|少年|青年|老人|壮年/);
+  const youthful = has(/少女|少年|子ども|子供|童|幼/);
+  let who;
+  if (youthful) who = female ? 'a Japanese young woman in her early twenties with a bright, light, high-pitched voice' : male ? 'a Japanese young man in his early twenties with a clear, light, youthful-sounding voice' : 'a Japanese young adult in their early twenties with a bright, light voice';
+  else if (has(/30代/)) who = female ? 'a Japanese woman in her thirties' : 'a Japanese man in his thirties';
+  else if (has(/壮年/)) who = female ? 'a Japanese woman in her forties' : 'a Japanese man in his forties';
+  else if (has(/老人/)) who = 'an elderly Japanese man';
+  else if (has(/青年/)) who = 'a Japanese man in his twenties';
+  else who = female ? 'a Japanese woman in her twenties' : male ? 'a Japanese man in his twenties' : 'a Japanese adult';
+  // 説明に入れる特徴：未成年・年齢を表す言葉を含む部分はフレーズごと外す
+  const MINOR = new RegExp(MINOR_WORDS.source + "|\d+\s*(くらい|代前半|代後半)?$");
+  const phrases = labels.concat(notes).flatMap(x => String(x || "").split(/[／・、（）()s]+/)).map(x => x.trim()).filter(x => x && !MINOR.test(x));
+  const traits = [...new Set(phrases)].join("・");
+  return `Japanese voice. Native Japanese speaker who speaks only Japanese, with natural standard Japanese pronunciation. Adult voice. ${who}, a character from a Japanese mythological fantasy card game. Natural yet expressive acting, like a Japanese anime voice actor. Character notes (Japanese): ${traits}`.slice(0, 1000);
 }
 function buildCast() {
   const { items } = collectLines();
@@ -153,7 +161,7 @@ function buildCast() {
   for (const it of items) {
     if (!cast[it.cast]) cast[it.cast] = { labels: [], notes: [], refs: [] };
     cast[it.cast].refs.push(it.ref);
-    cast[it.cast].notes.push(it.note);
+    if (it.group.startsWith("n")) cast[it.cast].notes.push(it.note);
   }
   // 話す人の表記を集める（説明の下書き用）
   const { lines } = collectLines();
@@ -166,7 +174,7 @@ function buildCast() {
       labels: [...new Set(c.labels)],
       lines: c.refs.length,
       // 手で直した説明は残す
-      el_description: kami ? undefined : ((old[key] && old[key].el_description) || draftDescription(key, c.labels.length ? c.labels : [key], c.notes)),
+      el_description: kami ? undefined : ((args.includes('--keep-descriptions') && old[key] && old[key].el_description) || draftDescription(key, c.labels.length ? c.labels : [key], c.notes)),
     };
   }
   writeJson(castFile, { _readme: "カードボイスのキャスト（話す人ごとの声）。el_description は ElevenLabs のボイスデザインに渡す説明。直してよい（cast を実行し直しても残る）。カミはカミのボイスの声を使う。", cast: out });
