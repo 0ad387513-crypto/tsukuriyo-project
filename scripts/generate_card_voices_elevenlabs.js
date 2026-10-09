@@ -17,6 +17,10 @@
     node scripts/generate_card_voices_elevenlabs.js design --cast ライカ   # 2) 声の候補を3つ作り、試聴用に保存
     node scripts/generate_card_voices_elevenlabs.js design --next 5      #    まだ声の無いキャストを5人分まとめて候補づくり
     node scripts/generate_card_voices_elevenlabs.js pick --cast ライカ --choice 2   # 3) 気に入った候補を声として登録
+    （2〜3の代わりに）Voice Library の公開されている声を使う（声の枠を使わない）：
+    node scripts/generate_card_voices_elevenlabs.js library --cast ライカ --gender female --age young --search 元気
+                                                                         #    検索して試聴用の音声を voices/cards/library/ に保存（--page 1 で次の結果）
+    node scripts/generate_card_voices_elevenlabs.js use --cast ライカ --library L3   #    検索結果の L3 をキャストの声として登録
     node scripts/generate_card_voices_elevenlabs.js lines --cast ライカ    # 4) そのキャストの台詞をすべて作る（作成済みは飛ばす。--force で作り直し）
     node scripts/generate_card_voices_elevenlabs.js lines --ref n051-summon --force  #    1本だけ作り直す
     node scripts/generate_card_voices_elevenlabs.js release --cast ライカ  # 5) 台詞を確認できたら、声を ElevenLabs から消して枠を空ける
@@ -304,6 +308,52 @@ async function lines() {
   if (chars) console.log(`今回読み上げた文字数：${chars}字`);
 }
 
+/* ===== Voice Library（公開されている声）から選ぶ =====
+   ElevenLabs の審査を通って公開されている声を使う。自分の声の枠は消費しない。
+   声ごとに使用条件（notice_period＝公開終了の予告期間など）があるので、一覧の表示を確認して選ぶ */
+const libraryDir = path.join(outDir, "library");
+const libraryLast = path.join(libraryDir, "last.json");
+async function library() {
+  const params = new URLSearchParams({ page_size: argValue("--size") || "15", language: argValue("--language") || "ja", sort: argValue("--sort") || "cloned_by_count" });
+  for (const k of ["gender", "age", "accent", "search", "page"]) { const v = argValue("--" + k); if (v) params.set(k, v); }
+  const json = await request("GET", "/shared-voices?" + params.toString());
+  const voices = json.voices || [];
+  const label = (castArg() || "search").replace(/[\\/:*?"<>|]/g, "_");
+  fs.mkdirSync(libraryDir, { recursive: true });
+  const list = [];
+  console.log(`検索：${params.toString()}　（${json.total_count ?? voices.length}件中 ${voices.length}件）`);
+  for (const [i, v] of voices.entries()) {
+    const n = i + 1;
+    let file = "";
+    if (v.preview_url) {
+      try {
+        const res = await fetch(v.preview_url, { signal: AbortSignal.timeout(60000) });
+        if (res.ok) { file = `${label}-L${n}.mp3`; fs.writeFileSync(path.join(libraryDir, file), Buffer.from(await res.arrayBuffer())); }
+      } catch { /* 試聴が取れなくても一覧は出す */ }
+    }
+    list.push({ n, name: v.name, public_owner_id: v.public_owner_id, voice_id: v.voice_id, gender: v.gender, age: v.age, accent: v.accent, descriptive: v.descriptive, use_case: v.use_case, notice_period: v.notice_period, free_users_allowed: v.free_users_allowed, cloned_by_count: v.cloned_by_count, description: v.description, file });
+    console.log(`L${n}. ${v.name}（${[v.gender, v.age, v.accent, v.descriptive, v.use_case].filter(Boolean).join("・")}）利用${v.cloned_by_count}人${v.notice_period ? `・公開終了の予告${v.notice_period}日` : ""}`);
+    if (v.description) console.log(`    ${String(v.description).replace(/\s+/g, " ").slice(0, 120)}`);
+    if (file) console.log(`    試聴：voices/cards/library/${file}`);
+  }
+  writeJson(libraryLast, { cast: castArg() || null, searchedAt: new Date().toISOString(), voices: list });
+  console.log(`\n気に入った声は use --cast 名前 --library L番号 で登録します（次の検索は --page 1 など）。`);
+}
+
+async function use() {
+  const key = castArg();
+  const cast = loadCast();
+  if (!key || !cast[key] || cast[key].kami) { console.error("use には、カミ以外のキャスト名を --cast で指定してください。"); process.exit(1); }
+  const pickNo = String(argValue("--library") || "").replace(/^L/i, "");
+  const hit = (readJson(libraryLast, { voices: [] }).voices || []).find(v => String(v.n) === pickNo);
+  if (!hit) { console.error("その番号の声が見つかりません。先に library で検索してください（--library L番号）。"); process.exit(1); }
+  const json = await call(`/voices/add/${hit.public_owner_id}/${hit.voice_id}`, { new_name: `tsukuriyo-card-${key}`.slice(0, 100) });
+  const record = readJson(recordFile, {});
+  record[key] = Object.assign(record[key] || {}, { voiceId: json.voice_id, source: "library", library: { name: hit.name, public_owner_id: hit.public_owner_id, voice_id: hit.voice_id, notice_period: hit.notice_period }, registered: new Date().toISOString(), released: undefined });
+  writeJson(recordFile, record);
+  console.log(`${key}：Voice Library の「${hit.name}」を登録しました（${json.voice_id}）。声の枠は使いません。`);
+}
+
 async function release() {
   const key = castArg();
   const record = readJson(recordFile, {});
@@ -328,7 +378,7 @@ function status() {
     const made = mine.filter(i => fs.existsSync(path.join(outDir, `${i.ref}.mp3`))).length;
     done += made;
     const r = record[key] || {};
-    const state = c.kami ? "カミの声" : r.released ? "声削除済み" : r.voiceId ? "声登録済み" : (r.candidates && r.candidates.length) ? `候補${r.candidates.length}個` : "未着手";
+    const state = c.kami ? "カミの声" : r.released ? "声削除済み" : r.voiceId ? (r.source === "library" ? "ライブラリの声" : "声登録済み") : (r.candidates && r.candidates.length) ? `候補${r.candidates.length}個` : "未着手";
     console.log(`${key.padEnd(20)} ${state.padEnd(8)} 台詞 ${made}/${mine.length}`);
   }
   const live = Object.values(record).filter(r => r.voiceId && !r.released).length;
@@ -358,7 +408,7 @@ function bundle() {
   console.log(`index.json：${Object.keys(index).length}本。台本サイトに載せるには、Claude に「音声を台本サイトに反映して」と伝えてください。`);
 }
 
-const commands = { cast: buildCast, status, design, pick, lines, release, bundle };
+const commands = { cast: buildCast, status, design, pick, library, use, lines, release, bundle };
 if (!commands[command]) {
   console.log("使い方はファイル先頭のコメントを見てください（cast / status / design / pick / lines / release / bundle）。");
 } else {
