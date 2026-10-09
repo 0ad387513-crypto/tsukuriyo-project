@@ -129,7 +129,7 @@
   .dir-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 13px; color: var(--muted); }
   .dir-row input, .dir-row select { font: inherit; font-size: 13px; padding: 5px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
   .dir-row input { flex: 1 1 220px; min-width: 0; }
-  .dir-note { font-size: 11px; color: var(--muted); margin: 0; }
+  .dir-note { font-size: 11px; color: var(--muted); margin: 0; white-space: pre-line; }
   .dir { gap: 12px; }
   .step { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
   .step:last-child { border-bottom: 0; padding-bottom: 0; }
@@ -367,7 +367,14 @@
       const ages = { "18": man ? "An 18-year-old Japanese young man (an adult)" : "An 18-year-old Japanese young woman (an adult)", "20s": man ? "A Japanese young man in his twenties" : "A Japanese young woman in her twenties", "30s": man ? "A Japanese man in his thirties" : "A Japanese woman in her thirties", "40s": man ? "A Japanese man in his forties" : "A Japanese woman in her forties", "50s": man ? "An older Japanese man in his fifties or sixties" : "An older Japanese woman in her fifties or sixties" };
       return (ages[a] || (man ? "A Japanese man" : "A Japanese woman")) + (man ? ". A male voice." : ". A female voice.");
     },
-    pitch: { vlow: "Very low-pitched, deep voice.", low: "Low-pitched voice.", mid: "Medium-pitched voice.", high: "High-pitched voice.", vhigh: "Very high-pitched voice, at the top of the natural speaking range." },
+    // 高さは1語だと効きにくいので、具体的な言い方を重ねる（ライカの声がうまくいった書き方に合わせた）
+    pitch: {
+      vlow: "Very low-pitched voice: a deep, heavy, resonant low register that stays low in every line.",
+      low: "Low-pitched voice: a calm, low register, fuller and darker than average.",
+      mid: "Medium-pitched voice: a natural, average speaking pitch.",
+      high: "High-pitched voice: a light, clear, bright tone in the upper part of the natural speaking range, higher than average in every line.",
+      vhigh: "Extremely high-pitched voice: a very high, light, clear tone that stays at the very top of the natural speaking range in every line, thin and bright rather than full or deep.",
+    },
     timbre: { clear: "crystal-clear and transparent", core: "with a strong, firm core and steady breath support", soft: "soft and gentle", powerful: "powerful and resonant", bright: "bright", deep: "deep, heavy and rich", husky: "husky", breathy: "breathy", rough: "slightly rough and raspy", cool: "cool and composed" },
     manner: { energetic: "energetic and lively", calm: "calm and composed", polite: "polite and well-mannered", rough: "rough and blunt", archaic: "old-fashioned and formal", cold: "cold and distant", gentle: "gentle and kind", imposing: "imposing and intimidating", cheeky: "cheeky and cocky", shy: "timid and hesitant", playful: "playful and humorous", dignified: "dignified and noble" },
   };
@@ -379,10 +386,17 @@
     if (t.length) parts.push("Voice quality: " + t.join(", ") + ".");
     const m = (sp.manner || []).map(k => EN.manner[k]).filter(Boolean);
     if (m.length) parts.push("Speaking style and personality: " + m.join(", ") + ".");
-    if (!(sp.timbre || []).includes("husky")) parts.push("Not husky.");
+    // 「〜ではない」をはっきり書くと、選んだ高さ・声質から外れにくい
+    const nots = [];
+    if (sp.pitch === "high" || sp.pitch === "vhigh") nots.push("not low", "not deep", "not mature-sounding");
+    if (sp.pitch === "low" || sp.pitch === "vlow") nots.push("not high", "not thin");
+    if (!(sp.timbre || []).includes("husky")) nots.push("not husky");
+    if (!(sp.timbre || []).includes("breathy")) nots.push("not breathy");
+    if (!(sp.timbre || []).includes("rough")) nots.push("not raspy");
+    if (nots.length) parts.push(nots.join(", ").replace(/^n/, "N") + ".");
     if (sp.role) parts.push("Role (Japanese): " + sp.role + ".");
     if (sp.note) parts.push("Additional notes (Japanese): " + sp.note + ".");
-    parts.push("Natural acting like a Japanese anime voice actor playing it straight, never exaggerated or theatrical.");
+    parts.push("Natural acting like a Japanese anime " + (sp.gender === "male" ? "voice actor" : "voice actress") + " playing it straight, never exaggerated or theatrical.");
     return parts.join(" ").replace(/。\./g, "。").replace(/\s+/g, " ");
   }
   async function saveDescription(key, description, spec) {
@@ -429,7 +443,7 @@
     note.addEventListener("input", () => { sp.note = note.value.trim(); rebuild(); });
     const noteRow = el("div", "dir-row"); noteRow.append(el("span", "spec-label", "その他の指示（日本語・任意）"), note, exampleButton(note));
     s1.append(roleRow, noteRow,
-      el("p", "dir-note", "性別・年代・高さ・声質は英語に直して渡すので、確実に効きます。日本語の欄は補足として渡すので、効き方は弱めです。性別を選ぶまでは、今の説明がそのまま使われます。"));
+      el("p", "dir-note", "性別・年代・高さ・声質は英語に直して渡すので、確実に効きます。日本語の欄は補足として渡すので、効き方は弱めです。性別を選ぶまでは、今の説明がそのまま使われます。\n※ここは「声そのもの」を決める欄です。「死に際は弱々しく」のような特定の台詞の演じ方を書くと、声全体が弱々しくなってしまいます。台詞ごとの演じ方は、声を決めたあとに各台詞の「演技の方針」に書いてください。"));
 
     // ③ 全文
     const s3 = el("section", "step");

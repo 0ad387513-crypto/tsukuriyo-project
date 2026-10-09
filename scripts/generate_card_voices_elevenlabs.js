@@ -240,7 +240,11 @@ function loadCast() {
 const speechText = text => String(text).replace(/？/g, "?").replace(/！/g, "!");
 function designSample(key) {
   const { items } = collectLines();
-  const parts = items.filter(i => i.cast === key).map(i => speechText(i.text));
+  // 声を作るときの見本の文。死亡時（弱々しい台詞）が混ざると声全体が弱く暗くなるので、元気な台詞を先に使い、死亡時しか無いキャラだけ死亡時を使う
+  const mine = items.filter(i => i.cast === key);
+  const isDeath = i => /-death$/.test(i.group);
+  const lively = mine.filter(i => !isDeath(i)).map(i => speechText(i.text));
+  const parts = lively.length ? lively : mine.map(i => speechText(i.text)); // 足りない分は下で元気な台詞をくり返して100字にする
   let text = parts.join("　");
   while (text.length < 100) text += "　" + (parts.join("　") || "よろしくお願いします。");
   return text.slice(0, 1000);
