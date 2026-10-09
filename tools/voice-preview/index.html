@@ -46,8 +46,17 @@
   .btns { display: flex; flex-wrap: wrap; gap: 6px; }
   .copy.main { background: var(--gold); color: var(--bg); }
   .copy.small { font-size: 11px; padding: 3px 8px; font-weight: 400; }
-  .line-row { grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) auto; }
-  @media (max-width: 640px) { .line-row { grid-template-columns: minmax(0, 1fr); } }
+  .line-row { grid-template-columns: 52px minmax(0, 1fr) minmax(220px, 300px) auto; }
+  @media (max-width: 640px) { .line-row { grid-template-columns: 52px minmax(0, 1fr); } .line-row > :nth-child(n+3) { grid-column: 1 / -1; } }
+  .thumb { width: 52px; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); cursor: zoom-in; padding: 0; display: block; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 3px; display: block; }
+  .thumb:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .cards { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cards .thumb { width: 84px; }
+  .viewer { border: 0; padding: 0; background: transparent; max-width: min(92vw, 520px); max-height: 92vh; }
+  .viewer::backdrop { background: rgba(0, 0, 0, .75); }
+  .viewer img { display: block; width: 100%; height: auto; max-height: 86vh; object-fit: contain; border-radius: 10px; cursor: zoom-out; }
+  .viewer p { margin: 6px 0 0; text-align: center; color: #fff; font-size: 13px; }
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); padding: 8px 14px; border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100vw - 32px); }
   .toast.show { opacity: 1; }
   .empty { color: var(--muted); padding: 30px 0; }
@@ -96,6 +105,7 @@
   <main id="list"><div class="empty">読み込んでいます…</div></main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<dialog class="viewer" id="viewer" aria-label="カードの拡大表示"><img id="viewerImg" alt=""><p id="viewerCap"></p></dialog>
 <script>
 (() => {
   const $ = id => document.getElementById(id);
@@ -181,6 +191,21 @@
     box.append(s1, s2, s3);
     return box;
   }
+  // 台詞を話すカードの画像。n051 → card_images/320/051.webp（押すと 600 の大きい画像）
+  const cardNo = id => String(id || "").replace(/^n/, "").replace(/-.*$/, "");
+  function cardThumb(id, title) {
+    const no = cardNo(id);
+    const b = el("button", "thumb"); b.type = "button"; b.title = title || ""; b.setAttribute("aria-label", (title || "カード") + "を大きく表示");
+    if (!/^\d{3}$/.test(no)) { b.hidden = true; return b; }
+    const img = el("img"); img.loading = "lazy"; img.alt = ""; img.src = "/card_images/320/" + no + ".webp";
+    img.addEventListener("error", () => { b.hidden = true; });
+    b.append(img);
+    b.addEventListener("click", () => {
+      $("viewerImg").src = "/card_images/600/" + no + ".webp"; $("viewerImg").alt = title || "";
+      $("viewerCap").textContent = title || ""; $("viewer").showModal();
+    });
+    return b;
+  }
   const enc = p => p.split("/").map(encodeURIComponent).join("/");
   const bust = () => "?t=" + Date.now(); // 作り直した音声を古いまま流さない
 
@@ -201,7 +226,7 @@
     // cast を実行すると作られる一覧があれば、それで正確に並べる（複数人の台詞も1人分ずつ出る）
     if (data.items) {
       const field = ref => ({ summon: "召喚時", attack: "攻撃時", death: "死亡時", use: "使用時", line: "掛け合い", reply: "返し" })[ref.split("-")[1]] || "";
-      return data.items.filter(i => i.cast === key).map(i => ({ ref: i.ref, card: i.card, field: field(i.ref) + (i.ref !== i.group ? "（" + (i.together ? "同時" : "複数人") + "）" : ""), text: i.text }));
+      return data.items.filter(i => i.cast === key).map(i => ({ ref: i.ref, card: i.card, field: field(i.ref) + (i.ref !== i.group ? "（" + (i.together ? "同時" : "複数人") + "）" : ""), text: i.text, cardId: i.cardId }));
     }
     const out = [];
     const c = data.cast[key] || {};
@@ -249,6 +274,11 @@
       const p = document.createElement("p"); p.textContent = c.el_description || "";
       desc.append(sm, p);
       sec.append(head, desc);
+      {
+        const seen = new Map();
+        for (const it of linesFor(key)) { const id = it.cardId || it.ref; const no = cardNo(id); if (/^\d{3}$/.test(no) && !seen.has(no)) seen.set(no, [id, it.card]); }
+        if (seen.size) { const cards = el("div", "cards"); for (const [id, title] of seen.values()) cards.append(cardThumb(id, title)); sec.append(cards); }
+      }
       // 候補
       if (cands.length) {
         const grid = document.createElement("div"); grid.className = "grid";
@@ -295,7 +325,7 @@
           const act = document.createElement("button"); act.type = "button"; act.className = "copy small"; act.textContent = "直す・作り直す"; act.setAttribute("aria-expanded", "false");
           act.addEventListener("click", () => { panel.hidden = !panel.hidden; act.setAttribute("aria-expanded", String(!panel.hidden)); act.textContent = panel.hidden ? "直す・作り直す" : "閉じる"; });
           const acts = document.createElement("div"); acts.className = "line-acts"; acts.append(act);
-          row.append(t, holder, acts, panel); list.append(row);
+          row.append(cardThumb(it.cardId || it.ref, it.card), t, holder, acts, panel); list.append(row);
           exists(url).then(ok => {
             if (ok) { made++; const au = document.createElement("audio"); au.controls = true; au.preload = "none"; au.src = url + bust(); holder.replaceWith(au); }
             else holder.textContent = "未作成";
@@ -325,6 +355,7 @@
     data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {} };
     await render();
   }
+  $("viewer").addEventListener("click", () => $("viewer").close());
   $("q").addEventListener("input", render);
   $("show").addEventListener("change", render);
   $("reload").addEventListener("click", () => { load(); toast("最新の状態に更新しました"); });

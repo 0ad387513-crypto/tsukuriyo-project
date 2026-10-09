@@ -116,7 +116,7 @@ function collectLines() {
       const sCard = seg.own ? cardId : cardForName(seg.speaker, lines);
       // 1人で話す台詞は話す人の表記のまま（名前の無い脇役を見分けるため）。複数人の表記なら分けた名前を使う
       const name = segs.length === 1 && seg.own && !/[＋＆]/.test(label) ? label : seg.speaker;
-      items.push({ ref: segs.length > 1 ? `${ref}-${i + 1}` : ref, group: ref, cast: castKey(name, sCard), text: seg.text, together: seg.together, ...meta });
+      items.push({ ref: segs.length > 1 ? `${ref}-${i + 1}` : ref, group: ref, cast: castKey(name, sCard), cardId: sCard || cardId, text: seg.text, together: seg.together, ...meta });
     });
   };
   for (const [id, l] of Object.entries(lines)) {
@@ -192,7 +192,7 @@ function buildCast() {
   console.log(`→ ${path.relative(root, castFile)}`);
   // 試聴室（tools/voice-preview）が台詞をキャストごとに並べるための一覧
   const linesFile = path.join(scriptDir, "card_voice_lines.json");
-  writeJson(linesFile, { _readme: "cast を実行すると作り直される一覧（手で直さない）。台詞ID・話す人・読み上げる文。", items: items.map(({ ref, group, cast, text, together, card, section }) => ({ ref, group, cast, text, together: together || undefined, card, section })) });
+  writeJson(linesFile, { _readme: "cast を実行すると作り直される一覧（手で直さない）。台詞ID・話す人・読み上げる文。", items: items.map(({ ref, group, cast, cardId, text, together, card, section }) => ({ ref, group, cast, cardId, text, together: together || undefined, card, section })) });
   console.log(`→ ${path.relative(root, linesFile)}`);
 }
 
