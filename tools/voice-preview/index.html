@@ -39,6 +39,9 @@
   .ctab.all::before { display: none; }
   .tab:focus-visible, .ctab:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
   .legend { font-size: 11px; color: var(--muted); }
+  .vol { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .vol input { width: 160px; accent-color: var(--gold); }
+  .vol output { min-width: 2.5em; color: var(--ink); font-variant-numeric: tabular-nums; }
   .cast { border-top: 1px solid var(--line); padding-block: 16px; display: grid; gap: 10px; }
   .cast-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
   .cast-name { font-family: "Shippori Mincho", "Yu Mincho", serif; font-size: 20px; font-weight: 700; }
@@ -117,7 +120,7 @@
   <div class="bar">
     <div class="tabs" role="tablist" aria-label="種族" id="tribes"></div>
     <div class="cast-tabs" role="tablist" aria-label="キャスト" id="castTabs"></div>
-    <div class="bar-foot"><button type="button" id="reload">最新の状態に更新</button><span class="summary" id="summary"></span></div>
+    <div class="bar-foot"><button type="button" id="reload">最新の状態に更新</button><label class="vol" for="volume">音量 <input type="range" id="volume" min="0" max="100" step="5" value="80"> <output id="volumeText" for="volume">80</output></label><span class="summary" id="summary"></span></div>
   </div>
   <main id="list"><div class="empty">読み込んでいます…</div></main>
 </div>
@@ -454,6 +457,18 @@
     await render();
   }
   $("viewer").addEventListener("click", () => $("viewer").close());
+  const VOLUME_KEY = "voicePreview.volume";
+  let volume = 0.8;
+  try { const v = parseFloat(localStorage.getItem(VOLUME_KEY)); if (v >= 0 && v <= 1) volume = v; } catch (e) {}
+  const showVolume = () => { $("volume").value = String(Math.round(volume * 100)); $("volumeText").value = String(Math.round(volume * 100)); };
+  showVolume();
+  $("volume").addEventListener("input", () => {
+    volume = Number($("volume").value) / 100; showVolume();
+    document.querySelectorAll("audio").forEach(a => { a.volume = volume; });
+    try { localStorage.setItem(VOLUME_KEY, String(volume)); } catch (e) {}
+  });
+  // 新しく並んだ音声にも、再生するときに合わせる
+  document.addEventListener("play", e => { if (e.target instanceof HTMLAudioElement) e.target.volume = volume; }, true);
   $("reload").addEventListener("click", async () => { rememberScroll(); await load(); restoreScroll(); toast("最新の状態に更新しました"); });
   const SCROLL_KEY = "voicePreview.scroll";
   if ("scrollRestoration" in history) history.scrollRestoration = "manual";
