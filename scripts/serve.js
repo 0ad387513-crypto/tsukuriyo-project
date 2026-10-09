@@ -3,7 +3,44 @@
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
-const { execFileSync } = require("node:child_process");
+const { execFileSync, spawn } = require("node:child_process");
+
+// ===== カードボイスの生成を試聴室のボタンから実行する（PowerShell に貼らなくてよいように）=====
+// 決まった操作（design / pick / lines）だけを、決まった形の引数で generate_card_voices_elevenlabs.js に渡す。同時に動かすのは1つだけ
+let voiceJob = null;
+let voiceJobSeq = 0;
+// ElevenLabs のキー。サーバーを起動した環境に無ければ、Windows のユーザー環境変数から読む（ページやファイルには置かない）
+function elevenLabsKey() {
+  if (process.env.ELEVENLABS_API_KEY) return process.env.ELEVENLABS_API_KEY;
+  if (process.platform !== "win32") return "";
+  try { return execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", "[Environment]::GetEnvironmentVariable('ELEVENLABS_API_KEY','User')"], { encoding: "utf8", timeout: 10000 }).trim(); }
+  catch { return ""; }
+}
+function voiceRunArgs(step, castKeys) {
+  const castOk = k => typeof k === "string" && castKeys.includes(k);
+  const refOk = r => /^[np]\d{2,3}-[a-z]+(-\d+)?$/.test(r || "");
+  if (step.command === "design" && castOk(step.cast)) return ["design", "--cast", step.cast].concat(step.keep ? ["--keep"] : []);
+  if (step.command === "pick" && castOk(step.cast) && /^\d{1,3}$/.test(String(step.choice))) return ["pick", "--cast", step.cast, "--choice", String(step.choice)];
+  if (step.command === "lines" && step.ref && refOk(step.ref)) return ["lines", "--ref", step.ref].concat(step.force ? ["--force"] : []);
+  if (step.command === "lines" && !step.ref && castOk(step.cast)) return ["lines", "--cast", step.cast].concat(step.force ? ["--force"] : []);
+  return null;
+}
+function runVoiceSteps(job, key) {
+  const next = () => {
+    if (!job.queue.length) { job.running = false; job.code = 0; job.finishedAt = new Date().toISOString(); return; }
+    const args = job.queue.shift();
+    job.log += "\n> " + args.join(" ") + "\n";
+    const child = spawn(process.execPath, [path.join(root, "scripts", "generate_card_voices_elevenlabs.js"), ...args], { cwd: root, env: Object.assign({}, process.env, { ELEVENLABS_API_KEY: key }), windowsHide: true });
+    const add = d => { job.log = (job.log + d.toString("utf8")).slice(-20000); };
+    child.stdout.on("data", add); child.stderr.on("data", add);
+    child.on("error", e => { add("起動できませんでした：" + e.message + "\n"); job.running = false; job.code = 1; });
+    child.on("close", code => {
+      if (code) { job.running = false; job.code = code; job.finishedAt = new Date().toISOString(); add("\n（失敗しました。続きの処理は止めました）\n"); return; }
+      next();
+    });
+  };
+  next();
+}
 const root = path.resolve(__dirname, "..");
 const types = { ".html": "text/html; charset=utf-8", ".js": "application/javascript; charset=utf-8", ".json": "application/json; charset=utf-8", ".css": "text/css; charset=utf-8", ".webp": "image/webp", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".mp3": "audio/mpeg", ".wav": "audio/wav" };
 
@@ -145,6 +182,27 @@ async function handleDev(req, res, url) {
     fs.renameSync(tmp, voiceScriptFile);
     console.log(`[voice-script] ${id}（${line.card}）の ${entries.map(([k]) => k).join("・")} を保存`);
     return sendJson(res, 200, { ok: true, line });
+  }
+  if (url.pathname === "/__dev/voice-run" && req.method === "GET") {
+    const job = voiceJob && { id: voiceJob.id, label: voiceJob.label, running: voiceJob.running, code: voiceJob.code, log: voiceJob.log, startedAt: voiceJob.startedAt, finishedAt: voiceJob.finishedAt };
+    return sendJson(res, 200, { ok: true, job });
+  }
+  if (url.pathname === "/__dev/voice-run" && req.method === "POST") {
+    // お金のかかる操作なので、このページ（localhost:8765）から送られたものだけ受け付ける
+    if (!req.headers.origin) return sendJson(res, 403, { ok: false, message: "試聴室のページから実行してください" });
+    if (voiceJob && voiceJob.running) return sendJson(res, 409, { ok: false, message: "前の処理がまだ動いています。終わってから押してください" });
+    let body;
+    try { body = JSON.parse((await readBody(req, 8192)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "形式が正しくありません" }); }
+    const castKeys = Object.keys((JSON.parse(fs.readFileSync(voiceCastFile, "utf8")).cast) || {});
+    const steps = Array.isArray(body.steps) ? body.steps.slice(0, 4) : [];
+    const queue = steps.map(st => voiceRunArgs(st || {}, castKeys));
+    if (!queue.length || queue.some(q => !q)) return sendJson(res, 400, { ok: false, message: "実行できない操作です" });
+    const key = elevenLabsKey();
+    if (!key) return sendJson(res, 412, { ok: false, needKey: true, message: "ElevenLabs のキーがこのPCに保存されていません" });
+    voiceJob = { id: ++voiceJobSeq, label: String(body.label || "").slice(0, 80), running: true, code: null, log: "", queue, startedAt: new Date().toISOString() };
+    console.log(`[voice-run] ${voiceJob.label}：${queue.map(q => q.join(" ")).join(" → ")}`);
+    runVoiceSteps(voiceJob, key);
+    return sendJson(res, 200, { ok: true, id: voiceJob.id });
   }
   // ===== カードボイスの声の説明（試聴室の「声のイメージを変える」から保存）=====
   // tools/voice-script/card_voice_cast.json の el_description を書き換え、前の説明は previous_descriptions に残す

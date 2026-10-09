@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- カードボイスの確認ページ（ローカル専用。npm run preview 中に http://localhost:8765/tools/voice-preview/ で開く。本番では _redirects で404）。
      voices/cards/voices.json（候補・登録状況）と tools/voice-script/card_voice_cast.json（キャスト）を読み、
-     候補（voices/cards/previews/）と作った台詞（voices/cards/）を再生する。登録などの操作はコマンドをコピーして PowerShell で実行する -->
+     候補（voices/cards/previews/）と作った台詞（voices/cards/）を再生する。登録などの操作はボタンから確認用サーバー（/__dev/voice-run）経由で実行する -->
 <title>カードボイス 試聴室</title>
 <style>
   :root {
@@ -92,6 +92,15 @@
   .viewer p { margin: 6px 0 0; text-align: center; color: #fff; font-size: 13px; }
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); padding: 8px 14px; border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100vw - 32px); }
   .toast.show { opacity: 1; }
+  .runner { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); width: min(760px, calc(100vw - 32px)); background: var(--panel); border: 1px solid var(--gold); border-radius: 12px; padding: 10px 12px; z-index: 10; box-shadow: 0 8px 24px rgba(0,0,0,.45); display: grid; gap: 6px; }
+  .runner[hidden] { display: none; }
+  .runner.ok { border-color: var(--ok); }
+  .runner.ng { border-color: #ff9fa8; }
+  .runner-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .runner-actions { display: flex; gap: 6px; }
+  .runner-msg { margin: 0; font-size: 12px; color: var(--muted); white-space: pre-wrap; }
+  .runner-msg:empty { display: none; }
+  .runner-log { margin: 0; max-height: 180px; overflow: auto; font-family: Consolas, "Courier New", monospace; font-size: 11px; color: var(--muted); background: var(--bg); border-radius: 8px; padding: 6px 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .empty { color: var(--muted); padding: 30px 0; }
   .line-acts { display: flex; gap: 6px; }
   .dir-tag { font-size: 11px; color: var(--gold); margin-left: 6px; }
@@ -134,7 +143,7 @@
 <body>
 <div class="wrap">
   <h1>カードボイス 試聴室</h1>
-  <p class="lead">声の候補と、作った台詞を聴いて確認するページです。「この候補に決める」を押すと登録用のコマンドがコピーされるので、PowerShell に貼り付けて実行してください。上のタブで種族とキャストを選びます。新しい候補を作ったあとは「最新の状態に更新」を押します。台詞の「直す・作り直す」から、読み上げる文の言い換えと演技の方針（「戦闘中の掛け声として」など自由に書けます）を台詞ごとに指定して、作り直すコマンドをコピーできます。指定はこのPCの確認用サーバーにだけ保存されます。</p>
+  <p class="lead">声の候補と、作った台詞を聴いて確認するページです。上のタブで種族とキャストを選びます。「この候補に決める」「台詞を作る」などのボタンを押すと、その場で ElevenLabs で作ります（PowerShell は使いません）。進み具合は画面の下に出て、終わると一覧が最新になります。台詞の「直す・作り直す」から、台詞の言い換えと演技の方針を台詞ごとに指定できます。指定はこのPCの確認用サーバーにだけ保存されます。</p>
   <div class="bar">
     <div class="tabs" role="tablist" aria-label="種族" id="tribes"></div>
     <div class="cast-tabs" role="tablist" aria-label="キャスト" id="castTabs"></div>
@@ -143,6 +152,11 @@
   <main id="list"><div class="empty">読み込んでいます…</div></main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<section class="runner" id="runner" hidden aria-live="polite">
+  <div class="runner-head"><b id="runnerTitle">実行中…</b><span class="runner-actions"><button type="button" class="copy small" id="runnerCopy">コマンドをコピー</button><button type="button" class="copy small" id="runnerClose">閉じる</button></span></div>
+  <p class="runner-msg" id="runnerMsg"></p>
+  <pre class="runner-log" id="runnerLog"></pre>
+</section>
 <dialog class="viewer" id="viewer" aria-label="カードの拡大表示"><img id="viewerImg" alt=""><p id="viewerCap"></p></dialog>
 <script>
 (() => {
@@ -255,9 +269,9 @@
     s2.append(el("h4", "", "② 演技の方針を書く（必要なときだけ）"), direction, dirEx, presets,
       el("p", "dir-note", "どんな場面で、どんな気持ちで言うのかを日本語で自由に書いてください。読み上げられることはなく、台詞の直前の状況として声の演技に使われます。ボタンを押すと言葉が書き足されます。"), r2, adv);
 
-    // ③ 保存してコマンドをコピー
+    // ③ 保存して作り直す
     const s3 = el("section", "step");
-    const save = el("button", "copy main", "保存してコマンドをコピー"); save.type = "button";
+    const save = el("button", "copy main", "保存して作り直す"); save.type = "button";
     const clear = el("button", "copy small", "①②の指定をすべて消す"); clear.type = "button";
     const code = el("code", "cmd", cmd);
     const btns = el("div", "btns"); btns.append(save, clear);
@@ -271,19 +285,19 @@
           const base = (src && src[m[2]]) || "";
           await saveDirection(groupRef, { script: t && t !== base ? t : "" });
           rememberScroll(); await load(); restoreScroll();
-          await copy(TOOL + " lines --ref " + groupRef + " --force");
-          toast("台詞を分け直しました。コピーしたコマンドで、全員分を作り直します");
+          await runCommand(TOOL + " lines --ref " + groupRef + " --force", "台詞を作り直す");
+          toast("台詞を分け直しました。全員分を作り直しています");
           return;
         }
         refresh();
-        await copy(cmd);
+        await runCommand(cmd, "台詞を作り直す");
       } catch (e) { toast(e.message); }
     });
     clear.addEventListener("click", async () => {
       try { await saveDirection(it.ref, { text: "", direction: "", tags: "", stability: null }); text.value = it.text; direction.value = ""; tags.value = ""; sel.value = ""; refresh(); toast("指定を消しました（台本の文・標準の演技で作ります）"); } catch (e) { toast(e.message); }
     });
-    s3.append(el("h4", "", "③ 保存して、作り直すコマンドをコピー"), btns, code,
-      el("p", "dir-note", "コピーしたコマンドを PowerShell に貼り付けて実行すると、この台詞だけ作り直します。終わったら上の「最新の状態に更新」を押して聴き直してください。①②を変えずに押すと、同じ指定のまま作り直します（毎回少しずつ違う読み方になります）。"));
+    s3.append(el("h4", "", "③ 保存して作り直す"), btns, code,
+      el("p", "dir-note", "押すと、この台詞だけ作り直します。進み具合は画面の下に出て、終わると一覧が最新になります。①②を変えずに押すと、同じ指定のまま作り直します（毎回少しずつ違う読み方になります）。"));
 
     box.append(s1, s2, s3);
     return box;
@@ -411,13 +425,13 @@
 
     // ④ 保存
     const s4 = el("section", "step");
-    const save = el("button", "copy main", "保存して、候補を作るコマンドをコピー"); save.type = "button";
+    const save = el("button", "copy main", "保存して、候補を作る"); save.type = "button";
     save.addEventListener("click", async () => {
-      try { await saveDescription(key, text.value, sp.gender ? sp : null); renderHistory(); await copy(cmd); } catch (e) { toast(e.message); }
+      try { await saveDescription(key, text.value, sp.gender ? sp : null); renderHistory(); await runCommand(cmd, "候補を作る"); } catch (e) { toast(e.message); }
     });
     const btns = el("div", "btns"); btns.append(save);
-    s4.append(el("h4", "", "③ 保存して、候補を作るコマンドをコピー"), btns, el("code", "cmd", cmd),
-      el("p", "dir-note", "コピーしたコマンドを PowerShell で実行すると、新しい説明で候補が増えます（今ある候補は残ります）。終わったら「最新の状態に更新」を押して聴き比べてください。"));
+    s4.append(el("h4", "", "③ 保存して、候補を作る"), btns, el("code", "cmd", cmd),
+      el("p", "dir-note", "押すと、新しい説明で候補が増えます（今ある候補は残ります）。進み具合は画面の下に出て、終わると一覧が最新になります。"));
 
     // 前の説明
     const s5 = el("section", "step"); const hist = el("div", "history");
@@ -442,6 +456,59 @@
   const bust = () => "?t=" + Date.now(); // 作り直した音声を古いまま流さない
 
   function toast(text) { const t = $("toast"); t.textContent = text; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2600); }
+  // コマンドの文字列（node scripts/... design --cast X --keep など。「; if ($?) { … }」で続けたものも可）を手順に直す
+  function toSteps(cmd) {
+    const steps = [];
+    for (const m of cmd.matchAll(/generate_card_voices_elevenlabs\.js ([^;{}]+)/g)) {
+      const t = m[1].trim().split(/\s+/);
+      const st = { command: t[0] };
+      for (let i = 1; i < t.length; i++) {
+        if (t[i] === "--cast") st.cast = t[++i];
+        else if (t[i] === "--ref") st.ref = t[++i];
+        else if (t[i] === "--choice") st.choice = t[++i];
+        else if (t[i] === "--keep") st.keep = true;
+        else if (t[i] === "--force") st.force = true;
+      }
+      steps.push(st);
+    }
+    return steps;
+  }
+  let runnerCmd = "", runnerTimer = 0;
+  function showRunner(title, cls, msg, log) {
+    $("runner").hidden = false; $("runner").className = "runner " + (cls || "");
+    $("runnerTitle").textContent = title; $("runnerMsg").textContent = msg || "";
+    $("runnerLog").textContent = log || ""; $("runnerLog").hidden = !log; $("runnerLog").scrollTop = 1e9;
+  }
+  async function runCommand(cmd, label) {
+    runnerCmd = cmd;
+    const steps = toSteps(cmd);
+    if (steps.some(st => st.command === "pick") && steps.find(st => st.command === "pick")) {
+      const st = steps.find(x => x.command === "pick");
+      if ((data.record[st.cast] || {}).voiceId && !confirm("「" + displayName(st.cast) + "」はもう声が登録されています。候補" + st.choice + "で登録し直しますか？（作った台詞は作り直しが必要です）")) return;
+    }
+    let res, j;
+    try {
+      res = await fetch("/__dev/voice-run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ steps, label: label || cmd.replace(/^.*generate_card_voices_elevenlabs\.js /, "") }) });
+      j = await res.json().catch(() => ({}));
+    } catch (e) { j = { message: "確認用サーバーにつながりません" }; res = { ok: false }; }
+    if (!res.ok || !j.ok) {
+      showRunner("実行できませんでした", "ng", (j.message || "失敗しました") + (j.needKey ? "\n\nPowerShell で次の1行を一度だけ実行して、ElevenLabs のキーをこのPCに保存してください（「ここにキー」をキーに置き換えます）。保存したあとは、もう一度ボタンを押せば動きます。\n[Environment]::SetEnvironmentVariable(\"ELEVENLABS_API_KEY\", \"ここにキー\", \"User\")" : "\n\n「コマンドをコピー」で PowerShell に貼って実行することもできます。"));
+      return;
+    }
+    showRunner("実行中…（" + (label || "処理") + "）", "", "ElevenLabs で作っています。数秒〜数十秒かかります。このまま待ってください。", "");
+    pollRunner();
+  }
+  async function pollRunner() {
+    clearTimeout(runnerTimer);
+    let j;
+    try { j = await fetch("/__dev/voice-run" + bust(), { cache: "no-store" }).then(r => r.json()); } catch (e) { runnerTimer = setTimeout(pollRunner, 2000); return; }
+    const job = j.job;
+    if (!job) return;
+    if (job.running) { showRunner("実行中…（" + job.label + "）", "", "ElevenLabs で作っています。数秒〜数十秒かかります。", job.log.trim()); runnerTimer = setTimeout(pollRunner, 1000); return; }
+    const ok = job.code === 0 && !/×|失敗|作れなかった/.test(job.log);
+    showRunner(ok ? "完了しました（" + job.label + "）" : "うまくいかなかった所があります（" + job.label + "）", ok ? "ok" : "ng", ok ? "下の一覧を最新にしました。聴いて確かめてください。" : "下の記録を確認してください。", job.log.trim());
+    rememberScroll(); await load(); restoreScroll();
+  }
   async function copy(text) {
     try { await navigator.clipboard.writeText(text); toast("コピーしました：" + text); }
     catch (e) { prompt("このコマンドをコピーしてください", text); }
@@ -556,7 +623,7 @@
       head.append(name, state, labels);
       if (r.voiceId && !r.released) {
         const mk = document.createElement("button"); mk.type = "button"; mk.className = "copy main"; mk.textContent = "台詞を作る（未作成の分）";
-        mk.addEventListener("click", () => copy(`${TOOL} lines --cast ${key}`));
+        mk.addEventListener("click", () => runCommand(`${TOOL} lines --cast ${key}`, "台詞を作る"));
         head.append(mk);
       }
       sec.append(head, voiceEditor(key, c, r));
@@ -574,10 +641,10 @@
           const b = document.createElement("b"); b.textContent = "候補" + cand.choice + (r.choice === cand.choice && r.voiceId ? "（登録中）" : "");
           const btns = document.createElement("div"); btns.className = "btns";
           const btn = document.createElement("button"); btn.type = "button"; btn.className = "copy"; btn.textContent = "この候補に決める";
-          btn.addEventListener("click", () => copy(`${TOOL} pick --cast ${key} --choice ${cand.choice}`));
+          btn.addEventListener("click", () => runCommand(`${TOOL} pick --cast ${key} --choice ${cand.choice}`, "候補" + cand.choice + "に決める"));
           // 登録が成功したときだけ続けて台詞を作る（PowerShell 5.1 は && が使えないので if ($?) でつなぐ）
           const both = document.createElement("button"); both.type = "button"; both.className = "copy main"; both.textContent = "決めて台詞まで作る";
-          both.addEventListener("click", () => copy(`${TOOL} pick --cast ${key} --choice ${cand.choice}; if ($?) { ${TOOL} lines --cast ${key} }`));
+          both.addEventListener("click", () => runCommand(`${TOOL} pick --cast ${key} --choice ${cand.choice}; if ($?) { ${TOOL} lines --cast ${key} }`, "候補" + cand.choice + "に決めて台詞を作る"));
           btns.append(btn, both);
           top.append(b, btns);
           const au = document.createElement("audio"); au.controls = true; au.preload = "none"; au.src = "/" + enc("voices/cards/previews/" + cand.file) + bust();
@@ -589,12 +656,12 @@
           }
           grid.append(box);
         }
-        const more = document.createElement("button"); more.type = "button"; more.className = "copy"; more.textContent = "候補を追加で作るコマンドをコピー";
-        more.addEventListener("click", () => copy(`${TOOL} design --cast ${key} --keep`));
+        const more = document.createElement("button"); more.type = "button"; more.className = "copy"; more.textContent = "候補を追加で作る";
+        more.addEventListener("click", () => runCommand(`${TOOL} design --cast ${key} --keep`, "候補を追加で作る"));
         sec.append(grid, more);
       } else {
-        const btn = document.createElement("button"); btn.type = "button"; btn.className = "copy"; btn.textContent = "候補を作るコマンドをコピー";
-        btn.addEventListener("click", () => copy(`${TOOL} design --cast ${key}`));
+        const btn = document.createElement("button"); btn.type = "button"; btn.className = "copy"; btn.textContent = "候補を作る";
+        btn.addEventListener("click", () => runCommand(`${TOOL} design --cast ${key}`, "候補を作る"));
         sec.append(btn);
       }
       // 作った台詞
@@ -624,8 +691,8 @@
             else holder.textContent = "未作成";
           });
         }
-        const btn = document.createElement("button"); btn.type = "button"; btn.className = "copy"; btn.textContent = "台詞を作るコマンドをコピー";
-        btn.addEventListener("click", () => copy(`${TOOL} lines --cast ${key}`));
+        const btn = document.createElement("button"); btn.type = "button"; btn.className = "copy"; btn.textContent = "台詞を作る（未作成の分）";
+        btn.addEventListener("click", () => runCommand(`${TOOL} lines --cast ${key}`, "台詞を作る"));
         const h = document.createElement("div"); h.className = "labels"; h.textContent = data.items ? "作った台詞" : "作った台詞（複数人の台詞は番号付きのファイルなので、ここでは表示されません）";
         sec.append(h, btn, list);
       }
@@ -649,6 +716,10 @@
     await render();
   }
   $("viewer").addEventListener("click", () => $("viewer").close());
+  $("runnerClose").addEventListener("click", () => { $("runner").hidden = true; });
+  $("runnerCopy").addEventListener("click", () => { if (runnerCmd) copy(runnerCmd); });
+  // ページを開き直したとき、動いている処理があれば進み具合を出す
+  fetch("/__dev/voice-run").then(r => r.json()).then(j => { if (j.job && j.job.running) pollRunner(); }).catch(() => {});
   const VOLUME_KEY = "voicePreview.volume";
   let volume = 0.8;
   try { const v = parseFloat(localStorage.getItem(VOLUME_KEY)); if (v >= 0 && v <= 1) volume = v; } catch (e) {}
