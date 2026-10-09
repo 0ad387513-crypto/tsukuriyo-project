@@ -12788,18 +12788,20 @@ const GS_KAMI_SELECTION_GUIDES = Object.freeze({
 /* キーはカミNo（kamiPositionMap等と同じ "1"〜"10"）。                  */
 /* ================================================================== */
 /* カミの顔の中心の位置（kami_illustrations の絵の幅・高さに対する割合）。対戦画面のカミの窓とサムネの切り出しに使い、絵を差し替えたら測り直す。
-   thumb＝サムネでの絵の幅（枠の幅に対する倍率）。顔が大きく描かれたカミは小さくして引きで見せる（1未満なら右寄せ、左の空きは名前のグラデーションに隠れる） */
+   win＝対戦画面のカミの窓での絵の幅（窓の幅に対する倍率。1以上）。顔が大きく描かれたカミは小さく、小さいカミは大きく。
+   thumb＝サムネの [絵の幅（枠の幅に対する倍率）, 頭のてっぺんとあごの中間の高さ]。頭からあごまでが枠の高さにちょうど収まるように決める
+   （1未満なら右寄せ、左の空きは名前のグラデーションに隠れる） */
 const KAMI_FACE_FOCUS = Object.freeze({
-  '1':  { illust: [0.46, 0.26], thumb: 0.75 }, // スサノオ
-  '2':  { illust: [0.47, 0.21], thumb: 0.7 }, // ヤマトタケル
-  '3':  { illust: [0.46, 0.26], thumb: 0.75 }, // オオクニヌシ
-  '4':  { illust: [0.55, 0.285], thumb: 0.75 }, // タケミカヅチ
-  '5':  { illust: [0.52, 0.205], thumb: 0.7 }, // オモイカネ
-  '6':  { illust: [0.34, 0.18], thumb: 0.7 }, // アメノウズメ
-  '7':  { illust: [0.39, 0.195], thumb: 0.7 }, // ヒノカグツチ
-  '8':  { illust: [0.46, 0.22], thumb: 0.7 }, // アマテラス
-  '9':  { illust: [0.49, 0.26], thumb: 0.7 }, // ツクヨミ
-  '10': { illust: [0.52, 0.33], thumb: 0.75 }, // ヤマタノオロチ
+  '1':  { illust: [0.46, 0.26], win: 1.12, thumb: [0.80, 0.235] }, // スサノオ
+  '2':  { illust: [0.47, 0.21], win: 1.12, thumb: [0.80, 0.215] }, // ヤマトタケル
+  '3':  { illust: [0.46, 0.26], win: 1.12, thumb: [0.92, 0.22] }, // オオクニヌシ
+  '4':  { illust: [0.55, 0.285], win: 1.12, thumb: [0.88, 0.26] }, // タケミカヅチ
+  '5':  { illust: [0.52, 0.205], win: 1.0, thumb: [0.70, 0.205] }, // オモイカネ
+  '6':  { illust: [0.34, 0.18], win: 1.12, thumb: [0.80, 0.17] }, // アメノウズメ
+  '7':  { illust: [0.39, 0.195], win: 1.12, thumb: [0.80, 0.225] }, // ヒノカグツチ
+  '8':  { illust: [0.46, 0.22], win: 1.12, thumb: [0.85, 0.205] }, // アマテラス
+  '9':  { illust: [0.49, 0.26], win: 1.0, thumb: [0.70, 0.26] }, // ツクヨミ
+  '10': { illust: [0.52, 0.33], win: 1.35, thumb: [1.35, 0.29] }, // ヤマタノオロチ
 });
 /* 顔の位置から、背景画像の大きさと位置（%）を求める。
    box＝表示枠の縦横比（高さ÷幅）、img＝画像の縦横比、zoom＝枠の幅に対する画像の幅、target＝顔を置きたい枠の中の位置 */
@@ -32740,22 +32742,23 @@ new Vue({
       const focus = KAMI_FACE_FOCUS[String(card.no)];
       if (!focus || !this.hasKamiIllustration(card)) return { backgroundImage: `url(${url})`, '--kami-card-img': `url(${url})` };
       // サムネの枠（327×76）。イラスト（1060×1484）を枠の幅の thumb 倍にし、顔を枠の右から3割強・縦の中央に置く
-      const crop = kamiFaceCrop(focus.illust, 76 / 327, 1484 / 1060, focus.thumb, [0.68, 0.5]);
+      const [zoom, headY] = focus.thumb;
+      const crop = kamiFaceCrop([focus.illust[0], headY], 76 / 327, 1484 / 1060, zoom, [0.68, 0.5]);
       const style = { backgroundImage: `url(${this.kamiIllustrationUrl(card)})`, '--kami-card-img': `url(${url})`, '--kami-bg-size': crop.size, '--kami-bg-pos': crop.pos };
-      if (focus.thumb < 1) {
+      if (zoom < 1) {
         // 引きのときは絵の左端をぼかす（左の空きと絵の境目を見せない）
-        const edge = (1 - focus.thumb) * 100;
+        const edge = (1 - zoom) * 100;
         style.backgroundImage = `linear-gradient(90deg, #0a0c12 ${edge.toFixed(1)}%, rgba(10, 12, 18, 0) ${(edge + 14).toFixed(1)}%), ${style.backgroundImage}`;
         style['--kami-bg-size'] = '100% 100%, ' + crop.size;
         style['--kami-bg-pos'] = '0 0, ' + crop.pos;
       }
       return style;
     },
-    /* 新配置（試作）：対戦画面のカミの窓。イラスト（1060×1484）を窓（614×464）より少し大きくし、顔を窓の横の中央・上から36%に置く */
+    /* 新配置（試作）：対戦画面のカミの窓。イラスト（1060×1484）を窓（614×464）の幅の win 倍にし、顔を窓の横の中央・上から36%に置く */
     kamiPortraitFocusStyle(card) {
       const focus = card && KAMI_FACE_FOCUS[String(card.no)];
       if (!focus) return {};
-      const crop = kamiFaceCrop(focus.illust, 464 / 614, 1484 / 1060, 1.12, [0.5, 0.36]);
+      const crop = kamiFaceCrop(focus.illust, 464 / 614, 1484 / 1060, focus.win, [0.5, 0.36]);
       return { '--kami-size': crop.size, '--kami-pos': crop.pos };
     },
     setLeader(card) {
