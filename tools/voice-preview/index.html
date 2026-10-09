@@ -60,6 +60,11 @@
   .count.over { color: #ff9fa8; font-weight: 700; }
   .history { display: grid; gap: 6px; }
   .history-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; font-size: 11px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 6px; }
+  .cand-select { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); cursor: pointer; }
+  .cand-select input { accent-color: var(--gold); width: 16px; height: 16px; }
+  .cand.picked { border-color: #ff9fa8; }
+  .copy.danger { border-color: #ff9fa8; background: #4a2228; color: #ff9fa8; }
+  .cand-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .cand-desc summary { font-size: 11px; color: var(--muted); cursor: pointer; }
   .cand-desc p { font-size: 11px; color: var(--muted); margin: 4px 0 0; }
   details.desc summary { font-size: 12px; color: var(--muted); cursor: pointer; }
@@ -509,6 +514,21 @@
     showRunner(ok ? "完了しました（" + job.label + "）" : "うまくいかなかった所があります（" + job.label + "）", ok ? "ok" : "ng", ok ? "下の一覧を最新にしました。聴いて確かめてください。" : "下の記録を確認してください。", job.log.trim());
     rememberScroll(); await load(); restoreScroll();
   }
+  async function deleteCandidates(key, choices) {
+    const r = data.record[key] || {};
+    const keep = r.voiceId && !r.released ? r.choice : null;
+    const targets = (choices || (r.candidates || []).map(x => x.choice)).filter(n => n !== keep);
+    if (!targets.length) { toast("消せる候補がありません（登録中の候補は消せません）"); return; }
+    const what = choices ? "候補" + targets.join("・") : (keep ? "登録中（候補" + keep + "）以外の候補" + targets.length + "個" : "候補" + targets.length + "個すべて");
+    if (!confirm("「" + displayName(key) + "」の" + what + "を削除します。音声ファイルも消え、元に戻せません。よろしいですか？")) return;
+    try {
+      const res = await fetch("/__dev/voice-candidates-delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(choices ? { cast: key, choices: targets } : { cast: key, all: true }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.ok) throw new Error(j.message || "削除できませんでした");
+      rememberScroll(); await load(); restoreScroll();
+      toast("候補" + j.deleted.join("・") + "を削除しました");
+    } catch (e) { toast(e.message); }
+  }
   async function copy(text) {
     try { await navigator.clipboard.writeText(text); toast("コピーしました：" + text); }
     catch (e) { prompt("このコマンドをコピーしてください", text); }
@@ -635,18 +655,27 @@
       // 候補
       if (cands.length) {
         const grid = document.createElement("div"); grid.className = "grid";
+        let updateDelBtnImpl = () => {};
+        const updateDelBtn = () => updateDelBtnImpl();
         for (const cand of cands) {
           const box = document.createElement("div"); box.className = "cand" + (r.choice === cand.choice && r.voiceId ? " chosen" : "");
           const top = document.createElement("div"); top.className = "cand-top";
           const b = document.createElement("b"); b.textContent = "候補" + cand.choice + (r.choice === cand.choice && r.voiceId ? "（登録中）" : "");
+          const registered = r.choice === cand.choice && r.voiceId && !r.released;
+          const pickBox = el("label", "cand-select"); const chk = el("input"); chk.type = "checkbox"; chk.dataset.choice = cand.choice; chk.disabled = !!registered;
+          chk.addEventListener("change", () => { box.classList.toggle("picked", chk.checked); updateDelBtn(); });
+          pickBox.append(chk, registered ? "登録中" : "選ぶ"); pickBox.title = registered ? "登録中の候補は消せません" : "まとめて消す候補に選ぶ";
           const btns = document.createElement("div"); btns.className = "btns";
           const btn = document.createElement("button"); btn.type = "button"; btn.className = "copy"; btn.textContent = "この候補に決める";
           btn.addEventListener("click", () => runCommand(`${TOOL} pick --cast ${key} --choice ${cand.choice}`, "候補" + cand.choice + "に決める"));
           // 登録が成功したときだけ続けて台詞を作る（PowerShell 5.1 は && が使えないので if ($?) でつなぐ）
           const both = document.createElement("button"); both.type = "button"; both.className = "copy main"; both.textContent = "決めて台詞まで作る";
           both.addEventListener("click", () => runCommand(`${TOOL} pick --cast ${key} --choice ${cand.choice}; if ($?) { ${TOOL} lines --cast ${key} }`, "候補" + cand.choice + "に決めて台詞を作る"));
-          btns.append(btn, both);
-          top.append(b, btns);
+          const del = el("button", "copy small danger", "削除"); del.type = "button"; del.hidden = !!registered;
+          del.addEventListener("click", () => deleteCandidates(key, [cand.choice]));
+          btns.append(btn, both, del);
+          const left = el("div", "btns"); left.append(pickBox, b);
+          top.append(left, btns);
           const au = document.createElement("audio"); au.controls = true; au.preload = "none"; au.src = "/" + enc("voices/cards/previews/" + cand.file) + bust();
           box.append(top, au);
           if (cand.description) {
@@ -658,7 +687,13 @@
         }
         const more = document.createElement("button"); more.type = "button"; more.className = "copy"; more.textContent = "候補を追加で作る";
         more.addEventListener("click", () => runCommand(`${TOOL} design --cast ${key} --keep`, "候補を追加で作る"));
-        sec.append(grid, more);
+        const delSel = el("button", "copy danger", "選んだ候補を削除"); delSel.type = "button"; delSel.disabled = true;
+        updateDelBtnImpl = () => { const n = grid.querySelectorAll("input[type=checkbox]:checked").length; delSel.disabled = !n; delSel.textContent = n ? "選んだ候補を削除（" + n + "個）" : "選んだ候補を削除"; };
+        delSel.addEventListener("click", () => deleteCandidates(key, [...grid.querySelectorAll("input[type=checkbox]:checked")].map(x => Number(x.dataset.choice))));
+        const delAll = el("button", "copy danger", r.voiceId && !r.released ? "登録中以外の候補をすべて削除" : "候補をすべて削除"); delAll.type = "button";
+        delAll.addEventListener("click", () => deleteCandidates(key, null));
+        const tools = el("div", "cand-tools"); tools.append(more, delSel, delAll);
+        sec.append(grid, tools);
       } else {
         const btn = document.createElement("button"); btn.type = "button"; btn.className = "copy"; btn.textContent = "候補を作る";
         btn.addEventListener("click", () => runCommand(`${TOOL} design --cast ${key}`, "候補を作る"));

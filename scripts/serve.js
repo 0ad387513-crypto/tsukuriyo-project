@@ -204,6 +204,34 @@ async function handleDev(req, res, url) {
     runVoiceSteps(voiceJob, key);
     return sendJson(res, 200, { ok: true, id: voiceJob.id });
   }
+  // ===== カードボイスの候補を消す（試聴室から。1つずつ・選んだもの・登録していないもの全部）=====
+  // voices/cards/voices.json の candidates から外し、voices/cards/previews/ の音声ファイルを消す。登録中の候補は消さない
+  if (url.pathname === "/__dev/voice-candidates-delete" && req.method === "POST") {
+    if (!req.headers.origin) return sendJson(res, 403, { ok: false, message: "試聴室のページから操作してください" });
+    if (voiceJob && voiceJob.running) return sendJson(res, 409, { ok: false, message: "声を作っている途中です。終わってから消してください" });
+    let body;
+    try { body = JSON.parse((await readBody(req, 8192)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "形式が正しくありません" }); }
+    const recordFile = path.join(root, "voices", "cards", "voices.json");
+    const previewDir = path.join(root, "voices", "cards", "previews");
+    const record = JSON.parse(fs.readFileSync(recordFile, "utf8"));
+    const r = record[body.cast];
+    if (!r) return sendJson(res, 404, { ok: false, message: "そのキャストの候補はありません" });
+    const keep = r.voiceId && !r.released ? r.choice : null;
+    const want = body.all ? (r.candidates || []).map(x => x.choice) : (Array.isArray(body.choices) ? body.choices.map(Number) : []);
+    const del = (r.candidates || []).filter(x => want.includes(x.choice) && x.choice !== keep);
+    if (!del.length) return sendJson(res, 400, { ok: false, message: "消せる候補がありません（登録中の候補は消せません）" });
+    for (const x of del) {
+      const file = path.resolve(previewDir, String(x.file || ""));
+      if (path.dirname(file) === previewDir && fs.existsSync(file)) fs.unlinkSync(file);
+    }
+    r.candidates = (r.candidates || []).filter(x => !del.includes(x));
+    if (!r.candidates.length && !r.voiceId) delete record[body.cast];
+    const tmp = recordFile + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify(record, null, 2) + "\n");
+    fs.renameSync(tmp, recordFile);
+    console.log(`[voice-candidates] ${body.cast} の候補 ${del.map(x => x.choice).join("・")} を削除`);
+    return sendJson(res, 200, { ok: true, deleted: del.map(x => x.choice) });
+  }
   // ===== カードボイスの声の説明（試聴室の「声のイメージを変える」から保存）=====
   // tools/voice-script/card_voice_cast.json の el_description を書き換え、前の説明は previous_descriptions に残す
   if (url.pathname === "/__dev/voice-description" && req.method === "POST") {
