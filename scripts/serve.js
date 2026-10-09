@@ -375,6 +375,13 @@ async function handleDev(req, res, url) {
     if (script !== prevScript) {
       try { execFileSync(process.execPath, [path.join(root, "scripts", "generate_card_voices_elevenlabs.js"), "cast"], { cwd: root, stdio: "pipe" }); rebuilt = true; }
       catch (e) { return sendJson(res, 500, { ok: false, message: "台詞の一覧を作り直せませんでした：" + String(e.stderr || e.message).slice(0, 200) }); }
+      // 分け方が変わって使われなくなった音声（例：2人の台詞を1人にしたときの -1・-2）は _old に移す
+      const current = new Set(JSON.parse(fs.readFileSync(path.join(root, "tools", "voice-script", "card_voice_lines.json"), "utf8")).items.map(i => i.ref));
+      const cards = path.join(root, "voices", "cards");
+      for (const n of fs.readdirSync(cards)) {
+        const m = new RegExp("^(" + ref + "(?:-\\d+)?)\\.mp3$").exec(n);
+        if (m && !current.has(m[1])) { fs.mkdirSync(path.join(cards, "_old"), { recursive: true }); fs.renameSync(path.join(cards, n), path.join(cards, "_old", m[1] + ".unused.mp3")); console.log(`[voice-direction] 使われなくなった ${n} を _old に移動`); }
+      }
     }
     console.log(`[voice-direction] ${ref}：${text ? "読み替え「" + text + "」 " : ""}${direction ? "方針「" + direction + "」 " : ""}${tags || "（タグなし）"}${stability !== null ? ` 安定度${stability}` : ""}`);
     return sendJson(res, 200, { ok: true, direction: all[ref] || null, rebuilt });

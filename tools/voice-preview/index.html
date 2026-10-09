@@ -294,7 +294,8 @@
   }
   function fixPanel(it, refresh) {
     const cur = data.directions[it.ref] || {};
-    const cmd = TOOL + " lines --ref " + (isMulti(it) ? (it.group || it.ref) : it.ref) + " --force";
+    // 演技の方針などを直したときは、この人の分だけ作り直す（複数人の台詞でも、ほかの人の分は触らない）
+    const cmd = TOOL + " lines --ref " + it.ref + " --force";
     const box = el("div", "dir"); box.hidden = true;
 
     // ① 台詞を変える。複数人の台詞は台詞全体（名前「…」名前「…」）を編集する
@@ -604,8 +605,11 @@
       if ((data.record[st.cast] || {}).voiceId && !confirm("「" + displayName(st.cast) + "」はもう声が登録されています。候補" + st.choice + "で登録し直しますか？\n・前の声は ElevenLabs から削除されます（声の枠が1つ空きます）\n・「決めて台詞まで作る」なら、台詞もすべて新しい声で作り直します")) return;
     }
     // 声を ElevenLabs から外したキャラの台詞は作り直せない（指定の保存はできている）
-    const released = [...new Set(steps.filter(st => st.command === "lines").map(st => st.cast || ((data.items || []).find(i => i.ref === st.ref || i.group === st.ref) || {}).cast).filter(k => k && (data.record[k] || {}).released))];
-    if (released.length && !steps.some(st => st.command === "pick")) {
+    // 作り直す台詞のうち、声を外した人の分は作れない。全員が外した声のときだけ止める（一部なら、作れる人の分だけ作る）
+    const targets = steps.filter(st => st.command === "lines" && !st.word).flatMap(st => st.cast ? (data.items || []).filter(i => i.cast === st.cast) : (data.items || []).filter(i => i.ref === st.ref || i.group === st.ref));
+    const isReleased = i => (data.record[i.cast] || {}).released;
+    const released = [...new Set(targets.filter(isReleased).map(i => i.cast))];
+    if (released.length && targets.every(isReleased) && !steps.some(st => st.command === "pick")) {
       showRunner("作り直せません", "ng", "「" + released.map(displayName).join("」「") + "」の声は、台詞が完成したので ElevenLabs から外しています。そのため、この声で台詞を作り直すことはできません（入力した指定は保存されています）。\n作り直したいときは、そのキャラの候補を新しく作って登録し直してください（声の枠を1つ使います）。");
       return;
     }
