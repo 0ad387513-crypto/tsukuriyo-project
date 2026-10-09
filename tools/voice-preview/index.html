@@ -51,12 +51,24 @@
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); padding: 8px 14px; border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100vw - 32px); }
   .toast.show { opacity: 1; }
   .empty { color: var(--muted); padding: 30px 0; }
+  .line-acts { display: flex; gap: 6px; }
+  .dir-tag { font-size: 11px; color: var(--gold); margin-left: 6px; }
+  .dir { grid-column: 1 / -1; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
+  .dir[hidden] { display: none; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  .preset { font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+  .preset[aria-pressed="true"] { border-color: var(--gold); background: var(--gold-soft); color: var(--gold); }
+  .dir-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 13px; color: var(--muted); }
+  .dir-row input, .dir-row select { font: inherit; font-size: 13px; padding: 5px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+  .dir-row input { flex: 1 1 220px; min-width: 0; }
+  .dir-note { font-size: 11px; color: var(--muted); margin: 0; }
+  .preset:focus-visible, .dir-row input:focus-visible, .dir-row select:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>カードボイス 試聴室</h1>
-  <p class="lead">声の候補と、作った台詞を聴いて確認するページです。「この候補に決める」を押すと登録用のコマンドがコピーされるので、PowerShell に貼り付けて実行してください。新しい候補を作ったあとは「最新の状態に更新」を押します。</p>
+  <p class="lead">声の候補と、作った台詞を聴いて確認するページです。「この候補に決める」を押すと登録用のコマンドがコピーされるので、PowerShell に貼り付けて実行してください。新しい候補を作ったあとは「最新の状態に更新」を押します。台詞の「演技」から、言い方（はきはき・ささやく など）を台詞ごとに指定できます。指定はこのPCの確認用サーバーにだけ保存されます。</p>
   <div class="bar">
     <input type="search" id="q" placeholder="キャスト名で探す（例：ライカ）" aria-label="キャスト名で探す">
     <label for="show">表示
@@ -76,7 +88,58 @@
 (() => {
   const $ = id => document.getElementById(id);
   const TOOL = "node scripts/generate_card_voices_elevenlabs.js";
-  let data = { cast: {}, record: {}, lines: {}, pairs: {} };
+  let data = { cast: {}, record: {}, lines: {}, pairs: {}, items: null, directions: {} };
+  // 演技の指定。ElevenLabs の演技タグ（英語の [ ] 書き）を台詞の頭に付けて読ませる。1〜2個までが自然
+  const PRESETS = [
+    ["はきはき", "[confident]"], ["元気に", "[excited]"], ["明るく", "[cheerfully]"], ["落ち着いて", "[calm]"],
+    ["力強く", "[determined]"], ["ささやく", "[whispers]"], ["叫ぶ", "[shouting]"], ["悲しげに", "[sad]"],
+    ["怒って", "[angry]"], ["笑いながら", "[laughs]"], ["ため息まじり", "[sighs]"], ["いたずらっぽく", "[mischievously]"],
+  ];
+  const STABILITY = [["", "標準（共通の設定 0.5）"], ["0", "0：表情を大きく（ぶれやすい）"], ["0.5", "0.5：自然"], ["1", "1：安定（平板になりやすい）"]];
+  async function saveDirection(ref, tags, stability) {
+    const r = await fetch("/__dev/voice-direction?ref=" + encodeURIComponent(ref), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tags, stability }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
+    if (j.direction) data.directions[ref] = j.direction; else delete data.directions[ref];
+  }
+  function describe(ref) {
+    const d = data.directions[ref];
+    if (!d) return "";
+    return "演技：" + [d.tags, d.stability !== undefined ? "安定度" + d.stability : ""].filter(Boolean).join(" ");
+  }
+  function directionPanel(it, label) {
+    const cur = data.directions[it.ref] || {};
+    const box = document.createElement("div"); box.className = "dir"; box.hidden = true;
+    const input = document.createElement("input"); input.type = "text"; input.value = cur.tags || ""; input.placeholder = "演技タグ（例：[confident]）"; input.setAttribute("aria-label", "演技タグ");
+    const presets = document.createElement("div"); presets.className = "presets";
+    const sync = () => presets.querySelectorAll(".preset").forEach(b => b.setAttribute("aria-pressed", input.value.includes(b.dataset.tag) ? "true" : "false"));
+    for (const [ja, tag] of PRESETS) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "preset"; b.textContent = ja; b.dataset.tag = tag; b.title = tag;
+      b.addEventListener("click", () => { input.value = (input.value.includes(tag) ? input.value.replace(tag, "") : input.value + " " + tag).replace(/s+/g, " ").trim(); sync(); });
+      presets.append(b);
+    }
+    input.addEventListener("input", sync); sync();
+    const sel = document.createElement("select"); sel.setAttribute("aria-label", "安定度");
+    for (const [v, t] of STABILITY) sel.append(new Option(t, v));
+    sel.value = cur.stability === undefined ? "" : String(cur.stability);
+    const save = document.createElement("button"); save.type = "button"; save.className = "copy main"; save.textContent = "保存して、作り直すコマンドをコピー";
+    save.addEventListener("click", async () => {
+      try {
+        await saveDirection(it.ref, input.value.trim(), sel.value === "" ? null : Number(sel.value));
+        label.textContent = describe(it.ref);
+        await copy(TOOL + " lines --ref " + it.ref + " --force");
+      } catch (e) { toast(e.message); }
+    });
+    const clear = document.createElement("button"); clear.type = "button"; clear.className = "copy small"; clear.textContent = "指定を消す";
+    clear.addEventListener("click", async () => {
+      try { await saveDirection(it.ref, "", null); input.value = ""; sel.value = ""; sync(); label.textContent = describe(it.ref); toast("演技の指定を消しました"); } catch (e) { toast(e.message); }
+    });
+    const r1 = document.createElement("div"); r1.className = "dir-row"; r1.append("タグ", input);
+    const r2 = document.createElement("div"); r2.className = "dir-row"; r2.append("安定度", sel, save, clear);
+    const note = document.createElement("p"); note.className = "dir-note"; note.textContent = "ボタンで英語のタグが入ります（自分で書いてもかまいません）。付けすぎると不自然になるので1〜2個が目安です。保存後、コピーしたコマンドを PowerShell で実行すると、この台詞だけ作り直します。";
+    box.append(presets, r1, r2, note);
+    return box;
+  }
   const enc = p => p.split("/").map(encodeURIComponent).join("/");
   const bust = () => "?t=" + Date.now(); // 作り直した音声を古いまま流さない
 
@@ -94,6 +157,11 @@
 
   // 台本から、キャストごとの台詞（台詞ID・本文）を組み立てる（ツールと同じ規則の簡易版：作った音声ファイルの有無で確認）
   function linesFor(key) {
+    // cast を実行すると作られる一覧があれば、それで正確に並べる（複数人の台詞も1人分ずつ出る）
+    if (data.items) {
+      const field = ref => ({ summon: "召喚時", attack: "攻撃時", death: "死亡時", use: "使用時", line: "掛け合い", reply: "返し" })[ref.split("-")[1]] || "";
+      return data.items.filter(i => i.cast === key).map(i => ({ ref: i.ref, card: i.card, field: field(i.ref) + (i.ref !== i.group ? "（" + (i.together ? "同時" : "複数人") + "）" : ""), text: i.text }));
+    }
     const out = [];
     const c = data.cast[key] || {};
     for (const [id, l] of Object.entries(data.lines)) {
@@ -175,11 +243,16 @@
           const url = "/voices/cards/" + encodeURIComponent(it.ref) + ".mp3";
           const row = document.createElement("div"); row.className = "line-row";
           const t = document.createElement("div"); t.textContent = it.text;
-          const small = document.createElement("small"); small.textContent = `${it.card}｜${it.field}｜${it.ref}`; t.append(small);
+          const small = document.createElement("small"); small.textContent = `${it.card}｜${it.field}｜${it.ref}`;
+          const dirLabel = document.createElement("span"); dirLabel.className = "dir-tag"; dirLabel.textContent = describe(it.ref); small.append(dirLabel); t.append(small);
           const holder = document.createElement("div"); holder.className = "missing"; holder.textContent = "確認中…";
           const redo = document.createElement("button"); redo.type = "button"; redo.className = "copy small"; redo.textContent = "作り直す";
           redo.addEventListener("click", () => copy(`${TOOL} lines --ref ${it.ref} --force`));
-          row.append(t, holder, redo); list.append(row);
+          const panel = directionPanel(it, dirLabel);
+          const act = document.createElement("button"); act.type = "button"; act.className = "copy small"; act.textContent = "演技"; act.setAttribute("aria-expanded", "false");
+          act.addEventListener("click", () => { panel.hidden = !panel.hidden; act.setAttribute("aria-expanded", String(!panel.hidden)); });
+          const acts = document.createElement("div"); acts.className = "line-acts"; acts.append(act, redo);
+          row.append(t, holder, acts, panel); list.append(row);
           exists(url).then(ok => {
             if (ok) { made++; const au = document.createElement("audio"); au.controls = true; au.preload = "none"; au.src = url + bust(); holder.replaceWith(au); }
             else holder.textContent = "未作成";
@@ -187,7 +260,7 @@
         }
         const btn = document.createElement("button"); btn.type = "button"; btn.className = "copy"; btn.textContent = "台詞を作るコマンドをコピー";
         btn.addEventListener("click", () => copy(`${TOOL} lines --cast ${key}`));
-        const h = document.createElement("div"); h.className = "labels"; h.textContent = "作った台詞（複数人の台詞は番号付きのファイルなので、ここでは表示されません）";
+        const h = document.createElement("div"); h.className = "labels"; h.textContent = data.items ? "作った台詞" : "作った台詞（複数人の台詞は番号付きのファイルなので、ここでは表示されません）";
         sec.append(h, btn, list);
       }
       frag.append(sec);
@@ -198,13 +271,15 @@
   }
 
   async function load() {
-    const [cast, record, script, pairs] = await Promise.all([
+    const [cast, record, script, pairs, list, dirs] = await Promise.all([
       getJson("/tools/voice-script/card_voice_cast.json", { cast: {} }),
       getJson("/voices/cards/voices.json", {}),
       getJson("/tools/voice-script/card_voice_script.json", { lines: {} }),
       getJson("/tools/voice-script/card_voice_pairs.json", { pairs: {} }),
+      getJson("/tools/voice-script/card_voice_lines.json", null),
+      getJson("/__dev/voice-direction", { directions: {} }),
     ]);
-    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {} };
+    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {} };
     await render();
   }
   $("q").addEventListener("input", render);

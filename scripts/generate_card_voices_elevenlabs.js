@@ -48,6 +48,8 @@ const previewDir = path.join(outDir, "previews");
 const recordFile = path.join(outDir, "voices.json");
 const castFile = path.join(scriptDir, "card_voice_cast.json");
 const audioDir = path.join(scriptDir, "audio");
+// 台詞ごとの演技指定（試聴室で保存。{ "n051-summon": { tags: "[crisp]", stability: 0.4 } }）
+const directionFile = path.join(scriptDir, "card_voice_direction.json");
 
 const readJson = (file, fallback) => { try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return fallback; } };
 const writeJson = (file, data) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(data, null, 2) + "\n"); };
@@ -69,6 +71,7 @@ function castKey(label, cardId) {
   if (name === "ヨルヒメ") return cardId === "n101" ? "ヨルヒメ（少女）" : "ヨルヒメ（大人）";
   if (name === "コマ") return cardId === "n065" ? "コマ（成獣）" : "コマ";
   if (name === "竜人" || name === "傲慢なる翼の竜人") return cardId === "n187" ? "竜人:n020" : "竜人:" + cardId;
+  if (name === "大妖狐") return "若女将:n059"; // 千変万化の大妖狐は葛ノ葉亭の若女将と同じ声（ユーザー指定）
   if (/^(乙女|代弁者|侍女|修羅|修道女|冒険者|刀剣商|勧誘人|名工|大妖狐|大得物の少女|妖将|始末屋|密偵|小鼠|座敷童|影法師|忍の王|探求者|旗手|武者|淑女|渡し守|無貌の忍|犬神|狂骨|狐姫|猫女|破戒僧|祈り手|童女|童|絡繰師|老忍|若女将|語り部|諜報員|豪族|陰陽師|隠者|雪少女|面霊姫|音速の忍|首領|騎士)$/.test(name)) return name + ":" + cardId;
   return name;
 }
@@ -177,15 +180,20 @@ function buildCast() {
       kami: kami ? KAMI_NAMES[key.slice(3)] : undefined,
       labels: [...new Set(c.labels)],
       lines: c.refs.length,
-      // 手で直した説明は残す
       // 手で直した説明は残す（下書きから作り直すときだけ --reset-descriptions）
       el_description: kami ? undefined : ((!args.includes('--reset-descriptions') && old[key] && old[key].el_description) || draftDescription(key, c.labels.length ? c.labels : [key], c.notes)),
+      previous_descriptions: old[key] && old[key].previous_descriptions,
+      tts: old[key] && old[key].tts,
     };
   }
   writeJson(castFile, { _readme: "カードボイスのキャスト（話す人ごとの声）。el_description は ElevenLabs のボイスデザインに渡す説明。直してよい（cast を実行し直しても残る）。カミはカミのボイスの声を使う。", cast: out });
   const voices = Object.values(out).filter(c => !c.kami).length;
   console.log(`キャスト ${Object.keys(out).length}人（新しく声を作る人 ${voices}人、カミの声を使う ${Object.keys(out).length - voices}人）、台詞 ${items.length}本`);
   console.log(`→ ${path.relative(root, castFile)}`);
+  // 試聴室（tools/voice-preview）が台詞をキャストごとに並べるための一覧
+  const linesFile = path.join(scriptDir, "card_voice_lines.json");
+  writeJson(linesFile, { _readme: "cast を実行すると作り直される一覧（手で直さない）。台詞ID・話す人・読み上げる文。", items: items.map(({ ref, group, cast, text, together, card, section }) => ({ ref, group, cast, text, together: together || undefined, card, section })) });
+  console.log(`→ ${path.relative(root, linesFile)}`);
 }
 
 /* ===== ElevenLabs ===== */
@@ -282,6 +290,7 @@ async function lines() {
   const cast = loadCast();
   const record = readJson(recordFile, {});
   const kamiIds = readJson(path.join(root, "voices", "elevenlabs_voice_ids.json"), {});
+  const directions = readJson(directionFile, {});
   const { items } = collectLines();
   const onlyRef = argValue("--ref");
   const targets = items.filter(i => onlyRef ? (i.ref === onlyRef || i.group === onlyRef) : i.cast === castArg());
@@ -296,10 +305,12 @@ async function lines() {
     if (!voiceId) { console.warn(`${it.ref}：${it.cast} の声が未登録です（design → pick を先に）`); failed.push(it.ref); continue; }
     if (record[it.cast] && record[it.cast].released) { console.warn(`${it.ref}：${it.cast} の声は削除済みのため作れません`); failed.push(it.ref); continue; }
     // 台詞ごとの読み上げ文の上書き（card_voice_cast.json の tts に { "n051-summon": "…" } と書く）
-    const text = speechText((c.tts && c.tts[it.ref]) || it.text);
-    console.log(`${it.ref}（${it.cast}）：${text}`);
+    const dir = directions[it.ref] || {};
+    const text = (dir.tags ? dir.tags.trim() + " " : "") + speechText((c.tts && c.tts[it.ref]) || it.text);
+    const stability = Number.isFinite(dir.stability) ? dir.stability : el.stability;
+    console.log(`${it.ref}（${it.cast}）：${text}${stability !== el.stability ? `（安定度${stability}）` : ""}`);
     try {
-      const audio = await call(`/text-to-speech/${voiceId}?output_format=mp3_44100_64`, { text, model_id: el.model, language_code: el.language_code, voice_settings: { stability: el.stability } }, true);
+      const audio = await call(`/text-to-speech/${voiceId}?output_format=mp3_44100_64`, { text, model_id: el.model, language_code: el.language_code, voice_settings: { stability } }, true);
       fs.writeFileSync(out, audio);
       chars += text.length;
     } catch (e) { console.error(`  × 失敗：${String(e.message || e).slice(0, 300)}`); failed.push(it.ref); }
