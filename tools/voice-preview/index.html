@@ -55,6 +55,7 @@
   .ve textarea { font: inherit; font-size: 13px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); resize: vertical; width: 100%; }
   .ve textarea:focus-visible, .ve input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
   .ve input[type=text] { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); flex: 1 1 260px; min-width: 0; }
+  .spec-label { font-size: 12px; color: var(--muted); min-width: 9em; }
   .count { font-size: 11px; color: var(--muted); justify-self: end; }
   .count.over { color: #ff9fa8; font-weight: 700; }
   .history { display: grid; gap: 6px; }
@@ -261,98 +262,116 @@
     box.append(body);
     return box;
   }
-  // 声のイメージの調整。ボタンは英語の指示を「優先する調整」として説明の最後に足す（もう一度押すと外す）
-  const ADJUST_HEAD = "IMPORTANT ADJUSTMENTS (these take priority over anything above):";
-  const ADJUSTS = [
-    ["もっと高く", "a noticeably higher-pitched voice"], ["もっと低く", "a noticeably lower, deeper voice"],
-    ["透明感を強く", "a more crystal-clear, transparent tone"], ["芯を強く", "a stronger, firmer vocal core with steady breath support"],
-    ["柔らかく", "a softer, gentler tone"], ["力強く", "a more powerful, commanding voice"],
-    ["落ち着いて", "calmer, more composed delivery"], ["明るく", "a brighter, more cheerful tone, still natural"],
-    ["大人っぽく", "a more mature-sounding voice"], ["冷たく", "a colder, more distant tone"],
-    ["温かく", "a warmer, kinder tone"], ["威圧感を出す", "a heavier, more intimidating presence"],
-    ["かすれを無くす", "no huskiness, rasp or breathiness at all"], ["少しかすれを足す", "a slight natural rasp"],
-    ["ゆっくり話す", "a slower speaking pace"], ["はきはき話す", "crisp, clear articulation"],
-    ["大げさにしない", "natural, understated acting, never exaggerated"],
-  ];
-  function splitAdjust(text) {
-    const i = text.indexOf(ADJUST_HEAD);
-    if (i < 0) return { base: text.trim(), items: [] };
-    const items = text.slice(i + ADJUST_HEAD.length).split(";").map(x => x.trim().replace(/\.$/, "")).filter(Boolean);
-    return { base: text.slice(0, i).trim(), items };
+  // 声のイメージ。性別・年代・高さ・声質・話し方を選ぶと、説明（英語）を最初から作り直す。
+  // 説明の最後に指示を足すだけだと、元の説明（例：若い男性）と食い違ったときに元の説明が優先されてしまうため
+  const SPEC = {
+    gender: { label: "性別", one: true, options: [["male", "男性"], ["female", "女性"], ["female-boyish", "女性が演じる少年役"]] },
+    age: { label: "年代", one: true, options: [["18", "18歳くらい"], ["20s", "20代"], ["30s", "30代"], ["40s", "40代"], ["50s", "50代以上"]] },
+    pitch: { label: "声の高さ", one: true, options: [["vlow", "とても低い"], ["low", "低め"], ["mid", "ふつう"], ["high", "高め"], ["vhigh", "とても高い"]] },
+    timbre: { label: "声質（いくつでも）", options: [["clear", "透き通る"], ["core", "芯がある"], ["soft", "柔らかい"], ["powerful", "力強い"], ["bright", "明るい"], ["deep", "重厚"], ["husky", "ハスキー"], ["breathy", "息まじり"], ["rough", "ざらつき"], ["cool", "クール"]] },
+    manner: { label: "話し方・性格（いくつでも）", options: [["energetic", "元気"], ["calm", "落ち着いた"], ["polite", "丁寧"], ["rough", "乱暴"], ["archaic", "古風"], ["cold", "冷たい"], ["gentle", "優しい"], ["imposing", "威圧的"], ["cheeky", "生意気"], ["shy", "おどおど"], ["playful", "おどけた"], ["dignified", "気品"]] },
+  };
+  const EN = {
+    who: (g, a) => {
+      if (g === "female-boyish") return "A female voice: a Japanese woman in her twenties who voices energetic male hero roles in anime, with a boyish, tomboyish delivery. The timbre must clearly be a woman's voice, not a man's.";
+      const man = g !== "female";
+      const ages = { "18": man ? "An 18-year-old Japanese young man (an adult)" : "An 18-year-old Japanese young woman (an adult)", "20s": man ? "A Japanese young man in his twenties" : "A Japanese young woman in her twenties", "30s": man ? "A Japanese man in his thirties" : "A Japanese woman in her thirties", "40s": man ? "A Japanese man in his forties" : "A Japanese woman in her forties", "50s": man ? "An older Japanese man in his fifties or sixties" : "An older Japanese woman in her fifties or sixties" };
+      return (ages[a] || (man ? "A Japanese man" : "A Japanese woman")) + (man ? ". A male voice." : ". A female voice.");
+    },
+    pitch: { vlow: "Very low-pitched, deep voice.", low: "Low-pitched voice.", mid: "Medium-pitched voice.", high: "High-pitched voice.", vhigh: "Very high-pitched voice, at the top of the natural speaking range." },
+    timbre: { clear: "crystal-clear and transparent", core: "with a strong, firm core and steady breath support", soft: "soft and gentle", powerful: "powerful and resonant", bright: "bright", deep: "deep, heavy and rich", husky: "husky", breathy: "breathy", rough: "slightly rough and raspy", cool: "cool and composed" },
+    manner: { energetic: "energetic and lively", calm: "calm and composed", polite: "polite and well-mannered", rough: "rough and blunt", archaic: "old-fashioned and formal", cold: "cold and distant", gentle: "gentle and kind", imposing: "imposing and intimidating", cheeky: "cheeky and cocky", shy: "timid and hesitant", playful: "playful and humorous", dignified: "dignified and noble" },
+  };
+  function buildDescription(sp) {
+    const parts = ["Japanese voice. Native Japanese speaker who speaks only Japanese, with natural standard Japanese pronunciation."];
+    parts.push(EN.who(sp.gender, sp.age));
+    if (sp.pitch) parts.push(EN.pitch[sp.pitch]);
+    const t = (sp.timbre || []).map(k => EN.timbre[k]).filter(Boolean);
+    if (t.length) parts.push("Voice quality: " + t.join(", ") + ".");
+    const m = (sp.manner || []).map(k => EN.manner[k]).filter(Boolean);
+    if (m.length) parts.push("Speaking style and personality: " + m.join(", ") + ".");
+    if (!(sp.timbre || []).includes("husky")) parts.push("Not husky.");
+    if (sp.role) parts.push("Role (Japanese): " + sp.role + ".");
+    if (sp.note) parts.push("Additional notes (Japanese): " + sp.note + ".");
+    parts.push("Natural acting like a Japanese anime voice actor playing it straight, never exaggerated or theatrical.");
+    return parts.join(" ").replace(/。\./g, "。").replace(/\s+/g, " ");
   }
-  const joinAdjust = (base, items) => items.length ? base + " " + ADJUST_HEAD + " " + items.join("; ") + "." : base;
+  async function saveDescription(key, description, spec) {
+    const res = await fetch("/__dev/voice-description?cast=" + encodeURIComponent(key), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ description, spec }) });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
+    data.cast[key] = Object.assign(data.cast[key] || {}, j.cast);
+  }
   function voiceEditor(key, c, r) {
     const box = el("details", "voice-edit");
-    box.append(el("summary", "", "声のイメージを変える（説明を直して、候補を追加で作る）"));
+    box.append(el("summary", "", "声のイメージを変える（性別・高さなどを選んで、候補を作り直す）"));
     const ve = el("div", "ve");
-    const cmd = TOOL + " design --cast " + key + (((r.candidates || []).length) ? " --keep" : "");
+    const hasCands = (r.candidates || []).length > 0;
+    const cmd = TOOL + " design --cast " + key + (hasCands ? " --keep" : "");
+    const sp = JSON.parse(JSON.stringify(c.voice_spec || {}));
     const text = el("textarea"); text.rows = 6; text.value = c.el_description || ""; text.setAttribute("aria-label", "声の説明（英語）");
     const count = el("span", "count");
-    const presets = el("div", "presets");
-    const sync = () => {
-      const n = text.value.replace(/\s+/g, " ").trim().length;
-      count.textContent = n + " / 1000文字"; count.classList.toggle("over", n > 1000);
-      const { items } = splitAdjust(text.value);
-      presets.querySelectorAll(".preset").forEach(b => b.setAttribute("aria-pressed", String(items.includes(b.dataset.en))));
-    };
-    for (const [ja, en] of ADJUSTS) {
-      const b = el("button", "preset", ja); b.type = "button"; b.dataset.en = en; b.title = en;
-      b.addEventListener("click", () => {
-        const { base, items } = splitAdjust(text.value);
-        const next = items.includes(en) ? items.filter(x => x !== en) : items.concat(en);
-        text.value = joinAdjust(base, next); sync();
-      });
-      presets.append(b);
-    }
-    text.addEventListener("input", sync);
+    const syncCount = () => { const n = text.value.replace(/\s+/g, " ").trim().length; count.textContent = n + " / 1000文字"; count.classList.toggle("over", n > 1000); };
+    text.addEventListener("input", syncCount);
+    const rebuild = () => { if (sp.gender) { text.value = buildDescription(sp); syncCount(); } };
+
+    // ① 基本の声
     const s1 = el("section", "step");
-    s1.append(el("h4", "", "① 変えたいところをボタンで選ぶ"), presets,
-      el("p", "dir-note", "選んだ指示は、説明の最後に「優先する調整」として英語で足されます。もう一度押すと外れます。"));
-    const memo = el("input"); memo.type = "text"; memo.placeholder = "例：ライカより少し落ち着いた声に／語尾をやわらかく"; memo.setAttribute("aria-label", "日本語の追加の指示");
-    const addMemo = el("button", "copy small", "説明に足す"); addMemo.type = "button";
-    addMemo.addEventListener("click", () => {
-      const v = memo.value.trim(); if (!v) return;
-      const { base, items } = splitAdjust(text.value);
-      text.value = joinAdjust(base, items.concat("(Japanese note) " + v)); memo.value = ""; sync();
-    });
-    const memoRow = el("div", "dir-row"); memoRow.append(memo, addMemo);
-    const s2 = el("section", "step");
-    s2.append(el("h4", "", "② ボタンにない指示は日本語で書いて足す（必要なときだけ）"), memoRow,
-      el("p", "dir-note", "日本語のまま渡します。英語の指示ほど確実には効かないことがあるので、ボタンと組み合わせるのがおすすめです。"));
+    s1.append(el("h4", "", "① 基本の声を選ぶ（選ぶと③の説明が作り直されます）"));
+    for (const [field, def] of Object.entries(SPEC)) {
+      const row = el("div", "dir-row"); row.append(el("span", "spec-label", def.label));
+      const group = el("div", "presets");
+      const sync = () => group.querySelectorAll(".preset").forEach(b => b.setAttribute("aria-pressed", String(def.one ? sp[field] === b.dataset.v : (sp[field] || []).includes(b.dataset.v))));
+      for (const [v, ja] of def.options) {
+        const b = el("button", "preset", ja); b.type = "button"; b.dataset.v = v;
+        b.addEventListener("click", () => {
+          if (def.one) sp[field] = sp[field] === v ? undefined : v;
+          else { const cur = sp[field] || []; sp[field] = cur.includes(v) ? cur.filter(x => x !== v) : cur.concat(v); }
+          sync(); rebuild();
+        });
+        group.append(b);
+      }
+      sync(); row.append(group); s1.append(row);
+    }
+    const role = el("input"); role.type = "text"; role.value = sp.role || ""; role.placeholder = "例：熱血な見習い忍者。先生を慕っている"; role.setAttribute("aria-label", "役柄（日本語）");
+    role.addEventListener("input", () => { sp.role = role.value.trim(); rebuild(); });
+    const roleRow = el("div", "dir-row"); roleRow.append(el("span", "spec-label", "役柄（日本語・任意）"), role);
+    const note = el("input"); note.type = "text"; note.value = sp.note || ""; note.placeholder = "例：語尾をはっきり／ライカより落ち着いた感じ"; note.setAttribute("aria-label", "その他の指示（日本語）");
+    note.addEventListener("input", () => { sp.note = note.value.trim(); rebuild(); });
+    const noteRow = el("div", "dir-row"); noteRow.append(el("span", "spec-label", "その他の指示（日本語・任意）"), note);
+    s1.append(roleRow, noteRow,
+      el("p", "dir-note", "性別・年代・高さ・声質は英語に直して渡すので、確実に効きます。日本語の欄は補足として渡すので、効き方は弱めです。性別を選ぶまでは、今の説明がそのまま使われます。"));
+
+    // ③ 全文
     const s3 = el("section", "step");
-    s3.append(el("h4", "", "③ 説明の全文を確かめる（直接書き換えてもかまいません）"), text, count);
-    const save = el("button", "copy main", "保存して、候補を作るコマンドをコピー"); save.type = "button";
-    const code = el("code", "cmd", cmd);
-    save.addEventListener("click", async () => {
-      try {
-        const res = await fetch("/__dev/voice-description?cast=" + encodeURIComponent(key), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ description: text.value }) });
-        const j = await res.json().catch(() => ({}));
-        if (!res.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
-        data.cast[key] = Object.assign(data.cast[key] || {}, j.cast);
-        renderHistory();
-        await copy(cmd);
-      } catch (e) { toast(e.message); }
-    });
+    s3.append(el("h4", "", "② 説明の全文を確かめる（英語・直接書き換えてもかまいません）"), text, count);
+
+    // ④ 保存
     const s4 = el("section", "step");
-    s4.append(el("h4", "", "④ 保存して、候補を追加で作るコマンドをコピー"), el("div", "btns"), code,
-      el("p", "dir-note", "コピーしたコマンドを PowerShell で実行すると、今ある候補は残したまま、新しい説明で候補が増えます。終わったら「最新の状態に更新」を押して聴き比べてください。"));
-    s4.querySelector(".btns").append(save);
-    // 前の説明に戻す
+    const save = el("button", "copy main", "保存して、候補を作るコマンドをコピー"); save.type = "button";
+    save.addEventListener("click", async () => {
+      try { await saveDescription(key, text.value, sp.gender ? sp : null); renderHistory(); await copy(cmd); } catch (e) { toast(e.message); }
+    });
+    const btns = el("div", "btns"); btns.append(save);
+    s4.append(el("h4", "", "③ 保存して、候補を作るコマンドをコピー"), btns, el("code", "cmd", cmd),
+      el("p", "dir-note", "コピーしたコマンドを PowerShell で実行すると、新しい説明で候補が増えます（今ある候補は残ります）。終わったら「最新の状態に更新」を押して聴き比べてください。"));
+
+    // 前の説明
     const s5 = el("section", "step"); const hist = el("div", "history");
     function renderHistory() {
       const prev = (data.cast[key] || {}).previous_descriptions || [];
       hist.replaceChildren(...prev.slice().reverse().map((d, i) => {
         const row = el("div", "history-item");
         const back = el("button", "copy small", "この説明に戻す"); back.type = "button";
-        back.addEventListener("click", () => { text.value = d; sync(); text.focus(); toast("説明を戻しました。保存すると反映されます"); });
+        back.addEventListener("click", () => { text.value = d; syncCount(); text.focus(); toast("説明を戻しました。保存すると反映されます"); });
         row.append(el("span", "", (i === 0 ? "1つ前：" : (i + 1) + "つ前：") + d), back);
         return row;
       }));
       s5.hidden = !prev.length;
     }
     s5.append(el("h4", "", "前の説明（戻したいときに）"), hist);
-    renderHistory(); sync();
-    ve.append(s1, s2, s3, s4, s5);
+    renderHistory(); syncCount();
+    ve.append(s1, s3, s4, s5);
     box.append(ve);
     return box;
   }

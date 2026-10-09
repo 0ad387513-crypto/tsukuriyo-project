@@ -157,7 +157,14 @@ async function handleDev(req, res, url) {
     const all = JSON.parse(fs.readFileSync(voiceCastFile, "utf8"));
     const c = all.cast && all.cast[key];
     if (!c || c.kami) return sendJson(res, 404, { ok: false, message: "そのキャストは見つかりません" });
-    if (c.el_description === description) return sendJson(res, 200, { ok: true, cast: c, unchanged: true });
+    // 試聴室で選んだ性別・年代などの設定（説明を作り直すため）。小さなオブジェクトだけ受け付ける
+    if (body.spec && typeof body.spec === "object" && JSON.stringify(body.spec).length < 2000) c.voice_spec = body.spec;
+    if (c.el_description === description) {
+      const tmp0 = voiceCastFile + ".tmp";
+      fs.writeFileSync(tmp0, JSON.stringify(all, null, 2) + "\n");
+      fs.renameSync(tmp0, voiceCastFile);
+      return sendJson(res, 200, { ok: true, cast: c, unchanged: true });
+    }
     const prev = (c.previous_descriptions || []).filter(d => d !== description);
     if (c.el_description) prev.push(c.el_description);
     c.previous_descriptions = prev;

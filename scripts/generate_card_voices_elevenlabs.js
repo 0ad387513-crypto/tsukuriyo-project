@@ -184,6 +184,7 @@ function buildCast() {
       el_description: kami ? undefined : ((!args.includes('--reset-descriptions') && old[key] && old[key].el_description) || draftDescription(key, c.labels.length ? c.labels : [key], c.notes)),
       previous_descriptions: old[key] && old[key].previous_descriptions,
       tts: old[key] && old[key].tts,
+      voice_spec: old[key] && old[key].voice_spec,
     };
   }
   writeJson(castFile, { _readme: "カードボイスのキャスト（話す人ごとの声）。el_description は ElevenLabs のボイスデザインに渡す説明。直してよい（cast を実行し直しても残る）。カミはカミのボイスの声を使う。", cast: out });
