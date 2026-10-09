@@ -168,6 +168,17 @@
     return [d.text ? "読み替えあり" : "", d.direction ? "方針「" + (d.direction.length > 24 ? d.direction.slice(0, 24) + "…" : d.direction) + "」" : "", d.tags ? "タグ " + d.tags : "", d.stability !== undefined ? "安定度" + d.stability : ""].filter(Boolean).join("・");
   }
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
+  // 入力欄の「例：…」の文をそのまま入れるボタン
+  function exampleButton(input) {
+    const b = el("button", "copy small", "例を入れる"); b.type = "button";
+    b.title = input.placeholder;
+    b.addEventListener("click", () => {
+      input.value = input.placeholder.replace(/^例：/, "");
+      input.dispatchEvent(new Event("input"));
+      input.focus();
+    });
+    return b;
+  }
   function fixPanel(it, refresh) {
     const cur = data.directions[it.ref] || {};
     const cmd = TOOL + " lines --ref " + it.ref + " --force";
@@ -198,8 +209,9 @@
     // 以前の英語タグ（残っている指定だけ見せる）
     const tags = el("input"); tags.type = "text"; tags.value = cur.tags || ""; tags.setAttribute("aria-label", "英語の演技タグ"); tags.placeholder = "例：[excited]";
     const adv = el("details", "adv"); const advSum = el("summary", "", "英語の演技タグ（細かく効かせたいときだけ）");
-    const r1 = el("div", "dir-row"); r1.append(tags); adv.append(advSum, r1); adv.open = !!cur.tags;
-    s2.append(el("h4", "", "② 演技の方針を書く（必要なときだけ）"), direction, presets,
+    const r1 = el("div", "dir-row"); r1.append(tags, exampleButton(tags)); adv.append(advSum, r1); adv.open = !!cur.tags;
+    const dirEx = el("div", "btns"); dirEx.append(exampleButton(direction));
+    s2.append(el("h4", "", "② 演技の方針を書く（必要なときだけ）"), direction, dirEx, presets,
       el("p", "dir-note", "どんな場面で、どんな気持ちで言うのかを日本語で自由に書いてください。読み上げられることはなく、台詞の直前の状況として声の演技に使われます。ボタンを押すと言葉が書き足されます。"), r2, adv);
 
     // ③ 保存してコマンドをコピー
@@ -335,10 +347,10 @@
     }
     const role = el("input"); role.type = "text"; role.value = sp.role || ""; role.placeholder = "例：熱血な見習い忍者。先生を慕っている"; role.setAttribute("aria-label", "役柄（日本語）");
     role.addEventListener("input", () => { sp.role = role.value.trim(); rebuild(); });
-    const roleRow = el("div", "dir-row"); roleRow.append(el("span", "spec-label", "役柄（日本語・任意）"), role);
-    const note = el("input"); note.type = "text"; note.value = sp.note || ""; note.placeholder = "例：語尾をはっきり／ライカより落ち着いた感じ"; note.setAttribute("aria-label", "その他の指示（日本語）");
+    const roleRow = el("div", "dir-row"); roleRow.append(el("span", "spec-label", "役柄（日本語・任意）"), role, exampleButton(role));
+    const note = el("input"); note.type = "text"; note.value = sp.note || ""; note.placeholder = "例：語尾をはっきり。ライカより落ち着いた感じ"; note.setAttribute("aria-label", "その他の指示（日本語）");
     note.addEventListener("input", () => { sp.note = note.value.trim(); rebuild(); });
-    const noteRow = el("div", "dir-row"); noteRow.append(el("span", "spec-label", "その他の指示（日本語・任意）"), note);
+    const noteRow = el("div", "dir-row"); noteRow.append(el("span", "spec-label", "その他の指示（日本語・任意）"), note, exampleButton(note));
     s1.append(roleRow, noteRow,
       el("p", "dir-note", "性別・年代・高さ・声質は英語に直して渡すので、確実に効きます。日本語の欄は補足として渡すので、効き方は弱めです。性別を選ぶまでは、今の説明がそのまま使われます。"));
 
