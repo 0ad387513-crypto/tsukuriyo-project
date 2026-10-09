@@ -288,7 +288,22 @@ http.createServer((req, res) => {
   }
   fs.stat(file, (err, stat) => {
     if (err || !stat.isFile()) { res.writeHead(404).end(); return; }
-    res.writeHead(200, { "Content-Type": types[path.extname(file).toLowerCase()] || "application/octet-stream", "Content-Length": stat.size, "Cache-Control": "no-store" });
+    const type = types[path.extname(file).toLowerCase()] || "application/octet-stream";
+    // 音声の途中に飛べる（シークできる）ように、ファイルの一部だけを返す要求（Range）に応える
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || "");
+    if (range && (range[1] || range[2])) {
+      let start = range[1] ? Number(range[1]) : stat.size - Number(range[2]);
+      let end = range[1] && range[2] ? Number(range[2]) : stat.size - 1;
+      start = Math.max(0, start); end = Math.min(end, stat.size - 1);
+      if (start > end || start >= stat.size) { res.writeHead(416, { "Content-Range": `bytes */${stat.size}` }).end(); return; }
+      res.writeHead(206, { "Content-Type": type, "Content-Length": end - start + 1, "Content-Range": `bytes ${start}-${end}/${stat.size}`, "Accept-Ranges": "bytes", "Cache-Control": "no-store" });
+      if (req.method === "HEAD") { res.end(); return; }
+      const part = fs.createReadStream(file, { start, end });
+      part.on("error", () => res.destroy());
+      part.pipe(res);
+      return;
+    }
+    res.writeHead(200, { "Content-Type": type, "Content-Length": stat.size, "Accept-Ranges": "bytes", "Cache-Control": "no-store" });
     if (req.method === "HEAD") { res.end(); return; }
     const stream = fs.createReadStream(file);
     stream.on("error", () => res.destroy());
