@@ -95,6 +95,10 @@
   .empty { color: var(--muted); padding: 30px 0; }
   .line-acts { display: flex; gap: 6px; }
   .dir-tag { font-size: 11px; color: var(--gold); margin-left: 6px; }
+  .multi { margin-top: 6px; padding: 6px 8px; border-radius: 8px; border: 1px dashed var(--gold); background: var(--gold-soft); display: grid; gap: 2px; font-size: 12px; }
+  .multi-head { font-weight: 700; color: var(--gold); font-size: 11px; }
+  .multi-part { color: var(--muted); }
+  .multi-part.me { color: var(--ink); font-weight: 700; }
   .pair { margin-top: 6px; display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); }
   .pair .thumb { width: 40px; flex: none; }
   .pair-body { min-width: 0; display: grid; gap: 2px; font-size: 12px; }
@@ -155,6 +159,28 @@
     if (j.direction) data.directions[ref] = j.direction; else delete data.directions[ref];
   }
   // 台詞の行の表示を、保存した指定に合わせて更新する
+  // 2人以上で話す台詞（台本の 名前「…」名前「…」 や「2人同時に」で分かれたもの）
+  const MULTI_SYNTAX = /[^「」\s]+「[^」]*」/;
+  const partsOf = it => (data.items || []).filter(i => i.group === (it.group || it.ref));
+  const isMulti = it => partsOf(it).length > 1;
+  function scriptOf(it) {
+    if (it.script) return it.script;
+    const m = /^([np]\d+)-([a-z]+)$/.exec(it.group || it.ref);
+    if (m) { const src = m[1][0] === "n" ? data.lines[m[1]] : data.pairs[m[1]]; if (src && src[m[2]]) return src[m[2]]; }
+    return it.text;
+  }
+  function multiBox(it) {
+    const parts = partsOf(it);
+    if (parts.length < 2) return null;
+    const box = el("div", "multi");
+    const together = parts.every(p => p.together);
+    box.append(el("span", "multi-head", parts.length + "人をまたぐ台詞（" + (together ? "同時に話す" : "順番に話す") + "）"));
+    parts.forEach((p, i) => {
+      const who = p.speaker || displayName(p.cast);
+      box.append(el("span", "multi-part" + (p.ref === it.ref ? " me" : ""), (i + 1) + ". " + who + "「" + p.text + "」" + (p.ref === it.ref ? "　← この台詞" : "")));
+    });
+    return box;
+  }
   function showLine(it, spoken, orig, label) {
     const d = data.directions[it.ref] || {};
     spoken.textContent = d.text || it.text;
@@ -181,16 +207,31 @@
   }
   function fixPanel(it, refresh) {
     const cur = data.directions[it.ref] || {};
-    const cmd = TOOL + " lines --ref " + it.ref + " --force";
+    const cmd = TOOL + " lines --ref " + (isMulti(it) ? (it.group || it.ref) : it.ref) + " --force";
     const box = el("div", "dir"); box.hidden = true;
 
-    // ① 読み上げる文
+    // ① 台詞を変える。複数人の台詞は台詞全体（名前「…」名前「…」）を編集する
+    const multi = isMulti(it);
+    const groupRef = it.group || it.ref;
+    const original = (() => { const d = data.directions[groupRef] || {}; return d.script ? null : scriptOf(it); })();
     const s1 = el("section", "step");
-    const text = el("textarea"); text.rows = 2; text.value = cur.text || it.text; text.setAttribute("aria-label", "読み上げる文");
+    const text = el("textarea"); text.rows = 2; text.setAttribute("aria-label", "台詞");
+    text.value = multi || (data.directions[groupRef] || {}).script ? scriptOf(it) : (cur.text || it.text);
+    const kind = el("p", "dir-note");
+    const syncKind = () => {
+      const v = text.value.trim();
+      kind.textContent = MULTI_SYNTAX.test(v)
+        ? "名前「…」の形なので、話す人ごとに分けて作ります（" + [...v.matchAll(/([^「」\s]+)「/g)].map(m => m[1]).join(" → ") + "）。"
+        : "1人の台詞として、この文を読み上げます。";
+    };
+    text.addEventListener("input", syncKind); syncKind();
     const reset = el("button", "copy small", "台本の文に戻す"); reset.type = "button";
-    reset.addEventListener("click", () => { text.value = it.text; });
-    s1.append(el("h4", "", "① 読み上げる文を変える（必要なときだけ）"), text,
-      el("p", "dir-note", "台本の文はそのままで、音声だけこの文で作ります。読み間違いを直すときは、ひらがなにしたり「、」で間を入れたりします。台本そのものを変えるときは共有ページで編集してください。"), reset);
+    reset.addEventListener("click", () => {
+      const m = /^([np]\d+)-([a-z]+)$/.exec(groupRef); const src = m && (m[1][0] === "n" ? data.lines[m[1]] : data.pairs[m[1]]);
+      text.value = multi || (data.directions[groupRef] || {}).script ? ((src && src[m[2]]) || scriptOf(it)) : it.text; syncKind();
+    });
+    s1.append(el("h4", "", multi ? "① 台詞を変える（この台詞は複数人で話します。全員分をまとめて編集します）" : "① 台詞を変える（必要なときだけ）"), text, kind,
+      el("p", "dir-note", "2人以上に分けるときは、名前「台詞」名前「台詞」と続けて書きます（例：アカマツ「いまだ！シラトリ！」シラトリ「はあっ！」）。名前は話す人の名前に合わせてください。1人の台詞は、読み間違いを直すときにひらがなにしたり「、」で間を入れたりできます。ここで変えた台詞はこのPCの試聴室だけに反映され、共有ページの台本は変わりません。"), reset);
 
     // ② 演技の方針（日本語で自由に）
     const s2 = el("section", "step");
@@ -223,7 +264,17 @@
     save.addEventListener("click", async () => {
       try {
         const t = text.value.trim();
-        await saveDirection(it.ref, { text: t && t !== it.text ? t : "", direction: direction.value.trim(), tags: tags.value.trim(), stability: sel.value === "" ? null : Number(sel.value) });
+        const asScript = multi || MULTI_SYNTAX.test(t) || !!(data.directions[groupRef] || {}).script;
+        await saveDirection(it.ref, { text: !asScript && t && t !== it.text ? t : "", direction: direction.value.trim(), tags: tags.value.trim(), stability: sel.value === "" ? null : Number(sel.value) });
+        if (asScript) {
+          const m = /^([np]\d+)-([a-z]+)$/.exec(groupRef); const src = m && (m[1][0] === "n" ? data.lines[m[1]] : data.pairs[m[1]]);
+          const base = (src && src[m[2]]) || "";
+          await saveDirection(groupRef, { script: t && t !== base ? t : "" });
+          rememberScroll(); await load(); restoreScroll();
+          await copy(TOOL + " lines --ref " + groupRef + " --force");
+          toast("台詞を分け直しました。コピーしたコマンドで、全員分を作り直します");
+          return;
+        }
         refresh();
         await copy(cmd);
       } catch (e) { toast(e.message); }
@@ -407,7 +458,7 @@
     // cast を実行すると作られる一覧があれば、それで正確に並べる（複数人の台詞も1人分ずつ出る）
     if (data.items) {
       const field = ref => ({ summon: "召喚時", attack: "攻撃時", death: "死亡時", use: "使用時", line: "掛け合い", reply: "返し" })[ref.split("-")[1]] || "";
-      return data.items.filter(i => i.cast === key).map(i => ({ ref: i.ref, card: (data.lines[i.cardId] || {}).card || i.card, field: field(i.ref) + (i.ref !== i.group ? "（" + (i.together ? "同時" : "複数人") + "）" : ""), text: i.text, cardId: i.cardId }));
+      return data.items.filter(i => i.cast === key).map(i => ({ ref: i.ref, card: (data.lines[i.cardId] || {}).card || i.card, field: field(i.ref) + (i.ref !== i.group ? "（" + (i.together ? "同時" : "複数人") + "）" : ""), text: i.text, cardId: i.cardId, group: i.group, script: i.script, overridden: i.overridden }));
     }
     const out = [];
     const c = data.cast[key] || {};
@@ -560,7 +611,7 @@
           t.append(spoken, orig);
           const small = document.createElement("small"); small.textContent = `${it.card}｜${it.field}｜${it.ref}`;
           const pairBox = pairInfo(it);
-          const dirLabel = document.createElement("span"); dirLabel.className = "dir-tag"; dirLabel.textContent = describe(it.ref); small.append(dirLabel); t.append(small); if (pairBox) t.append(pairBox);
+          const dirLabel = document.createElement("span"); dirLabel.className = "dir-tag"; dirLabel.textContent = describe(it.ref); small.append(dirLabel); t.append(small); const mb = multiBox(it); if (mb) t.append(mb); if (pairBox) t.append(pairBox);
           const holder = document.createElement("div"); holder.className = "missing"; holder.textContent = "確認中…";
           const refresh = () => showLine(it, spoken, orig, dirLabel); refresh();
           const panel = fixPanel(it, refresh);

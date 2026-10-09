@@ -3,6 +3,7 @@
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
+const { execFileSync } = require("node:child_process");
 const root = path.resolve(__dirname, "..");
 const types = { ".html": "text/html; charset=utf-8", ".js": "application/javascript; charset=utf-8", ".json": "application/json; charset=utf-8", ".css": "text/css; charset=utf-8", ".webp": "image/webp", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".mp3": "audio/mpeg", ".wav": "audio/wav" };
 
@@ -188,6 +189,8 @@ async function handleDev(req, res, url) {
     try { body = JSON.parse((await readBody(req, 4096)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "保存する内容の形式が正しくありません" }); }
     const tags = String(body.tags || "").trim();
     const text = String(body.text || "").trim();
+    const script = String(body.script || "").trim();
+    if (script.length > 300 || /[<>{}]/.test(script)) return sendJson(res, 400, { ok: false, message: "台詞が長すぎるか、使えない文字があります" });
     const direction = String(body.direction || "").trim();
     if (direction.length > 200 || /[<>{}]/.test(direction)) return sendJson(res, 400, { ok: false, message: "演技の方針が長すぎるか、使えない文字があります" });
     if (text.length > 300 || /[<>{}]/.test(text)) return sendJson(res, 400, { ok: false, message: "読み上げる文が長すぎるか、使えない文字があります" });
@@ -195,13 +198,20 @@ async function handleDev(req, res, url) {
     if (tags.length > 120 || /[<>{}]/.test(tags)) return sendJson(res, 400, { ok: false, message: "演技タグが長すぎるか、使えない文字があります" });
     if (stability !== null && !(stability >= 0 && stability <= 1)) return sendJson(res, 400, { ok: false, message: "安定度は0〜1で指定してください" });
     const all = fs.existsSync(voiceDirectionFile) ? JSON.parse(fs.readFileSync(voiceDirectionFile, "utf8")) : {};
-    if (!text && !direction && !tags && stability === null) delete all[ref];
-    else all[ref] = Object.assign({}, text ? { text } : {}, direction ? { direction } : {}, tags ? { tags } : {}, stability !== null ? { stability } : {}, { updatedAt: new Date().toISOString() });
+    const prevScript = (all[ref] || {}).script || "";
+    if (!script && !text && !direction && !tags && stability === null) delete all[ref];
+    else all[ref] = Object.assign({}, script ? { script } : {}, text ? { text } : {}, direction ? { direction } : {}, tags ? { tags } : {}, stability !== null ? { stability } : {}, { updatedAt: new Date().toISOString() });
     const tmp = voiceDirectionFile + ".tmp";
     fs.writeFileSync(tmp, JSON.stringify(all, null, 1) + "\n");
     fs.renameSync(tmp, voiceDirectionFile);
+    // 台詞を書き換えたら（話す人が増える・変わることがある）キャストと台詞の一覧を作り直す
+    let rebuilt = false;
+    if (script !== prevScript) {
+      try { execFileSync(process.execPath, [path.join(root, "scripts", "generate_card_voices_elevenlabs.js"), "cast"], { cwd: root, stdio: "pipe" }); rebuilt = true; }
+      catch (e) { return sendJson(res, 500, { ok: false, message: "台詞の一覧を作り直せませんでした：" + String(e.stderr || e.message).slice(0, 200) }); }
+    }
     console.log(`[voice-direction] ${ref}：${text ? "読み替え「" + text + "」 " : ""}${direction ? "方針「" + direction + "」 " : ""}${tags || "（タグなし）"}${stability !== null ? ` 安定度${stability}` : ""}`);
-    return sendJson(res, 200, { ok: true, direction: all[ref] || null });
+    return sendJson(res, 200, { ok: true, direction: all[ref] || null, rebuilt });
   }
   return sendJson(res, 404, { ok: false, message: "not found" });
 }

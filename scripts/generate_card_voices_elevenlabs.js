@@ -109,14 +109,18 @@ function collectLines() {
   const lines = readJson(path.join(scriptDir, "card_voice_script.json"), { lines: {} }).lines;
   const pairs = readJson(path.join(scriptDir, "card_voice_pairs.json"), { pairs: {} }).pairs;
   const items = [];
+  // 試聴室で台詞を書き換えたもの（card_voice_direction.json の「台詞ID-欄」に script）。名前「…」で複数人に分けられる
+  const directions = readJson(directionFile, {});
   const push = (ref, label, text, cardId, meta) => {
-    const segs = splitSpeech(text, label);
+    const override = (directions[ref] || {}).script;
+    const script = override || text;
+    const segs = splitSpeech(script, label);
     segs.forEach((seg, i) => {
       // 話す人の表記に含まれる名前ならそのカードの声（ライカ＆コマのコマは成獣の声）、それ以外は名前からカードを探す
       const sCard = seg.own ? cardId : cardForName(seg.speaker, lines);
       // 1人で話す台詞は話す人の表記のまま（名前の無い脇役を見分けるため）。複数人の表記なら分けた名前を使う
       const name = segs.length === 1 && seg.own && !/[＋＆]/.test(label) ? label : seg.speaker;
-      items.push({ ref: segs.length > 1 ? `${ref}-${i + 1}` : ref, group: ref, cast: castKey(name, sCard), cardId: sCard || cardId, text: seg.text, together: seg.together, ...meta });
+      items.push({ ref: segs.length > 1 ? `${ref}-${i + 1}` : ref, group: ref, cast: castKey(name, sCard), cardId: sCard || cardId, text: seg.text, together: seg.together, speaker: seg.speaker, parts: segs.length, script, overridden: !!override, ...meta });
     });
   };
   for (const [id, l] of Object.entries(lines)) {
@@ -193,7 +197,7 @@ function buildCast() {
   console.log(`→ ${path.relative(root, castFile)}`);
   // 試聴室（tools/voice-preview）が台詞をキャストごとに並べるための一覧
   const linesFile = path.join(scriptDir, "card_voice_lines.json");
-  writeJson(linesFile, { _readme: "cast を実行すると作り直される一覧（手で直さない）。台詞ID・話す人・読み上げる文。", items: items.map(({ ref, group, cast, cardId, text, together, card, section }) => ({ ref, group, cast, cardId, text, together: together || undefined, card, section })) });
+  writeJson(linesFile, { _readme: "cast を実行すると作り直される一覧（手で直さない）。台詞ID・話す人・読み上げる文。", items: items.map(({ ref, group, cast, cardId, text, together, card, section, speaker, parts, script, overridden }) => ({ ref, group, cast, cardId, text, together: together || undefined, card, section, speaker: parts > 1 ? speaker : undefined, parts: parts > 1 ? parts : undefined, script: parts > 1 || overridden ? script : undefined, overridden: overridden || undefined })) });
   console.log(`→ ${path.relative(root, linesFile)}`);
 }
 
