@@ -43,6 +43,10 @@
   .line-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 10px; align-items: center; font-size: 14px; }
   .line-row small { color: var(--muted); display: block; font-size: 11px; }
   .missing { color: var(--muted); font-size: 12px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .copy.main { background: var(--gold); color: var(--bg); }
+  .copy.small { font-size: 11px; padding: 3px 8px; font-weight: 400; }
+  .line-row { grid-template-columns: minmax(0, 1fr) minmax(220px, 300px) auto; }
   @media (max-width: 640px) { .line-row { grid-template-columns: minmax(0, 1fr); } }
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); padding: 8px 14px; border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100vw - 32px); }
   .toast.show { opacity: 1; }
@@ -126,6 +130,11 @@
       state.textContent = r.released ? "声削除済み" : r.voiceId ? (r.source === "library" ? "ライブラリの声で登録済み" : `候補${r.choice}で登録済み`) : cands.length ? `候補${cands.length}個` : "未着手";
       const labels = document.createElement("span"); labels.className = "labels"; labels.textContent = (c.labels || []).join("／") + `｜台詞${c.lines || 0}本`;
       head.append(name, state, labels);
+      if (r.voiceId && !r.released) {
+        const mk = document.createElement("button"); mk.type = "button"; mk.className = "copy main"; mk.textContent = "台詞を作る（未作成の分）";
+        mk.addEventListener("click", () => copy(`${TOOL} lines --cast ${key}`));
+        head.append(mk);
+      }
       const desc = document.createElement("details"); desc.className = "desc";
       const sm = document.createElement("summary"); sm.textContent = "声の説明（ElevenLabs に渡している文）";
       const p = document.createElement("p"); p.textContent = c.el_description || "";
@@ -138,9 +147,14 @@
           const box = document.createElement("div"); box.className = "cand" + (r.choice === cand.choice && r.voiceId ? " chosen" : "");
           const top = document.createElement("div"); top.className = "cand-top";
           const b = document.createElement("b"); b.textContent = "候補" + cand.choice + (r.choice === cand.choice && r.voiceId ? "（登録中）" : "");
+          const btns = document.createElement("div"); btns.className = "btns";
           const btn = document.createElement("button"); btn.type = "button"; btn.className = "copy"; btn.textContent = "この候補に決める";
           btn.addEventListener("click", () => copy(`${TOOL} pick --cast ${key} --choice ${cand.choice}`));
-          top.append(b, btn);
+          // 登録が成功したときだけ続けて台詞を作る（PowerShell 5.1 は && が使えないので if ($?) でつなぐ）
+          const both = document.createElement("button"); both.type = "button"; both.className = "copy main"; both.textContent = "決めて台詞まで作る";
+          both.addEventListener("click", () => copy(`${TOOL} pick --cast ${key} --choice ${cand.choice}; if ($?) { ${TOOL} lines --cast ${key} }`));
+          btns.append(btn, both);
+          top.append(b, btns);
           const au = document.createElement("audio"); au.controls = true; au.preload = "none"; au.src = "/" + enc("voices/cards/previews/" + cand.file) + bust();
           box.append(top, au); grid.append(box);
         }
@@ -163,7 +177,9 @@
           const t = document.createElement("div"); t.textContent = it.text;
           const small = document.createElement("small"); small.textContent = `${it.card}｜${it.field}｜${it.ref}`; t.append(small);
           const holder = document.createElement("div"); holder.className = "missing"; holder.textContent = "確認中…";
-          row.append(t, holder); list.append(row);
+          const redo = document.createElement("button"); redo.type = "button"; redo.className = "copy small"; redo.textContent = "作り直す";
+          redo.addEventListener("click", () => copy(`${TOOL} lines --ref ${it.ref} --force`));
+          row.append(t, holder, redo); list.append(row);
           exists(url).then(ok => {
             if (ok) { made++; const au = document.createElement("audio"); au.controls = true; au.preload = "none"; au.src = url + bust(); holder.replaceWith(au); }
             else holder.textContent = "未作成";
