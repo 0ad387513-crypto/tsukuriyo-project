@@ -284,11 +284,28 @@ async function pick() {
   const record = readJson(recordFile, {});
   const r = record[key];
   const cand = r && (r.candidates || []).find(x => String(x.choice) === choice);
-  if (!cand) { console.error("その候補が見つかりません。先に design を実行してください。"); process.exit(1); }
-  const json = await call("/text-to-voice", { voice_name: `tsukuriyo-card-${key}`.slice(0, 100), voice_description: (cand.description || r.description || "").slice(0, 500), generated_voice_id: cand.generated_voice_id });
-  Object.assign(r, { voiceId: json.voice_id, choice: cand.choice, registered: new Date().toISOString(), released: undefined });
+  if (!cand) { console.error("その候補が見つかりません。先に design を実行してください。"); process.exitCode = 1; return; }
+  const previous = r.voiceId && !r.released ? r.voiceId : null;
+  let voiceId;
+  try {
+    const json = await call("/text-to-voice", { voice_name: `tsukuriyo-card-${key}`.slice(0, 100), voice_description: (cand.description || r.description || "").slice(0, 500), generated_voice_id: cand.generated_voice_id });
+    voiceId = json.voice_id;
+  } catch (e) {
+    // 同じ候補をもう一度登録しようとしたとき（ElevenLabs では候補のIDがそのまま声のIDになる）は、登録済みとして続ける
+    if (!/already been created/.test(String(e.message))) throw e;
+    voiceId = cand.generated_voice_id;
+    console.log(`${key}：候補${cand.choice}はもう登録されています（${voiceId}）`);
+  }
+  Object.assign(r, { voiceId, choice: cand.choice, registered: new Date().toISOString(), released: undefined });
   writeJson(recordFile, record);
-  console.log(`${key}：候補${cand.choice}を登録しました（${json.voice_id}）`);
+  console.log(`${key}：候補${cand.choice}を登録しました（${voiceId}）`);
+  // 別の候補で登録し直したときは、前の声を ElevenLabs から消して枠を空ける
+  if (previous && previous !== voiceId) {
+    try { await request("DELETE", `/voices/${previous}`); console.log(`  前の声（${previous}）は ElevenLabs から削除しました`); }
+    catch (e) { console.warn(`  前の声（${previous}）を削除できませんでした：${String(e.message || e).slice(0, 200)}`); }
+    r.previousVoiceIds = [...(r.previousVoiceIds || []), previous];
+    writeJson(recordFile, record);
+  }
 }
 
 async function lines() {
@@ -441,5 +458,5 @@ const commands = { cast: buildCast, status, design, pick, library, use, lines, r
 if (!commands[command]) {
   console.log("使い方はファイル先頭のコメントを見てください（cast / status / design / pick / library / use / lines / release / bundle）。");
 } else {
-  Promise.resolve(commands[command]()).catch(e => { console.error(String(e.message || e)); process.exit(1); });
+  Promise.resolve(commands[command]()).catch(e => { console.error(String(e.message || e)); process.exitCode = 1; });
 }
