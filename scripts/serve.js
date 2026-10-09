@@ -324,6 +324,8 @@ async function handleDev(req, res, url) {
     if (!c || c.kami) return sendJson(res, 404, { ok: false, message: "そのキャストは見つかりません" });
     // 試聴室で選んだ性別・年代などの設定（説明を作り直すため）。小さなオブジェクトだけ受け付ける
     if (body.spec && typeof body.spec === "object" && JSON.stringify(body.spec).length < 2000) c.voice_spec = body.spec;
+    // 候補を作るときの見本の文（空なら台詞から自動で作る）
+    if (typeof body.design_text === "string") { const dt = body.design_text.trim(); if (dt.length > 500 || /[<>{}]/.test(dt)) return sendJson(res, 400, { ok: false, message: "見本の文は500文字までにしてください" }); if (dt) c.design_text = dt; else delete c.design_text; }
     if (c.el_description === description) {
       const tmp0 = voiceCastFile + ".tmp";
       fs.writeFileSync(tmp0, JSON.stringify(all, null, 2) + "\n");

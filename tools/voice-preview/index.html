@@ -482,8 +482,8 @@
     parts.push("Natural, understated acting like a Japanese anime " + (sp.gender === "male" ? "voice actor" : "voice actress") + ".");
     return parts.join(" ").replace(/。\./g, "。").replace(/\s+/g, " ");
   }
-  async function saveDescription(key, description, spec) {
-    const res = await fetch("/__dev/voice-description?cast=" + encodeURIComponent(key), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ description, spec }) });
+  async function saveDescription(key, description, spec, designText) {
+    const res = await fetch("/__dev/voice-description?cast=" + encodeURIComponent(key), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ description, spec, design_text: designText }) });
     const j = await res.json().catch(() => ({}));
     if (!res.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
     data.cast[key] = Object.assign(data.cast[key] || {}, j.cast);
@@ -525,7 +525,13 @@
     const note = el("input"); note.type = "text"; note.value = sp.note || ""; note.placeholder = "例：語尾をはっきり。ライカより落ち着いた感じ"; note.setAttribute("aria-label", "その他の指示（日本語）");
     note.addEventListener("input", () => { sp.note = note.value.trim(); rebuild(); });
     const noteRow = el("div", "dir-row"); noteRow.append(el("span", "spec-label", "その他の指示（日本語・任意）"), note, exampleButton(note));
-    s1.append(roleRow, noteRow,
+    // 候補を作るときに読ませる見本の文。短くそっけない台詞だと声が低く暗くなりやすいので、高い声にしたいときは明るく弾む文にする
+    const sample = el("textarea"); sample.rows = 2; sample.value = c.design_text || ""; sample.setAttribute("aria-label", "候補を作るときの見本の文");
+    sample.placeholder = "空なら台詞から自動で作ります（高くしたいときは、そのキャラらしい明るく弾む文を）";
+    const sampleRow = el("div", "dir-row"); sampleRow.append(el("span", "spec-label", "見本の文（任意）"), sample);
+    sample.style.flex = "1 1 260px";
+    s1.append(roleRow, noteRow, sampleRow,
+      el("p", "dir-note", "見本の文：候補を作るときに読ませる文です。空なら、そのキャラの台詞（死亡時以外）を使います。短くそっけない台詞（「頭が高いわ」など）だと声が低く暗くなりやすいので、高い声にしたいときは、そのキャラらしい明るく弾む文を書くと高くなります。"),
       el("p", "dir-note", "性別・年代・高さ・声質は英語に直して渡すので、確実に効きます。日本語の欄は補足として渡すので、効き方は弱めです。性別を選ぶまでは、今の説明がそのまま使われます。\n※ここは「声そのもの」を決める欄です。「死に際は弱々しく」のような特定の台詞の演じ方を書くと、声全体が弱々しくなってしまいます。台詞ごとの演じ方は、声を決めたあとに各台詞の「演技の方針」に書いてください。"));
 
     // ③ 全文
@@ -536,7 +542,7 @@
     const s4 = el("section", "step");
     const save = el("button", "copy main", "保存して、候補を作る"); save.type = "button";
     save.addEventListener("click", async () => {
-      try { await saveDescription(key, text.value, sp.gender ? sp : null); renderHistory(); await runCommand(cmd, "候補を作る"); } catch (e) { toast(e.message); }
+      try { await saveDescription(key, text.value, sp.gender ? sp : null, sample.value); renderHistory(); await runCommand(cmd, "候補を作る"); } catch (e) { toast(e.message); }
     });
     const btns = el("div", "btns"); btns.append(save);
     s4.append(el("h4", "", "③ 保存して、候補を作る"), btns, el("code", "cmd", cmd),

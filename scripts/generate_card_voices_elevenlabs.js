@@ -198,6 +198,7 @@ function buildCast() {
       previous_descriptions: old[key] && old[key].previous_descriptions,
       tts: old[key] && old[key].tts,
       voice_spec: old[key] && old[key].voice_spec,
+      design_text: old[key] && old[key].design_text,
     };
   }
   writeJson(castFile, { _readme: "カードボイスのキャスト（話す人ごとの声）。el_description は ElevenLabs のボイスデザインに渡す説明。直してよい（cast を実行し直しても残る）。カミはカミのボイスの声を使う。", cast: out });
@@ -248,6 +249,9 @@ function loadCast() {
 // 読み上げる文：全角「？」は語尾が上がりにくいので半角にする。「……」はそのまま（間になる）
 const speechText = text => String(text).replace(/？/g, "?").replace(/！/g, "!");
 function designSample(key) {
+  // 試聴室で見本の文（design_text）を決めていればそれを使う（明るく弾む文だと高い声になりやすい）
+  const custom = (loadCast()[key] || {}).design_text;
+  if (custom) { let t = custom; while (t.length < 100) t += "　" + custom; return t.slice(0, 1000); }
   const { items } = collectLines();
   // 声を作るときの見本の文。死亡時（弱々しい台詞）が混ざると声全体が弱く暗くなるので、元気な台詞を先に使い、死亡時しか無いキャラだけ死亡時を使う
   const mine = items.filter(i => i.cast === key);
