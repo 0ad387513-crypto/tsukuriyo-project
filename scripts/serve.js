@@ -62,6 +62,7 @@ function writeArtFile(no, base, ext, data) {
   return file;
 }
 const voiceScriptFile = path.join(root, "tools", "voice-script", "card_voice_script.json");
+const voiceCastFile = path.join(root, "tools", "voice-script", "card_voice_cast.json");
 const voiceDirectionFile = path.join(root, "tools", "voice-script", "card_voice_direction.json");
 const VOICE_SCRIPT_FIELDS = ["summon", "attack", "death", "use", "reading", "note", "memo", "status"];
 async function handleDev(req, res, url) {
@@ -143,6 +144,29 @@ async function handleDev(req, res, url) {
     fs.renameSync(tmp, voiceScriptFile);
     console.log(`[voice-script] ${id}（${line.card}）の ${entries.map(([k]) => k).join("・")} を保存`);
     return sendJson(res, 200, { ok: true, line });
+  }
+  // ===== カードボイスの声の説明（試聴室の「声のイメージを変える」から保存）=====
+  // tools/voice-script/card_voice_cast.json の el_description を書き換え、前の説明は previous_descriptions に残す
+  if (url.pathname === "/__dev/voice-description" && req.method === "POST") {
+    const key = url.searchParams.get("cast") || "";
+    let body;
+    try { body = JSON.parse((await readBody(req, 16 * 1024)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "保存する内容の形式が正しくありません" }); }
+    const description = String(body.description || "").replace(/\s+/g, " ").trim();
+    if (description.length < 20 || description.length > 1000) return sendJson(res, 400, { ok: false, message: "声の説明は20〜1000文字にしてください（今は" + description.length + "文字）" });
+    if (/[<>{}]/.test(description)) return sendJson(res, 400, { ok: false, message: "声の説明に使えない文字があります" });
+    const all = JSON.parse(fs.readFileSync(voiceCastFile, "utf8"));
+    const c = all.cast && all.cast[key];
+    if (!c || c.kami) return sendJson(res, 404, { ok: false, message: "そのキャストは見つかりません" });
+    if (c.el_description === description) return sendJson(res, 200, { ok: true, cast: c, unchanged: true });
+    const prev = (c.previous_descriptions || []).filter(d => d !== description);
+    if (c.el_description) prev.push(c.el_description);
+    c.previous_descriptions = prev;
+    c.el_description = description;
+    const tmp = voiceCastFile + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify(all, null, 2) + "\n");
+    fs.renameSync(tmp, voiceCastFile);
+    console.log(`[voice-description] ${key} の声の説明を更新（${description.length}文字）`);
+    return sendJson(res, 200, { ok: true, cast: c });
   }
   // ===== カードボイスの演技指定（tools/voice-preview の試聴室から保存）=====
   // tools/voice-script/card_voice_direction.json に { 台詞ID: { text: "読み上げる文（台本と変えるときだけ）", direction: "演技の方針（日本語で自由に）", tags: "[confident]", stability: 0.4 } } で保存。

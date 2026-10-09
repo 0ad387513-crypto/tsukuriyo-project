@@ -264,7 +264,7 @@ async function design() {
       const added = (json.previews || []).map((p, i) => {
         const file = `${safe}-${start + i + 1}.mp3`;
         fs.writeFileSync(path.join(previewDir, file), Buffer.from(p.audio_base_64, "base64"));
-        return { choice: start + i + 1, generated_voice_id: p.generated_voice_id, file };
+        return { choice: start + i + 1, generated_voice_id: p.generated_voice_id, file, description: c.el_description, created: new Date().toISOString() };
       });
       record[key] = Object.assign(r, { candidates: kept.concat(added), description: c.el_description });
       writeJson(recordFile, record);
@@ -280,7 +280,7 @@ async function pick() {
   const r = record[key];
   const cand = r && (r.candidates || []).find(x => String(x.choice) === choice);
   if (!cand) { console.error("その候補が見つかりません。先に design を実行してください。"); process.exit(1); }
-  const json = await call("/text-to-voice", { voice_name: `tsukuriyo-card-${key}`.slice(0, 100), voice_description: (r.description || "").slice(0, 500), generated_voice_id: cand.generated_voice_id });
+  const json = await call("/text-to-voice", { voice_name: `tsukuriyo-card-${key}`.slice(0, 100), voice_description: (cand.description || r.description || "").slice(0, 500), generated_voice_id: cand.generated_voice_id });
   Object.assign(r, { voiceId: json.voice_id, choice: cand.choice, registered: new Date().toISOString(), released: undefined });
   writeJson(recordFile, record);
   console.log(`${key}：候補${cand.choice}を登録しました（${json.voice_id}）`);
