@@ -188,6 +188,8 @@
     if (m) { const src = m[1][0] === "n" ? data.lines[m[1]] : data.pairs[m[1]]; if (src && src[m[2]]) return src[m[2]]; }
     return it.text;
   }
+  // 実際に読み上げる文（その台詞だけの言い換えがあればそれ）
+  const spokenOf = i => (data.directions[i.ref] || {}).text || i.text;
   function multiBox(it) {
     const parts = partsOf(it);
     if (parts.length < 2) return null;
@@ -196,7 +198,7 @@
     box.append(el("span", "multi-head", parts.length + "人をまたぐ台詞（" + (together ? "同時に話す" : "順番に話す") + "）"));
     parts.forEach((p, i) => {
       const who = p.speaker || displayName(p.cast);
-      box.append(el("span", "multi-part" + (p.ref === it.ref ? " me" : ""), (i + 1) + ". " + who + "「" + p.text + "」" + (p.ref === it.ref ? "　← この台詞" : "")));
+      box.append(el("span", "multi-part" + (p.ref === it.ref ? " me" : ""), (i + 1) + ". " + who + "「" + spokenOf(p) + "」" + (p.ref === it.ref ? "　← この台詞" : "")));
     });
     return box;
   }
@@ -345,7 +347,9 @@
     const rival = p.kind === "rival";
     body.append(el("span", "pair-kind " + (rival ? "rival" : "ally"), rival ? "因縁（敵）" : "仲間（味方）"));
     body.append(el("span", "pair-who", (mine === "line" ? "話しかける相手：" : "話しかけてきた相手：") + otherName));
-    const otherText = p[other];
+    // 相手の台詞は、相手側で直した文（言い換え・台詞全体の書き換え）を反映して出す
+    const otherItems = (data.items || []).filter(i => i.group === m[1] + "-" + other);
+    const otherText = otherItems.length ? otherItems.map(spokenOf).join("／") : p[other];
     if (otherText) body.append(el("span", "pair-other", (mine === "line" ? "相手の返し：「" : "相手の台詞：「") + otherText + "」"));
     if (p.note) body.append(el("span", "pair-other", "台本のメモ：" + p.note));
     box.append(body);
