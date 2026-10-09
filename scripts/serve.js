@@ -145,7 +145,7 @@ async function handleDev(req, res, url) {
     return sendJson(res, 200, { ok: true, line });
   }
   // ===== カードボイスの演技指定（tools/voice-preview の試聴室から保存）=====
-  // tools/voice-script/card_voice_direction.json に { 台詞ID: { tags: "[crisp]", stability: 0.4 } } で保存。
+  // tools/voice-script/card_voice_direction.json に { 台詞ID: { text: "読み上げる文（台本と変えるときだけ）", tags: "[confident]", stability: 0.4 } } で保存。
   // generate_card_voices_elevenlabs.js lines がこれを読んで、演技タグと安定度を付けて作る
   if (url.pathname === "/__dev/voice-direction" && req.method === "GET") {
     return sendJson(res, 200, { ok: true, directions: fs.existsSync(voiceDirectionFile) ? JSON.parse(fs.readFileSync(voiceDirectionFile, "utf8")) : {} });
@@ -156,16 +156,18 @@ async function handleDev(req, res, url) {
     let body;
     try { body = JSON.parse((await readBody(req, 4096)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "保存する内容の形式が正しくありません" }); }
     const tags = String(body.tags || "").trim();
+    const text = String(body.text || "").trim();
+    if (text.length > 300 || /[<>{}]/.test(text)) return sendJson(res, 400, { ok: false, message: "読み上げる文が長すぎるか、使えない文字があります" });
     const stability = body.stability === null || body.stability === undefined || body.stability === "" ? null : Number(body.stability);
     if (tags.length > 120 || /[<>{}]/.test(tags)) return sendJson(res, 400, { ok: false, message: "演技タグが長すぎるか、使えない文字があります" });
     if (stability !== null && !(stability >= 0 && stability <= 1)) return sendJson(res, 400, { ok: false, message: "安定度は0〜1で指定してください" });
     const all = fs.existsSync(voiceDirectionFile) ? JSON.parse(fs.readFileSync(voiceDirectionFile, "utf8")) : {};
-    if (!tags && stability === null) delete all[ref];
-    else all[ref] = Object.assign({}, tags ? { tags } : {}, stability !== null ? { stability } : {}, { updatedAt: new Date().toISOString() });
+    if (!text && !tags && stability === null) delete all[ref];
+    else all[ref] = Object.assign({}, text ? { text } : {}, tags ? { tags } : {}, stability !== null ? { stability } : {}, { updatedAt: new Date().toISOString() });
     const tmp = voiceDirectionFile + ".tmp";
     fs.writeFileSync(tmp, JSON.stringify(all, null, 1) + "\n");
     fs.renameSync(tmp, voiceDirectionFile);
-    console.log(`[voice-direction] ${ref}：${tags || "（タグなし）"}${stability !== null ? ` 安定度${stability}` : ""}`);
+    console.log(`[voice-direction] ${ref}：${text ? "読み替え「" + text + "」 " : ""}${tags || "（タグなし）"}${stability !== null ? ` 安定度${stability}` : ""}`);
     return sendJson(res, 200, { ok: true, direction: all[ref] || null });
   }
   return sendJson(res, 404, { ok: false, message: "not found" });

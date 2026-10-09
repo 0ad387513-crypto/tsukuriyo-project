@@ -48,7 +48,7 @@ const previewDir = path.join(outDir, "previews");
 const recordFile = path.join(outDir, "voices.json");
 const castFile = path.join(scriptDir, "card_voice_cast.json");
 const audioDir = path.join(scriptDir, "audio");
-// 台詞ごとの演技指定（試聴室で保存。{ "n051-summon": { tags: "[crisp]", stability: 0.4 } }）
+// 台詞ごとの読み替え・演技指定（試聴室で保存。{ "n051-summon": { text: "読み上げる文", tags: "[confident]", stability: 0.4 } }）
 const directionFile = path.join(scriptDir, "card_voice_direction.json");
 
 const readJson = (file, fallback) => { try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return fallback; } };
@@ -306,7 +306,7 @@ async function lines() {
     if (record[it.cast] && record[it.cast].released) { console.warn(`${it.ref}：${it.cast} の声は削除済みのため作れません`); failed.push(it.ref); continue; }
     // 台詞ごとの読み上げ文の上書き（card_voice_cast.json の tts に { "n051-summon": "…" } と書く）
     const dir = directions[it.ref] || {};
-    const text = (dir.tags ? dir.tags.trim() + " " : "") + speechText((c.tts && c.tts[it.ref]) || it.text);
+    const text = (dir.tags ? dir.tags.trim() + " " : "") + speechText(dir.text || (c.tts && c.tts[it.ref]) || it.text);
     const stability = Number.isFinite(dir.stability) ? dir.stability : el.stability;
     console.log(`${it.ref}（${it.cast}）：${text}${stability !== el.stability ? `（安定度${stability}）` : ""}`);
     try {
