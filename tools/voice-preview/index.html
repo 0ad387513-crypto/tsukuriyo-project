@@ -69,6 +69,10 @@
   .step textarea { font: inherit; font-size: 14px; padding: 6px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); resize: vertical; width: 100%; }
   .step textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
   .step > .copy.small { justify-self: start; }
+  .orig { color: var(--muted); }
+  .orig[hidden] { display: none; }
+  details.adv summary { font-size: 12px; color: var(--muted); cursor: pointer; }
+  details.adv .dir-row { margin-top: 6px; }
   .cmd { display: block; font-family: Consolas, "Courier New", monospace; font-size: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; overflow-wrap: anywhere; user-select: all; }
   .preset:focus-visible, .dir-row input:focus-visible, .dir-row select:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 </style>
@@ -76,7 +80,7 @@
 <body>
 <div class="wrap">
   <h1>カードボイス 試聴室</h1>
-  <p class="lead">声の候補と、作った台詞を聴いて確認するページです。「この候補に決める」を押すと登録用のコマンドがコピーされるので、PowerShell に貼り付けて実行してください。新しい候補を作ったあとは「最新の状態に更新」を押します。台詞の「直す・作り直す」から、読み上げる文の言い換えと演技（はきはき・ささやく など）を台詞ごとに指定して、作り直すコマンドをコピーできます。指定はこのPCの確認用サーバーにだけ保存されます。</p>
+  <p class="lead">声の候補と、作った台詞を聴いて確認するページです。「この候補に決める」を押すと登録用のコマンドがコピーされるので、PowerShell に貼り付けて実行してください。新しい候補を作ったあとは「最新の状態に更新」を押します。台詞の「直す・作り直す」から、読み上げる文の言い換えと演技の方針（「戦闘中の掛け声として」など自由に書けます）を台詞ごとに指定して、作り直すコマンドをコピーできます。指定はこのPCの確認用サーバーにだけ保存されます。</p>
   <div class="bar">
     <input type="search" id="q" placeholder="キャスト名で探す（例：ライカ）" aria-label="キャスト名で探す">
     <label for="show">表示
@@ -98,11 +102,7 @@
   const TOOL = "node scripts/generate_card_voices_elevenlabs.js";
   let data = { cast: {}, record: {}, lines: {}, pairs: {}, items: null, directions: {} };
   // 演技の指定。ElevenLabs の演技タグ（英語の [ ] 書き）を台詞の頭に付けて読ませる。1〜2個までが自然
-  const PRESETS = [
-    ["はきはき", "[confident]"], ["元気に", "[excited]"], ["明るく", "[cheerfully]"], ["落ち着いて", "[calm]"],
-    ["力強く", "[determined]"], ["ささやく", "[whispers]"], ["叫ぶ", "[shouting]"], ["悲しげに", "[sad]"],
-    ["怒って", "[angry]"], ["笑いながら", "[laughs]"], ["ため息まじり", "[sighs]"], ["いたずらっぽく", "[mischievously]"],
-  ];
+  const PRESETS = ["戦闘中の掛け声として", "敵に斬りかかる瞬間", "攻撃を受けて", "倒れる間際に", "はきはきと", "明るく元気に", "落ち着いて", "力強く", "ささやくように", "悲しげに", "怒りをこめて", "笑いながら", "叫びすぎない"];
   const STABILITY = [["", "標準（共通の設定 0.5）"], ["0", "0：表情を大きく（ぶれやすい）"], ["0.5", "0.5：自然"], ["1", "1：安定（平板になりやすい）"]];
   async function saveDirection(ref, body) {
     const r = await fetch("/__dev/voice-direction?ref=" + encodeURIComponent(ref), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -110,13 +110,21 @@
     if (!r.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
     if (j.direction) data.directions[ref] = j.direction; else delete data.directions[ref];
   }
+  // 台詞の行の表示を、保存した指定に合わせて更新する
+  function showLine(it, spoken, orig, label) {
+    const d = data.directions[it.ref] || {};
+    spoken.textContent = d.text || it.text;
+    orig.textContent = d.text ? "台本の文：" + it.text : "";
+    orig.hidden = !d.text;
+    refresh();
+  }
   function describe(ref) {
     const d = data.directions[ref];
     if (!d) return "";
-    return [d.text ? "読み替えあり" : "", d.tags ? "演技 " + d.tags : "", d.stability !== undefined ? "安定度" + d.stability : ""].filter(Boolean).join("・");
+    return [d.text ? "読み替えあり" : "", d.direction ? "方針「" + (d.direction.length > 24 ? d.direction.slice(0, 24) + "…" : d.direction) + "」" : "", d.tags ? "タグ " + d.tags : "", d.stability !== undefined ? "安定度" + d.stability : ""].filter(Boolean).join("・");
   }
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
-  function fixPanel(it, label) {
+  function fixPanel(it, refresh) {
     const cur = data.directions[it.ref] || {};
     const cmd = TOOL + " lines --ref " + it.ref + " --force";
     const box = el("div", "dir"); box.hidden = true;
@@ -129,24 +137,26 @@
     s1.append(el("h4", "", "① 読み上げる文を変える（必要なときだけ）"), text,
       el("p", "dir-note", "台本の文はそのままで、音声だけこの文で作ります。読み間違いを直すときは、ひらがなにしたり「、」で間を入れたりします。台本そのものを変えるときは共有ページで編集してください。"), reset);
 
-    // ② 演技
+    // ② 演技の方針（日本語で自由に）
     const s2 = el("section", "step");
-    const tags = el("input"); tags.type = "text"; tags.value = cur.tags || ""; tags.placeholder = "下のボタンで入ります（例：[confident]）"; tags.setAttribute("aria-label", "演技タグ");
+    const direction = el("textarea"); direction.rows = 2; direction.value = cur.direction || ""; direction.setAttribute("aria-label", "演技の方針");
+    direction.placeholder = "例：戦闘中、敵に斬りかかる瞬間の短い気合いの掛け声。叫びすぎない";
     const presets = el("div", "presets");
-    const sync = () => presets.querySelectorAll(".preset").forEach(b => b.setAttribute("aria-pressed", tags.value.includes(b.dataset.tag) ? "true" : "false"));
-    for (const [ja, tag] of PRESETS) {
-      const b = el("button", "preset", ja); b.type = "button"; b.dataset.tag = tag; b.title = tag;
-      b.addEventListener("click", () => { tags.value = (tags.value.includes(tag) ? tags.value.replace(tag, "") : tags.value + " " + tag).replace(/\s+/g, " ").trim(); sync(); });
+    for (const phrase of PRESETS) {
+      const b = el("button", "preset", "＋" + phrase); b.type = "button";
+      b.addEventListener("click", () => { const v = direction.value.trim(); direction.value = v ? v.replace(/[。、]$/, "") + "、" + phrase : phrase; direction.focus(); });
       presets.append(b);
     }
-    tags.addEventListener("input", sync); sync();
     const sel = el("select"); sel.setAttribute("aria-label", "安定度");
     for (const [v, t] of STABILITY) sel.append(new Option(t, v));
     sel.value = cur.stability === undefined ? "" : String(cur.stability);
-    const r1 = el("div", "dir-row"); r1.append("演技タグ", tags);
     const r2 = el("div", "dir-row"); r2.append("安定度", sel);
-    s2.append(el("h4", "", "② 演技を指定する（必要なときだけ）"), presets, r1, r2,
-      el("p", "dir-note", "付けすぎると不自然になるので、タグは1〜2個が目安です。"));
+    // 以前の英語タグ（残っている指定だけ見せる）
+    const tags = el("input"); tags.type = "text"; tags.value = cur.tags || ""; tags.setAttribute("aria-label", "英語の演技タグ"); tags.placeholder = "例：[excited]";
+    const adv = el("details", "adv"); const advSum = el("summary", "", "英語の演技タグ（細かく効かせたいときだけ）");
+    const r1 = el("div", "dir-row"); r1.append(tags); adv.append(advSum, r1); adv.open = !!cur.tags;
+    s2.append(el("h4", "", "② 演技の方針を書く（必要なときだけ）"), direction, presets,
+      el("p", "dir-note", "どんな場面で、どんな気持ちで言うのかを日本語で自由に書いてください。読み上げられることはなく、台詞の直前の状況として声の演技に使われます。ボタンを押すと言葉が書き足されます。"), r2, adv);
 
     // ③ 保存してコマンドをコピー
     const s3 = el("section", "step");
@@ -157,13 +167,13 @@
     save.addEventListener("click", async () => {
       try {
         const t = text.value.trim();
-        await saveDirection(it.ref, { text: t && t !== it.text ? t : "", tags: tags.value.trim(), stability: sel.value === "" ? null : Number(sel.value) });
-        label.textContent = describe(it.ref);
+        await saveDirection(it.ref, { text: t && t !== it.text ? t : "", direction: direction.value.trim(), tags: tags.value.trim(), stability: sel.value === "" ? null : Number(sel.value) });
+        refresh();
         await copy(cmd);
       } catch (e) { toast(e.message); }
     });
     clear.addEventListener("click", async () => {
-      try { await saveDirection(it.ref, { text: "", tags: "", stability: null }); text.value = it.text; tags.value = ""; sel.value = ""; sync(); label.textContent = describe(it.ref); toast("指定を消しました（台本の文・標準の演技で作ります）"); } catch (e) { toast(e.message); }
+      try { await saveDirection(it.ref, { text: "", direction: "", tags: "", stability: null }); text.value = it.text; direction.value = ""; tags.value = ""; sel.value = ""; refresh(); toast("指定を消しました（台本の文・標準の演技で作ります）"); } catch (e) { toast(e.message); }
     });
     s3.append(el("h4", "", "③ 保存して、作り直すコマンドをコピー"), btns, code,
       el("p", "dir-note", "コピーしたコマンドを PowerShell に貼り付けて実行すると、この台詞だけ作り直します。終わったら上の「最新の状態に更新」を押して聴き直してください。①②を変えずに押すと、同じ指定のまま作り直します（毎回少しずつ違う読み方になります）。"));
@@ -273,11 +283,15 @@
         for (const it of items) {
           const url = "/voices/cards/" + encodeURIComponent(it.ref) + ".mp3";
           const row = document.createElement("div"); row.className = "line-row";
-          const t = document.createElement("div"); t.textContent = it.text;
+          const t = document.createElement("div");
+          const spoken = document.createElement("span"); spoken.className = "spoken";
+          const orig = document.createElement("small"); orig.className = "orig";
+          t.append(spoken, orig);
           const small = document.createElement("small"); small.textContent = `${it.card}｜${it.field}｜${it.ref}`;
           const dirLabel = document.createElement("span"); dirLabel.className = "dir-tag"; dirLabel.textContent = describe(it.ref); small.append(dirLabel); t.append(small);
           const holder = document.createElement("div"); holder.className = "missing"; holder.textContent = "確認中…";
-          const panel = fixPanel(it, dirLabel);
+          const refresh = () => showLine(it, spoken, orig, dirLabel); refresh();
+          const panel = fixPanel(it, refresh);
           const act = document.createElement("button"); act.type = "button"; act.className = "copy small"; act.textContent = "直す・作り直す"; act.setAttribute("aria-expanded", "false");
           act.addEventListener("click", () => { panel.hidden = !panel.hidden; act.setAttribute("aria-expanded", String(!panel.hidden)); act.textContent = panel.hidden ? "直す・作り直す" : "閉じる"; });
           const acts = document.createElement("div"); acts.className = "line-acts"; acts.append(act);

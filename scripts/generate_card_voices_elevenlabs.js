@@ -48,7 +48,7 @@ const previewDir = path.join(outDir, "previews");
 const recordFile = path.join(outDir, "voices.json");
 const castFile = path.join(scriptDir, "card_voice_cast.json");
 const audioDir = path.join(scriptDir, "audio");
-// 台詞ごとの読み替え・演技指定（試聴室で保存。{ "n051-summon": { text: "読み上げる文", tags: "[confident]", stability: 0.4 } }）
+// 台詞ごとの読み替え・演技指定（試聴室で保存。{ "n051-summon": { text: "読み上げる文", direction: "演技の方針（日本語）", tags: "[confident]", stability: 0.4 } }）
 const directionFile = path.join(scriptDir, "card_voice_direction.json");
 
 const readJson = (file, fallback) => { try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return fallback; } };
@@ -310,7 +310,19 @@ async function lines() {
     const stability = Number.isFinite(dir.stability) ? dir.stability : el.stability;
     console.log(`${it.ref}（${it.cast}）：${text}${stability !== el.stability ? `（安定度${stability}）` : ""}`);
     try {
-      const audio = await call(`/text-to-speech/${voiceId}?output_format=mp3_44100_64`, { text, model_id: el.model, language_code: el.language_code, voice_settings: { stability } }, true);
+      const body = { text, model_id: el.model, language_code: el.language_code, voice_settings: { stability } };
+      // 演技の方針（日本語の自由記述）は「台詞の直前の文脈」として渡す。読み上げられず、言い方だけに効く
+      const direction = (dir.direction || "").trim();
+      if (direction) { body.previous_text = direction.replace(/[。．.]?$/, "。"); console.log(`  演技の方針：${direction}`); }
+      let audio;
+      try { audio = await call(`/text-to-speech/${voiceId}?output_format=mp3_44100_64`, body, true); }
+      catch (e) {
+        // モデルが文脈の指定に対応していないときは、方針を演技タグとして台詞の頭に付けて作り直す
+        if (!direction || !/previous_text|not supported|unsupported/i.test(String(e.message))) throw e;
+        console.warn("  このモデルは文脈の指定に対応していないため、方針を [ ] の演技指定として付けて作ります。方針が読み上げられていないか聴いて確認してください");
+        delete body.previous_text; body.text = `[${direction}] ` + text;
+        audio = await call(`/text-to-speech/${voiceId}?output_format=mp3_44100_64`, body, true);
+      }
       fs.writeFileSync(out, audio);
       chars += text.length;
     } catch (e) { console.error(`  × 失敗：${String(e.message || e).slice(0, 300)}`); failed.push(it.ref); }
