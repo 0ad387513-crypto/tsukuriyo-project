@@ -293,6 +293,8 @@ async function pick() {
   } catch (e) {
     // 同じ候補をもう一度登録しようとしたとき（ElevenLabs では候補のIDがそのまま声のIDになる）は、登録済みとして続ける
     if (!/already been created/.test(String(e.message))) throw e;
+    // 一度登録して ElevenLabs から外した候補は、もう使えない
+    if (r.released || (r.previousVoiceIds || []).includes(cand.generated_voice_id)) throw new Error(`${key}：候補${cand.choice}は一度登録して ElevenLabs から削除した声なので、もう使えません。候補を新しく作ってください`);
     voiceId = cand.generated_voice_id;
     console.log(`${key}：候補${cand.choice}はもう登録されています（${voiceId}）`);
   }

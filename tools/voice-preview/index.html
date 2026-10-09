@@ -498,6 +498,12 @@
       const st = steps.find(x => x.command === "pick");
       if ((data.record[st.cast] || {}).voiceId && !confirm("「" + displayName(st.cast) + "」はもう声が登録されています。候補" + st.choice + "で登録し直しますか？\n・前の声は ElevenLabs から削除されます（声の枠が1つ空きます）\n・「決めて台詞まで作る」なら、台詞もすべて新しい声で作り直します")) return;
     }
+    // 声を ElevenLabs から外したキャラの台詞は作り直せない（指定の保存はできている）
+    const released = [...new Set(steps.filter(st => st.command === "lines").map(st => st.cast || ((data.items || []).find(i => i.ref === st.ref || i.group === st.ref) || {}).cast).filter(k => k && (data.record[k] || {}).released))];
+    if (released.length && !steps.some(st => st.command === "pick")) {
+      showRunner("作り直せません", "ng", "「" + released.map(displayName).join("」「") + "」の声は、台詞が完成したので ElevenLabs から外しています。そのため、この声で台詞を作り直すことはできません（入力した指定は保存されています）。\n作り直したいときは、そのキャラの候補を新しく作って登録し直してください（声の枠を1つ使います）。");
+      return;
+    }
     let res, j;
     try {
       res = await fetch("/__dev/voice-run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ steps, label: label || cmd.replace(/^.*generate_card_voices_elevenlabs\.js /, "") }) });
