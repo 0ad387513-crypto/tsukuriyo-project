@@ -178,7 +178,8 @@ function buildCast() {
       labels: [...new Set(c.labels)],
       lines: c.refs.length,
       // 手で直した説明は残す
-      el_description: kami ? undefined : ((args.includes('--keep-descriptions') && old[key] && old[key].el_description) || draftDescription(key, c.labels.length ? c.labels : [key], c.notes)),
+      // 手で直した説明は残す（下書きから作り直すときだけ --reset-descriptions）
+      el_description: kami ? undefined : ((!args.includes('--reset-descriptions') && old[key] && old[key].el_description) || draftDescription(key, c.labels.length ? c.labels : [key], c.notes)),
     };
   }
   writeJson(castFile, { _readme: "カードボイスのキャスト（話す人ごとの声）。el_description は ElevenLabs のボイスデザインに渡す説明。直してよい（cast を実行し直しても残る）。カミはカミのボイスの声を使う。", cast: out });
