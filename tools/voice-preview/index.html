@@ -62,6 +62,14 @@
   .empty { color: var(--muted); padding: 30px 0; }
   .line-acts { display: flex; gap: 6px; }
   .dir-tag { font-size: 11px; color: var(--gold); margin-left: 6px; }
+  .pair { margin-top: 6px; display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); }
+  .pair .thumb { width: 40px; flex: none; }
+  .pair-body { min-width: 0; display: grid; gap: 2px; font-size: 12px; }
+  .pair-kind { justify-self: start; font-size: 11px; font-weight: 700; padding: 0 8px; border-radius: 999px; }
+  .pair-kind.rival { background: #4a2228; color: #ff9fa8; }
+  .pair-kind.ally { background: #1f3a2b; color: #7fd3a0; }
+  .pair-who { color: var(--ink); }
+  .pair-other { color: var(--muted); }
   .dir { grid-column: 1 / -1; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
   .dir[hidden] { display: none; }
   .presets { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -206,6 +214,28 @@
     });
     return b;
   }
+  function pairInfo(it) {
+    const m = /^(p\d+)-(line|reply)/.exec(it.ref);
+    const p = m && data.pairs[m[1]];
+    if (!p) return null;
+    const mine = m[2];
+    const other = mine === "line" ? "reply" : "line";
+    const otherItem = (data.items || []).find(i => i.group === m[1] + "-" + other) || {};
+    const otherName = mine === "line" ? (p.replyBy || p.target || "") : (p.whoSpeaker || p.whoCard || "");
+    const otherCardId = otherItem.cardId || (mine === "reply" ? p.who : "");
+    const otherCardTitle = (data.lines[otherCardId] || {}).card || (mine === "reply" ? p.whoCard : "");
+    const box = el("div", "pair");
+    box.append(cardThumb(otherCardId, otherCardTitle || otherName));
+    const body = el("div", "pair-body");
+    const rival = p.kind === "rival";
+    body.append(el("span", "pair-kind " + (rival ? "rival" : "ally"), rival ? "因縁（敵）" : "仲間（味方）"));
+    body.append(el("span", "pair-who", (mine === "line" ? "話しかける相手：" : "話しかけてきた相手：") + otherName));
+    const otherText = p[other];
+    if (otherText) body.append(el("span", "pair-other", (mine === "line" ? "相手の返し：「" : "相手の台詞：「") + otherText + "」"));
+    if (p.note) body.append(el("span", "pair-other", "台本のメモ：" + p.note));
+    box.append(body);
+    return box;
+  }
   const enc = p => p.split("/").map(encodeURIComponent).join("/");
   const bust = () => "?t=" + Date.now(); // 作り直した音声を古いまま流さない
 
@@ -226,7 +256,7 @@
     // cast を実行すると作られる一覧があれば、それで正確に並べる（複数人の台詞も1人分ずつ出る）
     if (data.items) {
       const field = ref => ({ summon: "召喚時", attack: "攻撃時", death: "死亡時", use: "使用時", line: "掛け合い", reply: "返し" })[ref.split("-")[1]] || "";
-      return data.items.filter(i => i.cast === key).map(i => ({ ref: i.ref, card: i.card, field: field(i.ref) + (i.ref !== i.group ? "（" + (i.together ? "同時" : "複数人") + "）" : ""), text: i.text, cardId: i.cardId }));
+      return data.items.filter(i => i.cast === key).map(i => ({ ref: i.ref, card: (data.lines[i.cardId] || {}).card || i.card, field: field(i.ref) + (i.ref !== i.group ? "（" + (i.together ? "同時" : "複数人") + "）" : ""), text: i.text, cardId: i.cardId }));
     }
     const out = [];
     const c = data.cast[key] || {};
@@ -318,7 +348,8 @@
           const orig = document.createElement("small"); orig.className = "orig";
           t.append(spoken, orig);
           const small = document.createElement("small"); small.textContent = `${it.card}｜${it.field}｜${it.ref}`;
-          const dirLabel = document.createElement("span"); dirLabel.className = "dir-tag"; dirLabel.textContent = describe(it.ref); small.append(dirLabel); t.append(small);
+          const pairBox = pairInfo(it);
+          const dirLabel = document.createElement("span"); dirLabel.className = "dir-tag"; dirLabel.textContent = describe(it.ref); small.append(dirLabel); t.append(small); if (pairBox) t.append(pairBox);
           const holder = document.createElement("div"); holder.className = "missing"; holder.textContent = "確認中…";
           const refresh = () => showLine(it, spoken, orig, dirLabel); refresh();
           const panel = fixPanel(it, refresh);
