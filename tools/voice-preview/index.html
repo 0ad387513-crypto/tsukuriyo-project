@@ -23,6 +23,22 @@
   .bar label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
   .bar select, .bar button { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
   .summary { font-size: 13px; color: var(--muted); }
+  .bar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .bar-foot { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); }
+  .bar .tab { font: inherit; font-size: 14px; font-weight: 700; padding: 6px 14px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--muted); cursor: pointer; margin-bottom: -1px; }
+  .tab[aria-selected="true"] { color: var(--gold); border-bottom-color: var(--gold); }
+  .tab small { font-weight: 400; font-size: 11px; margin-left: 4px; }
+  .cast-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-height: 108px; overflow-y: auto; }
+  .bar .ctab { font: inherit; width: max-content; flex: none; font-size: 13px; padding: 3px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .ctab::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--line); flex: none; }
+  .ctab.cand::before { background: var(--gold); }
+  .ctab.done::before { background: var(--ok); }
+  .ctab[aria-selected="true"] { border-color: var(--gold); background: var(--gold-soft); color: var(--gold); font-weight: 700; }
+  .ctab.all { color: var(--muted); }
+  .ctab.all::before { display: none; }
+  .tab:focus-visible, .ctab:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .legend { font-size: 11px; color: var(--muted); }
   .cast { border-top: 1px solid var(--line); padding-block: 16px; display: grid; gap: 10px; }
   .cast-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
   .cast-name { font-family: "Shippori Mincho", "Yu Mincho", serif; font-size: 20px; font-weight: 700; }
@@ -97,18 +113,11 @@
 <body>
 <div class="wrap">
   <h1>カードボイス 試聴室</h1>
-  <p class="lead">声の候補と、作った台詞を聴いて確認するページです。「この候補に決める」を押すと登録用のコマンドがコピーされるので、PowerShell に貼り付けて実行してください。新しい候補を作ったあとは「最新の状態に更新」を押します。台詞の「直す・作り直す」から、読み上げる文の言い換えと演技の方針（「戦闘中の掛け声として」など自由に書けます）を台詞ごとに指定して、作り直すコマンドをコピーできます。指定はこのPCの確認用サーバーにだけ保存されます。</p>
+  <p class="lead">声の候補と、作った台詞を聴いて確認するページです。「この候補に決める」を押すと登録用のコマンドがコピーされるので、PowerShell に貼り付けて実行してください。上のタブで種族とキャストを選びます。新しい候補を作ったあとは「最新の状態に更新」を押します。台詞の「直す・作り直す」から、読み上げる文の言い換えと演技の方針（「戦闘中の掛け声として」など自由に書けます）を台詞ごとに指定して、作り直すコマンドをコピーできます。指定はこのPCの確認用サーバーにだけ保存されます。</p>
   <div class="bar">
-    <input type="search" id="q" placeholder="キャスト名で探す（例：ライカ）" aria-label="キャスト名で探す">
-    <label for="show">表示
-      <select id="show">
-        <option value="active">候補・声があるキャスト</option>
-        <option value="all">すべてのキャスト</option>
-        <option value="todo">未着手のキャスト</option>
-      </select>
-    </label>
-    <button type="button" id="reload">最新の状態に更新</button>
-    <span class="summary" id="summary"></span>
+    <div class="tabs" role="tablist" aria-label="種族" id="tribes"></div>
+    <div class="cast-tabs" role="tablist" aria-label="キャスト" id="castTabs"></div>
+    <div class="bar-foot"><button type="button" id="reload">最新の状態に更新</button><span class="summary" id="summary"></span></div>
   </div>
   <main id="list"><div class="empty">読み込んでいます…</div></main>
 </div>
@@ -272,24 +281,82 @@
     return out.filter(o => card ? o.ref.startsWith(card) : (o.speaker || "").includes(base));
   }
 
+  // 種族のタブ。オラクル・レリックだけに出るキャストは「その他」。「作業中」は候補か声があるキャスト
+  const TRIBES = ["忍者", "侍", "人獣", "神使", "妖怪", "龍"];
+  let view = { tribe: null, cast: null };
+  const castState = key => { const r = data.record[key] || {}; return r.voiceId ? "done" : (r.candidates || []).length ? "cand" : "todo"; };
+  function tribesOf(key) {
+    const secs = new Set((data.items || []).filter(i => i.cast === key && !i.ref.startsWith("p")).map(i => i.section));
+    const t = TRIBES.filter(x => secs.has(x));
+    return t.length ? t : ["その他"];
+  }
+  // 名前のない役（探求者:n061 など）はカード名で見せる
+  function displayName(key) {
+    const m = /^(.+):(n\d+)$/.exec(key);
+    if (!m) return key;
+    return (data.lines[m[2]] || {}).card || key;
+  }
+  // カードの番号順に並べる（そのキャストが話す一番若い番号）
+  function firstNo(key) {
+    let min = 9999;
+    for (const i of data.items || []) if (i.cast === key && !i.ref.startsWith("p")) { const n = parseInt(String(i.cardId || i.ref).replace(/^n/, ""), 10); if (n < min) min = n; }
+    return min;
+  }
+  function castsIn(tribe, keys) {
+    const list = tribe === "作業中" ? keys.filter(k => castState(k) !== "todo") : keys.filter(k => tribesOf(k).includes(tribe));
+    return list.sort((a, b) => firstNo(a) - firstNo(b));
+  }
+  function setView(tribe, cast) {
+    view = { tribe, cast };
+    try { const saved = JSON.parse(sessionStorage.getItem(SCROLL_KEY) || "{}") || {}; sessionStorage.setItem(SCROLL_KEY, JSON.stringify(Object.assign(saved, { tribe, cast, anchor: null, y: 0 }))); } catch (e) {}
+    scrollTo(0, 0);
+    render();
+  }
+  function renderTabs(keys) {
+    const tribes = ["作業中", ...TRIBES, "その他"].filter(t => t === "作業中" || castsIn(t, keys).length);
+    if (!tribes.includes(view.tribe)) view.tribe = castsIn("作業中", keys).length ? "作業中" : TRIBES[0];
+    const inTribe = castsIn(view.tribe, keys);
+    if (view.cast !== "*" && !inTribe.includes(view.cast)) view.cast = inTribe[0] || "*";
+    $("tribes").replaceChildren(...tribes.map(t => {
+      const list = castsIn(t, keys);
+      const b = el("button", "tab", t); b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(t === view.tribe));
+      b.append(el("small", "", t === "作業中" ? list.length + "人" : list.filter(k => castState(k) === "done").length + "/" + list.length));
+      b.addEventListener("click", () => setView(t, null));
+      return b;
+    }));
+    const chips = inTribe.map(k => {
+      const st = castState(k);
+      const b = el("button", "ctab " + st, displayName(k)); b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(k === view.cast));
+      b.title = k + "｜" + { done: "声を登録済み", cand: "候補あり（未決定）", todo: "未着手" }[st];
+      b.addEventListener("click", () => setView(view.tribe, k));
+      return b;
+    });
+    if (inTribe.length > 1) {
+      const all = el("button", "ctab all", "この種族をすべて表示"); all.type = "button"; all.setAttribute("role", "tab"); all.setAttribute("aria-selected", String(view.cast === "*"));
+      all.addEventListener("click", () => setView(view.tribe, "*"));
+      chips.push(all);
+    }
+    const legend = el("span", "legend", "● 緑：声を登録済み　● 金：候補あり　● 灰：未着手");
+    $("castTabs").replaceChildren(...chips, legend);
+    return view.cast === "*" ? inTribe : inTribe.filter(k => k === view.cast);
+  }
+
   async function render() {
-    const q = $("q").value.trim();
-    const show = $("show").value;
-    const keys = Object.keys(data.cast).filter(k => !data.cast[k].kami);
+    const allKeys = Object.keys(data.cast).filter(k => !data.cast[k].kami);
+    const keys = allKeys;
+    const visible = new Set(renderTabs(allKeys));
     let shown = 0, withVoice = 0, withCand = 0;
     const frag = document.createDocumentFragment();
     for (const key of keys) {
       const c = data.cast[key], r = data.record[key] || {};
       const cands = r.candidates || [];
       if (r.voiceId) withVoice++; if (cands.length) withCand++;
-      const active = cands.length || r.voiceId;
-      if (show === "active" && !active) continue;
-      if (show === "todo" && active) continue;
-      if (q && !key.includes(q) && !(c.labels || []).join(" ").includes(q)) continue;
+      if (!visible.has(key)) continue;
       shown++;
       const sec = document.createElement("section"); sec.className = "cast"; sec.dataset.anchor = "cast:" + key;
       const head = document.createElement("div"); head.className = "cast-head";
-      const name = document.createElement("span"); name.className = "cast-name"; name.textContent = key;
+      const name = document.createElement("span"); name.className = "cast-name"; name.textContent = displayName(key);
+      if (displayName(key) !== key) name.title = key;
       const state = document.createElement("span"); state.className = "chip" + (r.voiceId ? " done" : "");
       state.textContent = r.released ? "声削除済み" : r.voiceId ? (r.source === "library" ? "ライブラリの声で登録済み" : `候補${r.choice}で登録済み`) : cands.length ? `候補${cands.length}個` : "未着手";
       const labels = document.createElement("span"); labels.className = "labels"; labels.textContent = (c.labels || []).join("／") + `｜台詞${c.lines || 0}本`;
@@ -370,7 +437,7 @@
       frag.append(sec);
     }
     $("list").replaceChildren(frag);
-    if (!shown) $("list").replaceChildren(Object.assign(document.createElement("div"), { className: "empty", textContent: show === "active" ? "まだ候補を作ったキャストがありません。「表示：すべてのキャスト」で一覧を見られます。" : "該当するキャストがありません。" }));
+    if (!shown) $("list").replaceChildren(Object.assign(document.createElement("div"), { className: "empty", textContent: view.tribe === "作業中" ? "まだ候補を作ったキャストがありません。上の種族のタブから選んでください。" : "該当するキャストがありません。" }));
     $("summary").textContent = `キャスト${keys.length}人｜候補あり${withCand}人｜声を登録済み${withVoice}人`;
   }
 
@@ -387,8 +454,6 @@
     await render();
   }
   $("viewer").addEventListener("click", () => $("viewer").close());
-  $("q").addEventListener("input", render);
-  $("show").addEventListener("change", render);
   $("reload").addEventListener("click", async () => { rememberScroll(); await load(); restoreScroll(); toast("最新の状態に更新しました"); });
   const SCROLL_KEY = "voicePreview.scroll";
   if ("scrollRestoration" in history) history.scrollRestoration = "manual";
@@ -398,7 +463,7 @@
       const r = e.getBoundingClientRect();
       if (r.bottom > 60) { anchor = e.dataset.anchor; offset = r.top; if (e.classList.contains("line-row")) break; if (r.top >= 0) break; }
     }
-    try { sessionStorage.setItem(SCROLL_KEY, JSON.stringify({ anchor, offset, y: scrollY, q: $("q").value, show: $("show").value })); } catch (e) {}
+    try { sessionStorage.setItem(SCROLL_KEY, JSON.stringify({ anchor, offset, y: scrollY, tribe: view.tribe, cast: view.cast })); } catch (e) {}
   }
   function restoreScroll() {
     let saved = null;
@@ -411,10 +476,10 @@
   let scrollTimer = 0;
   addEventListener("scroll", () => { clearTimeout(scrollTimer); scrollTimer = setTimeout(rememberScroll, 150); }, { passive: true });
   addEventListener("pagehide", rememberScroll);
-  // 検索・表示の絞り込みも元に戻してから並べる
+  // 選んでいたタブも元に戻してから並べる
   try {
     const saved = JSON.parse(sessionStorage.getItem(SCROLL_KEY) || "null");
-    if (saved) { if (saved.q) $("q").value = saved.q; if (saved.show) $("show").value = saved.show; }
+    if (saved && saved.tribe) view = { tribe: saved.tribe, cast: saved.cast || null };
   } catch (e) {}
   load().then(() => setTimeout(restoreScroll, 0));
 })();
