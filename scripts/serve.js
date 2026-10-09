@@ -204,6 +204,30 @@ async function handleDev(req, res, url) {
     runVoiceSteps(voiceJob, key);
     return sendJson(res, 200, { ok: true, id: voiceJob.id });
   }
+  // ===== 演技の方針を複数の台詞にまとめて入れる（試聴室の「このキャラの全台詞に同じ方針を入れる」）=====
+  // 方針（direction）だけを書き換え、台詞の言い換えや安定度などほかの指定は残す。空なら方針を消す
+  if (url.pathname === "/__dev/voice-direction-batch" && req.method === "POST") {
+    if (!req.headers.origin) return sendJson(res, 403, { ok: false, message: "試聴室のページから操作してください" });
+    let body;
+    try { body = JSON.parse((await readBody(req, 64 * 1024)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "形式が正しくありません" }); }
+    const refs = Array.isArray(body.refs) ? body.refs.filter(r => /^[np]\d{2,3}-[a-z]+(-\d+)?$/.test(r)).slice(0, 200) : [];
+    const direction = String(body.direction || "").trim();
+    if (!refs.length) return sendJson(res, 400, { ok: false, message: "台詞が選ばれていません" });
+    if (direction.length > 200 || /[<>{}]/.test(direction)) return sendJson(res, 400, { ok: false, message: "演技の方針が長すぎるか、使えない文字があります" });
+    const all = fs.existsSync(voiceDirectionFile) ? JSON.parse(fs.readFileSync(voiceDirectionFile, "utf8")) : {};
+    const now = new Date().toISOString();
+    for (const ref of refs) {
+      const cur = Object.assign({}, all[ref] || {});
+      if (direction) cur.direction = direction; else delete cur.direction;
+      delete cur.updatedAt;
+      if (Object.keys(cur).length) all[ref] = Object.assign(cur, { updatedAt: now }); else delete all[ref];
+    }
+    const tmp = voiceDirectionFile + ".tmp";
+    fs.writeFileSync(tmp, JSON.stringify(all, null, 1) + "\n");
+    fs.renameSync(tmp, voiceDirectionFile);
+    console.log(`[voice-direction] ${refs.length}本に方針「${direction || "（消す）"}」`);
+    return sendJson(res, 200, { ok: true, count: refs.length });
+  }
   // ===== カードボイスの候補を消す（試聴室から。1つずつ・選んだもの・登録していないもの全部）=====
   // voices/cards/voices.json の candidates から外し、voices/cards/previews/ の音声ファイルを消す。登録中の候補は消さない
   if (url.pathname === "/__dev/voice-candidates-delete" && req.method === "POST") {

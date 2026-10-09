@@ -271,6 +271,13 @@
     const adv = el("details", "adv"); const advSum = el("summary", "", "英語の演技タグ（細かく効かせたいときだけ）");
     const r1 = el("div", "dir-row"); r1.append(tags, exampleButton(tags)); adv.append(advSum, r1); adv.open = !!cur.tags;
     const dirEx = el("div", "btns"); dirEx.append(exampleButton(direction));
+    // この方針を、同じキャラの台詞すべてに入れる（ほかの指定は残す）
+    const castKey = ((data.items || []).find(i => i.ref === it.ref) || {}).cast;
+    if (castKey) {
+      const toAll = el("button", "copy small", "このキャラの全台詞に同じ方針を入れる"); toAll.type = "button";
+      toAll.addEventListener("click", () => applyDirectionToCast(castKey, direction.value.trim()));
+      dirEx.append(toAll);
+    }
     s2.append(el("h4", "", "② 演技の方針を書く（必要なときだけ）"), direction, dirEx, presets,
       el("p", "dir-note", "どんな場面で、どんな気持ちで言うのかを日本語で自由に書いてください。読み上げられることはなく、台詞の直前の状況として声の演技に使われます。ボタンを押すと言葉が書き足されます。"), r2, adv);
 
@@ -514,6 +521,26 @@
     showRunner(ok ? "完了しました（" + job.label + "）" : "うまくいかなかった所があります（" + job.label + "）", ok ? "ok" : "ng", ok ? "下の一覧を最新にしました。聴いて確かめてください。" : "下の記録を確認してください。", job.log.trim());
     rememberScroll(); await load(); restoreScroll();
   }
+  async function applyDirectionToCast(key, direction) {
+    const refs = (data.items || []).filter(i => i.cast === key).map(i => i.ref);
+    if (!refs.length) return;
+    const others = refs.filter(r => (data.directions[r] || {}).direction && data.directions[r].direction !== direction).length;
+    const msg = direction
+      ? "「" + displayName(key) + "」の台詞" + refs.length + "本すべてに、演技の方針「" + direction + "」を入れます。" + (others ? "\n別の方針が入っている" + others + "本も、この方針に置き換わります。" : "") + "\n（台詞の言い換えや安定度などは変わりません）"
+      : "「" + displayName(key) + "」の台詞" + refs.length + "本すべての演技の方針を消します。";
+    if (!confirm(msg)) return;
+    try {
+      const res = await fetch("/__dev/voice-direction-batch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refs, direction }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
+    } catch (e) { toast(e.message); return; }
+    rememberScroll(); await load(); restoreScroll();
+    toast(directionDoneText(refs.length, direction));
+    if ((data.record[key] || {}).voiceId && confirm("方針を入れました。続けて「" + displayName(key) + "」の台詞" + refs.length + "本をすべて作り直しますか？\n（ElevenLabs のクレジットを使います。あとで台詞ごとに作り直すこともできます）")) {
+      runCommand(TOOL + " lines --cast " + key + " --force", "全台詞を作り直す");
+    }
+  }
+  const directionDoneText = (n, d) => d ? n + "本の台詞に方針を入れました" : n + "本の台詞の方針を消しました";
   async function deleteCandidates(key, choices) {
     const r = data.record[key] || {};
     const keep = r.voiceId && !r.released ? r.choice : null;
