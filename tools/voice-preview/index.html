@@ -287,7 +287,7 @@
       if (show === "todo" && active) continue;
       if (q && !key.includes(q) && !(c.labels || []).join(" ").includes(q)) continue;
       shown++;
-      const sec = document.createElement("section"); sec.className = "cast";
+      const sec = document.createElement("section"); sec.className = "cast"; sec.dataset.anchor = "cast:" + key;
       const head = document.createElement("div"); head.className = "cast-head";
       const name = document.createElement("span"); name.className = "cast-name"; name.textContent = key;
       const state = document.createElement("span"); state.className = "chip" + (r.voiceId ? " done" : "");
@@ -342,7 +342,7 @@
         let made = 0;
         for (const it of items) {
           const url = "/voices/cards/" + encodeURIComponent(it.ref) + ".mp3";
-          const row = document.createElement("div"); row.className = "line-row";
+          const row = document.createElement("div"); row.className = "line-row"; row.dataset.anchor = "line:" + key + ":" + it.ref;
           const t = document.createElement("div");
           const spoken = document.createElement("span"); spoken.className = "spoken";
           const orig = document.createElement("small"); orig.className = "orig";
@@ -389,8 +389,34 @@
   $("viewer").addEventListener("click", () => $("viewer").close());
   $("q").addEventListener("input", render);
   $("show").addEventListener("change", render);
-  $("reload").addEventListener("click", () => { load(); toast("最新の状態に更新しました"); });
-  load();
+  $("reload").addEventListener("click", async () => { rememberScroll(); await load(); restoreScroll(); toast("最新の状態に更新しました"); });
+  const SCROLL_KEY = "voicePreview.scroll";
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  function rememberScroll() {
+    let anchor = null, offset = 0;
+    for (const e of document.querySelectorAll("[data-anchor]")) {
+      const r = e.getBoundingClientRect();
+      if (r.bottom > 60) { anchor = e.dataset.anchor; offset = r.top; if (e.classList.contains("line-row")) break; if (r.top >= 0) break; }
+    }
+    try { sessionStorage.setItem(SCROLL_KEY, JSON.stringify({ anchor, offset, y: scrollY, q: $("q").value, show: $("show").value })); } catch (e) {}
+  }
+  function restoreScroll() {
+    let saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem(SCROLL_KEY) || "null"); } catch (e) {}
+    if (!saved) return;
+    const target = saved.anchor && [...document.querySelectorAll("[data-anchor]")].find(e => e.dataset.anchor === saved.anchor);
+    if (target) scrollTo(0, scrollY + target.getBoundingClientRect().top - saved.offset);
+    else scrollTo(0, saved.y || 0);
+  }
+  let scrollTimer = 0;
+  addEventListener("scroll", () => { clearTimeout(scrollTimer); scrollTimer = setTimeout(rememberScroll, 150); }, { passive: true });
+  addEventListener("pagehide", rememberScroll);
+  // 検索・表示の絞り込みも元に戻してから並べる
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(SCROLL_KEY) || "null");
+    if (saved) { if (saved.q) $("q").value = saved.q; if (saved.show) $("show").value = saved.show; }
+  } catch (e) {}
+  load().then(() => setTimeout(restoreScroll, 0));
 })();
 </script>
 </body>
