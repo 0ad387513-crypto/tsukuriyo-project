@@ -410,7 +410,7 @@ function bundle() {
 
 const commands = { cast: buildCast, status, design, pick, library, use, lines, release, bundle };
 if (!commands[command]) {
-  console.log("使い方はファイル先頭のコメントを見てください（cast / status / design / pick / lines / release / bundle）。");
+  console.log("使い方はファイル先頭のコメントを見てください（cast / status / design / pick / library / use / lines / release / bundle）。");
 } else {
   Promise.resolve(commands[command]()).catch(e => { console.error(String(e.message || e)); process.exit(1); });
 }
