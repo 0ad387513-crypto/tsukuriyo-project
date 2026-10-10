@@ -458,7 +458,7 @@
     age: { label: "年代", one: true, options: [["18", "18歳くらい"], ["20s", "20代"], ["30s", "30代"], ["40s", "40代"], ["50s", "50代以上"]] },
     pitch: { label: "声の高さ", one: true, options: [["vlow", "とても低い"], ["low", "低め"], ["mid", "ふつう"], ["high", "高め"], ["vhigh", "とても高い"]] },
     timbre: { label: "声質（いくつでも）", options: [["clear", "透き通る"], ["core", "芯がある"], ["soft", "柔らかい"], ["powerful", "力強い"], ["bright", "明るい"], ["deep", "重厚"], ["husky", "ハスキー"], ["breathy", "息まじり"], ["rough", "ざらつき"], ["cool", "クール"]] },
-    manner: { label: "話し方・性格（いくつでも）", options: [["energetic", "元気"], ["calm", "落ち着いた"], ["polite", "丁寧"], ["rough", "乱暴"], ["archaic", "古風"], ["cold", "冷たい"], ["gentle", "優しい"], ["imposing", "威圧的"], ["cheeky", "生意気"], ["shy", "おどおど"], ["playful", "おどけた"], ["dignified", "気品"], ["haughty", "高飛車（お嬢様）"], ["expressive", "感情豊か"], ["hightension", "ハイテンション"]] },
+    manner: { label: "話し方・性格（いくつでも）", options: [["energetic", "元気"], ["calm", "落ち着いた"], ["polite", "丁寧"], ["rough", "乱暴"], ["archaic", "古風"], ["cold", "冷たい"], ["gentle", "優しい"], ["imposing", "威圧的"], ["cheeky", "生意気"], ["shy", "おどおど"], ["playful", "おどけた"], ["dignified", "気品"], ["haughty", "高飛車（お嬢様）"], ["expressive", "感情豊か"], ["hightension", "ハイテンション"], ["quiet", "無口・ぼそぼそ"], ["deadpan", "無表情（クール）"]] },
   };
   const EN = {
     who: (g, a) => {
@@ -476,29 +476,35 @@
       vhigh: "Extremely high-pitched voice: very high, light and clear, at the top of the natural range in every line, thin and bright, never full or deep.",
     },
     timbre: { clear: "crystal-clear and transparent", core: "with a strong, firm core and steady breath support", soft: "soft and gentle", powerful: "powerful and resonant", bright: "bright", deep: "deep, heavy and rich", husky: "husky", breathy: "breathy", rough: "slightly rough and raspy", cool: "cool and clear in tone, yet expressive" },
-    manner: { hightension: "high-tension, cheerful and bubbly, talking fast and brightly", expressive: "emotionally engaged and expressive, with lively, varied intonation and natural pauses", haughty: "haughty, condescending anime ojou-sama with a sharp, sing-song tone", energetic: "energetic and lively", calm: "calm yet warm, with gentle, natural expression", polite: "polite and well-mannered", rough: "rough and blunt", archaic: "old-fashioned and formal", cold: "cold and cutting in attitude, yet clearly expressive", gentle: "gentle and kind", imposing: "imposing and intimidating", cheeky: "cheeky and cocky", shy: "timid and hesitant", playful: "playful and humorous", dignified: "dignified and noble" },
+    manner: { quiet: "quiet and reserved, mumbling softly in a small voice and speaking very little", deadpan: "cool, detached and deadpan, like an expressionless doll-like anime character", hightension: "high-tension, cheerful and bubbly, talking fast and brightly", expressive: "emotionally engaged and expressive, with lively, varied intonation and natural pauses", haughty: "haughty, condescending anime ojou-sama with a sharp, sing-song tone", energetic: "energetic and lively", calm: "calm yet warm, with gentle, natural expression", polite: "polite and well-mannered", rough: "rough and blunt", archaic: "old-fashioned and formal", cold: "cold and cutting in attitude, yet clearly expressive", gentle: "gentle and kind", imposing: "imposing and intimidating", cheeky: "cheeky and cocky", shy: "timid and hesitant", playful: "playful and humorous", dignified: "dignified and noble" },
   };
   function buildDescription(sp) {
+    const manner = sp.manner || [], timbre = sp.timbre || [];
+    const high = sp.pitch === "high" || sp.pitch === "vhigh";
+    const quiet = manner.includes("quiet") || manner.includes("deadpan");
     const parts = ["Japanese voice: a native speaker with natural standard Japanese pronunciation."];
     parts.push(EN.who(sp.gender, sp.age));
+    parts.push("A character voice in a Japanese anime.");
     if (sp.pitch) parts.push(EN.pitch[sp.pitch]);
-    const t = (sp.timbre || []).map(k => EN.timbre[k]).filter(Boolean);
+    const t = timbre.map(k => EN.timbre[k]).filter(Boolean);
     if (t.length) parts.push("Voice quality: " + t.join(", ") + ".");
-    const m = (sp.manner || []).map(k => EN.manner[k]).filter(Boolean);
+    const m = manner.map(k => EN.manner[k]).filter(Boolean);
     if (m.length) parts.push("Speaking style and personality: " + m.join(", ") + ".");
-    // 威圧的・気品・クールは低い声と結びつきやすいので、高い声を選んだときは「態度で示す」と書き添える
-    if ((sp.pitch === "high" || sp.pitch === "vhigh") && ["imposing", "dignified", "cold"].some(k => (sp.manner || []).includes(k)) || (sp.pitch === "high" || sp.pitch === "vhigh") && (sp.timbre || []).includes("cool")) parts.push("Authority comes only from attitude, never from a low voice; stay high in every line.");
+    // 無口・冷たい・威圧的・クールは「低い声」と結びつきやすい。高い声を選んだときは、人物像の中で「それでも高いまま」と言い切る（測定：約200Hz→約340Hz）
+    if (high && (quiet || ["imposing", "dignified", "cold", "calm"].some(k => manner.includes(k)) || timbre.includes("cool"))) parts.push("Even when " + (quiet ? "quiet and emotionless" : "cold or serious") + ", the pitch stays " + (sp.pitch === "vhigh" ? "very high" : "high") + " and light in every line; the mood never makes the voice lower.");
     // 「〜ではない」をはっきり書くと、選んだ高さ・声質から外れにくい
     const nots = [];
-    if (sp.pitch === "high" || sp.pitch === "vhigh") nots.push("not low", "not deep", "not mature-sounding");
+    if (high) nots.push("not low", "not deep", "not mature-sounding");
     if (sp.pitch === "low" || sp.pitch === "vlow") nots.push("not high", "not thin");
-    if (!(sp.timbre || []).includes("husky")) nots.push("not husky");
-    if (!(sp.timbre || []).includes("breathy")) nots.push("not breathy");
-    if (!(sp.timbre || []).includes("rough")) nots.push("not raspy");
+    if (!timbre.includes("husky")) nots.push("not husky");
+    if (!timbre.includes("breathy")) nots.push("not breathy");
+    if (!timbre.includes("rough")) nots.push("not raspy");
     if (nots.length) parts.push(nots.join(", ").replace(/^n/, "N") + ".");
-    if (sp.role) parts.push("Role (Japanese): " + sp.role + ".");
+    // 役柄（日本語）は声には渡さない：日本語の人物説明を入れると声の高さの指定が効きにくくなる（測定：約216Hz→約258Hz）。補足だけ最後に添える
     if (sp.note) parts.push("Additional notes (Japanese): " + sp.note + ".");
-    parts.push(((sp.manner || []).includes("expressive") ? "Warm, heartfelt acting like a Japanese anime " : "Natural acting like a Japanese anime ") + (sp.gender === "male" ? "voice actor" : "voice actress") + ". Every line is delivered with real emotion and lively, varied intonation: never flat, never monotone, never robotic, never like reading aloud, and never exaggerated.");
+    const actor = sp.gender === "male" ? "voice actor" : "voice actress";
+    if (quiet) parts.push("Natural acting like a Japanese anime " + actor + " playing a quiet, cool character: subdued and soft, but alive and natural, never robotic.");
+    else parts.push((manner.includes("expressive") ? "Warm, heartfelt acting like a Japanese anime " : "Natural acting like a Japanese anime ") + actor + ". Every line is delivered with real emotion and lively, varied intonation: never flat, never monotone, never robotic, never like reading aloud, and never exaggerated.");
     return parts.join(" ").replace(/。\./g, "。").replace(/\s+/g, " ");
   }
   async function saveDescription(key, description, spec, designText) {
@@ -556,7 +562,7 @@
     }
     const role = el("input"); role.type = "text"; role.value = sp.role || ""; role.placeholder = "例：熱血な見習い忍者。先生を慕っている"; role.setAttribute("aria-label", "役柄（日本語）");
     role.addEventListener("input", () => { sp.role = role.value.trim(); rebuild(); });
-    const roleRow = el("div", "dir-row"); roleRow.append(el("span", "spec-label", "役柄（日本語・任意）"), role, exampleButton(role));
+    const roleRow = el("div", "dir-row"); roleRow.append(el("span", "spec-label", "役柄（メモ用）"), role, exampleButton(role));
     const note = el("input"); note.type = "text"; note.value = sp.note || ""; note.placeholder = "例：語尾をはっきり。ライカより落ち着いた感じ"; note.setAttribute("aria-label", "その他の指示（日本語）");
     note.addEventListener("input", () => { sp.note = note.value.trim(); rebuild(); });
     const noteRow = el("div", "dir-row"); noteRow.append(el("span", "spec-label", "その他の指示（日本語・任意）"), note, exampleButton(note));
@@ -568,7 +574,7 @@
     sample.style.flex = "1 1 260px";
     s1.append(roleRow, noteRow, sampleRow,
       el("p", "dir-note", "見本の文：候補を作るときに読ませる文です。空なら、そのキャラの台詞（死亡時以外）を使います。短くそっけない台詞（「頭が高いわ」など）だと声が低く暗くなりやすいので、高い声にしたいときは、そのキャラらしい明るく弾む文を書くと高くなります。"),
-      el("p", "dir-note", "性別・年代・高さ・声質は英語に直して渡すので、確実に効きます。日本語の欄は補足として渡すので、効き方は弱めです。性別を選ぶまでは、今の説明がそのまま使われます。\n※ここは「声そのもの」を決める欄です。「死に際は弱々しく」のような特定の台詞の演じ方を書くと、声全体が弱々しくなってしまいます。台詞ごとの演じ方は、声を決めたあとに各台詞の「演技の方針」に書いてください。"));
+      el("p", "dir-note", "性別・年代・高さ・声質・話し方は英語に直して渡すので、確実に効きます。「役柄」は自分用のメモで、声には渡しません（日本語の人物説明を渡すと、声の高さなどの指定が効きにくくなるため）。「その他の指示」だけ補足として渡しますが、効き方は弱めです。性別を選ぶまでは、今の説明がそのまま使われます。\n※ここは「声そのもの」を決める欄です。「死に際は弱々しく」のような特定の台詞の演じ方を書くと、声全体が弱々しくなってしまいます。台詞ごとの演じ方は、声を決めたあとに各台詞の「演技の方針」に書いてください。"));
 
     // ③ 全文
     const s3 = el("section", "step");
