@@ -7584,7 +7584,7 @@
 <link rel="preload" as="image" href="genesis_story/01-five-regions.webp">
 <link rel="preload" as="image" href="top_mode_icons/construct2p-style-9f261d899256.webp" fetchpriority="high">
 <link rel="preload" as="image" href="top_mode_icons/shield2p-menu-63550a24f4eb.webp" fetchpriority="high">
-<link rel="stylesheet" href="divine_effects.css">
+<link rel="stylesheet" href="divine_effects.css?v=20261010">
 </head>
 <body>
 <div id="app-loading" role="status" aria-live="polite">
@@ -10212,7 +10212,7 @@
                      @mousedown.stop @touchstart.stop
                      @click.stop="openPreview(battleView.opp.kami)"
                      @keydown.enter.stop.prevent="openPreview(battleView.opp.kami)" @keydown.space.stop.prevent="openPreview(battleView.opp.kami)">
-                  <img src="divine_assets/orochi-torn-seal-29d8da98451b.webp" alt="" draggable="false">
+                  <img src="divine_assets/orochi-mask-crest-58ac728c565c.webp" alt="" draggable="false">
                   <span id="orochi-ability-opp" class="kami-orochi-tooltip" role="tooltip"><strong>創世神技発動中：龍の神攻を強化</strong>自分ターン中に1回、最初に神攻した龍レガシーに【神威：+2】を付与します。全ての封印が解けている間、この効果が有効です。</span>
                 </div>
                 <svg v-if="battleView.result && battleView.result.outcome === 'win' && !battleResultRevealReady" class="kami-crack-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -10377,7 +10377,7 @@
                      @mousedown.stop @touchstart.stop
                      @click.stop="openPreview(battleView.self.kami)"
                      @keydown.enter.stop.prevent="openPreview(battleView.self.kami)" @keydown.space.stop.prevent="openPreview(battleView.self.kami)">
-                  <img src="divine_assets/orochi-torn-seal-29d8da98451b.webp" alt="" draggable="false">
+                  <img src="divine_assets/orochi-mask-crest-58ac728c565c.webp" alt="" draggable="false">
                   <span id="orochi-ability-self" class="kami-orochi-tooltip" role="tooltip"><strong>創世神技発動中：龍の神攻を強化</strong>自分ターン中に1回、最初に神攻した龍レガシーに【神威：+2】を付与します。全ての封印が解けている間、この効果が有効です。</span>
                 </div>
                 <svg v-if="battleView.result && battleView.result.outcome === 'loss' && !battleResultRevealReady" class="kami-crack-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -12519,7 +12519,7 @@
 <script src="version.js"></script>
 <!-- 画像・音声の中身の識別子（node scripts/build_asset_hashes.js で作る）。assetUrl() が URL に付ける -->
 <script src="asset_hashes.js"></script>
-<script src="divine_effects.js"></script>
+<script src="divine_effects.js?v=20261010"></script>
 <script src="firebase.js"></script>
 <script src="sync_core.js"></script>
 <script src="pack_generator.js"></script>
@@ -21287,7 +21287,17 @@ new Vue({
       if (!portrait || !field) return null;
       const a=portrait.getBoundingClientRect(), b=field.getBoundingClientRect();
       const c=friendlyField && friendlyField.getBoundingClientRect();
-      return {origin:{x:a.left+a.width/2,y:a.top+a.height/2},enemy:{left:b.left,top:b.top,width:b.width,height:b.height},friendly:c?{left:c.left,top:c.top,width:c.width,height:c.height}:null};
+      const measuredField = (element,r) => {
+        const cards=Array.from(element.querySelectorAll('.battle-card.field-card')).map(card=>card.getBoundingClientRect())
+          .filter(card=>card.width>0 && card.height>0);
+        const left=Math.min(r.left,...cards.map(card=>card.left))-12;
+        const top=Math.min(r.top,...cards.map(card=>card.top))-12;
+        const right=Math.max(r.left+r.width,...cards.map(card=>card.left+card.width))+12;
+        const bottom=Math.max(r.top+r.height,...cards.map(card=>card.top+card.height))+12;
+        return {left:r.left,top:r.top,width:r.width,height:r.height,
+          cover:{left,top,width:right-left,height:bottom-top}};
+      };
+      return {origin:{x:a.left+a.width/2,y:a.top+a.height/2},enemy:measuredField(field,b),friendly:c?measuredField(friendlyField,c):null};
     },
     _battleDivineSurvivorCues() {
       const context = this._battleDivineContext;
@@ -21372,7 +21382,7 @@ new Vue({
         survivors: String(kami && kami.no) === '2' && typeof this._battleDivineSurvivorCues === 'function' ? this._battleRemoteDivineTargets(this._battleDivineSurvivorCues(),'self') : [],
         transfers: String(kami && kami.no) === '5' && this._battleDivineContext ? (this._battleDivineContext.transfers || []).map(t => Object.assign({},t,{image:this.cardImageUrl(t.card)})) : [],
         mode: kami && String(kami.no) === '10' ? 'orochi-skill2' : 'skill2',
-        imgUrl: kami ? effect.cutin : null,
+        imgUrl: kami ? (effect.sealedCutin || effect.cutin) : null,
         fallbackStage: 0, // 0=カットイン(webp)試行中 1=カットイン(png)試行中 2=従来イラストにフォールバック済み
         kami,
         kamiNickname: kami ? (kami.nickname || '') : '',
@@ -21402,9 +21412,10 @@ new Vue({
           presentation.survivors = this._battleRemoteDivineTargets(remoteTargets || this._battleDivineSurvivorCues(),remoteTargets ? writerSide : 'self');
           presentation.layout = this._battleDivineStageLayout(writerSide);
         }
+        if (phase.name === 'animation' && String(kami && kami.no) === '5' && typeof this._battleDivineStageLayout === 'function') presentation.layout = this._battleDivineStageLayout(writerSide);
         presentation.phase = phase.name;
         presentation._shownAt = Date.now();
-        // 札がはがれて少女の全容が見えてから間を置き、八頭の龍が現れる瞬間に咆哮を鳴らす。
+        // 仮面が割れて少女の素顔が見えてから間を置き、八頭の龍が現れる瞬間に咆哮を鳴らす。
         const roarTimer = phase.name === 'animation' && String(kami && kami.no) === '10' ? setTimeout(() => {
           if (this.battleSkillCloseup === presentation && presentation.phase === 'animation') this._sfxPlay('dragonHeavy', .35);
         }, this._battleMotionMs(phase.duration) * .82) : null;
@@ -21434,7 +21445,7 @@ new Vue({
             hold = this._battleHoldSpeech(presentation.line, voice, finish);
             this._battleSkillCloseupT = hold.timer;
           } else {
-            // オロチは龍の絵を保持したまま、約3秒の咆哮が終わるまで次の札演出へ進まない。
+            // オロチは龍の絵を保持したまま、約3秒の咆哮が終わるまで破片の到着段階へ進まない。
             const roarHoldMs = phase.name === 'animation' && effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal' ? 3200 : 0;
             this._battleSkillCloseupT = setTimeout(finish, this._battleMotionMs(phase.duration) + roarHoldMs);
           }
