@@ -399,12 +399,14 @@ async function handleDev(req, res, url) {
     if (direction.length > 200 || /[<>{}]/.test(direction)) return sendJson(res, 400, { ok: false, message: "演技の方針が長すぎるか、使えない文字があります" });
     if (text.length > 300 || /[<>{}]/.test(text)) return sendJson(res, 400, { ok: false, message: "読み上げる文が長すぎるか、使えない文字があります" });
     const stability = body.stability === null || body.stability === undefined || body.stability === "" ? null : Number(body.stability);
+    const tempo = body.tempo === null || body.tempo === undefined || body.tempo === "" ? null : Number(body.tempo);
+    if (tempo !== null && !(tempo >= 0.7 && tempo <= 1.3)) return sendJson(res, 400, { ok: false, message: "速さは0.7〜1.3で指定してください" });
     if (tags.length > 120 || /[<>{}]/.test(tags)) return sendJson(res, 400, { ok: false, message: "演技タグが長すぎるか、使えない文字があります" });
     if (stability !== null && !(stability >= 0 && stability <= 1)) return sendJson(res, 400, { ok: false, message: "安定度は0〜1で指定してください" });
     const all = fs.existsSync(voiceDirectionFile) ? JSON.parse(fs.readFileSync(voiceDirectionFile, "utf8")) : {};
     const prevScript = (all[ref] || {}).script || "";
-    if (!script && !text && !direction && !tags && stability === null) delete all[ref];
-    else all[ref] = Object.assign({}, script ? { script } : {}, text ? { text } : {}, direction ? { direction } : {}, tags ? { tags } : {}, stability !== null ? { stability } : {}, { updatedAt: new Date().toISOString() });
+    if (!script && !text && !direction && !tags && stability === null && tempo === null) delete all[ref];
+    else all[ref] = Object.assign({}, script ? { script } : {}, text ? { text } : {}, direction ? { direction } : {}, tags ? { tags } : {}, stability !== null ? { stability } : {}, tempo !== null ? { tempo } : {}, { updatedAt: new Date().toISOString() });
     const tmp = voiceDirectionFile + ".tmp";
     fs.writeFileSync(tmp, JSON.stringify(all, null, 1) + "\n");
     fs.renameSync(tmp, voiceDirectionFile);

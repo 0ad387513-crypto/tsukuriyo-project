@@ -288,7 +288,7 @@
   function describe(ref) {
     const d = data.directions[ref];
     if (!d) return "";
-    return [d.text ? "読み替えあり" : "", d.direction ? "方針「" + (d.direction.length > 24 ? d.direction.slice(0, 24) + "…" : d.direction) + "」" : "", d.tags ? "タグ " + d.tags : "", d.stability !== undefined ? "安定度" + d.stability : ""].filter(Boolean).join("・");
+    return [d.text ? "読み替えあり" : "", d.direction ? "方針「" + (d.direction.length > 24 ? d.direction.slice(0, 24) + "…" : d.direction) + "」" : "", d.tags ? "タグ " + d.tags : "", d.stability !== undefined ? "安定度" + d.stability : "", d.tempo !== undefined ? "速さ" + d.tempo + "倍" : ""].filter(Boolean).join("・");
   }
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
   // 入力欄の「例：…」の文をそのまま入れるボタン
@@ -344,7 +344,10 @@
     const sel = el("select"); sel.setAttribute("aria-label", "安定度");
     for (const [v, t] of STABILITY) sel.append(new Option(t, v));
     sel.value = cur.stability === undefined ? "" : String(cur.stability);
-    const r2 = el("div", "dir-row"); r2.append("安定度", sel);
+    const tempoSel = el("select"); tempoSel.setAttribute("aria-label", "話す速さ");
+    for (const [v, t] of [["", "ふつう（そのまま）"], ["0.8", "とてもゆっくり"], ["0.88", "ゆっくり"], ["0.94", "少しゆっくり"], ["1.08", "少し速め"], ["1.15", "速め"]]) tempoSel.append(new Option(t, v));
+    tempoSel.value = cur.tempo === undefined ? "" : String(cur.tempo);
+    const r2 = el("div", "dir-row"); r2.append("安定度", sel, "話す速さ", tempoSel);
     // 以前の英語タグ（残っている指定だけ見せる）
     const tags = el("input"); tags.type = "text"; tags.value = cur.tags || ""; tags.setAttribute("aria-label", "英語の演技タグ"); tags.placeholder = "例：[excited]";
     const adv = el("details", "adv"); const advSum = el("summary", "", "英語の演技タグ（細かく効かせたいときだけ）");
@@ -379,7 +382,7 @@
     takesBtn.addEventListener("click", async () => {
       try {
         const t = text.value.trim();
-        await saveDirection(it.ref, { text: t && t !== it.text && !MULTI_SYNTAX.test(t) ? t : "", direction: direction.value.trim(), tags: tags.value.trim(), stability: sel.value === "" ? null : Number(sel.value) });
+        await saveDirection(it.ref, { text: t && t !== it.text && !MULTI_SYNTAX.test(t) ? t : "", direction: direction.value.trim(), tags: tags.value.trim(), stability: sel.value === "" ? null : Number(sel.value), tempo: tempoSel.value === "" ? null : Number(tempoSel.value) });
         refresh();
         await runCommand(TOOL + " lines --ref " + it.ref + " --takes 3", "言い方を3通り作る");
       } catch (e) { toast(e.message); }
@@ -389,7 +392,7 @@
       try {
         const t = text.value.trim();
         const asScript = multi || MULTI_SYNTAX.test(t) || !!(data.directions[groupRef] || {}).script;
-        await saveDirection(it.ref, { text: !asScript && t && t !== it.text ? t : "", direction: direction.value.trim(), tags: tags.value.trim(), stability: sel.value === "" ? null : Number(sel.value) });
+        await saveDirection(it.ref, { text: !asScript && t && t !== it.text ? t : "", direction: direction.value.trim(), tags: tags.value.trim(), stability: sel.value === "" ? null : Number(sel.value), tempo: tempoSel.value === "" ? null : Number(tempoSel.value) });
         if (asScript) {
           const m = /^([np]\d+)-([a-z]+)$/.exec(groupRef); const src = m && (m[1][0] === "n" ? data.lines[m[1]] : data.pairs[m[1]]);
           const base = (src && src[m[2]]) || "";
@@ -404,7 +407,7 @@
       } catch (e) { toast(e.message); }
     });
     clear.addEventListener("click", async () => {
-      try { await saveDirection(it.ref, { text: "", direction: "", tags: "", stability: null }); text.value = it.text; direction.value = ""; tags.value = ""; sel.value = ""; refresh(); toast("指定を消しました（台本の文・標準の演技で作ります）"); } catch (e) { toast(e.message); }
+      try { await saveDirection(it.ref, { text: "", direction: "", tags: "", stability: null, tempo: null }); text.value = it.text; direction.value = ""; tags.value = ""; sel.value = ""; tempoSel.value = ""; refresh(); toast("指定を消しました（台本の文・標準の演技で作ります）"); } catch (e) { toast(e.message); }
     });
     s3.append(el("h4", "", "③ 保存して作り直す"), btns, code,
       el("p", "dir-note", "押すと、この台詞だけ作り直します。進み具合は画面の下に出て、終わると一覧が最新になります。①②を変えずに押すと、同じ指定のまま作り直します（毎回少しずつ違う読み方になります）。"));

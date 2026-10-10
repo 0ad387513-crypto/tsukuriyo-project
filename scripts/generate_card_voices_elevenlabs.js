@@ -91,6 +91,23 @@ function tightenPauses(file, text) {
   fs.renameSync(tmp, file);
   console.log(`  区切りの間を詰めました（${cuts.length}か所）`);
 }
+// 話す速さ。1 がそのまま、0.85 でゆっくり、1.15 で速め。台詞ごとの指定（tempo）が無ければ、演技の方針の言葉から決める
+function tempoFor(dir) {
+  if (Number.isFinite(dir.tempo) && dir.tempo > 0) return Math.min(1.3, Math.max(0.7, dir.tempo));
+  const d = dir.direction || "";
+  if (/とてもゆっくり|すごくゆっくり/.test(d)) return 0.8;
+  if (/ゆっくり|ゆったり|のんびり/.test(d)) return 0.88;
+  if (/早口|速く|はやく|テンポよく/.test(d)) return 1.12;
+  return 1;
+}
+function applyTempo(file, tempo) {
+  if (!tempo || Math.abs(tempo - 1) < 0.01) return;
+  const tmp = file + ".tempo.mp3";
+  const run = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-af", "atempo=" + tempo.toFixed(3), "-ac", "1", "-ar", "44100", "-b:a", "64k", tmp], { encoding: "utf8", windowsHide: true });
+  if (run.error || run.status !== 0 || !fs.existsSync(tmp)) { console.warn("  （速さを変えられませんでした。ffmpeg が必要です）"); return; }
+  fs.renameSync(tmp, file);
+  console.log(`  速さ ${tempo}倍（${tempo < 1 ? "ゆっくり" : "速め"}）にしました`);
+}
 function applyReadings(text, readings) {
   const words = Object.keys(readings).filter(Boolean).sort((a, b) => b.length - a.length);
   // 「天根ノ社（あまねのやしろ）」「還（もど）れ」のようにふりがなを添えた書き方は、ふりがなだけを読ませる（両方読まれないように）
@@ -430,12 +447,14 @@ async function lines() {
           const takeFile = path.join(takesDir, `${it.ref}-${k}.mp3`);
           fs.writeFileSync(takeFile, await speak());
           tightenPauses(takeFile, text);
+          applyTempo(takeFile, tempoFor(dir));
           chars += text.length;
           console.log(`  → 言い方の候補${k}`);
         }
       } else {
         fs.writeFileSync(out, await speak());
         tightenPauses(out, text);
+        applyTempo(out, tempoFor(dir));
         chars += text.length;
       }
     } catch (e) { console.error(`  × 失敗：${String(e.message || e).slice(0, 300)}`); failed.push(it.ref); }
