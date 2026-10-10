@@ -143,6 +143,9 @@
   .dir-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 13px; color: var(--muted); }
   .dir-row input, .dir-row select { font: inherit; font-size: 13px; padding: 5px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
   .dir-row input { flex: 1 1 220px; min-width: 0; }
+  .warn { color: #ffcf7a; font-weight: 700; }
+  .warn[hidden] { display: none; }
+  .hz { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .tag-view { color: var(--ok); font-weight: 700; }
   .dir-note { font-size: 11px; color: var(--muted); margin: 0; white-space: pre-line; }
   .dir { gap: 12px; }
@@ -454,7 +457,7 @@
     age: { label: "年代", one: true, options: [["18", "18歳くらい"], ["20s", "20代"], ["30s", "30代"], ["40s", "40代"], ["50s", "50代以上"]] },
     pitch: { label: "声の高さ", one: true, options: [["vlow", "とても低い"], ["low", "低め"], ["mid", "ふつう"], ["high", "高め"], ["vhigh", "とても高い"]] },
     timbre: { label: "声質（いくつでも）", options: [["clear", "透き通る"], ["core", "芯がある"], ["soft", "柔らかい"], ["powerful", "力強い"], ["bright", "明るい"], ["deep", "重厚"], ["husky", "ハスキー"], ["breathy", "息まじり"], ["rough", "ざらつき"], ["cool", "クール"]] },
-    manner: { label: "話し方・性格（いくつでも）", options: [["energetic", "元気"], ["calm", "落ち着いた"], ["polite", "丁寧"], ["rough", "乱暴"], ["archaic", "古風"], ["cold", "冷たい"], ["gentle", "優しい"], ["imposing", "威圧的"], ["cheeky", "生意気"], ["shy", "おどおど"], ["playful", "おどけた"], ["dignified", "気品"], ["haughty", "高飛車（お嬢様）"], ["expressive", "感情豊か"]] },
+    manner: { label: "話し方・性格（いくつでも）", options: [["energetic", "元気"], ["calm", "落ち着いた"], ["polite", "丁寧"], ["rough", "乱暴"], ["archaic", "古風"], ["cold", "冷たい"], ["gentle", "優しい"], ["imposing", "威圧的"], ["cheeky", "生意気"], ["shy", "おどおど"], ["playful", "おどけた"], ["dignified", "気品"], ["haughty", "高飛車（お嬢様）"], ["expressive", "感情豊か"], ["hightension", "ハイテンション"]] },
   };
   const EN = {
     who: (g, a) => {
@@ -472,7 +475,7 @@
       vhigh: "Extremely high-pitched voice: very high, light and clear, at the top of the natural range in every line, thin and bright, never full or deep.",
     },
     timbre: { clear: "crystal-clear and transparent", core: "with a strong, firm core and steady breath support", soft: "soft and gentle", powerful: "powerful and resonant", bright: "bright", deep: "deep, heavy and rich", husky: "husky", breathy: "breathy", rough: "slightly rough and raspy", cool: "cool and clear in tone, yet expressive" },
-    manner: { expressive: "emotionally engaged and expressive, with lively, varied intonation and natural pauses", haughty: "haughty, condescending anime ojou-sama with a sharp, sing-song tone", energetic: "energetic and lively", calm: "calm yet warm, with gentle, natural expression", polite: "polite and well-mannered", rough: "rough and blunt", archaic: "old-fashioned and formal", cold: "cold and cutting in attitude, yet clearly expressive", gentle: "gentle and kind", imposing: "imposing and intimidating", cheeky: "cheeky and cocky", shy: "timid and hesitant", playful: "playful and humorous", dignified: "dignified and noble" },
+    manner: { hightension: "high-tension, cheerful and bubbly, talking fast and brightly", expressive: "emotionally engaged and expressive, with lively, varied intonation and natural pauses", haughty: "haughty, condescending anime ojou-sama with a sharp, sing-song tone", energetic: "energetic and lively", calm: "calm yet warm, with gentle, natural expression", polite: "polite and well-mannered", rough: "rough and blunt", archaic: "old-fashioned and formal", cold: "cold and cutting in attitude, yet clearly expressive", gentle: "gentle and kind", imposing: "imposing and intimidating", cheeky: "cheeky and cocky", shy: "timid and hesitant", playful: "playful and humorous", dignified: "dignified and noble" },
   };
   function buildDescription(sp) {
     const parts = ["Japanese voice: a native speaker with natural standard Japanese pronunciation."];
@@ -514,7 +517,18 @@
     const count = el("span", "count");
     const syncCount = () => { const n = text.value.replace(/\s+/g, " ").trim().length; count.textContent = n + " / 1000文字"; count.classList.toggle("over", n > 1000); };
     text.addEventListener("input", syncCount);
-    const rebuild = () => { if (sp.gender) { text.value = buildDescription(sp); syncCount(); } };
+    const pitchHint = el("p", "dir-note warn");
+    const syncHint = () => {
+      const high = sp.pitch === "high" || sp.pitch === "vhigh";
+      const lively = (sp.manner || []).some(m => ["energetic", "hightension"].includes(m)) || (sp.timbre || []).includes("bright") && (sp.manner || []).includes("expressive");
+      const why = [];
+      if (high && !(sp.manner || []).some(m => ["energetic", "hightension"].includes(m))) why.push("話し方に「元気」か「ハイテンション」が入っていません");
+      if (high && sp.age && sp.age !== "18" && sp.gender !== "male") why.push("年代が「18歳くらい」ではありません");
+      if (high && !sample.value.trim()) why.push("見本の文が空です（台詞がそっけないと低くなります）");
+      pitchHint.textContent = why.length ? "⚠ 高い声になりにくい設定です：" + why.join("／") + "。声の高さは「高さ」の指定より、人物像（元気・明るい）と見本の文に強く引っぱられます。" : "";
+      pitchHint.hidden = !why.length;
+    };
+    const rebuild = () => { if (sp.gender) { text.value = buildDescription(sp); syncCount(); } syncHint(); };
 
     // ① 基本の声
     const s1 = el("section", "step");
@@ -542,6 +556,7 @@
     const noteRow = el("div", "dir-row"); noteRow.append(el("span", "spec-label", "その他の指示（日本語・任意）"), note, exampleButton(note));
     // 候補を作るときに読ませる見本の文。短くそっけない台詞だと声が低く暗くなりやすいので、高い声にしたいときは明るく弾む文にする
     const sample = el("textarea"); sample.rows = 2; sample.value = c.design_text || ""; sample.setAttribute("aria-label", "候補を作るときの見本の文");
+    sample.addEventListener("input", syncHint); syncHint();
     sample.placeholder = "空なら台詞から自動で作ります（高くしたいときは、そのキャラらしい明るく弾む文を）";
     const sampleRow = el("div", "dir-row"); sampleRow.append(el("span", "spec-label", "見本の文（任意）"), sample);
     sample.style.flex = "1 1 260px";
@@ -551,7 +566,7 @@
 
     // ③ 全文
     const s3 = el("section", "step");
-    s3.append(el("h4", "", "② 説明の全文を確かめる（英語・直接書き換えてもかまいません）"), text, count);
+    s3.append(el("h4", "", "② 説明の全文を確かめる（英語・直接書き換えてもかまいません）"), pitchHint, text, count);
 
     // ④ 保存
     const s4 = el("section", "step");
@@ -692,6 +707,18 @@
       const done = v => { dlg.close(); $("askOk").onclick = $("askCancel").onclick = dlg.oncancel = null; resolve(v); };
       $("askOk").onclick = () => done(true); $("askCancel").onclick = () => done(false); dlg.oncancel = e => { e.preventDefault(); done(false); };
       dlg.showModal(); $("askOk").focus();
+    });
+  }
+  // 候補の声の高さ（Hz）を1つずつ順番に測って表示する（サーバーで測る。少し時間がかかる）
+  let pitchQueue = Promise.resolve();
+  function queuePitch(file, label) {
+    pitchQueue = pitchQueue.then(async () => {
+      if (!label.isConnected) return;
+      try {
+        const j = await fetch("/__dev/voice-pitch?file=" + encodeURIComponent(file)).then(r => r.json());
+        label.textContent = j.ok && j.hz ? "高さ " + j.hz + " Hz" : "高さ ―";
+        if (j.ok && j.hz) label.title = "声の高さの目安（基本周波数の中央値）。数字が大きいほど高い声。参考：ライカの台詞は約450Hz、マガツヒは約100Hz";
+      } catch (e) { label.textContent = "高さ ―"; }
     });
   }
   async function copy(text) {
@@ -840,6 +867,7 @@
           del.addEventListener("click", () => deleteCandidates(key, [cand.choice]));
           btns.append(btn, both, del);
           const left = el("div", "btns"); left.append(pickBox, b);
+          const hz = el("span", "hz", "高さ …"); left.append(hz); queuePitch("previews/" + cand.file, hz);
           top.append(left, btns);
           const au = document.createElement("audio"); au.controls = true; au.preload = "none"; au.src = "/" + enc("voices/cards/previews/" + cand.file) + bust();
           box.append(top, au);

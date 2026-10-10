@@ -16,6 +16,31 @@ function elevenLabsKey() {
   try { return execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", "[Environment]::GetEnvironmentVariable('ELEVENLABS_API_KEY','User')"], { encoding: "utf8", timeout: 10000 }).trim(); }
   catch { return ""; }
 }
+const voicePitchCache = new Map();
+function measurePitch(file) {
+  const SR = 16000;
+  const raw = execFileSync("ffmpeg", ["-v", "quiet", "-i", file, "-ac", "1", "-ar", String(SR), "-f", "s16le", "-"], { maxBuffer: 1 << 28, windowsHide: true });
+  const x = new Float32Array(raw.length / 2);
+  for (let i = 0; i < x.length; i++) x[i] = raw.readInt16LE(i * 2) / 32768;
+  const frame = 800, hop = 800, minLag = Math.floor(SR / 600), maxLag = Math.floor(SR / 70);
+  const rms = []; let maxRms = 0;
+  for (let s = 0; s + frame < x.length; s += hop) { let e = 0; for (let i = 0; i < frame; i++) e += x[s + i] * x[s + i]; const r = Math.sqrt(e / frame); rms.push(r); if (r > maxRms) maxRms = r; }
+  const out = [];
+  for (let s = 0, k = 0; s + frame + maxLag < x.length; s += hop, k++) {
+    if (rms[k] < maxRms * 0.15) continue;
+    let e0 = 0; for (let i = 0; i < frame; i++) e0 += x[s + i] * x[s + i];
+    let best = 0, bestLag = 0;
+    for (let lag = minLag; lag <= maxLag; lag++) {
+      let c = 0, e1 = 0;
+      for (let i = 0; i < frame; i++) { c += x[s + i] * x[s + i + lag]; e1 += x[s + i + lag] * x[s + i + lag]; }
+      const n = c / Math.sqrt(e0 * e1 + 1e-9);
+      if (n > best) { best = n; bestLag = lag; }
+    }
+    if (best > 0.75) out.push(SR / bestLag);
+  }
+  out.sort((a, b) => a - b);
+  return out.length ? Math.round(out[Math.floor(out.length / 2)]) : null;
+}
 function voiceRunArgs(step, castKeys) {
   const castOk = k => typeof k === "string" && castKeys.includes(k);
   const refOk = r => /^[np]\d{2,3}-[a-z]+(-\d+)?$/.test(r || "");
@@ -209,6 +234,19 @@ async function handleDev(req, res, url) {
     console.log(`[voice-run] ${voiceJob.label}：${queue.map(q => q.join(" ")).join(" → ")}`);
     runVoiceSteps(voiceJob, key);
     return sendJson(res, 200, { ok: true, id: voiceJob.id });
+  }
+  // ===== 声の高さを測る（試聴室の候補に「高さ ○○Hz」と出す）=====
+  // ffmpeg で 16kHz モノラルにして、自己相関で基本周波数（F0）の中央値を求める。ffmpeg が無ければ測れない
+  if (url.pathname === "/__dev/voice-pitch" && req.method === "GET") {
+    const rel = url.searchParams.get("file") || "";
+    const file = path.resolve(root, "voices", "cards", rel);
+    if (!file.startsWith(path.join(root, "voices", "cards") + path.sep) || !/\.mp3$/.test(file) || !fs.existsSync(file)) return sendJson(res, 404, { ok: false, message: "音声がありません" });
+    const stamp = file + ":" + fs.statSync(file).mtimeMs;
+    if (!voicePitchCache.has(stamp)) {
+      try { voicePitchCache.set(stamp, measurePitch(file)); }
+      catch (e) { return sendJson(res, 200, { ok: false, message: "高さを測れませんでした（ffmpeg が必要です）" }); }
+    }
+    return sendJson(res, 200, { ok: true, hz: voicePitchCache.get(stamp) });
   }
   // ===== 言い方の候補（同じ台詞を何通りか作ったもの）：一覧と、選んだものを本番の音声にする =====
   if (url.pathname === "/__dev/voice-takes" && req.method === "GET") {
