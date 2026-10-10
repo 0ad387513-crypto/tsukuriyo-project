@@ -35,6 +35,7 @@
 */
 const fs = require("node:fs");
 const path = require("node:path");
+const { spawnSync } = require("node:child_process");
 
 const args = process.argv.slice(2);
 const command = args[0] || "help";
@@ -60,6 +61,35 @@ function directionTags(direction) {
   const tags = [];
   for (const [word, tag] of directionMap) if (direction.includes(word) && !tags.includes(tag)) tags.push(tag);
   return tags.slice(0, 3);
+}
+// 「‿」は「区切って読ませるが、間は空けない」しるし（読み方の辞書で使う。例：あまねの‿やしろ）。
+// 読点として読ませると区切りの前後で言い方（アクセント）が安定するので、作ったあとにその間だけを ffmpeg で詰める
+const TIE = "‿";
+function tightenPauses(file, text) {
+  if (!text.includes(TIE)) return;
+  const body = text.replace(/\[[^\]]*\]/g, "").trim().replace(/[、。!?！？…‿\s]+$/u, "");
+  const marks = [...body.matchAll(/[、。!?！？…‿]+/gu)].map(m => m[0].includes(TIE));
+  const probe = spawnSync("ffmpeg", ["-hide_banner", "-i", file, "-af", "silencedetect=noise=-32dB:d=0.1", "-f", "null", "-"], { encoding: "utf8", windowsHide: true });
+  if (probe.error) { console.warn("  （ffmpeg が無いため、区切りの間は詰めていません）"); return; }
+  const log = probe.stderr || "";
+  const dur = (() => { const m = /Duration: (\d+):(\d+):([\d.]+)/.exec(log); return m ? m[1] * 3600 + m[2] * 60 + Number(m[3]) : 0; })();
+  const starts = [...log.matchAll(/silence_start: ([\d.]+)/g)].map(m => Number(m[1]));
+  const ends = [...log.matchAll(/silence_end: ([\d.]+)/g)].map(m => Number(m[1]));
+  const inner = starts.map((st, i) => [st, ends[i]]).filter(([st, en]) => st > 0.02 && en !== undefined && en < dur - 0.02);
+  if (inner.length !== marks.length) { console.warn(`  （間の数が合わないため、区切りの間は詰めていません：記号${marks.length}か所・無音${inner.length}か所）`); return; }
+  const cuts = inner.filter((_, i) => marks[i]).map(([st, en]) => [st + 0.015, en - 0.015]).filter(([a, b]) => b - a > 0.02);
+  if (!cuts.length) return;
+  // 残す区間をつなぐ
+  const keep = []; let pos = 0;
+  for (const [a, b] of cuts) { keep.push([pos, a]); pos = b; }
+  keep.push([pos, null]);
+  const parts = keep.map(([a, b], i) => "[0:a]atrim=start=" + a + (b === null ? "" : ":end=" + b) + ",asetpts=PTS-STARTPTS" + (i > 0 ? ",afade=t=in:st=0:d=0.012" : "") + "[p" + i + "]");
+  const filter = parts.join(";") + ";" + keep.map((_, i) => "[p" + i + "]").join("") + "concat=n=" + keep.length + ":v=0:a=1[o]";
+  const tmp = file + ".tight.mp3";
+  const run = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-filter_complex", filter, "-map", "[o]", "-ac", "1", "-ar", "44100", "-b:a", "64k", tmp], { encoding: "utf8", windowsHide: true });
+  if (run.status !== 0 || !fs.existsSync(tmp)) { console.warn("  （区切りの間を詰められませんでした）"); return; }
+  fs.renameSync(tmp, file);
+  console.log(`  区切りの間を詰めました（${cuts.length}か所）`);
 }
 function applyReadings(text, readings) {
   const words = Object.keys(readings).filter(Boolean).sort((a, b) => b.length - a.length);
@@ -376,7 +406,7 @@ async function lines() {
     const stability = Math.min(0.5, Number.isFinite(dir.stability) ? dir.stability : CARD_STABILITY);
     console.log(`${it.ref}（${it.cast}）：${text}${stability !== CARD_STABILITY ? `（安定度${stability}）` : ""}`);
     try {
-      const body = { text, model_id: el.model, language_code: el.language_code, voice_settings: { stability } };
+      const body = { text: text.split(TIE).join("、"), model_id: el.model, language_code: el.language_code, voice_settings: { stability } };
       // 演技の方針（日本語の自由記述）は「台詞の直前の文脈」として渡す。読み上げられず、言い方だけに効く
       const direction = (dir.direction || "").trim();
       if (direction) { body.previous_text = direction.replace(/[。．.]?$/, "。"); console.log(`  演技の方針：${direction}`); }
@@ -386,7 +416,7 @@ async function lines() {
           // モデルが文脈の指定に対応していないときは、方針を演技タグとして台詞の頭に付けて作り直す
           if (!direction || !/previous_text|not supported|unsupported/i.test(String(e.message))) throw e;
           console.warn("  このモデルは文脈の指定に対応していないため、方針を [ ] の演技指定として付けて作ります。方針が読み上げられていないか聴いて確認してください");
-          delete body.previous_text; body.text = `[${direction}] ` + text;
+          delete body.previous_text; body.text = `[${direction}] ` + text.split(TIE).join("、");
           return call(`/text-to-speech/${voiceId}?output_format=mp3_44100_64`, body, true);
         }
       };
@@ -395,12 +425,15 @@ async function lines() {
         for (const old of fs.readdirSync(takesDir)) if (old.startsWith(it.ref + "-") && /^\d+\.mp3$/.test(old.slice(it.ref.length + 1))) fs.unlinkSync(path.join(takesDir, old));
         for (let k = 1; k <= takes; k++) {
           body.seed = Math.floor(Math.random() * 4294967295);
-          fs.writeFileSync(path.join(takesDir, `${it.ref}-${k}.mp3`), await speak());
+          const takeFile = path.join(takesDir, `${it.ref}-${k}.mp3`);
+          fs.writeFileSync(takeFile, await speak());
+          tightenPauses(takeFile, text);
           chars += text.length;
           console.log(`  → 言い方の候補${k}`);
         }
       } else {
         fs.writeFileSync(out, await speak());
+        tightenPauses(out, text);
         chars += text.length;
       }
     } catch (e) { console.error(`  × 失敗：${String(e.message || e).slice(0, 300)}`); failed.push(it.ref); }
