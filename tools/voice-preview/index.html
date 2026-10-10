@@ -91,6 +91,10 @@
   .thumb:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
   .cards { display: flex; flex-wrap: wrap; gap: 8px; }
   .cards .thumb { width: 84px; }
+  .ask { border: 1px solid var(--gold); border-radius: 12px; background: var(--panel); color: var(--ink); padding: 16px 18px; max-width: min(92vw, 480px); }
+  .ask::backdrop { background: rgba(0, 0, 0, .6); }
+  .ask p { margin: 0 0 14px; white-space: pre-line; font-size: 14px; line-height: 1.7; }
+  .ask .btns { justify-content: flex-end; }
   .viewer { border: 0; padding: 0; background: transparent; max-width: min(92vw, 520px); max-height: 92vh; }
   .viewer::backdrop { background: rgba(0, 0, 0, .75); }
   .viewer img { display: block; width: 100%; height: auto; max-height: 86vh; object-fit: contain; border-radius: 10px; cursor: zoom-out; }
@@ -178,6 +182,7 @@
   <p class="runner-msg" id="runnerMsg"></p>
   <pre class="runner-log" id="runnerLog"></pre>
 </section>
+<dialog class="ask" id="ask" aria-labelledby="askMsg"><p id="askMsg"></p><div class="btns"><button type="button" class="copy main" id="askOk">はい</button><button type="button" class="copy" id="askCancel">やめる</button></div></dialog>
 <dialog class="viewer" id="viewer" aria-label="カードの拡大表示"><img id="viewerImg" alt=""><p id="viewerCap"></p></dialog>
 <script>
 (() => {
@@ -611,7 +616,7 @@
     const steps = toSteps(cmd);
     if (steps.some(st => st.command === "pick") && steps.find(st => st.command === "pick")) {
       const st = steps.find(x => x.command === "pick");
-      if ((data.record[st.cast] || {}).voiceId && !confirm("「" + displayName(st.cast) + "」はもう声が登録されています。候補" + st.choice + "で登録し直しますか？\n・前の声は ElevenLabs から削除されます（声の枠が1つ空きます）\n・「決めて台詞まで作る」なら、台詞もすべて新しい声で作り直します")) return;
+      if ((data.record[st.cast] || {}).voiceId && !(await askConfirm("「" + displayName(st.cast) + "」はもう声が登録されています。候補" + st.choice + "で登録し直しますか？\n・前の声は ElevenLabs から削除されます（声の枠が1つ空きます）\n・「決めて台詞まで作る」なら、台詞もすべて新しい声で作り直します"))) return;
     }
     // 声を ElevenLabs から外したキャラの台詞は作り直せない（指定の保存はできている）
     // 作り直す台詞のうち、声を外した人の分は作れない。全員が外した声のときだけ止める（一部なら、作れる人の分だけ作る）
@@ -652,7 +657,7 @@
     const msg = direction
       ? "「" + displayName(key) + "」の台詞" + refs.length + "本すべてに、演技の方針「" + direction + "」を入れます。" + (others ? "\n別の方針が入っている" + others + "本も、この方針に置き換わります。" : "") + "\n（台詞の言い換えや安定度などは変わりません）"
       : "「" + displayName(key) + "」の台詞" + refs.length + "本すべての演技の方針を消します。";
-    if (!confirm(msg)) return;
+    if (!(await askConfirm(msg))) return;
     try {
       const res = await fetch("/__dev/voice-direction-batch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refs, direction }) });
       const j = await res.json().catch(() => ({}));
@@ -660,7 +665,7 @@
     } catch (e) { toast(e.message); return; }
     rememberScroll(); await load(); restoreScroll();
     toast(directionDoneText(refs.length, direction));
-    if ((data.record[key] || {}).voiceId && confirm("方針を入れました。続けて「" + displayName(key) + "」の台詞" + refs.length + "本をすべて作り直しますか？\n（ElevenLabs のクレジットを使います。あとで台詞ごとに作り直すこともできます）")) {
+    if ((data.record[key] || {}).voiceId && await askConfirm("方針を入れました。続けて「" + displayName(key) + "」の台詞" + refs.length + "本をすべて作り直しますか？\n（ElevenLabs のクレジットを使います。あとで台詞ごとに作り直すこともできます）")) {
       runCommand(TOOL + " lines --cast " + key + " --force", "全台詞を作り直す");
     }
   }
@@ -671,7 +676,7 @@
     const targets = (choices || (r.candidates || []).map(x => x.choice)).filter(n => n !== keep);
     if (!targets.length) { toast("消せる候補がありません（登録中の候補は消せません）"); return; }
     const what = choices ? "候補" + targets.join("・") : (keep ? "登録中（候補" + keep + "）以外の候補" + targets.length + "個" : "候補" + targets.length + "個すべて");
-    if (!confirm("「" + displayName(key) + "」の" + what + "を削除します。音声ファイルも消え、元に戻せません。よろしいですか？")) return;
+    if (!(await askConfirm("「" + displayName(key) + "」の" + what + "を削除します。音声ファイルも消え、元に戻せません。よろしいですか？"))) return;
     try {
       const res = await fetch("/__dev/voice-candidates-delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(choices ? { cast: key, choices: targets } : { cast: key, all: true }) });
       const j = await res.json().catch(() => ({}));
@@ -679,6 +684,15 @@
       rememberScroll(); await load(); restoreScroll();
       toast("候補" + j.deleted.join("・") + "を削除しました");
     } catch (e) { toast(e.message); }
+  }
+  // 確認はページ内の画面で行う（ブラウザの確認ダイアログは、何度も出すと「これ以上表示しない」にされて、以後は何も出ずに押せなくなるため）
+  function askConfirm(message) {
+    return new Promise(resolve => {
+      const dlg = $("ask"); $("askMsg").textContent = message;
+      const done = v => { dlg.close(); $("askOk").onclick = $("askCancel").onclick = dlg.oncancel = null; resolve(v); };
+      $("askOk").onclick = () => done(true); $("askCancel").onclick = () => done(false); dlg.oncancel = e => { e.preventDefault(); done(false); };
+      dlg.showModal(); $("askOk").focus();
+    });
   }
   async function copy(text) {
     try { await navigator.clipboard.writeText(text); toast("コピーしました：" + text); }
