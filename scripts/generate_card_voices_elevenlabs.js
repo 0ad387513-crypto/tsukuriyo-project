@@ -633,6 +633,60 @@ async function use() {
   console.log(`${key}：Voice Library の「${hit.name}」を登録しました（${json.voice_id}）。声の枠は使いません。`);
 }
 
+/* ===== 候補の試聴音声から台詞を切り出す =====
+   声の候補を作るときの試聴音声は、そのキャラの台詞を読ませて作っている。「候補のときの言い方が良かった」台詞は、
+   登録した候補の試聴音声を音声認識にかけて言葉ごとの時刻を調べ、その台詞の部分だけを切り出して言い方の候補（takes）にする。
+   声を ElevenLabs から外したあとでも、試聴音声が残っていれば使える */
+async function cut() {
+  const ref = argValue("--ref");
+  const { items } = collectLines();
+  const it = items.find(i => i.ref === ref);
+  if (!it) { console.error("cut には --ref 台詞ID が必要です。"); process.exitCode = 1; return; }
+  const record = readJson(recordFile, {});
+  const r = record[it.cast] || {};
+  const cand = (r.candidates || []).find(x => x.choice === r.choice);
+  const file = cand && path.join(previewDir, cand.file);
+  if (!file || !fs.existsSync(file)) { console.error(`${it.cast}：登録した候補の試聴音声が見つかりません（候補を消していると切り出せません）`); process.exitCode = 1; return; }
+  const dir = readJson(directionFile, {})[ref] || {};
+  const expected = speechText(applyReadings(dir.text || it.text, readJson(readingsFile, {}))).split(TIE).join("");
+  // 1文字ごとの時刻つきで聞き取る
+  const fd = new FormData();
+  fd.append("model_id", "scribe_v1"); fd.append("language_code", "ja"); fd.append("timestamps_granularity", "character");
+  fd.append("file", new Blob([fs.readFileSync(file)], { type: "audio/mpeg" }), "a.mp3");
+  const res = await fetch(API + "/speech-to-text", { method: "POST", headers: { "xi-api-key": apiKey() }, body: fd, signal: AbortSignal.timeout(120000) });
+  if (!res.ok) throw new Error("聞き取り " + res.status + " " + (await res.text()).slice(0, 200));
+  const words = ((await res.json()).words || []).filter(w => w.type !== "spacing" && Number.isFinite(w.start));
+  // 文ごとにまとめる（。？！で区切る）
+  const sentences = []; let cur = null;
+  for (const w of words) {
+    if (/^[。？！!?]+$/.test(w.text)) { if (cur) { sentences.push(cur); cur = null; } continue; }
+    if (!cur) cur = { text: "", start: w.start, end: w.end };
+    cur.text += w.text; cur.end = w.end;
+  }
+  if (cur) sentences.push(cur);
+  const scored = sentences.map((sn, i) => Object.assign(sn, { i, score: hearScore(expected, sn.text) })).filter(sn => sn.score >= 0.6);
+  if (!scored.length) { console.error(`${ref}：試聴音声の中に、この台詞（${expected}）にあたる部分が見つかりませんでした。聞き取り：${sentences.map(x => x.text).join("／")}`); process.exitCode = 1; return; }
+  fs.mkdirSync(takesDir, { recursive: true });
+  for (const old of fs.readdirSync(takesDir)) if (old.startsWith(ref + "-") && /^\d+\.mp3$/.test(old.slice(ref.length + 1))) fs.unlinkSync(path.join(takesDir, old));
+  const heardFile = path.join(outDir, "heard.json"); const heardLog = readJson(heardFile, {});
+  let n = 0;
+  for (const sn of scored.slice(0, 5)) {
+    // 前後の文との間（無音）の真ん中まで余白を取る。最大で前 0.08 秒・後ろ 0.18 秒
+    const prev = sentences[sn.i - 1], next = sentences[sn.i + 1];
+    const from = Math.max(prev ? (prev.end + sn.start) / 2 : 0, sn.start - 0.08);
+    const to = Math.min(next ? (sn.end + next.start) / 2 : sn.end + 0.3, sn.end + 0.18);
+    const outFile = path.join(takesDir, `${ref}-${n + 1}.mp3`);
+    const len = to - from;
+    const run = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-ss", from.toFixed(3), "-to", to.toFixed(3), "-af", "afade=t=in:st=" + from.toFixed(3) + ":d=0.02,afade=t=out:st=" + (to - 0.04).toFixed(3) + ":d=0.04", ...encArgs(outFile), outFile], { encoding: "utf8", windowsHide: true });
+    if (run.error || run.status !== 0 || !fs.existsSync(outFile)) { console.warn("  （切り出せませんでした。ffmpeg が必要です）" + String(run.stderr || "").slice(0, 120)); continue; }
+    n++;
+    heardLog[ref + "#" + n] = { text: sn.text, score: Math.round(sn.score * 100) / 100, ok: true, at: new Date().toISOString(), from: "preview" };
+    console.log(`  → 言い方の候補${n}：${sn.text}（${from.toFixed(2)}〜${to.toFixed(2)}秒、${len.toFixed(2)}秒）`);
+  }
+  writeJson(heardFile, heardLog);
+  console.log(`${ref}：候補${r.choice}の試聴音声から ${n} 個切り出しました。試聴室で聴いて「これにする」を押してください。`);
+}
+
 async function release() {
   const key = castArg();
   const record = readJson(recordFile, {});
@@ -687,7 +741,7 @@ function bundle() {
   console.log(`index.json：${Object.keys(index).length}本。台本サイトに載せるには、Claude に「音声を台本サイトに反映して」と伝えてください。`);
 }
 
-const commands = { cast: buildCast, status, design, pick, library, use, lines, release, bundle };
+const commands = { cast: buildCast, status, design, pick, library, use, lines, release, bundle, cut };
 if (!commands[command]) {
   console.log("使い方はファイル先頭のコメントを見てください（cast / status / design / pick / library / use / lines / release / bundle）。");
 } else {

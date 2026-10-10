@@ -50,6 +50,7 @@ function voiceRunArgs(step, castKeys) {
     return a;
   }
   if (step.command === "pick" && castOk(step.cast) && /^\d{1,3}$/.test(String(step.choice))) return ["pick", "--cast", step.cast, "--choice", String(step.choice)];
+  if (step.command === "cut" && refOk(step.ref)) return ["cut", "--ref", step.ref];
   if (step.command === "lines" && step.ref && refOk(step.ref) && step.takes) return /^[2-5]$/.test(String(step.takes)) ? ["lines", "--ref", step.ref, "--takes", String(step.takes)] : null;
   if (step.command === "lines" && step.word) {
     const readings = fs.existsSync(voiceReadingsFile) ? JSON.parse(fs.readFileSync(voiceReadingsFile, "utf8")) : {};

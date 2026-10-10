@@ -399,7 +399,11 @@
         await runCommand(TOOL + " lines --ref " + it.ref + " --takes 3", "言い方を3通り作る");
       } catch (e) { toast(e.message); }
     });
-    const btns = el("div", "btns"); btns.append(save, takesBtn, clear);
+    // 候補を選んだときの試聴音声に、この台詞が入っている。そのときの言い方を使いたいときは、そこから切り出す
+    const cutBtn = el("button", "copy", "候補の試聴音声から切り出す"); cutBtn.type = "button";
+    cutBtn.title = "声の候補を聴いたときの言い方のほうが良かった台詞に。登録した候補の試聴音声から、この台詞の部分を切り出して「言い方の候補」に並べます（声を外したあとでも使えます。クレジットはほとんど使いません）";
+    cutBtn.addEventListener("click", () => runCommand(TOOL + " cut --ref " + it.ref, "試聴音声から切り出す"));
+    const btns = el("div", "btns"); btns.append(save, takesBtn, cutBtn, clear);
     save.addEventListener("click", async () => {
       try {
         const t = text.value.trim();
