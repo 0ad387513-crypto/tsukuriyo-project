@@ -519,11 +519,25 @@ async function lines() {
       const original = dir.text || (c.tts && c.tts[it.ref]) || it.text;
       const ngWords = Object.entries(readings).filter(([w, v]) => original.includes(w) && v && typeof v === "object" && Array.isArray(v.ng)).flatMap(([, v]) => v.ng).filter(Boolean);
       const spokenPlain = body.text.replace(/\[[^\]]*\]/g, "");
+      // タグの位置を変えた読ませ方（タグが無ければ1通りだけ）
+      const tagStr = tagList.join(" "), plainText = spokenPlain.trim();
+      const textVariants = [body.text];
+      if (tagStr) {
+        const cut = /^(.{2,12}?[、,])(.+)$/.exec(plainText) || /^(.{3,10}?[にはがをでもへ])(.{3,})$/.exec(plainText);
+        if (cut) textVariants.push(cut[1].replace(/[、,]$/, "") + "、" + tagStr + " " + cut[2].trim());
+        textVariants.push(plainText);
+      }
+      let lastSent = null;
       const tries = noCheck ? 1 : (ngWords.length ? 5 : 3);
       const makeOne = async (file, heardKey) => {
         let best = null;
         for (let attempt = 1; attempt <= tries; attempt++) {
           body.seed = Math.floor(Math.random() * 4294967295);
+          // 演技タグが頭にあると、最初の言葉の読み方が崩れることがある（例：[lazy] あーしの…→「ああ、死の…」）。
+          // 作り直すたびに、タグの位置を 頭 → 最初の言葉のあと → タグなし の順に変えて試す
+          body.text = textVariants[Math.min(textVariants.length - 1, Math.floor((attempt - 1) * textVariants.length / tries))];
+          if (attempt > 1 && body.text !== lastSent) console.log(`  （読ませ方を変えます：${body.text}）`);
+          lastSent = body.text;
           const audio = await speak();
           chars += text.length;
           fs.writeFileSync(file, audio);
