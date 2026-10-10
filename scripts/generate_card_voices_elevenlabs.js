@@ -65,6 +65,9 @@ function directionTags(direction) {
 // 「‿」は「区切って読ませるが、間は空けない」しるし（読み方の辞書で使う。例：あまねの‿やしろ）。
 // 読点として読ませると区切りの前後で言い方（アクセント）が安定するので、作ったあとにその間だけを ffmpeg で詰める
 const TIE = "‿";
+// 保存の形式：作業用の WAV は劣化なし、仕上がりの MP3 は 128kbps（以前は 64kbps で加工のたびに保存し直していて、音が機械っぽく劣化していた）
+const encArgs = file => /\.wav$/i.test(file) ? ["-ac", "1", "-ar", "44100", "-c:a", "pcm_s16le"] : ["-ac", "1", "-ar", "44100", "-b:a", "128k"];
+const tmpName = (file, tag) => file + "." + tag + path.extname(file);
 function tightenPauses(file, text) {
   if (!text.includes(TIE)) return;
   const body = text.replace(/\[[^\]]*\]/g, "").trim().replace(/[、。!?！？…‿\s]+$/u, "");
@@ -85,8 +88,8 @@ function tightenPauses(file, text) {
   keep.push([pos, null]);
   const parts = keep.map(([a, b], i) => "[0:a]atrim=start=" + a + (b === null ? "" : ":end=" + b) + ",asetpts=PTS-STARTPTS" + (i > 0 ? ",afade=t=in:st=0:d=0.03" : "") + (b === null ? "" : ",afade=t=out:st=" + Math.max(0, b - a - 0.03).toFixed(3) + ":d=0.03") + "[p" + i + "]");
   const filter = parts.join(";") + ";" + keep.map((_, i) => "[p" + i + "]").join("") + "concat=n=" + keep.length + ":v=0:a=1[o]";
-  const tmp = file + ".tight.mp3";
-  const run = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-filter_complex", filter, "-map", "[o]", "-ac", "1", "-ar", "44100", "-b:a", "64k", tmp], { encoding: "utf8", windowsHide: true });
+  const tmp = tmpName(file, "tight");
+  const run = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-filter_complex", filter, "-map", "[o]", ...encArgs(tmp), tmp], { encoding: "utf8", windowsHide: true });
   if (run.status !== 0 || !fs.existsSync(tmp)) { console.warn("  （区切りの間を詰められませんでした）"); return; }
   fs.renameSync(tmp, file);
   console.log(`  区切りの間を詰めました（${cuts.length}か所）`);
@@ -102,8 +105,8 @@ function tempoFor(dir) {
 }
 function applyTempo(file, tempo) {
   if (!tempo || Math.abs(tempo - 1) < 0.01) return;
-  const tmp = file + ".tempo.mp3";
-  const run = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-af", "atempo=" + tempo.toFixed(3), "-ac", "1", "-ar", "44100", "-b:a", "64k", tmp], { encoding: "utf8", windowsHide: true });
+  const tmp = tmpName(file, "tempo");
+  const run = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-af", "atempo=" + tempo.toFixed(3), ...encArgs(tmp), tmp], { encoding: "utf8", windowsHide: true });
   if (run.error || run.status !== 0 || !fs.existsSync(tmp)) { console.warn("  （速さを変えられませんでした。ffmpeg が必要です）"); return; }
   fs.renameSync(tmp, file);
   console.log(`  速さ ${tempo}倍（${tempo < 1 ? "ゆっくり" : "速め"}）にしました`);
@@ -132,8 +135,8 @@ function measurePitch(file) {
 // 作った台詞の声の高さを、速さを変えずに上げ下げする（半音単位。キャストごとの pitch_shift）。声の性質（フォルマント）は保つ
 function applyPitchShift(file, semitones) {
   if (!semitones) return;
-  const tmp = file + ".pitch.mp3";
-  const run = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-af", "rubberband=pitch=" + Math.pow(2, semitones / 12).toFixed(4) + ":formant=preserved", "-ac", "1", "-ar", "44100", "-b:a", "64k", tmp], { encoding: "utf8", windowsHide: true });
+  const tmp = tmpName(file, "pitch");
+  const run = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-af", "rubberband=pitch=" + Math.pow(2, semitones / 12).toFixed(4) + ":pitchq=quality:formant=preserved", ...encArgs(tmp), tmp], { encoding: "utf8", windowsHide: true });
   if (run.error || run.status !== 0 || !fs.existsSync(tmp)) { console.warn("  （声の高さを変えられませんでした。ffmpeg が必要です）"); return; }
   fs.renameSync(tmp, file);
   console.log(`  声の高さを ${semitones > 0 ? "+" : ""}${semitones} 段階（半音）変えました`);
@@ -503,13 +506,13 @@ async function lines() {
       const direction = (dir.direction || "").trim();
       if (direction) { body.previous_text = direction.replace(/[。．.]?$/, "。"); console.log(`  演技の方針：${direction}`); }
       const speak = async () => {
-        try { return await call(`/text-to-speech/${voiceId}?output_format=mp3_44100_64`, body, true); }
+        try { return await call(`/text-to-speech/${voiceId}?output_format=mp3_44100_128`, body, true); }
         catch (e) {
           // モデルが文脈の指定に対応していないときは、方針を演技タグとして台詞の頭に付けて作り直す
           if (!direction || !/previous_text|not supported|unsupported/i.test(String(e.message))) throw e;
           console.warn("  このモデルは文脈の指定に対応していないため、方針を [ ] の演技指定として付けて作ります。方針が読み上げられていないか聴いて確認してください");
           delete body.previous_text; body.text = `[${direction}] ` + text.split(TIE).join("、");
-          return call(`/text-to-speech/${voiceId}?output_format=mp3_44100_64`, body, true);
+          return call(`/text-to-speech/${voiceId}?output_format=mp3_44100_128`, body, true);
         }
       };
       // 1本作る：作る → 音声認識で聞き取る → 読み違いなら作り直す（最大 tries 回）→ 間・速さ・高さの仕上げ
@@ -538,9 +541,19 @@ async function lines() {
         fs.writeFileSync(file, best.audio);
         if (best.heardText !== undefined && best.heardText !== null) { heardLog[heardKey] = { text: best.heardText, score: Math.round(best.score * 100) / 100, ok: !!best.ok, at: new Date().toISOString() }; }
         else delete heardLog[heardKey];
-        tightenPauses(file, text);
-        applyTempo(file, tempoFor(dir));
-        applyPitchShift(file, Number(c.pitch_shift) || 0);
+        // 仕上げ（区切りの間・速さ・高さ）。必要なときだけ、WAV に直してまとめて加工し、最後に1回だけ MP3 にする
+        const tempo = tempoFor(dir), shift = Number(c.pitch_shift) || 0;
+        if (text.includes(TIE) || Math.abs(tempo - 1) >= 0.01 || shift) {
+          const wav = file + ".work.wav";
+          const toWav = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, ...encArgs(wav), wav], { encoding: "utf8", windowsHide: true });
+          if (toWav.error || toWav.status !== 0 || !fs.existsSync(wav)) { console.warn("  （仕上げの加工はできませんでした。ffmpeg が必要です）"); return; }
+          tightenPauses(wav, text);
+          applyTempo(wav, tempo);
+          applyPitchShift(wav, shift);
+          const toMp3 = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", wav, ...encArgs(file), file], { encoding: "utf8", windowsHide: true });
+          try { fs.unlinkSync(wav); } catch (e) {}
+          if (toMp3.error || toMp3.status !== 0) console.warn("  （仕上げの保存に失敗しました）");
+        }
       };
       if (takes) {
         // 言い方の候補：毎回ちがう seed で作る
