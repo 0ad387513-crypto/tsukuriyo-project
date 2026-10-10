@@ -704,7 +704,7 @@
     if (!job) return;
     if (job.running) { showRunner("実行中…（" + job.label + "）", "", "ElevenLabs で作っています。数秒〜数十秒かかります。", job.log.trim()); runnerTimer = setTimeout(pollRunner, 1000); return; }
     const ok = job.code === 0 && !/×|失敗|作れなかった/.test(job.log);
-    showRunner(ok ? "完了しました（" + job.label + "）" : "うまくいかなかった所があります（" + job.label + "）", ok ? "ok" : "ng", ok ? "下の一覧を最新にしました。聴いて確かめてください。" : "下の記録を確認してください。", job.log.trim());
+    showRunner(ok ? "完了しました（" + job.label + "）" : "うまくいかなかった所があります（" + job.label + "）", ok ? "ok" : "ng", ok ? "下の一覧を最新にしました。聴いて確かめてください。" : /voice_limit_reached|maximum amount of custom voices/.test(job.log) ? "ElevenLabs に登録できる声の数が上限（30）に達していて、新しい声を登録できませんでした。台詞が全部できたキャラの声を外すと空きます（作った音声はそのまま残ります）。Claude に「確定したキャラの声を外して」と伝えてください。" : "下の記録を確認してください。", job.log.trim());
     rememberScroll(); await load(); restoreScroll();
   }
   async function applyDirectionToCast(key, direction) {
