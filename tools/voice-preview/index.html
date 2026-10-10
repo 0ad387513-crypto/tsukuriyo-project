@@ -525,7 +525,12 @@
       if (high && !(sp.manner || []).some(m => ["energetic", "hightension"].includes(m))) why.push("話し方に「元気」か「ハイテンション」が入っていません");
       if (high && sp.age && sp.age !== "18" && sp.gender !== "male") why.push("年代が「18歳くらい」ではありません");
       if (high && !sample.value.trim()) why.push("見本の文が空です（台詞がそっけないと低くなります）");
-      pitchHint.textContent = why.length ? "⚠ 高い声になりにくい設定です：" + why.join("／") + "。声の高さは「高さ」の指定より、人物像（元気・明るい）と見本の文に強く引っぱられます。" : "";
+      if (high && (sp.timbre || []).some(t => ["powerful", "deep"].includes(t))) why.push("声質の「力強い」「重厚」は大人びた張りのある声に寄ります（かわいらしくしたいときは「柔らかい」「透き通る」）");
+      if (high && /号令|命令/.test(sample.value)) why.push("見本の文が号令調です");
+      // 幼さ・未成年を表す言葉は ElevenLabs の安全ルールで止められることがあり、効果も期待できない
+      const minor = /幼|子ども|子供|少女|少年|児|ロリ|ショタ|\d+\s*歳/.test((sp.role || "") + (sp.note || ""));
+      if (minor) why.push("役柄・その他の指示に、幼さや年齢を表す言葉があります。ElevenLabs は子どもの声を作れない決まりで、候補づくりが止められることがあります。「高く軽い」「かわいらしい」「柔らかい」などの言い方にしてください");
+      pitchHint.textContent = why.length ? "⚠ 気をつける点：" + why.join("／") + "。声の高さや雰囲気は、「高さ」の指定より人物像（話し方・声質）と見本の文に強く引っぱられます。" : "";
       pitchHint.hidden = !why.length;
     };
     const rebuild = () => { if (sp.gender) { text.value = buildDescription(sp); syncCount(); } syncHint(); };
