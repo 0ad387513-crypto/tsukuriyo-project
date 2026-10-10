@@ -185,7 +185,7 @@
   let data = { cast: {}, record: {}, lines: {}, pairs: {}, items: null, directions: {} };
   // 演技の指定。ElevenLabs の演技タグ（英語の [ ] 書き）を台詞の頭に付けて読ませる。1〜2個までが自然
   const PRESETS = ["戦闘中の掛け声として", "敵に斬りかかる瞬間", "攻撃を受けて", "倒れる間際に", "はきはきと", "明るく元気に", "落ち着いて", "力強く", "ささやくように", "悲しげに", "怒りをこめて", "笑いながら", "叫びすぎない"];
-  const STABILITY = [["", "標準（共通の設定 0.5）"], ["0", "0：表情を大きく（ぶれやすい）"], ["0.5", "0.5：自然"], ["1", "1：安定（平板になりやすい）"]];
+  const STABILITY = [["", "標準（共通の設定 0.5）"], ["0", "0：表情を大きく（ぶれやすい）"], ["0.3", "0.3：やや表情豊か（棒読みっぽいときに）"], ["0.5", "0.5：自然"], ["1", "1：安定（平板になりやすい）"]];
   async function saveDirection(ref, body) {
     const r = await fetch("/__dev/voice-direction?ref=" + encodeURIComponent(ref), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
@@ -440,7 +440,7 @@
     age: { label: "年代", one: true, options: [["18", "18歳くらい"], ["20s", "20代"], ["30s", "30代"], ["40s", "40代"], ["50s", "50代以上"]] },
     pitch: { label: "声の高さ", one: true, options: [["vlow", "とても低い"], ["low", "低め"], ["mid", "ふつう"], ["high", "高め"], ["vhigh", "とても高い"]] },
     timbre: { label: "声質（いくつでも）", options: [["clear", "透き通る"], ["core", "芯がある"], ["soft", "柔らかい"], ["powerful", "力強い"], ["bright", "明るい"], ["deep", "重厚"], ["husky", "ハスキー"], ["breathy", "息まじり"], ["rough", "ざらつき"], ["cool", "クール"]] },
-    manner: { label: "話し方・性格（いくつでも）", options: [["energetic", "元気"], ["calm", "落ち着いた"], ["polite", "丁寧"], ["rough", "乱暴"], ["archaic", "古風"], ["cold", "冷たい"], ["gentle", "優しい"], ["imposing", "威圧的"], ["cheeky", "生意気"], ["shy", "おどおど"], ["playful", "おどけた"], ["dignified", "気品"], ["haughty", "高飛車（お嬢様）"]] },
+    manner: { label: "話し方・性格（いくつでも）", options: [["energetic", "元気"], ["calm", "落ち着いた"], ["polite", "丁寧"], ["rough", "乱暴"], ["archaic", "古風"], ["cold", "冷たい"], ["gentle", "優しい"], ["imposing", "威圧的"], ["cheeky", "生意気"], ["shy", "おどおど"], ["playful", "おどけた"], ["dignified", "気品"], ["haughty", "高飛車（お嬢様）"], ["expressive", "感情豊か"]] },
   };
   const EN = {
     who: (g, a) => {
@@ -458,7 +458,7 @@
       vhigh: "Extremely high-pitched voice: very high, light and clear, at the top of the natural range in every line, thin and bright, never full or deep.",
     },
     timbre: { clear: "crystal-clear and transparent", core: "with a strong, firm core and steady breath support", soft: "soft and gentle", powerful: "powerful and resonant", bright: "bright", deep: "deep, heavy and rich", husky: "husky", breathy: "breathy", rough: "slightly rough and raspy", cool: "cool and composed" },
-    manner: { haughty: "haughty, condescending anime ojou-sama with a sharp, sing-song tone", energetic: "energetic and lively", calm: "calm and composed", polite: "polite and well-mannered", rough: "rough and blunt", archaic: "old-fashioned and formal", cold: "cold and distant", gentle: "gentle and kind", imposing: "imposing and intimidating", cheeky: "cheeky and cocky", shy: "timid and hesitant", playful: "playful and humorous", dignified: "dignified and noble" },
+    manner: { expressive: "emotionally engaged and expressive, with lively, varied intonation and natural pauses", haughty: "haughty, condescending anime ojou-sama with a sharp, sing-song tone", energetic: "energetic and lively", calm: "calm and composed", polite: "polite and well-mannered", rough: "rough and blunt", archaic: "old-fashioned and formal", cold: "cold and distant", gentle: "gentle and kind", imposing: "imposing and intimidating", cheeky: "cheeky and cocky", shy: "timid and hesitant", playful: "playful and humorous", dignified: "dignified and noble" },
   };
   function buildDescription(sp) {
     const parts = ["Japanese voice: a native speaker with natural standard Japanese pronunciation."];
@@ -480,7 +480,7 @@
     if (nots.length) parts.push(nots.join(", ").replace(/^n/, "N") + ".");
     if (sp.role) parts.push("Role (Japanese): " + sp.role + ".");
     if (sp.note) parts.push("Additional notes (Japanese): " + sp.note + ".");
-    parts.push("Natural, understated acting like a Japanese anime " + (sp.gender === "male" ? "voice actor" : "voice actress") + ".");
+    parts.push(((sp.manner || []).includes("expressive") ? "Warm, heartfelt acting like a Japanese anime " : "Natural acting like a Japanese anime ") + (sp.gender === "male" ? "voice actor" : "voice actress") + ", with natural, varied intonation: never monotone, never exaggerated.");
     return parts.join(" ").replace(/。\./g, "。").replace(/\s+/g, " ");
   }
   async function saveDescription(key, description, spec, designText) {
