@@ -36,6 +36,7 @@
   .ctab.done::before { background: var(--ok); }
   .ctab[aria-selected="true"] { border-color: var(--gold); background: var(--gold-soft); color: var(--gold); font-weight: 700; }
   .ctab.all { color: var(--muted); }
+  .ctab-sub { font-size: 10px; color: var(--muted); font-weight: 400; }
   .ctab.all::before { display: none; }
   .tab:focus-visible, .ctab:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
   .legend { font-size: 11px; color: var(--muted); }
@@ -780,7 +781,7 @@
     return min;
   }
   function castsIn(tribe, keys) {
-    const list = tribe === "作業中" ? keys.filter(k => castState(k) !== "todo" || data.record[k]) : keys.filter(k => tribesOf(k).includes(tribe));
+    const list = tribe === "作業中" ? keys.filter(k => castState(k) !== "todo" || data.record[k]) : tribe === "未着手" ? keys.filter(k => !data.record[k]) : keys.filter(k => tribesOf(k).includes(tribe));
     return list.sort((a, b) => firstNo(a) - firstNo(b));
   }
   function setView(tribe, cast) {
@@ -790,14 +791,14 @@
     render();
   }
   function renderTabs(keys) {
-    const tribes = ["作業中", ...TRIBES, "その他"].filter(t => t === "作業中" || castsIn(t, keys).length);
+    const tribes = ["作業中", "未着手", ...TRIBES, "その他"].filter(t => t === "作業中" || castsIn(t, keys).length);
     if (!tribes.includes(view.tribe)) view.tribe = castsIn("作業中", keys).length ? "作業中" : TRIBES[0];
     const inTribe = castsIn(view.tribe, keys);
     if (view.cast !== "*" && !inTribe.includes(view.cast)) view.cast = inTribe[0] || "*";
     $("tribes").replaceChildren(...tribes.map(t => {
       const list = castsIn(t, keys);
       const b = el("button", "tab", t); b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(t === view.tribe));
-      b.append(el("small", "", t === "作業中" ? list.length + "人" : list.filter(k => castState(k) === "done").length + "/" + list.length));
+      b.append(el("small", "", t === "作業中" || t === "未着手" ? list.length + "人" : list.filter(k => castState(k) === "done").length + "/" + list.length));
       b.addEventListener("click", () => setView(t, null));
       return b;
     }));
@@ -805,11 +806,13 @@
       const st = castState(k);
       const b = el("button", "ctab " + st, displayName(k)); b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(k === view.cast));
       b.title = k + "｜" + { done: "声を登録済み", cand: "候補あり（未決定）", todo: "未着手" }[st];
+      // 「未着手」の一覧では、どの種族で台詞が何本かも見せる
+      if (view.tribe === "未着手") b.append(el("small", "ctab-sub", tribesOf(k)[0] + "・" + ((data.cast[k] || {}).lines || 0) + "本"));
       b.addEventListener("click", () => setView(view.tribe, k));
       return b;
     });
     if (inTribe.length > 1) {
-      const all = el("button", "ctab all", "この種族をすべて表示"); all.type = "button"; all.setAttribute("role", "tab"); all.setAttribute("aria-selected", String(view.cast === "*"));
+      const all = el("button", "ctab all", view.tribe === "作業中" || view.tribe === "未着手" ? "すべて表示" : "この種族をすべて表示"); all.type = "button"; all.setAttribute("role", "tab"); all.setAttribute("aria-selected", String(view.cast === "*"));
       all.addEventListener("click", () => setView(view.tribe, "*"));
       chips.push(all);
     }
