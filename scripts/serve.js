@@ -303,7 +303,7 @@ async function handleDev(req, res, url) {
       if (path.dirname(file) === previewDir && fs.existsSync(file)) fs.unlinkSync(file);
     }
     r.candidates = (r.candidates || []).filter(x => !del.includes(x));
-    if (!r.candidates.length && !r.voiceId) delete record[body.cast];
+    // 候補を全部消しても記録は残す（試聴室の「作業中」タブから消えないように）
     const tmp = recordFile + ".tmp";
     fs.writeFileSync(tmp, JSON.stringify(record, null, 2) + "\n");
     fs.renameSync(tmp, recordFile);
