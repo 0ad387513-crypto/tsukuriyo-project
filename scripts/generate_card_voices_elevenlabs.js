@@ -64,7 +64,10 @@ function directionTags(direction) {
 function applyReadings(text, readings) {
   const words = Object.keys(readings).filter(Boolean).sort((a, b) => b.length - a.length);
   // 「天根ノ社（あまねのやしろ）」「還（もど）れ」のようにふりがなを添えた書き方は、ふりがなだけを読ませる（両方読まれないように）
-  let out = String(text).replace(/[一-龠々〆ヶ][一-龠々〆ヶノの]*（([ぁ-ゖァ-ヺー]+)）/g, "$1");
+  let out = String(text);
+  // 辞書にある言葉にふりがなが添えてあるときは、辞書の読み方を優先する（イントネーションを直した書き方を使うため）
+  for (const w of words) out = out.replace(new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "（[ぁ-ゖァ-ヺー]+）", "g"), w);
+  out = out.replace(/[一-龠々〆ヶ][一-龠々〆ヶノの]*（([ぁ-ゖァ-ヺー]+)）/g, "$1");
   for (const w of words) out = out.split(w).join(readings[w]);
   return out;
 }
