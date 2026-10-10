@@ -77,13 +77,13 @@ function tightenPauses(file, text) {
   const ends = [...log.matchAll(/silence_end: ([\d.]+)/g)].map(m => Number(m[1]));
   const inner = starts.map((st, i) => [st, ends[i]]).filter(([st, en]) => st > 0.02 && en !== undefined && en < dur - 0.02);
   if (inner.length !== marks.length) { console.warn(`  （間の数が合わないため、区切りの間は詰めていません：記号${marks.length}か所・無音${inner.length}か所）`); return; }
-  const cuts = inner.filter((_, i) => marks[i]).map(([st, en]) => [st + 0.015, en - 0.015]).filter(([a, b]) => b - a > 0.02);
+  const cuts = inner.filter((_, i) => marks[i]).map(([st, en]) => [st + 0.05, en - 0.05]).filter(([a, b]) => b - a > 0.02); // 前後に0.05秒ずつ（合わせて約0.1秒）の自然な間を残す
   if (!cuts.length) return;
   // 残す区間をつなぐ
   const keep = []; let pos = 0;
   for (const [a, b] of cuts) { keep.push([pos, a]); pos = b; }
   keep.push([pos, null]);
-  const parts = keep.map(([a, b], i) => "[0:a]atrim=start=" + a + (b === null ? "" : ":end=" + b) + ",asetpts=PTS-STARTPTS" + (i > 0 ? ",afade=t=in:st=0:d=0.012" : "") + "[p" + i + "]");
+  const parts = keep.map(([a, b], i) => "[0:a]atrim=start=" + a + (b === null ? "" : ":end=" + b) + ",asetpts=PTS-STARTPTS" + (i > 0 ? ",afade=t=in:st=0:d=0.03" : "") + (b === null ? "" : ",afade=t=out:st=" + Math.max(0, b - a - 0.03).toFixed(3) + ":d=0.03") + "[p" + i + "]");
   const filter = parts.join(";") + ";" + keep.map((_, i) => "[p" + i + "]").join("") + "concat=n=" + keep.length + ":v=0:a=1[o]";
   const tmp = file + ".tight.mp3";
   const run = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-filter_complex", filter, "-map", "[o]", "-ac", "1", "-ar", "44100", "-b:a", "64k", tmp], { encoding: "utf8", windowsHide: true });
