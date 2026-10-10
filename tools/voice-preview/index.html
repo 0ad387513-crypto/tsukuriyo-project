@@ -114,6 +114,8 @@
   .empty { color: var(--muted); padding: 30px 0; }
   .line-acts { display: flex; gap: 6px; }
   .dir-tag { font-size: 11px; color: var(--gold); margin-left: 6px; }
+  .heard { color: var(--muted); display: block; font-size: 11px; }
+  .heard.bad { color: #ffcf7a; font-weight: 700; }
   .takes { margin-top: 6px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--ok); background: var(--ok-soft); display: grid; gap: 6px; font-size: 12px; }
   .takes-head { font-weight: 700; color: var(--ok); font-size: 11px; }
   .take { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; }
@@ -174,8 +176,8 @@
     <div class="bar-foot"><button type="button" id="reload">最新の状態に更新</button><label class="vol" for="volume">音量 <input type="range" id="volume" min="0" max="100" step="5" value="80"> <output id="volumeText" for="volume">80</output></label><span class="summary" id="summary"></span></div>
   </div>
   <details class="readings" id="readings"><summary>読み方の辞書（イントネーション・読み間違いを直す）</summary>
-    <p class="dir-note">言葉の書き方を変えると、読み方やイントネーションが変わります。たとえば「父上」→「ちちうえ」「チチウエ」「ちち、うえ」など。ここに入れた置き換えは、その言葉を含む全部の台詞に、読み上げるときだけ使われます（台本の表示は変わりません）。入れたあとは「この言葉の台詞を作り直す」で作り直してください。うまくいかないときは、台詞ごとの「直す・作り直す」の「言い方を3通り作って選ぶ」も試してください。<br>読み方の中に「‿」を入れると、そこで区切って読ませたうえで、間だけを自動で詰めます（例：天根ノ社 → あまねの‿やしろ。区切ると言い方が安定し、間を詰めるので続けて聞こえます）。</p>
-    <div class="dir-row"><input type="text" id="readingWord" placeholder="言葉（例：父上）" aria-label="言葉"> → <input type="text" id="readingText" placeholder="読み方（例：ちちうえ）" aria-label="読み方"><button type="button" class="copy small" id="readingAdd">辞書に入れる</button></div>
+    <p class="dir-note">言葉の書き方を変えると、読み方やイントネーションが変わります。たとえば「父上」→「ちちうえ」「チチウエ」「ちち、うえ」など。ここに入れた置き換えは、その言葉を含む全部の台詞に、読み上げるときだけ使われます（台本の表示は変わりません）。入れたあとは「この言葉の台詞を作り直す」で作り直してください。うまくいかないときは、台詞ごとの「直す・作り直す」の「言い方を3通り作って選ぶ」も試してください。台詞を作るときは毎回、音声認識で聞き取って確かめます。読ませた文と大きく違って聞こえたら自動で作り直し（最大3回）、聞き取った文は台詞の下に出ます。「避けたい聞こえ方」を入れておくと、その言葉に聞こえたときも作り直します（最大5回。例：葛ノ葉亭 が「果て」と聞こえたら作り直す）。<br>読み方の中に「‿」を入れると、そこで区切って読ませたうえで、間だけを自動で詰めます（例：天根ノ社 → あまねの‿やしろ。区切ると言い方が安定し、間を詰めるので続けて聞こえます）。</p>
+    <div class="dir-row"><input type="text" id="readingWord" placeholder="言葉（例：父上）" aria-label="言葉"> → <input type="text" id="readingText" placeholder="読み方（例：ちちうえ）" aria-label="読み方"> <input type="text" id="readingNg" placeholder="避けたい聞こえ方（任意。例：果て）" aria-label="避けたい聞こえ方"><button type="button" class="copy small" id="readingAdd">辞書に入れる</button></div>
     <div id="readingList"></div>
   </details>
   <main id="list"><div class="empty">読み込んでいます…</div></main>
@@ -216,6 +218,14 @@
   // 実際に読み上げる文（その台詞だけの言い換えがあればそれ）
   const spokenOf = i => (data.directions[i.ref] || {}).text || i.text;
   // 同じ台詞を何通りか作ったもの（言い方の候補）。聴き比べて「これにする」で本番の音声にする
+  // 音声認識で聞き取った文。読ませた文と大きく違うときは ⚠ を付ける（読み違いに気づけるように）
+  function heardLabel(key) {
+    const h = (data.heard || {})[key];
+    if (!h || !h.text) return null;
+    const e = el("small", "heard" + (h.ok ? "" : " bad"), (h.ok ? "聞き取り：" : "⚠ 聞き取り：") + h.text + (h.ok ? "" : "（読ませた文と違って聞こえています）"));
+    e.title = "作った音声を音声認識にかけた結果です。漢字の当て方が違うのは問題ありません。読み方そのものが違うときは、読み方の辞書や「台詞を変える」で直してください";
+    return e;
+  }
   function takesBox(it) {
     const nums = (data.takes || {})[it.ref] || [];
     if (!nums.length) return null;
@@ -235,6 +245,7 @@
         } catch (e) { toast(e.message); }
       });
       row.append(el("b", "", "候補" + n), au, pick);
+      const hl = heardLabel(it.ref + "#" + n); if (hl) { hl.style.gridColumn = "1 / -1"; row.append(hl); }
       box.append(row);
     }
     return box;
@@ -247,7 +258,8 @@
     list.replaceChildren(...(entries.length ? entries.map(([w, r]) => {
       const hits = (data.items || []).filter(i => spoken(i).includes(w));
       const row = el("div", "reading-row");
-      const label = el("span", "", w + " → " + r + "　");
+      const rd = r && typeof r === "object" ? r.reading : r, ngs = r && typeof r === "object" ? (r.ng || []) : [];
+      const label = el("span", "", w + " → " + rd + (ngs.length ? "（「" + ngs.join("」「") + "」と聞こえたら作り直す）" : "") + "　");
       label.append(el("small", "", hits.length + "本の台詞（" + [...new Set(hits.map(i => displayName(i.cast)))].join("・") + "）"));
       const redo = el("button", "copy small", "この言葉の台詞を作り直す"); redo.type = "button";
       redo.addEventListener("click", () => runCommand(TOOL + " lines --word " + w + " --force", "「" + w + "」の台詞を作り直す"));
@@ -257,9 +269,9 @@
       return row;
     }) : [el("p", "dir-note", "まだ入っていません。")]));
   }
-  async function saveReading(word, reading) {
+  async function saveReading(word, reading, ng) {
     try {
-      const res = await fetch("/__dev/voice-readings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ word, reading }) });
+      const res = await fetch("/__dev/voice-readings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ word, reading, ng: ng || "" }) });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
       data.readings = j.readings; renderReadings();
@@ -510,8 +522,8 @@
     else parts.push((manner.includes("expressive") ? "Warm, heartfelt acting like a Japanese anime " : "Natural acting like a Japanese anime ") + actor + ". Every line is delivered with real emotion and lively, varied intonation: never flat, never monotone, never robotic, never like reading aloud, and never exaggerated.");
     return parts.join(" ").replace(/。\./g, "。").replace(/\s+/g, " ");
   }
-  async function saveDescription(key, description, spec, designText) {
-    const res = await fetch("/__dev/voice-description?cast=" + encodeURIComponent(key), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ description, spec, design_text: designText }) });
+  async function saveDescription(key, description, spec, designText, pitchShift) {
+    const res = await fetch("/__dev/voice-description?cast=" + encodeURIComponent(key), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ description, spec, design_text: designText, pitch_shift: pitchShift }) });
     const j = await res.json().catch(() => ({}));
     if (!res.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
     data.cast[key] = Object.assign(data.cast[key] || {}, j.cast);
@@ -575,7 +587,15 @@
     sample.placeholder = "空なら台詞から自動で作ります（高くしたいときは、そのキャラらしい明るく弾む文を）";
     const sampleRow = el("div", "dir-row"); sampleRow.append(el("span", "spec-label", "見本の文（任意）"), sample);
     sample.style.flex = "1 1 260px";
-    s1.append(roleRow, noteRow, sampleRow,
+    // 作った台詞の高さを、あとから上げ下げする（声づくりで出せる高さには限りがあるため）
+    const shiftSel = el("select"); shiftSel.setAttribute("aria-label", "台詞の高さを後から変える");
+    for (const [v, t] of [["-2", "2段階下げる"], ["-1", "1段階下げる"], ["0", "変えない"], ["1", "1段階上げる"], ["2", "2段階上げる"], ["3", "3段階上げる"], ["4", "4段階上げる（かなり高い）"]]) shiftSel.append(new Option(t, v));
+    shiftSel.value = String(c.pitch_shift || 0);
+    const shiftSave = el("button", "copy small", "この設定だけ保存"); shiftSave.type = "button";
+    shiftSave.addEventListener("click", async () => { try { await saveDescription(key, text.value, sp.gender ? sp : null, sample.value, Number(shiftSel.value) || 0); toast("保存しました。これから作る台詞に使われます（作り直すと反映されます）"); } catch (e) { toast(e.message); } });
+    const shiftRow = el("div", "dir-row"); shiftRow.append(el("span", "spec-label", "台詞の高さを後から変える"), shiftSel, shiftSave);
+    s1.append(roleRow, noteRow, sampleRow, shiftRow,
+      el("p", "dir-note", "台詞の高さを後から変える：声づくりで出せる高さには限りがあります（高い声でも 300〜400Hz くらい）。それより高く・低くしたいときは、作った台詞の音声の高さを速さを変えずに上げ下げします。1段階は半音で、2〜3段階でもはっきり変わります。候補の試聴には反映されず、台詞を作る（作り直す）ときに使われます。上げすぎると不自然になります。"),
       el("p", "dir-note", "見本の文：候補を作るときに読ませる文です。空なら、そのキャラの台詞（死亡時以外）を使います。短くそっけない台詞（「頭が高いわ」など）だと声が低く暗くなりやすいので、高い声にしたいときは、そのキャラらしい明るく弾む文を書くと高くなります。"),
       el("p", "dir-note", "性別・年代・高さ・声質・話し方は英語に直して渡すので、確実に効きます。「役柄」は自分用のメモで、声には渡しません（日本語の人物説明を渡すと、声の高さなどの指定が効きにくくなるため）。「その他の指示」だけ補足として渡しますが、効き方は弱めです。性別を選ぶまでは、今の説明がそのまま使われます。\n※ここは「声そのもの」を決める欄です。「死に際は弱々しく」のような特定の台詞の演じ方を書くと、声全体が弱々しくなってしまいます。台詞ごとの演じ方は、声を決めたあとに各台詞の「演技の方針」に書いてください。"));
 
@@ -587,7 +607,7 @@
     const s4 = el("section", "step");
     const save = el("button", "copy main", "保存して、候補を作る"); save.type = "button";
     save.addEventListener("click", async () => {
-      try { await saveDescription(key, text.value, sp.gender ? sp : null, sample.value); renderHistory(); await runCommand(cmd, "候補を作る"); } catch (e) { toast(e.message); }
+      try { await saveDescription(key, text.value, sp.gender ? sp : null, sample.value, Number(shiftSel.value) || 0); renderHistory(); await runCommand(cmd, "候補を作る"); } catch (e) { toast(e.message); }
     });
     const btns = el("div", "btns"); btns.append(save);
     s4.append(el("h4", "", "③ 保存して、候補を作る"), btns, el("code", "cmd", cmd),
@@ -630,6 +650,9 @@
         else if (t[i] === "--force") st.force = true;
         else if (t[i] === "--takes") st.takes = t[++i];
         else if (t[i] === "--word") st.word = t[++i];
+        else if (t[i] === "--prefer") st.prefer = t[++i];
+        else if (t[i] === "--rounds") st.rounds = t[++i];
+        else if (t[i] === "--top") st.top = t[++i];
       }
       steps.push(st);
     }
@@ -902,7 +925,16 @@
         delSel.addEventListener("click", () => deleteCandidates(key, [...grid.querySelectorAll("input[type=checkbox]:checked")].map(x => Number(x.dataset.choice))));
         const delAll = el("button", "copy danger", r.voiceId && !r.released ? "登録中以外の候補をすべて削除" : "候補をすべて削除"); delAll.type = "button";
         delAll.addEventListener("click", () => deleteCandidates(key, null));
-        const tools = el("div", "cand-tools"); tools.append(more, delSel, delAll);
+        const tools = el("div", "cand-tools"); tools.append(more);
+        const pref = (c.voice_spec || {}).pitch;
+        if (["high", "vhigh", "low", "vlow"].includes(pref)) {
+          const hi = pref === "high" || pref === "vhigh";
+          const best = el("button", "copy", hi ? "高い声を狙って作る（9個作って高い3個を残す）" : "低い声を狙って作る（9個作って低い3個を残す）"); best.type = "button";
+          best.title = "候補づくりは1回ごとに高さがばらつくので、多めに作って測り、" + (hi ? "高い" : "低い") + "ものだけを残します（候補3回分のクレジットを使います）";
+          best.addEventListener("click", () => runCommand(`${TOOL} design --cast ${key} --keep --prefer ${hi ? "high" : "low"} --rounds 3 --top 3`, hi ? "高い声を狙って作る" : "低い声を狙って作る"));
+          tools.append(best);
+        }
+        tools.append(delSel, delAll);
         sec.append(grid, tools);
       } else {
         const btn = document.createElement("button"); btn.type = "button"; btn.className = "copy"; btn.textContent = "候補を作る";
@@ -923,7 +955,7 @@
           t.append(spoken, orig);
           const small = document.createElement("small"); small.textContent = `${it.card}｜${it.field}｜${it.ref}`;
           const pairBox = pairInfo(it);
-          const dirLabel = document.createElement("span"); dirLabel.className = "dir-tag"; dirLabel.textContent = describe(it.ref); small.append(dirLabel); t.append(small); const mb = multiBox(it); if (mb) t.append(mb); const tb = takesBox(it); if (tb) t.append(tb); if (pairBox) t.append(pairBox);
+          const dirLabel = document.createElement("span"); dirLabel.className = "dir-tag"; dirLabel.textContent = describe(it.ref); small.append(dirLabel); t.append(small); const mb = multiBox(it); if (mb) t.append(mb); const hl0 = heardLabel(it.ref); if (hl0) t.append(hl0); const tb = takesBox(it); if (tb) t.append(tb); if (pairBox) t.append(pairBox);
           const holder = document.createElement("div"); holder.className = "missing"; holder.textContent = "確認中…";
           const refresh = () => showLine(it, spoken, orig, dirLabel); refresh();
           const panel = fixPanel(it, refresh);
@@ -949,7 +981,7 @@
   }
 
   async function load() {
-    const [cast, record, script, pairs, list, dirs, takesRes, readingsRes, tagMap] = await Promise.all([
+    const [cast, record, script, pairs, list, dirs, takesRes, readingsRes, tagMap, heard] = await Promise.all([
       getJson("/tools/voice-script/card_voice_cast.json", { cast: {} }),
       getJson("/voices/cards/voices.json", {}),
       getJson("/tools/voice-script/card_voice_script.json", { lines: {} }),
@@ -959,14 +991,15 @@
       getJson("/__dev/voice-takes", { takes: {} }),
       getJson("/__dev/voice-readings", { readings: {} }),
       getJson("/tools/voice-script/direction_tags.json", { map: [] }),
+      getJson("/voices/cards/heard.json", {}),
     ]);
-    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {}, directionMap: tagMap.map || [] };
+    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {}, directionMap: tagMap.map || [], heard: heard || {} };
     renderReadings();
     await render();
   }
   $("viewer").addEventListener("click", () => $("viewer").close());
   $("runnerClose").addEventListener("click", () => { $("runner").hidden = true; });
-  $("readingAdd").addEventListener("click", () => { const w = $("readingWord").value.trim(), r = $("readingText").value.trim(); if (!w || !r) { toast("言葉と読み方の両方を入れてください"); return; } saveReading(w, r); $("readingWord").value = ""; $("readingText").value = ""; });
+  $("readingAdd").addEventListener("click", () => { const w = $("readingWord").value.trim(), r = $("readingText").value.trim(); if (!w || !r) { toast("言葉と読み方の両方を入れてください"); return; } saveReading(w, r, $("readingNg").value.trim()); $("readingNg").value = ""; $("readingWord").value = ""; $("readingText").value = ""; });
   $("runnerCopy").addEventListener("click", () => { if (runnerCmd) copy(runnerCmd); });
   // ページを開き直したとき、動いている処理があれば進み具合を出す
   fetch("/__dev/voice-run").then(r => r.json()).then(j => { if (j.job && j.job.running) pollRunner(); }).catch(() => {});

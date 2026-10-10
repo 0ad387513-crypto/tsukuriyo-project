@@ -44,7 +44,11 @@ function measurePitch(file) {
 function voiceRunArgs(step, castKeys) {
   const castOk = k => typeof k === "string" && castKeys.includes(k);
   const refOk = r => /^[np]\d{2,3}-[a-z]+(-\d+)?$/.test(r || "");
-  if (step.command === "design" && castOk(step.cast)) return ["design", "--cast", step.cast].concat(step.keep ? ["--keep"] : []);
+  if (step.command === "design" && castOk(step.cast)) {
+    const a = ["design", "--cast", step.cast].concat(step.keep ? ["--keep"] : []);
+    if (step.prefer === "high" || step.prefer === "low") a.push("--prefer", step.prefer, "--rounds", /^[1-4]$/.test(String(step.rounds)) ? String(step.rounds) : "3", "--top", /^[1-9]$/.test(String(step.top)) ? String(step.top) : "3");
+    return a;
+  }
   if (step.command === "pick" && castOk(step.cast) && /^\d{1,3}$/.test(String(step.choice))) return ["pick", "--cast", step.cast, "--choice", String(step.choice)];
   if (step.command === "lines" && step.ref && refOk(step.ref) && step.takes) return /^[2-5]$/.test(String(step.takes)) ? ["lines", "--ref", step.ref, "--takes", String(step.takes)] : null;
   if (step.command === "lines" && step.word) {
@@ -275,6 +279,12 @@ async function handleDev(req, res, url) {
     const dest = path.join(cards, `${ref}.mp3`);
     if (fs.existsSync(dest)) { fs.mkdirSync(path.join(cards, "_old"), { recursive: true }); fs.copyFileSync(dest, path.join(cards, "_old", `${ref}.before-take.mp3`)); }
     fs.copyFileSync(src, dest);
+    try {
+      const heardFile = path.join(cards, "heard.json");
+      const heard = fs.existsSync(heardFile) ? JSON.parse(fs.readFileSync(heardFile, "utf8")) : {};
+      if (heard[ref + "#" + take]) heard[ref] = heard[ref + "#" + take]; else delete heard[ref];
+      fs.writeFileSync(heardFile, JSON.stringify(heard, null, 2) + "\n");
+    } catch (e) {}
     console.log(`[voice-takes] ${ref} を言い方の候補${take}にした`);
     return sendJson(res, 200, { ok: true });
   }
@@ -289,7 +299,9 @@ async function handleDev(req, res, url) {
     const word = String(body.word || "").trim(), reading = String(body.reading || "").trim();
     if (!word || word.length > 30 || reading.length > 60 || /[<>{}]/.test(word + reading)) return sendJson(res, 400, { ok: false, message: "言葉は30文字、読み方は60文字までで入れてください" });
     const all = fs.existsSync(voiceReadingsFile) ? JSON.parse(fs.readFileSync(voiceReadingsFile, "utf8")) : {};
-    if (reading) all[word] = reading; else delete all[word];
+    const ng = String(body.ng || "").split(/[、,\s]+/).map(x => x.trim()).filter(Boolean).slice(0, 5);
+    if (ng.some(x => x.length > 20 || /[<>{}]/.test(x))) return sendJson(res, 400, { ok: false, message: "避けたい聞こえ方は、20文字までの言葉で入れてください" });
+    if (reading) all[word] = ng.length ? { reading, ng } : reading; else delete all[word];
     const tmp = voiceReadingsFile + ".tmp";
     fs.writeFileSync(tmp, JSON.stringify(all, null, 1) + "\n");
     fs.renameSync(tmp, voiceReadingsFile);
@@ -363,6 +375,7 @@ async function handleDev(req, res, url) {
     // 試聴室で選んだ性別・年代などの設定（説明を作り直すため）。小さなオブジェクトだけ受け付ける
     if (body.spec && typeof body.spec === "object" && JSON.stringify(body.spec).length < 2000) c.voice_spec = body.spec;
     // 候補を作るときの見本の文（空なら台詞から自動で作る）
+    if (body.pitch_shift !== undefined) { const ps = Number(body.pitch_shift) || 0; if (!(ps >= -4 && ps <= 6)) return sendJson(res, 400, { ok: false, message: "高さの上げ下げは -4〜+6 で指定してください" }); if (ps) c.pitch_shift = ps; else delete c.pitch_shift; }
     if (typeof body.design_text === "string") { const dt = body.design_text.trim(); if (dt.length > 500 || /[<>{}]/.test(dt)) return sendJson(res, 400, { ok: false, message: "見本の文は500文字までにしてください" }); if (dt) c.design_text = dt; else delete c.design_text; }
     if (c.el_description === description) {
       const tmp0 = voiceCastFile + ".tmp";

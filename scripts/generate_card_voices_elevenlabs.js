@@ -108,6 +108,58 @@ function applyTempo(file, tempo) {
   fs.renameSync(tmp, file);
   console.log(`  速さ ${tempo}倍（${tempo < 1 ? "ゆっくり" : "速め"}）にしました`);
 }
+// 声の高さ（基本周波数の中央値, Hz）。ffmpeg で 16kHz モノラルにして自己相関で求める
+function measurePitch(file) {
+  const SR = 16000;
+  const run = spawnSync("ffmpeg", ["-v", "quiet", "-i", file, "-ac", "1", "-ar", String(SR), "-f", "s16le", "-"], { maxBuffer: 1 << 28, windowsHide: true });
+  if (run.error || !run.stdout || !run.stdout.length) return null;
+  const raw = run.stdout; const x = new Float32Array(raw.length / 2);
+  for (let i = 0; i < x.length; i++) x[i] = raw.readInt16LE(i * 2) / 32768;
+  const frame = 800, hop = 800, minLag = Math.floor(SR / 600), maxLag = Math.floor(SR / 70);
+  const rms = []; let maxRms = 0;
+  for (let p = 0; p + frame < x.length; p += hop) { let e = 0; for (let i = 0; i < frame; i++) e += x[p + i] * x[p + i]; const r = Math.sqrt(e / frame); rms.push(r); if (r > maxRms) maxRms = r; }
+  const out = [];
+  for (let p = 0, k = 0; p + frame + maxLag < x.length; p += hop, k++) {
+    if (rms[k] < maxRms * 0.15) continue;
+    let e0 = 0; for (let i = 0; i < frame; i++) e0 += x[p + i] * x[p + i];
+    let best = 0, bestLag = 0;
+    for (let lag = minLag; lag <= maxLag; lag++) { let c = 0, e1 = 0; for (let i = 0; i < frame; i++) { c += x[p + i] * x[p + i + lag]; e1 += x[p + i + lag] * x[p + i + lag]; } const n = c / Math.sqrt(e0 * e1 + 1e-9); if (n > best) { best = n; bestLag = lag; } }
+    if (best > 0.75) out.push(SR / bestLag);
+  }
+  out.sort((a, b) => a - b);
+  return out.length ? Math.round(out[Math.floor(out.length / 2)]) : null;
+}
+// 作った台詞の声の高さを、速さを変えずに上げ下げする（半音単位。キャストごとの pitch_shift）。声の性質（フォルマント）は保つ
+function applyPitchShift(file, semitones) {
+  if (!semitones) return;
+  const tmp = file + ".pitch.mp3";
+  const run = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", file, "-af", "rubberband=pitch=" + Math.pow(2, semitones / 12).toFixed(4) + ":formant=preserved", "-ac", "1", "-ar", "44100", "-b:a", "64k", tmp], { encoding: "utf8", windowsHide: true });
+  if (run.error || run.status !== 0 || !fs.existsSync(tmp)) { console.warn("  （声の高さを変えられませんでした。ffmpeg が必要です）"); return; }
+  fs.renameSync(tmp, file);
+  console.log(`  声の高さを ${semitones > 0 ? "+" : ""}${semitones} 段階（半音）変えました`);
+}
+// 作った音声を ElevenLabs の音声認識で文字にする（読み違いの確認用）
+async function hear(file) {
+  const fd = new FormData();
+  fd.append("model_id", "scribe_v1"); fd.append("language_code", "ja");
+  fd.append("file", new Blob([fs.readFileSync(file)], { type: "audio/mpeg" }), "a.mp3");
+  const res = await fetch(API + "/speech-to-text", { method: "POST", headers: { "xi-api-key": apiKey() }, body: fd, signal: AbortSignal.timeout(60000) });
+  if (!res.ok) throw new Error("聞き取り " + res.status);
+  return String((await res.json()).text || "").trim();
+}
+// 読ませた文と聞き取った文の近さ（0〜1）。記号を外し、カタカナをひらがなにして、2文字ずつの重なりで比べる。漢字の表記ゆれがあるので目安
+function hearScore(spoken, heard) {
+  // 記号・伸ばす音・小さい「っ」を外し、カタカナをひらがなにしてから、文字の入れ替え回数（編集距離）で比べる
+  const norm = t => String(t).replace(/[[^]]*]/g, "").replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60)).replace(/[ー～〜っ]/g, "").replace(/[^ぁ-ゖ一-龠々a-zA-Z0-9]/g, "");
+  const a = norm(spoken), b = norm(heard);
+  if (!a.length && !b.length) return 1;
+  if (!a.length || !b.length) return 0;
+  const d = Array.from({ length: a.length + 1 }, (_, x) => [x]);
+  for (let y = 1; y <= b.length; y++) d[0][y] = y;
+  for (let x = 1; x <= a.length; x++) for (let y = 1; y <= b.length; y++) d[x][y] = Math.min(d[x - 1][y] + 1, d[x][y - 1] + 1, d[x - 1][y - 1] + (a[x - 1] === b[y - 1] ? 0 : 1));
+  return 1 - d[a.length][b.length] / Math.max(a.length, b.length);
+}
+const readingOf = v => (v && typeof v === "object" ? String(v.reading || "") : String(v || ""));
 function applyReadings(text, readings) {
   const words = Object.keys(readings).filter(Boolean).sort((a, b) => b.length - a.length);
   // 「天根ノ社（あまねのやしろ）」「還（もど）れ」のようにふりがなを添えた書き方は、ふりがなだけを読ませる（両方読まれないように）
@@ -115,7 +167,7 @@ function applyReadings(text, readings) {
   // 辞書にある言葉にふりがなが添えてあるときは、辞書の読み方を優先する（イントネーションを直した書き方を使うため）
   for (const w of words) out = out.replace(new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "（[ぁ-ゖァ-ヺー]+）", "g"), w);
   out = out.replace(/[一-龠々〆ヶ][一-龠々〆ヶノの]*（([ぁ-ゖァ-ヺー]+)）/g, "$1");
-  for (const w of words) out = out.split(w).join(readings[w]);
+  for (const w of words) out = out.split(w).join(readingOf(readings[w]));
   return out;
 }
 
@@ -259,6 +311,7 @@ function buildCast() {
       previous_descriptions: old[key] && old[key].previous_descriptions,
       tts: old[key] && old[key].tts,
       voice_spec: old[key] && old[key].voice_spec,
+      pitch_shift: old[key] && old[key].pitch_shift,
       design_text: old[key] && old[key].design_text,
     };
   }
@@ -341,16 +394,32 @@ async function design() {
     const r = record[key] || {};
     if (r.candidates && r.candidates.length && !force && !args.includes("--keep")) { console.log(`${key}：候補作成済み（作り直すなら --force、追加するなら --keep）`); continue; }
     try {
-      console.log(`${key}：声の候補を作成中…`);
-      const json = await call("/text-to-voice/design", { voice_description: c.el_description, model_id: el.design_model, text: designSample(key) });
+      // --rounds 3 --prefer high：3回（9個）作って声の高さを測り、高いもの（low なら低いもの）を --top 個（既定3）だけ残す
+      const rounds = Math.min(4, Math.max(1, parseInt(argValue("--rounds") || "1", 10) || 1));
+      const prefer = argValue("--prefer");
+      const top = Math.min(9, Math.max(1, parseInt(argValue("--top") || "3", 10) || 3));
+      console.log(`${key}：声の候補を作成中…${rounds > 1 ? `（${rounds}回作って、${prefer === "low" ? "低い" : "高い"}ものを${top}個残します）` : ""}`);
       const kept = args.includes("--keep") ? (r.candidates || []) : [];
       const start = kept.reduce((m, x) => Math.max(m, x.choice), 0);
       const safe = key.replace(/[\\/:*?"<>|]/g, "_");
-      const added = (json.previews || []).map((p, i) => {
-        const file = `${safe}-${start + i + 1}.mp3`;
-        fs.writeFileSync(path.join(previewDir, file), Buffer.from(p.audio_base_64, "base64"));
-        return { choice: start + i + 1, generated_voice_id: p.generated_voice_id, file, description: c.el_description, created: new Date().toISOString() };
-      });
+      let added = [];
+      for (let round = 0; round < rounds; round++) {
+        const json = await call("/text-to-voice/design", { voice_description: c.el_description, model_id: el.design_model, text: designSample(key) });
+        for (const p of json.previews || []) {
+          const n = start + added.length + 1;
+          const file = `${safe}-${n}.mp3`;
+          fs.writeFileSync(path.join(previewDir, file), Buffer.from(p.audio_base_64, "base64"));
+          added.push({ choice: n, generated_voice_id: p.generated_voice_id, file, description: c.el_description, created: new Date().toISOString() });
+        }
+      }
+      if (prefer === "high" || prefer === "low") {
+        for (const a of added) a.hz = measurePitch(path.join(previewDir, a.file));
+        const sorted = added.filter(a => a.hz).sort((a, b) => prefer === "high" ? b.hz - a.hz : a.hz - b.hz);
+        const keepSet = new Set(sorted.slice(0, top));
+        for (const a of added) if (!keepSet.has(a)) { try { fs.unlinkSync(path.join(previewDir, a.file)); } catch (e) {} }
+        console.log(`  測った高さ：${added.map(a => (a.hz || "?") + "Hz" + (keepSet.has(a) ? "○" : "")).join("・")}`);
+        added = sorted.slice(0, top).sort((a, b) => a.choice - b.choice);
+      }
       record[key] = Object.assign(r, { candidates: kept.concat(added), description: c.el_description });
       writeJson(recordFile, record);
       console.log(`  → 候補${added.map(x => x.choice).join("・")}：voices/cards/previews/${safe}-番号.mp3`);
@@ -409,6 +478,10 @@ async function lines() {
   fs.mkdirSync(outDir, { recursive: true });
   if (takes) fs.mkdirSync(takesDir, { recursive: true });
   let chars = 0; const failed = [];
+  // 聞き取りの記録（試聴室に「聞き取り：…」と出す）。--no-check で確認を省く
+  const heardFile = path.join(outDir, "heard.json");
+  const heardLog = readJson(heardFile, {});
+  const noCheck = args.includes("--no-check");
   for (const it of targets) {
     const out = path.join(outDir, `${it.ref}.mp3`);
     if (!takes && fs.existsSync(out) && !force) continue;
@@ -439,24 +512,47 @@ async function lines() {
           return call(`/text-to-speech/${voiceId}?output_format=mp3_44100_64`, body, true);
         }
       };
+      // 1本作る：作る → 音声認識で聞き取る → 読み違いなら作り直す（最大 tries 回）→ 間・速さ・高さの仕上げ
+      const original = dir.text || (c.tts && c.tts[it.ref]) || it.text;
+      const ngWords = Object.entries(readings).filter(([w, v]) => original.includes(w) && v && typeof v === "object" && Array.isArray(v.ng)).flatMap(([, v]) => v.ng).filter(Boolean);
+      const spokenPlain = body.text.replace(/\[[^\]]*\]/g, "");
+      const tries = noCheck ? 1 : (ngWords.length ? 5 : 3);
+      const makeOne = async (file, heardKey) => {
+        let best = null;
+        for (let attempt = 1; attempt <= tries; attempt++) {
+          body.seed = Math.floor(Math.random() * 4294967295);
+          const audio = await speak();
+          chars += text.length;
+          fs.writeFileSync(file, audio);
+          if (noCheck) { best = { audio }; break; }
+          let heardText = null, score = null, bad = false;
+          try { heardText = await hear(file); score = hearScore(spokenPlain, heardText); bad = ngWords.some(w => heardText.includes(w)); }
+          catch (e) { best = { audio }; console.warn("  （聞き取りの確認はできませんでした：" + String(e.message || e).slice(0, 80) + "）"); break; }
+          const ok = !bad && score >= 0.3;
+          console.log(`  聞き取り：${heardText}${ok ? "" : bad ? "　← 避けたい聞こえ方です" : "　← 読ませた文と違うようです"}`);
+          const cand = { audio, heardText, score, bad, ok };
+          if (!best || (best.bad && !bad) || (best.bad === bad && score > best.score)) best = cand;
+          if (ok) break;
+          if (attempt < tries) console.log(`  作り直します（${attempt + 1}回目）`);
+        }
+        fs.writeFileSync(file, best.audio);
+        if (best.heardText !== undefined && best.heardText !== null) { heardLog[heardKey] = { text: best.heardText, score: Math.round(best.score * 100) / 100, ok: !!best.ok, at: new Date().toISOString() }; }
+        else delete heardLog[heardKey];
+        tightenPauses(file, text);
+        applyTempo(file, tempoFor(dir));
+        applyPitchShift(file, Number(c.pitch_shift) || 0);
+      };
       if (takes) {
         // 言い方の候補：毎回ちがう seed で作る
         for (const old of fs.readdirSync(takesDir)) if (old.startsWith(it.ref + "-") && /^\d+\.mp3$/.test(old.slice(it.ref.length + 1))) fs.unlinkSync(path.join(takesDir, old));
         for (let k = 1; k <= takes; k++) {
-          body.seed = Math.floor(Math.random() * 4294967295);
-          const takeFile = path.join(takesDir, `${it.ref}-${k}.mp3`);
-          fs.writeFileSync(takeFile, await speak());
-          tightenPauses(takeFile, text);
-          applyTempo(takeFile, tempoFor(dir));
-          chars += text.length;
+          await makeOne(path.join(takesDir, `${it.ref}-${k}.mp3`), it.ref + "#" + k);
           console.log(`  → 言い方の候補${k}`);
         }
       } else {
-        fs.writeFileSync(out, await speak());
-        tightenPauses(out, text);
-        applyTempo(out, tempoFor(dir));
-        chars += text.length;
+        await makeOne(out, it.ref);
       }
+      writeJson(heardFile, heardLog);
     } catch (e) { console.error(`  × 失敗：${String(e.message || e).slice(0, 300)}`); failed.push(it.ref); }
     await sleep(300);
   }
