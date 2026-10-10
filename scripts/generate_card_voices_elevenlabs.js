@@ -53,6 +53,14 @@ const directionFile = path.join(scriptDir, "card_voice_direction.json");
 // 読み方の辞書（試聴室で登録。{ "父上": "ちちうえ" }）。読み上げる直前に置き換える。台本の表示は変えない
 const readingsFile = path.join(scriptDir, "card_voice_readings.json");
 const takesDir = path.join(outDir, "takes");
+// 演技の方針（日本語）→ 英語の演技タグ。v4 は日本語の文脈（previous_text）をほとんど反映しないので、タグにして台詞の頭に付ける
+let directionMap = null;
+function directionTags(direction) {
+  if (!directionMap) directionMap = JSON.parse(fs.readFileSync(path.join(scriptDir, "direction_tags.json"), "utf8")).map || [];
+  const tags = [];
+  for (const [word, tag] of directionMap) if (direction.includes(word) && !tags.includes(tag)) tags.push(tag);
+  return tags.slice(0, 3);
+}
 function applyReadings(text, readings) {
   const words = Object.keys(readings).filter(Boolean).sort((a, b) => b.length - a.length);
   let out = text;
@@ -356,7 +364,9 @@ async function lines() {
     if (record[it.cast] && record[it.cast].released) { console.warn(`${it.ref}：${it.cast} の声は削除済みのため作れません`); failed.push(it.ref); continue; }
     // 台詞ごとの読み上げ文の上書き（card_voice_cast.json の tts に { "n051-summon": "…" } と書く）
     const dir = directions[it.ref] || {};
-    const text = (dir.tags ? dir.tags.trim() + " " : "") + speechText(applyReadings(dir.text || (c.tts && c.tts[it.ref]) || it.text, readings));
+    // 英語の演技タグ（手で書いたもの＋方針から作ったもの、合わせて3つまで）
+    const tagList = [...new Set([...((dir.tags || "").match(/\[[^\]]+\]/g) || []), ...directionTags(dir.direction || "").map(t => "[" + t + "]")])].slice(0, 3);
+    const text = (tagList.length ? tagList.join(" ") + " " : "") + speechText(applyReadings(dir.text || (c.tts && c.tts[it.ref]) || it.text, readings));
     const stability = Number.isFinite(dir.stability) ? dir.stability : el.stability;
     console.log(`${it.ref}（${it.cast}）：${text}${stability !== el.stability ? `（安定度${stability}）` : ""}`);
     try {

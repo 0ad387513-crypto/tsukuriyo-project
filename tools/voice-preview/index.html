@@ -139,6 +139,7 @@
   .dir-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 13px; color: var(--muted); }
   .dir-row input, .dir-row select { font: inherit; font-size: 13px; padding: 5px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
   .dir-row input { flex: 1 1 220px; min-width: 0; }
+  .tag-view { color: var(--ok); font-weight: 700; }
   .dir-note { font-size: 11px; color: var(--muted); margin: 0; white-space: pre-line; }
   .dir { gap: 12px; }
   .step { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
@@ -184,7 +185,7 @@
   const TOOL = "node scripts/generate_card_voices_elevenlabs.js";
   let data = { cast: {}, record: {}, lines: {}, pairs: {}, items: null, directions: {} };
   // 演技の指定。ElevenLabs の演技タグ（英語の [ ] 書き）を台詞の頭に付けて読ませる。1〜2個までが自然
-  const PRESETS = ["戦闘中の掛け声として", "敵に斬りかかる瞬間", "攻撃を受けて", "倒れる間際に", "はきはきと", "明るく元気に", "落ち着いて", "力強く", "ささやくように", "悲しげに", "怒りをこめて", "笑いながら", "叫びすぎない"];
+  const PRESETS = ["戦闘中の掛け声として", "鬼気迫る", "力強く", "はきはきと", "明るく元気に", "落ち着いて", "優しく", "ささやくように", "悲しげに", "怒りをこめて", "笑いながら", "不機嫌そうに", "冷たく", "見下すように", "不気味に", "弱々しく"];
   const STABILITY = [["", "標準（共通の設定 0.5）"], ["0", "0：表情を大きく（ぶれやすい）"], ["0.3", "0.3：やや表情豊か（棒読みっぽいときに）"], ["0.5", "0.5：自然"], ["1", "1：安定（平板になりやすい）"]];
   async function saveDirection(ref, body) {
     const r = await fetch("/__dev/voice-direction?ref=" + encodeURIComponent(ref), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -328,7 +329,7 @@
     const presets = el("div", "presets");
     for (const phrase of PRESETS) {
       const b = el("button", "preset", "＋" + phrase); b.type = "button";
-      b.addEventListener("click", () => { const v = direction.value.trim(); direction.value = v ? v.replace(/[。、]$/, "") + "、" + phrase : phrase; direction.focus(); });
+      b.addEventListener("click", () => { const v = direction.value.trim(); direction.value = v ? v.replace(/[。、]$/, "") + "、" + phrase : phrase; direction.dispatchEvent(new Event("input")); direction.focus(); });
       presets.append(b);
     }
     const sel = el("select"); sel.setAttribute("aria-label", "安定度");
@@ -339,6 +340,14 @@
     const tags = el("input"); tags.type = "text"; tags.value = cur.tags || ""; tags.setAttribute("aria-label", "英語の演技タグ"); tags.placeholder = "例：[excited]";
     const adv = el("details", "adv"); const advSum = el("summary", "", "英語の演技タグ（細かく効かせたいときだけ）");
     const r1 = el("div", "dir-row"); r1.append(tags, exampleButton(tags)); adv.append(advSum, r1); adv.open = !!cur.tags;
+    // 方針は英語の演技タグに直して台詞の頭に付ける（v4 は日本語の方針をそのままではほとんど反映しないため）。どのタグになるかをその場で見せる
+    const tagView = el("p", "dir-note tag-view");
+    const syncTags = () => {
+      const v = direction.value; const tags = [];
+      for (const [w, t] of data.directionMap || []) if (v.includes(w) && !tags.includes(t)) tags.push(t);
+      tagView.textContent = v.trim() ? (tags.length ? "→ 声に渡す演技タグ：" + tags.slice(0, 3).map(t => "[" + t + "]").join(" ") + (tags.length > 3 ? "（4つ目以降は使いません）" : "") : "→ この書き方では演技タグになりません。「不機嫌そうに」「ささやくように」「悲しげに」のような言葉を入れてください") : "";
+    };
+    direction.addEventListener("input", syncTags); setTimeout(syncTags);
     const dirEx = el("div", "btns"); dirEx.append(exampleButton(direction));
     // この方針を、同じキャラの台詞すべてに入れる（ほかの指定は残す）
     const castKey = ((data.items || []).find(i => i.ref === it.ref) || {}).cast;
@@ -347,8 +356,8 @@
       toAll.addEventListener("click", () => applyDirectionToCast(castKey, direction.value.trim()));
       dirEx.append(toAll);
     }
-    s2.append(el("h4", "", "② 演技の方針を書く（必要なときだけ）"), direction, dirEx, presets,
-      el("p", "dir-note", "どんな場面で、どんな気持ちで言うのかを日本語で自由に書いてください。読み上げられることはなく、台詞の直前の状況として声の演技に使われます。ボタンを押すと言葉が書き足されます。"), r2, adv);
+    s2.append(el("h4", "", "② 演技の方針を書く（必要なときだけ）"), direction, tagView, dirEx, presets,
+      el("p", "dir-note", "どんな気持ち・言い方で言うのかを日本語で書いてください。書いた言葉は英語の演技タグ（[grumpy] など）に直して台詞の頭に付けます（最大3つ）。タグにならない言葉（場面の説明など）はほとんど効かないので、上に出る「声に渡す演技タグ」を確かめてください。ボタンを押すと言葉が書き足されます。"), r2, adv);
 
     // ③ 保存して作り直す
     const s3 = el("section", "step");
@@ -881,7 +890,7 @@
   }
 
   async function load() {
-    const [cast, record, script, pairs, list, dirs, takesRes, readingsRes] = await Promise.all([
+    const [cast, record, script, pairs, list, dirs, takesRes, readingsRes, tagMap] = await Promise.all([
       getJson("/tools/voice-script/card_voice_cast.json", { cast: {} }),
       getJson("/voices/cards/voices.json", {}),
       getJson("/tools/voice-script/card_voice_script.json", { lines: {} }),
@@ -890,8 +899,9 @@
       getJson("/__dev/voice-direction", { directions: {} }),
       getJson("/__dev/voice-takes", { takes: {} }),
       getJson("/__dev/voice-readings", { readings: {} }),
+      getJson("/tools/voice-script/direction_tags.json", { map: [] }),
     ]);
-    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {} };
+    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {}, directionMap: tagMap.map || [] };
     renderReadings();
     await render();
   }
