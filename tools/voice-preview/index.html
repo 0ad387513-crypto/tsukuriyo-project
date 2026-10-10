@@ -186,7 +186,7 @@
   let data = { cast: {}, record: {}, lines: {}, pairs: {}, items: null, directions: {} };
   // 演技の指定。ElevenLabs の演技タグ（英語の [ ] 書き）を台詞の頭に付けて読ませる。1〜2個までが自然
   const PRESETS = ["戦闘中の掛け声として", "鬼気迫る", "力強く", "はきはきと", "明るく元気に", "落ち着いて", "優しく", "ささやくように", "悲しげに", "怒りをこめて", "笑いながら", "不機嫌そうに", "冷たく", "見下すように", "不気味に", "弱々しく"];
-  const STABILITY = [["", "標準（共通の設定 0.5）"], ["0", "0：表情を大きく（ぶれやすい）"], ["0.3", "0.3：やや表情豊か（棒読みっぽいときに）"], ["0.5", "0.5：自然"], ["1", "1：安定（平板になりやすい）"]];
+  const STABILITY = [["", "標準（0.4）"], ["0", "0：表情を大きく（ぶれやすい）"], ["0.3", "0.3：やや表情豊か（棒読みっぽいときに）"], ["0.5", "0.5：落ち着き気味"]];
   async function saveDirection(ref, body) {
     const r = await fetch("/__dev/voice-direction?ref=" + encodeURIComponent(ref), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
@@ -466,8 +466,8 @@
       high: "High-pitched voice: light, clear and bright, higher than average in every line.",
       vhigh: "Extremely high-pitched voice: very high, light and clear, at the top of the natural range in every line, thin and bright, never full or deep.",
     },
-    timbre: { clear: "crystal-clear and transparent", core: "with a strong, firm core and steady breath support", soft: "soft and gentle", powerful: "powerful and resonant", bright: "bright", deep: "deep, heavy and rich", husky: "husky", breathy: "breathy", rough: "slightly rough and raspy", cool: "cool and composed" },
-    manner: { expressive: "emotionally engaged and expressive, with lively, varied intonation and natural pauses", haughty: "haughty, condescending anime ojou-sama with a sharp, sing-song tone", energetic: "energetic and lively", calm: "calm and composed", polite: "polite and well-mannered", rough: "rough and blunt", archaic: "old-fashioned and formal", cold: "cold and distant", gentle: "gentle and kind", imposing: "imposing and intimidating", cheeky: "cheeky and cocky", shy: "timid and hesitant", playful: "playful and humorous", dignified: "dignified and noble" },
+    timbre: { clear: "crystal-clear and transparent", core: "with a strong, firm core and steady breath support", soft: "soft and gentle", powerful: "powerful and resonant", bright: "bright", deep: "deep, heavy and rich", husky: "husky", breathy: "breathy", rough: "slightly rough and raspy", cool: "cool and clear in tone, yet expressive" },
+    manner: { expressive: "emotionally engaged and expressive, with lively, varied intonation and natural pauses", haughty: "haughty, condescending anime ojou-sama with a sharp, sing-song tone", energetic: "energetic and lively", calm: "calm yet warm, with gentle, natural expression", polite: "polite and well-mannered", rough: "rough and blunt", archaic: "old-fashioned and formal", cold: "cold and cutting in attitude, yet clearly expressive", gentle: "gentle and kind", imposing: "imposing and intimidating", cheeky: "cheeky and cocky", shy: "timid and hesitant", playful: "playful and humorous", dignified: "dignified and noble" },
   };
   function buildDescription(sp) {
     const parts = ["Japanese voice: a native speaker with natural standard Japanese pronunciation."];
@@ -489,7 +489,7 @@
     if (nots.length) parts.push(nots.join(", ").replace(/^n/, "N") + ".");
     if (sp.role) parts.push("Role (Japanese): " + sp.role + ".");
     if (sp.note) parts.push("Additional notes (Japanese): " + sp.note + ".");
-    parts.push(((sp.manner || []).includes("expressive") ? "Warm, heartfelt acting like a Japanese anime " : "Natural acting like a Japanese anime ") + (sp.gender === "male" ? "voice actor" : "voice actress") + ", with natural, varied intonation: never monotone, never exaggerated.");
+    parts.push(((sp.manner || []).includes("expressive") ? "Warm, heartfelt acting like a Japanese anime " : "Natural acting like a Japanese anime ") + (sp.gender === "male" ? "voice actor" : "voice actress") + ". Every line is delivered with real emotion and lively, varied intonation: never flat, never monotone, never robotic, never like reading aloud, and never exaggerated.");
     return parts.join(" ").replace(/。\./g, "。").replace(/\s+/g, " ");
   }
   async function saveDescription(key, description, spec, designText) {

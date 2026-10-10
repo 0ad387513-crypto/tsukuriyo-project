@@ -75,6 +75,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // ElevenLabs の設定はカミのボイスと共通（voices/voice_script.json の elevenlabs）
 const kamiScript = readJson(path.join(root, "voices", "voice_script.json"), {});
 const el = kamiScript.elevenlabs || { model: "eleven_v4", design_model: "eleven_ttv_v3", language_code: "ja", stability: 0.5 };
+const CARD_STABILITY = 0.4;
 const KAMI_NAMES = { "スサノオ": "1", "ヤマトタケル": "2", "オオクニヌシ": "3", "タケミカヅチ": "4", "オモイカネ": "5", "アメノウズメ": "6", "ヒノカグツチ": "7", "アマテラス": "8", "ツクヨミ": "9", "ヤマタノオロチ": "10" };
 
 /* ===== 台本 → 台詞の一覧 ===== */
@@ -367,8 +368,9 @@ async function lines() {
     // 英語の演技タグ（手で書いたもの＋方針から作ったもの、合わせて3つまで）
     const tagList = [...new Set([...((dir.tags || "").match(/\[[^\]]+\]/g) || []), ...directionTags(dir.direction || "").map(t => "[" + t + "]")])].slice(0, 3);
     const text = (tagList.length ? tagList.join(" ") + " " : "") + speechText(applyReadings(dir.text || (c.tts && c.tts[it.ref]) || it.text, readings));
-    const stability = Number.isFinite(dir.stability) ? dir.stability : el.stability;
-    console.log(`${it.ref}（${it.cast}）：${text}${stability !== el.stability ? `（安定度${stability}）` : ""}`);
+    // カードボイスの標準の安定度は 0.4（0.5 以上は平板・棒読みになりやすいため。1 は使わない）
+    const stability = Math.min(0.5, Number.isFinite(dir.stability) ? dir.stability : CARD_STABILITY);
+    console.log(`${it.ref}（${it.cast}）：${text}${stability !== CARD_STABILITY ? `（安定度${stability}）` : ""}`);
     try {
       const body = { text, model_id: el.model, language_code: el.language_code, voice_settings: { stability } };
       // 演技の方針（日本語の自由記述）は「台詞の直前の文脈」として渡す。読み上げられず、言い方だけに効く
