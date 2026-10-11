@@ -1012,6 +1012,7 @@ const ASSET_HASHES = Object.freeze({
   "voices/cards/n175-use.mp3": "013bc6bd7c",
   "voices/cards/n176-use-1.mp3": "951b72e62d",
   "voices/cards/n176-use-2.mp3": "c31a9fcc3a",
+  "voices/cards/n176-use-together.mp3": "f9e71f6b9d",
   "voices/cards/n177-use.mp3": "34bcf3b27c",
   "voices/cards/n178-use.mp3": "ceabc8fa13",
   "voices/cards/n179-use.mp3": "e06bd49bf2",

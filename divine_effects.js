@@ -50,6 +50,8 @@ const DIVINE_YATA_MIRROR = 'divine_assets/yata-golden-mirror-back-2d2896c377be.w
 const DIVINE_OROCHI_UNIFIED_SCENE = 'kami_cutin/orochi-no-paper-6d3cd5f796d0.webp';
 const DIVINE_OROCHI_MASKED_SCENE = 'kami_cutin/orochi-masked-e0aa2b8d2d70.webp';
 const DIVINE_OROCHI_MASK_OVERLAY = 'kami_cutin/orochi-mask-overlay-41e4332590d0.webp';
+const DIVINE_OROCHI_DARK_PORTRAIT = 'divine_assets/orochi-eight-expressions-deccd174b69e.webp';
+const DIVINE_OROCHI_DARK_MASK = 'divine_assets/orochi-frontal-mask-f3b0b91b92a9.webp';
 const DIVINE_OROCHI_MASK_CREST = 'divine_assets/orochi-mask-crest-58ac728c565c.webp';
 const DIVINE_FIELD_SCROLL = 'divine_assets/omoikane-cover-scroll-716871aa6baa.webp';
 const DIVINE_SPIRIT_OWL = 'divine_assets/okuninushi-spirit-owl-c314c28c139c.webp';
@@ -65,7 +67,7 @@ function divineCamelliaStyle(i, blossom = false) {
 }
 function divineSkillTheme(kami, index) {
   const theme = DIVINE_SKILL_THEMES[String(kami && kami.no)] || DIVINE_SKILL_THEMES['8'];
-  return { sealedCutin: index === 2 && String(kami && kami.no) === '10' ? DIVINE_OROCHI_MASKED_SCENE : null, kamiNo: String(kami && kami.no), cutin: index === 2 ? DIVINE_SKILL_CUTINS[String(kami && kami.no)] : null, awakening: index === 2 ? DIVINE_SKILL_AWAKENINGS[String(kami && kami.no)] || null : null, awakeningFrames: index === 2 ? DIVINE_SKILL_AWAKENING_FRAMES[String(kami && kami.no)] || [] : [], motif: theme.motif, color: theme.color, accent: theme.accent, label: theme.skills[index === 2 ? 1 : 0], index };
+  return { sealedCutin: null, kamiNo: String(kami && kami.no), cutin: index === 2 ? DIVINE_SKILL_CUTINS[String(kami && kami.no)] : null, awakening: index === 2 ? DIVINE_SKILL_AWAKENINGS[String(kami && kami.no)] || null : null, awakeningFrames: index === 2 ? DIVINE_SKILL_AWAKENING_FRAMES[String(kami && kami.no)] || [] : [], motif: theme.motif, color: theme.color, accent: theme.accent, label: theme.skills[index === 2 ? 1 : 0], index };
 }
 
 // Atlas cells are native painted sprites; movements and lighting stay code-driven.
@@ -100,7 +102,7 @@ function divineSkillAssetUrls(kami) {
     '7': [DIVINE_HINO_RED_SLASH, ...DIVINE_HINO_FIRE_WALL_FRAMES],
     '8': [DIVINE_YATA_MIRROR],
     '9': ['divine_assets/lunar-relics-ac681e76d45f.webp'],
-    '10': [DIVINE_OROCHI_UNIFIED_SCENE, DIVINE_OROCHI_MASKED_SCENE, DIVINE_OROCHI_MASK_OVERLAY, DIVINE_OROCHI_MASK_CREST],
+    '10': [DIVINE_OROCHI_DARK_PORTRAIT, DIVINE_OROCHI_DARK_MASK, DIVINE_OROCHI_MASK_CREST],
   };
   return [...new Set([...(assets[String(kami && kami.no)] || []), DIVINE_SKILL_CUTINS[String(kami && kami.no)], DIVINE_SKILL_AWAKENINGS[String(kami && kami.no)], ...(DIVINE_SKILL_AWAKENING_FRAMES[String(kami && kami.no)] || [])].filter(Boolean))];
 }
@@ -144,8 +146,8 @@ function divineBeastManifestations() {
   ].map((beast,i)=>Object.assign({},beast,{style:{left:beast.x+'%',top:beast.y+'%','--summon-color':beast.color,'--summon-start':i*.11,'--summon-span':.4,'--animal-cell':(i*100/3)+'%'},artStyle:beast.name==='owl'?{backgroundImage:"url('"+DIVINE_SPIRIT_OWL+"')",backgroundPosition:'center',backgroundSize:'contain'}:{}}));
 }
 function divineOrochiMaskFragments() {
-  const vertices = [[52,29],[58,29],[63,33],[67,42],[67,55],[60,55],[54,50],[52,40]];
-  const center = [59.8,43.5];
+  const vertices = [[0,0],[50,0],[100,0],[100,50],[100,100],[50,100],[0,100],[0,50]];
+  const center = [50,50];
   return vertices.map((p,i)=>{
     const q=vertices[(i+1)%vertices.length], angle=(i-2)*Math.PI/4;
     return {clipPath:'polygon('+[center,p,q].map(v=>v[0]+'% '+v[1]+'%').join(',')+')',
@@ -315,7 +317,7 @@ if (typeof Vue !== 'undefined') {
     data() { return {awakeningFailed:false}; },
     methods: { artError(event) { if (!event.target.dataset.fallback) { event.target.dataset.fallback = '1'; event.target.src = 'kami_cutin/' + this.effect.kamiNo + '.webp'; } }, awakeningError() { this.awakeningFailed = true; }, camelliaStyle(i, blossom) { return divineCamelliaStyle(i, blossom); }, spiralPetalStyle(i) { return divineUzumeSpiralPetalStyle(i); }, hagoromoPoseStyle(i) { return divineUzumeHagoromoPoseStyle(i); } },
     props: { effect: Object, layout:Object, targets:Array, survivors:Array, swordLanding:Object, stage: { type: String, default: 'closeup' }, duration: { type: Number, default: 3000 } },
-    computed: { volley(){return divineBladeVolley(this.layout,this.survivors || [])}, beastManifestations(){return divineBeastManifestations()},orochiFragments(){return divineOrochiMaskFragments()},orochiMasked(){return DIVINE_OROCHI_MASKED_SCENE},orochiMaskOverlay(){return DIVINE_OROCHI_MASK_OVERLAY},thunderBranches(){return divineThunderBranches()},fieldScrolls(){return divineFieldScrolls(this.layout)},thunderSwordStyle(){return divineThunderSwordStyle(this.targets && this.targets[0])},susanooSwordStyle(){return divineSusanooSwordStyle(this.swordLanding)},flameClaw(){return divineFlameClawLayout(this.targets || [])},uzumeFanFrames(){return DIVINE_UZUME_FAN_FRAMES} },
+    computed: { volley(){return divineBladeVolley(this.layout,this.survivors || [])}, beastManifestations(){return divineBeastManifestations()},orochiFragments(){return divineOrochiMaskFragments()},orochiDarkPortrait(){return DIVINE_OROCHI_DARK_PORTRAIT},orochiDarkMask(){return DIVINE_OROCHI_DARK_MASK},thunderBranches(){return divineThunderBranches()},fieldScrolls(){return divineFieldScrolls(this.layout)},thunderSwordStyle(){return divineThunderSwordStyle(this.targets && this.targets[0])},susanooSwordStyle(){return divineSusanooSwordStyle(this.swordLanding)},flameClaw(){return divineFlameClawLayout(this.targets || [])},uzumeFanFrames(){return DIVINE_UZUME_FAN_FRAMES} },
     template: `<div class="divine-art divine-painted" :class="['divine-'+effect.motif,'divine-level-'+effect.index,'divine-stage-'+stage]" :style="{'--divine-color':effect.color,'--divine-accent':effect.accent,'--fx-duration':duration+'ms'}" aria-hidden="true">
       <div class="divine-mist"></div><div class="divine-ground"></div>
       <div v-if="stage === 'cutin' && effect.index === 2 && effect.cutin" class="genesis-scene">
@@ -417,17 +419,19 @@ if (typeof Vue !== 'undefined') {
         </template>
         <template v-if="effect.motif === 'dragon'">
           <div class="orochi-void"></div><div class="orochi-blood-mist"></div><div class="orochi-forbidden-flash"></div>
-          <div class="orochi-unified-art">
-            <img class="orochi-revealed-scene" :src="effect.cutin" alt="">
-            <img class="orochi-masked-scene" :src="orochiMasked" alt="">
-            <img v-for="(fragment,i) in orochiFragments" :key="'fragment'+i" class="orochi-mask-fragment" :style="fragment" :src="orochiMaskOverlay" alt="">
-            <svg class="orochi-mask-cracks" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-              <path class="crack-first" pathLength="1" d="M58 32 L59.5 38 L58.4 41 L60.6 43.5 L60 50"/>
-              <path class="crack-second" pathLength="1" d="M53.5 38 L57 41.5 L60.6 43.5 L63.5 42 L65.2 45"/>
-              <path class="crack-third" pathLength="1" d="M56 47 L60.6 43.5 L62 47.5 L64.5 50"/>
-            </svg>
+          <div class="orochi-dark-art">
+            <img class="orochi-dark-portrait" :src="orochiDarkPortrait" alt="">
+            <div class="orochi-dark-shroud"></div>
+            <div class="orochi-dark-mask-stage">
+              <img class="orochi-dark-mask" :src="orochiDarkMask" alt="">
+              <img v-for="(fragment,i) in orochiFragments" :key="'fragment'+i" class="orochi-mask-fragment" :style="fragment" :src="orochiDarkMask" alt="">
+              <svg class="orochi-mask-cracks" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <path class="crack-first" pathLength="1" d="M48 15 L52 28 L47 39 L53 52 L49 70 L53 96"/>
+                <path class="crack-second" pathLength="1" d="M16 47 L33 49 L53 52 L67 46 L83 51"/>
+                <path class="crack-third" pathLength="1" d="M25 78 L38 64 L53 52 L64 67 L75 82"/>
+              </svg>
+            </div>
           </div>
-          <div class="orochi-roar-wave"></div>
         </template>
       </div>
       <i v-for="i in (effect.index===2 ? 18 : 8)" :key="'dust'+i" class="divine-dust" :style="{'--i':i}"></i>
@@ -435,4 +439,4 @@ if (typeof Vue !== 'undefined') {
     </div>`,
   });
 }
-if (typeof module !== 'undefined') module.exports = { divineOrochiMaskFragments, DIVINE_OROCHI_MASKED_SCENE, DIVINE_OROCHI_MASK_OVERLAY, DIVINE_OROCHI_MASK_CREST, DIVINE_FIELD_SCROLL, DIVINE_SPIRIT_OWL, divineFlameClawLayout, DIVINE_HINO_RED_SLASH, DIVINE_HINO_FIRE_WALL_FRAMES, DIVINE_OROCHI_UNIFIED_SCENE, DIVINE_UZUME_FAN_FRAMES, DIVINE_UZUME_HAGOROMO_POSES, divineUzumeSpiralPetalStyle, divineUzumeHagoromoPoseStyle, DIVINE_SKILL_THEMES, DIVINE_SKILL_CUTINS, DIVINE_SKILL_AWAKENINGS, DIVINE_SKILL_AWAKENING_FRAMES, divineSkillTheme, divineSkillAssetUrls, DIVINE_SPRITES, divineSpriteStyle, divineTransferStyle, divineBladeVolley, divineThunderBranches, divineFieldScrolls, divineThunderSwordStyle, divineSusanooSwordStyle, divineOrochiSealArrivalStyles, divineOrochiSealMarkStyle, divineBeastManifestations };
+if (typeof module !== 'undefined') module.exports = { DIVINE_OROCHI_DARK_PORTRAIT, DIVINE_OROCHI_DARK_MASK, divineOrochiMaskFragments, DIVINE_OROCHI_MASKED_SCENE, DIVINE_OROCHI_MASK_OVERLAY, DIVINE_OROCHI_MASK_CREST, DIVINE_FIELD_SCROLL, DIVINE_SPIRIT_OWL, divineFlameClawLayout, DIVINE_HINO_RED_SLASH, DIVINE_HINO_FIRE_WALL_FRAMES, DIVINE_OROCHI_UNIFIED_SCENE, DIVINE_UZUME_FAN_FRAMES, DIVINE_UZUME_HAGOROMO_POSES, divineUzumeSpiralPetalStyle, divineUzumeHagoromoPoseStyle, DIVINE_SKILL_THEMES, DIVINE_SKILL_CUTINS, DIVINE_SKILL_AWAKENINGS, DIVINE_SKILL_AWAKENING_FRAMES, divineSkillTheme, divineSkillAssetUrls, DIVINE_SPRITES, divineSpriteStyle, divineTransferStyle, divineBladeVolley, divineThunderBranches, divineFieldScrolls, divineThunderSwordStyle, divineSusanooSwordStyle, divineOrochiSealArrivalStyles, divineOrochiSealMarkStyle, divineBeastManifestations };

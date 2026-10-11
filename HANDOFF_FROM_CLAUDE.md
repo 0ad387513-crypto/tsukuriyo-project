@@ -1859,3 +1859,69 @@
 - `node scripts/build_card_voice_manifest.js` を作り直し、`voices/cards/manifest.json` は 422台詞 / 180カード / 掛け合い59組（未作成0）。`asset_hashes.js` も同時に更新済み。対戦中の再生は Codex の v458 の仕組み（card_voice_core.js）をそのまま使う。
 - index.html：カードの詳細（previewCard のモーダル。カードリスト・デッキ編集から開く）に「ボイス」欄を追加。召喚時／使用時／攻撃時／死亡時と、そのカードが関わる掛け合い（敵・味方と相手のカード名つき）を押して試聴できる。掛け合いは順番に再生、同じ行をもう一度押すと停止、閉じると停止。音量はボイス音量。対戦中（appView === 'battle'）とカミ・トークンには出さない。追加：computed `previewVoiceRows`、methods `previewVoicePlay` / `_previewVoiceStop`、data `previewVoicePlayingKey`、CSS `.mi-voices` / `.mi-voice-wide`（見た目はカミ図鑑の `.kami-dex-voice` を流用）。
 - .release-worktree のみ。未コミット・push なし・本番 v456 のまま。npm test 191件成功。画面はユーザーが http://localhost:8765/index.html で確認する。
+
+## Claude 本番公開 v1.15.459（2026-10-11、main 6535f85）
+
+- ユーザーの許可を得て、.release-worktree の作業内容（Codex の v457 フィールドカードの絵・v458 ボイス導入準備・カミの絵の差し替えと、Claude のカードボイス全422本＋カード詳細の試聴）を1コミットで main に push。本番 https://tsukuriyo-online.netlify.app が v1.15.459 になり、manifest・音声・card_voice_core.js が 200、/tools/ は 404 を確認。まっさらなチェックアウトで npm test 191件成功。
+- コミットに入れていないもの：`kami_redesign/`（2.6GB の作業フォルダ）と `voices/cards/` の takes・previews・_old・library。いずれも .gitignore に追加した。
+- **注意**：コミットした `optimized_assets.json` は、`kami_redesign/` の画像を指す595件の記録を除いたもの（その画像を載せないとテストが失敗するため）。作業フォルダの `optimized_assets.json` は595件入りのまま残してあり、git 上は「変更あり」と表示される。このファイルを次にコミットするときは、`kami_redesign/` の記録を入れないこと。
+- ブランチ codex/local-preview-sync-20261010 も同じコミットで origin に push 済み。
+
+## Codex ローカル v1.15.460（2026-10-11）カード詳細のボイス折りたたみ・スクロール・正式名称
+
+- Claude公開済みHEAD6535f85/v459の.release-worktreeのみindexを局所修正。rootはv458の古いコードのためindexコピー/上書きなし。本番はv459、今回未公開。
+- ボイス欄をdetails/summaryで初期折りたたみ、カード番号:keyで切替時リセット、折りたたみ時は試聴停止。カード詳細専用.card-detail-modalを追加し、PCは右列、900px以下は全体がスクロール。内容/フレーバー/最後のボイス/操作ボタンに到達可能。他ポップアップに影響しない。
+- previewVoiceRowsの掛け合い相手名をfullNameで「白き閃刃・シラトリ」など正式表記に。複数番号で同じカードを指す名前をSetで重複除去。「シラトリ・シラトリ」は番号23/24を別々に名前化した表示不具合、同一人物同士の会話ではない。台本・音声・manifest不変。
+- release npm192件成功（正式名称と通常/進化番号の重複除去の検証1件追加）。独立テンプレート/CSS/実computedをheadless Edgeで1920x1080/1280x720/390x844確認、初期折りたたみ/最下部/閉じるボタン到達/折りたたみ停止/横溢れなし、画面エラー0。ゲーム本体はHTTPのみ。8765 index/versionがrelease実体と一致。
+- 記録output/card-detail-voices-20261011/。隔離確認http://localhost:8765/tools/card-detail-voice-preview-20261011.html。既存8765維持。コミット/PUSH/デプロイなし。optimized_assets.jsonの595件の既存差分や他作業者の変更を保持。
+
+
+## Codex local v1.15.461 (2026-10-11): attack drag voice / effect selection order
+
+- Only .release-worktree runtime was patched; root runtime is stale and was not copied over. Existing v460 card-detail changes remain. No commit, PUSH or deploy.
+- Attack voice starts once when pointer drag crosses the existing 5px threshold (native drag also supported). Click-only, tapped cards, relics and opponent-turn drags do not start it. Both drop paths pass attackVoiceStarted into battle/divine resolution, so a long drag does not cause replay. CPU/programmatic/remote attack voice remains at the existing declaration/notification timing.
+- _battleWaitForOracleEffect uses a temporary Vue watcher: human summon/use effect processing, reroll optional confirmation, choices, Sentei and target selectors wait until the central display closes. CPU automatic resolution does not wait. Exit, a replaced battle or a result cancels the wait and removes the watcher. No polling timeout. Free-hand oracle playback now has _shownAt for click dismissal.
+- Added tests/battle_interaction_order.test.js (11 behavior tests) to npm test. Full release suite: 203 pass / 0 fail; git diff --check passed. HTTP index.html/version.js equal release files at localhost:8765. Game was not opened in the Codex browser. Existing server and unrelated assets/audio preserved.
+- Record: output/battle-interaction-order-20261011/verification.json. Local URL: http://localhost:8765/index.html . Production remains v1.15.459.
+
+## Claude ローカル v1.15.462（2026-10-11）動作確認用ツール画面の「トップへ戻る」を左上へ
+
+- index.html の CSS のみ：`.devtools-screen > .mode-detail-back` を左上（top 14px / left 16px、transform なし、少し大きめ）に。共通の `.mode-detail-back`（top:50%）のままだと、この画面では左端の上下中央に出ていた。モード詳細画面のヘッダー内の戻るボタンは変更なし。
+- Codex の v460・v461 の未コミット分と同じ作業フォルダにある。未コミット・push なし。本番は v1.15.459。npm test 203件成功。
+
+## Claude ローカル v1.15.463（2026-10-11）鎮魂の花畑の同時再生／場のレガシーの絵の黒帯をなくす
+
+- 鎮魂の花畑（n176-use）：アカマツとシラトリの声を重ねた1本 `voices/cards/n176-use-together.mp3` を作り、ゲームではその1本だけを鳴らす（以前は2人が順番に言っていた）。仕組み：`tools/voice-script/card_voice_together.json` に台詞グループIDを並べると、`scripts/build_card_voice_manifest.js`（`npm run voices:prepare`）が ffmpeg で重ねて manifest を1本にする。元の音声が新しければ作り直す。同じ台詞を2〜3人で言う n139-use・n161-use・n065-summon の後半は、依頼が無いので順番のまま。
+- 場のカードの絵（field_card_art.js）：`wide`（絵を縮めて全体を出す）は縦長のレガシーの札では上下に黒い帯が出て不自然だったため、レガシー10枚（13・36・65・78・79・93・94・106・114・198）を `position` 指定に変え、主役が入る位置で札いっぱいに出す。`wide` は正方形に近いレリック15枚だけに残した。切り出しは画像で確認済み（ゲーム画面は未確認）。
+- .release-worktree のみ・未コミット・push なし。本番は v1.15.459。npm test は下記のとおり。
+
+## Codex local v1.15.464 (2026-10-11): Orochi dark mask awakening
+
+- Patched only .release-worktree runtime: darkness / frontal no-paper mask / progressive cracks / eight fragments / redesigned white-haired red-eyed sinister smile, followed by the unchanged approved eight-dragon combat cut-in. No cracking over the bright combat artwork. Prior dark awakening asset used as composition/mood reference with the current redesigned unmasked cut-in as identity reference.
+- built-in image_gen created two originals; scripts/import_visual_asset.py imported portrait divine_assets/orochi-dark-smile-e36b5713bbd6.webp (1600x900,117600B) and alpha mask divine_assets/orochi-frontal-mask-f3b0b91b92a9.webp (720x720,43332B). Sources/full prompts/screenshots/verification: kami_redesign/revisions/orochi-dark-awakening-2026-10-11/README.md. Old images preserved, old bright masked cut-in/overlay removed from current Orochi preload set. Existing cut-in SHA unchanged.
+- Normal/fast Orochi sequence animation->portrait->sealArrival; voice begins at portrait, roar starts with dragons, no-line portrait held at least3200ms. Minimum/reduced timing and other Kami sequences preserved. Exit cancels subsequent phases/voice/roar. CSS local square mask cracks with 8 fragment partitions, desktop/mobile face alignment verified.
+- npm test204 pass, Python importer4 pass, git diff --check passed. Isolated effects_preview.html?kami=10 verified frozen mask/cracks/fragments/smile, automatic transition, desktop/mobile and reduced CSS; HTTP7 resources200 and bytes/SHA match release. Game index HTTP only, not opened in Codex browser. Existing8765 server preserved.
+- Current version464, standard hashes1144. Preserved other worker's463 card voices/field crops and previous461 interaction order/UI. Root runtime is stale: do not copy either full index across checkouts. No commit/PUSH/deploy. update-preview.cjs already applied and must not be rerun.
+
+## Codex local v1.15.465 (2026-10-11): cut-in first, unified Orochi with eight dragons
+
+- Supersedes v464 sequencing per latest user request: portrait/voice first, then dark mask cracking/shattering, red-eyed smile, eight dragons revealed in the SAME unified image, then existing sealArrival. Normal/fast use portrait->animation->sealArrival; minimal/reduced remain unchanged. Roar at82% of4.2s reveal, unified image held3200ms afterward. Voice once during initial cut-in; no second bright cut-in after awakening.
+- built-in image_gen referenced v464 redesigned portrait, current approved battle dragons and original dark cinematic. First pass had7 heads; local upper-inner-right addition produced4left+4right. Approved full source/full prompts saved in .release-worktree/kami_redesign/revisions/orochi-eight-dragon-awakening-2026-10-11/. Standard importer: divine_assets/orochi-eight-awakening-3a87025a4bb1.webp (1600x900,201860B,q82). Existing alpha mask reused and aligned to new frontal face. Existing bright cut-in bytes unchanged.
+- One image throughout dark reveal; CSS shroud reveals central face first, surrounding dragons later. No per-frame image loads or mismatched swapped character layers. Small screens fit all eight heads; preview fits its actual stage height. Current URL http://localhost:8765/effects_preview.html?kami=10 . New README/verification/screenshots saved. Earlier464 sources preserved as history.
+- Node204/Python4 passed, git diff --check passed. Isolated desktop/mobile frozen phases and automatic portrait->animation, resource errors0. HTTP7 resources200/byte+SHA equal release; actual index only HTTP, no game browser opened. Existing8765 server maintained. Hashes1144 refreshed.
+- Only release runtime patched; root stale runtime not copied. Other worker's voice/crop/UI changes preserved. Version465. No commit/PUSH/deploy. update.cjs already applied once; do not rerun.
+
+## Claude ローカル v1.15.466（2026-10-11）フィールド確認中の操作を止める／確認の画面にカード画像
+
+- 不具合の原因：新配置（battle-layout-v2）は `.battle-side > *` と `.battle-header > *` に pointer-events: auto を付けているため、「フィールドを確認」中（.modal-peeking）でもターン終了などが押せた。対象選択や守護の確認を残したまま手番が進み、左上の案内（battleEffectGuide）と選択画面が残り続け、CPU が先へ進んでいた。
+- 修正：CSS `.modal-peeking .battle-overlay * { pointer-events: none !important; }`。念のため JS でも `_battlePeekLocked` / `battlePeekGuard`（battle-overlay の pointerdown・dragstart・contextmenu を capture で止める）/ `_battlePeekReturn`（battleRequestEndTurn・openKamiSkills は選択画面へ戻す）を追加。
+- 確認の画面（dslOptionalModal・battleRemoteConfirm・dslChoiceModal）：能力の持ち主と文中の「カード名」のカード画像を並べる（`.dialog-card-strip`、最大4枚）。文中・見出しのカード名は `.dialog-card-name` にし、カーソルを合わせると showCardHover で左上の情報欄にカードを出す。追加 methods：`_battleCardByDisplayName` / `battleDialogTextParts` / `battleDialogCards`。
+- 「フィールドを確認」「選択画面に戻る」のボタンを大きく（下中央の浮きボタン 14→18px、選択画面内のボタン 12→15px）。
+- npm test 204件成功、テンプレートは Vue.compile で構文確認。ゲーム画面は未確認（ユーザーが確認）。未コミット・push なし、本番は v1.15.459。
+
+## Codex local v1.15.467 (2026-10-11): Orochi four dragons per side / distinct expressions
+
+- User requested left4/right4 and unique expressions while retaining face directions. Recounted v465 source: actually left5/right4 =9; prior head-count claim was incorrect. Removed inner upper-left extra head/neck, now visually verified exactly left4/right4. Eight faces differ through mouth opening, lip/teeth, brows and eyes, without new species ornaments or changed facing.
+- Built-in image_gen precise edit; original PNG/full prompt/import report/README/screenshots in kami_redesign/revisions/orochi-distinct-expressions-2026-10-11/. New standard-imported divine_assets/orochi-eight-expressions-deccd174b69e.webp (1600x900,193824B,q82). Replaced only dark portrait constant and JS query suffix. Existing mask, bright cutin and divine_effects.css bytes unchanged. Whole scene remains one image for character/dragons throughout reveal; no frame-by-frame large image loading.
+- npm204/Python4 passed, git diff --check passed. Desktop/mobile frozen phases visually inspected; exactly8 visible. Sequence portrait->animation, reduced mask stage none, resources errors0. HTTP7 files200 and equal release bytes/SHA. Game not opened in Codex browser; existing8765 server preserved. Local preview http://localhost:8765/effects_preview.html?kami=10 . Game http://localhost:8765/index.html . Hashes1144 refreshed.
+- Release runtime only, root stale runtime not copied. Claude v466 modal-peeking/dialog changes and all unrelated pending work preserved. No commit/PUSH/deploy. update.cjs already executed once; do not rerun. Previous images retained as history.

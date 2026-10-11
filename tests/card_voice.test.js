@@ -139,3 +139,17 @@ test('ゲームの受信発動演出は新しい相手通知だけ再生し、�
   apply.call(context, { writer: 2, cardNo: 1, ts: at }); assert.equal(calls.length, 1);
   assert.deepEqual(calls[0], [card, 'summon', 'opp']);
 });
+test('カード詳細の掛け合い相手は正式名称にし、通常版/進化版の重複を除く', () => {
+  const akamatsu = { no: '2', name: 'アカマツ', nickname: '見習い忍者' };
+  const shiratori = { no: '24', name: 'シラトリ', nickname: '白き閃刃' };
+  const context = {
+    previewCard: akamatsu,
+    allCards: [akamatsu, { ...shiratori, no: '23' }, shiratori],
+    fullName: c => c.nickname ? c.nickname + '・' + c.name : c.name,
+    cardVoiceManifest: { cards: {}, pairs: [{ id: 'p17', kind: 'ally', who: ['1', '2'], target: ['23', '24'], clips: [{ text: '台詞' }] }] },
+  };
+  const rows = appMethod('previewVoiceRows').call(context);
+  assert.equal(rows[0].label, '掛け合い（味方：白き閃刃・シラトリ）');
+  context.previewCard = shiratori;
+  assert.equal(appMethod('previewVoiceRows').call(context)[0].label, '掛け合い（味方：見習い忍者・アカマツ）');
+});

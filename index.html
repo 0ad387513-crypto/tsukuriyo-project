@@ -1737,6 +1737,17 @@
   .kami-dex-voice-text { font-size: 13px; line-height: 1.6; }
   .mi-voices { margin-top: 10px; }
   .mi-voices .kami-dex-voice-subtitle { margin-top: 0; }
+  .mi-voices > summary { cursor: pointer; color: #e8d28d; font-weight: 700; padding: 10px 0; }
+  .mi-voices > summary:focus-visible { outline: 2px solid #9fc6ff; outline-offset: 3px; }
+  .mi-voices > summary small { margin-left: 8px; font-weight: 400; color: #aab; }
+  .card-detail-modal .modal-info { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 8px; }
+  .card-detail-modal .modal-info > * { flex-shrink: 0; }
+  .card-detail-modal .mi-text { flex: 0 0 auto; overflow: visible; }
+  .card-detail-modal .mi-flavor { display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow: visible; }
+  @media (max-width: 900px) {
+    .card-detail-modal { display: block; overflow-y: auto; overscroll-behavior: contain; max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px); }
+    .card-detail-modal .modal-info { overflow: visible; padding-right: 0; margin-top: 16px; }
+  }
   .mi-voice-wide { grid-column: 1 / -1; }
   .kami-dex-chibis { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px; margin-top: 10px; }
   .kami-dex-chibi {
@@ -2375,6 +2386,11 @@
   .top-devtools-toggle:hover { color: #cdd6e6; border-color: #5a6580; }
   .top-devtools-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
   .devtools-screen { justify-content: flex-start; overflow-y: auto; }
+  /* 戻るボタンは左上に置く（共通の指定のままだと、この画面では左端の上下中央に出てしまう） */
+  .devtools-screen > .mode-detail-back {
+    top: max(14px, env(safe-area-inset-top)); left: max(16px, env(safe-area-inset-left)); transform: none;
+    padding: 10px 20px; font-size: 15px;
+  }
   .top-menu-footer {
     position: relative; z-index: 1;
     margin-top: 32px; font-size: 11px; color: #677; letter-spacing: 0.04em;
@@ -4486,15 +4502,18 @@
   .modal-peeking .battle-overlay {
     pointer-events: none;
   }
+  /* 新配置は右側（ターン終了など）と上部の子要素に pointer-events: auto を付けているため、確認中でも押せてしまっていた。
+     選択を残したままターンを終えられると、選択画面と左上の案内が残り続ける。確認中は子要素も含めて止める */
+  .modal-peeking .battle-overlay * { pointer-events: none !important; }
   .modal-peek-return-btn {
     position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
-    z-index: 950; padding: 12px 24px; border-radius: 24px; border: 1px solid #6a86c8;
-    background: #24314f; color: #dce6ff; font-weight: 800; font-size: 14px;
+    z-index: 950; padding: 16px 38px; border-radius: 24px; border: 1px solid #6a86c8;
+    background: #24314f; color: #dce6ff; font-weight: 800; font-size: 18px;
     box-shadow: 0 4px 16px rgba(0,0,0,.6); cursor: pointer;
   }
   .modal-peek-btn {
-    padding: 8px 14px; border-radius: 6px; border: 1px solid #4a5a80;
-    background: #232c44; color: #b9c8e8; font-weight: 700; font-size: 12px; cursor: pointer;
+    padding: 10px 20px; border-radius: 6px; border: 1px solid #4a5a80;
+    background: #232c44; color: #b9c8e8; font-weight: 700; font-size: 15px; cursor: pointer;
   }
   .modal-peek-btn:hover { background: #2c3856; }
 
@@ -6098,6 +6117,11 @@
     width: 78px; aspect-ratio: 744 / 1039; border: 1px solid #56637a; border-radius: 5px;
     background: #151a24 center / cover no-repeat; position: relative; overflow: hidden;
   }
+  /* 確認の画面（任意の能力・守護など）：関係するカードの画像を並べる。文中のカード名はカーソルを合わせるとカードが出る */
+  .dialog-card-strip { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin: 4px 0 12px; }
+  .dialog-card-strip .reroll-candidate-card { width: 112px; cursor: help; }
+  .dialog-card-name { color: #f3dc98; border-bottom: 1px dotted rgba(243, 220, 152, .7); cursor: help; }
+  .dialog-card-name:hover { color: #fff3c4; }
   .reroll-candidate-name {
     position: absolute; left: 0; right: 0; bottom: 0; padding: 3px; font-size: 9px;
     line-height: 1.25; color: #fff; background: rgba(0,0,0,.76);
@@ -7594,7 +7618,7 @@
 <link rel="preload" as="image" href="genesis_story/01-five-regions.webp">
 <link rel="preload" as="image" href="top_mode_icons/construct2p-style-9f261d899256.webp" fetchpriority="high">
 <link rel="preload" as="image" href="top_mode_icons/shield2p-menu-63550a24f4eb.webp" fetchpriority="high">
-<link rel="stylesheet" href="divine_effects.css?v=20261010">
+<link rel="stylesheet" href="divine_effects.css?v=20261011-orochi-eight">
 </head>
 <body>
 <div id="app-loading" role="status" aria-live="polite">
@@ -9857,7 +9881,7 @@
 
   <!-- ===================== 4人対戦：ゲームセッション ===================== -->
   <!-- ===================== 対戦画面（Phase 3 手動対戦操作） ===================== -->
-    <div v-if="appView === 'battle'" class="battle-overlay" :class="['motion-' + battleAnimationSpeed, { 'tutorial-active': !!tutorial, 'battle-layout-v2': battleLayoutV2 }]">
+    <div v-if="appView === 'battle'" class="battle-overlay" @pointerdown.capture="battlePeekGuard" @dragstart.capture="battlePeekGuard" @contextmenu.capture="battlePeekGuard" :class="['motion-' + battleAnimationSpeed, { 'tutorial-active': !!tutorial, 'battle-layout-v2': battleLayoutV2 }]">
       <div v-if="battleDragGuide"
            class="battle-drag-guide"
            :style="{
@@ -11483,9 +11507,16 @@
     <div class="battle-zone-modal-panel" style="max-width:520px;">
       <h3 class="battle-zone-modal-title">
         <template v-if="dslOptionalModal.kind === 'reroll'">リロール</template>
-        <template v-else>{{ fullName(dslOptionalModal.sourceCard) }}<span class="optional-trigger-tag">【{{ dslOptionalModal.triggerLabel }}】</span></template>
+        <template v-else><span class="dialog-card-name" @mouseenter="showCardHover(dslOptionalModal.sourceCard, $event)" @mouseleave="hideCardHover">{{ fullName(dslOptionalModal.sourceCard) }}</span><span class="optional-trigger-tag">【{{ dslOptionalModal.triggerLabel }}】</span></template>
       </h3>
-      <p class="optional-summary">{{ dslOptionalModal.summary }}</p>
+      <div v-if="battleDialogCards(dslOptionalModal.kind === 'reroll' ? null : dslOptionalModal.sourceCard, dslOptionalModal.summary).length" class="dialog-card-strip">
+        <div v-for="(card, i) in battleDialogCards(dslOptionalModal.kind === 'reroll' ? null : dslOptionalModal.sourceCard, dslOptionalModal.summary)" :key="'dialog-card-' + i" class="reroll-candidate-card"
+             @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
+             :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}">
+          <div v-if="!cardImageUrl(card)" class="reroll-candidate-name">{{ fullName(card) }}</div>
+        </div>
+      </div>
+      <p class="optional-summary"><template v-for="(part, i) in battleDialogTextParts(dslOptionalModal.summary)"><span v-if="part.card" :key="'p' + i" class="dialog-card-name" @mouseenter="showCardHover(part.card, $event)" @mouseleave="hideCardHover">{{ part.text }}</span><template v-else>{{ part.text }}</template></template></p>
       <template v-if="dslOptionalModal.kind === 'reroll' && dslOptionalModal.cards && dslOptionalModal.cards.length">
         <div class="reroll-candidate-list">
           <div v-for="(card, i) in dslOptionalModal.cards" :key="'reroll-option-' + i"
@@ -11510,7 +11541,14 @@
         相手の攻撃への対応
         <span style="font-size:12px;color:#9aa;font-weight:400;">— 【{{ battleRemoteConfirm.kind }}】</span>
       </h3>
-      <p class="battle-deck-modal-message" style="margin:8px 0;">{{ battleRemoteConfirm.prompt }}</p>
+      <div v-if="battleDialogCards(null, battleRemoteConfirm.prompt).length" class="dialog-card-strip">
+        <div v-for="(card, i) in battleDialogCards(null, battleRemoteConfirm.prompt)" :key="'dialog-card-' + i" class="reroll-candidate-card"
+             @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
+             :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}">
+          <div v-if="!cardImageUrl(card)" class="reroll-candidate-name">{{ fullName(card) }}</div>
+        </div>
+      </div>
+      <p class="battle-deck-modal-message" style="margin:8px 0;"><template v-for="(part, i) in battleDialogTextParts(battleRemoteConfirm.prompt)"><span v-if="part.card" :key="'p' + i" class="dialog-card-name" @mouseenter="showCardHover(part.card, $event)" @mouseleave="hideCardHover">{{ part.text }}</span><template v-else>{{ part.text }}</template></template></p>
       <div class="battle-zone-modal-actions">
         <button class="battle-back-btn modal-btn-yes" @click="battleAnswerRemoteConfirm(true)">引き受ける</button>
         <button class="battle-back-btn modal-btn-no" @click="battleAnswerRemoteConfirm(false)">引き受けない</button>
@@ -11522,9 +11560,17 @@
   <div v-if="dslChoiceModal" class="battle-zone-modal" role="dialog" aria-modal="true" tabindex="-1" @click.self="dslCancelChoice">
     <div class="battle-zone-modal-panel" style="max-width:560px;">
       <h3 class="battle-zone-modal-title">
-        {{ dslChoiceModal.sourceCard ? '「' + fullName(dslChoiceModal.sourceCard) + '」' : '' }}
-        {{ dslChoiceModal.prompt }}
+        <span v-if="dslChoiceModal.sourceCard" class="dialog-card-name" @mouseenter="showCardHover(dslChoiceModal.sourceCard, $event)" @mouseleave="hideCardHover">「{{ fullName(dslChoiceModal.sourceCard) }}」</span>
+        <template v-for="(part, i) in battleDialogTextParts(dslChoiceModal.prompt)"><span v-if="part.card" :key="'p' + i" class="dialog-card-name" @mouseenter="showCardHover(part.card, $event)" @mouseleave="hideCardHover">{{ part.text }}</span><template v-else>{{ part.text }}</template></template>
       </h3>
+      <div v-if="battleDialogCards(dslChoiceModal.sourceCard, dslChoiceModal.prompt).length" class="dialog-card-strip">
+        <div v-for="(card, i) in battleDialogCards(dslChoiceModal.sourceCard, dslChoiceModal.prompt)" :key="'dialog-card-' + i" class="reroll-candidate-card"
+             @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover"
+             :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}">
+          <div v-if="!cardImageUrl(card)" class="reroll-candidate-name">{{ fullName(card) }}</div>
+        </div>
+      </div>
+
       <div style="display:flex;flex-direction:column;gap:8px;padding:6px 0;">
         <button v-for="(opt, i) in dslChoiceModal.options" :key="'choice'+i"
                 class="battle-back-btn"
@@ -12356,7 +12402,7 @@
 
   <!-- ===== カードプレビュー モーダル ===== -->
   <div v-if="previewCard" class="modal-bg" @click.self="closePreview">
-    <div class="modal-card">
+    <div class="modal-card card-detail-modal" role="dialog" aria-modal="true" :aria-label="fullName(previewCard) + 'の詳細'" tabindex="0">
       <div class="modal-img" :style="cardImageStyle(previewCard)"></div>
       <div class="modal-info">
         <div class="mi-no">No.{{ String(parseInt(previewCard.no, 10) || 0).padStart(3, '0') }}</div>
@@ -12434,8 +12480,9 @@
         </div>
         <div class="mi-flavor" v-if="previewCard.flavor">{{ previewCard.flavor }}</div>
         <!-- カードのボイス（対戦中は出さない。対戦で鳴るボイスと重ならないようにするため） -->
-        <div v-if="appView !== 'battle' && previewVoiceRows.length" class="mi-voices">
-          <div class="kami-dex-voice-subtitle">ボイス</div>
+        <details v-if="appView !== 'battle' && previewVoiceRows.length" :key="'voices:' + previewCard.no" class="mi-voices"
+                 @toggle="if (!$event.target.open) _previewVoiceStop()">
+          <summary>ボイス<small>（{{ previewVoiceRows.length }}項目）</small></summary>
           <div class="kami-dex-voices">
             <button v-for="row in previewVoiceRows" :key="row.key" type="button" class="kami-dex-voice"
                     :class="{ playing: previewVoicePlayingKey === row.key, 'mi-voice-wide': row.wide }" @click="previewVoicePlay(row)">
@@ -12443,7 +12490,7 @@
               <span v-for="(line, i) in row.lines" :key="i" class="kami-dex-voice-text">「{{ line }}」</span>
             </button>
           </div>
-        </div>
+        </details>
         <div class="mi-actions">
           <!-- 対戦画面中は編集系ボタンを非表示（閉じるのみ） -->
           <template v-if="appView !== 'battle'">
@@ -12542,7 +12589,7 @@
 <script src="asset_hashes.js"></script>
 <script src="field_card_art.js?v=20261010"></script>
 <script src="card_voice_core.js"></script>
-<script src="divine_effects.js?v=20261010"></script>
+<script src="divine_effects.js?v=20261011-orochi-expressions"></script>
 <script src="firebase.js"></script>
 <script src="sync_core.js"></script>
 <script src="pack_generator.js"></script>
@@ -14773,7 +14820,10 @@ new Vue({
         const clips = own[event];
         if (clips && clips.length) rows.push({ key: event, label, clips, lines: clips.map(c => c.text), wide: clips.length > 1 });
       }
-      const names = list => (list || []).map(n => { const c = this.allCards.find(x => String(parseInt(x.no, 10)) === String(n)); return c ? c.name : ''; }).filter(Boolean).join('・');
+      const names = list => [...new Set((list || []).map(n => {
+        const c = this.allCards.find(x => String(parseInt(x.no, 10)) === String(parseInt(n, 10)));
+        return c ? this.fullName(c) : '';
+      }).filter(Boolean))].join(' ／ ');
       for (const pair of manifest.pairs || []) {
         const mine = (pair.who || []).includes(no), theirs = (pair.target || []).includes(no);
         if (!mine && !theirs) continue;
@@ -21489,6 +21539,7 @@ new Vue({
     async _battleShowSkill2Closeup(kami, skillName, remoteTransfers = null, writerSide = 'self', remoteTargets = null) {
       // 創世神技専用の姿と神器を描いたカットインを使う。通常の神技とは別の素材。
       const effect = divineSkillTheme(kami, 2);
+      const reducedMotion = typeof this._battleReducedMotion === 'function' && this._battleReducedMotion();
       this.battleSkillCloseup = {
         effect,
         dedicatedArt: true,
@@ -21519,7 +21570,6 @@ new Vue({
       const presentation = this.battleSkillCloseup;
       // スサノオだけ、台詞の終了後に顔へ寄って開眼してから盤面の演出へ進む。
       const phases = [{ name: 'portrait', duration: 1800 }];
-      const reducedMotion = typeof this._battleReducedMotion === 'function' && this._battleReducedMotion();
       if (effect.awakening && this.battleAnimationSpeed !== 'minimal' && !reducedMotion) phases.push({name:'awakening',duration:presentation.awakeningDuration});
       phases.push({ name: 'animation', duration: presentation.animationDuration });
       if (effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal' && !reducedMotion) phases.push({name:'sealArrival',duration:1200});
@@ -21536,8 +21586,8 @@ new Vue({
         if (phase.name === 'animation' && String(kami && kami.no) === '5' && typeof this._battleDivineStageLayout === 'function') presentation.layout = this._battleDivineStageLayout(writerSide);
         presentation.phase = phase.name;
         presentation._shownAt = Date.now();
-        // 仮面が割れて少女の素顔が見えてから間を置き、八頭の龍が現れる瞬間に咆哮を鳴らす。
-        const roarTimer = phase.name === 'animation' && String(kami && kami.no) === '10' ? setTimeout(() => {
+        // カットインの後に仮面を割り、同じ一枚絵の素顔→周囲の八頭の龍を照らす。
+        const roarTimer = effect.kamiNo === '10' && phase.name === 'animation' ? setTimeout(() => {
           if (this.battleSkillCloseup === presentation && presentation.phase === 'animation') this._sfxPlay('dragonHeavy', .35);
         }, this._battleMotionMs(phase.duration) * .82) : null;
         // 爪による引き込みと、相手カミへの爆発を別々の時刻で確定させる。
@@ -21566,9 +21616,10 @@ new Vue({
             hold = this._battleHoldSpeech(presentation.line, voice, finish);
             this._battleSkillCloseupT = hold.timer;
           } else {
-            // オロチは龍の絵を保持したまま、約3秒の咆哮が終わるまで破片の到着段階へ進まない。
+            // 八頭の龍と素顔の一枚絵を咆哮の終了まで保持。
+            const duration = this._battleMotionMs(phase.duration);
             const roarHoldMs = phase.name === 'animation' && effect.kamiNo === '10' && this.battleAnimationSpeed !== 'minimal' ? 3200 : 0;
-            this._battleSkillCloseupT = setTimeout(finish, this._battleMotionMs(phase.duration) + roarHoldMs);
+            this._battleSkillCloseupT = setTimeout(finish, duration + roarHoldMs);
           }
         });
         if (roarTimer !== null) clearTimeout(roarTimer);
@@ -21989,6 +22040,23 @@ new Vue({
       this._battleOracleEffectRemoteT = setTimeout(() => {
         if (this.battleOracleEffect && this.battleOracleEffect.id === id) this.battleOracleEffect = null;
       }, this._battleMotionMs(2500));
+    },
+    // 手動の効果選択は中央演出を閉じてから開始する。CPUは既存の自動解決を続ける。
+    _battleWaitForOracleEffect() {
+      if (!this.battleOracleEffect || this._battleCpuAutoResolving) return Promise.resolve(true);
+      const battle = this.battleSample;
+      const cancelled = () => this.appView !== 'battle' || this.battleSample !== battle || !!battle.result;
+      if (cancelled()) return Promise.resolve(false);
+      return new Promise(resolve => {
+        const unwatch = this.$watch(
+          () => cancelled() || !this.battleOracleEffect,
+          done => {
+            if (!done) return;
+            unwatch();
+            resolve(!cancelled());
+          }
+        );
+      });
     },
     // オラクル/レガシー/レリック発動演出：出現から0.5秒経っていればどこをクリックしても閉じる
     // （誤って出た瞬間のクリックで即座に消えてしまわないよう、直後だけ猶予を設ける）
@@ -22530,7 +22598,62 @@ new Vue({
         if (!acted) break;
       }
     },
+    /* 確認の画面の文から「カード名」を拾い、カードに結び付ける（場に出ているカードを優先。トークンなど一覧に無いものも場から拾える） */
+    _battleCardByDisplayName(name) {
+      const key = String(name || '').trim();
+      if (!key) return null;
+      const match = c => c && (this.fullName(c) === key || c.name === key);
+      const bs = this.battleSample || {};
+      for (const side of ['self', 'opp']) {
+        const p = bs[side] || {};
+        for (const zone of ['legacies', 'relics']) { const hit = (p[zone] || []).find(match); if (hit) return hit; }
+      }
+      return (this.allCards || []).find(match) || (this.allKamiCards || []).find(match) || null;
+    },
+    battleDialogTextParts(text) {
+      const out = [], src = String(text == null ? '' : text), re = /「([^「」]+)」/g;
+      let last = 0, m;
+      while ((m = re.exec(src))) {
+        const card = this._battleCardByDisplayName(m[1]);
+        if (!card) continue;
+        if (m.index > last) out.push({ text: src.slice(last, m.index) });
+        out.push({ text: m[0], card });
+        last = m.index + m[0].length;
+      }
+      if (last < src.length) out.push({ text: src.slice(last) });
+      return out;
+    },
+    /* 確認の画面に並べるカード：能力の持ち主と、文に出てくるカード（同じカードは1枚だけ） */
+    battleDialogCards(sourceCard, text) {
+      const cards = [];
+      const add = c => { if (c && !cards.some(x => x === c || this.fullName(x) === this.fullName(c))) cards.push(c); };
+      for (const part of this.battleDialogTextParts(text)) add(part.card);
+      add(sourceCard);
+      return cards.slice(0, 4);
+    },
+    /* 「フィールドを確認」中に、答えていない選択（対象選択・任意確認など）が残っているか。
+       残っている間に盤面を操作できると、選択が未処理のまま次の処理へ進み、左上の案内や選択画面が残り続ける */
+    _battlePeekLocked() {
+      return !!(this.battleModalPeek && (this.dslTargetModal || this.dslChoiceModal || this.dslOptionalModal || this.battleSenteiModal
+        || this.battleDeckModal || this.battleSublimModal || this.battleSkillModal || this.battleConfirmModal
+        || this.battleRemoteConfirm || this.battleTokenPickModal));
+    },
+    /* 確認中はカードを掴む・右クリックのメニューを止める（カーソルを合わせる・押して詳細を見るのはそのまま使える） */
+    battlePeekGuard(e) {
+      if (!this._battlePeekLocked()) return;
+      if (e.target && e.target.closest && e.target.closest('.modal-peek-return-btn')) return;
+      e.stopPropagation();
+      if (e.type !== 'pointerdown') e.preventDefault();
+    },
+    /* 確認中に押された操作は受け付けず、選択画面へ戻す */
+    _battlePeekReturn() {
+      if (!this._battlePeekLocked()) return false;
+      this._sfxPlay('cancel');
+      this.battleModalPeek = false;
+      return true;
+    },
     battleRequestEndTurn() {
+      if (this._battlePeekReturn()) return;
       if (!this.battleCanEndTurn) return;
       if (!this._tutorialAllows('endTurn')) return;
       const warnings = this.battleEndTurnWarnings || [];
@@ -24295,6 +24418,7 @@ new Vue({
        CPUが自動解決する際、相手側の候補を優先する（破壊/タップ/崩壊/補正-/手札に戻す等の
        妨害効果で、自分のカードを対象にしてしまう不具合の対策。呼び出し元の各_dslOp*から渡す）。 */
     dslChooseTargets(sel, promptLabel, opts = {}) {
+      if (this.battleOracleEffect && !this._battleCpuAutoResolving) return this._battleWaitForOracleEffect().then(ok => ok ? this.dslChooseTargets(sel, promptLabel, opts) : []);
       if (!sel) return Promise.resolve([]);
       // 自身指定
       if (sel.自身) {
@@ -24393,6 +24517,7 @@ new Vue({
       });
     },
     dslAskCustomTargets(promptLabel, candidates, need = 1, sourceCard = null, canSkip = false, exactCount = false, options = {}) {
+      if (this.battleOracleEffect && !this._battleCpuAutoResolving) return this._battleWaitForOracleEffect().then(ok => ok ? this.dslAskCustomTargets(promptLabel, candidates, need, sourceCard, canSkip, exactCount, options) : []);
       const pool = (candidates || []).filter(Boolean);
       if (!pool.length) return Promise.resolve([]);
       if (this._battleCpuAutoResolving) {
@@ -26446,6 +26571,7 @@ new Vue({
     },
     /* 任意能力の発動可否を尋ねる。kind='reroll' の場合はカード効果ではなくシステムルールとして文言を出し分ける */
     dslAskOptional(card, triggerLabel, summary, kind = 'ability', options = {}) {
+      if (this.battleOracleEffect && !this._battleCpuAutoResolving) return this._battleWaitForOracleEffect().then(ok => ok ? this.dslAskOptional(card, triggerLabel, summary, kind, options) : false);
       // CPU自動対戦中：人間の確認を待てないため、任意効果は安全側（発動しない）に倒す
       if (this._battleCpuAutoResolving) return Promise.resolve(false);
       return new Promise((resolve) => {
@@ -26747,6 +26873,7 @@ new Vue({
     },
     /* 選択肢A/Bを尋ねる */
     dslAskChoice(card, prompt, options, meta = {}) {
+      if (this.battleOracleEffect && !this._battleCpuAutoResolving) return this._battleWaitForOracleEffect().then(ok => ok ? this.dslAskChoice(card, prompt, options, meta) : -1);
       // CPU自動対戦中：人間の選択を待てないため、条件を満たす最初の選択肢を機械的に選ぶ
       if (this._battleCpuAutoResolving) {
         let idx = 0;
@@ -27308,6 +27435,7 @@ new Vue({
        既存の効果キュー（Layer1：本文regex）
        =================================================================== */
     async battleRunEnterKeywordEffects(card, paidCost = null) {
+      if (this.battleOracleEffect && !this._battleCpuAutoResolving && !(await this._battleWaitForOracleEffect())) return true;
       if (this._battleIsEffectDisabled(card)) {
         this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、効果は発動しません。`, [card]);
         return true;
@@ -27621,6 +27749,10 @@ new Vue({
       });
     },
     battleOpenSentei(sourceCard, sentei, triggerLabel = '効果') {
+      if (this.battleOracleEffect && !this._battleCpuAutoResolving) return this._battleWaitForOracleEffect().then(ok => {
+        if (ok) return this.battleOpenSentei(sourceCard, sentei, triggerLabel);
+        if (sentei.onComplete) sentei.onComplete([]);
+      });
       const sublimApplied = sentei.sublimRules && sentei.sublimRules.length && sentei.paidCost > sentei.baseCost
         ? (sentei.paidCost - sentei.baseCost) : 0;
       const canBoost = this.battleHasSenteiBoostLegacy('self') && !this.battleSample.self.senteiBoostUsed;
@@ -28417,7 +28549,7 @@ new Vue({
         player[oracleZone] = player[oracleZone] || [];
         player[oracleZone].push(card);
         player.handCount = player.hand.length;
-        this.battleOracleEffect = { card };
+        this.battleOracleEffect = { card, _shownAt: Date.now() };
         this._battlePublishOracleEffect(card.no);
         this.hideCardHover();
         if (!(await this.battleRunEnterKeywordEffects(card, 0))) this.battleKeywordGuide(card, 0);
@@ -28679,6 +28811,7 @@ new Vue({
       this.battleFieldDragTarget = null;
       this.battleDragGuide = null;
       this.battleUpdateDragGuide(e, null);
+      this._battleFieldDragAttackVoice();
       this.hideCardHover();
       if (e.dataTransfer) {
         e.dataTransfer.effectAllowed = 'move';
@@ -28772,8 +28905,8 @@ new Vue({
       this.battleDragGuide = null;
       this.battleSuppressPostDragPreview();
       if (!target) return;
-      if (target.type === 'kami') this.battleResolveDivineAttack(drag.side, drag.index);
-      else if (target.type === 'legacy') this.battleResolveLegacyBattle(drag.side, drag.index, 'opp', target.index);
+      if (target.type === 'kami') this.battleResolveDivineAttack(drag.side, drag.index, null, { attackVoiceStarted: drag.attackVoiceStarted });
+      else if (target.type === 'legacy') this.battleResolveLegacyBattle(drag.side, drag.index, 'opp', target.index, { attackVoiceStarted: drag.attackVoiceStarted });
       else if (target.type === 'move') this.battleAskFieldMoveConfirm(drag, target.destination);
     },
     /* ===== ポインタ方式のフィールドカード攻撃ドラッグ（ネイティブDnDより滑らか・軽量） ===== */
@@ -28805,7 +28938,18 @@ new Vue({
       this.battleFieldDragTarget = null;
       this.hideCardHover();
       this._sfxPlay('dragStart');
+      this._battleFieldDragAttackVoice();
       this._battleBuildAttackTargetCache();
+    },
+    _battleFieldDragAttackVoice() {
+      const drag = this.battleFieldDrag;
+      if (!drag || drag.attackVoiceStarted || drag.side !== 'self' || drag.zone !== 'legacies') return;
+      if (this.battleSample.result || this.battleSample.activeSide !== 'self') return;
+      const card = this.battleSample.self.legacies[drag.index];
+      if (!card || (!this.battleLegacyCanAct(card, 'battle').ok && !this.battleLegacyCanAct(card, 'divine').ok)) return;
+      // このドラッグでは一度だけ。ドロップまで長くかかっても確定時に再生し直さない。
+      drag.attackVoiceStarted = true;
+      this._battleCardVoice(card, 'attack', 'self', false);
     },
     _battleFieldPointerMove(e) {
       const p = this._fieldPointer;
@@ -28846,8 +28990,8 @@ new Vue({
       this.battleSuppressPostDragPreview();
       if (!drag || !target) return;
       this._sfxPlay('dragDrop');
-      if (target.type === 'kami') this.battleResolveDivineAttack(drag.side, drag.index, attackVisual);
-      else if (target.type === 'legacy') this.battleResolveLegacyBattle(drag.side, drag.index, 'opp', target.index, { attackVisual });
+      if (target.type === 'kami') this.battleResolveDivineAttack(drag.side, drag.index, attackVisual, { attackVoiceStarted: drag.attackVoiceStarted });
+      else if (target.type === 'legacy') this.battleResolveLegacyBattle(drag.side, drag.index, 'opp', target.index, { attackVisual, attackVoiceStarted: drag.attackVoiceStarted });
       else if (target.type === 'move') this.battleAskFieldMoveConfirm(drag, target.destination);
     },
     battleFieldCardClick(card) {
@@ -29056,7 +29200,7 @@ new Vue({
       if (!viaDivineGuard) {
         this.$set(attacker, '_tapped', true);
         this.dslRefreshStaticAbilities();
-        this._battleCardVoice(attacker, 'attack', attackerSide, false);
+        if (!opts.attackVoiceStarted) this._battleCardVoice(attacker, 'attack', attackerSide, false);
         await this.battleRunActionTrigger(attacker, '戦闘時');
       }
       if (this.battleSample.result) return;
@@ -29145,7 +29289,7 @@ new Vue({
       }
       this._battleCheckBattleEndDestroy();
     },
-    async battleResolveDivineAttack(attackerSide, attackerIndex, attackVisual) {
+    async battleResolveDivineAttack(attackerSide, attackerIndex, attackVisual, opts = {}) {
       if (this.battleNet && this.battleNet.spectating) return;
       if (this.battleSample.result || attackerSide !== 'self') return;
       // 相手ターン中は神攻できない（戦闘と同じ扱い）
@@ -29169,7 +29313,7 @@ new Vue({
       this.battleSaveUndo();
       this.$set(attacker, '_tapped', true);
       this.dslRefreshStaticAbilities();
-      this._battleCardVoice(attacker, 'attack', attackerSide, false);
+      if (!opts.attackVoiceStarted) this._battleCardVoice(attacker, 'attack', attackerSide, false);
       this._dslCurrentEvent = { side: attackerSide, type: 'divineAttackDeclared', payload: { source: attacker } };
       await this.battleFireKamiEventAwaited(attackerSide, 'divineAttackDeclared', { source: attacker });
       await this.battleRunActionTrigger(attacker, '神攻時', ab => !this._dslIsDamageOutcomeAbility(ab));
@@ -30169,6 +30313,7 @@ new Vue({
       }
     },
     openKamiSkills() {
+      if (this._battlePeekReturn()) return;
       if (this.battleSample.result || this.battleSkillTone === 'disabled') return;
       if (this.battleSample.activeSide !== 'self') return;
       if (!this._tutorialAllows('skill')) return;
