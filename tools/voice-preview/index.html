@@ -1,0 +1,1053 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- カードボイスの確認ページ（ローカル専用。npm run preview 中に http://localhost:8765/tools/voice-preview/ で開く。本番では _redirects で404）。
+     voices/cards/voices.json（候補・登録状況）と tools/voice-script/card_voice_cast.json（キャスト）を読み、
+     候補（voices/cards/previews/）と作った台詞（voices/cards/）を再生する。登録などの操作はボタンから確認用サーバー（/__dev/voice-run）経由で実行する -->
+<title>カードボイス 試聴室</title>
+<style>
+  :root {
+    --bg: #12172a; --panel: #1a2133; --line: #323b54; --ink: #ece6d6; --muted: #9aa3b8;
+    --gold: #e3bf6e; --gold-soft: #3a3324; --ok: #7fd3a0; --ok-soft: #1f3a2b; --focus: #8fb0f0;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif; font-size: 15px; line-height: 1.6; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding-inline: 20px; padding-block: 24px 60px; }
+  h1 { font-family: "Shippori Mincho", "Yu Mincho", serif; font-size: 28px; margin: 0 0 6px; letter-spacing: .04em; }
+  .lead { color: var(--muted); margin: 0 0 14px; max-width: 70ch; }
+  .bar { position: sticky; top: 0; z-index: 3; background: var(--bg); padding-block: 10px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+  .bar input[type=search] { font: inherit; flex: 1 1 220px; min-width: 0; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  .bar label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+  .bar select, .bar button { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+  .summary { font-size: 13px; color: var(--muted); }
+  .bar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .bar-foot { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); }
+  .bar .tab { font: inherit; font-size: 14px; font-weight: 700; padding: 6px 14px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--muted); cursor: pointer; margin-bottom: -1px; }
+  .tab[aria-selected="true"] { color: var(--gold); border-bottom-color: var(--gold); }
+  .tab small { font-weight: 400; font-size: 11px; margin-left: 4px; }
+  .cast-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-height: 108px; overflow-y: auto; }
+  .bar .ctab { font: inherit; width: max-content; flex: none; font-size: 13px; padding: 3px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .ctab::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--line); flex: none; }
+  .ctab.cand::before { background: var(--gold); }
+  .ctab.done::before { background: var(--ok); }
+  .ctab[aria-selected="true"] { border-color: var(--gold); background: var(--gold-soft); color: var(--gold); font-weight: 700; }
+  .ctab.all { color: var(--muted); }
+  .ctab-sub { font-size: 10px; color: var(--muted); font-weight: 400; }
+  .ctab.all::before { display: none; }
+  .tab:focus-visible, .ctab:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .legend { font-size: 11px; color: var(--muted); }
+  .vol { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .vol input { width: 160px; accent-color: var(--gold); }
+  .vol output { min-width: 2.5em; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .cast { border-top: 1px solid var(--line); padding-block: 16px; display: grid; gap: 10px; }
+  .cast-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
+  .cast-name { font-family: "Shippori Mincho", "Yu Mincho", serif; font-size: 20px; font-weight: 700; }
+  .chip { font-size: 12px; padding: 1px 9px; border-radius: 999px; background: var(--gold-soft); color: var(--gold); }
+  .chip.done { background: var(--ok-soft); color: var(--ok); }
+  .labels { font-size: 12px; color: var(--muted); }
+  details.voice-edit { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+  details.voice-edit > summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--gold); }
+  details.voice-edit[open] > summary { margin-bottom: 10px; }
+  .ve { display: grid; gap: 12px; }
+  .ve textarea { font: inherit; font-size: 13px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); resize: vertical; width: 100%; }
+  .ve textarea:focus-visible, .ve input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .ve input[type=text] { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); flex: 1 1 260px; min-width: 0; }
+  .spec-label { font-size: 12px; color: var(--muted); min-width: 9em; }
+  .count { font-size: 11px; color: var(--muted); justify-self: end; }
+  .count.over { color: #ff9fa8; font-weight: 700; }
+  .history { display: grid; gap: 6px; }
+  .history-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; font-size: 11px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 6px; }
+  .cand-select { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); cursor: pointer; }
+  .cand-select input { accent-color: var(--gold); width: 16px; height: 16px; }
+  .cand.picked { border-color: #ff9fa8; }
+  .copy.danger { border-color: #ff9fa8; background: #4a2228; color: #ff9fa8; }
+  .cand-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .cand-desc summary { font-size: 11px; color: var(--muted); cursor: pointer; }
+  .cand-desc p { font-size: 11px; color: var(--muted); margin: 4px 0 0; }
+  details.desc summary { font-size: 12px; color: var(--muted); cursor: pointer; }
+  details.desc p { font-size: 12px; color: var(--muted); margin: 6px 0 0; white-space: pre-wrap; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+  .cand { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; min-width: 0; }
+  .cand.chosen { border-color: var(--ok); box-shadow: inset 0 0 0 1px var(--ok); }
+  .cand-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .cand-top b { font-size: 14px; }
+  audio { width: 100%; height: 36px; }
+  .copy { font: inherit; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--gold); background: var(--gold-soft); color: var(--gold); cursor: pointer; white-space: nowrap; }
+  .copy:focus-visible, .bar button:focus-visible, .bar select:focus-visible, .bar input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .lines-list { display: grid; gap: 6px; }
+  .line-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 10px; align-items: center; font-size: 14px; }
+  .line-row small { color: var(--muted); display: block; font-size: 11px; }
+  .missing { color: var(--muted); font-size: 12px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .copy.main { background: var(--gold); color: var(--bg); }
+  .copy.small { font-size: 11px; padding: 3px 8px; font-weight: 400; }
+  .line-row { grid-template-columns: 52px minmax(0, 1fr) minmax(220px, 300px) auto; }
+  @media (max-width: 640px) { .line-row { grid-template-columns: 52px minmax(0, 1fr); } .line-row > :nth-child(n+3) { grid-column: 1 / -1; } }
+  .thumb { width: 52px; aspect-ratio: 5 / 7; object-fit: cover; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); cursor: zoom-in; padding: 0; display: block; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 3px; display: block; }
+  .thumb:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .cards { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cards .thumb { width: 84px; }
+  .ask { border: 1px solid var(--gold); border-radius: 12px; background: var(--panel); color: var(--ink); padding: 16px 18px; max-width: min(92vw, 480px); }
+  .ask::backdrop { background: rgba(0, 0, 0, .6); }
+  .ask p { margin: 0 0 14px; white-space: pre-line; font-size: 14px; line-height: 1.7; }
+  .ask .btns { justify-content: flex-end; }
+  .viewer { border: 0; padding: 0; background: transparent; max-width: min(92vw, 520px); max-height: 92vh; }
+  .viewer::backdrop { background: rgba(0, 0, 0, .75); }
+  .viewer img { display: block; width: 100%; height: auto; max-height: 86vh; object-fit: contain; border-radius: 10px; cursor: zoom-out; }
+  .viewer p { margin: 6px 0 0; text-align: center; color: #fff; font-size: 13px; }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); padding: 8px 14px; border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100vw - 32px); }
+  .toast.show { opacity: 1; }
+  .runner { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); width: min(760px, calc(100vw - 32px)); background: var(--panel); border: 1px solid var(--gold); border-radius: 12px; padding: 10px 12px; z-index: 10; box-shadow: 0 8px 24px rgba(0,0,0,.45); display: grid; gap: 6px; }
+  .runner[hidden] { display: none; }
+  .runner.ok { border-color: var(--ok); }
+  .runner.ng { border-color: #ff9fa8; }
+  .runner-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .runner-actions { display: flex; gap: 6px; }
+  .runner-msg { margin: 0; font-size: 12px; color: var(--muted); white-space: pre-wrap; }
+  .runner-msg:empty { display: none; }
+  .runner-log { margin: 0; max-height: 180px; overflow: auto; font-family: Consolas, "Courier New", monospace; font-size: 11px; color: var(--muted); background: var(--bg); border-radius: 8px; padding: 6px 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .empty { color: var(--muted); padding: 30px 0; }
+  .line-acts { display: flex; gap: 6px; }
+  .dir-tag { font-size: 11px; color: var(--gold); margin-left: 6px; }
+  .heard { color: var(--muted); display: block; font-size: 11px; }
+  .heard.bad { color: #ffcf7a; font-weight: 700; }
+  .takes { margin-top: 6px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--ok); background: var(--ok-soft); display: grid; gap: 6px; font-size: 12px; }
+  .takes-head { font-weight: 700; color: var(--ok); font-size: 11px; }
+  .take { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+  .take audio { height: 30px; }
+  .readings { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin-top: 10px; }
+  .readings > summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--gold); }
+  .readings[open] > summary { margin-bottom: 8px; }
+  .reading-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: 13px; border-top: 1px dashed var(--line); padding-top: 6px; margin-top: 6px; }
+  .reading-row small { color: var(--muted); }
+  .readings input { font: inherit; font-size: 13px; padding: 5px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); min-width: 0; }
+  .multi { margin-top: 6px; padding: 6px 8px; border-radius: 8px; border: 1px dashed var(--gold); background: var(--gold-soft); display: grid; gap: 2px; font-size: 12px; }
+  .multi-head { font-weight: 700; color: var(--gold); font-size: 11px; }
+  .multi-part { color: var(--muted); }
+  .multi-part.me { color: var(--ink); font-weight: 700; }
+  .pair { margin-top: 6px; display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); }
+  .pair .thumb { width: 40px; flex: none; }
+  .pair-body { min-width: 0; display: grid; gap: 2px; font-size: 12px; }
+  .pair-kind { justify-self: start; font-size: 11px; font-weight: 700; padding: 0 8px; border-radius: 999px; }
+  .pair-kind.rival { background: #4a2228; color: #ff9fa8; }
+  .pair-kind.ally { background: #1f3a2b; color: #7fd3a0; }
+  .pair-who { color: var(--ink); }
+  .pair-other { color: var(--muted); }
+  .dir { grid-column: 1 / -1; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
+  .dir[hidden] { display: none; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  .preset { font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+  .preset[aria-pressed="true"] { border-color: var(--gold); background: var(--gold-soft); color: var(--gold); }
+  .dir-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 13px; color: var(--muted); }
+  .dir-row input, .dir-row select { font: inherit; font-size: 13px; padding: 5px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+  .dir-row input { flex: 1 1 220px; min-width: 0; }
+  .warn { color: #ffcf7a; font-weight: 700; }
+  .warn[hidden] { display: none; }
+  .hz { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .tag-view { color: var(--ok); font-weight: 700; }
+  .dir-note { font-size: 11px; color: var(--muted); margin: 0; white-space: pre-line; }
+  .dir { gap: 12px; }
+  .step { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
+  .step:last-child { border-bottom: 0; padding-bottom: 0; }
+  .step h4 { margin: 0; font-size: 13px; color: var(--gold); }
+  .step textarea { font: inherit; font-size: 14px; padding: 6px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); resize: vertical; width: 100%; }
+  .step textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .step > .copy.small { justify-self: start; }
+  .orig { color: var(--muted); }
+  .orig[hidden] { display: none; }
+  details.adv summary { font-size: 12px; color: var(--muted); cursor: pointer; }
+  details.adv .dir-row { margin-top: 6px; }
+  .cmd { display: block; font-family: Consolas, "Courier New", monospace; font-size: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; overflow-wrap: anywhere; user-select: all; }
+  .preset:focus-visible, .dir-row input:focus-visible, .dir-row select:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>カードボイス 試聴室</h1>
+  <p class="lead">声の候補と、作った台詞を聴いて確認するページです。上のタブで種族とキャストを選びます。「この候補に決める」「台詞を作る」などのボタンを押すと、その場で ElevenLabs で作ります（PowerShell は使いません）。進み具合は画面の下に出て、終わると一覧が最新になります。台詞の「直す・作り直す」から、台詞の言い換えと演技の方針を台詞ごとに指定できます。指定はこのPCの確認用サーバーにだけ保存されます。</p>
+  <div class="bar">
+    <div class="tabs" role="tablist" aria-label="種族" id="tribes"></div>
+    <div class="cast-tabs" role="tablist" aria-label="キャスト" id="castTabs"></div>
+    <div class="bar-foot"><button type="button" id="reload">最新の状態に更新</button><label class="vol" for="volume">音量 <input type="range" id="volume" min="0" max="100" step="5" value="80"> <output id="volumeText" for="volume">80</output></label><span class="summary" id="summary"></span></div>
+  </div>
+  <details class="readings" id="readings"><summary>読み方の辞書（イントネーション・読み間違いを直す）</summary>
+    <p class="dir-note">言葉の書き方を変えると、読み方やイントネーションが変わります。たとえば「父上」→「ちちうえ」「チチウエ」「ちち、うえ」など。ここに入れた置き換えは、その言葉を含む全部の台詞に、読み上げるときだけ使われます（台本の表示は変わりません）。入れたあとは「この言葉の台詞を作り直す」で作り直してください。うまくいかないときは、台詞ごとの「直す・作り直す」の「言い方を3通り作って選ぶ」も試してください。台詞を作るときは毎回、音声認識で聞き取って確かめます。読ませた文と大きく違って聞こえたら自動で作り直し（最大3回）、聞き取った文は台詞の下に出ます。「避けたい聞こえ方」を入れておくと、その言葉に聞こえたときも作り直します（最大5回。例：葛ノ葉亭 が「果て」と聞こえたら作り直す）。<br>読み方の中に「‿」を入れると、そこで区切って読ませたうえで、間だけを自動で詰めます（例：天根ノ社 → あまねの‿やしろ。区切ると言い方が安定し、間を詰めるので続けて聞こえます）。</p>
+    <div class="dir-row"><input type="text" id="readingWord" placeholder="言葉（例：父上）" aria-label="言葉"> → <input type="text" id="readingText" placeholder="読み方（例：ちちうえ）" aria-label="読み方"> <input type="text" id="readingNg" placeholder="避けたい聞こえ方（任意。例：果て）" aria-label="避けたい聞こえ方"><button type="button" class="copy small" id="readingAdd">辞書に入れる</button></div>
+    <div id="readingList"></div>
+  </details>
+  <main id="list"><div class="empty">読み込んでいます…</div></main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<section class="runner" id="runner" hidden aria-live="polite">
+  <div class="runner-head"><b id="runnerTitle">実行中…</b><span class="runner-actions"><button type="button" class="copy small" id="runnerCopy">コマンドをコピー</button><button type="button" class="copy small" id="runnerClose">閉じる</button></span></div>
+  <p class="runner-msg" id="runnerMsg"></p>
+  <pre class="runner-log" id="runnerLog"></pre>
+</section>
+<dialog class="ask" id="ask" aria-labelledby="askMsg"><p id="askMsg"></p><div class="btns"><button type="button" class="copy main" id="askOk">はい</button><button type="button" class="copy" id="askCancel">やめる</button></div></dialog>
+<dialog class="viewer" id="viewer" aria-label="カードの拡大表示"><img id="viewerImg" alt=""><p id="viewerCap"></p></dialog>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const TOOL = "node scripts/generate_card_voices_elevenlabs.js";
+  let data = { cast: {}, record: {}, lines: {}, pairs: {}, items: null, directions: {} };
+  // 演技の指定。ElevenLabs の演技タグ（英語の [ ] 書き）を台詞の頭に付けて読ませる。1〜2個までが自然
+  const PRESETS = ["戦闘中の掛け声として", "鬼気迫る", "力強く", "はきはきと", "明るく元気に", "落ち着いて", "優しく", "ささやくように", "悲しげに", "怒りをこめて", "笑いながら", "不機嫌そうに", "冷たく", "見下すように", "不気味に", "弱々しく"];
+  const STABILITY = [["", "標準（0.4）"], ["0", "0：表情を大きく（ぶれやすい）"], ["0.3", "0.3：やや表情豊か（棒読みっぽいときに）"], ["0.5", "0.5：落ち着き気味"]];
+  async function saveDirection(ref, body) {
+    const r = await fetch("/__dev/voice-direction?ref=" + encodeURIComponent(ref), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
+    if (j.direction) data.directions[ref] = j.direction; else delete data.directions[ref];
+  }
+  // 台詞の行の表示を、保存した指定に合わせて更新する
+  // 2人以上で話す台詞（台本の 名前「…」名前「…」 や「2人同時に」で分かれたもの）
+  const MULTI_SYNTAX = /[^「」\s]+「[^」]*」/;
+  const partsOf = it => (data.items || []).filter(i => i.group === (it.group || it.ref));
+  const isMulti = it => partsOf(it).length > 1;
+  function scriptOf(it) {
+    if (it.script) return it.script;
+    const m = /^([np]\d+)-([a-z]+)$/.exec(it.group || it.ref);
+    if (m) { const src = m[1][0] === "n" ? data.lines[m[1]] : data.pairs[m[1]]; if (src && src[m[2]]) return src[m[2]]; }
+    return it.text;
+  }
+  // 実際に読み上げる文（その台詞だけの言い換えがあればそれ）
+  const spokenOf = i => (data.directions[i.ref] || {}).text || i.text;
+  // 同じ台詞を何通りか作ったもの（言い方の候補）。聴き比べて「これにする」で本番の音声にする
+  // 音声認識で聞き取った文。読ませた文と大きく違うときは ⚠ を付ける（読み違いに気づけるように）
+  function heardLabel(key) {
+    const h = (data.heard || {})[key];
+    if (!h || !h.text) return null;
+    const e = el("small", "heard" + (h.ok ? "" : " bad"), (h.ok ? "聞き取り：" : "⚠ 聞き取り：") + h.text + (h.ok ? "" : "（読ませた文と違って聞こえています）"));
+    e.title = "作った音声を音声認識にかけた結果です。漢字の当て方が違うのは問題ありません。読み方そのものが違うときは、読み方の辞書や「台詞を変える」で直してください";
+    return e;
+  }
+  function takesBox(it) {
+    const nums = (data.takes || {})[it.ref] || [];
+    if (!nums.length) return null;
+    const box = el("div", "takes");
+    box.append(el("span", "takes-head", "言い方の候補（聴き比べて、良いものを選んでください）"));
+    for (const n of nums) {
+      const row = el("div", "take");
+      const au = el("audio"); au.controls = true; au.preload = "none"; au.src = "/voices/cards/takes/" + encodeURIComponent(it.ref + "-" + n + ".mp3") + bust();
+      const pick = el("button", "copy small", "これにする"); pick.type = "button";
+      pick.addEventListener("click", async () => {
+        try {
+          const res = await fetch("/__dev/voice-take-adopt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ref: it.ref, take: n }) });
+          const j = await res.json().catch(() => ({}));
+          if (!res.ok || !j.ok) throw new Error(j.message || "できませんでした");
+          rememberScroll(); await load(); restoreScroll();
+          toast("候補" + n + "をこの台詞の音声にしました");
+        } catch (e) { toast(e.message); }
+      });
+      row.append(el("b", "", "候補" + n), au, pick);
+      const hl = heardLabel(it.ref + "#" + n); if (hl) { hl.style.gridColumn = "1 / -1"; row.append(hl); }
+      box.append(row);
+    }
+    return box;
+  }
+  // 読み方の辞書
+  function renderReadings() {
+    const list = $("readingList"); if (!list) return;
+    const entries = Object.entries(data.readings || {});
+    const spoken = i => (data.directions[i.ref] || {}).text || i.text;
+    list.replaceChildren(...(entries.length ? entries.map(([w, r]) => {
+      const hits = (data.items || []).filter(i => spoken(i).includes(w));
+      const row = el("div", "reading-row");
+      const rd = r && typeof r === "object" ? r.reading : r, ngs = r && typeof r === "object" ? (r.ng || []) : [];
+      const label = el("span", "", w + " → " + rd + (ngs.length ? "（「" + ngs.join("」「") + "」と聞こえたら作り直す）" : "") + "　");
+      label.append(el("small", "", hits.length + "本の台詞（" + [...new Set(hits.map(i => displayName(i.cast)))].join("・") + "）"));
+      const redo = el("button", "copy small", "この言葉の台詞を作り直す"); redo.type = "button";
+      redo.addEventListener("click", () => runCommand(TOOL + " lines --word " + w + " --force", "「" + w + "」の台詞を作り直す"));
+      const del = el("button", "copy small danger", "辞書から外す"); del.type = "button";
+      del.addEventListener("click", () => saveReading(w, ""));
+      row.append(label, redo, del);
+      return row;
+    }) : [el("p", "dir-note", "まだ入っていません。")]));
+  }
+  async function saveReading(word, reading, ng) {
+    try {
+      const res = await fetch("/__dev/voice-readings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ word, reading, ng: ng || "" }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
+      data.readings = j.readings; renderReadings();
+      toast(reading ? "「" + word + "」を「" + reading + "」と読むようにしました" : "「" + word + "」を辞書から外しました");
+    } catch (e) { toast(e.message); }
+  }
+  function multiBox(it) {
+    const parts = partsOf(it);
+    if (parts.length < 2) return null;
+    const box = el("div", "multi");
+    const together = parts.every(p => p.together);
+    box.append(el("span", "multi-head", parts.length + "人をまたぐ台詞（" + (together ? "同時に話す" : "順番に話す") + "）"));
+    parts.forEach((p, i) => {
+      const who = p.speaker || displayName(p.cast);
+      box.append(el("span", "multi-part" + (p.ref === it.ref ? " me" : ""), (i + 1) + ". " + who + "「" + spokenOf(p) + "」" + (p.ref === it.ref ? "　← この台詞" : "")));
+    });
+    return box;
+  }
+  function showLine(it, spoken, orig, label) {
+    const d = data.directions[it.ref] || {};
+    spoken.textContent = d.text || it.text;
+    orig.textContent = d.text ? "台本の文：" + it.text : "";
+    orig.hidden = !d.text;
+    label.textContent = describe(it.ref);
+  }
+  function describe(ref) {
+    const d = data.directions[ref];
+    if (!d) return "";
+    return [d.text ? "読み替えあり" : "", d.direction ? "方針「" + (d.direction.length > 24 ? d.direction.slice(0, 24) + "…" : d.direction) + "」" : "", d.tags ? "タグ " + d.tags : "", d.stability !== undefined ? "安定度" + d.stability : "", d.tempo !== undefined ? "速さ" + d.tempo + "倍" : ""].filter(Boolean).join("・");
+  }
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
+  // 入力欄の「例：…」の文をそのまま入れるボタン
+  function exampleButton(input) {
+    const b = el("button", "copy small", "例を入れる"); b.type = "button";
+    b.title = input.placeholder;
+    b.addEventListener("click", () => {
+      input.value = input.placeholder.replace(/^例：/, "");
+      input.dispatchEvent(new Event("input"));
+      input.focus();
+    });
+    return b;
+  }
+  function fixPanel(it, refresh) {
+    const cur = data.directions[it.ref] || {};
+    // 演技の方針などを直したときは、この人の分だけ作り直す（複数人の台詞でも、ほかの人の分は触らない）
+    const cmd = TOOL + " lines --ref " + it.ref + " --force";
+    const box = el("div", "dir"); box.hidden = true;
+
+    // ① 台詞を変える。複数人の台詞は台詞全体（名前「…」名前「…」）を編集する
+    const multi = isMulti(it);
+    const groupRef = it.group || it.ref;
+    const original = (() => { const d = data.directions[groupRef] || {}; return d.script ? null : scriptOf(it); })();
+    const s1 = el("section", "step");
+    const text = el("textarea"); text.rows = 2; text.setAttribute("aria-label", "台詞");
+    text.value = multi || (data.directions[groupRef] || {}).script ? scriptOf(it) : (cur.text || it.text);
+    const kind = el("p", "dir-note");
+    const syncKind = () => {
+      const v = text.value.trim();
+      kind.textContent = MULTI_SYNTAX.test(v)
+        ? "名前「…」の形なので、話す人ごとに分けて作ります（" + [...v.matchAll(/([^「」\s]+)「/g)].map(m => m[1]).join(" → ") + "）。"
+        : "1人の台詞として、この文を読み上げます。";
+    };
+    text.addEventListener("input", syncKind); syncKind();
+    const reset = el("button", "copy small", "台本の文に戻す"); reset.type = "button";
+    reset.addEventListener("click", () => {
+      const m = /^([np]\d+)-([a-z]+)$/.exec(groupRef); const src = m && (m[1][0] === "n" ? data.lines[m[1]] : data.pairs[m[1]]);
+      text.value = multi || (data.directions[groupRef] || {}).script ? ((src && src[m[2]]) || scriptOf(it)) : it.text; syncKind();
+    });
+    s1.append(el("h4", "", multi ? "① 台詞を変える（この台詞は複数人で話します。全員分をまとめて編集します）" : "① 台詞を変える（必要なときだけ）"), text, kind,
+      el("p", "dir-note", "2人以上に分けるときは、名前「台詞」名前「台詞」と続けて書きます（例：アカマツ「いまだ！シラトリ！」シラトリ「はあっ！」）。名前は話す人の名前に合わせてください。1人の台詞は、読み間違いを直すときにひらがなにしたり「、」で間を入れたりできます。ここで変えた台詞はこのPCの試聴室だけに反映され、共有ページの台本は変わりません。"), reset);
+
+    // ② 演技の方針（日本語で自由に）
+    const s2 = el("section", "step");
+    const direction = el("textarea"); direction.rows = 2; direction.value = cur.direction || ""; direction.setAttribute("aria-label", "演技の方針");
+    direction.placeholder = "例：戦闘中、敵に斬りかかる瞬間の短い気合いの掛け声。叫びすぎない";
+    const presets = el("div", "presets");
+    for (const phrase of PRESETS) {
+      const b = el("button", "preset", "＋" + phrase); b.type = "button";
+      b.addEventListener("click", () => { const v = direction.value.trim(); direction.value = v ? v.replace(/[。、]$/, "") + "、" + phrase : phrase; direction.dispatchEvent(new Event("input")); direction.focus(); });
+      presets.append(b);
+    }
+    const sel = el("select"); sel.setAttribute("aria-label", "安定度");
+    for (const [v, t] of STABILITY) sel.append(new Option(t, v));
+    sel.value = cur.stability === undefined ? "" : String(cur.stability);
+    const tempoSel = el("select"); tempoSel.setAttribute("aria-label", "話す速さ");
+    for (const [v, t] of [["", "ふつう（そのまま）"], ["0.8", "とてもゆっくり"], ["0.88", "ゆっくり"], ["0.94", "少しゆっくり"], ["1.08", "少し速め"], ["1.15", "速め"]]) tempoSel.append(new Option(t, v));
+    tempoSel.value = cur.tempo === undefined ? "" : String(cur.tempo);
+    const r2 = el("div", "dir-row"); r2.append("安定度", sel, "話す速さ", tempoSel);
+    // 以前の英語タグ（残っている指定だけ見せる）
+    const tags = el("input"); tags.type = "text"; tags.value = cur.tags || ""; tags.setAttribute("aria-label", "英語の演技タグ"); tags.placeholder = "例：[excited]";
+    const adv = el("details", "adv"); const advSum = el("summary", "", "英語の演技タグ（細かく効かせたいときだけ）");
+    const r1 = el("div", "dir-row"); r1.append(tags, exampleButton(tags)); adv.append(advSum, r1); adv.open = !!cur.tags;
+    // 方針は英語の演技タグに直して台詞の頭に付ける（v4 は日本語の方針をそのままではほとんど反映しないため）。どのタグになるかをその場で見せる
+    const tagView = el("p", "dir-note tag-view");
+    const syncTags = () => {
+      const v = direction.value; const tags = [];
+      for (const [w, t] of data.directionMap || []) if (v.includes(w) && !tags.includes(t)) tags.push(t);
+      tagView.textContent = v.trim() ? (tags.length ? "→ 声に渡す演技タグ：" + tags.slice(0, 3).map(t => "[" + t + "]").join(" ") + (tags.length > 3 ? "（4つ目以降は使いません）" : "") : "→ この書き方では演技タグになりません。「不機嫌そうに」「ささやくように」「悲しげに」のような言葉を入れてください") : "";
+    };
+    direction.addEventListener("input", syncTags); setTimeout(syncTags);
+    const dirEx = el("div", "btns"); dirEx.append(exampleButton(direction));
+    // この方針を、同じキャラの台詞すべてに入れる（ほかの指定は残す）
+    const castKey = ((data.items || []).find(i => i.ref === it.ref) || {}).cast;
+    if (castKey) {
+      const toAll = el("button", "copy small", "このキャラの全台詞に同じ方針を入れる"); toAll.type = "button";
+      toAll.addEventListener("click", () => applyDirectionToCast(castKey, direction.value.trim()));
+      dirEx.append(toAll);
+    }
+    s2.append(el("h4", "", "② 演技の方針を書く（必要なときだけ）"), direction, tagView, dirEx, presets,
+      el("p", "dir-note", "どんな気持ち・言い方で言うのかを日本語で書いてください。書いた言葉は英語の演技タグ（[grumpy] など）に直して台詞の頭に付けます（最大3つ）。タグにならない言葉（場面の説明など）はほとんど効かないので、上に出る「声に渡す演技タグ」を確かめてください。ボタンを押すと言葉が書き足されます。"), r2, adv);
+
+    // ③ 保存して作り直す
+    const s3 = el("section", "step");
+    const save = el("button", "copy main", "保存して作り直す"); save.type = "button";
+    const clear = el("button", "copy small", "①②の指定をすべて消す"); clear.type = "button";
+    const code = el("code", "cmd", cmd);
+    // イントネーションなどが気になるときは、同じ指定で何通りか作って選ぶ（1通りずつ読み方が少し変わる）
+    const takesBtn = el("button", "copy", "保存して、言い方を3通り作って選ぶ"); takesBtn.type = "button";
+    takesBtn.title = "イントネーションが気になるときに。3通り作り、聴き比べて「これにする」を押した音声が使われます";
+    takesBtn.addEventListener("click", async () => {
+      try {
+        const t = text.value.trim();
+        await saveDirection(it.ref, { text: t && t !== it.text && !MULTI_SYNTAX.test(t) ? t : "", direction: direction.value.trim(), tags: tags.value.trim(), stability: sel.value === "" ? null : Number(sel.value), tempo: tempoSel.value === "" ? null : Number(tempoSel.value) });
+        refresh();
+        await runCommand(TOOL + " lines --ref " + it.ref + " --takes 3", "言い方を3通り作る");
+      } catch (e) { toast(e.message); }
+    });
+    // 候補を選んだときの試聴音声に、この台詞が入っている。そのときの言い方を使いたいときは、そこから切り出す
+    const cutBtn = el("button", "copy", "候補の試聴音声から切り出す"); cutBtn.type = "button";
+    cutBtn.title = "声の候補を聴いたときの言い方のほうが良かった台詞に。登録した候補の試聴音声から、この台詞の部分を切り出して「言い方の候補」に並べます（声を外したあとでも使えます。クレジットはほとんど使いません）";
+    cutBtn.addEventListener("click", () => runCommand(TOOL + " cut --ref " + it.ref, "試聴音声から切り出す"));
+    const btns = el("div", "btns"); btns.append(save, takesBtn, cutBtn, clear);
+    save.addEventListener("click", async () => {
+      try {
+        const t = text.value.trim();
+        const asScript = multi || MULTI_SYNTAX.test(t) || !!(data.directions[groupRef] || {}).script;
+        await saveDirection(it.ref, { text: !asScript && t && t !== it.text ? t : "", direction: direction.value.trim(), tags: tags.value.trim(), stability: sel.value === "" ? null : Number(sel.value), tempo: tempoSel.value === "" ? null : Number(tempoSel.value) });
+        if (asScript) {
+          const m = /^([np]\d+)-([a-z]+)$/.exec(groupRef); const src = m && (m[1][0] === "n" ? data.lines[m[1]] : data.pairs[m[1]]);
+          const base = (src && src[m[2]]) || "";
+          await saveDirection(groupRef, { script: t && t !== base ? t : "" });
+          rememberScroll(); await load(); restoreScroll();
+          await runCommand(TOOL + " lines --ref " + groupRef + " --force", "台詞を作り直す");
+          toast("台詞を分け直しました。全員分を作り直しています");
+          return;
+        }
+        refresh();
+        await runCommand(cmd, "台詞を作り直す");
+      } catch (e) { toast(e.message); }
+    });
+    clear.addEventListener("click", async () => {
+      try { await saveDirection(it.ref, { text: "", direction: "", tags: "", stability: null, tempo: null }); text.value = it.text; direction.value = ""; tags.value = ""; sel.value = ""; tempoSel.value = ""; refresh(); toast("指定を消しました（台本の文・標準の演技で作ります）"); } catch (e) { toast(e.message); }
+    });
+    s3.append(el("h4", "", "③ 保存して作り直す"), btns, code,
+      el("p", "dir-note", "押すと、この台詞だけ作り直します。進み具合は画面の下に出て、終わると一覧が最新になります。①②を変えずに押すと、同じ指定のまま作り直します（毎回少しずつ違う読み方になります）。"));
+
+    box.append(s1, s2, s3);
+    return box;
+  }
+  // 台詞を話すカードの画像。n051 → card_images/320/051.webp（押すと 600 の大きい画像）
+  const cardNo = id => String(id || "").replace(/^n/, "").replace(/-.*$/, "");
+  function cardThumb(id, title) {
+    const no = cardNo(id);
+    const b = el("button", "thumb"); b.type = "button"; b.title = title || ""; b.setAttribute("aria-label", (title || "カード") + "を大きく表示");
+    if (!/^\d{3}$/.test(no)) { b.hidden = true; return b; }
+    const img = el("img"); img.loading = "lazy"; img.alt = ""; img.src = "/card_images/320/" + no + ".webp";
+    img.addEventListener("error", () => { b.hidden = true; });
+    b.append(img);
+    b.addEventListener("click", () => {
+      $("viewerImg").src = "/card_images/600/" + no + ".webp"; $("viewerImg").alt = title || "";
+      $("viewerCap").textContent = title || ""; $("viewer").showModal();
+    });
+    return b;
+  }
+  function pairInfo(it) {
+    const m = /^(p\d+)-(line|reply)/.exec(it.ref);
+    const p = m && data.pairs[m[1]];
+    if (!p) return null;
+    const mine = m[2];
+    const other = mine === "line" ? "reply" : "line";
+    const otherItem = (data.items || []).find(i => i.group === m[1] + "-" + other) || {};
+    const otherName = mine === "line" ? (p.replyBy || p.target || "") : (p.whoSpeaker || p.whoCard || "");
+    const otherCardId = otherItem.cardId || (mine === "reply" ? p.who : "");
+    const otherCardTitle = (data.lines[otherCardId] || {}).card || (mine === "reply" ? p.whoCard : "");
+    const box = el("div", "pair");
+    box.append(cardThumb(otherCardId, otherCardTitle || otherName));
+    const body = el("div", "pair-body");
+    const rival = p.kind === "rival";
+    body.append(el("span", "pair-kind " + (rival ? "rival" : "ally"), rival ? "因縁（敵）" : "仲間（味方）"));
+    body.append(el("span", "pair-who", (mine === "line" ? "話しかける相手：" : "話しかけてきた相手：") + otherName));
+    // 相手の台詞は、相手側で直した文（言い換え・台詞全体の書き換え）を反映して出す
+    const otherItems = (data.items || []).filter(i => i.group === m[1] + "-" + other);
+    const otherText = otherItems.length ? otherItems.map(spokenOf).join("／") : p[other];
+    if (otherText) body.append(el("span", "pair-other", (mine === "line" ? "相手の返し：「" : "相手の台詞：「") + otherText + "」"));
+    if (p.note) body.append(el("span", "pair-other", "台本のメモ：" + p.note));
+    box.append(body);
+    return box;
+  }
+  // 声のイメージ。性別・年代・高さ・声質・話し方を選ぶと、説明（英語）を最初から作り直す。
+  // 説明の最後に指示を足すだけだと、元の説明（例：若い男性）と食い違ったときに元の説明が優先されてしまうため
+  const SPEC = {
+    gender: { label: "性別", one: true, options: [["male", "男性"], ["female", "女性"], ["female-boyish", "女性が演じる少年役"]] },
+    age: { label: "年代", one: true, options: [["18", "18歳くらい"], ["20s", "20代"], ["30s", "30代"], ["40s", "40代"], ["50s", "50代以上"]] },
+    pitch: { label: "声の高さ", one: true, options: [["vlow", "とても低い"], ["low", "低め"], ["mid", "ふつう"], ["high", "高め"], ["vhigh", "とても高い"]] },
+    timbre: { label: "声質（いくつでも）", options: [["clear", "透き通る"], ["core", "芯がある"], ["soft", "柔らかい"], ["powerful", "力強い"], ["bright", "明るい"], ["deep", "重厚"], ["husky", "ハスキー"], ["breathy", "息まじり"], ["rough", "ざらつき"], ["cool", "クール"]] },
+    manner: { label: "話し方・性格（いくつでも）", options: [["energetic", "元気"], ["calm", "落ち着いた"], ["polite", "丁寧"], ["rough", "乱暴"], ["archaic", "古風"], ["cold", "冷たい"], ["gentle", "優しい"], ["imposing", "威圧的"], ["cheeky", "生意気"], ["shy", "おどおど"], ["playful", "おどけた"], ["dignified", "気品"], ["haughty", "高飛車（お嬢様）"], ["expressive", "感情豊か"], ["hightension", "ハイテンション"], ["quiet", "無口・ぼそぼそ"], ["deadpan", "無表情（クール）"]] },
+  };
+  const EN = {
+    who: (g, a) => {
+      if (g === "female-boyish") return "A female voice: a Japanese woman in her twenties who voices energetic male hero roles in anime, with a boyish, tomboyish delivery. The timbre must clearly be a woman's voice, not a man's.";
+      const man = g !== "female";
+      const ages = { "18": man ? "An 18-year-old Japanese young man (an adult)" : "An 18-year-old Japanese young woman (an adult)", "20s": man ? "A Japanese young man in his twenties" : "A Japanese young woman in her twenties", "30s": man ? "A Japanese man in his thirties" : "A Japanese woman in her thirties", "40s": man ? "A Japanese man in his forties" : "A Japanese woman in her forties", "50s": man ? "An older Japanese man in his fifties or sixties" : "An older Japanese woman in her fifties or sixties" };
+      return (ages[a] || (man ? "A Japanese man" : "A Japanese woman")) + (man ? ". A male voice." : ". A female voice.");
+    },
+    // 高さは1語だと効きにくいので、具体的な言い方を重ねる（ライカの声がうまくいった書き方に合わせた）
+    pitch: {
+      vlow: "Very low-pitched voice: a deep, heavy, resonant low register that stays low in every line.",
+      low: "Low-pitched voice: a calm, low register, fuller and darker than average.",
+      mid: "Medium-pitched voice: a natural, average speaking pitch.",
+      high: "High-pitched voice: light, clear and bright, higher than average in every line.",
+      vhigh: "Extremely high-pitched voice: very high, light and clear, at the top of the natural range in every line, thin and bright, never full or deep.",
+    },
+    timbre: { clear: "crystal-clear and transparent", core: "with a strong, firm core and steady breath support", soft: "soft and gentle", powerful: "powerful and resonant", bright: "bright", deep: "deep, heavy and rich", husky: "husky", breathy: "breathy", rough: "slightly rough and raspy", cool: "cool and clear in tone, yet expressive" },
+    manner: { quiet: "quiet and reserved, mumbling softly in a small voice and speaking very little", deadpan: "cool, detached and deadpan, like an expressionless doll-like anime character", hightension: "high-tension, cheerful and bubbly, talking fast and brightly", expressive: "emotionally engaged and expressive, with lively, varied intonation and natural pauses", haughty: "haughty, condescending anime ojou-sama with a sharp, sing-song tone", energetic: "energetic and lively", calm: "calm yet warm, with gentle, natural expression", polite: "polite and well-mannered", rough: "rough and blunt", archaic: "old-fashioned and formal", cold: "cold and cutting in attitude, yet clearly expressive", gentle: "gentle and kind", imposing: "imposing and intimidating", cheeky: "cheeky and cocky", shy: "timid and hesitant", playful: "playful and humorous", dignified: "dignified and noble" },
+  };
+  function buildDescription(sp) {
+    const manner = sp.manner || [], timbre = sp.timbre || [];
+    const high = sp.pitch === "high" || sp.pitch === "vhigh";
+    const quiet = manner.includes("quiet") || manner.includes("deadpan");
+    const parts = ["Japanese voice: a native speaker with natural standard Japanese pronunciation."];
+    parts.push(EN.who(sp.gender, sp.age));
+    parts.push("A character voice in a Japanese anime.");
+    if (sp.pitch) parts.push(EN.pitch[sp.pitch]);
+    const t = timbre.map(k => EN.timbre[k]).filter(Boolean);
+    if (t.length) parts.push("Voice quality: " + t.join(", ") + ".");
+    const m = manner.map(k => EN.manner[k]).filter(Boolean);
+    if (m.length) parts.push("Speaking style and personality: " + m.join(", ") + ".");
+    // 無口・冷たい・威圧的・クールは「低い声」と結びつきやすい。高い声を選んだときは、人物像の中で「それでも高いまま」と言い切る（測定：約200Hz→約340Hz）
+    if (high && (quiet || ["imposing", "dignified", "cold", "calm"].some(k => manner.includes(k)) || timbre.includes("cool"))) parts.push("Even when " + (quiet ? "quiet and emotionless" : "cold or serious") + ", the pitch stays " + (sp.pitch === "vhigh" ? "very high" : "high") + " and light in every line; the mood never makes the voice lower.");
+    // 「〜ではない」をはっきり書くと、選んだ高さ・声質から外れにくい
+    const nots = [];
+    if (high) nots.push("not low", "not deep", "not mature-sounding");
+    if (sp.pitch === "low" || sp.pitch === "vlow") nots.push("not high", "not thin");
+    if (!timbre.includes("husky")) nots.push("not husky");
+    if (!timbre.includes("breathy")) nots.push("not breathy");
+    if (!timbre.includes("rough")) nots.push("not raspy");
+    if (nots.length) parts.push(nots.join(", ").replace(/^n/, "N") + ".");
+    // 役柄（日本語）は声には渡さない：日本語の人物説明を入れると声の高さの指定が効きにくくなる（測定：約216Hz→約258Hz）。補足だけ最後に添える
+    if (sp.note) parts.push("Additional notes (Japanese): " + sp.note + ".");
+    const actor = sp.gender === "male" ? "voice actor" : "voice actress";
+    if (quiet) parts.push("Natural acting like a Japanese anime " + actor + " playing a quiet, cool character: subdued and soft, but alive and natural, never robotic.");
+    else parts.push((manner.includes("expressive") ? "Warm, heartfelt acting like a Japanese anime " : "Natural acting like a Japanese anime ") + actor + ". Every line is delivered with real emotion and lively, varied intonation: never flat, never monotone, never robotic, never like reading aloud, and never exaggerated.");
+    return parts.join(" ").replace(/。\./g, "。").replace(/\s+/g, " ");
+  }
+  async function saveDescription(key, description, spec, designText, pitchShift) {
+    const res = await fetch("/__dev/voice-description?cast=" + encodeURIComponent(key), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ description, spec, design_text: designText, pitch_shift: pitchShift }) });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
+    data.cast[key] = Object.assign(data.cast[key] || {}, j.cast);
+  }
+  function voiceEditor(key, c, r) {
+    const box = el("details", "voice-edit");
+    box.append(el("summary", "", "声のイメージを変える（性別・高さなどを選んで、候補を作り直す）"));
+    const ve = el("div", "ve");
+    const hasCands = (r.candidates || []).length > 0;
+    const cmd = TOOL + " design --cast " + key + (hasCands ? " --keep" : "");
+    const sp = JSON.parse(JSON.stringify(c.voice_spec || {}));
+    const text = el("textarea"); text.rows = 6; text.value = c.el_description || ""; text.setAttribute("aria-label", "声の説明（英語）");
+    const count = el("span", "count");
+    const syncCount = () => { const n = text.value.replace(/\s+/g, " ").trim().length; count.textContent = n + " / 1000文字"; count.classList.toggle("over", n > 1000); };
+    text.addEventListener("input", syncCount);
+    const pitchHint = el("p", "dir-note warn");
+    const syncHint = () => {
+      const high = sp.pitch === "high" || sp.pitch === "vhigh";
+      const lively = (sp.manner || []).some(m => ["energetic", "hightension"].includes(m)) || (sp.timbre || []).includes("bright") && (sp.manner || []).includes("expressive");
+      const why = [];
+      if (high && !(sp.manner || []).some(m => ["energetic", "hightension"].includes(m))) why.push("話し方に「元気」か「ハイテンション」が入っていません");
+      if (high && sp.age && sp.age !== "18" && sp.gender !== "male") why.push("年代が「18歳くらい」ではありません");
+      if (high && !sample.value.trim()) why.push("見本の文が空です（台詞がそっけないと低くなります）");
+      if (high && (sp.timbre || []).some(t => ["powerful", "deep"].includes(t))) why.push("声質の「力強い」「重厚」は大人びた張りのある声に寄ります（かわいらしくしたいときは「柔らかい」「透き通る」）");
+      if (high && /号令|命令/.test(sample.value)) why.push("見本の文が号令調です");
+      // 幼さ・未成年を表す言葉は ElevenLabs の安全ルールで止められることがあり、効果も期待できない
+      const minor = /幼|子ども|子供|少女|少年|児|ロリ|ショタ|\d+\s*歳/.test((sp.role || "") + (sp.note || ""));
+      if (minor) why.push("役柄・その他の指示に、幼さや年齢を表す言葉があります。ElevenLabs は子どもの声を作れない決まりで、候補づくりが止められることがあります。「高く軽い」「かわいらしい」「柔らかい」などの言い方にしてください");
+      pitchHint.textContent = why.length ? "⚠ 気をつける点：" + why.join("／") + "。声の高さや雰囲気は、「高さ」の指定より人物像（話し方・声質）と見本の文に強く引っぱられます。" : "";
+      pitchHint.hidden = !why.length;
+    };
+    const rebuild = () => { if (sp.gender) { text.value = buildDescription(sp); syncCount(); } syncHint(); };
+
+    // ① 基本の声
+    const s1 = el("section", "step");
+    s1.append(el("h4", "", "① 基本の声を選ぶ（選ぶと③の説明が作り直されます）"));
+    for (const [field, def] of Object.entries(SPEC)) {
+      const row = el("div", "dir-row"); row.append(el("span", "spec-label", def.label));
+      const group = el("div", "presets");
+      const sync = () => group.querySelectorAll(".preset").forEach(b => b.setAttribute("aria-pressed", String(def.one ? sp[field] === b.dataset.v : (sp[field] || []).includes(b.dataset.v))));
+      for (const [v, ja] of def.options) {
+        const b = el("button", "preset", ja); b.type = "button"; b.dataset.v = v;
+        b.addEventListener("click", () => {
+          if (def.one) sp[field] = sp[field] === v ? undefined : v;
+          else { const cur = sp[field] || []; sp[field] = cur.includes(v) ? cur.filter(x => x !== v) : cur.concat(v); }
+          sync(); rebuild();
+        });
+        group.append(b);
+      }
+      sync(); row.append(group); s1.append(row);
+    }
+    const role = el("input"); role.type = "text"; role.value = sp.role || ""; role.placeholder = "例：熱血な見習い忍者。先生を慕っている"; role.setAttribute("aria-label", "役柄（日本語）");
+    role.addEventListener("input", () => { sp.role = role.value.trim(); rebuild(); });
+    const roleRow = el("div", "dir-row"); roleRow.append(el("span", "spec-label", "役柄（メモ用）"), role, exampleButton(role));
+    const note = el("input"); note.type = "text"; note.value = sp.note || ""; note.placeholder = "例：語尾をはっきり。ライカより落ち着いた感じ"; note.setAttribute("aria-label", "その他の指示（日本語）");
+    note.addEventListener("input", () => { sp.note = note.value.trim(); rebuild(); });
+    const noteRow = el("div", "dir-row"); noteRow.append(el("span", "spec-label", "その他の指示（日本語・任意）"), note, exampleButton(note));
+    // 候補を作るときに読ませる見本の文。短くそっけない台詞だと声が低く暗くなりやすいので、高い声にしたいときは明るく弾む文にする
+    const sample = el("textarea"); sample.rows = 2; sample.value = c.design_text || ""; sample.setAttribute("aria-label", "候補を作るときの見本の文");
+    sample.addEventListener("input", syncHint); syncHint();
+    sample.placeholder = "空なら台詞から自動で作ります（高くしたいときは、そのキャラらしい明るく弾む文を）";
+    const sampleRow = el("div", "dir-row"); sampleRow.append(el("span", "spec-label", "見本の文（任意）"), sample);
+    sample.style.flex = "1 1 260px";
+    // 作った台詞の高さを、あとから上げ下げする（声づくりで出せる高さには限りがあるため）
+    const shiftSel = el("select"); shiftSel.setAttribute("aria-label", "台詞の高さを後から変える");
+    for (const [v, t] of [["-2", "2段階下げる"], ["-1", "1段階下げる"], ["0", "変えない"], ["1", "1段階上げる"], ["2", "2段階上げる"], ["3", "3段階上げる（機械っぽくなりやすい）"], ["4", "4段階上げる（かなり機械っぽくなる）"]]) shiftSel.append(new Option(t, v));
+    shiftSel.value = String(c.pitch_shift || 0);
+    const shiftSave = el("button", "copy small", "この設定だけ保存"); shiftSave.type = "button";
+    shiftSave.addEventListener("click", async () => { try { await saveDescription(key, text.value, sp.gender ? sp : null, sample.value, Number(shiftSel.value) || 0); toast("保存しました。これから作る台詞に使われます（作り直すと反映されます）"); } catch (e) { toast(e.message); } });
+    const shiftRow = el("div", "dir-row"); shiftRow.append(el("span", "spec-label", "台詞の高さを後から変える"), shiftSel, shiftSave);
+    s1.append(roleRow, noteRow, sampleRow, shiftRow,
+      el("p", "dir-note", "台詞の高さを後から変える：声づくりで出せる高さには限りがあります（高い声でも 300〜400Hz くらい）。それより高く・低くしたいときは、作った台詞の音声の高さを速さを変えずに上げ下げします。1段階は半音で、2〜3段階でもはっきり変わります。候補の試聴には反映されず、台詞を作る（作り直す）ときに使われます。音を機械的に持ち上げるので、上げるほど機械っぽい音になります。おすすめは2段階まで。先に「高い声を狙って作る」で高い候補を選び、足りない分だけここで上げてください。"),
+      el("p", "dir-note", "見本の文：候補を作るときに読ませる文です。空なら、そのキャラの台詞（死亡時以外）を使います。短くそっけない台詞（「頭が高いわ」など）だと声が低く暗くなりやすいので、高い声にしたいときは、そのキャラらしい明るく弾む文を書くと高くなります。"),
+      el("p", "dir-note", "性別・年代・高さ・声質・話し方は英語に直して渡すので、確実に効きます。「役柄」は自分用のメモで、声には渡しません（日本語の人物説明を渡すと、声の高さなどの指定が効きにくくなるため）。「その他の指示」だけ補足として渡しますが、効き方は弱めです。性別を選ぶまでは、今の説明がそのまま使われます。\n※ここは「声そのもの」を決める欄です。「死に際は弱々しく」のような特定の台詞の演じ方を書くと、声全体が弱々しくなってしまいます。台詞ごとの演じ方は、声を決めたあとに各台詞の「演技の方針」に書いてください。"));
+
+    // ③ 全文
+    const s3 = el("section", "step");
+    s3.append(el("h4", "", "② 説明の全文を確かめる（英語・直接書き換えてもかまいません）"), pitchHint, text, count);
+
+    // ④ 保存
+    const s4 = el("section", "step");
+    const save = el("button", "copy main", "保存して、候補を作る"); save.type = "button";
+    save.addEventListener("click", async () => {
+      try { await saveDescription(key, text.value, sp.gender ? sp : null, sample.value, Number(shiftSel.value) || 0); renderHistory(); await runCommand(cmd, "候補を作る"); } catch (e) { toast(e.message); }
+    });
+    const btns = el("div", "btns"); btns.append(save);
+    s4.append(el("h4", "", "③ 保存して、候補を作る"), btns, el("code", "cmd", cmd),
+      el("p", "dir-note", "押すと、新しい説明で候補が増えます（今ある候補は残ります）。進み具合は画面の下に出て、終わると一覧が最新になります。"));
+
+    // 前の説明
+    const s5 = el("section", "step"); const hist = el("div", "history");
+    function renderHistory() {
+      const prev = (data.cast[key] || {}).previous_descriptions || [];
+      hist.replaceChildren(...prev.slice().reverse().map((d, i) => {
+        const row = el("div", "history-item");
+        const back = el("button", "copy small", "この説明に戻す"); back.type = "button";
+        back.addEventListener("click", () => { text.value = d; syncCount(); text.focus(); toast("説明を戻しました。保存すると反映されます"); });
+        row.append(el("span", "", (i === 0 ? "1つ前：" : (i + 1) + "つ前：") + d), back);
+        return row;
+      }));
+      s5.hidden = !prev.length;
+    }
+    s5.append(el("h4", "", "前の説明（戻したいときに）"), hist);
+    renderHistory(); syncCount();
+    ve.append(s1, s3, s4, s5);
+    box.append(ve);
+    return box;
+  }
+  const enc = p => p.split("/").map(encodeURIComponent).join("/");
+  const bust = () => "?t=" + Date.now(); // 作り直した音声を古いまま流さない
+
+  function toast(text) { const t = $("toast"); t.textContent = text; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2600); }
+  // コマンドの文字列（node scripts/... design --cast X --keep など。「; if ($?) { … }」で続けたものも可）を手順に直す
+  function toSteps(cmd) {
+    const steps = [];
+    for (const m of cmd.matchAll(/generate_card_voices_elevenlabs\.js ([^;{}]+)/g)) {
+      const t = m[1].trim().split(/\s+/);
+      const st = { command: t[0] };
+      for (let i = 1; i < t.length; i++) {
+        if (t[i] === "--cast") st.cast = t[++i];
+        else if (t[i] === "--ref") st.ref = t[++i];
+        else if (t[i] === "--choice") st.choice = t[++i];
+        else if (t[i] === "--keep") st.keep = true;
+        else if (t[i] === "--force") st.force = true;
+        else if (t[i] === "--takes") st.takes = t[++i];
+        else if (t[i] === "--word") st.word = t[++i];
+        else if (t[i] === "--prefer") st.prefer = t[++i];
+        else if (t[i] === "--rounds") st.rounds = t[++i];
+        else if (t[i] === "--top") st.top = t[++i];
+      }
+      steps.push(st);
+    }
+    return steps;
+  }
+  let runnerCmd = "", runnerTimer = 0;
+  function showRunner(title, cls, msg, log) {
+    $("runner").hidden = false; $("runner").className = "runner " + (cls || "");
+    $("runnerTitle").textContent = title; $("runnerMsg").textContent = msg || "";
+    $("runnerLog").textContent = log || ""; $("runnerLog").hidden = !log; $("runnerLog").scrollTop = 1e9;
+  }
+  async function runCommand(cmd, label) {
+    runnerCmd = cmd;
+    const steps = toSteps(cmd);
+    if (steps.some(st => st.command === "pick") && steps.find(st => st.command === "pick")) {
+      const st = steps.find(x => x.command === "pick");
+      if ((data.record[st.cast] || {}).voiceId && !(await askConfirm("「" + displayName(st.cast) + "」はもう声が登録されています。候補" + st.choice + "で登録し直しますか？\n・前の声は ElevenLabs から削除されます（声の枠が1つ空きます）\n・「決めて台詞まで作る」なら、台詞もすべて新しい声で作り直します"))) return;
+    }
+    // 声を ElevenLabs から外したキャラの台詞は作り直せない（指定の保存はできている）
+    // 作り直す台詞のうち、声を外した人の分は作れない。全員が外した声のときだけ止める（一部なら、作れる人の分だけ作る）
+    const targets = steps.filter(st => st.command === "lines" && !st.word).flatMap(st => st.cast ? (data.items || []).filter(i => i.cast === st.cast) : (data.items || []).filter(i => i.ref === st.ref || i.group === st.ref));
+    const isReleased = i => (data.record[i.cast] || {}).released;
+    const released = [...new Set(targets.filter(isReleased).map(i => i.cast))];
+    if (released.length && targets.every(isReleased) && !steps.some(st => st.command === "pick")) {
+      showRunner("作り直せません", "ng", "「" + released.map(displayName).join("」「") + "」の声は、台詞が完成したので ElevenLabs から外しています。そのため、この声で台詞を作り直すことはできません（入力した指定は保存されています）。\n作り直したいときは、そのキャラの候補を新しく作って登録し直してください（声の枠を1つ使います）。");
+      return;
+    }
+    let res, j;
+    try {
+      res = await fetch("/__dev/voice-run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ steps, label: label || cmd.replace(/^.*generate_card_voices_elevenlabs\.js /, "") }) });
+      j = await res.json().catch(() => ({}));
+    } catch (e) { j = { message: "確認用サーバーにつながりません" }; res = { ok: false }; }
+    if (!res.ok || !j.ok) {
+      showRunner("実行できませんでした", "ng", (j.message || "失敗しました") + (j.needKey ? "\n\nPowerShell で次の1行を一度だけ実行して、ElevenLabs のキーをこのPCに保存してください（「ここにキー」をキーに置き換えます）。保存したあとは、もう一度ボタンを押せば動きます。\n[Environment]::SetEnvironmentVariable(\"ELEVENLABS_API_KEY\", \"ここにキー\", \"User\")" : "\n\n「コマンドをコピー」で PowerShell に貼って実行することもできます。"));
+      return;
+    }
+    showRunner("実行中…（" + (label || "処理") + "）", "", "ElevenLabs で作っています。数秒〜数十秒かかります。このまま待ってください。", "");
+    pollRunner();
+  }
+  async function pollRunner() {
+    clearTimeout(runnerTimer);
+    let j;
+    try { j = await fetch("/__dev/voice-run" + bust(), { cache: "no-store" }).then(r => r.json()); } catch (e) { runnerTimer = setTimeout(pollRunner, 2000); return; }
+    const job = j.job;
+    if (!job) return;
+    if (job.running) { showRunner("実行中…（" + job.label + "）", "", "ElevenLabs で作っています。数秒〜数十秒かかります。", job.log.trim()); runnerTimer = setTimeout(pollRunner, 1000); return; }
+    const ok = job.code === 0 && !/×|失敗|作れなかった/.test(job.log);
+    showRunner(ok ? "完了しました（" + job.label + "）" : "うまくいかなかった所があります（" + job.label + "）", ok ? "ok" : "ng", ok ? "下の一覧を最新にしました。聴いて確かめてください。" : /voice_limit_reached|maximum amount of custom voices/.test(job.log) ? "ElevenLabs に登録できる声の数が上限（30）に達していて、新しい声を登録できませんでした。台詞が全部できたキャラの声を外すと空きます（作った音声はそのまま残ります）。Claude に「確定したキャラの声を外して」と伝えてください。" : "下の記録を確認してください。", job.log.trim());
+    rememberScroll(); await load(); restoreScroll();
+  }
+  async function applyDirectionToCast(key, direction) {
+    const refs = (data.items || []).filter(i => i.cast === key).map(i => i.ref);
+    if (!refs.length) return;
+    const others = refs.filter(r => (data.directions[r] || {}).direction && data.directions[r].direction !== direction).length;
+    const msg = direction
+      ? "「" + displayName(key) + "」の台詞" + refs.length + "本すべてに、演技の方針「" + direction + "」を入れます。" + (others ? "\n別の方針が入っている" + others + "本も、この方針に置き換わります。" : "") + "\n（台詞の言い換えや安定度などは変わりません）"
+      : "「" + displayName(key) + "」の台詞" + refs.length + "本すべての演技の方針を消します。";
+    if (!(await askConfirm(msg))) return;
+    try {
+      const res = await fetch("/__dev/voice-direction-batch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refs, direction }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
+    } catch (e) { toast(e.message); return; }
+    rememberScroll(); await load(); restoreScroll();
+    toast(directionDoneText(refs.length, direction));
+    if ((data.record[key] || {}).voiceId && await askConfirm("方針を入れました。続けて「" + displayName(key) + "」の台詞" + refs.length + "本をすべて作り直しますか？\n（ElevenLabs のクレジットを使います。あとで台詞ごとに作り直すこともできます）")) {
+      runCommand(TOOL + " lines --cast " + key + " --force", "全台詞を作り直す");
+    }
+  }
+  const directionDoneText = (n, d) => d ? n + "本の台詞に方針を入れました" : n + "本の台詞の方針を消しました";
+  async function deleteCandidates(key, choices) {
+    const r = data.record[key] || {};
+    const keep = r.voiceId && !r.released ? r.choice : null;
+    const targets = (choices || (r.candidates || []).map(x => x.choice)).filter(n => n !== keep);
+    if (!targets.length) { toast("消せる候補がありません（登録中の候補は消せません）"); return; }
+    const what = choices ? "候補" + targets.join("・") : (keep ? "登録中（候補" + keep + "）以外の候補" + targets.length + "個" : "候補" + targets.length + "個すべて");
+    if (!(await askConfirm("「" + displayName(key) + "」の" + what + "を削除します。音声ファイルも消え、元に戻せません。よろしいですか？"))) return;
+    try {
+      const res = await fetch("/__dev/voice-candidates-delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(choices ? { cast: key, choices: targets } : { cast: key, all: true }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.ok) throw new Error(j.message || "削除できませんでした");
+      rememberScroll(); await load(); restoreScroll();
+      toast("候補" + j.deleted.join("・") + "を削除しました");
+    } catch (e) { toast(e.message); }
+  }
+  // 確認はページ内の画面で行う（ブラウザの確認ダイアログは、何度も出すと「これ以上表示しない」にされて、以後は何も出ずに押せなくなるため）
+  function askConfirm(message) {
+    return new Promise(resolve => {
+      const dlg = $("ask"); $("askMsg").textContent = message;
+      const done = v => { dlg.close(); $("askOk").onclick = $("askCancel").onclick = dlg.oncancel = null; resolve(v); };
+      $("askOk").onclick = () => done(true); $("askCancel").onclick = () => done(false); dlg.oncancel = e => { e.preventDefault(); done(false); };
+      dlg.showModal(); $("askOk").focus();
+    });
+  }
+  // 候補の声の高さ（Hz）を1つずつ順番に測って表示する（サーバーで測る。少し時間がかかる）
+  let pitchQueue = Promise.resolve();
+  function queuePitch(file, label) {
+    pitchQueue = pitchQueue.then(async () => {
+      if (!label.isConnected) return;
+      try {
+        const j = await fetch("/__dev/voice-pitch?file=" + encodeURIComponent(file)).then(r => r.json());
+        label.textContent = j.ok && j.hz ? "高さ " + j.hz + " Hz" : "高さ ―";
+        if (j.ok && j.hz) label.title = "声の高さの目安（基本周波数の中央値）。数字が大きいほど高い声。参考：ライカの台詞は約450Hz、マガツヒは約100Hz";
+      } catch (e) { label.textContent = "高さ ―"; }
+    });
+  }
+  async function copy(text) {
+    try { await navigator.clipboard.writeText(text); toast("コピーしました：" + text); }
+    catch (e) { prompt("このコマンドをコピーしてください", text); }
+  }
+  async function getJson(url, fallback) {
+    try { const r = await fetch(url + bust(), { cache: "no-store" }); return r.ok ? await r.json() : fallback; } catch (e) { return fallback; }
+  }
+  async function exists(url) {
+    try { const r = await fetch(url, { method: "HEAD", cache: "no-store" }); return r.ok; } catch (e) { return false; }
+  }
+
+  // 台本から、キャストごとの台詞（台詞ID・本文）を組み立てる（ツールと同じ規則の簡易版：作った音声ファイルの有無で確認）
+  function linesFor(key) {
+    // cast を実行すると作られる一覧があれば、それで正確に並べる（複数人の台詞も1人分ずつ出る）
+    if (data.items) {
+      const field = ref => ({ summon: "召喚時", attack: "攻撃時", death: "死亡時", use: "使用時", line: "掛け合い", reply: "返し" })[ref.split("-")[1]] || "";
+      return data.items.filter(i => i.cast === key).map(i => ({ ref: i.ref, card: (data.lines[i.cardId] || {}).card || i.card, field: field(i.ref) + (i.ref !== i.group ? "（" + (i.together ? "同時" : "複数人") + "）" : ""), text: i.text, cardId: i.cardId, group: i.group, script: i.script, overridden: i.overridden }));
+    }
+    const out = [];
+    const c = data.cast[key] || {};
+    for (const [id, l] of Object.entries(data.lines)) {
+      for (const f of ["summon", "attack", "death", "use"]) if (l[f]) out.push({ ref: `${id}-${f}`, card: l.card, field: { summon: "召喚時", attack: "攻撃時", death: "死亡時", use: "使用時" }[f], text: l[f], speaker: l.speaker });
+    }
+    for (const [id, p] of Object.entries(data.pairs)) {
+      if (p.line) out.push({ ref: `${id}-line`, card: p.whoCard, field: "掛け合い", text: p.line, speaker: p.whoSpeaker });
+      if (p.reply) out.push({ ref: `${id}-reply`, card: p.whoCard, field: "返し", text: p.reply, speaker: p.replyBy });
+    }
+    const base = key.replace(/[:（].*$/, "");
+    const card = key.includes(":") ? key.split(":")[1] : null;
+    return out.filter(o => card ? o.ref.startsWith(card) : (o.speaker || "").includes(base));
+  }
+
+  // 種族のタブ。オラクル・レリックだけに出るキャストは「その他」。「作業中」は候補か声があるキャスト
+  const TRIBES = ["忍者", "侍", "人獣", "神使", "妖怪", "龍"];
+  let view = { tribe: null, cast: null };
+  const castState = key => { const r = data.record[key] || {}; return r.voiceId ? "done" : (r.candidates || []).length ? "cand" : "todo"; };
+  function tribesOf(key) {
+    const secs = new Set((data.items || []).filter(i => i.cast === key && !i.ref.startsWith("p")).map(i => i.section));
+    const t = TRIBES.filter(x => secs.has(x));
+    return t.length ? t : ["その他"];
+  }
+  // 名前のない役（探求者:n061 など）はカード名で見せる
+  function displayName(key) {
+    const m = /^(.+):(n\d+)$/.exec(key);
+    if (!m) return key;
+    return (data.lines[m[2]] || {}).card || key;
+  }
+  // カードの番号順に並べる（そのキャストが話す一番若い番号）
+  function firstNo(key) {
+    let min = 9999;
+    for (const i of data.items || []) if (i.cast === key && !i.ref.startsWith("p")) { const n = parseInt(String(i.cardId || i.ref).replace(/^n/, ""), 10); if (n < min) min = n; }
+    return min;
+  }
+  function castsIn(tribe, keys) {
+    const list = tribe === "作業中" ? keys.filter(k => castState(k) !== "todo" || data.record[k]) : tribe === "未着手" ? keys.filter(k => !data.record[k]) : keys.filter(k => tribesOf(k).includes(tribe));
+    return list.sort((a, b) => firstNo(a) - firstNo(b));
+  }
+  function setView(tribe, cast) {
+    view = { tribe, cast };
+    try { const saved = JSON.parse(sessionStorage.getItem(SCROLL_KEY) || "{}") || {}; sessionStorage.setItem(SCROLL_KEY, JSON.stringify(Object.assign(saved, { tribe, cast, anchor: null, y: 0 }))); } catch (e) {}
+    scrollTo(0, 0);
+    render();
+  }
+  function renderTabs(keys) {
+    const tribes = ["作業中", "未着手", ...TRIBES, "その他"].filter(t => t === "作業中" || castsIn(t, keys).length);
+    if (!tribes.includes(view.tribe)) view.tribe = castsIn("作業中", keys).length ? "作業中" : TRIBES[0];
+    const inTribe = castsIn(view.tribe, keys);
+    if (view.cast !== "*" && !inTribe.includes(view.cast)) view.cast = inTribe[0] || "*";
+    $("tribes").replaceChildren(...tribes.map(t => {
+      const list = castsIn(t, keys);
+      const b = el("button", "tab", t); b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(t === view.tribe));
+      b.append(el("small", "", t === "作業中" || t === "未着手" ? list.length + "人" : list.filter(k => castState(k) === "done").length + "/" + list.length));
+      b.addEventListener("click", () => setView(t, null));
+      return b;
+    }));
+    const chips = inTribe.map(k => {
+      const st = castState(k);
+      const b = el("button", "ctab " + st, displayName(k)); b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(k === view.cast));
+      b.title = k + "｜" + { done: "声を登録済み", cand: "候補あり（未決定）", todo: "未着手" }[st];
+      // 「未着手」の一覧では、どの種族で台詞が何本かも見せる
+      if (view.tribe === "未着手") b.append(el("small", "ctab-sub", tribesOf(k)[0] + "・" + ((data.cast[k] || {}).lines || 0) + "本"));
+      b.addEventListener("click", () => setView(view.tribe, k));
+      return b;
+    });
+    if (inTribe.length > 1) {
+      const all = el("button", "ctab all", view.tribe === "作業中" || view.tribe === "未着手" ? "すべて表示" : "この種族をすべて表示"); all.type = "button"; all.setAttribute("role", "tab"); all.setAttribute("aria-selected", String(view.cast === "*"));
+      all.addEventListener("click", () => setView(view.tribe, "*"));
+      chips.push(all);
+    }
+    const legend = el("span", "legend", "● 緑：声を登録済み　● 金：候補あり　● 灰：未着手");
+    $("castTabs").replaceChildren(...chips, legend);
+    return view.cast === "*" ? inTribe : inTribe.filter(k => k === view.cast);
+  }
+
+  async function render() {
+    const allKeys = Object.keys(data.cast).filter(k => !data.cast[k].kami);
+    const keys = allKeys;
+    const visible = new Set(renderTabs(allKeys));
+    let shown = 0, withVoice = 0, withCand = 0;
+    const frag = document.createDocumentFragment();
+    for (const key of keys) {
+      const c = data.cast[key], r = data.record[key] || {};
+      const cands = r.candidates || [];
+      if (r.voiceId) withVoice++; if (cands.length) withCand++;
+      if (!visible.has(key)) continue;
+      shown++;
+      const sec = document.createElement("section"); sec.className = "cast"; sec.dataset.anchor = "cast:" + key;
+      const head = document.createElement("div"); head.className = "cast-head";
+      const name = document.createElement("span"); name.className = "cast-name"; name.textContent = displayName(key);
+      if (displayName(key) !== key) name.title = key;
+      const state = document.createElement("span"); state.className = "chip" + (r.voiceId ? " done" : "");
+      state.textContent = r.released ? "声削除済み" : r.voiceId ? (r.source === "library" ? "ライブラリの声で登録済み" : `候補${r.choice}で登録済み`) : cands.length ? `候補${cands.length}個` : "未着手";
+      const labels = document.createElement("span"); labels.className = "labels"; labels.textContent = (c.labels || []).join("／") + `｜台詞${c.lines || 0}本`;
+      head.append(name, state, labels);
+      if (r.voiceId && !r.released) {
+        const mk = document.createElement("button"); mk.type = "button"; mk.className = "copy main"; mk.textContent = "台詞を作る（未作成の分）";
+        mk.addEventListener("click", () => runCommand(`${TOOL} lines --cast ${key}`, "台詞を作る"));
+        head.append(mk);
+      }
+      sec.append(head, voiceEditor(key, c, r));
+      {
+        const seen = new Map();
+        for (const it of linesFor(key)) { const id = it.cardId || it.ref; const no = cardNo(id); if (/^\d{3}$/.test(no) && !seen.has(no)) seen.set(no, [id, it.card]); }
+        if (seen.size) { const cards = el("div", "cards"); for (const [id, title] of seen.values()) cards.append(cardThumb(id, title)); sec.append(cards); }
+      }
+      // 候補
+      if (cands.length) {
+        const grid = document.createElement("div"); grid.className = "grid";
+        let updateDelBtnImpl = () => {};
+        const updateDelBtn = () => updateDelBtnImpl();
+        for (const cand of cands) {
+          const box = document.createElement("div"); box.className = "cand" + (r.choice === cand.choice && r.voiceId ? " chosen" : "");
+          const top = document.createElement("div"); top.className = "cand-top";
+          const b = document.createElement("b"); b.textContent = "候補" + cand.choice + (r.choice === cand.choice && r.voiceId ? "（登録中）" : "");
+          const registered = r.choice === cand.choice && r.voiceId && !r.released;
+          const pickBox = el("label", "cand-select"); const chk = el("input"); chk.type = "checkbox"; chk.dataset.choice = cand.choice; chk.disabled = !!registered;
+          chk.addEventListener("change", () => { box.classList.toggle("picked", chk.checked); updateDelBtn(); });
+          pickBox.append(chk, registered ? "登録中" : "選ぶ"); pickBox.title = registered ? "登録中の候補は消せません" : "まとめて消す候補に選ぶ";
+          const btns = document.createElement("div"); btns.className = "btns";
+          const btn = document.createElement("button"); btn.type = "button"; btn.className = "copy"; btn.textContent = "この候補に決める";
+          btn.addEventListener("click", () => runCommand(`${TOOL} pick --cast ${key} --choice ${cand.choice}`, "候補" + cand.choice + "に決める"));
+          // 登録が成功したときだけ続けて台詞を作る（PowerShell 5.1 は && が使えないので if ($?) でつなぐ）
+          const both = document.createElement("button"); both.type = "button"; both.className = "copy main"; both.textContent = "決めて台詞まで作る";
+          both.addEventListener("click", () => runCommand(`${TOOL} pick --cast ${key} --choice ${cand.choice}; if ($?) { ${TOOL} lines --cast ${key} --force }`, "候補" + cand.choice + "に決めて台詞を作る"));
+          const del = el("button", "copy small danger", "削除"); del.type = "button"; del.hidden = !!registered;
+          del.addEventListener("click", () => deleteCandidates(key, [cand.choice]));
+          btns.append(btn, both, del);
+          const left = el("div", "btns"); left.append(pickBox, b);
+          const hz = el("span", "hz", "高さ …"); left.append(hz); queuePitch("previews/" + cand.file, hz);
+          top.append(left, btns);
+          const au = document.createElement("audio"); au.controls = true; au.preload = "none"; au.src = "/" + enc("voices/cards/previews/" + cand.file) + bust();
+          box.append(top, au);
+          if (cand.description) {
+            const cd = el("details", "cand-desc");
+            cd.append(el("summary", "", cand.description === c.el_description ? "今の説明で作った候補" : "前の説明で作った候補（説明を見る）"), el("p", "", cand.description));
+            box.append(cd);
+          }
+          grid.append(box);
+        }
+        const more = document.createElement("button"); more.type = "button"; more.className = "copy"; more.textContent = "候補を追加で作る";
+        more.addEventListener("click", () => runCommand(`${TOOL} design --cast ${key} --keep`, "候補を追加で作る"));
+        const delSel = el("button", "copy danger", "選んだ候補を削除"); delSel.type = "button"; delSel.disabled = true;
+        updateDelBtnImpl = () => { const n = grid.querySelectorAll("input[type=checkbox]:checked").length; delSel.disabled = !n; delSel.textContent = n ? "選んだ候補を削除（" + n + "個）" : "選んだ候補を削除"; };
+        delSel.addEventListener("click", () => deleteCandidates(key, [...grid.querySelectorAll("input[type=checkbox]:checked")].map(x => Number(x.dataset.choice))));
+        const delAll = el("button", "copy danger", r.voiceId && !r.released ? "登録中以外の候補をすべて削除" : "候補をすべて削除"); delAll.type = "button";
+        delAll.addEventListener("click", () => deleteCandidates(key, null));
+        const tools = el("div", "cand-tools"); tools.append(more);
+        const pref = (c.voice_spec || {}).pitch;
+        if (["high", "vhigh", "low", "vlow"].includes(pref)) {
+          const hi = pref === "high" || pref === "vhigh";
+          const best = el("button", "copy", hi ? "高い声を狙って作る（9個作って高い3個を残す）" : "低い声を狙って作る（9個作って低い3個を残す）"); best.type = "button";
+          best.title = "候補づくりは1回ごとに高さがばらつくので、多めに作って測り、" + (hi ? "高い" : "低い") + "ものだけを残します（候補3回分のクレジットを使います）";
+          best.addEventListener("click", () => runCommand(`${TOOL} design --cast ${key} --keep --prefer ${hi ? "high" : "low"} --rounds 3 --top 3`, hi ? "高い声を狙って作る" : "低い声を狙って作る"));
+          tools.append(best);
+        }
+        tools.append(delSel, delAll);
+        sec.append(grid, tools);
+      } else {
+        const btn = document.createElement("button"); btn.type = "button"; btn.className = "copy"; btn.textContent = "候補を作る";
+        btn.addEventListener("click", () => runCommand(`${TOOL} design --cast ${key}`, "候補を作る"));
+        sec.append(btn);
+      }
+      // 作った台詞
+      if (r.voiceId) {
+        const list = document.createElement("div"); list.className = "lines-list";
+        const items = linesFor(key);
+        let made = 0;
+        for (const it of items) {
+          const url = "/voices/cards/" + encodeURIComponent(it.ref) + ".mp3";
+          const row = document.createElement("div"); row.className = "line-row"; row.dataset.anchor = "line:" + key + ":" + it.ref;
+          const t = document.createElement("div");
+          const spoken = document.createElement("span"); spoken.className = "spoken";
+          const orig = document.createElement("small"); orig.className = "orig";
+          t.append(spoken, orig);
+          const small = document.createElement("small"); small.textContent = `${it.card}｜${it.field}｜${it.ref}`;
+          const pairBox = pairInfo(it);
+          const dirLabel = document.createElement("span"); dirLabel.className = "dir-tag"; dirLabel.textContent = describe(it.ref); small.append(dirLabel); t.append(small); const mb = multiBox(it); if (mb) t.append(mb); const hl0 = heardLabel(it.ref); if (hl0) t.append(hl0); const tb = takesBox(it); if (tb) t.append(tb); if (pairBox) t.append(pairBox);
+          const holder = document.createElement("div"); holder.className = "missing"; holder.textContent = "確認中…";
+          const refresh = () => showLine(it, spoken, orig, dirLabel); refresh();
+          const panel = fixPanel(it, refresh);
+          const act = document.createElement("button"); act.type = "button"; act.className = "copy small"; act.textContent = "直す・作り直す"; act.setAttribute("aria-expanded", "false");
+          act.addEventListener("click", () => { panel.hidden = !panel.hidden; act.setAttribute("aria-expanded", String(!panel.hidden)); act.textContent = panel.hidden ? "直す・作り直す" : "閉じる"; });
+          const acts = document.createElement("div"); acts.className = "line-acts"; acts.append(act);
+          row.append(cardThumb(it.cardId || it.ref, it.card), t, holder, acts, panel); list.append(row);
+          exists(url).then(ok => {
+            if (ok) { made++; const au = document.createElement("audio"); au.controls = true; au.preload = "none"; au.src = url + bust(); holder.replaceWith(au); }
+            else holder.textContent = "未作成";
+          });
+        }
+        const btn = document.createElement("button"); btn.type = "button"; btn.className = "copy"; btn.textContent = "台詞を作る（未作成の分）";
+        btn.addEventListener("click", () => runCommand(`${TOOL} lines --cast ${key}`, "台詞を作る"));
+        const h = document.createElement("div"); h.className = "labels"; h.textContent = data.items ? "作った台詞" : "作った台詞（複数人の台詞は番号付きのファイルなので、ここでは表示されません）";
+        sec.append(h, btn, list);
+      }
+      frag.append(sec);
+    }
+    $("list").replaceChildren(frag);
+    if (!shown) $("list").replaceChildren(Object.assign(document.createElement("div"), { className: "empty", textContent: view.tribe === "作業中" ? "まだ候補を作ったキャストがありません。上の種族のタブから選んでください。" : "該当するキャストがありません。" }));
+    $("summary").textContent = `キャスト${keys.length}人｜候補あり${withCand}人｜声を登録済み${withVoice}人`;
+  }
+
+  async function load() {
+    const [cast, record, script, pairs, list, dirs, takesRes, readingsRes, tagMap, heard] = await Promise.all([
+      getJson("/tools/voice-script/card_voice_cast.json", { cast: {} }),
+      getJson("/voices/cards/voices.json", {}),
+      getJson("/tools/voice-script/card_voice_script.json", { lines: {} }),
+      getJson("/tools/voice-script/card_voice_pairs.json", { pairs: {} }),
+      getJson("/tools/voice-script/card_voice_lines.json", null),
+      getJson("/__dev/voice-direction", { directions: {} }),
+      getJson("/__dev/voice-takes", { takes: {} }),
+      getJson("/__dev/voice-readings", { readings: {} }),
+      getJson("/tools/voice-script/direction_tags.json", { map: [] }),
+      getJson("/voices/cards/heard.json", {}),
+    ]);
+    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {}, directionMap: tagMap.map || [], heard: heard || {} };
+    renderReadings();
+    await render();
+  }
+  $("viewer").addEventListener("click", () => $("viewer").close());
+  $("runnerClose").addEventListener("click", () => { $("runner").hidden = true; });
+  $("readingAdd").addEventListener("click", () => { const w = $("readingWord").value.trim(), r = $("readingText").value.trim(); if (!w || !r) { toast("言葉と読み方の両方を入れてください"); return; } saveReading(w, r, $("readingNg").value.trim()); $("readingNg").value = ""; $("readingWord").value = ""; $("readingText").value = ""; });
+  $("runnerCopy").addEventListener("click", () => { if (runnerCmd) copy(runnerCmd); });
+  // ページを開き直したとき、動いている処理があれば進み具合を出す
+  fetch("/__dev/voice-run").then(r => r.json()).then(j => { if (j.job && j.job.running) pollRunner(); }).catch(() => {});
+  const VOLUME_KEY = "voicePreview.volume";
+  let volume = 0.8;
+  try { const v = parseFloat(localStorage.getItem(VOLUME_KEY)); if (v >= 0 && v <= 1) volume = v; } catch (e) {}
+  const showVolume = () => { $("volume").value = String(Math.round(volume * 100)); $("volumeText").value = String(Math.round(volume * 100)); };
+  showVolume();
+  $("volume").addEventListener("input", () => {
+    volume = Number($("volume").value) / 100; showVolume();
+    document.querySelectorAll("audio").forEach(a => { a.volume = volume; });
+    try { localStorage.setItem(VOLUME_KEY, String(volume)); } catch (e) {}
+  });
+  // 新しく並んだ音声にも、再生するときに合わせる
+  document.addEventListener("play", e => { if (e.target instanceof HTMLAudioElement) e.target.volume = volume; }, true);
+  $("reload").addEventListener("click", async () => { rememberScroll(); await load(); restoreScroll(); toast("最新の状態に更新しました"); });
+  const SCROLL_KEY = "voicePreview.scroll";
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  function rememberScroll() {
+    let anchor = null, offset = 0;
+    for (const e of document.querySelectorAll("[data-anchor]")) {
+      const r = e.getBoundingClientRect();
+      if (r.bottom > 60) { anchor = e.dataset.anchor; offset = r.top; if (e.classList.contains("line-row")) break; if (r.top >= 0) break; }
+    }
+    try { sessionStorage.setItem(SCROLL_KEY, JSON.stringify({ anchor, offset, y: scrollY, tribe: view.tribe, cast: view.cast })); } catch (e) {}
+  }
+  function restoreScroll() {
+    let saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem(SCROLL_KEY) || "null"); } catch (e) {}
+    if (!saved) return;
+    const target = saved.anchor && [...document.querySelectorAll("[data-anchor]")].find(e => e.dataset.anchor === saved.anchor);
+    if (target) scrollTo(0, scrollY + target.getBoundingClientRect().top - saved.offset);
+    else scrollTo(0, saved.y || 0);
+  }
+  let scrollTimer = 0;
+  addEventListener("scroll", () => { clearTimeout(scrollTimer); scrollTimer = setTimeout(rememberScroll, 150); }, { passive: true });
+  addEventListener("pagehide", rememberScroll);
+  // 選んでいたタブも元に戻してから並べる
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(SCROLL_KEY) || "null");
+    if (saved && saved.tribe) view = { tribe: saved.tribe, cast: saved.cast || null };
+  } catch (e) {}
+  load().then(() => setTimeout(restoreScroll, 0));
+})();
+</script>
+</body>
+</html>
