@@ -41,7 +41,7 @@ test("approved production art retains its source bytes and is wired into every d
   for (const [group,count] of [['card',9],['chibi',10],['rest',9],['emotes',10],['menus',4],['op',5],['tutorial',6],['framedCard',20]]) {
     assert.equal(record.assets.filter(e => e.group === group).length, count, group);
   }
-  assert.equal(record.assets.find(e=>e.group==='tutorial'&&e.slug==='tutorial-celebrate').file, 'tutorial_guide/tutorial-celebrate-e3b0de49814b.webp');
+  assert.equal(record.assets.find(e=>e.group==='tutorial'&&e.slug==='tutorial-celebrate').file, 'tutorial_guide/tutorial-celebrate-793535426f31.webp');
 });
 
 test("Uzume's fan, legible petals and four fading silk poses move in a widening breeze", () => {

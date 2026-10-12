@@ -1486,10 +1486,11 @@
   .top-mode-guide-btn.tutorial small { display: block; margin-top: 2px; font-size: 11px; font-weight: 600; color: #e8d3a8; letter-spacing: 0; }
   .top-mode-guide-btn.tutorial:disabled { opacity: .7; cursor: wait; transform: none; }
   /* 案内役の立ち絵をボタンの上へはみ出させる（ボタンの高さは変えない） */
-  .top-mode-guide-btn.tutorial { position: relative; padding-left: 88px; }
+  .top-mode-guide-btn.tutorial { position: relative; padding-left: 104px; }
+  /* 絵は正方形（後光と袖で横に広い）なので、ボタンより大きく描いて上へ少し飛び出させる */
   .top-tutorial-face {
-    position: absolute; left: 6px; bottom: 0; width: 76px; height: 108px; pointer-events: none;
-    background: url(tutorial_guide/tutorial-normal-tutorial-84230f6f518a.webp) center bottom / contain no-repeat;
+    position: absolute; left: 2px; bottom: 0; width: 98px; height: 98px; pointer-events: none;
+    background: url(tutorial_guide/tutorial-normal-b45df0d641cb.webp) center bottom / contain no-repeat;
     filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .5)); transition: transform .15s;
   }
   .top-mode-guide-btn.tutorial:hover:not(:disabled) .top-tutorial-face { transform: translateY(-3px) rotate(-3deg); }
@@ -1975,10 +1976,11 @@
   .tutorial-menu-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
   .tutorial-menu-head h3 { margin: 0 0 4px; font-size: 20px; color: #f2cd7a; letter-spacing: .08em; }
   .tutorial-menu-head p { margin: 0; font-size: 13px; line-height: 1.6; color: #e1d2b5; word-break: keep-all; overflow-wrap: anywhere; }
-  /* 案内役の全身を見出しの横に立たせる（一覧はスクロールするので、枠の外へははみ出させない） */
+  /* 案内役の全身を見出しの横に立たせる（一覧はスクロールするので、枠の外へははみ出させない）。
+     絵は正方形なので枠も正方形にし、上の余白に食い込ませて見出しの縦幅を増やさない */
   .tutorial-menu-face {
-    flex: none; width: 84px; height: 118px; margin: -8px 0 -6px;
-    background: url(tutorial_guide/tutorial-normal-tutorial-84230f6f518a.webp) center bottom / contain no-repeat;
+    flex: none; width: 104px; height: 104px; margin: -18px 0 -16px;
+    background: url(tutorial_guide/tutorial-normal-b45df0d641cb.webp) center bottom / contain no-repeat;
     filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .5));
     animation: tutorialGuideIdle 3.2s ease-in-out infinite;
   }
@@ -2284,6 +2286,7 @@
   .mode-detail-image {
     grid-column: 1; grid-row: 1; align-self: start; justify-self: center; width: min(100%, 62vh); aspect-ratio: 1 / 1; border-radius: 14px;
     background-color: #10131c; background-size: cover; background-position: center;
+    filter: brightness(.82); /* TOPのモードの絵（.top-mode-thumb）と同じ暗さ */
     border: 1px solid rgba(255,255,255,0.15);
     box-shadow: 0 10px 30px rgba(0,0,0,.5);
   }
@@ -7631,15 +7634,11 @@
        重なるため、対戦画面表示中はこちらを隠す。カードリスト画面ではBGM不要かつ他の
        ボタン群と重なるため非表示にする） ===== -->
   <div v-if="appView !== 'battle' && appView !== 'cardlist' && !deckExpanded && !manualModalOpen && !howToPlayModalOpen && !kamiDexOpen" class="global-sound-settings" :class="{ 'on-top-header': appHeaderView }">
-    <!-- 共通ヘッダーのある画面（TOP・モード紹介）では、ヘッダーの右端に「戦績」「音量」を文字付きで出す。
+    <!-- 戦績・音量は「設定」の中から開けるので、ここには「設定」だけを出す（共通ヘッダーのある画面（TOP・モード紹介）では文字付き）。
          ガイドの2つはTOPの右下にあるので、ヘッダーの無い画面（ロビー・ピック等）だけで出す -->
     <button v-if="!appHeaderView" class="global-sound-btn howto-open-btn" @click.stop="openPlayManual" title="プレイガイド（説明書）"><span class="ui-icon ui-icon-play-guide" aria-hidden="true"></span></button>
     <button v-if="!appHeaderView" class="global-sound-btn howto-open-btn" @click.stop="openPickGuide" title="ピックガイド"><span class="ui-icon ui-icon-pick-guide" aria-hidden="true"></span></button>
-    <!-- 戦績はここにしか入口がないので、TOPでは文字を添えて見つけやすくする -->
-    <button class="global-sound-btn howto-open-btn" :class="{ 'with-label': appHeaderView }" @click.stop="openBattleHistory" title="戦績・対戦履歴"><span class="ui-icon ui-icon-battle-record" aria-hidden="true"></span><span v-if="appHeaderView" class="global-sound-btn-label">戦績</span></button>
     <transition name="bgm-now-fade"><span v-if="bgmNowPlaying" :key="bgmNowPlaying.id" class="bgm-current-name" :title="bgmNowPlaying.name" role="status" aria-live="polite">♪ {{ bgmNowPlaying.name }}</span></transition>
-    <!-- TOPでは戦績と同じ「アイコン＋文字」の形にそろえる -->
-    <button class="global-sound-btn" :class="{ 'with-label': appHeaderView }" @click.stop="_sfxPlay('cancel'); soundSettingsOpen = !soundSettingsOpen" title="音量設定"><span class="ui-icon ui-icon-volume" aria-hidden="true"></span><span v-if="appHeaderView" class="global-sound-btn-label">音量</span></button>
     <button class="global-sound-btn" :class="{ 'with-label': appHeaderView }" @click.stop="openSettings('sound')" title="設定" aria-label="設定を開く"><span class="ui-icon ui-icon-settings" aria-hidden="true"></span><span v-if="appHeaderView" class="global-sound-btn-label">設定</span></button>
     <div v-if="soundSettingsOpen" class="global-sound-popover" @click.stop>
       <div class="global-sound-row">
@@ -8139,7 +8138,7 @@
   <!-- ===== キーワード集モーダル（TOP画面「キーワード集」から。既存のKEYWORD_GLOSSARYをそのまま一覧表示） ===== -->
   <div v-if="glossaryModalOpen" class="battle-zone-modal" @click.self="glossaryModalOpen = false">
     <div class="battle-zone-modal-panel">
-      <h3 class="battle-zone-modal-title">📚 キーワード集</h3>
+      <h3 class="battle-zone-modal-title">キーワード集</h3>
       <div class="glossary-list">
         <div v-for="kw in Object.keys(keywordGlossary)" :key="'gloss'+kw" class="glossary-item">
           <div class="glossary-term">{{ kw }}</div>
@@ -8246,7 +8245,7 @@
           <section id="manual-world" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 01</div><h2>終焉の先に、次の世を</h2></div>
-              <figure class="manual-chapter-mascot"><img src="tutorial_guide/tutorial-normal-tutorial-84230f6f518a.webp" alt="アマテラスのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
+              <figure class="manual-chapter-mascot"><img src="tutorial_guide/tutorial-normal-b45df0d641cb.webp" alt="アマテラスのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
             <p>突如飛来した無数の巨龍は文明を蹂躙し、生命を滅亡の淵へ追いやりました。古き神々は永い死闘の末に巨龍を打ち倒しましたが、その代償として星から生命の息吹は失われます。</p>
             <p>神々が星の深淵で見つけたのは、かつて存在した生命の記憶の残滓――<strong>「レガシー」</strong>。神秘のエネルギー<strong>「星魂」</strong>によってレガシーに命を吹き込めば、新たな世界を創ることができます。</p>
@@ -8618,7 +8617,7 @@
 ・「瞬速の死闘」は強力な選定除去で、天力を大きく稼げる可能性があるため最優先でピックしたいカードです。</div><button type="button" class="pick-card-list-btn" @click="openPickCardList('7')">🃏 おすすめカード一覧を見る</button></div>
         </section>
         <section id="pick-amaterasu" class="howto-section pick-kami-section">
-          <figure class="pick-kami-figure"><img class="pick-kami-image" src="tutorial_guide/tutorial-normal-tutorial-84230f6f518a.webp" alt="アマテラスのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(8, $event)" @focus="showGuideKami(8, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
+          <figure class="pick-kami-figure"><img class="pick-kami-image" src="tutorial_guide/tutorial-normal-b45df0d641cb.webp" alt="アマテラスのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(8, $event)" @focus="showGuideKami(8, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
           <div class="pick-kami-copy"><h2 class="howto-heading"><span>アマテラス</span><small>守護</small></h2>
           <div class="howto-body">・基本方針として、守護を持つレガシーをピックするとよいです。守護を持つトークン（ヨリシロちゃん、巨躯なる獣霊）を招来するカードの優先度も上がります。「獣霊」を招来できるカードは、文言が「いずれかの獣霊」「異なる獣霊N種」等どのような形であっても、選択肢の中に守護持ちの巨躯なる獣霊が含まれ得るため優先度は高いです（厳格なる森の長・ハクレン、晴れ空の門出、もふもふ探求者など）。
 ・創世神技は墓地からカードを蘇生する効果なので、自然と墓地が増える霊視持ちのカードの優先度が少し上がります。
@@ -8666,7 +8665,7 @@
   <!-- ===== デッキ管理モーダル（保存スロット・デッキコード共有） ===== -->
   <div v-if="deckManagerOpen" class="battle-zone-modal" @click.self="closeDeckManager">
     <div class="battle-zone-modal-panel">
-      <h3 class="battle-zone-modal-title">💾 デッキ管理</h3>
+      <h3 class="battle-zone-modal-title">デッキ管理</h3>
       <div class="howto-list">
         <div class="howto-section">
           <div class="howto-heading">現在のデッキを保存</div>
@@ -8909,7 +8908,7 @@
              使い回しているが、名称は全て「カードリスト」で統一する。 -->
         <h1>カードリスト</h1>
         <span class="total">全 {{ filteredCards.length }} 枚<span v-if="driveError" style="color:#fb7"> / Drive読込失敗</span></span>
-        <button class="glossary-open-btn" @click="_sfxPlay('decision'); glossaryModalOpen = true" title="キーワード集を開く">📚 キーワード集</button>
+        <button class="glossary-open-btn" @click="_sfxPlay('decision'); glossaryModalOpen = true" title="キーワード集を開く">キーワード集</button>
         <div class="spacer"></div>
         <!-- 表示モード切替：デッキの中身を見ながらでも多くのカードが一目で見えるよう、カードを小さく密に並べる表示に切り替える（従来の一覧表示・機能は変わらない） -->
         <button class="deck-sort-btn pool-dense-toggle-btn" @click="_sfxPlay('cancel'); togglePoolDenseView()"
@@ -9063,7 +9062,7 @@
         <div class="deck-controls" v-if="!deckDenseView">
           <button @click="saveDeckImage" :disabled="capturing">{{ capturing ? '保存中…' : '画像で保存' }}</button>
           <button @click="clearDeck">デッキをクリア</button>
-          <button v-if="!gsPeeking && !shieldPeek" @click="openDeckManager">💾 デッキ管理</button>
+          <button v-if="!gsPeeking && !shieldPeek" @click="openDeckManager">デッキ管理</button>
         </div>
       </div>
 
@@ -9935,7 +9934,6 @@
       <!-- SE/BGM音量設定：フローティング版だと降参ボタン等と重なるため、対戦画面ではヘッダー内に配置する -->
       <div class="battle-header-sound-wrap">
         <transition name="bgm-now-fade"><span v-if="bgmNowPlaying" :key="bgmNowPlaying.id" class="bgm-current-name" :title="bgmNowPlaying.name" role="status" aria-live="polite">♪ {{ bgmNowPlaying.name }}</span></transition>
-        <button class="battle-undo-btn" @click.stop="_sfxPlay('cancel'); battleToggleHeaderPanel('soundSettingsOpen')" title="音量設定" aria-label="音量と演出設定を開く"><span class="ui-icon ui-icon-volume" aria-hidden="true"></span></button>
         <div v-if="soundSettingsOpen" class="global-sound-popover battle-header-sound-popover" @click.stop>
           <div class="global-sound-row">
             <span class="global-sound-label">SE音量</span>
@@ -10527,7 +10525,8 @@
           </div>
         </div>
         <!-- 新配置（試作）：設定メニュー（左上）とバトルログ（左の中ほど）。
-             音量・演出・ターン時間などは「設定」画面にあるので、ここからは設定画面・手動調整・一手戻る・配置の切り替え・退出・降参を開く -->
+             音量・演出・ターン時間などは「設定」画面にあるので、ここからは設定画面・手動調整・一手戻る・配置の切り替え・退出・降参を開く。
+             チュートリアル中は設定と戻るだけにする -->
         <div v-if="battleLayoutV2" class="v2-menu" @click.stop>
           <button type="button" class="v2-round-btn v2-menu-btn" :class="{ 'is-open': battleMenuOpen }" :aria-expanded="battleMenuOpen ? 'true' : 'false'"
                   aria-label="メニューを開く" title="メニュー" @click="_sfxPlay(battleMenuOpen ? 'cancel' : 'menuselect'); battleToggleHeaderPanel('battleMenuOpen'); battleMenuSection = ''">
@@ -10549,11 +10548,11 @@
                 </div>
               </div>
             </template>
-            <button type="button" role="menuitem" :disabled="!battleCanUndo" :title="battleUndoDisabledReason" @click="battleUndo"><span class="v2-menu-glyph" aria-hidden="true">↶</span>一手戻る<span v-if="battleUndoStack.length" class="v2-menu-count">{{ battleUndoStack.length }}</span></button>
+            <button v-if="!tutorial" type="button" role="menuitem" :disabled="!battleCanUndo" :title="battleUndoDisabledReason" @click="battleUndo"><span class="v2-menu-glyph" aria-hidden="true">↶</span>一手戻る<span v-if="battleUndoStack.length" class="v2-menu-count">{{ battleUndoStack.length }}</span></button>
             <button v-if="battleNet.on && !battleNet.spectating" type="button" role="menuitem" :disabled="battleNet.resyncing" @click="battleForceResync"><span class="v2-menu-glyph" aria-hidden="true">⟳</span>{{ battleNet.resyncing ? '再同期中…' : '最新の盤面を再取得（再同期）' }}</button>
-            <button type="button" role="menuitem" @click="battleMenuOpen = false; battleToggleLayoutV2()"><span class="v2-menu-glyph" aria-hidden="true">旧</span>従来の配置に切り替える（試作の見比べ用）</button>
+            <button v-if="!tutorial" type="button" role="menuitem" @click="battleMenuOpen = false; battleToggleLayoutV2()"><span class="v2-menu-glyph" aria-hidden="true">旧</span>従来の配置に切り替える（試作の見比べ用）</button>
             <button type="button" role="menuitem" @click="battleMenuOpen = false; battleReturn()"><span class="v2-menu-glyph" aria-hidden="true">◀</span>{{ battleReturnLabel }}へ戻る</button>
-            <button v-if="!battleNet.spectating" type="button" role="menuitem" class="danger" @click="battleMenuOpen = false; battleSurrender()"><span class="v2-menu-glyph" aria-hidden="true">⚑</span>降参する</button>
+            <button v-if="!battleNet.spectating && !tutorial" type="button" role="menuitem" class="danger" @click="battleMenuOpen = false; battleSurrender()"><span class="v2-menu-glyph" aria-hidden="true">⚑</span>降参する</button>
           </div>
         </div>
         <button v-if="battleLayoutV2" type="button" class="v2-round-btn v2-log-btn" title="バトルログ" aria-label="バトルログを開く" @click="battleOpenLogModal('log')">
@@ -11061,7 +11060,7 @@
         </div>
         <div class="battle-action-buttons">
           <button @click="battleCancelConfirm">キャンセル</button>
-          <button class="battle-confirm-primary" :class="{ 'tutorial-recommend': !!tutorial }" @click="battleConfirmApply">{{ battleConfirmModal.confirmLabel || '実行' }}</button>
+          <button class="battle-confirm-primary" :class="{ 'tutorial-recommend': !!tutorial && battleConfirmModal.action !== 'return' }" @click="battleConfirmApply">{{ battleConfirmModal.confirmLabel || '実行' }}</button>
         </div>
       </div>
     </div>
@@ -11278,7 +11277,6 @@
       <div class="tutorial-body">
         <div class="tutorial-name">
           <span>アマテラス</span>
-          <span v-if="tutorialMode === 'task'" class="tutorial-task-tag">やってみましょう</span>
         </div>
         <!-- 文節の途中で改行しないよう、文節ごとに区切って改行位置を<wbr>で示す。
              まだ表示していない文字も透明で配置しておき、1文字ずつ出しても行がずれないようにする -->
@@ -11295,7 +11293,8 @@
           {{ tutorial.typed >= tutorialFullText.length ? (tutorialStep.last ? 'クリックでおわる' : '▼') : '' }}
         </div>
       </div>
-      <button v-if="!(tutorialStep && tutorialStep.finale)" class="tutorial-quit" @click.stop="tutorialQuit">やめる</button>
+      <!-- 対戦のレッスンは左上のメニュー（設定・トップへ戻る）から抜けられるので、「やめる」はメニューの無い外伝のピック練習だけに出す -->
+      <button v-if="appView === 'tutorialPick' && !(tutorialStep && tutorialStep.finale)" class="tutorial-quit" @click.stop="tutorialQuit">やめる</button>
     </div>
   </div>
 
@@ -12820,10 +12819,10 @@ const KAMI_CHIBI_FILES = Object.freeze({
   '3': 'kami_chibi/okuninushi-chibi-d8d6938583fd.webp',
   '4': 'kami_chibi/takemikazuchi-chibi-soft-hair-94091bc89bb9.webp',
   '5': 'kami_chibi/omoikane-7f21be1fc0ed.webp',
-  '6': 'kami_chibi/amenouzume-chibi-cbb1fa32e87a.webp',
+  '6': 'kami_chibi/amenouzume-chibi-9b9ce3315169.webp',
   '7': 'kami_chibi/hinokagutsuchi-chibi-eye-ornament-223149539520.webp',
   '8': 'kami_chibi/amaterasu-chibi-b3d95116171a.webp',
-  '9': 'kami_chibi/tsukuyomi-ad8028e7bb9e.webp',
+  '9': 'kami_chibi/tsukuyomi-chibi-becbdf08aac1.webp',
   '10': 'kami_chibi/yamata-no-orochi-chibi-4a5140b7399d.webp',
 });
 const KAMI_EMOTE_LINES = {
@@ -13045,12 +13044,12 @@ const KAMI_DEX_CHIBIS = Object.freeze({
   "6": [{ file: 'kami_chibi/amenouzume-chibi.webp', label: '通常' }],
   "7": [{ file: 'kami_chibi/hinokagutsuchi-chibi.webp', label: '通常' }],
   "8": [
-    { file: 'tutorial_guide/tutorial-normal-tutorial-84230f6f518a.webp', label: '通常' },
-    { file: 'tutorial_guide/tutorial-joy-tutorial-a51266a6640e.webp', label: '喜び' },
-    { file: 'tutorial_guide/tutorial-celebrate-e3b0de49814b.webp', label: '祝福' },
-    { file: 'tutorial_guide/tutorial-serious-tutorial-25cf3a5ea3b9.webp', label: '真剣' },
-    { file: 'tutorial_guide/tutorial-surprised-tutorial-4d5f3d2c074d.webp', label: '驚き' },
-    { file: 'tutorial_guide/tutorial-troubled-tutorial-17eba78cccf9.webp', label: '困り顔' },
+    { file: 'tutorial_guide/tutorial-normal-b45df0d641cb.webp', label: '通常' },
+    { file: 'tutorial_guide/tutorial-joy-2331cc0867d2.webp', label: '喜び' },
+    { file: 'tutorial_guide/tutorial-celebrate-793535426f31.webp', label: '祝福' },
+    { file: 'tutorial_guide/tutorial-serious-cde07e2b7e5a.webp', label: '真剣' },
+    { file: 'tutorial_guide/tutorial-surprised-cae0f1b74dfc.webp', label: '驚き' },
+    { file: 'tutorial_guide/tutorial-troubled-5fef15512115.webp', label: '困り顔' },
   ],
   "9": [{ file: 'kami_chibi/tsukuyomi-chibi.webp', label: '通常' }],
   "10": [{ file: 'kami_chibi/yamata-no-orochi-chibi.webp', label: '通常' }],
@@ -13314,11 +13313,11 @@ const MODE_DETAIL_INFO = {
 const TUTORIAL_TASK_CLOSE_NOTE = '表示されたカードは「閉じる」で閉じられます。';
 // 案内役の表情差分（どれも同じ構図・同じ大きさで切り出してあるので、重ねて切り替えても位置がずれない）
 const TUTORIAL_GUIDE_FACES = Object.freeze({
-  normal: 'tutorial_guide/tutorial-normal-tutorial-84230f6f518a.webp',
-  serious: 'tutorial_guide/tutorial-serious-tutorial-25cf3a5ea3b9.webp',
-  troubled: 'tutorial_guide/tutorial-troubled-tutorial-17eba78cccf9.webp',
-  surprised: 'tutorial_guide/tutorial-surprised-tutorial-4d5f3d2c074d.webp',
-  joy: 'tutorial_guide/tutorial-joy-tutorial-a51266a6640e.webp',
+  normal: 'tutorial_guide/tutorial-normal-b45df0d641cb.webp',
+  serious: 'tutorial_guide/tutorial-serious-cde07e2b7e5a.webp',
+  troubled: 'tutorial_guide/tutorial-troubled-5fef15512115.webp',
+  surprised: 'tutorial_guide/tutorial-surprised-cae0f1b74dfc.webp',
+  joy: 'tutorial_guide/tutorial-joy-2331cc0867d2.webp',
 });
 const TUTORIAL_PRACTICE = Object.freeze({
   "id": "draft",
@@ -13809,12 +13808,13 @@ const TUTORIAL_LESSONS = Object.freeze([
   }
 ]);
 /* 照らす場所（CSSセレクタ。@n は n 番目の一致、@* は全ての一致） */
+/* チュートリアルで照らす場所。「セレクタ@何番目（*なら全部）」。「|」で区切ると、先に見つかった（大きさのある）方を使う（新配置｜従来の配置） */
 const TUTORIAL_FOCUS = Object.freeze({
   oppKami: '.battle-row-opp-top .kami-portrait',
   oppLife: '.battle-row-opp-top .orb-disc.life',
   oppTenryoku: '.battle-row-opp-top .orb-disc.tenryoku',
-  oppLegacy: '.battle-row-legacy@0',
-  selfLegacy: '.battle-row-legacy@1',
+  oppLegacy: '.legacy-field@0',
+  selfLegacy: '.legacy-field@1',
   selfRelic: '.self-relic-drop',
   selfKami: '.battle-row-self-bot .kami-hud',
   selfLife: '.battle-row-self-bot .orb-disc.life',
@@ -13824,8 +13824,8 @@ const TUTORIAL_FOCUS = Object.freeze({
   oppDeck: '.battle-side .dgc-deck@0',
   skill: '.kami-skill-btn',
   hand: '.battle-zone.hand-self',
-  selfMana: '.battle-side .mana-panel@1',
-  selfManaValue: '.battle-side .mana-panel@1 .mana-head',
+  selfMana: '.v2-orrery .orrery-stars.self|.battle-side .mana-panel@1',
+  selfManaValue: '.battle-v2 .battle-side .mana-panel .mana-value@1|.battle-side .mana-panel .mana-head@1',
   turnNumber: '.turn-middle .turn-number',
   handCost: '.hand-self .hand-cost-badge@*',
   oppPower: '.opp-legacy-target .battle-card-power@*',
@@ -14097,7 +14097,7 @@ function buildTutorialFocusSegments(text, glossary, tokens, highlights) {
 // 練習終了時はアマテラス（案内役のデフォルメ）がクラッカーで祝う。通常の勝敗画面とは共有しない。
 Vue.component("tutorial-ending-art", {
   props: { title: { type: String, default: "チュートリアル" }, build: { type: String, default: "" } },
-  computed: { imageUrl() { return "tutorial_guide/tutorial-celebrate-e3b0de49814b.webp?v=" + this.build; } },
+  computed: { imageUrl() { return "tutorial_guide/tutorial-celebrate-793535426f31.webp?v=" + this.build; } },
   template: '<section class="tutorial-ending-art" aria-label="チュートリアル終了画面">' +
     '<div class="tutorial-ending-figure"><img class="tutorial-ending-image" :src="imageUrl" alt="クラッカーで祝うアマテラス"></div>' +
     '<div class="tutorial-ending-caption"><strong>よくできました</strong><span>{{ title }} · 練習完了</span></div><slot></slot></section>',
@@ -17600,18 +17600,24 @@ new Vue({
       if (!t) return;
       const step = this.tutorialStep;
       const active = step && this.tutorialMode !== 'wait' && !(this.appView === 'battle' && this.battleSample && this.battleSample.result);
-      const box = (el, pad) => {
+      // 枠は対象ぎりぎりにせず、少し余裕を持たせる（縦は横より広めに）
+      const box = (el, pad, padY = pad) => {
         const r = el && el.getBoundingClientRect();
-        return r && r.width && r.height ? { x: Math.round(r.left - pad), y: Math.round(r.top - pad), w: Math.round(r.width + pad * 2), h: Math.round(r.height + pad * 2) } : null;
+        return r && r.width && r.height ? { x: Math.round(r.left - pad), y: Math.round(r.top - padY), w: Math.round(r.width + pad * 2), h: Math.round(r.height + padY * 2) } : null;
       };
       const rects = [];
       if (active && step.focus) {
         [].concat(step.focus).forEach(key => {
           const spec = TUTORIAL_FOCUS[key];
           if (!spec) return;
-          const [selector, nth] = spec.split('@');
-          const all = Array.from(document.querySelectorAll(selector));
-          (nth === '*' ? all : [all[Number(nth || 0)]]).forEach(el => { const b = box(el, nth === '*' ? 3 : 6); if (b) rects.push(b); });
+          for (const alt of spec.split('|')) {
+            const [selector, nth] = alt.split('@');
+            const all = Array.from(document.querySelectorAll(selector));
+            const found = (nth === '*' ? all : [all[Number(nth || 0)]]).map(el => (nth === '*' ? box(el, 5, 7) : box(el, 10, 16))).filter(Boolean);
+            if (!found.length) continue;
+            rects.push(...found);
+            break;
+          }
         });
       }
       const marks = [];
@@ -17632,7 +17638,7 @@ new Vue({
             const hit = wanted.find(w => w.startsWith(zone + ':') && name.includes(w.slice(w.indexOf(':') + 1)));
             if (!hit || seen.has(el)) return;
             seen.add(el);
-            const b = box(el, 4);
+            const b = box(el, 6, 10);
             if (b) marks.push(Object.assign(b, { label: name, key: tag + ':' + marks.length }));
           });
         }

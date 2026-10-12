@@ -332,7 +332,6 @@ test("battle effect guidance and motion preferences are available", () => {
   assert.match(html, /battle-mobile-nav/);
   assert.match(html, /battleMobileScroll/);
   assert.match(html, /対戦盤面の横移動/);
-  assert.match(html, /aria-label="音量と演出設定を開く"/);
   assert.match(html, /battleNetworkBlocked/);
   assert.match(html, /battle-connection-blocker/);
   assert.match(html, /通信が復旧しました/);
