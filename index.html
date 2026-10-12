@@ -1834,11 +1834,19 @@
   .bgm-now-fade-enter, .bgm-now-fade-leave-to { opacity: 0; transform: translateY(6px); }
   /* ===== チュートリアル外伝：練習用ピック画面（選別の儀の見た目を流用） ===== */
   .tutorial-pick-overlay {
-    position: fixed; inset: 0; z-index: 200; overflow-y: auto;
+    position: fixed; inset: 0; z-index: 200; overflow: hidden; padding: 12px;
     background: radial-gradient(circle at 50% 30%, rgba(40, 32, 58, .96), rgba(8, 10, 16, .98));
     background-size: cover; background-position: center; background-attachment: fixed;
   }
-  .tutorial-pick-screen { max-width: 1180px; margin: 0 auto; padding-bottom: 200px; }
+  /* 創世決戦の選別の儀（.gm-modal.cosmic-pick-panel）と同じ画面いっぱいの枠。下は案内の吹き出しが重なる分を空ける */
+  .tutorial-pick-panel { width: 100%; }
+  .tutorial-pick-panel > .gm-draft.tutorial-pick-screen { padding-bottom: 124px; }
+  /* 本番の列幅の式は画面の高さ基準なので、吹き出しの分だけ低い練習では右へはみ出す。カードの列は残りの幅に収め、カードは段の高さに合わせて縮める */
+  .gm-draft.tutorial-pick-screen .gm-draft-layout { grid-template-columns: 280px minmax(0, 1fr); }
+  /* 練習は自分1人なので、ちびキャラの枠は1つ分の高さにして、下に理念・ピック方針・選んだカードを並べる */
+  .tutorial-pick-kami.gm-draft-policy .gm-draft-kami-strip { flex: none; grid-template-rows: 150px; }
+  .tutorial-pick-kami.gm-draft-policy { overflow-y: auto; }
+  .tutorial-pick-kami .pick-policy-world { margin-top: 10px; }
   /* カードを選ぶ画面は、種族の里ではなく共通の宇宙背景を使う。 */
   .tutorial-pick-overlay.cosmic-pick-bg,
   .game-overlay.cosmic-pick-bg,
@@ -1939,7 +1947,7 @@
   .gm-pack-card.kind-genesis .pick-kind-tag { color: #fff; background: linear-gradient(90deg, #b0453f, #3f6fb0, #c9a93a, #3f9a5a, #7a4aa8); }
   .tutorial-pick-passing { grid-column: 1 / -1; padding: 60px 0; text-align: center; color: #bfae8d; font-weight: 800; }
   .tutorial-pick-pool {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding: 10px 12px;
+    flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding: 8px 10px;
     border-radius: 10px; border: 1px solid #3a4258; background: rgba(0, 0, 0, .3); color: #d8ccb4; font-size: 13px;
   }
   .tutorial-pick-pool-label { font-weight: 800; color: #f2cd7a; margin-right: 4px; }
@@ -2036,7 +2044,10 @@
   .tutorial-layer { position: fixed; inset: 0; z-index: 380; pointer-events: none; }
   /* チュートリアル中はライフ・天力・マナの手動調整（ヘッダーの調整パネル）の入口を出さない（battleStat 側でも受け付けない） */
   .tutorial-layer.finale { z-index: 760; } /* 勝利後は結果画面(700)の上で締めの台詞を出す */
-  .tutorial-catcher { position: absolute; inset: 0; pointer-events: auto; cursor: pointer; }
+  .tutorial-catcher { position: absolute; inset: 0; pointer-events: auto; cursor: pointer;
+    --corner-w: calc(1.5vh + 60px); --corner-h: calc(1.5vh + 60px);
+    clip-path: polygon(var(--corner-w) 0, 100% 0, 100% 100%, 0 100%, 0 var(--corner-h), var(--corner-w) var(--corner-h)); }
+  .tutorial-catcher.pick { --corner-w: 130px; --corner-h: 64px; }
   .tutorial-dim { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   .tutorial-spot {
     position: absolute; border-radius: 12px; border: 2px solid #f2cd7a;
@@ -2301,8 +2312,10 @@
     grid-column: 1; grid-row: 1; align-self: start; justify-self: center; width: min(100%, 62vh); aspect-ratio: 1 / 1; border-radius: 14px;
     background-color: #10131c; background-size: cover; background-position: center;
     filter: brightness(.82); /* TOPのモードの絵（.top-mode-thumb）と同じ暗さ */
-    border: 1px solid rgba(255,255,255,0.15);
-    box-shadow: 0 10px 30px rgba(0,0,0,.5);
+    /* TOPと同じく、絵柄を枠の内側で止めて枠は不透明の実線にする（半透明の枠の下に絵柄が回り込むと縁が荒れて見える） */
+    background-clip: padding-box;
+    border: 1px solid #3a4258;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.45), 0 10px 30px rgba(0,0,0,.5);
   }
   .mode-detail-right {
     grid-column: 2; grid-row: 1; min-width: 0; max-width: 660px;
@@ -6732,12 +6745,13 @@
     font-size: calc(var(--emblem) * .3); text-shadow: 0 1px 3px rgba(0, 0, 0, .85);
   }
   .battle-layout-v2 .orb-disc.life small { font-size: calc(var(--emblem) * .15); margin-top: 0; }
-  /* 神攻力：ひし形（素材160×160・本体136）。数字は中央 */
+  /* 神攻力：交差した剣（素材192×192・本体いっぱい）。数字は刃の交差（上から51%）に重ねる：中央寄せの箱なので、上に差の2倍の余白を付ける */
   .battle-layout-v2 .legacy-field .battle-card .battle-card-attack {
-    top: -1.3vh; right: -1.3vh; width: 4.2vh; height: 4.2vh; padding: 0; border: 0; border-radius: 0; box-shadow: none;
+    top: -1.4vh; right: -1.4vh; width: 4.4vh; height: 4.4vh; padding: 2% 0 0; border: 0; border-radius: 0; box-shadow: none; box-sizing: border-box;
     display: flex; align-items: center; justify-content: center;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .7)); color: #fff6e4; font-size: clamp(11px, 1.8vh, 19px);
-    background: url('battle_ui/attack-diamond-556cc04223b9.webp') center / calc(100% * 160 / 136) no-repeat;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .7)); color: #fff6e4; font-size: clamp(14px, 2.6vh, 28px); /* 数字は交差からはみ出してよいので大きく */
+    text-shadow: 0 0 2px #000, 0 0 4px #000, 0 1px 2px #000;
+    background: url('battle_ui/attack-swords-119622d9c1b1.webp') center / 100% no-repeat;
   }
   /* 黒漆の札：左右72pxずつ（素材480×160）を端の飾りとして固定し、中央だけを横に伸ばす */
   .battle-layout-v2 .legacy-field .battle-card .battle-card-power,
@@ -6872,11 +6886,11 @@
   }
   .app.battle-v2 .modal-peek-return-btn:hover { background: #241c14; color: #fff3d6; border-color: #d9b46a; }
 
-  /* 左上の情報欄の神攻力・戦闘力も、場の札と同じ黒漆のひし形と札にする（欄は359px幅で組んで拡大する） */
+  /* 左上の情報欄の神攻力・戦闘力も、場の札と同じ交差した剣と黒漆の札にする（欄は359px幅で組んで拡大する） */
   .battle-hand-info-attack {
-    width: 28px; height: 28px; border: 0; border-radius: 0; color: #fff6e4; font-size: 12px; font-weight: 700;
-    font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif;
-    background: url('battle_ui/attack-diamond-556cc04223b9.webp') center / calc(100% * 160 / 136) no-repeat;
+    width: 28px; height: 28px; padding-top: 1px; box-sizing: border-box; border: 0; border-radius: 0; color: #fff6e4; font-size: 16px; font-weight: 700;
+    font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; text-shadow: 0 0 2px #000, 0 0 3px #000;
+    background: url('battle_ui/attack-swords-119622d9c1b1.webp') center / 100% no-repeat;
   }
   .battle-hand-info-power {
     display: inline-flex; align-items: center; height: 20px; padding: 1px 3px 0; border-radius: 0; background: none;
@@ -8503,7 +8517,7 @@
           <section id="manual-score" class="manual-chapter">
             <div class="manual-chapter-heading">
               <div><div class="manual-chapter-tag">CHAPTER 10</div><h2>終戦・星魂の集計</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/tsukuyomi-chibi-becbdf08aac1.webp" alt="ツクヨミのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
+              <figure class="manual-chapter-mascot"><img src="kami_chibi/tsukuyomi-chibi-7426887ec973.webp" alt="ツクヨミのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
             </div>
             <p><strong>星魂 ＝ 星戦の勝利点（1勝につき10）＋ 集めた全カードの返還値</strong>です。デッキに残したカードと、無料返還／省察で星魂に変換したカードをすべて合計します。</p>
             <p>星魂が最も多いプレイヤーが勝者です。同点なら星戦の勝利数が多いプレイヤー、勝利数も同じなら該当プレイヤー同士の星戦に勝ったプレイヤーが上位です。</p>
@@ -8661,7 +8675,7 @@
 ・創世神技はなんでも墓地から蘇生できる破格の効果なので、なるべくコストの高いカードを蘇生したいです。コストの重いカード全般の優先度は高く、特に守護を持つ「黄角龍・フラウス」は最高の相性です。</div><button type="button" class="pick-card-list-btn" @click="openPickCardList('8')">🃏 おすすめカード一覧を見る</button></div>
         </section>
         <section id="pick-tsukuyomi" class="howto-section pick-kami-section">
-          <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/tsukuyomi-chibi-becbdf08aac1.webp" alt="ツクヨミのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(9, $event)" @focus="showGuideKami(9, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
+          <figure class="pick-kami-figure"><img class="pick-kami-image" src="kami_chibi/tsukuyomi-chibi-7426887ec973.webp" alt="ツクヨミのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(9, $event)" @focus="showGuideKami(9, $event)" @mouseleave="hideCardHover" @blur="hideCardHover"><figcaption class="guide-chibi-note">カーソルを合わせると<br>カミのカードを表示</figcaption></figure>
           <div class="pick-kami-copy"><h2 class="howto-heading"><span>ツクヨミ</span><small>トークン</small></h2>
           <div class="howto-body">・基本方針として、トークンを招来できるカードを集めましょう。「社の施し」はレリックでありながらトークンなので、これを招来できるカードも相性がよいです。
 ・「月見草の修行場」はかなり優先度が高いです。1枚で2回天力が溜められます。
@@ -11214,33 +11228,54 @@
   </div>
 
   <!-- ===== チュートリアル外伝：選別の儀（練習用のピック画面） ===== -->
+  <!-- 外伝の選別の練習：創世決戦の選別の儀（.gm-modal.cosmic-pick-panel ＞ .gm-draft）と同じ組み方。左上の「◀ トップ」で練習をやめる -->
   <div v-if="appView === 'tutorialPick' && tutorialPick" class="tutorial-pick-overlay cosmic-pick-bg">
-    <div class="tutorial-pick-screen gm-body">
-      <div class="gm-draft-head">
-        <div class="gm-draft-title">
-          外伝 選別の儀（練習）<span class="gm-draft-set">束 {{ tutorialPick.packIndex + 1 }} / {{ tutorialPick.packs.length }}</span>
-        </div>
-        <div class="gm-draft-headright">
-          <span class="gm-draft-return-total tutorial-pick-soul" title="選んだカードの返還値の合計です">
-            <span class="gm-soul-icon">★</span>星魂の見込み <b>{{ tutorialPickSoul }}</b>
-          </span>
-          <span class="gm-draft-progress">あなたの取得 <b>{{ tutorialPick.picks.length }}</b> / {{ tutorialPick.packs.length }}</span>
-        </div>
+    <div class="gm-modal cosmic-pick-panel tutorial-pick-panel">
+      <div class="gm-header">
+        <button class="back-to-top-btn" @click="tutorialQuit">◀ トップ</button>
+        <h2>外伝 選別の儀（練習）</h2>
       </div>
-      <div class="tutorial-pick-main pick-layout">
-        <aside class="tutorial-pick-kami pick-policy">
-          <div class="pick-policy-img"
-               @mouseenter="tutorialPick.kami && showCardHover(tutorialPick.kami, $event)" @mouseleave="hideCardHover"
-               :style="tutorialPick.kami && cardImageUrl(tutorialPick.kami) ? { backgroundImage: 'url(' + cardImageUrl(tutorialPick.kami) + ')' } : {}"></div>
-          <div class="pick-policy-name">{{ tutorialPick.kami ? fullName(tutorialPick.kami) : 'アマテラス' }}</div>
-          <div v-if="tutorialPickGuide" class="pick-policy-world">理念「{{ tutorialPickGuide.world }}」</div>
-          <div v-if="tutorialPickGuide" class="pick-policy-heading">ピック方針</div>
-          <ul v-if="tutorialPickGuide" class="pick-policy-hints">
-            <li v-for="hint in tutorialPickGuide.pick" :key="hint">{{ hint }}</li>
-          </ul>
-        </aside>
-        <div class="tutorial-pick-center">
-          <div class="gm-draft-status mine">★ あなたのピックです — 束から1枚選んでください（残りは隣へ回ります）</div>
+      <div class="gm-body gm-draft tutorial-pick-screen">
+        <div class="gm-draft-head">
+          <div class="gm-draft-title">
+            選別の儀（練習）<span class="gm-draft-set">束 {{ tutorialPick.packIndex + 1 }} / {{ tutorialPick.packs.length }}</span>
+          </div>
+          <div class="gm-draft-headright">
+            <span class="gm-draft-return-total tutorial-pick-soul" title="選んだカードの返還値の合計です">
+              <span class="gm-soul-icon">★</span>星魂の見込み <b>{{ tutorialPickSoul }}</b>
+            </span>
+            <span class="gm-draft-progress">あなたの取得 <b>{{ tutorialPick.picks.length }}</b> / {{ tutorialPick.packs.length }}</span>
+          </div>
+        </div>
+        <div class="gm-draft-status mine">★ あなたのピックです — 束から1枚選んでください（残りは隣へ回ります）</div>
+        <div class="pick-layout gm-draft-layout">
+          <aside class="pick-policy gm-draft-policy tutorial-pick-kami">
+            <div class="gm-draft-kami-strip">
+              <div class="gm-draft-kami-mini me">
+                <img v-if="tutorialPick.kami" class="gm-draft-kami-thumb" :src="kamiChibiUrl(tutorialPick.kami)" :alt="tutorialPick.kami.name + 'のちびキャラ'" draggable="false"
+                     @mouseenter="showCardHover(tutorialPick.kami, $event, true)" @mouseleave="hideCardHover">
+                <div class="gm-draft-kami-copy">
+                  <div class="gm-draft-kami-seat">あなた</div>
+                  <div class="gm-draft-kami-name">{{ tutorialPick.kami ? tutorialPick.kami.name : 'アマテラス' }}</div>
+                  <div class="gm-draft-kami-progress" role="status">選択中…</div>
+                </div>
+              </div>
+            </div>
+            <div v-if="tutorialPickGuide" class="pick-policy-world">理念「{{ tutorialPickGuide.world }}」</div>
+            <div v-if="tutorialPickGuide" class="pick-policy-heading">ピック方針</div>
+            <ul v-if="tutorialPickGuide" class="pick-policy-hints">
+              <li v-for="hint in tutorialPickGuide.pick" :key="hint">{{ hint }}</li>
+            </ul>
+            <!-- 選んだカード：下は案内の吹き出しが重なるので、左の欄に並べる -->
+            <div class="tutorial-pick-pool">
+              <span class="tutorial-pick-pool-label">選んだカード</span>
+              <span v-if="!tutorialPick.picks.length" class="tutorial-pick-pool-empty">まだありません</span>
+              <span v-for="card in tutorialPick.picks" :key="'tpp' + card.no" class="tutorial-pick-pool-card"
+                    @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
+                {{ fullName(card) }}<b>★{{ Number(card.return) || 0 }}</b>
+              </span>
+            </div>
+          </aside>
           <div class="gm-pack-grid tutorial-pick-pack" :class="{ 'is-loading': pickImagesLoading }">
             <div v-if="pickImagesLoading" class="pick-images-loading" role="status"><img v-if="pickLoadingScene" class="pick-loading-kami" :src="pickLoadingScene.image" alt="" decoding="async"><div class="pick-loading-copy"><div><span class="asset-loading-spinner" aria-hidden="true"></span>カードを読み込み中…</div><div v-if="pickLoadingScene" class="pick-loading-hint">ヒント：{{ pickLoadingScene.hint }}</div></div></div>
             <div v-for="card in tutorialPick.pack" :key="'tpk' + card.no" class="gm-pack-card"
@@ -11253,23 +11288,14 @@
                 <span class="pick-assist-badge">👍</span>
                 <span v-for="reason in tutorialPickRecommendations.reasons[String(card.no)]" :key="reason" class="pick-assist-reason">{{ reason }}</span>
               </div>
-              <div class="gm-pack-img" :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}">
+              <div class="gm-pack-img" :class="genesisEffectClass(card)" :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}">
                 <span class="gm-pack-return-overlay" title="このカードの返還値">
                   <span class="gm-soul-icon">★</span><span>×</span><b>{{ Number(card.return) || 0 }}</b>
                 </span>
               </div>
-              <div class="gm-pack-name">{{ fullName(card) }}</div>
-              <div class="pick-kind-tag">{{ cardPickKind(card).label }}</div>
+              <div class="gm-pack-caption" :title="fullName(card)"><div class="gm-pack-name">{{ fullName(card) }}</div><div class="pick-kind-tag">{{ cardPickKind(card).label }}</div></div>
             </div>
             <div v-if="!tutorialPick.pack.length" class="tutorial-pick-passing">次の束が回ってきます…</div>
-          </div>
-          <div class="tutorial-pick-pool">
-            <span class="tutorial-pick-pool-label">選んだカード</span>
-            <span v-if="!tutorialPick.picks.length" class="tutorial-pick-pool-empty">まだありません</span>
-            <span v-for="card in tutorialPick.picks" :key="'tpp' + card.no" class="tutorial-pick-pool-card"
-                  @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
-              {{ fullName(card) }}<b>★{{ Number(card.return) || 0 }}</b>
-            </span>
           </div>
         </div>
       </div>
@@ -11280,7 +11306,8 @@
   <!-- 相手の手番中は盤面を隠さず、何をしているかだけを帯で知らせる -->
   <div v-if="tutorial && tutorial.oppLabel" class="tutorial-opp-banner" role="status" aria-live="polite">{{ tutorial.oppLabel }}</div>
   <div v-if="tutorial && tutorialMode !== 'wait' && !battleSkillCloseup" class="tutorial-layer" :class="['mode-' + tutorialMode, { finale: tutorialStep && tutorialStep.finale }]">
-    <div v-if="tutorialMode === 'say' && !tutorialInspectionCards.length && !tutorialStep.emoteIntro && !_battleHasBlockingModal()" class="tutorial-catcher" @click="tutorialAdvance"></div>
+    <!-- 台詞中は画面のどこを押しても次へ進む。左上のメニュー（対戦）・「◀ トップ」（選別の練習）は押せるよう、その角だけ空ける -->
+    <div v-if="tutorialMode === 'say' && !tutorialInspectionCards.length && !tutorialStep.emoteIntro && !_battleHasBlockingModal() && !battleMenuOpen" class="tutorial-catcher" :class="{ pick: appView === 'tutorialPick' }" @click="tutorialAdvance"></div>
     <!-- 台詞中は照らす場所・強調カードだけを残して盤面を暗くする（複数の穴をあけるためSVGのマスクを使う） -->
     <svg v-if="tutorialFieldHighlightsVisible && tutorialMode === 'say' && !(tutorialStep && tutorialStep.finale && !tutorialStep.picture)" class="tutorial-dim" aria-hidden="true">
       <defs>
@@ -11327,8 +11354,6 @@
           {{ tutorial.typed >= tutorialFullText.length ? (tutorialStep.last ? 'クリックでおわる' : '▼') : '' }}
         </div>
       </div>
-      <!-- 対戦のレッスンは左上のメニュー（設定・トップへ戻る）から抜けられるので、「やめる」はメニューの無い外伝のピック練習だけに出す -->
-      <button v-if="appView === 'tutorialPick' && !(tutorialStep && tutorialStep.finale)" class="tutorial-quit" @click.stop="tutorialQuit">やめる</button>
     </div>
   </div>
 
@@ -12891,8 +12916,8 @@ const KAMI_CHIBI_FILES = Object.freeze({
   '5': 'kami_chibi/omoikane-7f21be1fc0ed.webp',
   '6': 'kami_chibi/amenouzume-chibi-9b9ce3315169.webp',
   '7': 'kami_chibi/hinokagutsuchi-chibi-eye-ornament-223149539520.webp',
-  '8': 'kami_chibi/amaterasu-chibi-b3d95116171a.webp',
-  '9': 'kami_chibi/tsukuyomi-chibi-becbdf08aac1.webp',
+  '8': 'kami_chibi/amaterasu-chibi-b45df0d641cb.webp',
+  '9': 'kami_chibi/tsukuyomi-chibi-7426887ec973.webp',
   '10': 'kami_chibi/yamata-no-orochi-chibi-73317d54db17.webp',
 });
 const KAMI_EMOTE_LINES = {
@@ -13121,7 +13146,7 @@ const KAMI_DEX_CHIBIS = Object.freeze({
     { file: 'tutorial_guide/tutorial-surprised-cae0f1b74dfc.webp', label: '驚き' },
     { file: 'tutorial_guide/tutorial-troubled-5fef15512115.webp', label: '困り顔' },
   ],
-  "9": [{ file: 'kami_chibi/tsukuyomi-chibi-becbdf08aac1.webp', label: '通常' }],
+  "9": [{ file: 'kami_chibi/tsukuyomi-chibi-7426887ec973.webp', label: '通常' }],
   "10": [{ file: 'kami_chibi/yamata-no-orochi-chibi-73317d54db17.webp', label: '通常' }],
 });
 /* ロード画面用の休憩差分は、図鑑の既存差分の後ろへ足す。ヤマタノオロチには用意しない。 */
@@ -17817,7 +17842,7 @@ new Vue({
       if (event.target.closest('.settings-open-btn, .settings-modal')) return; // 設定画面の開閉・操作は説明を進めない
       if (this.tutorialStep && this.tutorialStep.emoteIntro && (this._suppressNextKamiClick || event.target.closest('.emote-wheel, .emote-wheel-backdrop'))) return;
       // パネル内の確認ボタン・終了ボタンは既存の操作に任せる。
-      if (event.target.closest('.tutorial-panel, .tutorial-quit')) return;
+      if (event.target.closest('.tutorial-panel, .tutorial-quit, .v2-menu, .tutorial-pick-panel .back-to-top-btn')) return; // 左上のメニュー・「◀ トップ」もそのまま押せる
       event.stopPropagation();
       event.preventDefault();
       this.tutorialAdvance();
