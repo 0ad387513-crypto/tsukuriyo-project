@@ -5432,7 +5432,8 @@
     border-radius: 50%; overflow: hidden;
     box-shadow: 0 16px 46px rgba(0,0,0,.65), 0 0 0 2px rgba(255,230,160,.5);
   }
-  .battle-coin-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* 日輪・月輪の素材は 720×720 で円の直径664。円が面いっぱいになるよう少し拡大して描く */
+  .battle-coin-face img { width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(calc(720 / 664)); }
   .battle-coin-back { transform: rotateY(180deg); }
   @keyframes coinSpinFront {
     0%   { transform: rotateY(0deg)    translateY(0); }
@@ -6679,7 +6680,7 @@
   }
   .battle-layout-v2 .turn-number .tn-big { display: inline; font-size: 1.35em; line-height: 1; }
   .battle-layout-v2 .turn-fatigue-hint { display: inline; margin: 0; font-size: .9em; }
-  /* 円盤（ターン終了）：自分のターンは日輪、相手のターンは月輪（素材 720×720・円の直径664）。手番が変わると裏返る。
+  /* 円盤（ターン終了）：先攻の手番は日輪、後攻の手番は月輪（.moon）（素材 720×720・円の直径664）。手番が変わると裏返る。
      見える円の直径を20vhに保つため、背景を 720/664 倍で描く。ターンの残り時間は円盤ではなく環を回る光で示す */
   .battle-layout-v2 .battle-end-turn-btn {
     width: 20vh; height: 20vh; padding: 0; border-radius: 50%;
@@ -6689,16 +6690,17 @@
     box-shadow: 0 0 34px rgba(255, 190, 80, .4), 0 10px 26px rgba(0, 0, 0, .55);
     animation: orreryDiscSunKf .7s cubic-bezier(.2, .8, .3, 1);
   }
-  .battle-layout-v2 .battle-end-turn-btn:hover:not(:disabled):not(.opp-turn) { filter: brightness(1.08) saturate(1.08); box-shadow: 0 0 48px rgba(255, 200, 90, .65), 0 10px 26px rgba(0, 0, 0, .55); }
-  .battle-layout-v2 .battle-end-turn-btn.danger:not(.opp-turn) { animation: orreryDiscSunKf .7s cubic-bezier(.2, .8, .3, 1), lifeWarningPulseKf 1s ease-in-out infinite; }
-  .battle-layout-v2 .battle-end-turn-btn.opp-turn,
-  .battle-layout-v2 .battle-end-turn-btn.opp-turn:hover:not(:disabled) {
+  .battle-layout-v2 .battle-end-turn-btn:hover:not(:disabled):not(.moon) { filter: brightness(1.08) saturate(1.08); box-shadow: 0 0 48px rgba(255, 200, 90, .65), 0 10px 26px rgba(0, 0, 0, .55); }
+  .battle-layout-v2 .battle-end-turn-btn.danger:not(.moon) { animation: orreryDiscSunKf .7s cubic-bezier(.2, .8, .3, 1), lifeWarningPulseKf 1s ease-in-out infinite; }
+  .battle-layout-v2 .battle-end-turn-btn.moon,
+  .battle-layout-v2 .battle-end-turn-btn.moon:hover:not(:disabled) {
     color: #f2f6ff; letter-spacing: .06em; text-shadow: 0 0 3px #0a1020, 0 0 6px #0a1020, 0 0 10px rgba(10, 16, 32, .9);
     background: url('battle_ui/moon-disc-2635c27ba3e1.webp') center / calc(100% * 720 / 664) no-repeat;
     box-shadow: 0 0 30px rgba(140, 170, 255, .3), 0 10px 26px rgba(0, 0, 0, .55);
     animation: orreryDiscMoonKf .7s cubic-bezier(.2, .8, .3, 1);
   }
-  .battle-layout-v2 .battle-end-turn-btn.opp-turn:hover:not(:disabled) { filter: brightness(1.1); }
+  .battle-layout-v2 .battle-end-turn-btn.moon:hover:not(:disabled) { filter: brightness(1.1); }
+  .battle-layout-v2 .battle-end-turn-btn.moon.danger:not(.opp-turn) { animation: orreryDiscMoonKf .7s cubic-bezier(.2, .8, .3, 1), lifeWarningPulseKf 1s ease-in-out infinite; }
   .battle-layout-v2 .battle-end-turn-btn:not(.opp-turn):disabled,
   .battle-layout-v2 .battle-end-turn-btn:not(.opp-turn):disabled:hover { filter: grayscale(.85) brightness(.7); }
   @keyframes orreryDiscSunKf { from { transform: rotateY(90deg); } to { transform: rotateY(0); } }
@@ -6747,9 +6749,9 @@
   .battle-layout-v2 .orb-disc.life small { font-size: calc(var(--emblem) * .15); margin-top: 0; }
   /* 神攻力：交差した剣（素材192×192・本体いっぱい）。数字は刃の交差（上から51%）に重ねる：中央寄せの箱なので、上に差の2倍の余白を付ける */
   .battle-layout-v2 .legacy-field .battle-card .battle-card-attack {
-    top: -1.4vh; right: -1.4vh; width: 4.4vh; height: 4.4vh; padding: 2% 0 0; border: 0; border-radius: 0; box-shadow: none; box-sizing: border-box;
+    top: -1.1vh; right: -1.1vh; width: 3.8vh; height: 3.8vh; padding: 2% 0 0; border: 0; border-radius: 0; box-shadow: none; box-sizing: border-box;
     display: flex; align-items: center; justify-content: center;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .7)); color: #fff6e4; font-size: clamp(14px, 2.6vh, 28px); /* 数字は交差からはみ出してよいので大きく */
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .7)); color: #fff6e4; font-size: clamp(12px, 2vh, 21px); /* 数字はマナと同じくらいにして、交差の黒い面に重ねる */
     text-shadow: 0 0 2px #000, 0 0 4px #000, 0 1px 2px #000;
     background: url('battle_ui/attack-swords-119622d9c1b1.webp') center / 100% no-repeat;
   }
@@ -6766,7 +6768,7 @@
 
   /* 円盤の文字：明朝体は細く見えづらいので、太さを足して読みやすくする */
   .battle-layout-v2 .battle-end-turn-btn { font-weight: 800; -webkit-text-stroke: .045em currentColor; letter-spacing: .12em; }
-  .battle-layout-v2 .battle-end-turn-btn.opp-turn { -webkit-text-stroke: .035em currentColor; }
+  .battle-layout-v2 .battle-end-turn-btn.moon { -webkit-text-stroke: .035em currentColor; }
 
   /* ---------- 素材（バッチ4）：マナの丸の金の輪、渾天儀の背面の星図 ---------- */
   /* マナ（場の札の左上・手札の左上）：属性の色の丸の上に、金の輪（素材128・本体116、中央は透明）を重ねる。白い縁はやめる */
@@ -6912,7 +6914,7 @@
     background: var(--mana-ring) center / 100% 100% no-repeat;
   }
 
-  /* ---------- 手番が切り替わったときの帯：画面の中央を横切る黒漆の帯に金の細線。自分は日輪と金の文字、相手は月輪と銀の文字。
+  /* ---------- 手番が切り替わったときの帯：画面の中央を横切る黒漆の帯に金の細線。先攻の手番は日輪と金の文字、後攻の手番は月輪と銀の文字（.moon）。
      帯が上下に開いて現れ、約1.9秒で消える（操作は受けない） ---------- */
   .battle-layout-v2 .v2-turn-banner {
     position: fixed; left: 0; right: 0; top: 50%; z-index: 300; pointer-events: none;
@@ -6925,25 +6927,25 @@
     content: ''; position: absolute; left: 12%; right: 12%; height: 1px;
     background: linear-gradient(90deg, rgba(201, 168, 98, 0), rgba(217, 180, 106, .9) 30%, rgba(217, 180, 106, .9) 70%, rgba(201, 168, 98, 0));
   }
-  .battle-layout-v2 .v2-turn-banner.opp::before,
-  .battle-layout-v2 .v2-turn-banner.opp::after {
+  .battle-layout-v2 .v2-turn-banner.moon::before,
+  .battle-layout-v2 .v2-turn-banner.moon::after {
     background: linear-gradient(90deg, rgba(180, 196, 226, 0), rgba(206, 218, 240, .9) 30%, rgba(206, 218, 240, .9) 70%, rgba(180, 196, 226, 0));
   }
-  .battle-layout-v2 .v2-turn-banner.opp .v2-turn-banner-turn { color: #aab6cc; }
+  .battle-layout-v2 .v2-turn-banner.moon .v2-turn-banner-turn { color: #aab6cc; }
   .battle-layout-v2 .v2-turn-banner::before { top: .8vh; }
   .battle-layout-v2 .v2-turn-banner::after { bottom: .8vh; }
   .battle-layout-v2 .v2-turn-banner-disc {
     width: 9vh; height: 9vh; flex: 0 0 auto; background: url('battle_ui/sun-disc-3c27b077965b.webp') center / calc(100% * 720 / 664) no-repeat;
     animation: v2TurnBannerDiscKf 1.9s cubic-bezier(.2, .8, .3, 1) both;
   }
-  .battle-layout-v2 .v2-turn-banner.opp .v2-turn-banner-disc { background-image: url('battle_ui/moon-disc-2635c27ba3e1.webp'); }
+  .battle-layout-v2 .v2-turn-banner.moon .v2-turn-banner-disc { background-image: url('battle_ui/moon-disc-2635c27ba3e1.webp'); }
   .battle-layout-v2 .v2-turn-banner-text {
     font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-weight: 800;
     font-size: clamp(26px, 5.4vh, 60px); letter-spacing: .28em; color: #f0dca8; -webkit-text-stroke: .02em currentColor;
     text-shadow: 0 0 18px rgba(255, 200, 90, .45), 0 3px 8px rgba(0, 0, 0, .8);
     animation: v2TurnBannerTextKf 1.9s cubic-bezier(.2, .8, .3, 1) both;
   }
-  .battle-layout-v2 .v2-turn-banner.opp .v2-turn-banner-text { color: #e4ecff; text-shadow: 0 0 18px rgba(150, 180, 255, .45), 0 3px 8px rgba(0, 0, 0, .8); }
+  .battle-layout-v2 .v2-turn-banner.moon .v2-turn-banner-text { color: #e4ecff; text-shadow: 0 0 18px rgba(150, 180, 255, .45), 0 3px 8px rgba(0, 0, 0, .8); }
   .battle-layout-v2 .v2-turn-banner-turn {
     font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-weight: 700;
     font-size: clamp(12px, 2vh, 22px); letter-spacing: .12em; color: #c9b88e; align-self: flex-end; margin-bottom: 3.2vh;
@@ -9905,7 +9907,7 @@
              '--guide-color': battleDragGuide.color
            }"></div>
       <!-- 新配置（試作）：手番が切り替わったときの帯。自分のターンは日輪、相手のターンは月輪を添える -->
-      <div v-if="battleLayoutV2 && battleTurnBanner" :key="'tb' + battleTurnBanner.key" class="v2-turn-banner" :class="battleTurnBanner.side" aria-hidden="true">
+      <div v-if="battleLayoutV2 && battleTurnBanner" :key="'tb' + battleTurnBanner.key" class="v2-turn-banner" :class="[battleTurnBanner.side, { moon: battleTurnBanner.side === battleMoonSide }]" aria-hidden="true">
         <span class="v2-turn-banner-disc"></span>
         <span class="v2-turn-banner-text">{{ battleTurnBanner.side === 'self' ? 'あなたのターン' : '相手のターン' }}</span>
         <span class="v2-turn-banner-turn">ターン {{ battleTurnBanner.turn }}</span>
@@ -10521,7 +10523,7 @@
             ターン<span class="tn-big" :class="{ fatigue: battleView.turn >= 11 }">{{ battleView.turn }}</span>
             <div v-if="battleView.turn >= 11" class="turn-fatigue-hint">疲労 -{{ battleView.turn - 10 }}</div>
           </div>
-          <button class="battle-end-turn-btn" :class="{ danger: battleTurnTimerEnabled && battleTurnTimerTier === 'danger', 'opp-turn': battleLayoutV2 && battleView.activeSide === 'opp' }"
+          <button class="battle-end-turn-btn" :class="{ danger: battleTurnTimerEnabled && battleTurnTimerTier === 'danger', 'opp-turn': battleLayoutV2 && battleView.activeSide === 'opp', moon: battleLayoutV2 && battleView.activeSide === battleMoonSide }"
                   :style="{ '--turn-pct': (battleTurnTimerEnabled ? (battleTurnRemainingRatio * 100) : 100) + '%' }"
                   :disabled="!battleCanEndTurn" @click="battleRequestEndTurn"
                   :title="battleTurnTimerEnabled ? ('残り目安：' + battleTurnTimerLabel + (battleNet.on ? '（3分で自動終了）' : '')) : ''">{{ battleLayoutV2 && battleView.activeSide === 'opp' ? '相手のターン' : 'ターン終了' }}</button>
@@ -14504,8 +14506,8 @@ new Vue({
     battleTurnFlash: null, // 手番切替時に画面中央へ一瞬表示する演出：{ text, side }
     battleTurnWipe: null,  // 手番切替時の画面ワイプ演出：{ id, side }
     battleCoinFlip: null, // 先攻/後攻決めのコイン演出：{ firstSide, phase: 'spin'|'result' }
-    coinFrontUrl: 'coin_front.png', // コイン表（彼岸花）
-    coinBackUrl: 'coin_back.png',   // コイン裏（女性）
+    coinFrontUrl: 'battle_ui/sun-disc-3c27b077965b.webp', // コイン表＝日輪（先攻）。ターン終了の円盤と同じ絵
+    coinBackUrl: 'battle_ui/moon-disc-2635c27ba3e1.webp',  // コイン裏＝月輪（後攻）
     /* ===== ジュース感（game feel） ===== */
     battleShakeActive: false,   // ヒット時のカメラシェイク中か
     battleShakeFinal: false,    // 勝敗を決する一撃（final）の演出中か（長め・強めのシェイク）
@@ -15012,6 +15014,10 @@ new Vue({
         });
         return { runs };
       });
+    },
+    /* 先攻は日輪、後攻は月輪。後攻の側（'self'/'opp'）を返す（ターン終了の円盤・手番の帯の絵と色に使う） */
+    battleMoonSide() {
+      return this.battleContext && this.battleContext.firstSide === 'opp' ? 'self' : 'opp';
     },
     battleReturnLabel() {
       if (this.battleContext.returnView === 'shield') return '星紡ぎ戦';
