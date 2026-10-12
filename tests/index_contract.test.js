@@ -83,7 +83,7 @@ test("mobile viewport and reduced-motion support are enabled", () => {
 
 test("four-player draft exposes return values and recommendation reasons", () => {
   assert.match(html, /class="gm-pack-return-overlay"/);
-  assert.match(html, /デッキ返還値 <b>\{\{ gsMyDraftDeckReturnTotal \}\}<\/b>/);
+  assert.match(html, /返還値<\/span><b>\{\{ gsMyDraftDeckReturnTotal \}\}<\/b>/);
   assert.match(html, /gsDraftCardReturnValue\(card\)/);
   assert.match(html, /gsCpuScoreBreakdown\(card, ctx\)/);
   assert.match(html, /kami: 'カミ', tribe: '種族', color: '属性', curve: 'コスト', other: 'その他'/);
@@ -116,8 +116,9 @@ test("four-player Kami choice requires reviewing effects, pick policy and creati
     assert.ok(Array.isArray(guide.pick) && guide.pick.length >= 2);
   }
   assert.match(html, /class="gs-kami-info-overlay"/);
-  assert.match(html, /カミの情報を確認する/);
-  assert.match(html, /選別の儀 ― ピックの基本方針/);
+  // 候補はカードを押すとプロフィールが開き、ピック方針はピックガイドへのリンクで見る
+  assert.match(html, /@click="gsOpenKamiInfo\(card\)"/);
+  assert.match(html, /openPickGuideForKami\(gsKamiInfoCard\)/);
   assert.match(html, /gsKamiAcceptanceLabel\(gsKamiInfoCard\)/);
   assert.match(html, /kamiSelectionIllustrationUrl\(gsKamiInfoCard\)/);
   assert.match(html, /kami_illustrations\/selection\/\$\{String\(no\)\.padStart\(3, '0'\)\}\.webp/);
@@ -524,7 +525,7 @@ test("Kashima disables choices whose required targets do not exist", () => {
 test("settings screen gathers sound, motion, battle and data options", () => {
   assert.match(html, /<div v-if="settingsModalOpen" class="battle-zone-modal settings-modal" role="dialog" aria-modal="true"/);
   for (const handler of ["toggleMasterMute", "toggleMuteWhenHidden", "battleSetAnimationSpeed", "setReduceMotionPref",
-    "battleToggleTurnTimer", "battleToggleEndTurnAssist", "togglePickAssist", "toggleCpuAutoPlay",
+    "battleToggleTurnTimer", "battleToggleEndTurnAssist", "toggleCpuAutoPlay",
     "resetTutorialProgress", "resetSettingsToDefault"]) {
     assert.ok(html.includes(`@change="${handler}`) || html.includes(`@click="${handler}`), handler);
   }

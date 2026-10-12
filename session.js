@@ -65,12 +65,46 @@ function allSeatsReady(s) {
 /* ================================================================== */
 /* セッション作成                                                       */
 /* ================================================================== */
+/* 部屋の難易度の設定。部屋を作った人（席1）が決め、全員に同じ設定を使う。
+   pickAssist＝選別の儀のおすすめ表示、pickTimer＝ピックの制限時間（時間切れで自動ピック）、battleTimer＝星戦の制限時間（時間切れで自動ターン終了）。
+   制限時間なしのときは、警告も自動処理もしない。秒数（pickFirstSec＝初めて見る束・pickLaterSec＝2周目から・battleSec＝星戦の1ターン）は詳細設定で変えられる */
+const GAME_DIFFICULTY_PRESETS = Object.freeze({
+  beginner:     Object.freeze({ pickAssist: true,  pickTimer: false, battleTimer: false }),
+  intermediate: Object.freeze({ pickAssist: false, pickTimer: false, battleTimer: false }),
+  advanced:     Object.freeze({ pickAssist: false, pickTimer: true,  battleTimer: true }),
+});
+const GAME_TIMER_DEFAULTS = Object.freeze({ pickFirstSec: 120, pickLaterSec: 60, battleSec: 180 });
+const GAME_TIMER_RANGE = Object.freeze({ pickFirstSec: [10, 600], pickLaterSec: [10, 600], battleSec: [30, 900] });
+/** 難易度の設定を正しい形にそろえる（difficulty は3つのどれかか 'custom'。秒数は難易度の判定に使わない） */
+function normalizeGameSettings(input) {
+  const src = input || {};
+  const base = GAME_DIFFICULTY_PRESETS[src.difficulty] || GAME_DIFFICULTY_PRESETS.beginner;
+  const sec = key => {
+    const v = Math.round(Number(src[key]));
+    const [min, max] = GAME_TIMER_RANGE[key];
+    return Number.isFinite(v) && v > 0 ? Math.max(min, Math.min(max, v)) : GAME_TIMER_DEFAULTS[key];
+  };
+  const out = {
+    pickAssist: typeof src.pickAssist === 'boolean' ? src.pickAssist : base.pickAssist,
+    pickTimer: typeof src.pickTimer === 'boolean' ? src.pickTimer : base.pickTimer,
+    battleTimer: typeof src.battleTimer === 'boolean' ? src.battleTimer : base.battleTimer,
+    pickFirstSec: sec('pickFirstSec'), pickLaterSec: sec('pickLaterSec'), battleSec: sec('battleSec'),
+  };
+  const match = Object.keys(GAME_DIFFICULTY_PRESETS).find(key => {
+    const p = GAME_DIFFICULTY_PRESETS[key];
+    return p.pickAssist === out.pickAssist && p.pickTimer === out.pickTimer && p.battleTimer === out.battleTimer;
+  });
+  out.difficulty = match || 'custom';
+  return out;
+}
+
 /**
  * @param {string} playerName
  * @param {boolean} [isPublic] trueならpublicRoomsに登録し、見知らぬ相手にも一覧・ランダムマッチから見つけてもらえるようにする
+ * @param {object} [settings] 部屋の難易度の設定（normalizeGameSettings の形）
  * @returns {Promise<{ sessionCode, playerId, seat: 1 }>}
  */
-async function createSession(playerName, isPublic) {
+async function createSession(playerName, isPublic, settings) {
   const authUser = await ensureFirebaseAuth();
   if (typeof validatePlayerName === "function") {
     const valid = validatePlayerName(playerName);
@@ -91,7 +125,8 @@ async function createSession(playerName, isPublic) {
       1: { id: playerId, ownerUid: authUser.uid, name: playerName || "プレイヤー1", ready: false, kamiNo: null },
     },
     kami: null,
-    pickTimeLimits: { first: 120, later: 60 }, // ピック警告表示の目安秒数（強制効果なし。ホストがロビーで変更可）
+    pickTimeLimits: { first: 120, later: 60 }, // ピックの制限時間（秒）。settings.pickTimer がオンのときだけ使う
+    settings: normalizeGameSettings(settings),
   };
 
   await db.ref(`sessions/${code}`).set(session);
@@ -785,6 +820,17 @@ async function abortSession(code, seat) {
   });
 }
 
+/** ロビーでホストが部屋の難易度の設定を変える */
+async function setGameSettings(code, seat, settings) {
+  if (seat !== 1) return;
+  const ref = getDb().ref(`sessions/${code}`);
+  await ref.transaction(s => {
+    if (!s || s.phase !== 'lobby') return s;
+    s.settings = normalizeGameSettings(settings);
+    return s;
+  });
+}
+
 /** ロビーでホストがピック警告表示の目安秒数を設定する（強制的な時間切れ処理は行わない） */
 async function setPickTimeLimits(code, seat, firstSec, laterSec) {
   if (seat !== 1) return;
@@ -826,5 +872,6 @@ if (typeof module !== "undefined") {
     PAIRINGS, battleWonBySeat, recordBattleResult, advanceAfterBattle,
     cpuSeatsOf, sessionHasCpu, addCpuSeat, removeCpuSeat, pairingsFor,
     setPickTimeLimits, abortSession,
+    GAME_DIFFICULTY_PRESETS, GAME_TIMER_DEFAULTS, normalizeGameSettings, setGameSettings,
   };
 }
