@@ -36,8 +36,8 @@ test("approved production art retains its source bytes and is wired into every d
   }
   // Eye-opening phases must never swap the selected orange Susanoo back to an old painting.
   const susanoo = divineSkillTheme({no:1}, 2);
-  assert.equal(susanoo.awakening, susanoo.cutin);
-  assert.ok(susanoo.awakeningFrames.every(file => file === susanoo.cutin));
+  assert.notEqual(susanoo.awakening, susanoo.cutin);
+  assert.equal(new Set([susanoo.cutin,susanoo.awakening,...susanoo.awakeningFrames]).size,3);
   for (const [group,count] of [['card',9],['chibi',10],['rest',9],['emotes',10],['menus',4],['op',5],['tutorial',6],['framedCard',20]]) {
     assert.equal(record.assets.filter(e => e.group === group).length, count, group);
   }
@@ -93,7 +93,7 @@ test("each genesis skill selects its own optimized art while skill 1 keeps the e
     assert.equal(divineSkillTheme({no},1).cutin,null);
     assert.equal(divineSkillTheme({no},1).awakening,null);
     assert.equal(theme.awakening,no===1?DIVINE_SKILL_AWAKENINGS['1']:null);
-    assert.equal(theme.awakeningFrames.length,no===1?3:0);
+    assert.equal(theme.awakeningFrames.length,no===1?1:0);
     for(const frame of [theme.awakening,...theme.awakeningFrames].filter(Boolean)) {
       const data=fs.readFileSync(path.join(root,frame)),format=data.toString('ascii',12,16);
       const size=format==='VP8X'?[data.readUIntLE(24,3)+1,data.readUIntLE(27,3)+1]:[data.readUInt16LE(26)&0x3fff,data.readUInt16LE(28)&0x3fff];

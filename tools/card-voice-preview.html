@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ゲーム用ボイスの確認</title>
+<style>
+:root{color-scheme:dark}body{margin:0;background:#15171c;color:#eee;font:16px/1.7 system-ui}main{max-width:1200px;margin:auto;padding:28px}h1{font-size:26px}button,input{font:inherit}button{padding:8px 14px;border:1px solid #596477;border-radius:6px;background:#273043;color:#fff;cursor:pointer}button:disabled{opacity:.4;cursor:default}.controls{position:sticky;top:0;background:#15171cf5;padding:12px 0;display:flex;gap:18px;align-items:center;flex-wrap:wrap}.card{padding:18px 0;border-bottom:1px solid #343a45}.events{display:flex;gap:12px;flex-wrap:wrap}.clip{display:grid;gap:6px;max-width:340px}.muted{color:#afb8c7}code{color:#d9c395}a{color:#b6d1ff}
+</style>
+<main><h1>ゲーム用ボイスの確認</h1>
+<p>ゲームと同じ一覧・音量・再生処理で確認します。複数人の台詞や掛け合いは順番に再生します。</p>
+<p class="muted">作成・採用後：プロジェクト直下で <code>npm run voices:prepare -- --root .release-worktree</code> を実行し、下の「一覧を更新」を押してください。候補や取り直しの音声は登録しません。</p>
+<div class="controls"><button id="reload">一覧を更新</button><button id="stop">停止</button><label>音量 <input id="volume" type="range" min="0" max="1" step="0.05" value="0.6"></label><span id="playing" aria-live="polite"></span></div>
+<p id="status" aria-live="polite">読み込み中…</p><label>検索 <input id="search" placeholder="番号・台詞・掛け合い"></label><div id="list"></div></main>
+<script src="/asset_hashes.js"></script><script src="/card_voice_core.js"></script>
+<script>
+const el = id => document.getElementById(id), labels = {summon:'召喚',attack:'攻撃',death:'死亡',use:'使用'};
+const player = CardVoiceCore.createPlayer({makeAudio:src=>new Audio(src),url:src=>src+'?h='+encodeURIComponent(ASSET_HASHES[src]||'preview'),volume:()=>Number(el('volume').value),canPlay:()=>!document.hidden,onActive:active=>{el('playing').textContent=active?'再生中':'停止中';}});
+el('stop').onclick=()=>player.stop();el('volume').oninput=()=>player.setVolume();
+document.addEventListener('visibilitychange',()=>{if(document.hidden)player.stop();});
+function row(title, events){
+  const section=document.createElement('section');section.className='card';
+  const heading=document.createElement('h2');heading.textContent=title;section.append(heading);
+  const content=document.createElement('div');content.className='events';
+  for(const [label,clips] of events){const cell=document.createElement('div');cell.className='clip';
+    const btn=document.createElement('button');btn.textContent=label;btn.onclick=()=>{player.stop();player.enqueue(clips);};cell.append(btn);
+    const caption=document.createElement('span');caption.textContent=clips.map(c=>c.text||c.src).join(' → ');cell.append(caption);content.append(cell);}
+  section.append(content);el('list').append(section);
+}
+async function load(){player.stop();el('list').replaceChildren();
+  try{const res=await fetch('/voices/cards/manifest.json?t='+Date.now(),{cache:'no-store'});if(!res.ok)throw new Error('一覧がまだありません');const data=await res.json();
+    const seen=new Set();let rows=0;
+    for(const [no,events] of Object.entries(data.cards)){const key=JSON.stringify(events);if(seen.has(key))continue;seen.add(key);
+      const nos=Object.keys(data.cards).filter(n=>JSON.stringify(data.cards[n])===key);row('カード No.'+nos.join(' / '),Object.entries(events).map(([event,clips])=>[labels[event]||event,clips]));rows++;}
+    for(const pair of data.pairs||[])row('掛け合い '+pair.id+' ／ '+(pair.kind==='rival'?'敵同士':'味方同士')+' No.'+pair.who.join('/')+' → '+pair.target.join('/'),[['会話を再生',pair.clips]]);
+    el('status').textContent=rows+'種類のカード／'+(data.pairs||[]).length+'組の掛け合い。未作成の台詞はゲーム内では無音です。';filter();
+  }catch(error){el('status').textContent=error.message;}}
+function filter(){const query=el('search').value.trim().toLowerCase();for(const section of el('list').children)section.hidden=!section.textContent.toLowerCase().includes(query);}
+el('search').oninput=filter;el('reload').onclick=load;load();
+</script></html>

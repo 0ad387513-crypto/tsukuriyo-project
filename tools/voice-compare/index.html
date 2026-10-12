@@ -30,6 +30,7 @@
   td.label { white-space: nowrap; color: #90bff2; font-size: 12px; font-weight: 800; }
   td.text { font-size: 14px; line-height: 1.6; min-width: 220px; }
   td.text small { display: block; color: #7f889a; font-size: 11px; }
+  td.text .trial-text { margin-top: 4px; color: #ffd9a0; font-size: 13px; }
   audio { width: 220px; height: 34px; }
   .missing { color: #7f889a; font-size: 12px; }
   .ab { white-space: nowrap; }
@@ -45,7 +46,7 @@
 <p class="lead">ゲームで使っている今のボイス（左）と、新しいモデルで試し作りしたボイス（右）を、台詞ごとに聞き比べます。「交互に聞く」は、今のボイス → 試し作りの順に続けて再生します。</p>
 <div class="controls">
   <label>カミ <select id="kami"></select></label>
-  <label>試し作りの名前 <input id="trial" size="8"></label>
+  <label>試し作りの名前 <input id="trial" size="14" list="trialList" placeholder="一覧から選ぶ"><datalist id="trialList"></datalist></label>
   <button id="reload" type="button">読み込み直す</button>
   <button id="playAll" type="button" class="gold">全部を交互に聞く</button>
   <button id="stop" type="button">停止</button>
@@ -107,6 +108,8 @@
     const names = Object.fromEntries(Object.entries(script.kami).map(([k, v]) => [k, v.name]));
     const now = (current && current.kami && current.kami[no]) || {};
     const tri = (trialManifest && trialManifest.kami && trialManifest.kami[no]) || {};
+    // 別バージョンの台本で作ったときは、その文も並べる
+    const trialTexts = (trialManifest && trialManifest.texts && trialManifest.texts[no]) || {};
     $('trialHead').textContent = `試し作り（${trial}${trialManifest && trialManifest.model ? '・' + trialManifest.model : ''}）`;
     const made = Object.keys(tri).length;
     $('status').innerHTML = made
@@ -116,7 +119,7 @@
     const rows = Object.entries(kami.lines).map(([key, line]) => `
       <tr data-key="${key}">
         <td class="label">${label(key, names)}</td>
-        <td class="text">${line.text}${line.el ? `<small>読み上げ文：${line.el}</small>` : ''}</td>
+        <td class="text">${line.text}${line.el ? `<small>読み上げ文：${line.el}</small>` : ''}${trialTexts[key] && trialTexts[key] !== line.text ? `<div class="trial-text">試し作りの文：${trialTexts[key]}</div>` : ''}</td>
         <td>${audioCell(now[key])}</td>
         <td>${audioCell(tri[key])}</td>
         <td class="ab"><button type="button" data-ab>交互に聞く</button></td>
@@ -142,6 +145,9 @@
 
   (async () => {
     script = await getJson('../../voices/voice_script.json');
+    // 試し作りの名前の一覧（生成スクリプトが voices/trials/index.json に記録している）
+    const trials = await getJson('../../voices/trials/index.json');
+    $('trialList').innerHTML = ((trials && trials.trials) || []).map(name => `<option value="${name}"></option>`).join('');
     if (!script) { $('status').textContent = 'voices/voice_script.json を読み込めませんでした。npm run preview で開いてください。'; return; }
     $('kami').innerHTML = Object.entries(script.kami).map(([no, k]) => `<option value="${no}">${no} ${k.name}</option>`).join('');
     $('kami').value = params.get('kami') || '3';
@@ -149,6 +155,7 @@
     $('kami').addEventListener('change', load);
     $('reload').addEventListener('click', load);
     $('trial').addEventListener('change', load);
+    $('trial').addEventListener('focus', () => { $('trial').select(); }); // 選び直しやすいよう、入力欄を押したら名前を選択状態にする
     $('stop').addEventListener('click', stopAll);
     $('playAll').addEventListener('click', async () => {
       stopAll();

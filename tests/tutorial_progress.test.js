@@ -893,7 +893,7 @@ test("leaving during a cut-in does not restart the following animation", async (
   assert.equal(vm.battleSkillCloseup,null);
 });
 
-test("Orochi roars after its seals release, and dismissing cancels a pending roar", async () => {
+test("Orochi shows the cut-in before the dark reveal and eight dragons, and exit cancels a pending roar", async () => {
   for (const speed of [1,.55]) for (const dismiss of [false,true]) {
     const timers=[],sounds=[];
     const timer=(callback,delay)=>{const t={callback,delay,cancelled:false};timers.push(t);return t};
@@ -901,11 +901,11 @@ test("Orochi roars after its seals release, and dismissing cancels a pending roa
     const vm={_battleEmoteLineFor:()=>'',playKamiVoice(){},_sfxPlay:(name,volume)=>sounds.push({name,volume}),_battleMotionMs:ms=>ms*speed,_battleOrochiMarkRect:()=>({left:100,top:60,width:38,height:44})};
     const using=method('_battleShowSkill2Closeup','kami,skillName,divineSkillTheme,remoteTransfers,writerSide,remoteTargets,setTimeout,clearTimeout',true).call(vm,{no:10},'神技2',require('../divine_effects.js').divineSkillTheme,null,'self',null,timer,cancel);
     assert.deepEqual(sounds,[{name:'skill2',volume:undefined}]);
+    assert.equal(vm.battleSkillCloseup.phase,'portrait');
     assert.equal(timers[0].delay,1800*speed);
     timers[0].callback();await Promise.resolve();
     assert.equal(vm.battleSkillCloseup.phase,'animation');
-    assert.equal(timers[1].delay,4200*speed*.82);
-    assert.ok(timers[1].delay>4200*speed*.64,'the roar follows a pause after the girl is fully revealed at normal and fast speed');
+    assert.equal(timers[1].delay,4200*speed*.82,'the roar follows the face reveal and starts as eight dragons appear');
     assert.equal(timers[2].delay,4200*speed+3200);
     assert.ok(timers[2].delay-timers[1].delay>=3000,'the dragon scene stays visible until the roar has played in full');
     if (!dismiss) timers[1].callback();
@@ -926,6 +926,26 @@ test("Orochi roars after its seals release, and dismissing cancels a pending roa
   }
 });
 
+test('Orochi speaks during the first cut-in without replaying speech during the dark reveal', async () => {
+  const show=method('_battleShowSkill2Closeup','kami,skillName,divineSkillTheme,remoteTransfers,writerSide,remoteTargets,setTimeout,clearTimeout',true);
+  for(const exit of [false,true]){
+    const timers=[],voices=[],holds=[];
+    const voice={done:Promise.resolve(true)};
+    const vm={battleAnimationSpeed:'normal',_battleReducedMotion:()=>false,_battleEmoteLineFor:()=> '世界を終わらせる',
+      _battleMotionMs:ms=>ms,_sfxPlay(){},playKamiVoice(){voices.push(this.battleSkillCloseup.phase);return voice},
+      _battleHoldSpeech(text,audio,done){assert.equal(audio,voice);holds.push({text,done});return {timer:null,cancel(){}}}};
+    const run=show.call(vm,{no:10},'創世神技',require('../divine_effects.js').divineSkillTheme,null,'opp',null,(callback,delay)=>{const t={callback,delay};timers.push(t);return t},()=>{});
+    assert.equal(vm.battleSkillCloseup.phase,'portrait');assert.deepEqual(voices,['portrait']);
+    assert.equal(holds.length,1);assert.equal(vm.battleSkillCloseup.writerSide,'opp');
+    if(exit)vm.battleSkillCloseup=null;
+    holds[0].done();await Promise.resolve();
+    if(exit){await run;assert.deepEqual(voices,['portrait']);assert.equal(timers.length,0);continue;}
+    assert.equal(vm.battleSkillCloseup.phase,'animation');assert.deepEqual(voices,['portrait']);
+    timers.at(-1).callback();await Promise.resolve();assert.equal(vm.battleSkillCloseup.phase,'sealArrival');
+    timers.at(-1).callback();await run;assert.equal(vm.battleSkillCloseup,null);
+  }
+});
+
 test('Orochi gathers eight seals into the same ability mark on either side', () => {
   const {divineOrochiSealArrivalStyles,divineOrochiSealMarkStyle}=require('../divine_effects.js');
   const seals=divineOrochiSealArrivalStyles({innerWidth:1200,innerHeight:800});
@@ -942,29 +962,31 @@ test('Orochi gathers eight seals into the same ability mark on either side', () 
   assert.match(html,/divine-orochi-seal-arrival/);
 });
 
-test("Orochi uses the approved painting throughout the eight-seal animation", () => {
-  const {divineSkillAssetUrls,DIVINE_OROCHI_UNIFIED_SCENE,DIVINE_SKILL_CUTINS}=require('../divine_effects.js');
+test("Orochi uses one unified dark scene for the face and eight dragons after the approved cut-in", () => {
+  const {divineSkillTheme,divineSkillAssetUrls,divineOrochiMaskFragments,DIVINE_OROCHI_DARK_PORTRAIT,DIVINE_OROCHI_DARK_MASK,DIVINE_OROCHI_MASKED_SCENE,DIVINE_OROCHI_MASK_OVERLAY}=require('../divine_effects.js');
+  const theme=divineSkillTheme({no:10},2), assets=divineSkillAssetUrls({no:10});
+  assert.equal(theme.sealedCutin,null);
+  assert.equal(theme.cutin,'kami_cutin/orochi-no-paper-6d3cd5f796d0.webp');
+  assert.ok(!assets.includes(DIVINE_OROCHI_MASKED_SCENE));
+  assert.ok(!assets.includes(DIVINE_OROCHI_MASK_OVERLAY));
+  for(const file of [theme.cutin,DIVINE_OROCHI_DARK_PORTRAIT,DIVINE_OROCHI_DARK_MASK]) {
+    assert.ok(assets.includes(file));
+    assert.ok(fs.statSync(path.join(__dirname,'..',file)).size<=300000);
+  }
+  assert.ok(!assets.some(url=>/seal-paper|torn-seal|orochi-head-/.test(url)));
+  const fragments=divineOrochiMaskFragments();
+  assert.equal(fragments.length,8);
+  assert.equal(new Set(fragments.map(s=>s.clipPath)).size,8);
+  assert.equal(new Set(fragments.map(s=>s['--fragment-x']+','+s['--fragment-y'])).size,8);
   const components={};
   Function('Vue',fs.readFileSync(path.join(__dirname,'..','divine_effects.js'),'utf8'))({component(name,definition){components[name]=definition}});
-  assert.match(components['divine-skill-art'].template,/class="orochi-unified-girl"/);
-  assert.match(components['divine-skill-art'].template,/class="orochi-unified-dragons"/);
-  assert.doesNotMatch(components['divine-skill-art'].template,/orochi-face-glow/);
-  assert.match(components['divine-skill-art'].template,/class="orochi-peeling-seal"/);
-  assert.doesNotMatch(components['divine-skill-art'].template,/class="genesis-broken-seal"/);
-  assert.doesNotMatch(components['divine-skill-art'].template,/orochi-dragon-eye-pair/);
-  assert.ok(divineSkillAssetUrls({no:10}).includes(DIVINE_OROCHI_UNIFIED_SCENE));
-  assert.equal(DIVINE_SKILL_CUTINS['10'],'kami_cutin/yamata-no-orochi-cutin-770a16e40338.webp');
-  assert.equal(DIVINE_OROCHI_UNIFIED_SCENE,DIVINE_SKILL_CUTINS['10']);
-  assert.ok(divineSkillAssetUrls({no:10}).includes(DIVINE_SKILL_CUTINS['10']));
-  assert.equal(divineSkillAssetUrls({no:10}).filter(url=>url===DIVINE_OROCHI_UNIFIED_SCENE).length,1);
-  assert.ok(!divineSkillAssetUrls({no:10}).some(url=>url.includes('orochi-silhouette-')||url.includes('orochi-awakened-expression-')||url.includes('orochi-eight-dragons-wide-')));
-  assert.ok(fs.statSync(path.join(__dirname,'..',DIVINE_OROCHI_UNIFIED_SCENE)).size<300000);
-  const css=fs.readFileSync(path.join(__dirname,'..','divine_effects.css'),'utf8');
-  assert.ok(css.includes(`background:url('${DIVINE_OROCHI_UNIFIED_SCENE}') center/100% 100% no-repeat`));
-  assert.doesNotMatch(css,/fx-orochi-face-glow/);
-  assert.match(css,/@keyframes fx-orochi-girl[^\n]*44%,52%\{opacity:1;filter:brightness\(\.055\)/);
-  assert.match(css,/@keyframes fx-orochi-dragons[^\n]*0%,80%\{opacity:0/);
-  assert.ok(!divineSkillAssetUrls({no:10}).some(url=>url.includes('orochi-awakening-frames-')));
+  assert.match(components['divine-skill-art'].template,/orochi-mask-cracks/);
+  assert.match(components['divine-skill-art'].template,/orochi-mask-fragment/);
+  assert.match(components['divine-skill-art'].template,/orochi-dark-portrait" :src="orochiDarkPortrait"/);
+  assert.match(components['divine-skill-art'].template,/orochi-dark-shroud/);
+  assert.equal((components['divine-skill-art'].template.match(/:src="orochiDarkPortrait"/g)||[]).length,1);
+  assert.doesNotMatch(components['divine-skill-art'].template,/orochi-masked-scene|orochi-revealed-scene/);
+  assert.doesNotMatch(components['divine-skill-art'].template,/orochi-peeling-seal|orochi-seal-lattice/);
 });
 
 test("all ten Kami present both skills without field replays", () => {
@@ -1163,19 +1185,20 @@ test("remote Yamato survivor cues map to safe areas rather than damage effects",
 test("cinematic layout uses the actual Kami and the opposing public field with CPU mapping", () => {
   const selections=[];
   const portrait={left:450,top:600,width:100,height:100},field={left:10,top:200,width:1000,height:180};
-  const vm={battleViewSide:side=>side==='self'?'opp':'self',$el:{querySelector(sel){selections.push(sel);return {getBoundingClientRect:()=>sel.includes('kami-portrait')?portrait:field}}}};
+  const vm={battleViewSide:side=>side==='self'?'opp':'self',$el:{querySelector(sel){selections.push(sel);return {getBoundingClientRect:()=>sel.includes('kami-portrait')?portrait:field,querySelectorAll:()=>[]}}}};
   const layout=method('_battleDivineStageLayout','writerSide').call(vm,'self');
   assert.match(selections[0],/battle-row-opp-top/);
   assert.equal(selections[1],'.self-legacy-drop');
   assert.deepEqual(layout.origin,{x:500,y:650});
-  assert.deepEqual(layout.enemy,field);
-  assert.deepEqual(layout.friendly,field);
+  assert.deepEqual({...layout.enemy,cover:undefined},{...field,cover:undefined});
+  assert.deepEqual(layout.enemy.cover,{left:-2,top:188,width:1024,height:204});
+  assert.deepEqual({...layout.friendly,cover:undefined},{...field,cover:undefined});
   assert.equal(selections[2],'.battle-row-legacy .legacy-field:not(.self-legacy-drop)');
 });
 
 test("Okuninushi's colored orbs manifest successively before the final white rabbit", () => {
   const beasts=require('../divine_effects.js').divineBeastManifestations();
-  assert.deepEqual(beasts.map(b=>b.name),['wolf','stag','boar','fox']);
+  assert.deepEqual(beasts.map(b=>b.name),['wolf','stag','boar','owl']);
   assert.equal(new Set(beasts.map(b=>b.color)).size,4);
   for(let i=0;i<beasts.length;i++) {
     if(i) assert.ok(beasts[i].style['--summon-start']>beasts[i-1].style['--summon-start']);
@@ -1772,4 +1795,23 @@ test("forced reduced motion overrides the device setting for battle and top anim
     assert.equal(fn.call({reduceMotionPref:'on'}),true,name);
   }
   assert.match(html,/'force-reduce-motion': reduceMotionPref === 'on'/);
+});
+
+
+test("scroll covers include the full corners of rotated and protruding cards from either writer", () => {
+  const field={left:100,top:200,width:800,height:180};
+  const cards=[{left:70,top:170,width:220,height:150},{left:850,top:320,width:140,height:210}];
+  const fieldEl={getBoundingClientRect:()=>field,querySelectorAll:()=>cards.map(r=>({getBoundingClientRect:()=>r}))};
+  for(const writerSide of ['self','opp']) {
+    const vm={battleViewSide:s=>s,$el:{querySelector:sel=>sel.includes('kami-portrait')?{getBoundingClientRect:()=>({left:400,top:600,width:100,height:100})}:fieldEl}};
+    const layout=method('_battleDivineStageLayout','writerSide').call(vm,writerSide);
+    const covers=require('../divine_effects.js').divineFieldScrolls(layout);
+    for(const cover of covers) for(const c of cards) {
+      assert.ok(parseFloat(cover.left)<=c.left-12);
+      assert.ok(parseFloat(cover.top)<=c.top-12);
+      assert.ok(parseFloat(cover.left)+parseFloat(cover.width)>=c.left+c.width+12);
+      assert.ok(parseFloat(cover.top)+parseFloat(cover.height)>=c.top+c.height+12);
+    }
+    assert.equal(layout.enemy.width,800,'blade coordinates keep the original field dimensions');
+  }
 });

@@ -1,45 +1,166 @@
 # Claude → Codex 引き継ぎメモ（2026-09-26 時点）
 
-## Claude 追記：v1.15.380 星戦画面の新しい配置（2026-10-09）※ブランチ claude/battle-layout-v2・未push
+## Claude 追記：カードボイスの音声作成ツール（2026-10-09）
 
-- 対戦画面の新しい配置（`battleLayoutV2`）。**既定で有効**（設定メニューの「従来の配置」で元に戻せる・端末に記録）。index.html の新配置のCSSは `.battle-layout-v2`（盤面）と `.app.battle-v2`（盤面の外の窓）にまとめてある。
-- 構図：中央の縦軸にカミ（相手が上・自分が下）、レガシー2段（間に境目なし）、相手と自分は斜めの対（相手の伏せ札・自分のレリックは左側、自分の手札・相手のレリックは右側）。右の列は渾天儀（円盤＝ターン終了、自分のターンは日輪・相手は月輪、上下の弧の星＝マナ、環を回る光＝残り時間）。
-- 画風は「黒漆に細い金線の控えめな蒔絵」。部品は ChatGPT 製の素材を `battle_ui/`（内容ハッシュ付きWebP、`optimized_assets.json` に記録、`_headers` で1年キャッシュ）。依頼資料は design_assets/battle-layout-v2-parts-request/。
-- 背景6枚を「暗めの美麗イラスト・舞台ごとに色を分けた」版に作り直し（`battle_fields/<キー>-<hash>.webp`、旧 webp は削除、旧 svg は保管）。新配置では明るさ105%・彩度90%で敷き、外周だけ暗くする。神使の旧背景用の位置合わせは削除。依頼資料は design_assets/battle-fields-v2-request/（経緯：金雲→やめる、つるつる→戻す、など）。
-- ルール変更：**レリックの上限を7→5枚**（`battleFieldLimit(zone)`。判定・CPU・通知・説明文・チュートリアルの台詞を変更）。テスト `field zones hold up to 7 legacies and 5 relics` を追加。オンラインは双方の版が一致する必要あり。
-- 主な表示：マナの印の形でカードの種類を区別（レガシー＝丸・レリック＝八角形・オラクル＝ひし形。手札・場のレリック・左上の情報欄）。属性の色は暗め（赤 #8e1c1c など）。金の輪は一定の太さ。天力・ライフの紋は窓の縁（自分は下寄り・相手は上寄り）、スサノオ・オロチの印は自分は右上・相手は右下。神技の札は大きめ・使えるとき光る（金は強く、銀は控えめ）。
-- 演出：カードの移動（加わる＝カードが飛ぶ／去る＝金の光が縮む。枚数・中身の変化を見る `_battleV2FlightsForZones`。CPUの手番中は既存の飛ぶ演出を止める）、戦闘力・神攻力の増減の数字、手番の帯、オラクル発動等の中央演出（黒漆と金）、結果画面（「勝利」「敗北」の2文字、記録は折りたたみ）、マリガン画面。
-- 窓の文：冗長な説明を削った（「両プレイヤーへの公開処理」の札・リロールの説明など）。今後も文は最小限に（ユーザー方針）。
-- 修正した不具合：中央演出がトーストの `top/max-height` を引き継いで潰れる（Vue の要素の使い回し → key を付けた）、【奇襲】の赤い光が次のターンも残る、手札を拡大すると場に置ける範囲が細い帯だけになる（新配置ではカード以外の盤面の中央で離せば置ける）。
-- SE：ElevenLabs で作る準備のみ（`scripts/generate_sfx_elevenlabs.js`、計画 `tools/sfx-lab/plan.json`、試聴 `tools/sfx-lab/`、候補は `sfx/candidates/`＝コミットしない）。ユーザーの指示で一時停止中。新しいSEはまだゲームに配線していない。
-- 未確認：実際の2人対戦（同期中の移動演出・数字が誤って大量に出ないか）、タブレット、性能の低いPC。180テスト成功。
+- scripts/generate_card_voices_elevenlabs.js を追加（cast / status / design / pick / lines / release / bundle）。台本は tools/voice-script/card_voice_script.json・card_voice_pairs.json（正本はメンバー共有ページ。Claude が取り込む）、キャストは card_voice_cast.json（90人、うち新しい声81人・カミの声9人、台詞422本）。
+- 出力は voices/cards/{ref}.mp3、候補は voices/cards/previews/（配信しない）、声の記録は voices/cards/voices.json。カミの声10枠は消さず、カード用の声は作って台詞を録ったら release で削除する運用。Starter は空き枠0のため Creator 以上が必要。
+- bundle で tools/voice-script/audio/ にまとめ、Claude が共有ページ（https://claude.ai/artifact/FhjJWGhKHFPbH2yiuGJFtj）に公開すると再生ボタンで聴ける。未コミット（同じ内容はブランチ claude/kami-motion にコミット済み）。
 
-## Claude 追記：v1.15.294（2026-10-01）※未コミット（ユーザー確認待ち）
+## Claude 追記：カードボイス台本の編集ページ（2026-10-09）
 
-- 星戦画面の整理（ChatGPTの依頼文「A案」、`design_assets/battle-ui-icons-semantic-v3/CLAUDE_PROMPT.md`）。ルール・対戦処理は変更なし。
-- デッキ・墓地・崩壊のアイコンを v3 の `deck.svg`／`graveyard.svg`／`crumble.svg` のインラインSVGに差し替え（`.dgc-deck-icon` #b9d9f2、`.dgc-graveyard-icon` #d8c6e8、`.dgc-crumbled-icon` #e7b6ae、24px／低い画面では22px）。枠の色・配置・領域名・枚数・クリック／右クリック／ドロップは従来どおり。旧CSSの札3枚（`.ddi-card`）は削除。
-- ヘッダーの `⏱` を `timer.svg` に。手動調整の入口として `adjustment.svg` のボタンを追加（どちらも `.battle-header-icon-btn`、`aria-expanded` 付き）。色はユーザー指定で常に金色 #e8c878（依頼文の「通常 #cbd3de」はやめた）。開いている間はボタンの地を明るくして示す。
-- バトルログのボタンの 📜 を、戦績と同じ `ui-icon-battle-record` に（ユーザー指定、`.battle-log-btn`）。
-- 盤面に常時出ていたライフ・天力／封印・マナの増減ボタン（`.orb-value-controls`／`.orb-max-controls`／`.mana-controls`）を削除し、ヘッダーの「手動調整」パネル（`battleAdjustOpen`）へ集約。中身は従来と同じ `battleStat('self', …)`（上限・天力トリガー・同期はそのまま）。上限に達してもボタンは無効化しない（増加を試みただけで発火するアメノウズメの天力トリガーのため）。チュートリアル中と観戦中は入口ごと出さない。
-- ヘッダーのパネル（音量・時間・手動調整・通信の詳細）は `battleToggleHeaderPanel(key)` で1つずつ開き、外側クリック（`onWindowClick`）で全部閉じる（時間設定は従来外側クリックで閉じなかった）。
-- ヘッダーの整理：「⚔ 対戦画面」は読み上げ用の `sr-only` 見出しに、マリガン回数の表示は削除。オンライン時の同期状態・観戦中は状態名だけのボタン（`.battle-sync-detail-btn`）にし、コード・席・送受信時刻・revision・状態の説明は押すと開く「通信の詳細」（`battleNetDetailOpen`）へ。同期警告・再同期・相手切断・観戦者数の表示は従来どおり常時表示。
-- 盤面の高さ：相手の段を `minmax(96px, calc(var(--kw) + 36px))` に抑え（1920×1080で196→174px。カミ・伏せ札の大きさは変わらない）、余りをレガシーの場と自分の段へ。上下の段に `grid-template-rows: minmax(0,1fr)` を入れ、中央のカミ列の中身で段が伸びて自分の手札枠が画面下へはみ出していた問題（1366×768で13px）を解消。中央列は `justify-content: safe center`＋子の `flex-shrink:0` で、カミの位置は従来と同じ。
-- 自分の手札のカードの大きさは「7枚が横に並ぶ幅」で決まっているため、高さを増やしても大きくならない（7枚条件は維持）。
-- 175テスト成功。1366×768・1920×1080・1024×640で確認。オンライン時の表示は通信状態を仮に立てて見た目のみ確認（実対戦での確認は未実施）。
+- tools/voice-script/index.html（http://localhost:8765/tools/voice-script/）と台本 tools/voice-script/card_voice_script.json を追加。scripts/serve.js に /__dev/voice-script（GET 全体／POST ?id=n001 で1件の項目だけ上書き）を追加し、確認用サーバーを再起動済み。未コミット（同じ内容はブランチ claude/kami-motion にコミット済み）。台本の編集はユーザーが行うので、このJSONを上書きしないこと。
 
-## Claude 追記：v1.15.293（2026-10-01）
+## 追記（2026-10-05・Claude）：設定画面を追加（v1.15.379・未コミット）
 
-- カミ図鑑（ユーザー指定）：右の列の「カミの効果」「ボイス」「ちびキャラ」は上から順に開く折りたたみのまま、左下の絵の下にあった「演出を見る」を同じ形の項目「演出」にした（開くと「神技」「創世神技」のボタン。絵文字は外した。開閉は `kamiDexShowSkills`、初期はたたんだ状態）。並びは カミの効果 → 演出 → ボイス → ちびキャラ。4項目は1つの枠（`.kami-dex-accordion`）に区切り線で並べる。一度試した「1行の帯」形式はユーザーの判断で取りやめ。
-- 「ピックガイドを見る」は名前の右端の小さなボタン（`.kami-dex-pickguide-btn`）に移した。
-- 開いた直後にスクロールなしで全体が見えるよう、図鑑内だけ余白・行間・上段のカミ一覧の絵・名前の大きさを画面の高さに合わせて詰め、左の絵の幅を `(100vh - 330px) × 600/838` 以内にした。小見出し「KAMI ENCYCLOPEDIA」は図鑑内では非表示。1366×768で9柱すべて、1900×990でも初期状態はスクロールなし（項目を開いたときだけスクロール）。175テスト成功。
+- 右上の共通ボタン（TOP等）に「設定」（歯車、金色線画のSVGデータURI `.ui-icon-settings`）、対戦ヘッダーの⏱の右に歯車ボタンを追加。`settingsModalOpen` のモーダル（z-index 9600）に、音／演出・表示／対戦／データの4タブ。既存の「音量」「⏱」ポップオーバーは手早い調整用に残した。
+- 既存設定の集約：SE・ボイス・BGM音量、BGM選択、演出速度、ターン経過時間、ターン終了前確認、選別の儀のおすすめ、CPU自動プレイ、戦績を開く。
+- 新設定：すべての音を消す（`tsukuriyo_masterMuted`）、ほかの画面を見ている間は消音（`tsukuriyo_muteWhenHidden`、visibilitychange で `pageHidden`）、動きを減らす（`tsukuriyo_reduceMotion`：system/on。on で `_battleReducedMotion`/`_topInfoReducedMotion` が true、#app に `force-reduce-motion` を付けて全アニメーション・トランジションを0.01msに）、チュートリアル記録の消去、設定を初期値に戻す（デッキ・戦績・チュートリアル記録は保持）。
+- 音の出力は `_effectiveVolume` 経由（SEゲイン・BGMゲイン・ボイスAudio）。保存済み音量は変えない。ミュート中は `playKamiVoice` が undefined を返し、台詞は文字数の読了時間で表示される。
+- チュートリアルの説明中クリック捕捉（tutorialSurfaceClick）は、設定画面とその開閉ボタンを除外。Esc で設定を閉じ、Tab はモーダル内に留める。
+- テスト3件追加・既存1件の模擬に `_effectiveVolume` を追加。全179テスト成功。ローカル確認用 http://localhost:8765/index.html で v1.15.379 配信を確認。Claude の内蔵ブラウザは開いていない。
+- **本番反映済み（ユーザー指示）**：設定画面の差分だけを origin/main（v1.15.323）へ載せ、`8c1dd03 feat: 設定画面を追加 … v1.15.379` として main へ push。GitHub Actions 成功、https://tsukuriyo-online.netlify.app/ で v1.15.379 を確認。この作業ツリーの未コミット作業のうち「赤い風」版の創世決戦画像（genesis4p・genesis_story・optimized_assets.json・関連テスト1行）は本番に含めていない。
+- main 側では v1.15.294 の対戦ヘッダー整理に合わせ、歯車ボタンを `battle-header-icon-btn` にしてバトルログの左へ配置、`openSettings` は手動調整・通信の詳細パネルも閉じる。この作業ツリーの index.html にも同じ設定画面の変更が入っているため、origin/main を取り込む際は設定画面まわりは main 側を採用すること。
 
-## Claude 追記：v1.15.292（2026-10-01）
+## 追記（2026-10-04）：カットイン/カードのぎらつき抑制（v1.15.374・未コミット）
 
-- 言葉の統一（ユーザー指定）：画面・ガイド・チュートリアルの台詞の「変換値」をすべて「返還値」に（`TUTORIAL_KEYWORDS` の強調語も）。旧名「シールド戦」は、プレイヤーに見える文字だけ「星紡ぎ戦」に置換または削除（対戦ヘッダーの `modeLabel`、「パック選択からやり直す（シールド戦のトップへ）」→「パック選択からやり直す」、中断確認、カミ選択の注記、観戦の選択肢）。コメントや内部名は変更していない。
-- プレイガイドの「CHAPTER 11 カミと難易度」のカミ一覧（難易度★）はカミ図鑑と重なるため削除（ユーザー指定）。同じ章にあった操作のショートカットの表は残し、章を「操作のショートカット」（`#manual-shortcuts`、目次は「操作」）にした。プレイガイドからは隠しカミの「？」表示の入口が無くなった（ピックガイド側の入口と、選別の章の隠しカミ専用の注記の仕組みは残っている）。`tests/index_contract.test.js` の該当確認を、一覧が無いこと・ショートカットの章があることの確認に変更。
-- ロビーの入口（ユーザー指定：「友達」という言葉は使わない。「相手」「CPU」はよい）：星紡ぎ戦・理念構築戦・創世決戦のロビーを、名前の下に「相手と対戦」「CPUと対戦」の2枠（`.lobby-choices` / `.lobby-card`）を並べる形に統一。相手と対戦＝対戦相手を探す・公開中の部屋一覧・部屋（セッション）を作って待つ・コードで入る。CPUと対戦＝開始ボタン（理念構築戦はCPUのデッキ選択つき）と、CPUの自律行動の切り替え。「ソロテスト」「動作確認できます」などの開発者向けの言葉は外した。処理（ハンドラー・v-model）は変更していない。CPUの切り替えの説明は実際の動作（オフ＝CPUはすぐにターン終了）に合わせた。
-- 3つのガイド窓（プレイガイド・ピックガイド・カミ図鑑）の枠をそろえた（ユーザー指摘：大きさ等が不統一）。共通指定：画面中央・幅 min(1320px, 100vw-32px)・高さ 100vh-32px・角丸12px・枠線 #765e35・同じ背景。スマートフォン幅（760px以下）は従来どおり全画面。カミ図鑑の見出しを `.manual-header`（丸い印＝金の鳥居アイコン＋題名＋副題＋OPボタン＋「閉じる」）に作り替え、本文を `.kami-dex-scroll` で包んで見出しの下だけスクロールするようにした（「×」ボタンは廃止）。カミ図鑑を開いている間は右上の共通ボタン（戦績・音量）を隠す（見出しと重なっていた）。プレイガイドの本文の高さ指定（100%-69px）が見出しの実際の高さ（80px）とずれ、末尾が約11px切れていたので、枠をflexにして残りの高さをちょうど使うようにした。1366×768・1900×990で3つとも位置・大きさ・見出し・閉じるボタンの位置が一致することを確認。
-- 1366×768で3つのロビーとも、スクロールなしで2枠が並ぶことを確認。175テスト成功。
+- 現行候補のカットイン11枚、ジェネシスカード20枚を内蔵image_genで編集。カードの演出あり/削除版、アメノウズメ布あり/なしを含む。全体の明るさ・露出は保持する指示で、追加の明るさ補正はなし。肌/髪/衣装/武器/背景の細かな粒状光を整理し、陰影・立体感・必要な風/雷/炎などを保持。オロチのカードとディエスイレは対象外。
+- 原本31枚・全入力コピー・全指示・旧catalog・検証・再現スクリプトは kami_redesign/revisions/cutin-card-smooth-rendering-2026-10-04/。指定インポーターでcutin1600×900、card1100×1100、最大298416bytes。31表示WebPとcatalog現行フィールド、アメノウズメのprimary aliasesを更新。旧URL/ラベル/指示/出典はpreviousBeforeCutinCardSmoothRendering系へ保持。人物/ちび/ロード/過去候補/ゲーム本体採用は保持。manifest/version374更新。
+- cutin-card-smooth-preview.htmlに10柱31組62画像。種類フィルター（カットイン11、カード演出あり10、削除版10）・全参照・遅延読み込みを検証。既存7比較ページから案内。npm176件・Python4件成功。ローカル42ファイル正本一致、生成原本と圧縮抜粋を目視。平均輝度の診断のみ保存（補正なし）。
+- 共有準備 .kami-share/shared-cutin-card-smooth-20261004/ は13ページ・423ファイル・画像参照395件・差分120件・欠落0。スクリプト保持と移動/戻るを検証。未公開、既存Claude共有サイトの編集アクセス待ち、state.json保持。コミット・PUSH・デプロイなし。Codexのゲームブラウザは開いていない。
+
+## 追記（2026-10-04）：全カミ人物のぎらつき抑制・明るさ調整（v1.15.373・未コミット）
+
+- ユーザーは添付オロチを承認し、ほかのカミも粒状のぎらつき抑制を依頼。その後、全体を少し明るくする追加指定。内蔵image_genでほか9柱の人物10枚（アメノウズメ布あり/なし）を編集。7枚は抑制版から明るさのみ再編集、残り3枚は抑制と明るさを同時指定。肌/髪/衣装の粒状光を減らし、素材の陰影と固有の風/雷/炎を保持。原本・全入力・全指示・明るさ調整前・旧catalog・検証はrevisions/kami-smooth-rendering-2026-10-04/。
+- オロチ添付はv371原本と全画素一致。指定画像をそのまま再採用、再生成なし、v372候補は履歴保持。全10柱のmaster、アメノウズメCovered/Uncoveredを更新。旧人物/指示/出典はpreviousBeforeKamiSmoothRenderingMaster系へ保存。他用途・ゲーム本体採用は保持。指定インポーターscene最大辺1100・品質82・全11表示画像300KB以下、manifest/version373更新。
+- smooth-rendering-preview.htmlに修正前後22画像（10柱＋アメノウズメ布あり）を追加。既存全体/アメノウズメ/オロチ人物ページ更新。ローカル18ファイル正本一致、npm176件・Python4件成功。明るさ調整前7枚に対する平均輝度上昇と圧縮画像目視確認。新ページの10見出し/22画像/背景切替を検証、各記録はrevision参照。
+- 最新共有準備.kami-share/shared-kami-smooth-rendering-20261004/は12ページ・390ファイル・画像参照361件・差分86件・欠落0、移動と戻る検証済み。未公開、既存Claude共有サイトの編集アクセス待ち、state.json保持。コミット・PUSH・デプロイなし。Codexのゲームブラウザは開いていない。
+
+## 追記（2026-10-04）：龍の塗りを少し戻す（v1.15.372・未コミット）
+
+- ユーザーは粒状感抑制版の龍の塗りが少しチープとして、少し元の塗りへ戻す指定。内蔵image_genで前回画像を対象、元画像を龍の質感のみの参照に使用。鱗の接触影・銀灰/炭黒の色差・控えめな艶・顔と首の立体感を小幅に復元（元の25〜30%程度の質感を戻す指示）。粒状のぎらつきは抑えたまま、人物と衣装・背景・8首・4色口球を保持。
+- 人物master更新。旧画像・指示はpreviousBeforeDragonRefinementMaster系へ保存。全原本・2入力・全指示・旧catalog・検証はrevisions/orochi-dragon-refinement-2026-10-04/。指定インポーターで788×1100・224660bytes・品質82。manifest/version372更新。他用途・他カミ・本体採用保持。
+- 専用ページに今回の画像と前回のなめらかな塗りを並べて掲載。npm176件・Python4件成功、圧縮画像目視。ローカル配信正本一致はrevision内validation.json参照。最新共有準備.kami-share/shared-orochi-dragon-refinement-20261004/は11ページ・379ファイル・画像参照349件・差分75件・欠落0、移動と戻る検証済み。未公開、編集アクセス待ち、state.json保持。コミット・PUSH・デプロイなし。
+
+## 追記（2026-10-04）：ヤマタノオロチ人物の粒状感・ぎらつき抑制（v1.15.371・未コミット）
+
+- ユーザーはChatGPT生成画像の粒のようなぎらつき修正を依頼。現行masterのPNG原本を内蔵image_genで編集、衣装・髪・龍の鱗の点状ハイライトと過密な発光を減らし、輪郭を保持した面のなめらかな陰影へ。邪悪な表情、8つの首と異なる姿勢、赤黒い角、龍の口の赤/青/緑/黄1個ずつと残り空の4口、手の紫黒球を目視確認。
+- 人物masterのみ更新。旧人物・ラベル・指示はpreviousBeforeSmoothRenderingMaster系へ保存。他用途・他カミ・本体採用保持。全入力/出力原本・全指示・旧catalog・圧縮情報・検証はrevisions/orochi-smooth-rendering-2026-10-04/。
+- 指定インポーターで787×1100・242900bytes・品質82。optimized-unified/yamata-no-orochi-smooth-rendering-847ae94d50e6.webp、manifest/version371更新。全体人物とorochi-revision-preview.htmlへ反映、専用ページは今回の修正前も隣に掲載。既存の修正前リンクも今回の直前へ変更。
+- npm176件・Python4件成功、圧縮画像目視。配信正本一致はrevision内validation.json参照。最新共有準備.kami-share/shared-orochi-smooth-rendering-20261004/は11ページ・378ファイル・画像参照348件・差分74件・欠落0、移動と戻る検証済み。未公開、編集アクセス待ち、state.json保持。コミット・PUSH・デプロイなし。
+
+## 追記（2026-10-04）：ツクヨミ額マーク採用・アメノウズメ体格（v1.15.370・未コミット）
+
+- 内蔵image_genでツクヨミの額を添付ラフの上が開いた青い円・中央の丸い点・下向き直線へ。内側は肌色、青い角保持。ユーザーが生成画像を人物イラストへ採用指定。master更新、旧人物と指示はpreviousBeforeMarkPetiteMaster系に保持。
+- アメノウズメは承認された顔と舞いを保ち、成人の印象を維持した少し小柄で控えめな体格へ（身長4〜6%・胸腰の曲線15%程度を抑える生成指示、厳密な寸法ではない）。布なしから同体格の布ありも制作。masterは布なし、Covered/Uncovered両方更新、旧人物全保持。他用途・他カミ・ゲーム本体採用保持。
+- 全原本・全入力・全指示・旧catalog・圧縮情報・検証はrevisions/tsukuyomi-mark-uzume-petite-2026-10-04/。指定インポーターでツクヨミ788×1100/211496bytes、アメノウズメ両方786×1100、布なし222514bytes/布あり214766bytes、品質82。manifest/version370、専用#light-danceと全体一覧更新。
+- npm176件・Python4件成功、圧縮3枚目視。ローカル配信正本一致はrevision内validation.json参照。最新共有準備.kami-share/shared-tsukuyomi-mark-uzume-petite-20261004/は11ページ・376ファイル・画像参照347件・差分71件・欠落0、移動と戻る検証済み。未公開、編集アクセス待ち、state.json保持。コミット・PUSH・デプロイなし。
+
+## 追記（2026-10-04）：ツクヨミの額の白い部分を肌色へ（v1.15.369・未コミット）
+
+- 添付「ツクヨミイラスト（仮）.jpg」を内蔵image_genで編集。額の白い楕円内側と白い部分を肌色へ。青い中央・輪郭・下の水色模様と角を保持する指示。原本と圧縮画像を目視し、肌色と青の残存を確認。入力原本・全指示・出力・旧catalog・検証はrevisions/tsukuyomi-forehead-skin-2026-10-04/。
+- masterのみ修正画像へ、旧人物と指示はpreviousBeforeForeheadSkinMaster系に保持。指定インポーターで787×1100・211984bytes・品質82、optimized-unified/tsukuyomi-forehead-skin-f59c4cf93916.webp。他用途・他カミ・ゲーム本体採用保持、manifest/version369更新。
+- npm176件・Python4件成功。ローカル配信の正本一致はrevision内validation.json参照。最新共有準備.kami-share/shared-tsukuyomi-forehead-uzume-selected-20261004/は11ページ・373ファイル・画像参照343件・差分68件・欠落0、移動と戻る検証済み。アメノウズメ指定PNGの採用も含む。未公開、編集アクセス待ち、state.json保持。コミット・PUSH・デプロイなし。
+
+## 追記（2026-10-04）：アメノウズメの指定PNG採用（v1.15.368・未コミット）
+
+- ユーザー指定PNGをamenouzume人物master/masterUncoveredへ採用。添付は直前の布なし原本と1060×1484の全画素一致。同構図の布ありは保持。主画像は布なしへ切替。再生成なし。原本コピーのバイト一致、SHA・旧catalog・検証はrevisions/amenouzume-user-selected-2026-10-04/。
+- 指定インポーターで786×1100・218126bytes・品質82。採用URL optimized-unified/amenouzume-user-selected-6d97469f26c0.webp。旧人物とラベル・指示はpreviousBeforeUserSelectedOctober04Master系に保持。他用途・他カミ・本体採用保持。manifest/version368、専用#light-danceと全体比較更新。
+- npm176件・Python4件成功、圧縮画像目視。ローカル6ファイル正本一致、検証は上記revisionのvalidation.jsonを参照。共有準備.kami-share/shared-amenouzume-selected-20261004/は11ページ・372ファイル・画像参照342件・差分67件・欠落0、移動と戻る検証済み。未公開、編集アクセス待ち、state.json保持。コミット・PUSH・デプロイなし。
+
+## 追記（2026-10-04）：アマテラス指定画像・アメノウズメ顔と花吹雪・ヒノカグツチ指定画像（v1.15.367・未コミット）
+
+- v366：アメノウズメ布あり/なしを内蔵image_genで修正。花びらを適度に増やし、一列を避け幅・奥行き・間隔をばらつかせ、舞いと風の流れを保持。背景に赤と白の椿を控えめに配置。追加の「もう少しだけ幼く」に合わせ、承認された表情を保ち頬と顎を少し柔らかくする指示、大人の体形・衣装は維持。原本・全指示・旧カタログ・検証はrevisions/uzume-natural-petals-hino-selected-2026-10-04/。
+- ヒノカグツチ人物はDownloadsの「ヒノカグツチイラスト.jpg」をそのまま採用、再生成なし、原本バイト一致。本人右目黄/左目赤を確認。指定インポーターで786×1100・173436bytes・品質82。アメノウズメは786×1100、布あり215566bytes、布なし218126bytes、品質82。旧人物・指示・ラベル保持。専用#light-danceと全体人物一覧に反映。
+- v367：アマテラス人物をDownloadsの「アマテラスイラスト.jpg」へ変更。再生成なし、原本バイト一致。786×1100・154300bytes・品質82。記録と原本はrevisions/amaterasu-user-selected-2026-10-04/。旧人物とラベル・指示はpreviousBeforeOctober04SelectedMaster系に保持。人物のみ変更、他用途・他カミ・ゲーム本体採用保持。manifestとversion367更新。
+- npm176件・Python4件成功、圧縮4枚目視。v366は専用DOM12画像・ローカル8ファイル正本一致、v367は追加の検証記録を参照。共有用最新一式.kami-share/shared-amaterasu-uzume-hino-selected-20261004/は11ページ・371ファイル・画像参照340件・差分66件・欠落0、移動と戻る検証済み。
+- 共有サイトはClaude編集アクセス待ちで未公開。state.json保持、コミット・PUSH・デプロイなし。
+
+## 追記（2026-10-04）：アメノウズメ・承認表情と椿を最小限に（v1.15.365・未コミット）
+
+- 最初の依頼で少量の花びらを風と舞いの曲線に沿って再配置、ウィンクから半眼と小さな微笑みへ。内蔵image_genで布あり/なし制作、v364人物反映（revisions/amenouzume-dance-flow-expression-2026-10-04/）。作業中にユーザーが表情を承認し、ほんの少し若く・背景の椿を最小限にして花吹雪を見やすくする追加指定。
+- 承認表情保持、頬と輪郭を少し柔らかくする指示。大人の見た目と体形を維持。背景の椿を数輪に抑え緑と空・神社へ整理。少量の花びらの向きと間隔を曲線に沿わせ、背景から見分けやすく。内蔵image_gen布なしを編集後、布追加で布あり制作。全原本/入力/全指示/旧catalog/検証はrevisions/amenouzume-quiet-background-2026-10-04/。
+- amenouzume master/Covered/Uncoveredのみ採用更新。各段階旧値とラベル・指示はpreviousBeforeDanceFlowExpressionMaster系/previousBeforeQuietBackgroundMaster系に保持。指定インポーターで両方786×1100、布なし218316bytes・布あり211210bytes、品質82。manifest/version365、専用#light-danceと全体比較リンク更新。他用途/他カミ/ゲーム本体採用保持。
+- npm176件・Python4件成功、圧縮2枚目視、他catalogフィールド保持、専用DOM12画像・ローカル7ファイル正本一致。共有準備.kami-share/shared-amenouzume-quiet-background-20261004/は11ページ・367ファイル・画像参照335件・差分62件・欠落0、移動と戻る検証済み。未公開、編集アクセス待ち、state.json保持。コミット・PUSH・デプロイなし。
+
+## 追記（2026-10-04）：アメノウズメ・少量の花びら（v1.15.363・未コミット）
+
+- 花吹雪をもっと減らす追加指定。内蔵image_genで布あり/なし各前案の空中花びらを大幅削減（さらに約2/3削減の指示）。密集した帯をなくし、舞いの流れを示す間隔を空けた少量の花びらに変更。構図・キャラサイズ・ポーズ・背景の花・衣装保持。原本/入力/全指示/旧catalog/検証はkami_redesign/revisions/amenouzume-petals-sparse-2026-10-04/。
+- amenouzume master/Covered/Uncovered更新、旧画像とラベル・指示をpreviousBeforePetalsSparseMaster系に保持。他用途・他カミ・ゲーム本体採用保持。指定インポーターで786×1100、布なし231700bytes・布あり237746bytes、品質82。manifest/version363、専用#light-dance更新。
+- npm176件・Python4件成功。圧縮2枚目視、他catalogフィールド保持、専用DOM12画像・ローカル7ファイル正本一致。共有一式.kami-share/shared-amenouzume-petals-sparse-20261004/は11ページ・363ファイル・画像参照329件・差分58件・欠落0、移動と戻る検証済み。未公開、編集アクセス待ち、state.json保持。コミット・PUSH・デプロイなし。
+
+## 追記（2026-10-04）：アメノウズメ・花びら控えめ（v1.15.362・未コミット）
+
+- 空中の花びらを少し減らす依頼。内蔵image_genで布あり/なしそれぞれの前案を編集。約25〜30%減を指示し、密集・前景の重なりを整理、舞いの弧とキャラクターの大きさ・ポーズを維持。原本・入力・全指示・旧catalog・検証はkami_redesign/revisions/amenouzume-petals-reduced-2026-10-04/。
+- amenouzume master/Covered/Uncovered更新、旧画像/ラベル/指示はpreviousBeforePetalsReducedMaster系に保持。他用途・他カミ・ゲーム本体採用は保持。指定インポーターで786×1100、布なし238260bytes・布あり237844bytes、品質82。manifest/version362、専用#light-dance更新。
+- npm176件・Python4件成功、圧縮2枚目視、無関係catalogフィールド保持、専用DOM12画像・ローカル7ファイル正本一致。共有準備.kami-share/shared-amenouzume-petals-reduced-20261004/は11ページ・361ファイル・画像参照326件・差分56件・欠落0、移動と戻る検証済み。共有は編集アクセス待ちで未公開、state.json保持。コミット・PUSH・デプロイなし。
+
+## 追記（2026-10-04）：アメノウズメ・花吹雪の舞いアップ構図（v1.15.361・未コミット）
+
+- ユーザーはキャラクターをもう少し大きく描写することを依頼。内蔵image_genで前案のポーズ・いたずらっぽいウィンク・花吹雪の軌跡を引き継いだ、頭〜膝下の近めの構図を制作。布なし版に顔の布を追加し、同構図の布あり版も制作。原本・入力・指示・旧catalog・検証はkami_redesign/revisions/amenouzume-petal-dance-close-2026-10-04/。
+- amenouzume master/Covered/Uncovered更新。旧画像とラベル・指示はpreviousBeforePetalDanceCloseMaster系に保持。他用途・他カミ・ゲーム本体採用保持。指定インポーターで両方786×1100、布なし239816bytes・布あり236732bytes、品質82。manifest/version361、専用#light-danceと全体人物比較を更新。
+- npm176件・Python4件成功、圧縮2枚目視、無関係catalogフィールド保持、専用DOM12画像、ローカル7ファイル正本一致確認。共有用.kami-share/shared-amenouzume-petal-dance-close-20261004/は11ページ・359ファイル・画像参照323件・差分54件・欠落0、移動と戻る検証済み。公開は編集アクセス待ち、state.json保持。コミット・PUSH・デプロイなし。
+
+## 追記（2026-10-04）：アメノウズメ・舞いの軌跡に花吹雪（v1.15.360・未コミット）
+
+- ユーザーは前案の動きが読み取りにくく、舞いの軌跡に花吹雪を依頼。内蔵image_genで両腕を開く回転の舞い・扇を払う動き・かかとを浮かせた足運びを描写。扇から背後・足元へ花吹雪が弧を描く構図に変更。顔・衣装・髪・背景を引き継ぎ、布あり/なし2枚。同じ構図。全原本・参照・指示・旧catalog・検証はkami_redesign/revisions/amenouzume-petal-dance-2026-10-04/。
+- amenouzume人物master/Covered/Uncovered更新、旧案はpreviousBeforePetalDanceMaster系に保持。他用途・他カミ・ゲーム本体採用は保持。指定インポーターで786×1100、布なし228958bytes/布あり227948bytes、品質82。manifest/version360更新。専用ページ#light-dance・全体人物比較に反映。
+- npm176件・Python4件成功。圧縮2枚目視、他catalogフィールド保持、専用DOM12画像、ローカル7ファイル正本一致確認。共有用一式.kami-share/shared-amenouzume-petal-dance-20261004/は11ページ・357ファイル・画像参照320件・差分52件・欠落0、移動と戻る検証済み。公開未実施、編集アクセス待ち。state.json保持、コミット・PUSH・デプロイなし。
+
+## 追記（2026-10-04）：アメノウズメ人物・軽やかな舞い（v1.15.359・未コミット）
+
+- 最新指定画像の衣装・髪・いたずらっぽいウィンク・暖かな神社背景を基に、扇を横に流し肩と腰をひねる軽い舞いへ修正。内蔵image_genで布なし版、その同じ構図に顔の布を加えた布あり版を制作。原本・入力・全指示・旧catalog・検証はkami_redesign/revisions/amenouzume-light-dance-2026-10-04/。
+- catalogのamenouzume master/masterCovered/masterUncoveredだけ採用変更。旧masterとラベルはpreviousBeforeLightDanceMaster系へ保持。全体人物比較・専用ページ#light-danceに掲載。指定インポーターでWebPへ圧縮、布なし787×1100・194626bytes、布あり788×1100・195174bytes、品質82。version359・manifest更新。ゲーム本体の採用画像は未変更。
+- npm176件・Python4件成功、圧縮2枚目視、無関係のcatalogフィールド保持、専用ページ12画像、ローカル7ファイル正本一致確認。最新共有準備.kami-share/shared-amenouzume-light-dance-20261004/は11ページ・355ファイル・画像参照317件・差分50件・欠落0、ページ/アンカー/戻る検証済み。共有サイトは編集アクセス待ちで未更新、state.json保持。コミット・PUSH・デプロイなし。
+
+## 追記（2026-10-04）：ツクヨミカットイン・オモイカネ人物の指定画像採用（v1.15.358・未コミット）
+
+- ユーザー指定の添付PNGをツクヨミcutin、Downloadsの「オモイカネイラスト.jpg」をomoikane masterへ採用。再生成なし、コピー原本と元ファイルのバイト一致。記録・SHA・旧catalog・原本・検証はrevisions/tsukuyomi-omoikane-selected-2026-10-04/。
+- ツクヨミは直前の画質基準Cと同じ圧縮内容。1600×900・217556bytes・品質82。旧cutinとラベルはpreviousBeforeQualityPoseSelectionCutinに保持。月夜ページの先頭selected-finalに採用画像、旧selected-draft欄は採用前の柄直線化画像を維持。全体比較・創世神技ページはcatalog経由で更新。
+- オモイカネは縦横比維持の787×1100・206568bytes・品質82。旧masterをpreviousBeforeUserSelectedMasterに保持。他用途と他カミの採用は保持。ゲーム本体のカットイン単体参照は未変更。version358、manifest更新。
+- npm176件・Python4件成功、圧縮2枚目視、比較DOM選択画像・旧画像保持、ローカル8ファイル正本一致確認。最新共有用一式.kami-share/shared-tsukuyomi-omoikane-selected-20261004/は11ページ・352ファイル・画像参照314件・差分46件・欠落0、移動と戻る検証済み。共有は編集アクセス待ちで未公開、state.json保持。コミット・PUSH・ゲームデプロイなし。
+
+## 追記（2026-10-04）：ツクヨミの画質基準ポーズ3案・タケミカヅチ指定画像（v1.15.357・未コミット）
+
+- ユーザーは添付1枚目の美麗な描画と2枚目のポーズを組み合わせた複数案を依頼。内蔵image_genで1枚目を主たる描画基準、2枚目をポーズのみの基準として3案生成。A元の月明かり、B顔・袖を少し明るく、C衣装の細部。全原本・2入力・全指示はrevisions/tsukuyomi-quality-pose-2026-10-04/。
+- catalogのcutinQualityPoseA/B/CとOriginalリンク追加。旧cutinと過去の全フィールドは保持。全体カットイン比較とmoon-strike-preview.html#quality-pose-a先頭に3案、各PNG原本へのリンク。指定インポーターで1600×900・205480/237780/217556bytes・品質82。
+- 作業中の追加指示でタケミカヅチ人物イラストをDownloadsの「タケミカヅチイラスト.jpg」に置換。再生成なし、原本バイト一致。787×1100・192026bytes・品質82のWebP。masterのみ変更、旧masterはpreviousBeforeUserSelectedMasterに保持。cutin/card/chibiなどは保持。記録revisions/takemikazuchi-user-selected-2026-10-04/。
+- npm176件・Python4件成功。圧縮4枚目視、他の旧catalogフィールド保持、比較DOM3候補、PNGリンク、ローカル12ファイルの正本一致検証。共有用.kami-share/shared-quality-pose-takemikazuchi-20261004/は11ページ・348ファイル・差分42件・画像参照312件・欠落0を検証。編集アクセス待ちで公開未実施、state.json保持。コミット・PUSH・ゲームデプロイなし。
+
+## 追記（2026-10-04）：ツクヨミの青い金具拡大・細部の描き直し（v1.15.356・未コミット）
+
+- ユーザー指定画像は逆手Aの画素と完全一致（PNGメタデータは異なる）。両手の形を承認し、青い部分をさらに拡大、繰り返し編集によるぼやけの改善を依頼。内蔵image_genへ指定画像と以前の選択原本を入力し、青い金具を1.7〜1.8倍の目安で大きく、顔・髪・衣装・輪郭を描き直す指示。初回は通信失敗、同じ指示で再実行成功。原本・入力・全指示はrevisions/tsukuyomi-large-head-detail-2026-10-04/。
+- catalogのcutinLargeBlueHeadDetailへ新案追加。既存cutinとすべての旧候補は保持、ゲーム本体のカットイン採用変更なし。全体比較とmoon-strike-preview.html#large-head-detail先頭へ掲載、修正前はdetails、PNG原本へのリンクも追加。
+- 指定インポーターで1600×900・270038bytes・品質78のWebP、optimized_assetsとversion356更新。npm176件・Python4件成功、圧縮画像目視。共有用一式.kami-share/shared-tsukuyomi-large-head-detail-20261004/は11ページ・340ファイル・画像参照305件・差分34件・欠落0、ページ移動検証済み。公開待ち、state.json保持、コミット・PUSH・ゲームデプロイなし。
+
+## 追記（2026-10-03）：ツクヨミの右手を逆手・青い金具拡大3案（v1.15.355・未コミット）
+
+- ユーザーは青い金具のさらなる拡大と、刃側の右手を逆手（親指が刃側）にするよう指定。内蔵image_genで前回の青い金具A/B/Cを編集。手のひらを返して下から握り、青い金具を約1.45倍の目安で拡大する指示。柄の直線・透明な刃の上向きを保持。小幅な拡大の初回3枚は追加指示により未採用、原本と最終指示をrevisions/tsukuyomi-reverse-grip-2026-10-03/に保存。
+- catalogのcutinReverseGripA/B/C追加。旧フィールド全保持、cutinの自動採用なし。全体比較のカットイン欄とmoon-strike-preview.html#reverse-grip-a先頭に掲載。指定インポーターで1600×900、286384/297316/282720bytes、品質82。version355、manifest更新。
+- npm176件・Python4件成功、圧縮3枚目視。共有用一式.kami-share/shared-tsukuyomi-reverse-grip-20261003/を作成・検証。11ページ・337ファイル・画像参照304件・差分31件・欠落0。公開文書更新。編集アクセス待ちで未公開、state.json保持。コミット・PUSH・ゲームデプロイなし。
+
+## 追記（2026-10-03）：ツクヨミの青い金具の配置3案（v1.15.354・未コミット）
+
+- ユーザーは柄の直線化を評価し、柄でも刃でもない青い金具の位置を武器資料に合わせて修正、複数枚を依頼。内蔵image_genで3案を制作。金具を透明な刃の根元側へ置き、青い長い鉤を下・左へ伸ばす形。A基本形、B厚みを加えた形、C細めの形。承認された直線の柄・両手・月夜の空中構図・透明な刃の上向きを保つ指示。
+- 最初の3案は金具が元の位置に近いもの／接合部が曲がるものを不採用。Bの接合部修正も改善が乏しく不採用。最終BはAから金具の厚みだけを編集。全原本・不採用・添付画像2枚・全指示・旧catalogは kami_redesign/revisions/tsukuyomi-blue-head-2026-10-03/ に保存。
+- catalogのcutinBlueHeadA/B/Cへ3候補を追加。既存cutinとすべての旧フィールドは保持、1案の自動採用はしていない。全体preview.htmlのカットイン欄とmoon-strike-preview.html#blue-head-aの最上部に掲載。武器資料も軽量化してdetailsに掲載。
+- 指定インポーターで3枚1600×900、296810/289552/291986bytes、品質82のWebP。武器資料800×800・12506bytes。optimized_assets.json更新、version354。npm176件・Python4件成功、圧縮3枚目視。比較DOMの3候補・過去候補保持、ローカル9ファイルのバイト一致を確認。ゲーム本体の画像参照・Codex内ゲームブラウザは変更なし。
+- 最新共有用一式は .kami-share/shared-tsukuyomi-blue-head-20261003/。11ページ・333ファイル・差分27件・画像参照301件一致・スクリプト11件保持・欠落0。ページ移動／アンカー／戻る検証。公開手順2文書更新。Claude編集アクセス待ちで公開未実施、state.json保持。Gitコミット・PUSH・ゲームデプロイなし。
+
+## 追記（2026-10-03）：ツクヨミの赤線を参考に柄を直線化（v1.15.353・未コミット）
+
+- ユーザーが現候補と赤い線付きの画像を添付し、鎌の形状と柄の直線化を依頼。内蔵image_genを使用。初回は上端のずれが残り不採用。再編集で上側の柄と握り手を移動し、両握り・接合部を一本の軸に揃えた。青い非対称の鉤・円形中心・透明な刃を保持、刃が右側から上へ伸びる向きは変更なし。
+- 原本・不採用・参考・指示・旧catalog・検証は kami_redesign/revisions/tsukuyomi-redline-shaft-2026-10-03/。赤線付き画像は会話のみで受領、生成指示に線の位置を記録。指定インポーターで1600×900、294282bytes、品質82のWebP。catalogのcutinのみを新ハッシュに更新し、旧候補をpreviousBeforeRedlineShaftCutinに保持。他カミ・他用途・ゲーム本体の単体カットインは変更なし。
+- moon-strike-preview.html#selected-draft の先頭に修正版、detailsに今回の修正前を追加。全体一覧と創世神技専用ページはcatalog経由で更新。version353。npm176件・Python4件成功。圧縮画像を目視、ローカル6ファイルの正本一致・表示DOM・過去候補保持を確認。Codex内ゲームブラウザは開いていない。
+- 最新共有用一式は .kami-share/shared-tsukuyomi-redline-20261003/。11ページ・327ファイル・差分21件・画像参照298件一致・スクリプト11件保持・欠落0、ページ移動・アンカー・戻るを検証。公開手順2文書更新。Claude編集アクセス待ちのため公開未実施、state.json維持。Gitコミット・PUSH・ゲームデプロイなし。
+
+## 追記（2026-10-03）：スサノオの赤い風・ヤマトタケル指定画像（v1.15.352・未コミット）
+
+- スサノオの炎のある人物・創世神技カットイン・通常ジェネシスカード・創世決戦TOP・OP04を内蔵image_genで赤い風へ編集。初回人物／カットインは「赤い髪に見える」という訂正を受け不採用。最終版は広い半透明の渦、空いた渦の中心、飛ばされる葉・瓦礫で風を表す。天叢雲・人物・構図を保持。OPのヒノカグツチの炎と他のカミの演出は保持。
+- 炎のない演出削除カード・ちびキャラ・エモート・休息、OP05〜08は変更していない。catalogのmaster/cutin/cardのみ変更し旧案をpreviousBeforeRedWind…に保持。すでにゲーム採用済みのTOP・OP04のみ本体参照も新ハッシュへ更新。旧ファイルは保持。単体カミのゲーム素材は未採用。
+- ヤマトタケルはユーザー添付「ヤマトタケルイラスト.jpg」を再生成せず採用。原本のバイト一致を確認し、788×1100・196910バイトのWebPへ軽量化。masterのみ変更、旧案はpreviousBeforeUserSelectedMasterに保持。
+- 全原本・不採用案・生成指示・旧catalog・検証は kami_redesign/revisions/susanoo-red-wind-2026-10-03/ と yamato-user-selected-2026-10-03/。新画像8参照は300KB以下、カットイン1600×900、カード1000×1000。指定インポーターを使用、optimized_assets.json更新、version352。
+- 全体比較と新規 susanoo-red-wind-preview.html に反映。http://localhost:8765/kami_redesign/susanoo-red-wind-preview.html 。npm176件・Python4件通過。OP画像のテスト参照を新ハッシュへ更新。圧縮5枚を目視、ローカル13ファイルが正本とバイト一致、他8柱・炎なし素材の保持を検証。Codex内でゲームのブラウザは開いていない。
+- 最新共有用一式は .kami-share/shared-susanoo-wind-yamato-20261003/。11ページ・325ファイル・差分19件・画像297参照一致・スクリプト11件保持・欠落0、ページ移動／アンカー／戻るを検証。公開手順2文書を最新版へ更新。Claude編集ブラウザ未ログインのため公開未実施、state.jsonは維持。Gitコミット・PUSH・ゲームデプロイなし。
 
 ## Claude 追記：v1.15.283（2026-10-01）
 
@@ -833,3 +954,974 @@
 - 他作業者のカード編集室・原本イラスト等の変更を保持し、.release-worktree のみで変更。コミット・PUSH・デプロイなし。ローカル確認用は http://localhost:8765/index.html。
 
 - 検証：npm test 158件と画像取り込みPythonテスト3件が通過。構文と差分を確認。既存の確認ページで爪の着弾・燃焼・スサノオの3秒の開眼を目視確認。対戦開始時の初期値を回復として表示しないことも検証。ローカル配信の最新ファイルと実ファイルの一致を確認。
+
+## 追記（2026-10-03）：カミ新デザイン案の共有ページ（Claude）
+
+- kami_redesign/preview.html の比較表を、メンバー共有用に Claude の Artifact として公開：https://claude.ai/artifact/UanAtoxopyJL7fPh2KbQir （リンクを知っている全員が閲覧可）
+- 更新はスクリプト `C:\Users\0ad38\Desktop\tsukuriyo-project\.kami-share\build.js`（リポジトリ外・git除外）で、preview.html と catalog.json から自動で作る。サブページへのリンクは外し、`../` の画像は `game/` に置き換え、画像はページ内で拡大表示する。
+- Claude アプリの定期作業「カミ新デザイン案の共有ページを更新」で差分を確認し、変わっていれば同じURLで公開し直す。時刻での自動実行はユーザーの希望で停止中で、ユーザーが頼んだとき（または「今すぐ実行」）だけ更新する。
+- Codex 側の注意：kami_redesign の場所・preview.html の基本構造（`<body>` 内のスクリプトが `catalog.json` を読む形）・catalog.json の画像パスの書き方を大きく変えると自動更新が止まる。kami_redesign のファイルは Claude 側では変更しない。
+
+
+## 追記（2026-10-03）：ヤマタノオロチの不気味なエモート・赤黒の角・4色の玉・v1.15.337（未コミット）
+
+- 組み込みimage_genで基本イラスト・ちびキャラ・創世神技カットイン・ジェネシスカード・6表情エモートを編集。半目と控えめな微笑みの不気味な表情に変更。全用途の角は赤黒、龍の口の玉は赤・青・緑・黄色を各1個のみ。他の口は空で、少女の手の闇の玉は別。
+- 元PNG・生成指示・旧版・検証記録は kami_redesign/revisions/orochi-uncanny-emotes-2026-10-03/ に保存。指定処理で軽量化し、catalog.jsonを更新。確認ページは http://localhost:8765/kami_redesign/orochi-revision-preview.html 。共有ページの基本構造を保持。
+- npm test 176件・画像取り込みPythonテスト4件通過。ローカル配信と実ファイルの一致、圧縮画像の目視、差分確認済み。ゲーム本体への採用・コミット・PUSH・デプロイなし。
+- ユーザーの履歴ホバーポップアップはCodexのサイドバー情報表示。ローカル実装と公式設定を読み取り確認したが専用の無効化設定は見つからず、アプリ変更は実施していない。入力時Ctrl+Bでサイドバーを閉じる回避策を案内。
+
+
+## 追記（2026-10-03）：ヤマタノオロチのカード画像を基本イラストへ・v1.15.338（未コミット）
+
+- ユーザー指定で現在のジェネシスカードを元に内蔵image_genで基本イラストを再生成。白い着物・赤い彼岸花と紐・背景を維持し、8つの首を異なる姿勢、少女を邪悪な微笑みに変更。角は赤黒、口の玉は4色各1個、手の闇の玉は別。
+- 元PNG・生成指示・旧一覧・検証は kami_redesign/revisions/orochi-card-base-2026-10-03/ に保存。catalog.jsonのmasterのみ新案へ変更。788×1100・292884バイトのWebPを採用。確認ページは http://localhost:8765/kami_redesign/orochi-revision-preview.html 。
+- npm test 176件・画像取り込みPythonテスト4件通過。ローカル配信6ファイル一致と圧縮画像を確認。ゲーム本体への採用・コミット・PUSH・デプロイなし。共有ページの構造と他作業者の変更を保持。
+
+
+## 追記（2026-10-03）：ヤマタノオロチのシャフ度カットイン・v1.15.339（未コミット）
+
+- ユーザー指定のシャフ度を、肩越しに首を傾けて振り返る半目と不気味な微笑みで表現。内蔵image_genで旧カットインを編集し、最新基本イラストを衣装・人物の参照に使用。赤黒い角・8つの龍の首・口の4色の玉各1個・手の闇の玉を維持。
+- 元PNG・生成指示・旧一覧・検証は kami_redesign/revisions/orochi-shaft-cutin-2026-10-03/ に保存。指定インポーターで1600×900・299962バイトのWebPへ軽量化。catalog.jsonのcutinを更新。確認ページは http://localhost:8765/kami_redesign/orochi-revision-preview.html 。
+- npm test 176件・画像取り込みPythonテスト4件通過。ローカル配信6ファイル一致、圧縮画像を目視確認。ゲーム本体への採用・コミット・PUSH・デプロイなし。共有ページの構造と他作業者の変更を保持。
+
+
+## 追記（2026-10-03）：ヤマタノオロチの不要なカード欄を非掲載・v1.15.340（未コミット）
+
+- ユーザー訂正：ヤマタノオロチのジェネシスカードは存在せず、対応する枠はディエスイレ。ディエスイレの画像は変更不要。catalog.jsonのヤマタノオロチからcard・oldCard・cardGenerationPromptを履歴フィールドへ移し、hasGenesisCard=falseを記録。全カミのカード比較からも非掲載。専用修正一覧のカード欄を削除。
+- 基本イラストに使った候補画像・生成履歴と現在の基本イラストは維持。今後ヤマタノオロチのカード画像を制作・掲載しない。ディエスイレの実画像・ゲーム参照は変更なし。コミット・PUSH・デプロイなし。
+
+## 追記（2026-10-03）：ジェネシスカード1:1・演出削除版と造形修正・v1.15.343（未コミット）
+
+- 内蔵image_genでスサノオの基本イラストを天叢雲へ変更。既存神技の神器資料 divine_assets/totsuka-sword.png を形状参照に、環頭・小さな鍔・まっすぐな両刃の刀身を採用。直線化だけの中間案は revisions/susanoo-straight-sword-2026-10-03/ に保持。
+- ジェネシスカードの絵のみを9柱、アメノウズメの布あり・なしを含めて10枚、すべて1:1に再生成。ツクヨミの角の根元と向きを修正した horns-fixed 版を採用。ヤマタノオロチのカードは掲載せず、ディエスイレは変更なし。
+- 同じ10枚の「演出削除版」を比較候補として追加。アメノウズメは椿・花びらを除去、オモイカネは浮遊する文字・巻物などを除去。他のカミも重なる光・炎・雷・浮遊物を減らし、衣装・ポーズ・神器を保持。通常版の card/cardCovered/cardUncovered は保持、別フィールド cardNoEffects/cardNoEffectsCovered/cardNoEffectsUncovered に格納。
+- タケミカヅチの通常ちびキャラは髪の逆立ちを抑制。ヤマトタケルの創世神技カットインは右側白鳥の翼と羽根の構造を修正。ヤマタノオロチのカットインはシャフ度を保ちつつ、闇の玉を画面右側で持つ自然な腕の姿勢へ修正。
+- 元PNG・全指示・参照元・更新前一覧・軽量化URL・検証記録は kami_redesign/revisions/card-square-weapon-anatomy-2026-10-03/ に保存。指定インポーターを使用し、24枚すべて用途別の容量上限内。カード絵1000×1000、カットイン1600×900、ちびキャラ500×500で透過維持。
+- 比較用は http://localhost:8765/kami_redesign/card-square-preview.html#tsukuyomi 。全体 preview.html のカード欄と amenouzume-preview.html にも「演出削除版」を追加。preview.html が catalog.json を読む基本構造は保持し、Claude共有更新には影響させない。Claudeの共有ページ自体は今回更新していない。
+- 検証：npm test 176件・画像取り込みPythonテスト4件通過。比較ページ3種類のスクリプトをDOMスタブで実行し、9柱・正方形20枚・布ありなしの表示を確認。ローカル31ファイルと実ファイルの一致、生成原本と主要な圧縮画像の目視、差分を確認。ゲーム本体への採用・コミット・PUSH・デプロイなし。Codex内ブラウザは開いていない。
+- 作業中の質問「高速化の代わりに使用量が増える設定を戻す」について、ローカル config.toml の service_tier=priority と公式Speed/Config Referenceを読み取り確認。高速モード設定の戻し方を案内した。設定自体の編集は依頼されていないため実施していない。
+
+## 追記（2026-10-03）：共有比較ページの完全同期を準備
+
+- ユーザー依頼は既存Claude共有ページをローカルの最新掲載内容に揃えること。公開記録は2026-10-02T19:50:08.150Zで、最新のカード・斬撃3案などと差がある。また旧 .kami-share/build.js は専用ページへのリンクを削除していた。
+- リポジトリ外の .kami-share/build.js を修正。専用比較ページ9件を共有本文に同梱し、iframe内で表示する。画像の拡大表示と非表示、戻る操作、アンカーを保持。履歴比較用の画像・tutorial_catalog.json・参照する旧catalogも同梱。出力先の削除処理は .kami-share 内の専用サブフォルダのみ許可。
+- 公開用一式：C:/Users/0ad38/Desktop/tsukuriyo-project/.kami-share/shared-sync-20261003/。300ファイル、差分153件、欠落0件。verify.js で原本の表示スクリプト10件、画像参照274件のバイト一致、専用ページ・アンカー・一覧へ戻る操作を検証済み。公開手順と範囲は .kami-share/PUBLISH_SYNC.md。
+- この追記時点で公開は未完了。state.json は成功確認前に更新しない。既存URL https://claude.ai/artifact/UanAtoxopyJL7fPh2KbQir を維持し、Claudeの定期実行は停止を維持する。ゲームの実装・画像・versionは変更なし。Gitコミット・PUSH・ゲームのデプロイなし。
+
+## 追記（2026-10-03）：カードのアップ・右脚のみ修正・天空背景・ツクヨミ斬撃3案・v1.15.345（未コミット）
+
+- 内蔵image_genでジェネシスカード9柱、アメノウズメの布あり・なしを含む20枚（通常10・演出削除10）を1:1のアップ構図へ変更。初回分は revisions/card-close-up-2026-10-03/ に原本PNG・指示・参照・更新前一覧・検証を保存。v1.15.344として記録。
+- ヒノカグツチの右脚修正に対しユーザー訂正あり：「右足以外は良いので、右足だけ普通に立たせる」。全身を立ち姿へ変えた2枚は不採用。最終版は元のアップ構図・表情・上半身・左脚を保持し、本人の右脚（画面左）だけを下に伸ばす局所修正。通常版と演出削除版の両方。削除版にも右拳の炎を保持。本人の右目＝黄色、左目＝赤を維持。
+- アマテラスのカードは通常版・演出削除版とも背景を天空へ変更。地上の神社・木・山を除き、空と雲に変更。祈る姿・額の太陽飾りを保持。
+- ツクヨミの創世神技カットインは添付の人物・鎌と別添の振りかぶり参考を使用。ユーザー最終指示は「正面を向かず、こちら側へ切りかかる、振りかぶって一撃が放たれる直前、無表情、人物は鎌より前」。正面ポートレート・横方向攻撃の中間案は不採用。こちらへ跳び込む/踏み込む3案を最終比較候補に追加。柄の折れ・二重化を局所修正した案を使用。
+- catalog.json の cutinAttackA/B/C に3案を追加。既存 cutin は保持し、最終選択は未実施。全カミ preview.html のカットイン欄にも候補3案を追加し、catalog.json を読む基本構造と相対画像URLを保持。
+- 最新比較は http://localhost:8765/kami_redesign/moon-strike-preview.html 。ヒノカグツチの右脚とアマテラスの天空背景は card-square-preview.html と全体のカード欄にも反映。旧構図は previousBeforeClose… と previousBeforeStandingAttack… に保持。
+- 最終追加入り7枚（カード4・カットイン3）は revisions/standing-hino-tsukuyomi-attack-2026-10-03/ に全原本・中間案・指示・参照・採否・軽量化結果・検証を保存。カード1000×1000、カットイン1600×900、全7枚300KB以下。versionは1.15.345。
+- npm test176件・画像取り込みPythonテスト4件通過。新比較ページとカード一覧をDOMスタブで実行、候補3案・新旧カード・アンカーを確認。全20カードの1:1・ハッシュ・容量とローカル配信の一致を確認。生成画像と主要圧縮画像を目視確認。
+- ヤマタノオロチのカードは非掲載、ディエスイレは変更なし。ゲーム本体への採用・Claude共有ページ更新・コミット・PUSH・デプロイなし。Codex内ブラウザは開いていない。
+
+## 追記（2026-10-03）：共有比較ページの完全同期を公開完了
+
+- 上記「完全同期を準備」の公開待ちは解消済み。既存URL https://claude.ai/artifact/UanAtoxopyJL7fPh2KbQir を維持して、最新のローカル掲載内容・画像・専用比較ページ9件を反映した。
+- 最終公開用一式は .kami-share/shared-sync-20261003-fix/。公開確認中に専用ページ内アンカーと非同期描画後の見出し移動を修正して再公開。10ページ、300ファイル、画像参照274件の正本とのバイト一致、原本スクリプト10件保持、欠落0件を検証済み。
+- Claude側の公開検証完了後、state.json を 2026-10-03T00:40:31.821Z に記録。全300ファイルのハッシュが最終一式と一致。Codexからも公開URLで最新のツクヨミ斬撃3案およびヒノカグツチのカード通常版・演出削除版とアンカー移動を確認。公開証跡は最終一式内 _public-proof.png。
+- 定期実行は停止を維持。ゲーム実装・正本画像・version は変更なし。Gitコミット・PUSH・ゲームのデプロイなし。検証用に新規作成した公開ページのブラウザタブは閉じた。
+
+## 追記（2026-10-03）：ヒノカグツチの左手・眠るアメノウズメ・黒い龍のちびキャラ（v1.15.346・未コミット）
+
+- 内蔵image_genで制作候補4枚を編集。ヒノカグツチは縦長人物イラストの本人左手（画面右側・紫の炎を載せる手）の短い指を長くし、5指・親指・関節を自然にした。対象を確認する質問を送信したが回答は未着のため、画像上で該当する短い指を修正した。カードは変更なし。
+- アメノウズメのロード用は寝起きではなく、現行と同じ面白アイマスクをつけて眠る姿に変更。リデザイン後の髪・衣装を引き継ぎ、顔の布あり・なし両方を作成。両方とも目のアイマスクは維持。寝起きの旧候補はpreviousBeforeHandSleepMask…に保持。専用ページの説明と全体メニューを更新。
+- ヤマタノオロチの通常ちびキャラは、龍8体の白い鱗を現行に近い黒・暗い紫灰・深赤へ局所変更。赤黒い角、手の闇の玉、口の赤青緑黄各1玉のみを維持。旧候補を保持。
+- 原本PNG・全生成指示・参照元・更新前catalog・圧縮記録・検証を kami_redesign/revisions/hand-sleep-mask-2026-10-03/ に保存。指定インポーターを使用。人物787×1100・267040バイト、ちび画像3枚500×500・120KB以下、透過維持。catalog.jsonの候補のみ変更。versionは1.15.346。
+- npm test176件・Python画像取り込みテスト4件通過。PNGと圧縮WebP4枚を目視。ローカル確認用11ファイルが実ファイルとバイト一致し、他カミ・カード・カットイン・エモートは変更なしを検証。確認は http://localhost:8765/kami_redesign/preview.html と amenouzume-preview.html、auxiliary-chibi-preview.html、orochi-revision-preview.html。
+- 今回の追加修正はローカル比較ページに反映。Claude共有ページの再公開は実施していないため、公開先は前回の同期内容。ゲームの実画像参照・コミット・PUSH・デプロイは変更なし。Codex内ブラウザは開いていない。
+
+## 追記（2026-10-03）：アメノウズメのロード画像によだれ（v1.15.347・未コミット）
+
+- ユーザー要望により、眠るロード画像の顔の布あり・なし両方へ小さな青白いよだれを追加。布ありは口元に当たる布下端、布なしは口角から垂れる。面白アイマスク・寝姿・髪・衣装を保持。内蔵image_gen使用。
+- 原本PNG・全指示・参照・旧catalog・生成出力パス・圧縮記録・検証を kami_redesign/revisions/uzume-sleep-drool-2026-10-03/ に保存。指定インポーターで透過500×500、86960/85984バイトのWebPへ軽量化。catalog.jsonのrest/restCovered/restUncoveredを更新し、よだれなし版をpreviousBeforeSleepDrool…に保持。versionは1.15.347。
+- npm test176件、画像取り込みPythonテスト4件通過。圧縮後2枚を目視。画像2枚と比較ページ・カタログ・versionのローカル配信6ファイル一致、他素材の変更なしを検証。確認は http://localhost:8765/kami_redesign/amenouzume-preview.html のロード画面欄。
+- ローカル比較候補のみ更新。現行ゲームのロード素材の採用、Claude共有ページの再公開、コミット・PUSH・デプロイは未実施。Codex内ブラウザは開いていない。
+
+## 追記（2026-10-03）：ツクヨミ・月を背に空中から斬り込む3案（v1.15.348・未コミット）
+
+- 最新要望は「月明かりで人物を明るくし、空中からこちらへ一撃を放つ直前」「添付の跳躍構図を参考に、少し引いた画像を複数」。内蔵image_genでアップの月夜案1枚と、引いた月夜案A/B/Cの3枚を制作。顔は無表情、人物を鎌より前、白紫の衣装・青い角・紫の柄・透明な三日月の刃を維持。
+- A：月を背に跳び込み、B：上空から振り下ろす直前、C：空中で体をひねって斬り込む。Aの第2の握り手、Cの余分な手・二重の柄を局所修正。Cは腰脇に残った小さい手も再度削除した最終版を掲載。
+- catalog.json の cutin はアップの月夜案に更新し previousBeforeMoonlitAirCutin に旧候補を保存。cutinMoonlitA/B/C を選択用に追加し、以前の cutinAttackA/B/C も維持。引いた3案の自動採用はしていない。ゲーム本体の画像参照は変更なし。
+- 専用比較 http://localhost:8765/kami_redesign/moon-strike-preview.html#moonlit-a に月夜3案、アップの月夜案、以前の3案と旧カットインを掲載。全体 preview.html のカットイン欄にも新3案を追加。
+- 原本PNG4枚・添付参考2枚・全生成/修正指示・変更前catalog・圧縮結果・検証を kami_redesign/revisions/tsukuyomi-moonlit-air-2026-10-03/ に保存。指定インポーター使用、全4枚1600×900、300KB以下。version1.15.348。
+- npm test176件・画像取り込みPythonテスト4件通過。比較ページのDOM・アンカー・画像16枚・カード比較の保持を検証。ローカル配信9ファイルのバイト一致、他カミ・他ツクヨミ素材の変更なし、圧縮後の画像を目視確認。
+- ローカルサーバーが停止していたため .release-worktree で npm run preview を起動し8765で配信。Codex内ブラウザを開かずHTTPで確認。Claude共有再公開・コミット・PUSH・デプロイなし。
+
+## 追記（2026-10-03）：ツクヨミ・鎌の向きと振りかぶりを添付に合わせた3案（v1.15.349・未コミット）
+
+- ユーザー訂正は「鎌の刃の方向や振りかぶり方が違う、添付を参考に」。片手を画面左上へ伸ばし、もう片方を腰付近に置き、柄を左上から右下へ斜めに持つ。青い接合部を画面右下に置き、透明な刃が右側から上へ弧を描く向きへ変更。内蔵image_genで3案を再制作。無表情・月明かり・空中から見る側への攻撃直前を維持。
+- A/Bに添付の黒い靴下が混ざったため、脚の姿勢は保持して黒い靴下だけ除去。Cは生成原本を使用。原本・添付参考・全指示と局所修正・更新前一覧・圧縮結果・検証を kami_redesign/revisions/tsukuyomi-windup-direction-2026-10-03/ に保存。
+- catalog.json の cutinWindupA/B/C を選択候補として追加。以前の cutin/cutinMoonlit…/cutinAttack… は変更なし。他カミ・他用途は変更なし。全体 preview.html のカットイン欄にも3案を追加。専用 moon-strike-preview.html#windup-a の最上部に今回3案、下に以前の案を保持。version1.15.349。
+- 指定インポーターで全3枚1600×900、286656/283200/286290バイト、品質82のWebP。npm test176件、Python画像取り込み4件通過。比較DOMの19画像・アンカー・旧カード保持、最新8ファイルのローカル配信一致を確認。原本と圧縮後を目視。
+- 現行ゲームのカットイン画像参照は変更なし。比較候補のみ更新。Claude共有再公開・コミット・PUSH・デプロイなし。Codex内ブラウザは開いていない。
+
+## 追記（2026-10-03）：ツクヨミの選択画像を暫定掲載・共有公開待ち（v1.15.350・未コミット）
+
+- ユーザーが添付した codex-clipboard-92d4ac22-3089-4fa5-b586-687d93099544.png をそのまま採用。未完成の確認用。以前Bの黒い靴下除去版とは違い、今回選択した原本を再生成せず使用。原本・更新前catalog・検証を kami_redesign/revisions/tsukuyomi-selected-draft-2026-10-03/ に保存。添付とのSHA-256一致を確認。
+- catalogのツクヨミcutinを optimized-cutins/tsukuyomi-selected-draft-ff5ad53e5ac2.webp に更新。1600×900、290276bytes、quality82。旧cutinと過去候補を保持。全体カットイン欄・創世神技ページ・月夜の先頭で「選択した暫定案（未完成・メンバー確認用）」を表示。ゲーム本体の画像参照は変更なし。
+- npm176件・Python4件成功。ローカル8765からindex・version350・比較ページ・catalog・画像を確認、配信画像と圧縮正本のバイト一致を確認。
+- 共有用一式は C:/Users/0ad38/Desktop/tsukuriyo-project/.kami-share/shared-tsukuyomi-selected-20261003/。10ページ、315ファイル、差分9件、画像参照291件の正本一致、スクリプト10件保持、アンカー・戻る操作、欠落0件をverify.jsで確認。公開手順は .kami-share/PUBLISH_SELECTED_DRAFT.md。
+- 既存Claude Artifact https://claude.ai/artifact/UanAtoxopyJL7fPh2KbQir を閲覧確認。ただし接続できるCodex内ブラウザは未ログイン、WebMCP編集ツールなし。公開は未実施、state.jsonは変更しない。ユーザーへログインまたはClaude側への公開用データ引き渡しを質問済み。ログイン画面のタブ1を引き継ぎ用に保持。ゲームのブラウザは開いていない。
+- Gitコミット・PUSH・ゲームのデプロイ、定期実行再開は未実施。
+
+## 追記（2026-10-03）：ツクヨミの鎌の形状・柄の曲がり修正（v1.15.351・未コミット）
+
+- 前回選択した暫定画像を内蔵image_genで局所編集。参考は codex-clipboard-69372c1a-e38b-40a6-b889-de3399c3cbdc.png。ユーザーは左手付近の柄の曲がりも修正し、刃の方向は変化させないと追記。透明な刃が画面右側から上へ伸びる元の向きを維持し、青い非対称の鉤状装飾・円形中心・透明な刃を調整。柄の上下のずれを2回局所修正し、握り位置を少し調整した最終版を採用。
+- 最初の生成は白い刃を下向きにしてしまったため不採用。原本・参考・不採用案・柄の修正前2枚・生成指示・catalog-before・検証は kami_redesign/revisions/tsukuyomi-scythe-shape-2026-10-03/ に保存。
+- catalogのcutinは optimized-cutins/tsukuyomi-scythe-shape-21b3f3f04895.webp、1600×900、289996bytes、quality82。修正前は previousBeforeScytheShapeCutin に保持。moon-strike-preview.html#selected-draft の先頭は修正版、detailsで前回選択画像との比較。ほかのカミは変更なし。ゲーム本体の画像参照は変更なし。
+- npm176件・Python4件通過。比較ページDOMで新旧参照を確認、ローカル配信6ファイルが正本とバイト一致。圧縮画像を目視確認。version351。
+- 最新共有用データは .kami-share/shared-tsukuyomi-scythe-20261003/。10ページ、317ファイル、差分11件、画像参照292件一致・スクリプト10件保持・欠落0。公開手順2文書を新しいフォルダに更新。公開は未実施、state.json変更なし。前回の未ログインという公開阻害条件は未解消。コミット・PUSH・ゲームデプロイなし。
+
+## 追記（2026-10-05）：タケミカヅチのカードを正面へ（v1.15.375・未コミット）
+
+- ユーザー要望「少し傾いて見えるので、正面に」に対応。内蔵image_genでジェネシスカードの通常版・演出削除版2枚を編集し、顔・肩・上半身をまっすぐ正面へ。玉座に座る姿、黄色い衣装、青い剣、背景、なめらかな塗りを参照。明るさの追加補正なし。
+- 原本PNG・参照PNG・生成指示・旧catalog・軽量化と検証記録は kami_redesign/revisions/takemikazuchi-card-frontal-2026-10-05/。指定インポーターで1100×1100・266322/266630bytesのWebP。catalogのcard/cardNoEffectsと対応メタデータのみ更新、旧版をpreviousBeforeFrontal…に保持。他カミ・他用途・ゲーム画像参照は変更なし。
+- card-square-preview.html#takemikazuchi に現行2枚と修正前2枚を掲載。全体previewからリンク。ぎらつき比較ページも最新版を表示する旨を追記。ローカル8765のindexを含む9ファイルの正本バイト一致、9柱のカード表示・修正前後・アンカーを検証。npm176件とPython画像取り込み4件成功、git diff --check通過。PNGと圧縮画像を目視確認。
+- 共有用 .kami-share/shared-takemikazuchi-card-frontal-20261005/ は13ページ426ファイル・画像参照397件・差分123件・欠落0。原本スクリプトと画像の一致、移動と戻るをverify.jsで確認。公開未更新、state.json保持。コミット・PUSH・デプロイなし。Codex内ブラウザは開いていない。
+
+## 追記（2026-10-05）：比較サイト公開依頼・ログイン待ち
+
+- ユーザーから共有比較サイトへのアップロードを明示的に依頼された。比較サイトのみ公開可、ゲームデプロイ/コミット/PUSHは対象外。
+- 既存ArtifactをCodex内ブラウザで開いたがログインリンクが表示、WebMCP編集ツールなし。ユーザーは一度「ログインしました」と回答したが、既存URLへの再読み込み後も未ログイン。Chrome/Claudeアプリとは別セッションなので、Codex右側のブラウザでログインを依頼し回答待ち。
+- 操作対象タブはID2、URL https://claude.ai/login?returnTo=%2Fartifact%2FUanAtoxopyJL7fPh2KbQir。markHandoff済み。ツクリヨのゲームは開いていない。
+- .kami-share/kami-comparison-v1.15.375-update.zip に公開済み一式からの差分123件とアップロード指示をまとめた。36196049bytes、ZIP各ファイルが最新公開用一式とバイト一致。生成スクリプトpackage-frontal-update.py、検証記録kami-comparison-v1.15.375-update.json。公開は未実施、state.json保持。
+
+
+## 公開完了（2026-10-05）：v1.15.375
+
+既存の共有URL https://claude.ai/artifact/UanAtoxopyJL7fPh2KbQir に最新版を公開済み。上記の「公開待ち・ログイン待ち」は解消。最新一式は shared-takemikazuchi-card-frontal-20261005/（13ページ・426ファイル）、差分123件をZIPから反映。タケミカヅチの通常版・演出削除版が正面になっていること、両画像1100×1100の読み込み、修正前2枚の表示、目的見出しへの移動と一覧に戻る操作、ぎらつき比較31行・10柱の表示を公開URLで確認。
+
+公開検証は _public-verification.json、画面証跡は _public-proof.png。state.json は 2026-10-04T22:47:43.761Z に全426ファイルの公開状態を記録（Gitコミットではない）。ゲーム本体の変更、Gitコミット・PUSH・ゲームデプロイ、定期実行再開はしていない。
+
+
+## 掲載整理・共有公開完了（2026-10-05）
+
+- ツクヨミの人物は粒状感・ぎらつき抑制／明るさ調整版1枚のみ、創世神技カットインは現行(oldCutin)と抑制版(cutin)2枚のみ。主一覧・縦長一覧・正面比較・月夜・ぎらつき比較・立ちポーズページの古い候補表示を除外。カードやちびキャラなど他用途の比較は保持。
+- アメノウズメは全用途を布なしに統一。catalogの通常参照もUncoveredへ統一。布ありの人物・カットイン・ちびキャラ・カード通常／演出削除・ロード・エモートの7用途を「没案」ボタンとrejected-preview.htmlに分離。カード・粒状感比較の修正前画像も布なしのみ。画像原本と過去のcatalogフィールドは保存。
+- 変更前ページとcatalogはkami_redesign/revisions/candidate-selection-2026-10-05/。画像再生成・物理削除・ゲームの画像差し替えは行っていない。比較ページのみの変更のためゲームversionは1.15.375のまま。
+- 最新一式 .kami-share/shared-candidate-selection-20261005/ は14ページ・414参照ファイル・差分12件。397カタログ画像参照の正本バイト一致、元スクリプト保持、移動と戻るをverify.jsで確認。ローカル12ファイルの配信バイト一致、index.htmlのHTTP200、一覧全モードと10専用ページのDOMを確認。
+- 同じ共有URL https://claude.ai/artifact/UanAtoxopyJL7fPh2KbQir に公開済み。既存画像を再利用、差分12ファイルを正確にアップロード。公開先で人物1枚・カットイン2枚・布なし・没案7用途と5専用ページ／戻る操作を確認。_public-verification.jsonと_public-proof.pngに保存。
+- state.jsonを2026-10-05T01:07:43.353Zに更新。現在の414ファイルに加え、物理削除していない旧13ファイルのハッシュも保持（計427）。Gitコミット・PUSH・ゲームデプロイ・定期実行の変更なし。
+
+
+## パーソナルカラー試作・共有公開完了（2026-10-05、v1.15.376）
+
+- 10柱を別々の基準色へ：スサノオ=嵐の青緑、ヤマトタケル=氷青、オオクニヌシ=森の緑、タケミカヅチ=雷の黄、オモイカネ=藤紫、アメノウズメ=桃珊瑚、ヒノカグツチ=朱赤、アマテラス=真珠の白、ツクヨミ=月夜の藍、ヤマタノオロチ=黒葡萄。採用済み人物画像を内蔵image_genで編集し、各1枚の配色検討用試作を作成。
+- personal-color-preview.html に色名・コード・理由、10柱の一覧と採用済み画像との比較20枚を掲載。トップに専用ページへのリンク。catalogはpersonalColorTrialフィールドのみ追加、既存master/cutin/card/chibi/rest等は更新前と完全一致。ツクヨミの候補整理・アメノウズメ布なし統一を維持。ゲームの画像参照は変更していない。
+- 原本PNG、最終指示、参照、以前のcatalogとpreview、圧縮結果、検証は kami_redesign/revisions/personal-colors-2026-10-05/ に保存。指定インポーターsceneプロファイル、最大辺1100px、各173576～228542bytes。v1.15.376。npm176件とPython4件成功、ローカルindexを含む15ファイルの配信バイト一致、カタログ採用項目不変を確認。
+- 同じ共有URL https://claude.ai/artifact/UanAtoxopyJL7fPh2KbQir に公開済み。共有用 .kami-share/shared-personal-colors-20261005/ は15ページ425ファイル、417画像参照の正本一致、差分13件・欠落0。2.06MBのZIPを使用し、13ファイルを相対パスのまま反映。
+- 公開URLから10柱・比較20画像すべての読み込み、各10アンカーと一覧へ戻る操作を確認。_public-verification.json と _public-proof.png 保存。state.jsonは現在の425ファイルと保持された旧13ファイルを記録（計438）。Gitコミット・PUSH・ゲームデプロイ・定期実行の変更なし。
+
+
+## ヤマタノオロチの配色試作を漆黒へ・共有公開完了（2026-10-05、v1.15.377）
+
+- ユーザー指定で、黒葡萄の試作を内蔵image_genで編集。黒い衣装・黒い龍を基調に、暗い紅の裏地と模様、暗い赤黒い背景。顔・白髪・赤黒い角、龍の口の4色の玉各1個と手の紫の闇の玉を保持。
+- catalogのヤマタノオロチpersonalColorTrialのみ更新、漆黒 #17151C／補助色 #731E30。旧試作をpreviousImageに保存。他9柱の試作と採用済みmaster/cutin/card等は更新前と完全一致。原本・最終指示・旧catalog・検証はkami_redesign/revisions/orochi-black-personal-color-2026-10-05/。
+- 指定インポーターscene、788×1100、183688bytes、quality82。npm176件/Python4件通過、ローカル5ファイル配信の正本バイト一致。既存ゲーム画像参照変更なし。
+- 同じ共有URL https://claude.ai/artifact/UanAtoxopyJL7fPh2KbQir に公開。共有用shared-orochi-black-colors-20261005は15ページ426ファイル・418画像参照一致・差分2件・欠落0。本文indexを加えた3ファイルのZIP217590bytesで更新し、既存画像は削除なし。
+- 公開先の漆黒ラベル・新旧2画像の読み込みと指定アンカー／一覧への往復を確認。_public-verification.json と _public-proof.png保存。stateは旧13ファイルを保持して439ファイルを記録。Gitコミット・PUSH・ゲームデプロイ・定期実行変更なし。
+
+
+## 配色の重複を減らす試作・共有公開完了（2026-10-05、v1.15.378）
+
+- 内蔵image_genで3枚を編集。ヤマタノオロチ=漆黒 #17151C／白 #ECEEF2、黒地に白刺繍・縁・帯と黒い背景。赤黒い角と龍の口の4色の玉を保持。ヤマトタケル=銅褐色 #9A623E／銀白 #DDE2E7、白銀の髪と青い剣を保持。アマテラス=白 #F5F5F2／金 #DDB557、広い衣装と光の帯を白中心へ。
+- catalogのpersonalColorTrialのみ更新。3枚の試作を差し替え、旧版をpreviousImageへ保持。ツクヨミの理由文を最新の組み合わせに修正。他7柱の画像・配色と採用済みmaster/cutin/card等は維持。ゲーム画像参照変更なし。原本・指示・旧catalogはkami_redesign/revisions/personal-color-separation-2026-10-05/。
+- 指定インポーターscene/最大辺1100、3枚179498～200416bytes。npm176件/Python4件成功。ローカルindexを含む7ファイルの配信バイト一致。共有用shared-color-separation-20261005は15ページ429ファイル・421画像参照一致・差分4件・欠落0。
+- 同じ共有URL https://claude.ai/artifact/UanAtoxopyJL7fPh2KbQir に公開済み。index本文を加えた5ファイルのZIP614146bytesから反映。公開URLで3柱の色名・コード・新旧6画像読み込み・アンカー・一覧へ戻る操作を確認。_public-verification.jsonと_public-proof.png保存。stateは物理削除していない旧13ファイルを含め442ファイル記録。Gitコミット・PUSH・ゲームデプロイ・定期実行変更なし。
+
+
+## ユーザー指示：比較サイトは明示指示までアップしない（2026-10-05）
+
+- 画像・配色修正だけでは共有比較サイトへ反映しない。ユーザーが改めてアップするよう明示するまで、Claudeへのファイル送付・公開操作・state更新を停止。既存公開は巻き戻さない。制約は .kami-share/DO_NOT_PUBLISH.md に保存。
+- 今回はヤマタノオロチの白い衣装面積増加、アマテラスの脚・足を着物で完全に覆う修正、ヤマトタケルのクールな鋼灰色の試作をローカルの未公開原本として作成。結果は kami_redesign/revisions/personal-color-private-refinement-2026-10-05/ を参照。
+
+
+
+## 未公開：龍の赤黒とスサノオ／ヤマトタケルの色移植（2026-10-05）
+
+- 内蔵image_genで3枚の原本を作成。ヤマタノオロチの黒白衣装は保ち、8頭の龍を暗い紅と黒の鱗へ。龍の口の赤・青・緑・黄の玉は各1個、他4口は空。スサノオは茶色 #805537／銀・石色 #D6CEC0、風を灰褐色の透明な流れへ。現行スサノオの青緑 #247F87／銀 #D6E7E5をヤマトタケルの衣装と霊剣の光へ移植。本人の白髪・冷静な表情・姿勢は保持。
+- 原本・生成指示・検証は kami_redesign/revisions/private-color-swap-2026-10-05/。比較サイト・catalog・共有state・ゲームの参照は変更なし。ユーザーの明示的なアップロード指示まで公開禁止を維持。ゲーム組み込み時には指定インポーターでWebP化する。
+
+
+## 未公開：龍を黒寄りへ・顔修正／2柱のカラー選択（2026-10-05）
+
+- 内蔵image_genでヤマタノオロチの龍を黒主体・暗い紅の鱗へ調整し、以前の採用原本を参考に少女の顔の目・鼻・口を修正。黒白の衣装、8頭の独立した姿勢、龍の口の4色の玉各1個を保持。初回と顔修正版の原本・指示・参照・検証は kami_redesign/revisions/private-orochi-black-face-2026-10-05/。
+- ユーザーはスサノオ=最初の青緑 #247F87、ヤマトタケル=最初の氷青 #A3BEDB を選択。最初の原本・WebPの参照とハッシュをcolor-selection.jsonに保存。茶色や他の移植試作は履歴に保持。
+- 比較サイトへのアップロード禁止を継続。catalog・共有state・ゲーム画像参照は変更なし。ゲーム・ページへの新原本組み込み時には指定インポーターでWebP化する。
+
+## 配色専用メニュー・アメノウズメ比較・メニュー画像3枚（2026-10-05、v1.15.380）
+
+- ローカルpreview.htmlに「配色パターン」「メニューイラスト」を追加。#colors/#menusで直接表示。配色10柱＋別案7枚を人物欄から分離。スサノオ青緑・ヤマトタケル氷青を選択表示、オロチ黒寄り龍＋顔修正版とアマテラス脚を覆う版へ配色試作のみ更新。
+- アメノウズメの人物比較はラフ・現行・布なし採用版の3枚を復元。その他の用途の布あり没案は分離を維持。
+- 内蔵image_genで星紡ぎ戦（ウズメ＋スサノオ）、理念構築戦（ヒノ＋タケミカヅチ）、カードリスト（オモイカネ）を生成。採用済み人物デザインを参照し、配色試作は使用せず。新規3枚は比較用候補、ゲームTOP参照の変更なし。創世決戦と合わせ4種をmenu-catalog.jsonで管理。
+- 原本・指示・圧縮記録・検証・ブラウザ確認画像はkami_redesign/revisions/menu-and-colors-2026-10-05/。追加9画像を指定sceneでWebP化し300KB以下。Python4件/npm179件成功、HTTP15ファイル正本一致。人物画像等の採用参照維持、専用メニューとウズメ3枚、メニュー8画像読み込みを確認。
+- 共有サイトのアップ禁止は継続。アップロード・公開・共有state変更・Gitコミット/PUSH/デプロイなし。親.kami-share/build.jsは将来のmenu-catalog.json画像収集に対応したが、ビルドも実行していない。
+
+## メニュー画像の相手・剣・構図修正（2026-10-05、v1.15.381）
+
+- 星紡ぎ戦の組み合わせをアメノウズメVSオオクニヌシへ訂正。帽子・羽扇・髭・緑の衣装・白い動物のリデザイン参照を使用し、赤い風とスサノオの剣を除去。
+- 理念構築戦はタケミカヅチの剣身と柄を同じ直線上へ修正。初回に残った接続の角度を追加の内蔵image_gen編集で除去。カードリストは現行画像を構図対象として、全身像と銀河・巻物のS字配置を保ち、オモイカネの人物だけ新デザインへ更新。
+- menu-catalog.jsonの候補3画像を差し替え、旧候補はpreviousImageに保持。原本・生成指示・圧縮記録・検証はkami_redesign/revisions/menu-corrections-2026-10-05/。
+- 指定sceneインポーターで1100平方・220060～299216bytes。Python4/npm179件成功。HTTP7ファイル正本一致、比較メニュー8画像読み込み確認。人物catalog/index.html/共有stateのSHA256は作業前後一致。ゲーム参照変更なし、公開・アップロード・コミット/PUSH/デプロイなし。
+
+## 比較表示を固定・フツノミタマ・余裕のある星紡ぎ戦（2026-10-05、v1.15.382）
+
+- 全15比較ページへ幅360pxの固定画像枠とクリック拡大を追加。人物・正方形・横長ごとに共通比率で画像全体を表示。エモートパネルは480px。1枚でも複数枚でも伸びず、拡大は最大1200px・スクロール・全体表示・Escape・元リンクへのフォーカス復帰に対応。正本CSS/JSはkami_redesign/comparison-viewer.*、scripts/update_comparison_viewer.pyで各HTMLへ埋め込む。
+- 理念構築戦のタケミカヅチはゲーム内のフツノミタマの参照形状（中央剣身＋左右3本ずつの枝刃、輪の柄頭）へ変更。柄から剣先を同一軸の垂直に持たせた。
+- 星紡ぎ戦はウズメVSオオクニヌシの新規対戦画。互いに余裕のある笑顔で向き合い、扇と風で戦う。追加指示で羽扇の柄を握らせ、狼・フクロウを除去。ウズメの左手は無理に見せず、袖・髪・体の奥へ隠した最終版を比較候補に採用。
+- 指示・原本・途中案・WebP圧縮記録・検証・画面保存はkami_redesign/revisions/fixed-preview-futsunomitama-2026-10-05/。最終2枚は1100平方・277138/298082bytes。Python4/npm179件成功。HTTP20ファイル正本一致、人物1/3枚とメニュー2枚の360px固定、詳細・エモートの固定幅、拡大操作、メニュー8画像読み込みを確認。
+- catalog/index/共有stateのハッシュは前回から一致。人物採用画像とゲーム参照は維持。親.kami-share/build.jsは将来の二重ビューア防止のみ変更。共有ビルド・アップロード・公開は禁止を継続し実施せず。コミット・PUSH・デプロイなし。
+
+## メニュー3枚の粒状感抑制・ウズメの自然な構え（2026-10-05、v1.15.383）
+
+- ユーザー添付の星紡ぎ戦を内蔵image_genで編集。ウズメの肩・扇を持つ腕・腰・脚の向きを整理し、足を着いた小さな踏み込みへ変更。左手は奥へ隠す。オオクニヌシの姿・構え・羽扇の握りは維持、狼とフクロウなし。
+- 新規メニュー3枚（星紡ぎ戦・理念構築戦・カードリスト）の細かな粒状反射とぎらつきを抑制。単純なぼかしを避けて輪郭と滑らかな塗りを維持し、明るさの追加調整はなし。フツノミタマの直線と6枝刃、紫の炎・青の雷、全身オモイカネとS字巻物・銀河の構図を維持。創世決戦の既存画像は変更なし。
+- menu-catalog.jsonの候補3枚を差し替え、beforeSmoothing/previousImagesに修正前を保存。新規menu-smooth-preview.htmlに前後比較6画像を追加し、mainからリンク。全16比較ページの共通固定枠・拡大表示を維持。
+- 原本・参照・生成指示・圧縮記録・検証・ブラウザ確認画面はkami_redesign/revisions/menu-pose-smooth-2026-10-05/。WebPは1100平方・281148/272864/238602bytes。Python4/npm179件成功、HTTP22ファイル正本一致。ブラウザで比較6画像の読込と360px、3拡大画面、メニューの新参照を確認。
+- 人物catalog・ゲームindex・共有stateのハッシュは作業前と一致。共有ビルド・アップロード・公開は禁止継続、実施せず。コミット・PUSH・デプロイなし。
+
+## メニューの画風統一・ウズメのポーズ3案（2026-10-05、v1.15.384）
+
+- 内蔵image_genで理念構築戦とカードリストの画風を前回の星紡ぎ戦へ合わせて調整。繊細な線、滑らかな顔・髪・衣装の陰影を参照。構図と人物、直線のフツノミタマ・6枝刃・輪の柄頭、炎・雷・銀河・S字巻物を維持。
+- ウズメは安定した扇の構え／小さな横踏み／扇を肩の高さに構える3案を作成。腰のひねりを弱め、腕と脚のつながりを修正。自由な左手は隠し、オオクニヌシの姿・構え・羽扇の握りは維持。3案はposeVariantsの比較候補で、星紡ぎ戦のimageは前回のまま。
+- 新規menu-style-preview.htmlにポーズ3案と画風調整前後を掲載し、mainからリンク。幅360px固定と既存のクリック拡大を維持。menu-catalogの理念構築戦とカードリストimageのみ新しい画風へ更新、旧版はbeforeStyleMatchとpreviousImagesへ保存。
+- 原本5枚・参照・生成指示・WebP記録・検証・画面保存はkami_redesign/revisions/menu-style-poses-2026-10-05/。指定sceneインポーターで1100平方・286482〜295868bytes。Python4/npm179件成功、HTTP25ファイル正本一致、比較10画像の読込と360px・拡大・戻るを確認。
+- 人物catalog・ゲームindex・共有stateのハッシュは一致。アップ禁止継続。共有ビルド・アップロード・公開・Gitコミット・PUSH・デプロイなし。
+
+## 星紡ぎ戦：現行のウズメのポーズを参考に修正（2026-10-05、v1.15.385）
+
+- ユーザー添付の現行画像をポーズだけ参照し、内蔵image_genでウズメを修正。扇を胸元へ引き寄せて肘を曲げ、反対の手を肩の近くへ添え、上体を相手へ軽く傾ける。リデザイン後の顔・年齢・衣装・画風、オオクニヌシの姿と構えを維持。
+- menu-catalogの星紡ぎ戦imageを更新、旧版をbeforeCurrentPose/previousImages、添付参照をcurrentPoseReferenceへ保存。menu-style-previewの冒頭に現行・前回・修正版の比較を追加。前回3案は保持。他のメニュー項目は更新前と一致し、画風比較の参照は生成時の前回画像へ固定。
+- 原本・指示・参照・WebP記録・検証・画面はkami_redesign/revisions/shield-current-pose-2026-10-05/。指定sceneで最終1100平方285826bytes・参照1024平方253654bytes。Python4/npm179件成功、HTTP7ファイル正本一致、比較3画像の読込と幅360pxをブラウザ確認。
+- 人物catalog・ゲームindex・共有stateのハッシュ不変。共有ビルド・アップロード・公開・コミット・PUSH・デプロイなし。
+
+## 星紡ぎ戦：前傾を弱めた浮遊ポーズ（2026-10-05、v1.15.386）
+
+- 地面に立つ制約を外し、現行のポーズを参照してウズメの前傾と腰の曲がりを弱める内蔵image_gen編集。頭・胸・腰を自然につなげ、扇と肩に添える手の構えを維持、脚は力を抜いた浮遊姿勢へ。背景・リデザイン後の顔・衣装・画風とオオクニヌシの姿・構えを保持。
+- menu-catalogの星紡ぎ戦imageのみ更新、旧版をbeforeHoverPose/previousImagesへ。menu-style-previewの冒頭は現行・前回修正版・浮遊修正版の3画像。過去3案と他メニューの画像・画風参照は維持。
+- 原本・参照・指示・圧縮記録・検証・画面保存はkami_redesign/revisions/shield-hover-pose-2026-10-05/。指定sceneで1100平方・289086bytes。Python4/npm179件成功、HTTP6ファイル正本一致、比較3画像の読込と360px固定をブラウザ確認。
+- 人物catalog・ゲームindex・共有stateハッシュ不変。共有ビルド・アップロード・公開・コミット・PUSH・デプロイなし。
+
+## 星紡ぎ戦：脚を左へ流した浮遊ポーズ（2026-10-05、v1.15.387）
+
+- ユーザー添付の前回画像を内蔵image_genで編集。ウズメの脚・足先を画面左へ流す浮遊ポーズへ。初回に残った右向きの足先を追加編集。上体・顔・表情・両手と扇、背景とオオクニヌシの姿・構えは保持。
+- menu-catalogの星紡ぎ戦imageのみ更新、旧版をbeforeLeftLegPose/previousImagesに保存。menu-style-previewの冒頭は現行参照・前回浮遊版・左向きの脚の最新版。前回3案と他メニューは保持。
+- 原本・途中版・参照・2回の指示・圧縮・検証・画面はkami_redesign/revisions/shield-left-legs-2026-10-05/。指定sceneで1100平方・280098bytes。Python4/npm179件成功、HTTP6ファイル正本一致、比較3画像の読込と360px固定をブラウザ確認。
+- 人物catalog・ゲームindex・共有stateハッシュ不変。他メニュー項目は更新前と完全一致。共有ビルド・アップロード・公開・コミット・PUSH・デプロイなし。
+
+## 星紡ぎ戦：空中での対戦を示す背景（2026-10-05、v1.15.388）
+
+- 今回添付されたe2ea9b82画像を内蔵image_genで背景編集。石畳を撤去し、神社の屋根・朱い鳥居・暖かな灯りを遥か下へ。足元は開けた空間。人物の構えと月夜の雰囲気を保持。
+- menu-catalogのshield2p imageを更新。beforeAerialBackgroundには直前の脚左向き案を保持。aerialBackgroundReferenceは今回添付画像。menu-style-preview冒頭で今回の添付画像と背景修正版を固定幅360pxで比較。他メニュー項目は完全不変。
+- 原本・入力・指示・圧縮・HTTP検証・ブラウザー画面はkami_redesign/revisions/shield-aerial-background-2026-10-05/。完成WebPは1100平方・288432bytes。Python4/npm179件成功。HTTP7ファイル一致、前後画像の読込と固定幅をブラウザー確認。
+- 人物catalog・ゲームindex・共有stateのハッシュ不変。共有サイト未更新。共有ビルド・公開・アップロード・コミット・PUSH・デプロイなし。
+
+## 星紡ぎ戦：二人の目を少し開く（2026-10-05、v1.15.389）
+
+- 今回添付の1cfa4d50画像を内蔵image_genで目元編集。ウズメ・オオクニヌシとも上まぶたを少し開き、瞳を見えやすく調整。余裕のある表情と視線、空中の構えと背景を保持。
+- shield2p imageのみ更新。beforeEyeAdjustmentに調整前の空中背景版を保存。menu-style-preview冒頭で目元前後を比較。背景の前後も別段に保持。他メニュー項目不変。
+- 原本・入力・指示・圧縮記録・検証・画面はkami_redesign/revisions/shield-eyes-2026-10-05/。scene 1100平方・271838bytes。Python4/npm179件成功。HTTP6ファイル一致、比較2画像の読込・360px固定をブラウザー確認。
+- index・人物catalog・共有stateハッシュ不変。共有サイト未更新。公開・アップロード・コミット・PUSH・デプロイなし。
+
+
+## 今までの変更を共有公開（2026-10-05、v1.15.389）
+
+- ユーザーの明示指示「比較用サイトに今までの変更をアップしてください」に基づき、既存URL https://claude.ai/artifact/UanAtoxopyJL7fPh2KbQir を更新。公開版IDは1791210335-46ce（同じArtifact）。今後の変更には引き続き新しい公開指示が必要。
+- 最新一式は .kami-share/shared-all-changes-v389-published-20261005/。17ページ・現在必要な466ファイル、以前の公開版から差分53件・欠落0。ZIPから相対パスを保って反映。公開済み旧13ファイルは削除せず保持（公開計479ファイル）。
+- 最新の星紡ぎ戦（神社上空・二人の目元調整）、理念構築戦とカードリストの画風調整、別メニューの配色パターン、ウズメのラフ／現行／布なし、固定幅360pxの枠を反映。ツクヨミの掲載枚数と布あり没案の分離は維持。
+- 53ファイルの公開後照合は52ファイルがSHA256一致、index.htmlは自動HTML外枠を除いた本文一致。公開後に残っていた未公開注記をローカル・共有とも制作候補へ統一し、3ファイルを追加更新。menu-catalog.jsonとmenu-style-preview.htmlは完全一致、index.html本文はバイト一致。
+- 公開URLで人物30画像、メニュー8画像、配色17画像、画風専用ページ14画像の読み込み、戻ると拡大を確認。最終版でもメニュー8画像と専用ページ14画像の読み込み・固定幅・制作候補の表記を確認。_browser-verification.json、_browser-final-verification.json、_public-proof.pngに証跡保存。
+- state.jsonは2026-10-05T14:31:38.060Zに現行466＋保持旧13＝479ファイルを記録。ゲームindexと人物catalogは変更なし。Gitコミット・PUSH・ゲームデプロイ・定期実行の変更なし。
+
+
+## 全10柱：塗りと髪の整理・個別修正（2026-10-06、v1.15.390）
+
+- ユーザー指定の採用済みタケミカヅチを塗りと髪の基準に、内蔵image_genで10柱の人物イラストを編集。細かな斑点・密集する微細な質感・毛の線を整理し、広い陰影とまとまった毛束へ。顔・構図・配色・武器の個性を維持する指示。
+- タケミカヅチは鳥居を2基へ。オモイカネは髪をストレート寄りにし、巻軸と紙の巻物、墨の筆文字へ。オロチは8頭と構図を維持して鱗・髪の反射を抑制。
+- ウズメは最新指示で薄色の布あり試作。扇の房を除去、耳を髪と布で隠し、手指を調整。初稿の舞いが弱いため浮遊して片脚を上げる姿勢と風・花びらの軌跡へ追加編集。顔の年齢変更なし。初稿・最終の2PNGを保存。
+- 9柱の比較用masterを更新、previousBeforeCleanPaintMaster系に旧版を保存。ウズメの布あり版はcleanPaintTrialとして別の試作比較に掲載し、布なし採用版と既存の没案7用途は維持。全10柱の新旧20画像をclean-paint-hair-preview.htmlへ追加、主一覧からリンク。既存のぎらつき抑制ページは以前の編集時点の画像へ固定。
+- 原本11枚・入力参照・生成指示・旧catalog・圧縮記録・検証・画面はkami_redesign/revisions/kami-clean-paint-hair-2026-10-06/。指定sceneで最大辺1100、148600〜205026bytes。Python4/npm179件成功。HTTP17ファイル正本一致、主一覧の9修正版とウズメの布なし継続、比較20画像の読込・360px固定・拡大・戻るをブラウザ確認。
+- ゲームindex、menu-catalog、共有stateのSHA256は作業前と一致。カットイン・カード・ちびキャラ・休息・配色試作・ゲーム画像参照は不変。今回の画像編集指示では共有サイト更新は禁止を継続。共有ビルド・アップロード・公開・コミット・PUSH・デプロイなし。
+
+
+## 人物イラスト10柱の修正版を採用（2026-10-06、v1.15.390）
+
+- ユーザーの明示指示で全10柱を採用。ウズメは薄色の布あり・舞いの最終稿へ。catalogと7比較ページの表記・参照を揃えた。その他用途、ゲームindex、menu-catalog、公開stateは不変。HTTP18ファイル一致。
+- 変更前の記録・adoption.json・検証・画面はkami_redesign/revisions/clean-paint-adoption-2026-10-06/。共有公開なし。
+- 続いて創世神技10枚、既存ジェネシス18枚、ウズメちび1枚の塗り・髪整理とユーザー個別修正に着手。新しい公開許可はない。
+
+
+## 創世神技・ジェネシス：塗りと髪の整理＋個別修正（2026-10-06、v1.15.391）
+
+- 最新指示に沿って内蔵image_genで創世神技10枚、ジェネシス18枚（既存9柱の演出あり・なし）、ウズメちび1枚を編集。採用済み人物の滑らかな塗りを参照し、密集した微細な質感と髪の線を整理。輪郭と立体感を維持、全体の明るさ補正なし。
+- 葉の密集、巻物の二重構造、手指、反復する建造物、アマテラスの額の肌のマーク、ツクヨミとオロチの体格を調整。ツクヨミは鎌の方向・直線の柄・持ち方を保ち蝶を増やし、カードは微笑みを少し強めた。ヒノカグツチの奥側の小さい手を追加編集し余分な指を整理。ウズメちびは等身を低くした透過の立ち姿。
+- catalogのcutin/card/cardNoEffects、ウズメchibiとUncovered別名を最新WebPへ。以前の参照はpreviousBeforeCutinCardCleanPaint系、cutinCardCleanPaint.beforeに保持。10柱の採用済みmaster・現行画像・休息・エモート・配色・メニュー画像は維持。オロチのカードは既存なし、追加なし。
+- cutin-card-clean-paint-preview.htmlで29枚の前後58画像を比較。主一覧と用途別ページから導線。旧cutin-card-smooth-previewは以前の編集時点の参照へ固定し履歴化。固定幅360px・クリック拡大を保持。主一覧ツクヨミcutinは現行と最新の2枚。
+- 原本29枚・途中版・入力参照・実際の生成指示・圧縮・検証・画面はkami_redesign/revisions/cutin-card-clean-paint-2026-10-06/。指定インポーター使用、cutin1600×900、card1100平方、chibi720平方、113936〜298690bytes。Python4/npm179件成功。ブラウザーで58画像読込・幅360px・演出あり9枚フィルター・拡大と閉じる、主一覧10カットインと18カードの新参照を確認。
+- ゲームindex、menu-catalog、共有stateは作業前SHA256と一致。共有サイトは未更新。新しい公開指示が来るまで共有ビルド・アップロード・公開は禁止。コミット・PUSH・ゲームデプロイなし。
+
+
+## スサノオ：未採用のオレンジ配色3案（2026-10-06）
+
+- 最新のぎらつき・密集した塗りと微細な髪を整理したスサノオ人物原本をベースに、内蔵image_genで鮮やかな橙×濃紺／琥珀寄りの橙×生成り／深い橙×青灰の3案を作成。顔・黒髪・体格・構え・直線の銀の剣・神社の構図・赤い風を維持。
+- 原本3枚・入力・生成指示・SHA256・検証はkami_redesign/revisions/susanoo-orange-trials-2026-10-06/。今回は候補のPNG原本のみ、比較ページ参照や採用済み画像・personalColorTrial選択状態は変更しない。
+- catalog、personal-color-preview、ゲームindex、version、menu-catalog、共有stateは開始時と一致。共有サイトへの追加・公開、Gitコミット・PUSH・デプロイなし。採用またはページ掲載する際は指定インポーターでWebPへ変換する。
+
+
+## スサノオ：オレンジ衣装の風色4案（2026-10-06）
+
+- ユーザー添付のオレンジ×濃紺の人物を直接編集し、内蔵image_genで風を淡い青白／青緑／琥珀色／銀白へ変更。風の配置・流れ・透け感と人物、剣、衣装、背景の構図を維持する指示。滑らかな塗り、微細なぎらつきなし、炎・雷にはしない。
+- 原本4枚・添付参照・実際の生成指示・保存場所・SHA256・検証はkami_redesign/revisions/susanoo-orange-wind-trials-2026-10-06/。未採用の選定用PNG原本。catalog・ゲームindex・version・personal-color-preview・menu-catalog・共有stateのハッシュは一致。比較サイトへの掲載・公開、コミット・PUSH・デプロイなし。掲載時は指定インポーターでWebP化する。
+
+
+## スサノオ：オレンジの風の濃淡3案とローカル比較（2026-10-06、v1.15.392）
+
+- 同じオレンジ×濃紺の添付画像を内蔵image_genで編集し、淡い杏色／明るい橙／深い橙の風を3案作成。滑らかな塗りと髪の束、人物・剣・衣装・構図を維持。炎ではなく透ける風の流れとして編集。
+- kami_redesign/susanoo-orange-wind-preview.html に新しい濃淡3案・前回の風色4案・元の赤い風・衣装配色3案、計11画像を固定幅360pxで掲載。クリック拡大と全体表示を備える。主比較ページの配色メニューと personal-color-preview からリンク。通常のカミイラスト枠には追加していない。
+- ローカルURLは http://localhost:8765/kami_redesign/susanoo-orange-wind-preview.html#orange 。既存の8765サーバーで最新ページと画像を確認。共有サイトは未更新。
+- 指定インポーターで11画像をscene最大辺1100のWebPへ変換、152554〜161210bytes。原本3枚・参照・生成指示・圧縮記録・保護ハッシュ・検証・画面は kami_redesign/revisions/susanoo-orange-wind-density-2026-10-06/ 。別カタログは susanoo-orange-wind-catalog.json 。
+- Python4件/npm179件成功。HTTP18ファイルはローカル正本と一致。ブラウザーで11画像の読込、幅360px、拡大・全体表示・閉じる、配色メニューからの遷移を確認。
+- catalog、ゲームindex、menu-catalog、公開stateは開始時SHA256と一致。採用や配色の選択状態は変更なし。共有ビルド・アップロード・公開、コミット・PUSH・デプロイなし。
+
+
+## スサノオのオレンジ採用＋全カミの背景ぼかし（2026-10-06、v1.15.394）
+
+- ユーザー添付 codex-clipboard-2b68d556-da92-4905-9584-07fba3401276.png をスサノオ人物の採用画像へ。オレンジ×濃紺・淡い杏色の風。添付原本と以前の採用状態は revisions/susanoo-orange-adoption-2026-10-06/ と catalog.previousBeforeOrangeAdoption に保持。配色試作ページ・採用表記を揃え、v1.15.393へ更新した後、最新の背景ぼかし指示に着手。
+- 内蔵image_genの編集で人物10枚・創世神技10枚・ジェネシス18枚（演出あり9＋なし9）、計38枚の遠景をぼかした。顔・手・髪・武器・近くの演出・伴獣・神像・オロチの8頭を鮮明に維持する指示。スサノオ人物は上記の選択画像が入力。その他用途のスサノオ配色は従来の採用状態を維持。
+- catalog の master/cutin/card/cardNoEffects とウズメの該当 Uncovered 別名を新WebPへ。背景ぼかし前の画像・入力・生成指示・採用状態は backgroundFocus に保存。以前の塗り・髪整理ページは履歴の画像を保持し、最新背景ぼかしページへリンク。現行・ラフ・ちび・休息・エモート・メニュー画像は変更していない。
+- kami_redesign/background-focus-preview.html で全38枚の前後76画像を比較。人物／創世神技／演出あり／演出なしのフィルター、360px固定、拡大・全体表示。主比較一覧と塗り・髪整理の2履歴ページ、スサノオ風色ページからリンク。
+- 原本38PNG・実際の生成指示・入力・保存元・SHA256・旧catalog・圧縮・検証・画面は kami_redesign/revisions/background-focus-2026-10-06/。不完全な指示で一度生成したオオクニヌシ／タケミカヅチ8枚は未採用として discarded-generation-records.json に記録し、正しい指示で再生成したものを採用。
+- 指定インポーター使用、創世神技1600×900、人物とカードは最大辺1100、122354〜280194bytes。v1.15.394。Python4件/npm179件成功、HTTP86ファイルがローカル正本と一致。ブラウザーで76画像読込、幅360px、用途別10/10/9/9枚、拡大・全体表示・閉じる、主一覧の10人物・10カットイン・18カードとウズメ別名の新参照を確認。ツクヨミcutinは現行と採用の2枚。
+- ゲームindex、menu-catalog、親ルート .kami-share/state.json のSHA256は開始時と一致。既存の8765サーバーが .release-worktree の最新ファイルを配信。共有サイトへの更新・公開、コミット・PUSH・ゲームデプロイなし。新しい公開指示が来るまで共有公開禁止を継続。
+
+## チームメモ：未対応項目の照合と追加修正（2026-10-06、v1.15.395）
+
+- メモ全項目を30行の照合表へ。手指・体格・髪・葉・建造物・演出ありカード・ウズメちび・塗り整理・38枚背景ぼかしはv390〜394で対応済み。ユーザー指定によりお面は対象外。
+- 内蔵image_genの編集モードで7原本を作成。オモイカネ人物に残っていた日本語の知恵・天地を空想の神代文字へ。創世神技と演出ありジェネシスの文字も同系統へ統一。ツクヨミ演出ありカードはヨリシロ4体から8体へ、微笑み・蝶・構図を保持。通常参照の変更はこの4画像のみ。
+- 配色は過去指示に従い別メニューで比較。オモイカネは元の黒い衣装を黒に近い濃紫へ。オロチは中央黒・外側白、蜘蛛の巣状の放射模様を除去、元の赤い背景を保って衣装と分離、8頭の龍は黒・暗紅。アマテラスは既存白黄案を最新の滑らかな塗りと背景ぼかし原本へ揃え、脚を着物で覆った。
+- 淡緑・布ありのウズメ、橙のスサノオ、元の黄黒のタケミカヅチ、元の赤黒のヒノカグツチは既に指定色の採用人物を配色枠にも再掲。旧配色情報はpreviousPersonalColorTrials、前後比較、catalog.beforeに保持。新配色3案を通常人物枠へ混在させていない。
+- team-memo-preview.htmlで追加修正4組＋配色整理7組、計22画像を固定幅360pxで比較。追加修正／配色案のフィルター、拡大・全体表示、全メモ照合表。主比較とpersonal-color-previewからリンク。
+- 原本・実際の指示・入力・SHA256・旧参照・圧縮・照合表・検証・画面はkami_redesign/revisions/team-memo-2026-10-06/。指定インポーターで7WebP、創世神技1600×900、他最大辺1100、全300KB以内。v1.15.395。
+- Python4/npm179件成功。HTTP50ファイル正本一致。ブラウザーで22画像読込、幅360px、フィルター4/7組、拡大と閉じるを確認。主配色メニューも新参照・表記を確認。画像変更がない通常用途の参照は不変。
+- index.html、menu-catalog、親ルート.kami-share/state.jsonのSHA256不変。共有サイトは未更新。アップロード・公開・ゲーム組込み・コミット・PUSH・デプロイなし。
+
+## 巻物の紫文字・ヨリシロの造形・オロチの喪服と龍（2026-10-06、v1.15.396）
+
+- 内蔵image_genの編集で5原本を作成。オモイカネ人物と濃紫配色案は、巻物に書かれた空想文字が紫に発光し空中に浮かび上がる演出へ。実在の文字は使用せず、紙の巻物・人物・滑らかな塗り・背景ぼかしを維持。
+- ツクヨミのジェネシス演出あり8体・なし1体を、tools/card-editor/art/181_ヨリシロちゃん.webp の丸い頭・両腕・先細りの胴体へ修正。元カードの粒や背景は移植しない。人物・手・額のマーク・蝶を維持。
+- オロチの黒白配色案は黒い喪服風の外衣と白い死装束風の内衣・襟・裏地へ。8頭の龍を描き直し、炭黒・暗紅の鱗と腹、揃った顔・角・長い首に。口の赤青緑金の4オーブを維持。面は対象外。
+- 通常参照はオモイカネmasterとツクヨミcard/cardNoEffectsの3箇所を更新。オモイカネ濃紫とオロチ黒白は引き続き別のpersonalColorTrialメニュー、通常人物へ混在させない。旧参照をscrollSpiritsRevision/previousPersonalColorTrialsへ保存。
+- scroll-spirits-preview.htmlで5組の前後比較とヨリシロ元カード、11画像を固定幅360pxで表示。主一覧・配色メニュー・前回チームメモからリンク。URLは http://localhost:8765/kami_redesign/scroll-spirits-preview.html 。
+- 原本5枚・実際の指示・入力・生成保存元・SHA256・旧参照・圧縮・検証・画面は kami_redesign/revisions/scroll-spirits-mourning-2026-10-06/ 。指定インポーターでscene最大辺1100、全300KB以内（最大187994bytes）。v1.15.396。
+- Python4件/npm179件成功、HTTP13ファイル正本一致、localhostページ一致。ブラウザーで11画像読込、360px固定、移動・拡大・全体表示・閉じるを確認。
+- ゲームindex、menu-catalog、親ルート.kami-share/state.jsonのSHA256不変。共有サイトへの更新・アップロード・公開なし。ゲーム組込み・コミット・PUSH・デプロイなし。
+
+## 空想文字と巻物・ヨリシロと龍のポーズ（2026-10-06、v1.15.397）
+
+- 内蔵image_genで人物オモイカネ、同濃紫配色、ツクヨミ演出ありジェネシス、オロチ黒白配色の4枚を編集。オモイカネの空想文字を多様化し、紙上の文字が紫に浮き上がる演出へ。巻物は1本の紙の両端にのみ巻き軸がある形へ整理。文字・巻物の追加修正後、濃紫版は通常修正版の衣装色だけを変更して構造を揃えた。
+- ツクヨミの8体に手振り・腕組み・横滑空・頬に手・両手を寄せる・背面・蝶へ伸ばす・手のひらの挨拶など個別のポーズを付与。造形は前回の丸い頭・両腕・先細りの胴体を保持。演出なし1体は今回変更なし。
+- オロチの8頭はそれぞれ異なる首の曲線、上向き・下向き・横顔・正面・見返り、口の開閉へ描き直し。赤青緑金4個の口のオーブ、人物の顔と黒白の和装、背景ぼかしを保持。面は対象外。
+- 通常catalog更新はオモイカネmasterとツクヨミcardの2箇所。濃紫オモイカネと黒白オロチは引き続きpersonalColorTrialで別メニュー。以前の通常参照はglyphPoseRevision、配色はpreviousPersonalColorTrialsに保存。
+- glyph-pose-preview.htmlで4組8画像を前後比較。固定幅360px、クリック拡大・全体表示。主一覧、personal-color-preview、前回scroll-spirits-previewからリンク。URLは http://localhost:8765/kami_redesign/glyph-pose-preview.html 。
+- 原本4枚、実際の最終指示・参照・保存元・SHA256、未採用3編集の指示、旧catalog、圧縮、検証、画面を kami_redesign/revisions/glyph-pose-variety-2026-10-06/ に保存。指定インポーター、scene最大辺1100、最大190306bytes。v1.15.397。
+- Python4/npm179件成功。HTTP11ファイル正本一致、localhostページ一致。ブラウザーで8画像読込・360px固定・リンク移動・拡大・全体表示・閉じるを確認。
+- index.html、menu-catalog、親ルート.kami-share/state.jsonのSHA256は作業前と一致。共有サイトのアップロード・公開、ゲーム組込み、コミット・PUSH・デプロイなし。
+
+## 衣装と文字・巻物の端・龍の向き・アメノウズメの耳（2026-10-06、v1.15.398）
+
+- 内蔵image_genの編集で12原本を作成。オモイカネは今回指定された添付1の濃紫・金の衣装と添付2の多様な空想文字を合成。背景側の巻き軸が紙の長辺に沿って残った初回結果は採用せず、短辺の端を巻く縦の巻き軸へ追加修正。人物・前景の文字と紫の浮遊文字を維持。
+- ユーザーの今回の衣装指定を受け、合成オモイカネを通常masterと配色枠に反映。以前の通常参照・配色案はscrollEarRevision/previousPersonalColorTrialsと旧catalogへ保存。オロチ黒白案は引き続きpersonalColorTrialのみ、通常人物に混在させない。
+- オロチの8頭は首の曲線・高さ・頭の傾きに違いを残し、全頭こちらを向く正面または斜め正面へ。人物の顔・黒白喪服/死装束・4つの口の赤青緑金のオーブを維持。お面は対象外。
+- アメノウズメの15画像と星紡ぎ戦を確認。耳が見える9画像（以前の布なし人物、創世神技2版、演出なしカード布あり没案、立ちちび、休憩2版、6表情2版）と星紡ぎ戦の耳を髪で覆う。すでに髪で覆われている6画像は維持。年齢・体格・表情・構図は変更しない。旧ラフ・旧現行・過去の没ポーズは比較履歴として保存。
+- catalogのappearanceConstraints.earsへ、アメノウズメの通常・創世神技・ジェネシス・ちび・表情差分・メニューで耳の輪郭・先端を髪で完全に覆う恒久指定を記録。cutin/chibi/rest/emoteAtlasのUncovered参照も新画像へ同期。布あり没案は別メニューのまま。
+- menu-catalogのshield2pのみ耳修正版へ更新。オオクニヌシ・扇・空中ポーズ・背景の構成を維持。他3メニューは不変。ゲームindexと親ルート.kami-share/state.jsonのSHA256不変。
+- scroll-ear-preview.htmlに12組24画像＋添付参考2画像、全26画像、幅360px固定・クリック拡大・16対象の耳の照合表。主一覧・配色一覧・前回glyph-poseからリンク。URLは http://localhost:8765/kami_redesign/scroll-ear-preview.html 。
+- 原本12PNG、添付2PNG、最終指示・生成試行・SHA256・旧catalog/旧menu・照合・圧縮・検証・画面は kami_redesign/revisions/scroll-dragon-ear-cover-2026-10-06/。指定インポーターでcutin1600x900、scene最大辺1100、sprite最大辺720、6表情atlas720x480・3列2段・透過。atlas960試行は容量超過のため720で登録、上限は緩めない。新12画像の最大287324bytes。v1.15.398。
+- Python4件/npm179件成功。HTTP22ファイル正本一致、localhost比較ページとindexの読み取り一致。ブラウザー26画像読込、360px固定、拡大・全体表示・閉じるを確認。主一覧のオモイカネと星紡ぎ戦の参照更新を確認。ちびと龍の前後比較画面を保存。
+- 共有サイトへの更新・アップロード・公開、ゲーム組込み、コミット・PUSH・デプロイなし。
+
+## 表示用画像の画質復元（2026-10-06、v1.15.399）
+
+- 最新PNG原本の人物10・創世神技10・ジェネシス18の計38枚を目視確認。原本の輪郭・顔・衣装は保たれており、主な復元可能な劣化は表示用縮小による細部の損失と判断。過去のタケミカヅチ／オモイカネJPEG、ツクヨミカットイン、星紡ぎ戦なども比較。意図的な背景ぼかし・束にまとめた髪の塗りは維持。
+- カミ人物10、ジェネシス18、別案4（ウズメ旧布なし人物・布あり没案カード演出なし、アマテラス白黄、オロチ黒白）の32固有画像を変更のない最新PNGから再出力。人物約1060×1484、カード主に1254×1254、ヒノカグツチ演出あり1200×1200。従来以上のWebP品質、最大290082B、最大辺1484。指定インポーターで登録しcatalogの採用URL／同一参照エイリアスを同期。
+- 創世神技1600×900・ちび・表情差分・メニュー画像は不変。配色案と没案は別メニュー。PNG自体の過去の編集で失われた描写の再生成ではなく、原本に残る細部を表示画像へ戻す対応。今回のimage_gen呼び出し・新規生成・アップスケール・シャープ処理なし。
+- quality-restoration-preview.htmlに32組64画像の前後比較、幅360px固定、クリック拡大／全体表示、32PNG原本保存リンク。主一覧・配色・前回scroll-earからリンク。http://localhost:8765/kami_redesign/quality-restoration-preview.html 。
+- 原本SHA256・84固有URLメタデータ監査・変更前catalogとmenu・圧縮記録・目視範囲・検証・画面は kami_redesign/revisions/quality-restoration-2026-10-06/。84画像すべてを目視比較した意味ではない。READMEに対応範囲と限界を明記。
+- Python4件/npm179件成功。HTTP73ファイル正本一致。ブラウザーで最初のオモイカネ前後（788×1100→1061×1482）の読み込み、両枠360px、拡大・全体表示・閉じるを確認。browser-proof.pngを保存。
+- すべての入力PNG、menu-catalog、ゲームindex、親ルート.kami-share/state.jsonは作業前SHA256と一致。ローカル8765のサーバー維持。共有サイト更新・公開、ゲーム組込み、コミット・PUSH・デプロイなし。
+
+
+## 最新採用版の整理・共有公開（2026-10-07、v1.15.400）
+
+- ヒノカグツチ／タケミカヅチ／ヤマトタケルのジェネシスは演出あり1枚に統一。原本復元の画質修正版を採用。修正前・旧候補・没案は掲載から整理し、最新採用版の用途別10メニューに置換。通常人物10・創世神技10・カード15・配色5など計84表示項目、固有WebP80とPNG原本25を維持。画像は再生成・再圧縮なし。
+- 旧25比較ページは最新一覧への案内に置き換えた。旧HTMLとcatalogはkami_redesign/revisions/final-selection-2026-10-07/beforeへ保存。歴代画像／原本はローカル保存。未採用配色は通常人物へ混ぜない。
+- 共有URL https://claude.ai/artifact/UanAtoxopyJL7fPh2KbQir を135ファイル約74MBで更新。最終公開版ID1791304892-e3ac（Artifact version19）。容量超過の旧v399・7ZIPは今回の2ZIP完全版＋index差分2件で置換。旧ファイル418件は今回の公開版から除外、過去公開版は保存。
+- PNGのdownload属性・別タブ表示はビューア制限があったため、PNG原本を表示リンクで既存拡大ダイアログ内に原本を開く。共有ビューアでスサノオ原本1061×1482、ヤマトタケル演出あり1254×1254、全体表示・閉じるを実確認。指定3柱は各1枚、幅360px。公開側135件SHA256は提供manifest一致（indexは自動外枠を除く本文）。報告全文・画面・publication.jsonを同revisionへ保存。
+- ローカルHTTP107パス正本一致、画像／原本バイト不変、menu-catalogとゲームindex不変。公開後に親.kami-share/state.jsonを135件の最終manifestで更新済み。npm／Python画像インポーターテストは画像不変のため追加実施なし。ローカル8765維持、ゲーム組込み／Gitコミット・PUSH／ゲームデプロイなし。
+
+
+## 2026-10-07 v1.15.401 表示サイズ・暗色背景とローカル画像修正
+
+- ユーザー依頼で比較サイトのUIのみ更新・公開。同じURL、公開版1791308371-5578（version21）。通常480px、横長960px、エモート720px、狭い画面は幅以内。背景#080b10、外枠の影響を避け見出し/body文字色#f4f0e8を明示。
+- ユーザー「Claude全体もダークにする」の明示許可を受け、Claudeアカウントのテーマもダークへ変更済み。
+- 公開ファイルはindex.htmlのみ差替え。他134ファイル/画像はv1.15.400のまま。state.jsonはindexのSHA16のみ更新（全135件維持）。完全なv400パッケージは履歴として保持。追加CSSパッケージは.kami-share/ui-scale-dark-v1.15.401-20261007。
+- ローカルのみ: アメノウズメmasterを寄りの構図へ、タケミカヅチrestの髪量を減らした。カタログ/最新採用ページの参照更新済み。新規画像2件は公開していない。これ以降の画像アップロードには新たな明示指示が必要。
+- 原本/生成記録/バックアップ/検証/公開レポート/スクリーンショット: .release-worktree/kami_redesign/revisions/visual-scale-dark-2026-10-07。apply.pyは初回適用用のため再実行しない。
+- 最適化: Amenouzume 1061x1482 218886B、Take rest 560x560 118316B（元PNGは高解像度で保存）。importer経由、透明背景保持。Python4テスト/Node179テスト合格。84掲載件数不変、HTTP一致、ゲームindex/menu/元画像不変。共有の480/960pxと明るい見出し、PNG原本dialog表示を実ブラウザで確認。
+- ローカル確認サーバー8765は既存のまま、比較URL http://localhost:8765/kami_redesign/preview.html。ゲーム反映/デプロイ/Git操作なし。
+
+
+## 2026-10-07 v1.15.402 未選択配色の最終比較（ローカルのみ）
+
+- ユーザーの「選択していない配色を提示」に対応。color-decision-preview.html / color-decision-catalog.jsonを作成し、preview.htmlのナビに配色の最終比較リンクを追加。現行10枚＋過去の配色案・以前の選択29枚（計39枚）を固定480px、暗色背景、クリック拡大で表示。
+- 衣装/風の色/龍の色と黒白比率を区別し、同色の単なる画質・造形修正版は重複しない。旧版の衣装/ポーズ/耳/巻物等を含む候補は色比較用と注記。最新のアマテラス白黄色・オロチ黒白は画質復元版を使用。新規画像生成/圧縮なし。
+- 候補ID S0..、Y0..、R0..等で決定を伝えられる。仮選択は専用localStorageキーtsukuriyo-color-decision-2026-10-07に保存。仮選択10柱一覧・選択メモ表示あり。採用画像/canonical catalogは変更しない。初期仮選択は現行色（ヤマトタケルだけ以前選択したY1氷青）。検証時のY3選択はY1へ戻した。
+- HTTP42参照一致、JS構文/拡大・全体表示・閉じる/選択・再読込保持/10柱一覧・メモ/狭い画面幅343px・横溢れなし/カミ別リンクのスクロールを検証。ブラウザーerrorなし。原画像/canonical catalog/final/menu/manifest/game index/公開stateはSHA不変。共有へのアップロードなし。
+- 生成スクリプト・検証・before・browser-proof.pngはkami_redesign/revisions/color-decision-2026-10-07。ローカルサーバー8765継続。コミット/PUSH/デプロイなし。
+
+
+## 2026-10-07 v1.15.403 5柱の配色を確定（ローカルのみ）
+
+- 最新のユーザー指定: オオクニヌシO1 / オモイカネM0 / アマテラスA2 / ツクヨミL0 / ヤマタノオロチR1。personal-color-selection.jsonとcatalog.personalColorSelectionへ決定として記録。既存5柱はS0/Y1/T0/U0/H0を維持。final-catalogとpreviewの選択済み配色を10柱に拡充（全89項目）。
+- 通常master・創世神技・ジェネシス・ちび・メニューの画像参照/画質は変えていない。ユーザーが決定したのは配色で、過去の配色候補の旧造形へmasterを差し戻さない。特にO1/A2などを最新の造形へ色適用する作業は未実施。配色試作は専用メニューを維持。新規生成/再圧縮/共有アップロードなし。
+- 決定ページに指定5件を表示し、既存localStorageの古い仮選択は確認revision1.15.403を一度だけ適用して更新。以後の仮選択は再検討メモで、正式選択JSONを自動変更しない。
+- kami_redesign/revisions/color-adoption-2026-10-07にbefore・適用/更新スクリプト・選択記録・検証・confirmed-colors.png。これらapply/updateスクリプトは初回用、再実行しない。以前のcolor-decision/build.pyは決定メタデータ対応前なので再実行で決定表示を消さないこと。現在のcolor-decision-catalogを正として扱う。
+- HTTP23パス正本一致、PNGリンク/画像保持、main画像/他gallery群/ゲームindex/menu/manifest/公開state不変を検証。2ページJS構文、決定5色・10柱一覧・メモ・選択済み配色10件・browser errorなしを確認。8765継続、コミット/PUSH/デプロイなし。
+
+
+## 2026-10-07 v1.15.404 決定配色を全用途へ反映（ローカルのみ）
+
+- ユーザー指定の正式配色 S0/Y1/O1/T0/M0/U0/H0/A2/L0/R1 を全79採用項目へ反映。通常・創世神技・ジェネシス・ちび・ロード・エモート・メニュー・OP・チュートリアル。50項目を組み込みimagegenで変更、R1通常1項目は既存選択原本を採用、既に一致する28項目は画質維持のため再生成なし。生成追加修正3回（スサノオ演出なしの風、星紡ぎ戦の配色混入、創世決戦のヤマトタケル氷青）。
+- 旧通常イラスト10枚だけを「没案：旧カミイラスト」へ分離。全99掲載項目、11メニュー。ほかの旧用途画像は掲載せずディスク履歴を維持。配色最終比較39候補ページは履歴としてファイルを残すが、最新採用ページの導線は決定配色10件のみ。T/H/Yのジェネシスは演出あり1枚を維持。
+- .release-worktree/kami_redesign/revisions/confirmed-color-rollout-2026-10-07 に原本50PNG・追加失敗版履歴・全生成指示・before・jobs・import-report・visual-review・verification・browser-proof.pngを保存。51素材をimport_visual_asset.py経由でoptimized-confirmed-colorsへ出力。予算を緩めず、sprite最大720/120KB、atlas780〜960幅/160KB、scene最大1600/300KB、cutin1600x900/300KB。PNG原本は大きいままリンクから閲覧可能。
+- catalog/final-catalog/personal-color-selection/menu/tutorial_catalogとpreview.htmlを更新。新通常は最新造形に色のみを適用。配色決定全10件artApplied=true。version.jsは1.15.404。apply_rollout.pyはbefore基準で再実行するので将来変更後は再実行しない。prepare/configureは監査を初期化するため再実行しない。
+- Pythonインポーター4テスト・npm179テスト合格。HTTP170参照正本一致、全画像容量・透過・3x2境界確認、2ページJS構文合格。ブラウザーで没案10件・S0カットイン原本1672x941のdialog・エモート6表情720px・暗色・343px幅で横溢れなし・エラーなしを確認。
+- ローカル比較 http://localhost:8765/kami_redesign/preview.html 。既存8765サーバー継続。ゲームindex.htmlと公開.kami-share/state.jsonはSHA不変。共有サイトへのアップロード・ゲーム組込み・Gitコミット/PUSH/デプロイは未実施。新たなアップロード指示があるまで公開しない。
+
+
+## 2026-10-07 v1.15.405 カットイン画質・8頭の竜の作り分け（ローカルのみ）
+
+- スサノオ／オオクニヌシ／アマテラスを除く7柱の創世神技カットインと、ヤマタノオロチ通常を再描画。採用原本と以前の高画質参考を参照、髪を大きな毛束と滑らかな陰影に整理し細線・光沢の断片を減らした。確定配色・手や武器の姿勢・背景ぼかしを維持。
+- オロチの8竜を1頭ずつ透過原本で作成、顔の輪郭/角/顎/表情を追加修正して全員異なる顔へ。左上赤/右上青/左下緑/右下黄の口玉、他4頭は異なる閉じ口/大きな下牙/鉤鼻/頬ひれ。2参照シートを介して通常とカットインに統合。さらに白髪と背景のみ最終整理。
+- .release-worktree/kami_redesign/revisions/cutin-quality-dragon-rebuild-2026-10-07 に最終8PNG・8竜透過PNG・失敗/初回履歴・全生成指示・before・検証・3画面proofを保存。内蔵imagegenのみ。新画像8件をimporterでWebP品質82へ、cutin1600x900/300KB以下、portrait1060x1484/267444B。原本リンクあり。
+- catalog/final-catalog/personal-color-selection/preview/version.js更新。99項目/11メニュー維持、旧通常10枚の没案と対象外画像参照/旧画像本体不変。import_apply.pyはv404のbefore基準の初回用。今後の変更後に再実行しない。generation-prompts記録内の初期/破棄指示を本採用指示として使わない。
+- Python4/npm179合格、HTTP21件正本一致、JS構文合格。ブラウザーでOrochi通常WebP/PNGとUzumeカットインPNG1672x941、全体/拡大/閉じる、8頭/4色とエラーなしを確認。ゲームindex/公開state不変、共有アップロード/ゲーム組込み/コミット/PUSH/デプロイなし。
+- 8765サーバー停止を確認して.release-worktreeのnpm run previewを起動。ローカル比較 http://localhost:8765/kami_redesign/preview.html 、指定ゲームURLはHTTP取得のみ（Codex内でゲームを開いていない）。
+
+
+## 2026-10-07 v1.15.406 4柱の通常イラスト表情・画質修正（ローカルのみ）
+
+- アメノウズメ通常の目元/口元のみ少し気だるげに。オモイカネ/スサノオ/ヤマトタケル通常は最新採用原本＋元の高画質参考＋タケミカヅチ画風参考を使い、髪・顔・人物の陰影を内蔵imagegenで再描画。M0/S0/Y1/U0・ポーズ・ぼかし背景を維持。
+- kami_redesign/revisions/portrait-quality-expression-2026-10-07 に4原本PNG・指示/参照・出力SHA・before・検証・README・2画面proof。4WebPはoptimized-portrait-quality、品質82、1060～1061x1482～1484、203048～290398Bでscene予算以内。原本リンクあり。
+- catalog/final-catalog/personal-color-selection/preview/version.jsを更新。通常/決定配色の4柱だけ参照差替え。99項目/11メニュー維持。対象外用途・没案10枚・旧素材66件とgame index/公開stateは不変。apply_portraits.py/prepare.pyはbefore基準初回用、後続変更後に再実行しない。
+- Python4/Node179合格、HTTP14一致、JS構文合格。実ブラウザで4柱のURLと原本リンク・Uzu/Omo原本の拡大/全体表示・エラーなしを確認。ローカル http://localhost:8765/kami_redesign/preview.html 、8765サーバー継続。
+- 共有アップロード・ゲーム組込み・コミット/PUSH/デプロイなし。ユーザーから新たなアップロード指示が来るまで公開しない。
+
+
+## 2026-10-07 v1.15.407 ヤマトタケル通常の霊剣配置（ローカルのみ）
+
+- 周囲の4霊剣を身体から離した軌道へ。画面端で一部が切れる構図にし、追加指示で手前の画面下部に大きめの霊剣1本を追加。顔・髪・姿勢・両手・実剣・Y1配色・背景ぼかし維持。内蔵imagegen2回、初回原本も履歴保存。
+- kami_redesign/revisions/yamato-spirit-sword-spacing-2026-10-07 に最終原本/初回/指示/before/出力SHA/検証/README/browser-proof.png。WebPはoptimized-spirit-spacing/yamato-takeru-master-4a9e6824211d.webp、1061x1482/220490B/品質82、scene予算内。
+- 通常/決定配色のヤマトタケルのみ参照更新。99項目/11メニュー、他のカミ/カットイン/カード/ちび/ロード/エモート/没案・旧素材66件維持。apply_spacing.py/prepare.py初回用、後続変更後再実行しない。
+- Python4/Node179合格、HTTP8正本一致、JS構文合格、ブラウザ原本・前後の霊剣・全体表示・エラーなし確認。8765継続、比較 http://localhost:8765/kami_redesign/preview.html 。ゲームindex/公開state不変、共有アップロード/ゲーム組込み/Git操作なし。
+
+
+## 2026-10-07 v1.15.408 手前の霊剣の切先をこちらへ（ローカルのみ）
+
+- 添付のv407画像を基に手前の霊剣だけ角度を変更。鍔/柄を奥に置き、切先を観察者へ近づけた遠近感。切先は画面内。人物/周囲4霊剣/Y1配色/ぼかし背景維持。内蔵imagegen1回。
+- kami_redesign/revisions/yamato-spirit-sword-perspective-2026-10-07 に最終原本/添付原本/指示/出力SHA/before/検証/README/browser-proof.png。WebPはoptimized-spirit-perspective/yamato-takeru-master-abdcbe6002d6.webp、1061x1483/210616B/品質82、scene予算内。
+- 通常/決定配色のヤマトタケルのみ参照更新。99項目/11メニュー、他用途/他カミ/没案/旧素材66件維持。prepare/prepare_application/apply_perspectiveは初回用、後続変更後再実行しない。
+- Python4/Node179/HTTP8/JS構文合格、ブラウザ原本全体/拡大・切先・エラーなし確認。8765継続、比較 http://localhost:8765/kami_redesign/preview.html 。ゲームindex/公開state不変、共有アップロード/ゲーム組込み/Git操作なし。
+
+
+## 2026-10-07 v1.15.409 前景霊剣を腰の刀から独立（ローカルのみ）
+
+- 腰の実剣とは別に、独立した青い柄/鍔を持つ浮遊霊剣を右下前景へ。実剣の黒い柄と金色鍔を復元し、前景霊剣との間隔を広くした。切先は観察者へ。人物/Y1/ぼかし背景維持。最新原本＋v406の実剣参照、内蔵imagegen1回。
+- kami_redesign/revisions/yamato-independent-spirit-sword-2026-10-07 に最終原本/指示/出力SHA/before/検証/README/browser-proof.png。WebPはoptimized-independent-spirit/yamato-takeru-master-7ad0d70489dc.webp、1061x1482/225486B/品質82、scene予算内。
+- 通常/決定配色のヤマトタケルのみ参照更新。99項目/11メニュー、他用途/他カミ/没案/旧素材66件維持。prepare/prepare_application/apply_independentは初回用、後続変更後再実行しない。
+- Python4/Node179/HTTP8/JS構文合格、ブラウザ原本全体/拡大・独立した柄と鍔/切先/エラーなし確認。8765継続、比較 http://localhost:8765/kami_redesign/preview.html 。ゲームindex/公開state不変、共有アップロード/ゲーム組込み/Git操作なし。
+
+
+## 2026-10-07 v1.15.410 前景霊剣の直線と顔の画質（ローカルのみ）
+
+- v409構図と独立した浮遊剣を維持、前景霊剣の柄/鍔/切先の軸と刃の直線を修正。顔/目元/輪郭/髪はv406原本を直接参考に描写復元。Y1/実剣との距離/背景ぼかし維持。内蔵imagegen1回。高解像度希望指示に対し実出力は1061x1483なので、画素数増加ではなく描画修正。
+- kami_redesign/revisions/yamato-straight-spirit-quality-2026-10-07 に原本/2参照の指示/出力SHA/before/検証/README/全体と顔2画面proof。WebPはoptimized-straight-spirit-quality/yamato-takeru-master-ca0a7383fd4f.webp、1061x1483/231224B/品質82、scene予算内。
+- 通常/決定配色のヤマトタケルのみ参照更新。99項目/11メニュー、他用途/他カミ/没案/旧素材66件維持。prepare/prepare_application/apply_straight_quality初回用、後続変更後再実行しない。
+- Python4/Node179/HTTP8/JS構文合格、ブラウザ原本の顔拡大/全体/剣の直線/エラーなし確認。8765継続、比較 http://localhost:8765/kami_redesign/preview.html 。ゲームindex/公開state不変、共有アップロード/ゲーム組込み/Git操作なし。
+
+
+## 2026-10-07 v1.15.411 初回ユーザー原本からヤマトタケル再構成（ローカルのみ）
+
+- v410は柄と刃の軸ずれ、顔と髪の画質についてユーザー再修正依頼。初回提供JPG（kami-smooth-rendering-2026-10-04/yamato-takeru-reference.jpg）を主入力に新たに描画。v410は構図のみ参照。Y1/独立した前景浮遊剣/腰の実剣/背景ぼかし維持。
+- 剣単体参照→原本再描画→柄局所修正でも角度ずれが残ったため、柄/鍔/刀身/切先が同一軸のSVG形状ガイドを作り、内蔵imagegenで剣のみ修正。その後輪郭を保持して質感調整。内蔵imagegen5回、全ラスタ編集は内蔵。形状ガイドだけsharpで描画。失敗候補3版を履歴として保持。
+- kami_redesign/revisions/yamato-original-rebuild-straight-sword-2026-10-07 に原本/生成指示5件/ガイド/出力SHA/before/README/verification/visual-review/全体と顔2画面proof。最終出力exec-506f9f21-11a5-455c-80bf-416f58e5c7f8.png採用。1061x1482の描画修復で、画素数増加ではない。
+- WebPはoptimized-original-rebuild/yamato-takeru-master-b3d03990dbdc.webp、1061x1482/253376B/品質82、scene予算内。通常/決定配色のヤマトタケルのみ参照更新。99項目/11メニュー、他用途/他カミ/没案/旧素材66件維持。prepare/prepare_application/apply_rebuild初回用、後続変更後再実行しない。
+- Python4/Node179/HTTP8/JS構文合格。ブラウザ原本で顔拡大と剣全体確認、エラーなし。8765継続、比較 http://localhost:8765/kami_redesign/preview.html 。ゲームindex/公開state不変、共有アップロード/ゲーム組込み/Git操作なし。
+
+## 2026-10-07 v1.15.412 ヤマトタケル人物を初回原本のみから再作成（ローカルのみ）
+
+- v411に対しユーザーは画質がさらに悪化と指摘。初回提供JPGのみを参照して内蔵imagegen編集1回。前版の人物や剣ガイドを入力から外し、初回の目元/輪郭/表情/銀紫髪の柔らかい陰影を優先。強い白い髪ハイライトを抑え、衣装も再描画。画素数増加ではない。ユーザーの主観的画質評価は未確認。
+- Y1氷青/白/金、腰の実剣とは独立した前景霊剣、外側の霊剣、背景ぼかしを反映。最新原本はkami_redesign/revisions/yamato-character-original-fidelity-2026-10-07/yamato-takeru-master.png。1061x1482、WebP optimized-character-original-fidelity/yamato-takeru-master-340f5d7e4e8f.webp、226842B/品質82/scene予算内。
+- 指示/出力SHA/before(v411)/検証/README/顔と全体2画面proofを同revisionに保存。通常/決定配色ヤマトタケルのみ更新、99項目/11メニュー、他用途/他カミ/没案/既存素材66件/配色値維持。setup_revision/prepare/apply_character初回用、後続変更後再実行しない。
+- Python4/Node179/HTTP8/JS構文合格、ブラウザ原本で顔・髪と全体を確認しエラーなし。8765継続、比較 http://localhost:8765/kami_redesign/preview.html 。ゲームindex/公開state不変、共有アップロード/ゲーム組込み/Git操作なし。
+
+## 2026-10-07 v1.15.413 ヤマトタケルのカミイラスト決定版採用
+
+- ユーザーがv412画像を採用。画像自体は変更せずportraitAdoptionをuser-confirmedへ。通常/決定配色の表示ラベルを決定版／Y1へ。
+- 旧カミイラスト没案のヤマトタケル1項目を比較一覧から除外。配色比較ページのY0/Y2/Y3/Y4を除外し、Y1の画像を最新決定版へ統一。画像履歴ファイルは保持。創世神技/ジェネシス等他用途は変更していない。
+- kami_redesign/revisions/yamato-final-adoption-2026-10-07 にadoption/before/verification/browser-proof/apply_adoption。98項目11メニュー、Node179/HTTP8/2ページJS構文合格、決定版表示と旧案なしをブラウザ確認。画像SHA/ゲーム/公開state維持、Git操作や公開更新なし。apply_adoptionは初回用。
+## 2026-10-07 v1.15.414 創世神技・創世決戦・エモート修正とジェネシス確定（ローカルのみ）
+
+- 創世神技5枚：ヤマトタケル/アメノウズメ/ツクヨミを以前の高画質人物参考から再描画。ウズメ扇子の手も修正。オロチはカミイラストと共通の龍種へ戻し、追加の個別の角/牙などを撤回、8頭/四隅4色の玉を維持。オオクニヌシは左下の狐だけ白い霊体フクロウへ（通常のフクロウ参照）。狼/鹿/兎/猪と人物維持。
+- 創世決戦の4人の顔/髪/衣装を再描画。ツクヨミの鎌を添付参考の青い円形宝玉付き本体/銀三日月刃/直線紫柄に修正（創世神技にも反映）。刃の向き維持。最後にツクヨミの決定済み青いU字/点/縦線の額マークだけ局所修正、人物全体再生成を避けた。
+- 全10柱の6表情エモート透過3列2行を個性に合わせて再作成。ヤマトタケルは控えめな表情/仕草に。ウズメ耳を髪で隠し、扇の房なし。各原本1536x1024保持、WebPは720～840x480～560/160KB未満。grid axesは完全空白ではないため、厳密な余白保証はしていない。
+- ジェネシス確定9枚：演出なし=S/O/U、演出あり=Y/T/M/H/A/L。Hはeye-ornament-2026-10-03の旧演出あり採用、足先なしだが腿は見える。没案7枚を専用メニューへ、過去物理ファイル保持。Orochiジェネシスなし。通常カミ/Y1決定版/配色/その他用途不変。
+- kami_redesign/revisions/cutin-character-reference-rebuild-2026-10-07 に原本16PNG、指示/参照/selected-sources/import-report/before/verification/README/ブラウザproof。selected-sourcesのT/menuは最終額編集とpriorEditを記録。内蔵imagegenのみ。WebPはoptimized-character-rebuilt。catalog/final-catalog/menu-catalog/personal-color-selection/preview/version/optimized_assets更新。99項目12メニュー。
+- Node179/Python importer4合格、抽出viewer JS2本構文合格。HTTP174正本一致、対象外169旧ファイル/ゲームindex/公開state不変を検証。ブラウザでGenesis9+没案7、全10emotes、Yクールな6表情、T鎌/額、Oフクロウを拡大/全体表示確認、warn/errorなし。browser-owl-proof.pngは全体表示で上書き保存。
+- ローカル比較 http://localhost:8765/kami_redesign/preview.html 、npm run preview8765継続（実体.release-worktree）。指定index.htmlはHTTP取得のみ。共有アップロード/ゲーム組込み/コミット/PUSH/デプロイなし。apply_final.pyはv413 before用、以降再実行しない。
+
+
+## 2026-10-07 v1.15.415～416 ツクヨミ・ヒノカグツチ・創世決戦とOP修正（ローカルのみ）
+
+- ツクヨミ創世神技はユーザーの旧参考画像の落ち着いた暗さ/服/表情/滑らかな塗りを参照。現行の空中ポーズ、斜めの紫柄、青宝玉付き鎌の形状/向き、両手の握りを維持。長い衣装で腿の露出を減らし、最後に口/顎を近い肩で隠す局所編集。最終原本はop-silhouette-menu-variants-2026-10-07/tsukuyomi-cutin.png。
+- ヒノカグツチGenesisの粒状感/ぎらつきを抑制。旧演出あり版の前方への拳/一角/異色の目/足先なし構図を維持（腿は見える）。最終原本はtsukuyomi-hino-menu-finish-2026-10-07/hinokagutsuchi-card.png。1230x1278、optimized-tsuku-hino-menu-finish/hinokagutsuchi-card-2556cde014c1.webp、253678B。
+- 創世決戦の左下の大地を除き、4人の領域を緩やかに分割。ツクヨミの手/鎌を修正、スサノオの視線を右方向へ。鎌ありgenesis4p-menu.pngと、鎌を持たず月/蝶の術で戦うgenesis4p-no-scythe-menu.pngをメニューに隣接して配置。鎌なしは比較案で、決定採用の回答はまだない。
+- OP5枚の露出顔を黒く統一し、髪は元の色へ。ヒノカグツチを女性の細身/赤髪/一角とし、ユーザーラフの青龍偃月刀へ。タケミカヅチは金髪/金の衣装と直線のフツノミタマ、ツクヨミは暗紫髪と紫柄/青い鎌の握りを修正。紙の水墨画風、各場面構図を維持。OP2/3は髪色等を局所追修正した。
+- 全ラスタ編集は内蔵image_gen。v415とv416のrevisionに原本PNG、指示全文generation-prompts.json、参照、before、import-report、検証、browser proof、READMEを保存。解像度だけの拡大ではなく描画修正。旧履歴は保持。
+- 表示用WebPは300KB予算内。OP0だけ情報量のため1440x810へ（原本は維持）、他OP/創世神技1600x900、メニュー1254角。optimized-op-silhouette-menuへハッシュ付きURL。version1.15.416、100項目/12メニュー。catalog/final-catalog/menu-catalog/personal-color-selection/preview/version/optimized_assets更新、配色値は不変。
+- Node179、Python importer4、viewer JS2本合格。HTTP25ファイル正本一致、ゲームindex/公開state/対象外画像/旧履歴不変。ブラウザでツクヨミ/ヒノ/2メニュー/OPを確認。検証記録はv416/verification.json。
+- npm run previewの8765継続、実体.release-worktree。比較 http://localhost:8765/kami_redesign/preview.html 、指定ゲームindex.htmlはHTTP取得のみ。公開アップロード/ゲーム組込み/Gitコミット/PUSH/デプロイなし。
+- apply_finish.pyはv414、apply_opening.pyはv415の初回用。後続変更後の再実行は禁止。finish_notes.pyはメニューの順序と本追記用。
+
+
+## 2026-10-07 v1.15.417 創世神技の自然な髪と初期原本の人物描写（ローカルのみ）
+
+- ユーザー依頼：スサノオ/オオクニヌシ/ウズメの髪を自然な塗りへ、ウズメ/ツクヨミの人物描写を初期原本参考で修復、ツクヨミ背景をぼかす。創世神技4枚のみ更新。全ラスタ編集は内蔵image_gen、5回（T初回は背景変化のみで人物改善が弱く、初期立ち絵も追加して直接描き直した）。
+- Sは黒髪の大きな毛束/流れを維持して細線と金色の傷のようなハイライトを整理。Oは長髪を幅広い自然な毛束へ、既存表情/帽子/扇/緑金/狼鹿フクロウ兎猪を保持。Uは初期カットイン原本を直接参照して顔/目/衣装を調整、巻き毛を太い束へ。現行の扇と手の位置/薄緑服/耳を隠す指定を維持。
+- Tは初期カミ立ち絵とユーザー提供の初期カットインを人物描画参照に。現行は構図/手/鎌の参照のみ。口と顎を肩で隠す、太ももを長い衣装で覆う、直線紫柄/青宝玉本体/銀三日月の配置を維持。背景の樹木/神社/月をぼかし、人物/鎌/蝶は明瞭に。再描画に伴う衣装柄/布端/宝玉の質感差はある。品質の採用評価は未確認。
+- 原本4PNGは kami_redesign/revisions/cutin-natural-hair-original-quality-2026-10-07/{susanoo,okuninushi,amenouzume,tsukuyomi}-cutin.png。全1672x941（元と同寸法、画素数拡大でなく描画修正）。生成指示/参照/出力/前段Tはgeneration-prompts.json、SHAと寸法はoriginals.json、before/protected/import-report/README/verification/browser-proofを同revisionに保存。
+- scripts/import_visual_asset.pyで表示用WebP、optimized-natural-hairへハッシュURL。全1600x900/品質82/300KB内（S183464B/O229010B/U229452B/T199466B）、表示解像度の追加低下なし。原本リンクは生成PNG、保持履歴を再圧縮しない。
+- catalog/final-catalog/personal-color-selection/preview/version/optimized_assets更新。version1.15.417、100項目12メニュー、配色値と他用途/没案/メニュー/旧画像/ゲームindex/公開state不変。Node179/Python importer4/抽出viewer JS2本/HTTP14正本一致合格。ブラウザ4枚全体/拡大で確認、warn/errorなし。
+- npm run preview8765継続、実体.release-worktree。比較 http://localhost:8765/kami_redesign/preview.html#cutin 、指定ゲームindex.htmlはHTTP取得のみ。共有公開アップロード/ゲーム組込み/コミット/PUSH/デプロイなし。
+- prepare.py/apply_quality.pyはv416初回用、後続状態で再実行しない。
+
+## 2026-10-07 カミイラストの局所修正 v1.15.418 → v1.15.419
+- ユーザー依頼：オモイカネの曲がった筆のみ直す。アメノウズメの扇を持つ手のみ自然な握り方にする。ヒノカグツチの左装甲手を5本にし、追加要望として見えにくい親指も明瞭に数えられるようにする。
+- built-in image_genによる部分編集。O/U/Hのカミイラストをv418で更新し、H親指のみv419で追加明瞭化。最新version.js/final-catalog/selection=1.15.419。配色、顔、衣装、構図を維持する指示で、カミイラストと決定配色欄の同じ原本参照のみ更新。
+- 実作業/配信root=.release-worktree。3枚局所修正記録：kami_redesign/revisions/portrait-brush-fan-five-fingers-2026-10-07/README.md。親指最終採用：kami_redesign/revisions/portrait-hino-thumb-clear-2026-10-07/hinokagutsuchi-master-thumb-clear.png（1060×1484）。それぞれ完全プロンプト、入力、生成元パス、原本SHA、before/、import-report、verificationを保存。
+- O1061×1483、U/H1060×1484、全て入力と同ネイティブ寸法。scene WebP quality82、各300KB以内。H最終202594B。以前の原本は保持。
+- Node179、Python importer4テスト成功。v418 HTTP13、v419 HTTP9（index.html含む）一致。表示JS各4本構文確認成功。12グループ100項目。無関係のカタログ項目、色指定、旧画像、メニュー、ゲームindex、genesis-generation、.kami-share/state.jsonは保護・一致。
+- CUAブラウザで3人の修正版を確認。親指＋長い指4本の拡大証拠はportrait-hino-thumb-clear-2026-10-07/browser-proof-hand-detail.png。原本サイズを保持して出力、拡大縮小や合成による追加の画像処理はしていない。
+- ローカル比較URL=http://localhost:8765/kami_redesign/preview.html#character。ゲーム確認URL=http://localhost:8765/index.html（HTTP取得のみ）。既存port8765サーバーを維持。
+- 公開更新、ゲーム統合、commit/push/deployなし。prepare.py/apply_local.pyは各before前提の一度限りの適用。現在v419で再実行しない。
+
+## 2026-10-07 v1.15.420 扇の外側からの握りと左親指の再修正（ローカルのみ）
+- ユーザーがv418/419の扇（骨の間に指を入れる）とヒノカグツチ親指を不自然と指摘。内蔵image_genで2人のみ局所修正、各2回生成。U1回目は変更が弱く不採用、2回目は要付近の親骨を外から親指/他指で支え、骨の間への指の差込みをなくす。要と接する小範囲の骨も調整。H1回目の左手を自然な4指＋親指へ、その後親指のみ短くして長い角/多い装甲節を整理。
+- .release-worktree/kami_redesign/revisions/portrait-natural-fan-grip-thumb-2026-10-07 にnative2PNG、完全プロンプト/参照/生成元パス/試行、before(v419)、SHA、import-report、verification、README、browser proof。U/Hとも1060×1484、入力と同寸法。実生成はimage_genのみ。PNGの解像度操作/合成等なし。既存原本と生成元ファイル保持。主観的採用評価は未回答。
+- 最新v1.15.420、2人のmaster/character/selectedColorの画像参照とpreview/colors比較の対応画像を更新。配色値・他用途・他カミ不変。O筆修正は前版採用のまま。WebP quality82 scene、U211530B/H195154B、300KB以内。
+- Node179、Python importer4、表示JS4本構文合格。HTTP11（index.html含む）正本一致。既存画像/旧履歴/gameindex/.kami-share/state.json/genesis-generation/menuの保護ハッシュ一致。12グループ100項目。CUAで2人拡大確認、browser-proof-{amenouzume,hinokagutsuchi}-hand.png。
+- 比較 http://localhost:8765/kami_redesign/preview.html#character 。既存8765継続、指定game indexはHTTPのみ。公開更新、ゲーム統合、commit/push/deployなし。prepare/applyはv419初回用、現在の状態で再実行しない。
+
+## 2026-10-07 v1.15.421 左親指の側/ウズメ空いた手と原本基準の画質（ローカルのみ）
+- ユーザーはH親指が逆側、U扇を持たない手の指、両画像の画質低下を指摘。原本を主入力に内蔵image_genで局所修正をやり直した。H=background-focus-2026-10-06/hinokagutsuchi-master.png、U=portrait-quality-expression-2026-10-07/amenouzume-master.png。v420 Uは扇を握る手のみ補助参照。繰り返し編集画像の人物描写をベースにしていない。
+- H親指を画像右/外側へ移し、手の甲を見せる左手として4本の長い指＋短い親指。初回6本で不採用、再度元画像主入力＋候補の手のみ補助参照で5本に。U上側右の空いた手を穏やかな踊りの指の形へ、下側左の扇を外側から支える修正維持。
+- .release-worktree/kami_redesign/revisions/portrait-original-quality-left-hand-2026-10-07 にnative2PNG（1060×1484で入力同寸法）、完全指示/参照/試行/生成元、before(v420)、SHA/import/verification/README/browser proof。原本基準で顔/髪/衣装を保持する局所編集であり、非修正領域の同一画素を合成で保証したものではない。画質の主観評価は未回答。履歴と生成元は保持。
+- 最新v1.15.421。2人のmaster/character/selectedColor参照のみ（palette値不変）、preview/color-decision更新。scene quality82 WebP H208970B/U215928B、300KB内。12group/100entries。
+- Node179/Python importer4/表示JS4本成功。HTTP11（index.html含む）正本一致。既存画像/他カミ/用途/旧履歴/gameindex/publicstate/genesis-generation/menuの保護一致。CUAで顔と手拡大確認、browser-proof-{hinokagutsuchi,amenouzume}-face-hand.png。
+- 比較 http://localhost:8765/kami_redesign/preview.html#character 。8765継続、指定gameindexはHTTPのみ。公開更新/ゲーム統合/Gitcommit/push/deployなし。prepare/applyはv420初回用、現在状態で再実行しない。
+
+
+## Codex 追記：v1.15.422（2026-10-07）アメノウズメの扇復元・髪整理
+
+- .release-worktree が配信元。アメノウズメのカミイラストのみ built-in image_gen で局所編集。最新 v421 の空いた手を維持し、扇の握り方は v420 portrait-natural-fan-grip-thumb を参考に復元。髪の微細線/橙色の細かなハイライトを減らして大きな滑らかな毛束へ整理。顔・衣装・背景の目立つ変更がないことを目視確認。対象外画素の完全一致保証はしていない。
+- 原本 kami_redesign/revisions/amenouzume-fan-restore-natural-hair-2026-10-07/amenouzume-master.png、1060×1484。表示 optimized-local-object/amenouzume-master-cecf394c25d5.webp、204480B q82。プロンプト/参照/生成元・before・検証・ブラウザ3枚・READMEを同revisionに保存。旧原本は残した。
+- カタログ/確定一覧/配色決定/比較2ページのアメノウズメmaster,selectedColorのみ更新。v1.15.422。その他カミ/用途/メニュー/ゲームindex/公開共有状態は不変検証。http://localhost:8765/kami_redesign/preview.html#character で最新版確認、同ページタブを保持。index.htmlはHTTP一致のみ（ゲームブラウザ未使用）。公開アップ/Git操作なし。
+- Node179件・Pythonインポーター4件・JS構文4個成功、HTTP9ファイル一致、12グループ100項目。詳細は revision/verification.json。
+
+
+## Codex 追記：v1.15.423（2026-10-07）ヒノカグツチ・アメノウズメのカミイラスト確定
+
+- ユーザー添付619ef1f7（ヒノカグツチ）とdcadcc49（アメノウズメ）を無編集で確定原本保存。既存v421 H/v422 Uと全RGBA画素一致、添付バイトのコピー一致を確認。既存表示WebPを維持し、再生成・再圧縮なし。
+- 保存先 .release-worktree/kami_redesign/revisions/approved-hinokagutsuchi-amenouzume-2026-10-07。approved-images.jsonに確認記録/SHA/元添付、before/に変更前、verification.jsonに検証。confirm.pyはv422時点初回用で再実行不可。
+- 2人のカミイラストを確定版／H0・U0表示。catalog/masterApproval、final master/selectedColorの承認記録・原本参照、配色選択の原本参照、比較2ページ更新。v1.15.423。その他画像・用途・ゲームindex・公開共有・optimized_assets不変。ローカルHTTP11ファイル一致（indexはHTTPのみ）、12group/100entries。CUAで両確定ラベルとヒノカグツチ画像を確認しbrowser-proof-confirmed.png保存。画像/コードの変更なしのためテスト追加/全件再実行なし。
+- ローカル比較 http://localhost:8765/kami_redesign/preview.html#character 更新済み。公開アップ・Git操作なし。
+
+
+## Codex 追記：v1.15.424（2026-10-07）アメノウズメの顔・肌修復
+
+- ユーザーは全盛期より顔/肌の画質低下を指摘。v423確定版を主入力、2026-10-04 amenouzume-user-selected/amenouzume-selected.pngを顔・肌描写のみの補助参照に built-in image_gen局所修復。現在の気だるげ表情/ポーズ/体形を維持し、目・口の線と肌の陰影を整理。髪/手指の形と扇の握り/衣装/背景は対象外として目視確認。非修正画素の完全一致・主観品質完全復元の保証はなし。
+- .release-worktree/kami_redesign/revisions/amenouzume-face-skin-restoration-2026-10-07 に原本PNG1060×1484、全指示/参照/生成元、before、保護SHA、import/verification、node-tests、README、browser-proof-face.png保存。WebP optimized-local-object/amenouzume-master-55c0317462f6.webp、201066B q82。
+- カミイラスト/selectedColorのアメノウズメのみ参照更新。旧v423確定原本は保持しapprovalはquality-corrected-from-confirmed、以前の承認記録も履歴保持。H確定含む他画像/用途/配色は不変。v1.15.424、12group/100entries。
+- Node179/Python importer4/JS構文4成功、HTTP9正本一致（指定indexはHTTPのみ、ゲームブラウザ未使用）。既存画像/他項目/menu/game/public状態保護一致。比較 http://localhost:8765/kami_redesign/preview.html#character で顔/髪/手拡大確認、タブ保持。公開/Git操作なし。prepare/applyはv423初回用で現在再実行しない。
+
+
+## Codex 追記：v1.15.425（2026-10-08）アメノウズメ・ユーザー添付の画質基準
+
+- ユーザー添付8d83c4a9の画質（輪郭と大きな面でまとまる滑らかな塗り）を基準に、現行v424のデザイン・表情・ポーズ・手指/扇の握り・衣装・ぼかした背景を再現。built-in image_gen 2試行。現行主入力の第一候補は改善弱く不採用。添付画質原本を描画土台/現行を構図要素参照とした第二候補を選択。生成58f8a210-d325-4689-8349-c7f33c35febe。
+- .release-worktree/kami_redesign/revisions/amenouzume-reference-quality-2026-10-08 にnative1060×1484PNG、quality-reference.png（添付）、全試行指示/役割/参照/生成元、before、保護SHA/import/originals/verification/node-tests/README/browserproof face&whole保存。デザインの再現であり同一画素保全や主観画質完全一致保証なし。
+- WebP optimized-local-object/amenouzume-master-2e56f2f74220.webp、225084B q82。アメノウズメのカミmaster/selectedColor参照のみ更新、旧確定原本と過去画像保持。approval quality-corrected-from-confirmed、confirmedBase=v423、currentInput=v424、qualityReference=今回添付保存。v1.15.425、12group/100entries。
+- Node179/Python importer4/JS構文4成功。HTTP9正本一致（指定gameindexはHTTPのみ）。他カミ/用途/配色/menu/game/public/旧画像保護一致。比較 http://localhost:8765/kami_redesign/preview.html#character 拡大/全体確認、タブ保持。公開アップ・Git操作なし。prepare/applyはv424初回専用で再実行しない。
+
+
+## Codex 追記：v1.15.426（2026-10-08）アメノウズメのカミイラスト確定
+
+- ユーザー添付0a968f5cを無編集で確定原本として保存。v425原本とRGBA全画素/寸法一致をtobytesで確認、添付コピーのSHA一致。再生成/再圧縮なし、表示WebP amenouzume-master-2e56f2f74220.webp維持。
+- .release-worktree/kami_redesign/revisions/approved-amenouzume-2026-10-08 にamenouzume-master.png（1060×1484）、approved-images.json（承認/SHA/添付/元原本）、before/、verification.json、confirm.py、README、browser-proof-confirmed.png保存。
+- アメノウズメmasterApproval、final master/selectedColor approvalStatus/approvalRecord/source、配色選択原本参照、比較2ページの原本リンク更新。v1.15.426。以前の承認記録/旧原本維持。ヒノカグツチ他カミ/用途/ゲーム/公開状態/optimized_assetsは不変。HTTP9正本一致、12group/100entries。CUA確定ラベル/全体表示を確認・タブ保持。画像/コード変更なしのため全テスト再実行なし。
+- ローカル比較 http://localhost:8765/kami_redesign/preview.html#character 更新済み。指定indexはHTTPのみ。公開アップ/Git操作なし。confirm.pyはv425初回用、再実行しない。
+
+
+## Codex 追記：v1.15.427（2026-10-08）オモイカネのカミイラスト画風統一
+
+- 現行オモイカネを対象、ユーザー確定アメノウズメv426を画風参照にbuilt-in image_gen。4試行。既存描画の踏襲が強い3候補は不採用、人物の新規描画を明示した4候補目を採用。顔の線/陰影を簡潔で柔らかく、髪/衣装を大きな面で整理。本人の黒紫ストレート寄り髪/金の瞳/衣装・配色M0/飾り/ポーズ/筆/巻物/文字/ぼけた夜背景を再現。鼻の小さい白ハイライトは残る。非修正画素完全一致や画風完全一致の保証なし。
+- .release-worktree/kami_redesign/revisions/omoikane-amenouzume-paint-style-2026-10-08にnative1061×1483 PNG、全試行prompt/参照/生成元/選択理由、before/保護SHA/import/originals/verification/node-tests/README/browser proof face&whole保存。表示optimized-local-object/omoikane-master-b6993ee855cb.webp、279976B q82、同寸法。
+- カミmaster/selectedColorのオモイカネのみ参照更新。確定承認追加なし。他カミ（確定U/H含む）/用途/配色/menu/ゲームindex/公開共有/旧画像保護一致。v1.15.427、12group/100entries。
+- Node179/Python importer4/JS構文4成功。HTTP9ファイル正本一致。比較http://localhost:8765/kami_redesign/preview.html#characterで顔拡大・全体を確認、タブ保持。指定gameindexはHTTPのみ。公開アップ/Git操作なし。prepare/applyはv426初回用で再実行しない。
+
+
+## Codex 追記：v1.15.428（2026-10-08）オモイカネ添付確定
+
+- ユーザー添付447e8cd6を無編集コピーで確定原本保存。1061×1482でv427原本（1061×1483）とは画素/寸法が異なるため添付を優先、新たに表示圧縮。revisions/approved-omoikane-2026-10-08/omoikane-master.png、optimized-local-object/omoikane-master-0ae384b0311a.webpはimport-report.json記載URLを正とする。表示276354B。承認/SHA/添付/旧原本記録、before/protected/verification/confirm.py/browser-proof-confirmed保存。
+- オモイカネmaster/selectedColorを確定版／M0へ。catalog approval/final source/承認/配色参照/比較2ページ更新。旧画像/他用途/ゲームindex/公開共有保護一致。HTTP9正本一致、12group100entries。追加生成なし。confirm.pyはv427初回用で再実行しない。次の依頼で他カミ/神技の塗り統一へ着手。
+
+
+## Codex 追記：v1.15.429（2026-10-08）カミ・創世神技の塗り統一
+
+- 確定アメノウズメv426を塗り参照にbuilt-in image_gen。カミ5枚（ヤマトタケル/オオクニヌシ/アマテラス/ツクヨミ/ヤマタノオロチ）と創世神技全10枚を再生成。現行原本のポーズ/表情/配色/衣装/武器/背景を再現、髪/肌/衣装の陰影面を整理。確定U/M/HカミとS/Tカミは維持。L神技初回候補は布輪郭・露出差で不採用、原本から再生成。目視構造維持、画素完全一致の保証なし。
+- .release-worktree/kami_redesign/revisions/series-paint-unification-2026-10-08にnative15PNG、全prompt/参照/生成元/不採用記録、before/保護176SHA/import/originals/verification/node-tests/README/browserproof2保存。表示optimized-series-paint、q82全300000B以下、神技1600x900。import-report.jsonのハッシュURLを正とする。旧画像保持。
+- 対象master/cutin/selectedColor参照20項目更新、配色決定値/他用途/menu/game/public不変。v1.15.429、12group100entries。新しいユーザー承認追加なし。Node179/Python importer4/JS4成功、HTTP37正本一致。ゲームindexはHTTPのみ。比較#character/#cutin拡大全体確認、タブ保持。公開アップ・Git操作なし。apply_verify.pyはv428初回用、反映済みで再実行しない。
+
+
+## Codex 追記：v1.15.430（2026-10-08）ツクヨミ神技添付確定・オロチ龍統一
+
+- ツクヨミ添付3a86fda3を無編集コピーで確定原本に。v429原本と1672x941/RGBA全画素一致、既存WebP維持。cutinApproval/確定版L0ラベル/承認記録を更新。
+- ヤマタノオロチ神技の龍だけをbuilt-in image_genで修正。編集対象v429神技、龍造形参照v429カミ。暗い装甲鱗/頭部/牙/参照の角・棘に合わせ、人物/紫玉/背景/構図/8頭/四隅属性玉を再現。目視確認、画素完全一致保証なし。
+- .release-worktree/kami_redesign/revisions/tsukuyomi-approved-orochi-dragons-2026-10-08にnative2PNG、全生成prompt/参照/生成元、approved-images、before/保護206SHA/import/verification/node-tests/README/browserproof保存。import-reportのハッシュURLを正とする。
+- 対象cutin2項目だけ更新。v1.15.430、12group100entries。カミ/他用途/配色/menu/game/public/旧画像不変確認。Node179/Python importer4/JS構文2成功。HTTP11正本一致、gameindexはHTTPのみ。比較#cutinでL確定ラベル/R拡大全体確認、タブ保持。公開アップ/Git操作なし。update.pyはv429初回専用、再実行しない。
+
+## 2026-10-08 v1.15.431：創世神技の局所修正と握り3案
+
+- 最新依頼に対応：ツクヨミの刃に近い右手を逆手・親指が刃側のA/B/C候補として作成。まだ選択されていないため、主カタログのツクヨミ確定画像はv430のまま。
+- オモイカネのカットインは巻物の空想文字と表裏を修正し、主カタログへ反映。紙の表だけ文字を記載、裏は紫の布。顔・服など指定マスク外の原寸PNG画素は元画像と完全一致。
+- ローカル比較： http://localhost:8765/kami_redesign/cutin-local-review-2026-10-08.html 。preview.htmlにも入口を追加。手元は3枚固定サイズで表示し、クリックで全体拡大。
+- 詳細・原寸・プロンプト・生成入力・最終マスク・画素検証・画面確認は .release-worktree/kami_redesign/revisions/cutin-local-grip-scroll-2026-10-08/README.md を参照。
+- version.js は1.15.431。Node179件/Python4件/JS構文3件/HTTP16件/保護209ファイルを確認。12分類100項目を維持。公開アップロード、ゲーム組み込み、commit/pushなし。
+- update.pyはv430用の適用済み更新なので再実行禁止。次はユーザーが選択した握りだけを反映する。既存履歴は保持。
+
+## 2026-10-08 v1.15.432：ツクヨミB・オモイカネ神技確定
+
+- ユーザー添付ae285238の手元は前版のB案生成入力と1355×1161/RGBA全画素一致。Bの合成済み原寸PNGをツクヨミの創世神技へ採用。オモイカネもv431巻物修正版を確定。
+- 両PNGはバイト一致コピー、既存表示WebP再利用。再生成/画像編集/再圧縮なし、v431の指定範囲外の原寸画素保持を維持。
+- 保存 .release-worktree/kami_redesign/revisions/approved-cutin-grip-scroll-2026-10-08 。approved-images.json/README/verification/display-assets/before/protected/browserproofに記録。
+- catalog/final/previewの対象cutin2件を確定表示、手元比較ページB確定・A/C比較履歴、巻物も確定。v1.15.432。HTTP11一致・保護213・JS3本構文確認、12分類100項目。
+- 比較 http://localhost:8765/kami_redesign/preview.html#cutin 、採用確認 http://localhost:8765/kami_redesign/cutin-local-review-2026-10-08.html 。既存8765維持、indexはHTTPのみ。公開アップロード/ゲーム組み込み/Git操作なし。
+- confirm.pyはv431用の反映済み処理なので再実行しない。A/Cや前確定画像の履歴は保持。
+
+## 2026-10-08：ストーリー設定と改善候補のローカル保存（第一部非公開）
+
+- 作者の保存依頼により、正本を C:/Users/0ad38/Desktop/tsukuriyo-project/.story-notes/README.md にまとめた。settings.md＝最新設定、improvement-candidates.md＝未回答の改善案・感想・提案の採否、decisions.md＝訂正と撤回履歴。
+- 第一部非公開の真相を含むため、配信元.release-worktreeに複製しない。公開ゲーム、カードフレーバー、比較サイトに内容を転記しない。公開する場合は作者の指示が必要。
+- .gitignore の /.story-notes/ でローカル保管扱い。今後の作業時はこの正本を参照し、会話途中の案ではなく最新設定を使う。改善候補は未回答のため勝手に採用しない。
+- 今回は資料保存のみ。ゲーム・画像・version・公開共有は変更せず、commit/push/deployなし。
+
+
+## 2026-10-08 v1.15.433：ジェネシス3枚の画風修正・チュートリアルのお祝い
+
+- ツクヨミ/アマテラス/アメノウズメの採用Genesisだけ、現行原本の構図・配色・演出を基準に添付の初期描写品質を参照してbuilt-in image_genで修正。全原寸1254x1254、表示q82/300KB未満。旧画像保持、画素完全一致保証なし。
+- チュートリアル「お祝い」は白系の現行衣装のクラッカーちびアマテラスを生成。原寸1254x1254/alpha、表示600x600/q78/113020B。比較のtutorial-celebrateと両チェックアウトindexのチュートリアル画像URLを差し替え。配信元の案内役一覧も同期。rootはv1.15.195、配信元はv1.15.433。
+- 記録 .release-worktree/kami_redesign/revisions/genesis-reference-style-restoration-2026-10-08/README.md（配信元からは先頭.release-worktreeを除く）。全prompt、原本/候補、before/protected/import/verification/browserproofあり。前後比較 http://localhost:8765/kami_redesign/genesis-style-review-2026-10-08.html 。通常比較#card/#tutorialに反映。root/output/tutorial-celebrate-2026-10-08にも記録。
+- 他の96採用/没案項目、配色、メニュー、旧原本、非公開資料等184ファイル不変確認。indexは依頼対象URLだけ変更。HTTP12+7、JS2構文、Node配信元179/root130、Python4成功。ゲームはHTTPのみ、既存8765維持。公開アップロード、commit/push/deployなし。
+- prepare.py/save_selection.py/apply_verify.py/apply_tutorial.pyは反映済み処理、再実行しない。
+
+
+## 2026-10-08 v1.15.434：創世決戦の横向き修正・鎌あり
+
+- 現行メニューのヤマトタケル/ツクヨミを左向き、アマテラスを右向きの側面へbuilt-in image_genで変更。ツクヨミは参照形状の直線柄・銀三日月刃の鎌を両手で持つ。4領域・配色・背景を再現。
+- スサノオ領域はNodeで原本画素復元。保護351689画素のPNG差分ゼロ、境界外10画素のみ接続。原寸1254x1254、表示scene/q74/284854B。
+- 記録 .release-worktree/kami_redesign/revisions/genesis-battle-side-facing-2026-10-08/README.md（配信元では先頭.release-worktreeを除く）。native/生成直後/旧原本/鎌参照/全prompt/マスク/画素検証/before/protected/import/verification/browserproof保存。
+- メニューgenesis4pの1項目だけ比較へ反映。旧鎌なしは比較履歴として維持。ローカル http://localhost:8765/kami_redesign/genesis-side-facing-preview-2026-10-08.html 、通常比較#menus。カミ等他99項目・ゲーム・OP・配色・旧画像・非公開資料・公開共有185ファイル不変。
+- v1.15.434、12分類100項目、HTTP8一致/JS2/Node179/Python4成功。ゲームはHTTPのみ。公開upload/Git操作なし。prepare.py/apply_verify.pyは反映済み一回用、再実行しない。
+
+
+## 2026-10-08 v1.15.435：ヤマタノオロチに指定の龍面を着用
+
+- 添付0441fa15の黒赤面＋大きな斜め札をカミイラストの顔全体へ着用。顔cropをimage_gen編集後、Nodeで原寸に局所合成。変更14544画素、範囲外PNG差分0。白髪・既存角飾り・衣装・8龍・玉・背景保持。
+- 記録 .release-worktree/kami_redesign/revisions/orochi-worn-mask-2026-10-08/README.md（配信元では先頭.release-worktreeを除く）。原本/指定面/AI出力/全prompt/局所mask/画素検証/before/protected/import/verificationあり。カタログmasterと現行色表示の2項目同期、他98項目・186保護ファイル不変。
+- 表示1060x1484/q82/256156B。v1.15.435、HTTP8一致/JS2/Node179/Python4成功。比較 http://localhost:8765/kami_redesign/orochi-worn-mask-preview-2026-10-08.html 、通常比較#character。
+- 他の用途は自動変更せず、旧画像/面案保持。既存8765維持、indexはHTTPのみ。ゲーム組み込み/公開upload/Git操作なし。root v195不変。prepare.py/apply_verify.pyは反映済み、一回用。
+
+
+## 2026-10-09 v1.15.436 → v1.15.437：ヤマトタケルのジェネシス画質・布の塗り修正
+
+- 添付22708defを顔/肌/髪と布の品質参照としてbuilt-in image_genで演出ありY1を修正（v436）。ユーザー追加「服の部分が特に画質が悪い」を受け、v437で衣装の細かな面分割/まだら陰影を滑らかな布の陰影へ。氷青/白/金、金花模様、青い風のエフェクトと現行構図を再現。画素完全一致の保証なし。
+- 記録 .release-worktree/kami_redesign/revisions/yamato-genesis-quality-2026-10-09/README.md（中間）、yamato-genesis-fabric-2026-10-09/README.md（現行）。原本/添付/生成原寸/全prompt/before/protected/import/verification保存。現行1254x1254、scene/q82/188574B。
+- catalog/final/previewのヤマトタケルcard1件だけ更新。同じ採用画像を指していたcardNoEffects alias・genesisAdoption同期。他99採用項目・187保護ファイル不変。旧原本・中間版保持。
+- 現行比較 http://localhost:8765/kami_redesign/yamato-genesis-fabric-preview-2026-10-09.html 、通常比較#card。両版HTTP8/JS2/Node179/Python4成功。v1.15.437、root v195不変、既存8765維持、indexはHTTPのみ。公開upload/ゲーム組み込み/commit/push/deployなし。
+- 上記ディレクトリのprepare/apply系は反映済み一回用、再実行しない。
+
+
+## 2026-10-09 v1.15.438：ヤマトタケル・ジェネシス確定
+
+- 添付6a8f40dbを作者が確定指定。承認原本を .release-worktree/kami_redesign/revisions/approved-yamato-genesis-2026-10-09/yamato-takeru-card-approved.png にバイト一致保存。v437原寸とRGBA画素一致のため既存WebP再利用、再生成/再圧縮なし。
+- catalog/final/previewのcardと同一画像alias/genesisAdoptionを確定表示・承認原本リンクへ同期。approval.json/verification.json/README/before/protected保存。他99採用項目・保護ファイル不変、HTTP8一致。通常比較#cardと布の前後比較ページに確定表示。v1.15.438、root v195不変、既存8765維持、indexはHTTPのみ。
+- 公開upload/ゲーム組み込み/Git操作なし。confirm.pyは一回用で反映済み、再実行しない。
+
+
+## 2026-10-09 v1.15.439：アメノウズメ・創世神技の髪だけを自然な塗りへ
+
+- ユーザーの局所修正指定に従い、現行cutinと確定masterをimage_gen参照。微細な線を減らし、髪のまとまりと陰影を整理。原本にNode/Sharpで髪内部だけ局所合成。手動範囲＋茶色画素選択＋内向き境界で顔/肌/衣装/透明布/装飾を保護。髪外形や大きなカールを描き替えていない。
+- 原寸1672x941、変更210447画素、原本保持1362905画素、範囲外差分0。表示cutin1600x900/q82/202608B。記録 .release-worktree/kami_redesign/revisions/uzume-cutin-hair-only-2026-10-09/README.md（配信元では先頭.release-worktreeを除く）。旧原本/確定master参照/生成直後/局所mask/合成script/全prompt/画素検証/before/protected/import/verification保持。
+- catalog/final/previewのamenouzume cutin1件のみ更新。他99採用項目・185保護ファイル不変、HTTP8/JS2/Node179/Python4成功。v1.15.439。比較 http://localhost:8765/kami_redesign/uzume-cutin-hair-preview-2026-10-09.html 、通常比較#cutin。
+- 既存8765維持、indexはHTTPのみ。ゲーム組み込み/公開upload/Git操作なし、root v195不変。prepare.py/apply_verify.pyは反映済み一回用、再実行しない。
+
+
+## 2026-10-09 v1.15.440：ヤマタノオロチ・壊れた仮面と龍8体
+
+- 指定の黒赤面＋斜め札が割れた描写をcutin手前に追加。従来造形を参照し、首/顎/姿勢の異なる龍8体を独立生成。個別原寸1254x1254透過PNGを保持。4属性玉は四隅。カットインは個別8体を参照した生成で、PNG直貼りではない。
+- 原本の顔/頭部・手・衣装中心をNodeで復元。125879画素の復元/境界合成、110184コア画素差分0。原寸1672x941、表示1600x900/q82/289612B。全域画素一致保証なし。
+- 記録 .release-worktree/kami_redesign/revisions/orochi-eight-poses-broken-mask-2026-10-09/README.md（配信元では先頭.release-worktreeを除く）。原本/指定面/8体/全prompt/生成直後/復元mask/画素検証/before/protected/import/verificationを保存。
+- 比較 http://localhost:8765/kami_redesign/orochi-eight-dragon-preview-2026-10-09.html 、通常比較#cutin。catalog/final/previewのorochi cutin1件更新。他99採用項目・185保護ファイル不変、HTTP24/JS2/Node179/Python4成功。圧縮表示も目視確認。
+- 既存8765維持、indexはHTTPのみ。カミイラスト・旧原本・非公開資料維持。ゲーム組み込み/公開upload/Git操作なし、root v195不変。prepare.py/apply_verify.pyは反映済み、一回用。
+
+
+## 2026-10-09 v1.15.441：ヤマタノオロチ・仮面の角度と収まりを局所修正
+
+- 仮面着用前の顔を角度基準にbuilt-in image_genで面の傾き/頬/顎を修正。指定の黒赤面・斜め札維持。候補を顎支点で約8%拡大配置（旧面に一律8%拡大した意味ではない）。原本へ旧/新面の領域だけ局所合成。露出部は面着用前の原寸から復元。
+- 原寸1060x1484、変更14831画素、元保持1558209画素、範囲外差分0。表示q82/256362B。masterと現行色表示2件のみ。他98採用項目・186保護ファイル不変。新cutin/龍8体等保持。
+- 記録 .release-worktree/kami_redesign/revisions/orochi-mask-fit-only-2026-10-09/README.md（配信元では先頭.release-worktreeを除く）。原本/面/無面の顔/最終prompt/AI出力/局所mask/合成script/画素検証/before/protected/import/verificationあり。最終はcomposite-angle.cjs出力、最初の候補は不採用。
+- 前後/顔拡大 http://localhost:8765/kami_redesign/orochi-mask-fit-preview-2026-10-09.html 、通常比較#character。HTTP8+顔crop2/JS2/Node179/Python4成功。既存8765維持、indexはHTTPのみ。root v195不変。ゲーム組み込み/公開upload/Git操作なし。prepare.py/apply_verify.pyは反映済み一回用。
+
+
+## 2026-10-09 v1.15.442：ヤマタノオロチ・仮面をさらに約7%拡大
+
+- v441の顔角度に合わせた面をさらに6.94%拡大、顎基準で配置。直前built-in image_gen高解像度出力から局所合成、全画像再生成なし。黒赤面/札/角度維持。旧面から露出する箇所は無面原寸で復元。
+- 原寸1060x1484、変更10021画素、保持1563019画素、局所範囲外差分0。表示q82/256408B。master/現行色表示2件のみ。他98採用項目・186保護ファイル不変。カットイン/8龍等保持。
+- 記録 .release-worktree/kami_redesign/revisions/orochi-mask-size-only-2026-10-09/README.md（配信元では先頭.release-worktreeを除く）。原本/面/無面顔/元AI出力/全文prompt＋拡大指示/合成script/局所mask/画素検証/before/protected/import/verification保存。
+- 前後/顔拡大 http://localhost:8765/kami_redesign/orochi-mask-size-preview-2026-10-09.html 、通常比較#character。HTTP8+crop2/JS2/Node179/Python4成功。既存8765維持、indexはHTTPのみ。root v195不変、ゲーム組み込み/公開upload/Git操作なし。prepare/applyは反映済み一回用。
+
+
+## 2026-10-09 v1.15.443：ヤマタノオロチ・添付指定画像でカミイラスト確定
+
+- 添付cbb6eb05の仮面/札/角度/サイズを採用。1254x1254添付をapproved-face-reference.pngへバイト一致保存。以前のAI角度候補とRGBA画素一致確認。再生成せず、360顔crop座標へ縮小して全体図の旧/新面・接触境界だけ局所反映。v442追加拡大は引き継がない。
+- 原寸1060x1484、変更10034画素、保持1563006画素、範囲外差分0。表示q82/256036B。master/現行色表示2件を確定表示・user-confirmedへ。他98採用項目・186保護ファイル不変、cutin壊れた面/8龍等維持。
+- 記録 .release-worktree/kami_redesign/revisions/approved-orochi-master-2026-10-09/README.md（配信元では先頭.release-worktreeを除く）。添付/approval/hash/旧原本/無面顔/合成script/局所mask/画素検証/before/protected/import/verification保存。
+- 確定図/拡大/添付 http://localhost:8765/kami_redesign/orochi-approved-master-preview-2026-10-09.html 、通常比較#character。HTTP8+添付crop3/JS2/Node179/Python4成功。既存8765維持、indexはHTTPのみ。root v195不変、ゲーム組み込み/公開upload/Git操作なし。prepare/applyは反映済み一回用。
+
+## Codex 本番画像反映 v1.15.444（2026-10-09）
+
+- ユーザーの「現在の画像をもとに本番にPUSH」指示により、最新 origin/main（v1.15.380 / 91bc1d5）を土台に確定画像を組み込み、0d5db947f5d445080671312702104c52ecac5b6d を origin/main へ通常PUSH済み。
+- 本番 https://tsukuriyo-online.netlify.app/ は v1.15.444。ゲーム用カミ10、縦長選択10、カットイン10、ジェネシス原画9＋印刷済みカード20サイズ、ちび10、ロード9、エモート10、メニュー4、OP5、チュートリアル6を反映。比較用final-catalog.json v1.15.443を採用元とした。印刷済みカードの名前・効果文は保持。
+- 画像は既存の軽量WebPをバイト同一で取り込み。カード枠への合成分は標準import_visual_asset.pyで圧縮。production_art.jsonに採用画像とSHA-256を記録。非公開設定・没案・原寸PNG・他作業の未コミット変更は今回のPUSH対象外。
+- npm test 181件、画像インポートPython 4件成功。GitHub Verify（通常テスト＋Firebase rules）成功: https://github.com/0ad387513-crypto/tsukuriyo-project/actions/runs/37830262947 。本番103件の画像参照をHTTP取得し、すべてSHA-256一致。検証記録は output/art-production-20261009/deployment-verification.json。
+- 本番反映用checkout: .codex-art-production-20261009（codex/current-art-production-20261009、作業ツリーclean）。本番コードを続ける際はこのcheckoutまたは最新origin/mainを使う。既存.release-worktreeは比較サイト等のローカル作業とvoice関連変更を保ったまま、v1.15.443。8765のサーバーは維持した。本番反映済みコードへ無条件に古いindex.htmlをコピーしない。
+
+## Codex TOPメニュー修正 v1.15.445（2026-10-09）
+
+- 星紡ぎ戦は確定画像の上部に二人の顔があるため、.top-mode-card.shield .top-mode-thumb の背景位置を center top へ修正。TOPメニュー4枚の .top-mode-thumb に brightness(.82) を指定し、画質・原画・名前の明るさは保持した。
+- 本番用 .codex-art-production-20261009 の index.html と version.js のみを変更。97736d4 を origin/main へPUSH済み。本番 https://tsukuriyo-online.netlify.app/ の v1.15.445 とCSS反映をHTTPで確認。
+- 既存8765サーバー（.release-worktree）も同じCSS・v1.15.445に更新し、4枚の本番確定メニュー画像だけをコピーして参照を同期。voice関連等の他のローカル変更は保持。ローカル http://localhost:8765/index.html で反映確認済み。
+- npm test 181件成功。ゲームのURLやJavaScriptを開かず、メニュー部品だけを隔離して静的描画。1440x900、1280x720、1920x1080、900x900、390x844でbrightness0.82と二人の顔の表示範囲を確認。記録 output/menu-adjustment-20261009/verification.json とmenu-*.png。
+- GitHub Verify: https://github.com/0ad387513-crypto/tsukuriyo-project/actions/runs/37839220096 。元画像のデータを変更していないため再生成・再圧縮なし。
+
+## Claude カードボイスの演技指定（2026-10-09、ブランチ claude/kami-motion 297e4a2）
+
+- 試聴室 http://localhost:8765/tools/voice-preview/ の各台詞に「演技」パネルを追加。演技タグ（[confident] など）と安定度を台詞ごとに `tools/voice-script/card_voice_direction.json` へ保存する（確認用サーバーの `/__dev/voice-direction`、ローカル専用）。
+- `scripts/generate_card_voices_elevenlabs.js lines` が上記の指定を読み、タグを台詞の頭に付け、安定度を上書きして作る。`cast` 実行時に台詞一覧 `tools/voice-script/card_voice_lines.json` も作る（試聴室が複数人の台詞も表示するため）。
+- .release-worktree の scripts/serve.js に上記エンドポイントを追記し、8765 のサーバー（.release-worktree の npm run preview）を再起動した。他のファイルには触れていない。
+- 本番（main）には未反映。ブランチ側の version は 1.15.381 のため、main に入れるときは main の最新版に合わせて採番し直す。
+
+## Codex ローカル v1.15.446（2026-10-09）ヤマタノオロチ：お札なし・ちび面着用
+
+- 作者依頼によりmasterの斜め札だけ除去し、chibiに同じ黒赤の面（札なし）を着用。built-in image_gen候補をNode/Sharpで局所合成。両原寸マスク外RGBA差分0、alpha維持。変更master3211画素/chibi46739画素。
+- .release-worktree/kami_redesign/revisions/orochi-mask-no-talisman-2026-10-09/README.md に原寸/元画像/生成候補/全文prompt/局所マスク/合成/検証を保存。標準圧縮master255594B、chibi119454B。
+- catalog/final/previewのmaster/selectedColor/chibi3件のみ更新。他97項目（神技の壊れた面含む）維持。ローカルゲームの人物・選択画像互換パスと全ちび参照を更新、asset_hashes.js再生成。印刷済みカード/編集室フレームは未変更。本番はv1.15.445のまま、今回PUSHなし。
+- 確認 http://localhost:8765/kami_redesign/orochi-mask-no-talisman-preview-2026-10-09.html / 最新比較#characterと#chibi / 指定ローカルindexはHTTPのみ。HTTP11一致、Node179/Python4成功、WebP目視確認。既存8765維持、private story不変。
+- apply.pyは適用済み一回用、再実行しない。今回の状態に新たな確定承認は付けず、旧承認記録は履歴へ保存。
+
+## Codex ローカル v1.15.447（2026-10-09）全10カミの敗北差分リデザイン
+
+- 敗北画面は通常イラストと別の kami_illustrations/defeat/同名.webp を使い、この10枚が旧デザインだった。現在のfinal-catalog master原寸から全10カミの敗北表情をbuilt-in image_genで作成し、顔の指定領域だけNode/Sharpで原寸へ合成。オロチは札なし面を保ったままうつむく頭部。全10原寸マスク外RGBA差分0、alpha保持。
+- .release-worktree/kami_redesign/revisions/defeat-redesign-2026-10-09/README.md に最終*-defeat.png、原本crop、生成候補、全文prompt、局所mask、画素検証、旧敗北画像、圧縮、HTTP/表示検証を保存。scene720px/q82、各90620〜119310B。
+- 敗北10枚を既存互換パスに差し替え、通常結果画面10カミも現行採用WebPをバイト一致コピー。resolver/fallbackは変更せず、asset_hashes再生成でキャッシュ更新。比較にdefeatグループ10件追加、既存100項目維持。
+- 比較 http://localhost:8765/kami_redesign/defeat-redesign-preview-2026-10-09.html / 最新一覧 preview.html#defeat 。指定indexはHTTPのみ、既存8765維持。HTTP35件一致、静的比較30画像/defeatタブをEdgeで確認、Node179/Python4成功。
+- ローカルのみ、本番はv1.15.445のままPUSHなし。private story/他作業保持。apply.pyは適用済み一回用、再実行しない。
+
+## Codex ローカル v1.15.448（2026-10-09）オロチ敗北時は面を外す
+
+- 作者依頼によりヤマタノオロチの敗北差分だけ素顔に変更。通常master/選択/chibiは面ありを維持。前の敗北原寸と面装着前の顔をbuilt-in image_genに参照させ、顔周辺のみNode/Sharpで合成。原寸マスク外RGBA差分0、alpha保持、変更28131画素。
+- .release-worktree/kami_redesign/revisions/orochi-defeat-unmasked-2026-10-09/README.md に原寸、生成候補、全文prompt、局所mask、旧敗北、画素/圧縮/HTTP/ブラウザ検証を保存。720px WebP119204B。既存敗北互換パスも更新、asset_hashes再生成851件。
+- catalog/final/previewと敗北比較のオロチ1件のみ更新。他109採用項目と保護15ファイル不変。旧面あり敗北は履歴へ保存。Node179/Python4成功、HTTP8一致、静的比較30/30ロード、最新敗北タブ確認。
+- 確認 http://localhost:8765/kami_redesign/defeat-redesign-preview-2026-10-09.html#yamata-no-orochi 。既存8765維持、ゲームindexはHTTPのみ。本番v1.15.445のままPUSHなし。prepare.py/apply.pyは適用済み、再実行しない。
+
+## Codex ローカル v1.15.449（2026-10-09）敗北採用記録／図鑑・ガイドちび更新
+
+- 作者「敗北画面はこれにしてください」により、ヤマタノオロチの素顔敗北画像を確定。画像バイト不変、catalog/final/比較表示へconfirmedを記録。revisions/orochi-defeat-unmasked-2026-10-09/approval.jsonを保存。通常とchibiの面は維持。
+- カミ図鑑・プレイガイドの古い通常ちびURLをfinal-catalog chibi全10件に差し替え。kami_chibiへ現行WebPをバイト一致コピー、内容ハッシュURLで参照。図鑑一覧・通常差分・拡大、プレイガイド、ピックガイド、共有KAMI_CHIBI_FILESを同期。アマテラス専用tutorial表情は保持。画像再生成/再圧縮なし。
+- .release-worktree/kami_redesign/revisions/guide-dex-chibi-2026-10-09/README.md とverification.json/review.pngに検証。10通常/図鑑/ガイド参照一致、HTTP10画像＋index一致、画像のみの静的確認10/10成功、Node179件成功。ボイス並行作業でhashが古くなっていたため標準build_asset_hashes.jsを再実行（872件）、声データ自体は未変更。
+- ローカル http://localhost:8765/index.html で確認可能。ゲームはHTTPのみ、既存サーバー維持。本番v1.15.445のまま、今回PUSHなし。apply.py/confirm.pyは適用済み一回用。
+
+## Codex ローカル v1.15.450（2026-10-09）創世決戦の顔向き・戦闘態勢
+
+- 作者依頼によりTOP創世決戦の4人画像をbuilt-in image_genで新しく描き直し。横向き前の原画・現行版・鎌ラフを参照し、真横をやめ顔が見える斜め向きに戻した。4人の配置・現行衣装/配色を保ち、刀/霊剣/鏡/両手鎌で戦闘態勢。中央の巨大発光球をなくし、演出・粒・帯を抑制。OPは変更なし。
+- .release-worktree/kami_redesign/revisions/genesis-battle-ready-2026-10-09/README.md に原寸1254角PNG、全文prompt・参照、before・圧縮・HTTP・表示検証を保存。scene1254角q70/294414B、top_mode_icons/genesis4p-ready-e1a678a508cc.webp。
+- menu-catalog/final/previewのgenesis4pのみ変更、他109採用項目・画像バイト不変。旧横向き情報は履歴へ。indexのTOP背景・先読み・メニューデータ3URLを更新、brightness(.82)維持。version450、標準asset_hashes再生成。
+- 比較 http://localhost:8765/kami_redesign/genesis-battle-ready-preview-2026-10-09.html / 最新preview.html#menus 。HTTP8一致、静的前後比較と最新タブ確認、Node179/Python4成功。指定indexはHTTPのみ、既存8765サーバー維持。本番v1.15.445のままPUSHなし。apply.py適用済み一回用。
+
+## Codex ローカル v1.15.451（2026-10-09）創世決戦：鏡・鎌刃のみ局所修正
+
+- 作者依頼によりアマテラスの鏡と握り、ツクヨミの鎌の刃だけをbuilt-in image_genで修正候補生成し、Node/Sharpで元原寸へ2領域合成。鏡の持ち手を握る構え・読める鏡面、画面右/下端へはみ出す大きな銀の三日月刃。4人の顔/髪、鎌の柄と両手等は保持。微粒/髪の細線を追加せず、原寸マスク外RGBA差分0、alpha保持。
+- .release-worktree/kami_redesign/revisions/genesis-mirror-blade-only-2026-10-09/README.md に原寸/編集前/候補/全文prompt/局所mask/合成/画素/圧縮/HTTP/表示検証。変更158749画素、保持1413767画素。表示scene1254角q70/295188B、前版と同寸法/品質。画素保持は原寸PNGについての確認。
+- menu/final/previewのgenesis4p1項目とindexの3URLを更新、他109採用項目不変。旧画像は履歴へ。version451、標準asset_hashes再生成863件。Node179/Python4成功、HTTP8一致、前後比較と最新メニュー静的表示確認。
+- 比較 http://localhost:8765/kami_redesign/genesis-mirror-blade-preview-2026-10-09.html 。指定indexはHTTPのみ、既存8765維持。本番v1.15.445のままPUSHなし。apply.py適用済み一回用。
+
+## Codex ローカル v1.15.452（2026-10-09）創世決戦：宇宙背景・浮遊鏡・髪と手
+
+- 作者依頼により鏡は手で持たず両手から離して浮遊。背景を単一地球のある宇宙へ統一し神社/桜/森を除去、柔らかな奥景として人物へ焦点。四人の髪は微細線を減らし大きな毛束。顔向き/衣装/構え/大きな鎌刃は維持する生成指示。
+- built-in image_gen最初の宇宙背景候補のスサノオ空き手は4本指だったため、手のみ追加生成してNode/Sharpで局所合成。親指＋四指を拡大確認。追加手修正以外の原寸画素は宇宙背景候補に一致（変更16025画素、マスク外RGBA差分0）。全体の変更前神社版との画素一致を主張するものではない。
+- .release-worktree/kami_redesign/revisions/genesis-cosmic-hair-hands-2026-10-09/README.md に原寸1254角、編集前/候補、全文2prompt、手mask/合成/画素検証、圧縮/HTTP/表示。top_mode_icons/genesis4p-cosmic-b6a27c156c20.webp scene1254角q74/297126B。
+- menu/final/previewのgenesis4p1件、indexの3URLを同期。他109採用項目・画像不変。version452、標準asset_hashes再生成880件。Node179/Python4成功、HTTP8一致、静的前後比較・最新menu確認。
+- 比較 http://localhost:8765/kami_redesign/genesis-cosmic-preview-2026-10-09.html 。ゲームindexはHTTPのみ、8765維持。本番v1.15.445のままPUSHなし。apply.py適用済み一回用。
+
+## Codex ローカル v1.15.453（2026-10-09）アマテラス右腕・袖のみ修正
+
+- 作者依頼により創世決戦のアマテラスの手前右手を下げ袖で隠し、左手だけ前に出す。built-in image_gen候補からNode/Sharpで右腕・袖の必要範囲のみ合成。左手/浮遊鏡/顔/髪/宇宙背景/他三人は元原寸を保持。
+- .release-worktree/kami_redesign/revisions/genesis-amaterasu-one-hand-2026-10-09/README.md に原寸・編集前・候補・全文prompt・局所mask・合成・画素/圧縮/HTTP/表示検証。変更81330画素、保持1491186画素、原寸マスク外RGBA差分0、alpha保持。表示scene1254角q74/296214B（前版と同寸法/品質）。
+- menu/final/previewのgenesis4p1件、indexの3URL更新。他109採用項目不変、旧画像保存。version453、標準asset_hashes再生成901件。Node179/Python4成功、HTTP8一致、前後比較/最新メニュー静的表示確認。
+- 比較 http://localhost:8765/kami_redesign/genesis-amaterasu-one-hand-preview-2026-10-09.html 。指定indexはHTTPのみ、8765維持。本番v1.15.445のままPUSHなし。apply.py適用済み一回用。
+
+
+## Codex ローカル v1.15.454（2026-10-09）アマテラス左腕と衣装の自然な姿勢
+
+- 作者依頼によりTOP創世決戦のアマテラスの不自然な空の袖を除去。左肩から左手を突き出す姿勢に合わせ、腕・胴体・袖・下衣の流れをbuilt-in image_genで描き直し、Node/Sharpで必要範囲のみ合成。右腕は下げ、浮遊鏡・顔・光輪・主要な髪・他三人・宇宙背景は元原寸を保持。
+- .release-worktree/kami_redesign/revisions/genesis-amaterasu-natural-pose-2026-10-09/README.md に原寸/編集前/候補/全文prompt/mask/合成/検証を保存。変更330888画素、保持1241628画素、原寸マスク外RGBA差分0、alpha保持。表示scene1254角q74/297874B、top_mode_icons/genesis4p-amaterasu-natural-pose-03f1a5a05694.webp。
+- menu/final/previewのgenesis4p1件とindex3URLを更新。他109採用項目・画像不変、旧画像保存。version454、標準asset_hashes914件再生成。Node179/Python4成功、HTTP8一致、静的前後比較と最新メニューを検証。並行作業のボイスには触れていない。
+- 比較 http://localhost:8765/kami_redesign/genesis-amaterasu-natural-pose-preview-2026-10-09.html 。指定indexはHTTPのみ、ゲームをブラウザで開かず既存8765維持。本番v1.15.445のままPUSHなし。apply.py適用済み一回用。
+
+
+## Codex 本番 v1.15.455（2026-10-09）最新創世決戦画像を公開
+
+- 作者の本番反映指示により、最新origin/main e3d0de2（v449・カード/顔表示位置の更新あり）を本番用checkoutへff更新し、ローカルv454の創世決戦TOP画像のみ取り込み。既存本番コード・別作業のカード画像等を保持。
+- b655bf862e5cd9b17c75275d95e1aeb743320aaf を origin/mainへ通常PUSH済み。本番 https://tsukuriyo-online.netlify.app/ はv1.15.455。アマテラス左腕/衣装・浮遊鏡・大きな鎌・地球のある宇宙背景を反映。indexの3URLのみ変更、他102画像マッピング不変。
+- 採用WebP297874Bを再圧縮せずバイト一致コピー。HTTPでversion/画像SHA-256/3参照/メタデータを検証。Node181/Python4成功、GitHub Verify成功 https://github.com/0ad387513-crypto/tsukuriyo-project/actions/runs/37922653835 。記録 output/genesis-production-20261009/README.md とdeployment-verification.json。
+- .codex-art-production-20261009 はclean。ローカル8765/.release-worktree/v454は維持。未公開の敗北差分・ちび等や並行ボイス変更は今回のPUSH対象外。ゲームをCodexブラウザで開いていない。
+
+## Codex ローカル v1.15.456（2026-10-10）創世神技とリデザインの整合
+
+- スサノオ：目だけ局所合成した半開眼・開眼差分を作成、三段階の顔アップへ。風の色も現行の淡いオレンジへ。
+- オロチ：現行顔角度の札なし面→段階的亀裂→八片→既存の素顔で笑うカットイン。左側の壊れた面の札も除去。能力アイコン/到着も仮面へ。顔・衣装・龍は原寸の変更領域外画素を保持。
+- オモイカネ：新しい紙＋紫裏地の巻物を不透明表示し、実フィールド＋回転/はみ出しカードの合計外接矩形＋12pxを覆う。演出直前に再計測。元フィールド座標は変えない。
+- 全10カミ演出の整合を確認し、オオクニヌシの旧狐を現行フクロウ霊体へ。確認ページの旧素材・開眼・時間・対象と狭い画面表示を修正。確認ページ専用Vue2.6.14をvendorへ保存、ゲーム本体の依存設定は変更なし。
+- built-in image_gen 6候補＋Node/Sharp局所合成、原寸PNGマスク外RGBA差分0/alpha保持。標準import_visual_asset.pyで8WebPを用途上限内に圧縮。原寸/全文prompt/候補/旧版/検証は .release-worktree/kami_redesign/revisions/divine-redesign-effects-2026-10-10/README.md。
+- 本番基準 .codex-art-production-20261009 は未コミットv456。npm test182件/Python4件成功、隔離演出24スクリーンショット/現行34素材HTTP＋SHA一致。ゲーム本体はHTTPのみ。既存8765 .release-worktreeへ必要部分のみ同期、並行voice等保持。古いreleaseのindexを本番へ一括コピーしない。
+- 確認：http://localhost:8765/kami_redesign/divine-redesign-effects-preview-2026-10-10.html / effects_preview.html。指定indexも最新ファイル取得確認。今回コミット・PUSH・デプロイなし、本番v455維持。適用スクリプトは一回用、再実行しない。
+
+## Codex 本番・ローカル同期 v1.15.456（2026-10-10）
+
+- 作者の本番反映＋本番の新しい部分をローカルへ同期する依頼により、最新main b655bf8を取得。直前の創世神技修正だけ19ファイルを通常PUSH、公開commit 33cca4ca54bd22fbbf54ca1492a4c927e1a3481f。他102採用画像は不変。本番117ファイルHTTP照合、画像SHA一致、GitHub Verify成功 https://github.com/0ad387513-crypto/tsukuriyo-project/actions/runs/38029851009。
+- スサノオの半開眼/開眼・橙の風、オロチ仮面破壊→既存素顔の笑顔・能力アイコン、カード全体を覆う巻物、オオクニヌシのフクロウ霊体を公開。原寸・私的設定・過去の未公開画像・並行ボイスは公開対象外。
+- rootと.release-worktreeは共通祖先を使った三者比較で最新本番コードへ同期。古い画面・チュートリアル等の競合は本番を採用。元データはoutput/divine-sync-20261010/{root,release}/beforeとtracked.patchへ保存。旧ブランチ削除なし。rootのindexは本番と同じ、releaseには未公開ちび参照/札なしオロチ/敗北画像/voice試作ツールを保持。公開済みの明るさ修正画像はローカルにも取り込んだ。asset_hashesは各実ファイルから再生成。
+- 現在rootブランチ codex/local-production-sync-20261010、確認用releaseブランチ codex/local-preview-sync-20261010。どちらもHEADは公開commitと同じ、origin/main追跡。旧feature/mainや古いreleaseのindexを本番へコピーしない。本番用 .codex-art-production-20261009 はclean。
+- 既存8765/.release-worktreeサーバー維持、指定indexのHTTP一致を確認。npm test 本番/root/release 各182件、Python4件成功。隔離演出24画像＋比較7画像を確認。ゲームをブラウザで開かずHTTPのみ。記録 output/divine-sync-20261010/README.md とverification.json。
+
+
+## Codex ローカル v1.15.457（2026-10-10）フィールドカードの顔・頭部
+
+- 全198枚の設定から場に置く142枚（レガシー121/レリック21、トークン含む）を監査。31枚の顔/頭部の欠けを表示位置または絵柄全体表示で修正。添付の緑龍はNo.063荒き緑の眷属。原画を変更せず、印刷画像396枚のGit HEAD/releaseとのSHA一致を検証。
+- field_card_art.js番号別設定、indexの自分/相手×レガシー/レリック4バインディングとCSSのみ。進化後は現在の番号を使用。旧レイアウト/手札/詳細/戦闘ロジック維持。rootと.release-worktreeに必要部分だけ適用。version457、未コミット/PUSHなし。
+- 比較 http://localhost:8765/tools/field-card-art-preview.html 。全142枚の実CSS隔離表示9スクリーンショット・小画面・エラー0を確認。ゲームindexはHTTPのみ、既存8765を維持。
+- root npm182/Python4成功。release npm181成功＋並行音声によるhash不一致1失敗を標準asset_hashes再生成で修復、hashテスト2件再確認成功。ボイス自体を変更していない。HTTP4ファイル一致。
+- 記録 output/field-card-crops-20261010/README.md / inventory.json / verification.json 。原画が後ろ姿の忍の王、目を含まない落日の子守唄は描き直していない。apply.cjs適用済み一回用。
+
+## Codex ローカル v1.15.458（2026-10-10）キャラクターボイス導入準備
+
+- カード音声は.release-worktreeの並行作成作業に合わせ、正本台本/採用済み直下MP3からvoices/cards/manifest.jsonを作るscripts/build_card_voice_manifest.jsを追加。rootで `npm run voices:prepare -- --root .release-worktree`。外部APIなし。今回313台詞/128カード番号/59組の掛け合い、未作成109台詞は無音。複数話者は全員分が揃ってから一連の台詞として登録。台本/候補/テイク/採用MP3/作成ツール自体は変更していない。
+- card_voice_core.js＋index局所変更で召喚/攻撃/死亡/レリック・オラクル使用に再生を接続。通常/進化はnos共有。条件が合う敵/味方の掛け合いを召喚時に対戦一度、順番再生。既存カミ台詞優先、最大3待機/古い台詞破棄、BGM55%、既存ボイス音量/ミュート/画面離脱/決着/Undo対応。音声待ちで効果・同期を止めない。オンライン発動/攻撃通知/墓地・崩壊差分から音声、初回/強制再接続の死亡と古い通知は抑制。途中参加観戦死亡/発動通知なしトークン召喚は未追加、同期到着順の完全一致は保証しない。
+- 配信用hashからcards/previews,takes,library,_oldを除外。各manifestのCache-Controlを再検証へ。root/release version458、package voices:prepare/test登録。rootには作成中音声本体をコピーせず空のcardsmanifestだけ。
+- 確認 http://localhost:8765/tools/card-voice-preview.html 。既存8765サーバー維持。ゲームindex等HTTP6ファイルrelease実体一致、313参照全存在。独立試聴ページheadless Edgeで再生/終了、初期音声DL0/1台詞だけ取得、画面エラー0/小画面溢れなし。ゲーム本体はHTTPのみ。root/release npm各191件成功。
+- 手順 docs/character-voice-integration.md 、記録 output/voice-integration-20261010/ 。apply.cjsは一回適用済み、再実行しない。コミット/PUSH/デプロイなし、本番v456保持。公開する際は最新本番コードへ必要箇所と採用音声だけを統合し、releaseの旧indexを一括コピーしない。
+
+## Claude カードボイス全422本が完成（2026-10-11、ブランチ claude/kami-motion 58d07bc / v1.15.443）
+
+- カードボイス（キャラ79人＋カミのジェネシス9本、台詞422本）の音声が `voices/cards/台詞ID.mp3` にそろった。ブランチ claude/kami-motion に commit・push 済み。本番（main）とゲーム本体（index.html）にはまだ組み込んでいない。`asset_hashes.js` も未更新。
+- 道具：試聴室 http://localhost:8765/tools/voice-preview/ （確認用サーバーの `/__dev/voice-*` を使う。ElevenLabs のキーは Windows のユーザー環境変数 ELEVENLABS_API_KEY）。生成は `scripts/generate_card_voices_elevenlabs.js`（cast / design / pick / lines / cut / release）。
+- 設定ファイル（すべて tools/voice-script/）：card_voice_cast.json（声の説明・高さの後調整）、card_voice_direction.json（台詞ごとの言い換え・演技の方針・速さ）、card_voice_readings.json（読み方の辞書）、direction_tags.json（方針→英語の演技タグ）、card_voice_lines.json（台詞の一覧。cast で作り直す）。
+- .release-worktree の scripts/serve.js に `/__dev/voice-*` を追記している（音声の Range 対応も）。8765 のサーバーはこのフォルダの `npm run preview`（非表示のウィンドウで起動）。
+- `voices/cards/` の takes・previews・_old は作業用（言い方の候補・声の候補の試聴・退避）。ゲームでは使わない。
+
+## Claude ローカル v1.15.459（2026-10-11）カードボイス：全台詞をゲームに登録＋カード詳細で試聴
+
+- `node scripts/build_card_voice_manifest.js` を作り直し、`voices/cards/manifest.json` は 422台詞 / 180カード / 掛け合い59組（未作成0）。`asset_hashes.js` も同時に更新済み。対戦中の再生は Codex の v458 の仕組み（card_voice_core.js）をそのまま使う。
+- index.html：カードの詳細（previewCard のモーダル。カードリスト・デッキ編集から開く）に「ボイス」欄を追加。召喚時／使用時／攻撃時／死亡時と、そのカードが関わる掛け合い（敵・味方と相手のカード名つき）を押して試聴できる。掛け合いは順番に再生、同じ行をもう一度押すと停止、閉じると停止。音量はボイス音量。対戦中（appView === 'battle'）とカミ・トークンには出さない。追加：computed `previewVoiceRows`、methods `previewVoicePlay` / `_previewVoiceStop`、data `previewVoicePlayingKey`、CSS `.mi-voices` / `.mi-voice-wide`（見た目はカミ図鑑の `.kami-dex-voice` を流用）。
+- .release-worktree のみ。未コミット・push なし・本番 v456 のまま。npm test 191件成功。画面はユーザーが http://localhost:8765/index.html で確認する。
+
+## Claude 本番公開 v1.15.459（2026-10-11、main 6535f85）
+
+- ユーザーの許可を得て、.release-worktree の作業内容（Codex の v457 フィールドカードの絵・v458 ボイス導入準備・カミの絵の差し替えと、Claude のカードボイス全422本＋カード詳細の試聴）を1コミットで main に push。本番 https://tsukuriyo-online.netlify.app が v1.15.459 になり、manifest・音声・card_voice_core.js が 200、/tools/ は 404 を確認。まっさらなチェックアウトで npm test 191件成功。
+- コミットに入れていないもの：`kami_redesign/`（2.6GB の作業フォルダ）と `voices/cards/` の takes・previews・_old・library。いずれも .gitignore に追加した。
+- **注意**：コミットした `optimized_assets.json` は、`kami_redesign/` の画像を指す595件の記録を除いたもの（その画像を載せないとテストが失敗するため）。作業フォルダの `optimized_assets.json` は595件入りのまま残してあり、git 上は「変更あり」と表示される。このファイルを次にコミットするときは、`kami_redesign/` の記録を入れないこと。
+- ブランチ codex/local-preview-sync-20261010 も同じコミットで origin に push 済み。
+
+## Codex ローカル v1.15.460（2026-10-11）カード詳細のボイス折りたたみ・スクロール・正式名称
+
+- Claude公開済みHEAD6535f85/v459の.release-worktreeのみindexを局所修正。rootはv458の古いコードのためindexコピー/上書きなし。本番はv459、今回未公開。
+- ボイス欄をdetails/summaryで初期折りたたみ、カード番号:keyで切替時リセット、折りたたみ時は試聴停止。カード詳細専用.card-detail-modalを追加し、PCは右列、900px以下は全体がスクロール。内容/フレーバー/最後のボイス/操作ボタンに到達可能。他ポップアップに影響しない。
+- previewVoiceRowsの掛け合い相手名をfullNameで「白き閃刃・シラトリ」など正式表記に。複数番号で同じカードを指す名前をSetで重複除去。「シラトリ・シラトリ」は番号23/24を別々に名前化した表示不具合、同一人物同士の会話ではない。台本・音声・manifest不変。
+- release npm192件成功（正式名称と通常/進化番号の重複除去の検証1件追加）。独立テンプレート/CSS/実computedをheadless Edgeで1920x1080/1280x720/390x844確認、初期折りたたみ/最下部/閉じるボタン到達/折りたたみ停止/横溢れなし、画面エラー0。ゲーム本体はHTTPのみ。8765 index/versionがrelease実体と一致。
+- 記録output/card-detail-voices-20261011/。隔離確認http://localhost:8765/tools/card-detail-voice-preview-20261011.html。既存8765維持。コミット/PUSH/デプロイなし。optimized_assets.jsonの595件の既存差分や他作業者の変更を保持。
+
+
+## Codex local v1.15.461 (2026-10-11): attack drag voice / effect selection order
+
+- Only .release-worktree runtime was patched; root runtime is stale and was not copied over. Existing v460 card-detail changes remain. No commit, PUSH or deploy.
+- Attack voice starts once when pointer drag crosses the existing 5px threshold (native drag also supported). Click-only, tapped cards, relics and opponent-turn drags do not start it. Both drop paths pass attackVoiceStarted into battle/divine resolution, so a long drag does not cause replay. CPU/programmatic/remote attack voice remains at the existing declaration/notification timing.
+- _battleWaitForOracleEffect uses a temporary Vue watcher: human summon/use effect processing, reroll optional confirmation, choices, Sentei and target selectors wait until the central display closes. CPU automatic resolution does not wait. Exit, a replaced battle or a result cancels the wait and removes the watcher. No polling timeout. Free-hand oracle playback now has _shownAt for click dismissal.
+- Added tests/battle_interaction_order.test.js (11 behavior tests) to npm test. Full release suite: 203 pass / 0 fail; git diff --check passed. HTTP index.html/version.js equal release files at localhost:8765. Game was not opened in the Codex browser. Existing server and unrelated assets/audio preserved.
+- Record: output/battle-interaction-order-20261011/verification.json. Local URL: http://localhost:8765/index.html . Production remains v1.15.459.
+
+## Claude ローカル v1.15.462（2026-10-11）動作確認用ツール画面の「トップへ戻る」を左上へ
+
+- index.html の CSS のみ：`.devtools-screen > .mode-detail-back` を左上（top 14px / left 16px、transform なし、少し大きめ）に。共通の `.mode-detail-back`（top:50%）のままだと、この画面では左端の上下中央に出ていた。モード詳細画面のヘッダー内の戻るボタンは変更なし。
+- Codex の v460・v461 の未コミット分と同じ作業フォルダにある。未コミット・push なし。本番は v1.15.459。npm test 203件成功。
+
+## Claude ローカル v1.15.463（2026-10-11）鎮魂の花畑の同時再生／場のレガシーの絵の黒帯をなくす
+
+- 鎮魂の花畑（n176-use）：アカマツとシラトリの声を重ねた1本 `voices/cards/n176-use-together.mp3` を作り、ゲームではその1本だけを鳴らす（以前は2人が順番に言っていた）。仕組み：`tools/voice-script/card_voice_together.json` に台詞グループIDを並べると、`scripts/build_card_voice_manifest.js`（`npm run voices:prepare`）が ffmpeg で重ねて manifest を1本にする。元の音声が新しければ作り直す。同じ台詞を2〜3人で言う n139-use・n161-use・n065-summon の後半は、依頼が無いので順番のまま。
+- 場のカードの絵（field_card_art.js）：`wide`（絵を縮めて全体を出す）は縦長のレガシーの札では上下に黒い帯が出て不自然だったため、レガシー10枚（13・36・65・78・79・93・94・106・114・198）を `position` 指定に変え、主役が入る位置で札いっぱいに出す。`wide` は正方形に近いレリック15枚だけに残した。切り出しは画像で確認済み（ゲーム画面は未確認）。
+- .release-worktree のみ・未コミット・push なし。本番は v1.15.459。npm test は下記のとおり。
+
+## Codex local v1.15.464 (2026-10-11): Orochi dark mask awakening
+
+- Patched only .release-worktree runtime: darkness / frontal no-paper mask / progressive cracks / eight fragments / redesigned white-haired red-eyed sinister smile, followed by the unchanged approved eight-dragon combat cut-in. No cracking over the bright combat artwork. Prior dark awakening asset used as composition/mood reference with the current redesigned unmasked cut-in as identity reference.
+- built-in image_gen created two originals; scripts/import_visual_asset.py imported portrait divine_assets/orochi-dark-smile-e36b5713bbd6.webp (1600x900,117600B) and alpha mask divine_assets/orochi-frontal-mask-f3b0b91b92a9.webp (720x720,43332B). Sources/full prompts/screenshots/verification: kami_redesign/revisions/orochi-dark-awakening-2026-10-11/README.md. Old images preserved, old bright masked cut-in/overlay removed from current Orochi preload set. Existing cut-in SHA unchanged.
+- Normal/fast Orochi sequence animation->portrait->sealArrival; voice begins at portrait, roar starts with dragons, no-line portrait held at least3200ms. Minimum/reduced timing and other Kami sequences preserved. Exit cancels subsequent phases/voice/roar. CSS local square mask cracks with 8 fragment partitions, desktop/mobile face alignment verified.
+- npm test204 pass, Python importer4 pass, git diff --check passed. Isolated effects_preview.html?kami=10 verified frozen mask/cracks/fragments/smile, automatic transition, desktop/mobile and reduced CSS; HTTP7 resources200 and bytes/SHA match release. Game index HTTP only, not opened in Codex browser. Existing8765 server preserved.
+- Current version464, standard hashes1144. Preserved other worker's463 card voices/field crops and previous461 interaction order/UI. Root runtime is stale: do not copy either full index across checkouts. No commit/PUSH/deploy. update-preview.cjs already applied and must not be rerun.
+
+## Codex local v1.15.465 (2026-10-11): cut-in first, unified Orochi with eight dragons
+
+- Supersedes v464 sequencing per latest user request: portrait/voice first, then dark mask cracking/shattering, red-eyed smile, eight dragons revealed in the SAME unified image, then existing sealArrival. Normal/fast use portrait->animation->sealArrival; minimal/reduced remain unchanged. Roar at82% of4.2s reveal, unified image held3200ms afterward. Voice once during initial cut-in; no second bright cut-in after awakening.
+- built-in image_gen referenced v464 redesigned portrait, current approved battle dragons and original dark cinematic. First pass had7 heads; local upper-inner-right addition produced4left+4right. Approved full source/full prompts saved in .release-worktree/kami_redesign/revisions/orochi-eight-dragon-awakening-2026-10-11/. Standard importer: divine_assets/orochi-eight-awakening-3a87025a4bb1.webp (1600x900,201860B,q82). Existing alpha mask reused and aligned to new frontal face. Existing bright cut-in bytes unchanged.
+- One image throughout dark reveal; CSS shroud reveals central face first, surrounding dragons later. No per-frame image loads or mismatched swapped character layers. Small screens fit all eight heads; preview fits its actual stage height. Current URL http://localhost:8765/effects_preview.html?kami=10 . New README/verification/screenshots saved. Earlier464 sources preserved as history.
+- Node204/Python4 passed, git diff --check passed. Isolated desktop/mobile frozen phases and automatic portrait->animation, resource errors0. HTTP7 resources200/byte+SHA equal release; actual index only HTTP, no game browser opened. Existing8765 server maintained. Hashes1144 refreshed.
+- Only release runtime patched; root stale runtime not copied. Other worker's voice/crop/UI changes preserved. Version465. No commit/PUSH/deploy. update.cjs already applied once; do not rerun.
+
+## Claude ローカル v1.15.466（2026-10-11）フィールド確認中の操作を止める／確認の画面にカード画像
+
+- 不具合の原因：新配置（battle-layout-v2）は `.battle-side > *` と `.battle-header > *` に pointer-events: auto を付けているため、「フィールドを確認」中（.modal-peeking）でもターン終了などが押せた。対象選択や守護の確認を残したまま手番が進み、左上の案内（battleEffectGuide）と選択画面が残り続け、CPU が先へ進んでいた。
+- 修正：CSS `.modal-peeking .battle-overlay * { pointer-events: none !important; }`。念のため JS でも `_battlePeekLocked` / `battlePeekGuard`（battle-overlay の pointerdown・dragstart・contextmenu を capture で止める）/ `_battlePeekReturn`（battleRequestEndTurn・openKamiSkills は選択画面へ戻す）を追加。
+- 確認の画面（dslOptionalModal・battleRemoteConfirm・dslChoiceModal）：能力の持ち主と文中の「カード名」のカード画像を並べる（`.dialog-card-strip`、最大4枚）。文中・見出しのカード名は `.dialog-card-name` にし、カーソルを合わせると showCardHover で左上の情報欄にカードを出す。追加 methods：`_battleCardByDisplayName` / `battleDialogTextParts` / `battleDialogCards`。
+- 「フィールドを確認」「選択画面に戻る」のボタンを大きく（下中央の浮きボタン 14→18px、選択画面内のボタン 12→15px）。
+- npm test 204件成功、テンプレートは Vue.compile で構文確認。ゲーム画面は未確認（ユーザーが確認）。未コミット・push なし、本番は v1.15.459。
+
+## Codex local v1.15.467 (2026-10-11): Orochi four dragons per side / distinct expressions
+
+- User requested left4/right4 and unique expressions while retaining face directions. Recounted v465 source: actually left5/right4 =9; prior head-count claim was incorrect. Removed inner upper-left extra head/neck, now visually verified exactly left4/right4. Eight faces differ through mouth opening, lip/teeth, brows and eyes, without new species ornaments or changed facing.
+- Built-in image_gen precise edit; original PNG/full prompt/import report/README/screenshots in kami_redesign/revisions/orochi-distinct-expressions-2026-10-11/. New standard-imported divine_assets/orochi-eight-expressions-deccd174b69e.webp (1600x900,193824B,q82). Replaced only dark portrait constant and JS query suffix. Existing mask, bright cutin and divine_effects.css bytes unchanged. Whole scene remains one image for character/dragons throughout reveal; no frame-by-frame large image loading.
+- npm204/Python4 passed, git diff --check passed. Desktop/mobile frozen phases visually inspected; exactly8 visible. Sequence portrait->animation, reduced mask stage none, resources errors0. HTTP7 files200 and equal release bytes/SHA. Game not opened in Codex browser; existing8765 server preserved. Local preview http://localhost:8765/effects_preview.html?kami=10 . Game http://localhost:8765/index.html . Hashes1144 refreshed.
+- Release runtime only, root stale runtime not copied. Claude v466 modal-peeking/dialog changes and all unrelated pending work preserved. No commit/PUSH/deploy. update.cjs already executed once; do not rerun. Previous images retained as history.

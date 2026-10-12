@@ -21,7 +21,7 @@ const ASSET_DIRS = [
   { dir: "kami_card_images", ext: /\.webp$/i },
   { dir: "kami_illustrations", ext: /\.(webp|png|jpe?g)$/i },
   // previews・trials（試し作り）・_raw はローカル専用で本番に出さないため、一覧に入れない
-  { dir: "voices", ext: /\.(mp3|wav)$/i, skip: /^(previews|trials|_raw)\// },
+  { dir: "voices", ext: /\.(mp3|wav)$/i, skip: /^(previews|trials|_raw)\/|^cards\/(previews|takes|library|_old)\// },
   { dir: "bgm", ext: /\.(mp3|ogg|wav|m4a)$/i, skip: /^op-candidates\// },
   // candidates（ElevenLabs で作ったSEの候補）はローカル専用で本番に出さないため、一覧に入れない
   { dir: "sfx", ext: /\.(mp3|ogg|wav|m4a)$/i, skip: /^candidates\// },
