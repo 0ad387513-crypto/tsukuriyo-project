@@ -634,17 +634,19 @@
      .sp-btn は .sp-lobby 配下限定のスタイルのためここでは使えない） */
   .deck-shield-battle-btn {
     display: block; width: 100%; margin: 10px 0 4px; padding: 12px 10px;
-    font-size: 15px; font-weight: 800; letter-spacing: 0.03em;
-    color: #fff; background: linear-gradient(135deg, #c8742a, #e89a3a);
-    border: 1px solid #f8b850; border-radius: 6px; cursor: pointer;
-    box-shadow: 0 4px 14px rgba(220, 159, 80, 0.35);
+    font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 16px; font-weight: 800; letter-spacing: .14em;
+    color: #1a1209; background: linear-gradient(180deg, #c4a35d, #8f733e);
+    border: 1px solid #e3cc92; border-radius: 4px; cursor: pointer;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, .55), 0 0 16px rgba(210, 176, 104, .18);
     transition: background 0.12s, transform 0.08s;
   }
-  .deck-shield-battle-btn:hover { background: linear-gradient(135deg, #d8843a, #f8aa4a); }
+  .deck-shield-battle-btn:hover { background: linear-gradient(180deg, #d3b36c, #9e8148); }
   .deck-shield-battle-btn:active { transform: translateY(1px); }
 
   /* 理念構築戦：デッキ構築中の状態表示・提出パネル */
-  .cb-build-panel { padding: 10px 14px; border-bottom: 1px solid #2a2f3d; border-top: 1px solid #2a2f3d; background: #1e2230; }
+  .cb-build-panel { padding: 10px 14px; border-bottom: 1px solid rgba(158, 138, 98, .3); border-top: 1px solid rgba(158, 138, 98, .3); background: #16130f; }
+  .cb-build-actions .gm-btn-primary { background: linear-gradient(180deg, #c4a35d, #8f733e); border: 1px solid #e3cc92; color: #1a1209; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-weight: 800; letter-spacing: .1em; }
+  .cb-build-actions .gm-btn-primary:hover:not(:disabled) { background: linear-gradient(180deg, #d3b36c, #9e8148); }
   .cb-build-status { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: #cbd3de; margin-bottom: 6px; flex-wrap: wrap; }
   .cb-build-status b { color: #f0b86c; }
   .cb-build-status b.ok { color: #7cf0a8; }
@@ -1250,13 +1252,14 @@
   }
   .title-screen-art {
     position: absolute; inset: 0;
-    background-image: url('ui_decorations/title-key-visual.webp');
+    background-image: url('ui_decorations/title-key-visual-01f1e1f7c186.webp');
     /* 全画面いっぱいに敷き詰める。キービジュアルは横長（約2.37:1）のため画面比によって
        左右（山・竹）が切れるが、ロゴと人物は中央にあるので中央基準で拡大する。 */
     background-size: cover; background-position: center; background-repeat: no-repeat;
     /* 起動演出：わずかに寄った状態から静かに引きながら現れる。1.0倍より縮めないので、
        引き切ったときに画面の端が余ることはない。 */
-    animation: titleArtRevealKf 2.8s cubic-bezier(.22,.61,.36,1) both;
+    /* 終わったあとは拡大の指定を残さない（残すと別の層として描かれ、絵がわずかにぼやけることがある） */
+    animation: titleArtRevealKf 2.8s cubic-bezier(.22,.61,.36,1) backwards;
   }
   @keyframes titleArtRevealKf {
     0%   { opacity: 0; transform: scale(1.06); }
@@ -3130,6 +3133,55 @@
   .gs-lacquer .gm-score-table tr.me td { box-shadow: inset 0 1px 0 rgba(var(--gs-title-rgb), .25), inset 0 -1px 0 rgba(var(--gs-title-rgb), .25); }
   .gs-lacquer .gm-rank { font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-weight: 800; color: var(--gs-title); }
   .gs-lacquer .gm-total b { font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 1.2em; color: var(--gs-title); }
+  /* ===== 星紡ぎ戦：コイントス・パック選択・カミ選択・完了（創世決戦と同じ形） ===== */
+  .shield-overlay.sp-overlay-pick { padding: 12px; align-items: stretch; }
+  .shield-overlay.sp-overlay-pick > .shield-panel { max-width: none; border: 1px solid rgba(158, 138, 98, .35); border-radius: 6px; }
+  .shield-panel.cosmic-pick-bg {
+    --gs-rgb: 158, 138, 98; --gs-title-rgb: 226, 212, 176;
+    --gs-title: #e2d4b0; --gs-hi: #c8b384; --gs-sub: #a99f8c; --gs-text: #eadfca; --gs-text-strong: #f1e6cc; --gs-bright: #fff3d6;
+  }
+  .shield-panel.cosmic-pick-bg > .sp-header { box-sizing: border-box; min-height: 54px; padding-block: 8px; padding-right: 162px; background: rgba(12, 10, 8, .82); border-bottom: 1px solid rgba(158, 138, 98, .32); }
+  .shield-panel.cosmic-pick-bg > .sp-header h2 { font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; color: #e2d4b0; letter-spacing: .14em; }
+  .shield-panel.cosmic-pick-bg > .sp-header .sp-phase-badge { background: transparent; border-color: rgba(158, 138, 98, .4); color: #a99f8c; letter-spacing: .1em; }
+  .shield-panel.cosmic-pick-bg > .sp-header .back-to-top-btn { background: transparent; border-color: rgba(158, 138, 98, .45); color: #a99f8c; }
+  .shield-panel.cosmic-pick-bg > .sp-header .sp-close { background: transparent; border-color: rgba(158, 138, 98, .35); color: #a99f8c; }
+  .shield-panel.cosmic-pick-bg > .sp-body { padding: 12px; }
+  .sp-pick-bar { display: flex; align-items: center; gap: 10px 22px; margin-bottom: 12px; padding: 7px 14px; border-radius: 6px; background: rgba(10, 9, 12, .62); }
+  .shield-panel.cosmic-pick-bg .sp-pack-card { background: rgba(10, 9, 12, .72); border: 1px solid rgba(226, 212, 176, .16); border-radius: 6px; }
+  .shield-panel.cosmic-pick-bg .sp-pack-card:hover:not(.taken):not(.disabled) { border-color: rgba(226, 212, 176, .6); }
+  .shield-panel.cosmic-pick-bg .sp-pack-card.taken-by-me { opacity: 1; border-color: #e3cc92; box-shadow: inset 0 0 0 1px rgba(227, 204, 146, .35); }
+  .shield-panel.cosmic-pick-bg .sp-pack-card.taken { opacity: .35; }
+  .shield-panel.cosmic-pick-bg .sp-pack-header { gap: 10px; justify-content: flex-start; padding: 8px 12px 4px; }
+  .shield-panel.cosmic-pick-bg .sp-pack-header .ph-no { font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 16px; color: var(--gs-title); }
+  .shield-panel.cosmic-pick-bg .sp-pack-sum { display: inline-flex; align-items: center; gap: 4px; padding: 0; font-size: 13px; color: var(--gs-text); }
+  .sp-pack-tag { margin-left: auto; padding: 1px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .sp-pack-tag.mine { background: #c8b384; color: #17110a; }
+  .sp-pack-tag.enemy { background: rgba(255, 255, 255, .1); color: var(--gs-sub); }
+  .shield-panel.cosmic-pick-bg .sp-pack-vis-thumb { border-color: rgba(255, 255, 255, .1); }
+  .shield-panel.cosmic-pick-bg .sp-packs-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+  .gm-btn.gs-sub-btn.sp-pick-btn { width: calc(100% - 20px); margin: 6px 10px 10px; }
+  .shield-panel.cosmic-pick-bg .sp-deck-side { background: rgba(10, 9, 12, .72); border: 1px solid rgba(226, 212, 176, .16); border-radius: 6px; }
+  .shield-panel.cosmic-pick-bg .sp-deck-side-head { border-bottom-color: rgba(226, 212, 176, .14); font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; color: var(--gs-title); letter-spacing: .08em; }
+  .shield-panel.cosmic-pick-bg .sp-deck-side-count { color: var(--gs-text); font-family: system-ui, sans-serif; }
+  .gm-btn.gs-sub-btn.sp-deck-detail-btn { margin: 10px 10px 0; }
+  .shield-panel.cosmic-pick-bg .sp-deck-side-empty { color: var(--gs-sub); }
+  /* コイントス：日輪（先攻）・月輪（後攻）の円盤 */
+  .sp-coin-toss { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .sp-coin-disc { width: 140px; height: 140px; margin: 6px 0 4px; background: url('battle_ui/sun-disc-3c27b077965b.webp') center / calc(100% * 720 / 664) no-repeat; filter: drop-shadow(0 0 18px rgba(240, 200, 110, .35)); }
+  .sp-coin-disc.moon { background-image: url('battle_ui/moon-disc-2635c27ba3e1.webp'); filter: drop-shadow(0 0 18px rgba(170, 196, 240, .35)); }
+  .sp-coin-result { font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 34px; font-weight: 800; letter-spacing: .3em; text-indent: .3em; color: #f0d38a; margin: 6px 0 4px; }
+  .sp-coin-result.moon { color: #dde6f6; }
+  /* カミ選択：5柱×2段。選んだカミは金の縁、相手が選んだカミは暗く */
+  .sp-kami-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .gs-later .sp-kami-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+  .gs-later .sp-kami-card { border: 1px solid rgba(255, 255, 255, .1); border-radius: 4px; background: rgba(0, 0, 0, .25); }
+  .gs-later .sp-kami-card:hover:not(.wait-mode):not(.opponent-taken) { border-color: rgba(226, 212, 176, .7); }
+  .gs-later .sp-kami-card.selected, .gs-later .sp-kami-card.confirmed { border-color: #e3cc92; box-shadow: 0 0 0 1px #e3cc92, 0 0 18px rgba(227, 204, 146, .3); opacity: 1; }
+  .gs-later .sp-kami-card .name-bar { background: none; color: var(--gs-text-strong); font-size: 12px; }
+  .gs-later .sp-opponent-badge { background: rgba(255, 255, 255, .08); border-top: 0; color: var(--gs-sub); }
+  .gs-later .sp-orochi-badge { background: rgba(160, 40, 50, .3); color: #f2b8b0; border-top: 0; }
+  .gs-later .sp-orochi-bonus-bar { background: rgba(160, 40, 50, .1); border-color: rgba(200, 80, 80, .35); }
+  .gs-later.shield-panel { max-height: 94vh; }
   /* ===== 部屋のあとの画面：ボタンと表示を見分けやすく =====
      ボタン＝塗りと影のある押せる形（主ボタンは金の塗り・ほかは暗い塗りに細い縁）。
      表示＝縁のない平らな面に、小さな見出しと数字。状態は印（チェック）で示す */
@@ -3166,10 +3218,10 @@
   .gs-seat-state { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--gs-text); }
   .gs-seat-state.me .gs-seat-state-name { color: var(--gs-title); font-weight: 700; }
   .gs-seat-state-sub { font-size: 12px; color: var(--gs-sub); }
-  .gs-check { box-sizing: border-box; display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, .22); }
-  .gs-check svg { width: 12px; height: 12px; fill: none; stroke: transparent; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-  .gs-check.on { background: var(--gs-hi); border-color: var(--gs-hi); }
-  .gs-check.on svg { stroke: #17110a; }
+  .gs-done-mark { box-sizing: border-box; display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, .22); }
+  .gs-done-mark svg { width: 12px; height: 12px; fill: none; stroke: transparent; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .gs-done-mark.on { background: var(--gs-hi); border-color: var(--gs-hi); }
+  .gs-done-mark.on svg { stroke: #17110a; }
   /* 表示の面は縁を消して平らに（金の縁はボタンと「自分」の目印だけに使う） */
   .gs-later .gm-kami-status { border: 0; background: none; font-size: 17px; }
   .gs-later .gm-kami-status.mine { background: none; }
@@ -3264,10 +3316,9 @@
   .gs-oracle-profile .gs-kami-effect-text { font-size: 16px; line-height: 1.75; }
   .gs-oracle-profile .gs-kami-effect-row + .gs-kami-effect-row { margin-top: 12px; padding-top: 12px; }
   .gs-oracle-profile .gs-kami-philosophy p { font-size: 15px; }
-  .gs-ready-seal {
-    display: inline-block; padding: 3px 8px; border: 1.5px solid #c8402c; border-radius: 3px; color: #e8664e; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-weight: 800; font-size: 12px; letter-spacing: .12em;
-    transform: rotate(-6deg); box-shadow: inset 0 0 0 1px rgba(200, 64, 44, .35); background: rgba(200, 64, 44, .06);
-  }
+  /* 準備完了・提出済み：はんこ風をやめ、後半の画面の完了の印（金の丸にチェック）と同じ形にする */
+  .gs-ready-seal { display: inline-flex; align-items: center; gap: 6px; color: var(--gs-title); font-size: 12.5px; font-weight: 700; letter-spacing: .08em; }
+  .gs-ready-seal::before { content: ""; flex: none; width: 17px; height: 17px; border-radius: 50%; background: var(--gs-hi) url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Cpath d=%27M4 8.4 6.8 11.1 12 5.4%27 fill=%27none%27 stroke=%27%2317110a%27 stroke-width=%272.2%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E") center / 12px no-repeat; }
   .gs-lobby-settings { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-radius: 4px; border: 1px solid rgba(201, 168, 98, .18); font-size: 13px; color: #c9bfa8; }
   .gs-lobby-label { font-size: 12px; color: #b9ad94; letter-spacing: .12em; }
   .gs-diff-chip { --lv: #8fc79c; padding: 1px 12px; border-radius: 2px; border: 1px solid var(--lv); color: var(--lv); font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-weight: 800; letter-spacing: .12em; }
@@ -3970,7 +4021,7 @@
 
   /* デッキ詳細プレビュー中の「パックピックに戻る」フローティングボタン */
   .sb-peek-back-btn {
-    position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); min-width: 280px;
     z-index: 500; padding: 10px 22px;
     background: linear-gradient(180deg, #2c261d, #1c1813); color: #f2e6c8; border: 1px solid #e3cc92;
     border-radius: 4px; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 15px; font-weight: 800; letter-spacing: .08em;
@@ -3978,8 +4029,7 @@
     transition: background 0.12s, border-color .12s;
   }
   .sb-peek-back-btn:hover { background: linear-gradient(180deg, #3a3124, #261f17); border-color: #f2dda6; color: #fff3d6; }
-  /* 創世決戦：上のフィルターの帯に重ならないよう、画面の中央下に置く */
-  .sb-peek-back-btn.gs-peek-back { top: auto; bottom: 18px; left: 50%; right: auto; transform: translateX(-50%); min-width: 280px; max-width: calc(100vw - 40px); padding: 12px 22px; }
+  .sb-peek-back-btn.gs-peek-back { max-width: calc(100vw - 40px); padding: 12px 22px; }
   .sp-deck-side-empty {
     color: #778; font-size: 13px; text-align: center; padding: 30px 12px;
   }
@@ -8102,7 +8152,7 @@
   }
 </style>
 <!-- 起動時の先読みは容量上限内に抑える。カードリストの画像は表示時に読み込む。 -->
-<link rel="preload" as="image" href="ui_decorations/title-key-visual.webp" fetchpriority="high">
+<link rel="preload" as="image" href="ui_decorations/title-key-visual-01f1e1f7c186.webp" fetchpriority="high">
 <link rel="preload" as="image" href="top_mode_icons/genesis4p-amaterasu-natural-pose-03f1a5a05694.webp" fetchpriority="high">
 <link rel="preload" as="image" href="genesis_story/01-five-regions.webp">
 <link rel="preload" as="image" href="top_mode_icons/construct2p-style-9f261d899256.webp" fetchpriority="high">
@@ -8153,7 +8203,7 @@
   <!-- ===== SE/BGM音量設定（全画面共通のフローティングボタン。対戦画面は専用ヘッダーボタンと
        重なるため、対戦画面表示中はこちらを隠す。カードリスト画面ではBGM不要かつ他の
        ボタン群と重なるため非表示にする） ===== -->
-  <div v-if="appView !== 'battle' && appView !== 'cardlist' && !deckExpanded && !manualModalOpen && !howToPlayModalOpen && !kamiDexOpen" class="global-sound-settings" :class="{ 'on-top-header': appHeaderView, 'in-pick-header': gameOpen && gs.view === 'draft' }">
+  <div v-if="appView !== 'battle' && appView !== 'cardlist' && !deckExpanded && !manualModalOpen && !howToPlayModalOpen && !kamiDexOpen" class="global-sound-settings" :class="{ 'on-top-header': appHeaderView, 'in-pick-header': (gameOpen && gs.view === 'draft') || (shieldOpen && sb.phase === 'picking') }">
     <!-- 戦績・音量は「設定」の中から開けるので、ここには「設定」だけを出す（共通ヘッダーのある画面（TOP・モード紹介）では文字付き）。
          ガイドの2つはTOPの右下にあるので、ヘッダーの無い画面（ロビー・ピック等）だけで出す -->
     <button v-if="!appHeaderView" class="global-sound-btn howto-open-btn" @click.stop="openPlayManual" title="プレイガイド（説明書）"><span class="ui-icon ui-icon-play-guide" aria-hidden="true"></span></button>
@@ -9543,7 +9593,7 @@
       <!-- 4人対戦：これまでに星魂へ返還（無料返還・省察）したカードの一覧。
            見落とされないよう、デッキ情報の一番上（見出し直下）に固定表示する -->
       <div v-if="gsPeeking && gsMyConvertedCards.length" class="gs-peek-converted">
-        <div class="gs-peek-converted-title">⭐ 星魂に返還済み（{{ gsMyConvertedCards.length }}枚）</div>
+        <div class="gs-peek-converted-title">星魂に返還済み（{{ gsMyConvertedCards.length }}枚）</div>
         <div class="gs-peek-converted-list">
           <span v-for="c in gsMyConvertedCards" :key="'peekconv'+c.no" class="gs-peek-converted-chip">{{ fullName(c) }}</span>
         </div>
@@ -9636,9 +9686,7 @@
       </div>
       <!-- シールド戦：デッキ構築完了後はここ（返還画面）を経由してのみ対戦を開始できる -->
       <div v-if="sb.phase === 'complete' && appView === 'cardlist'">
-        <button class="deck-shield-battle-btn" @click="openBattleLaunch('shield')">
-          ⚔ 対戦画面へ
-        </button>
+        <button class="deck-shield-battle-btn" @click="openBattleLaunch('shield')">対戦へ</button>
       </div>
 
       <!-- 理念構築戦：デッキ構築中の状態表示・提出操作 -->
@@ -9649,7 +9697,7 @@
             <template v-if="cbDeckReturnRemaining > 0">（あと{{ cbDeckReturnRemaining }}）</template>
           </span>
         </div>
-        <div v-if="cbDeckValidationMessages.length" class="cb-build-warnings">⚠ {{ cbDeckValidationMessages.join(' ／ ') }}</div>
+        <div v-if="cbDeckValidationMessages.length" class="cb-build-warnings">{{ cbDeckValidationMessages.join(' ／ ') }}</div>
         <div class="cb-build-actions">
           <button class="gm-btn gm-btn-primary" :disabled="!cbDeckValid" @click="cbSubmitDeck">準備完了</button>
         </div>
@@ -9869,9 +9917,9 @@
   </div>
 
   <!-- ===== シールド戦モーダル ===== -->
-  <div v-if="shieldOpen" class="shield-overlay" :class="{ 'shield-overlay-compact': sbCompactPhase }"
+  <div v-if="shieldOpen" class="shield-overlay" :class="{ 'shield-overlay-compact': sbCompactPhase, 'sp-overlay-pick': sb.phase === 'picking' }"
        :style="shieldPeek ? { display: 'none' } : {}">
-    <div class="shield-panel" :class="{ 'shield-panel-compact': sbCompactPhase, 'cosmic-pick-bg': sb.phase === 'picking', 'gs-lacquer': sb.phase === 'lobby' || sb.phase === 'waiting', 'gs-moon': sb.phase === 'lobby' && sbMenuStep === 'cpu', 'gs-dual': sb.phase === 'lobby' && sbMenuStep === 'top' }" @click.stop>
+    <div class="shield-panel" :class="{ 'shield-panel-compact': sbCompactPhase, 'cosmic-pick-bg': sb.phase === 'picking', 'gs-lacquer': sb.phase !== 'picking', 'gs-later': ['coin_toss', 'kami_select', 'complete'].includes(sb.phase), 'gs-moon': sb.phase === 'lobby' && sbMenuStep === 'cpu', 'gs-dual': sb.phase === 'lobby' && sbMenuStep === 'top' }" @click.stop>
 
       <!-- ヘッダー -->
       <div class="sp-header">
@@ -9983,26 +10031,24 @@
         </div>
 
         <!-- ======= コイントス結果 ======= -->
-        <div v-else-if="sb.phase === 'coin_toss'" class="sp-coin-toss">
-          <div class="ct-result">
-            {{ sbIsFirstPicker ? 'あなたが先攻です！' : 'あなたは後攻です' }}
+        <div v-else-if="sb.phase === 'coin_toss'" class="gm-body sp-coin-toss">
+          <div class="sp-coin-disc" :class="{ moon: !sbIsFirstPicker }" aria-hidden="true"></div>
+          <div class="sp-coin-result" :class="{ moon: !sbIsFirstPicker }">{{ sbIsFirstPicker ? '先攻' : '後攻' }}</div>
+          <p class="gm-lead">先攻から交互にパックを選ぶ（各{{ PACKS_PER_SIDE }}パック）</p>
+          <div class="gm-lobby-actions">
+            <button class="gm-btn gm-btn-primary" @click="onStartPicking">開始する</button>
           </div>
-          <div class="ct-note" style="margin-bottom:24px;">
-            先攻から交互にパックを選びます（各4パック）
-          </div>
-          <button class="sp-btn sp-btn-create" style="max-width:200px;margin:0 auto;"
-                  @click="onStartPicking">開始する</button>
         </div>
 
         <!-- ======= パックピック ======= -->
         <div v-else-if="sb.phase === 'picking'" class="sp-picking-layout">
          <div class="sp-picking-main">
-          <div class="sp-pick-header">
-            <div class="sp-pick-counter">
-              自分: {{ sbMyPickedPacks.length }} / {{ PACKS_PER_SIDE }}パック取得
-            </div>
-            <div class="ph-turn" :class="sbIsMyPickTurn ? 'my-turn' : 'wait-turn'">
-              {{ sbIsMyPickTurn ? 'あなたの番 — パックを選んでください' : '相手が選んでいます…' }}
+          <!-- 上の帯：手番・取得パック数・返還値（創世決戦の選別の儀と同じ形） -->
+          <div class="gs-draft-bar sp-pick-bar">
+            <div class="gs-draft-turn" :class="{ mine: sbIsMyPickTurn }" role="status">{{ sbIsMyPickTurn ? 'パックを1つ選んでください' : '相手が選んでいます' }}</div>
+            <div class="gs-draft-stats">
+              <span class="gs-stat"><span class="gs-stat-label">取得</span><b>{{ sbMyPickedPacks.length }}</b><small>/{{ PACKS_PER_SIDE }}</small></span>
+              <span class="gs-stat" title="取得したカードの返還値の合計"><span class="gm-soul-icon" aria-hidden="true">★</span><span class="gs-stat-label">返還値</span><b>{{ sbMyReturnTotal }}</b></span>
             </div>
           </div>
 
@@ -10016,14 +10062,10 @@
                    'disabled': !sbIsMyPickTurn || sbAllPickedPacks.includes(i),
                  }">
               <div class="sp-pack-header">
-                <span class="ph-no">Pack {{ i + 1 }}</span>
-                <span class="ph-status"
-                      :class="sbMyPickedPacks.includes(i) ? 'mine'
-                             : sbEnemyPickedPacks.includes(i) ? 'enemy' : 'available'">
-                  {{ sbMyPickedPacks.includes(i) ? '取得済み'
-                   : sbEnemyPickedPacks.includes(i) ? '相手取得'
-                   : '選択可' }}
-                </span>
+                <span class="ph-no">{{ i + 1 }}</span>
+                <span class="sp-pack-sum" title="このパックの返還値の合計"><span class="gm-soul-icon" aria-hidden="true">★</span>{{ pack.actualSum }}</span>
+                <span v-if="sbMyPickedPacks.includes(i)" class="sp-pack-tag mine">取得</span>
+                <span v-else-if="sbEnemyPickedPacks.includes(i)" class="sp-pack-tag enemy">相手</span>
               </div>
               <!-- 可視カード3枚サムネイル（カーソルを当てると拡大プレビュー） -->
               <div class="sp-pack-visible">
@@ -10035,12 +10077,11 @@
                      @mouseleave="hideSbHover">
                 </div>
               </div>
-              <div class="sp-pack-sum">返還値合計 {{ pack.actualSum }}</div>
-              <!-- 明示的な選択ボタン -->
+              <!-- 明示的な選択ボタン（カードの絵はカーソルで拡大するので、押す場所を分ける） -->
               <button v-if="sbIsMyPickTurn && !sbAllPickedPacks.includes(i)"
-                      class="sp-pick-btn"
+                      class="gm-btn gs-sub-btn sp-pick-btn"
                       @click.stop="onPickPack(i)">
-                このパックを選ぶ
+                選ぶ
               </button>
             </div>
           </div>
@@ -10049,12 +10090,12 @@
           <!-- 右サイド：取得済みデッキプレビュー（デッキビルダー風） -->
           <aside class="sp-deck-side">
             <div class="sp-deck-side-head">
-              取得済みデッキ <span class="sp-deck-side-count">{{ sbMy48Cards.length }} 枚</span>
+              取得したカード <span class="sp-deck-side-count">{{ sbMy48Cards.length }}枚</span>
             </div>
-            <button class="sp-deck-detail-btn"
+            <button class="gm-btn gs-sub-btn sp-deck-detail-btn"
                     :disabled="sbMyDeckEntries.length === 0"
                     @click="peekDeckDetail">
-              ⛶ デッキ詳細を見る
+              デッキを確認
             </button>
             <div class="sp-deck-side-list">
               <div v-if="sbMyDeckEntries.length === 0" class="sp-deck-side-empty">
@@ -10077,24 +10118,10 @@
         </div>
 
         <!-- ======= カミ選択 ======= -->
-        <div v-else-if="sb.phase === 'kami_select'">
-          <div style="margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;">
-            <div style="flex:1;">
-              <div style="font-size:15px;font-weight:700;margin-bottom:4px;">
-                カミを選択してください
-              </div>
-              <div style="font-size:13px;color:#9aa;">
-                {{ sbIsMyKamiTurn
-                   ? 'あなたの番です — カミを1体クリックして選び、「このカミを選択」ボタンで確定してください'
-                   : '相手がカミを選んでいます…' }}
-              </div>
-            </div>
-            <button class="sp-deck-detail-btn"
-                    style="flex-shrink:0;margin:0;padding:8px 14px;"
-                    :disabled="sbMyDeckEntries.length === 0"
-                    @click="peekDeckDetail">
-              ⛶ デッキ詳細を見る
-            </button>
+        <div v-else-if="sb.phase === 'kami_select'" class="gm-body sp-kami-select">
+          <div class="sp-kami-head">
+            <div class="gs-draft-turn" :class="{ mine: sbIsMyKamiTurn && !sbMyKami }" role="status">{{ sbMyKami ? '相手を待っています' : (sbIsMyKamiTurn ? 'カミを1柱選んでください' : '相手が選んでいます') }}</div>
+            <button class="gm-btn gs-sub-btn" :disabled="sbMyDeckEntries.length === 0" @click="peekDeckDetail">デッキを確認</button>
           </div>
           <div class="sp-kami-grid">
             <div v-for="kami in sb.kamiCandidates" :key="kami.no"
@@ -10116,11 +10143,11 @@
               <!-- 相手が選択済み -->
               <div v-if="sbOpponentKamiNo && String(sbOpponentKamiNo) === String(kami.no)"
                    class="sp-opponent-badge">
-                相手が選択済み
+                相手が選択
               </div>
               <!-- ヤマタノオロチ：ディエスイレ自動追加バッジ -->
               <div v-else-if="kami.type === 'ヤマタノオロチ'" class="sp-orochi-badge">
-                ＋ No.198 ディエスイレ
+                ＋ディエスイレ
               </div>
             </div>
           </div>
@@ -10128,7 +10155,7 @@
           <div v-if="sb.tempKami && sb.tempKami.type === 'ヤマタノオロチ' && sbOrochiBonus"
                class="sp-orochi-bonus-bar">
             <div class="sp-orochi-bonus-label">
-              星紡ぎ戦限定：このカミを選択するとデッキに自動追加されます
+              このカミを選ぶとデッキに加わる
             </div>
             <div class="sp-orochi-bonus-card">
               <div class="sp-orochi-bonus-thumb"
@@ -10146,36 +10173,17 @@
             </div>
           </div>
           <!-- 確定ボタン -->
-          <div v-if="sbIsMyKamiTurn && !sbMyKami" class="sp-kami-confirm-bar">
-            <div v-if="sb.tempKami" style="font-size:14px;color:#cde;margin-bottom:12px;">
-              選択中：<strong>{{ fullName(sb.tempKami) }}</strong>
-              <span v-if="sb.tempKami.type === 'ヤマタノオロチ'"
-                    style="margin-left:10px;color:#fc8;font-size:13px;">
-                （＋ No.198 ディエスイレ 自動追加）
-              </span>
-            </div>
-            <button class="sp-kami-confirm-btn"
-                    :disabled="!sb.tempKami"
-                    @click="onConfirmKami">
-              {{ sb.tempKami ? 'このカミを選択する' : 'カミをクリックして選んでください' }}
-            </button>
-          </div>
-          <div v-else-if="sbMyKami" style="text-align:center;margin-top:16px;color:#6c9;font-size:14px;font-weight:700;">
-            ✓ カミ選択完了 — 相手を待っています…
+          <div v-if="sbIsMyKamiTurn && !sbMyKami" class="gm-lobby-actions">
+            <button class="gm-btn gm-btn-primary" :disabled="!sb.tempKami" @click="onConfirmKami">{{ sb.tempKami ? sb.tempKami.name + 'に決める' : 'カミを選んでください' }}</button>
           </div>
         </div>
 
         <!-- ======= 完了 ======= -->
-        <div v-else-if="sb.phase === 'complete'" class="sp-complete">
-          <div style="text-align:center;padding:40px;">
-            <div style="font-size:48px;margin-bottom:12px;">🎉</div>
-            <div style="font-size:18px;font-weight:700;margin-bottom:8px;">デッキ構築完了！</div>
-            <div style="font-size:14px;color:#9aa;margin-bottom:22px;">デッキ内容・返還を確認してから対戦を始めてください</div>
-            <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
-              <button class="sp-btn sp-btn-create" style="max-width:260px;" @click="onLoadShieldDeckToBuilder">
-                デッキ確認・返還へ進む
-              </button>
-            </div>
+        <div v-else-if="sb.phase === 'complete'" class="gm-body sp-complete">
+          <div class="gm-done-title">デッキ完成</div>
+          <p class="gm-lead">返還を済ませてから対戦へ</p>
+          <div class="gm-lobby-actions">
+            <button class="gm-btn gm-btn-primary" @click="onLoadShieldDeckToBuilder">デッキを確認する</button>
           </div>
         </div>
 
@@ -10195,7 +10203,7 @@
 
   <!-- ===================== 理念構築戦（自由構築1v1） ===================== -->
   <div v-if="constructOpen" class="shield-overlay shield-overlay-compact" :style="cbBuilding ? { display: 'none' } : {}">
-    <div class="shield-panel shield-panel-compact gs-lacquer" :class="{ 'gs-moon': !cb.roomCode && cbMenuStep === 'cpu', 'gs-dual': !cb.roomCode && cbMenuStep === 'top' }" @click.stop>
+    <div class="shield-panel shield-panel-compact gs-lacquer" :class="{ 'gs-later': !!cb.roomCode, 'gs-moon': !cb.roomCode && cbMenuStep === 'cpu', 'gs-dual': !cb.roomCode && cbMenuStep === 'top' }" @click.stop>
       <div class="sp-header">
         <button class="back-to-top-btn" @click="tryCloseConstruct">◀ トップ</button>
         <h2>理念構築戦</h2>
@@ -10331,7 +10339,7 @@
 
   <!-- 理念構築戦：デッキ構築中の「ロビーに戻る」フローティングボタン -->
   <button v-if="cbBuilding" class="sb-peek-back-btn" @click="cbCloseBuilding">
-    ◀ 理念構築戦のロビーへ戻る
+    ◀ 部屋に戻る
   </button>
 
   <!-- 理念構築戦：ストラクチャーデッキ選択モーダル -->
@@ -12577,7 +12585,7 @@
         </div>
         <div class="gs-seat-states">
           <span v-for="st in gsDraftReturnSeatStatus" :key="'ret'+st.seat" class="gs-seat-state" :class="{ me: st.isMe, done: st.done }">
-            <span class="gs-seat-mark">{{ ['壱', '弐', '参', '肆'][st.seat - 1] }}</span><span class="gs-seat-state-name">{{ st.name }}</span><span class="gs-check" :class="{ on: st.done }" role="img" :aria-label="st.done ? '完了' : '選択中'" :title="st.done ? '完了' : '選択中'"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4 6.8 11.1 12 5.4"/></svg></span>
+            <span class="gs-seat-mark">{{ ['壱', '弐', '参', '肆'][st.seat - 1] }}</span><span class="gs-seat-state-name">{{ st.name }}</span><span class="gs-done-mark" :class="{ on: st.done }" role="img" :aria-label="st.done ? '完了' : '選択中'" :title="st.done ? '完了' : '選択中'"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4 6.8 11.1 12 5.4"/></svg></span>
           </span>
         </div>
         <div class="gm-lobby-actions">
@@ -12682,7 +12690,7 @@
         <!-- 全員の状況（表示だけ） -->
         <div class="gs-seat-states">
           <span v-for="st in gsDeepenSeatStatus" :key="st.seat" class="gs-seat-state" :class="{ me: st.isMe, done: st.done }">
-            <span class="gs-seat-mark">{{ ['壱', '弐', '参', '肆'][st.seat - 1] }}</span><span class="gs-seat-state-name">{{ st.name }}</span><span class="gs-seat-state-sub gs-insight-sub">見識 {{ st.insight }}</span><span class="gs-check" :class="{ on: st.done }" role="img" :aria-label="st.done ? '完了' : '選択中'" :title="st.done ? '完了' : '選択中'"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4 6.8 11.1 12 5.4"/></svg></span>
+            <span class="gs-seat-mark">{{ ['壱', '弐', '参', '肆'][st.seat - 1] }}</span><span class="gs-seat-state-name">{{ st.name }}</span><span class="gs-seat-state-sub gs-insight-sub">見識 {{ st.insight }}</span><span class="gs-done-mark" :class="{ on: st.done }" role="img" :aria-label="st.done ? '完了' : '選択中'" :title="st.done ? '完了' : '選択中'"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8.4 6.8 11.1 12 5.4"/></svg></span>
           </span>
         </div>
 
@@ -12816,7 +12824,7 @@
 
   <!-- シールド戦：デッキ詳細プレビュー中の「パックピックに戻る」フローティングボタン -->
   <button v-if="shieldPeek" class="sb-peek-back-btn" @click="closePeekDeckDetail">
-    ◀ パックピックに戻る
+    ◀ パック選択に戻る
   </button>
 
   <!-- 4人対戦：デッキ詳細プレビュー中の「対戦に戻る」フローティングボタン -->
@@ -14693,7 +14701,7 @@ Vue.component("gs-difficulty-picker", {
     '<div class="gsd-levels" role="radiogroup" aria-label="難易度">' +
       '<button v-for="lv in levels" :key="lv.key" type="button" class="gsd-level" :class="[\'lv-\' + lv.key, { on: value.difficulty === lv.key }]" role="radio" :aria-checked="value.difficulty === lv.key ? \'true\' : \'false\'" @click="pick(lv.key)">' +
         '<svg class="gsd-moon" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12" class="gsd-moon-ring"/>' +
-          '<path v-if="lv.moon === \'crescent\'" class="gsd-moon-lit" d="M16 4 A12 12 0 1 0 16 28 A9 12 0 1 1 16 4 Z"/>' +
+          '<path v-if="lv.moon === \'crescent\'" class="gsd-moon-lit" d="M16 4 A12 12 0 1 0 16 28 A7 12 0 1 1 16 4 Z"/>' +
           '<path v-else-if="lv.moon === \'half\'" class="gsd-moon-lit" d="M16 4 A12 12 0 0 1 16 28 Z"/>' +
           '<circle v-else cx="16" cy="16" r="12" class="gsd-moon-lit"/></svg>' +
         '<span class="gsd-level-name">{{ lv.name }}</span><span class="gsd-level-who">{{ lv.who }}</span>' +
@@ -16505,14 +16513,18 @@ new Vue({
     /* ロビー等のシンプルな画面は、4人対戦のモーダルと統一感を持たせるためコンパクト表示にする。
        パックピック/カミ選択はカードを並べる都合上、引き続き画面いっぱいの表示のままにする。 */
     sbCompactPhase() {
-      return ['lobby', 'waiting', 'coin_toss', 'complete'].includes(this.sb.phase);
+      return ['lobby', 'waiting', 'coin_toss', 'kami_select', 'complete'].includes(this.sb.phase);
+    },
+    // 星紡ぎ戦：取得したカードの返還値の合計（パック選択の上の帯に出す）
+    sbMyReturnTotal() {
+      return (this.sbMy48Cards || []).reduce((sum, card) => sum + (parseInt(card && card.return, 10) || 0), 0);
     },
     shieldPhaseLabel() {
       const labels = {
         lobby:       'ロビー',
         waiting:     '待機中',
         coin_toss:   'コイントス',
-        picking:     'パックピック',
+        picking:     'パック選択',
         excluding:   'カード除外',
         kami_select: 'カミ選択',
         complete:    '完了',

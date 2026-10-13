@@ -120,7 +120,7 @@ function appMethod(name, params = "") {
 
 test("startup image preloads stay below 2 MB and never request divine art", () => {
   const refs = localReferences(/<link[^>]+rel="preload"[^>]+as="image"[^>]+href="([^"]+)"/g);
-  assert.ok(refs.includes("ui_decorations/title-key-visual.webp"));
+  assert.ok(refs.includes("ui_decorations/title-key-visual-01f1e1f7c186.webp"));
   assert.ok(refs.every(ref => !ref.startsWith("divine_assets/")));
   const bytes = refs.reduce((total, ref) => total + fs.statSync(path.join(root, ref)).size, 0);
   assert.ok(bytes < 2 * 1024 * 1024, `startup preload budget exceeded: ${bytes}`);
