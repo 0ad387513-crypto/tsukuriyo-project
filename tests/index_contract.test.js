@@ -169,7 +169,9 @@ test("play manual is separated from the pick guide and contains the revised rule
   assert.match(html, /始めにランダムで決まり、3回で全員と1回ずつ戦う/);
   assert.match(html, /word-break:\s*auto-phrase/);
   assert.match(html, /【死角】を持たないレガシーは、このレガシーを【戦闘】の攻撃対象に選ぶことができず、【守護】により攻撃先を変更することもできません/);
-  assert.match(html, /手札以外から使用された場合は、【昇華】を発動することができません/);
+  assert.match(html, /"昇華": "追加でXコストを払うと使える効果。手札以外から使ったときは使えない"/);
+  // 用語の説明はプレイガイドの表とキーワード集で同じ一覧（KEYWORD_GLOSSARY）を使う
+  assert.match(html, /v-for="kw in Object\.keys\(keywordGlossary\)" :key="'pgkw' \+ kw"/);
   assert.match(html, /同時に発生した効果は、<strong>ターンプレイヤーから好きな順番<\/strong>/);
   // カミの一覧と難易度はカミ図鑑と重なるため、プレイガイドから削除した（ユーザー指定）
   assert.doesNotMatch(html, /<div class="manual-kami-difficulty">/);

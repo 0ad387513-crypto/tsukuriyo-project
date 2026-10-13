@@ -1921,8 +1921,9 @@
   .gm-draft-policy .gm-draft-kami-name { white-space: normal; overflow: visible; font-size: 14px; line-height: 1.35; word-break: normal; text-align: left; }
   .gm-draft-kami-seat { font-size: 12px; color: #a9b5ca; }
   .gm-draft-kami-progress { margin-top: 5px; font-size: 12px; color: #ffdb87; }
-  .gm-draft-kami-mini.done { background: #19302b; box-shadow: inset 0 0 0 1px #5abb8a; }
-  .gm-draft-kami-mini.done .gm-draft-kami-progress { color: #9ce3b3; }
+  /* 選択済みは銀：地を少し明るくして銀の縁。自分の欄は金の縁のまま */
+  .gm-draft-kami-mini.done { background: linear-gradient(160deg, #343944, #22262e); box-shadow: inset 0 0 0 1px #c3cbd8; }
+  .gm-draft-kami-mini.done .gm-draft-kami-progress { color: #e4e9f1; }
   /* ピック方針の本文をなくした分、ちびキャラを大きく見せる */
   .gm-draft-policy .gm-draft-kami-thumb { width: 100%; height: 100%; max-height: none; min-height: 0; }
   .pick-guide-link {
@@ -2593,6 +2594,46 @@
   .pick-guide-panel .howto-body { color: #e6dcc8; }
   .manual-panel > .manual-header { flex: none; }
   .manual-panel > .manual-scroll { flex: 1 1 auto; min-height: 0; height: auto; } /* 見出しの高さに関係なく、残りの高さをちょうど使う */
+  /* ===== 小さな窓（戦績・キーワード集・デッキ管理）もガイドの窓と同じ茶金に ===== */
+  .battle-zone-modal-panel.pg-window { border: 1px solid #9d7a3d; border-radius: 12px; color: #f1e7d4;
+    background: radial-gradient(circle at 90% 5%, rgba(218, 165, 82, .14), transparent 32%), linear-gradient(160deg, #3a2c1d 0%, #241b14 55%, #1b1510 100%);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .7); }
+  .pg-window .battle-zone-modal-title { font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 21px; color: #fff1c9; letter-spacing: .12em; }
+  .pg-window .howto-section { border-bottom-color: #4a3a28; }
+  .pg-window .howto-heading { color: #f0d38a; font-size: 15px; }
+  .pg-window .howto-body, .pg-window > p.howto-body { color: #e6dcc8; font-size: 13.5px; }
+  .pg-window .glossary-item { border-bottom-color: #4a3a28; padding: 11px 2px; }
+  .pg-window .glossary-term { color: #f0d38a; font-size: 15px; }
+  .pg-window .glossary-term::before { content: '【'; } .pg-window .glossary-term::after { content: '】'; }
+  .pg-window .glossary-def { color: #e6dcc8; font-size: 14px; line-height: 1.75; }
+  .battle-zone-modal-panel.pg-window .battle-back-btn, .pg-window .deck-manager-action-btn:not(.ghost) { border: 1px solid #d9b46a; border-radius: 4px; background: linear-gradient(180deg, #4a3822, #2c2117); color: #fff3d6; box-shadow: 0 2px 0 rgba(0, 0, 0, .5); }
+  .battle-zone-modal-panel.pg-window .battle-back-btn:hover, .pg-window .deck-manager-action-btn:not(.ghost):hover { background: linear-gradient(180deg, #5a4429, #35281b); }
+  .pg-window .deck-manager-name-input, .pg-window .deck-manager-code-box { background: #17110c; border-color: #5a4630; color: #f1e7d4; }
+  .pg-window .deck-manager-slot { border-bottom-color: #4a3a28; }
+  .pg-window .deck-manager-slot-name { color: #fff1c9; }
+  .pg-window .deck-manager-slot-meta, .pg-window .deck-manager-empty { color: #c0ad8c; }
+  .pg-window .battle-history-stat { border-color: #5a4630; background: rgba(0, 0, 0, .22); }
+  .pg-window .battle-history-stat span { color: #c0ad8c; }
+  .pg-window .battle-history-stat strong { color: #fff1c9; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; }
+  .pg-window .battle-zone-sort-btn { border-color: #5a4630; background: rgba(0, 0, 0, .25); color: #e6dcc8; }
+  .pg-window .battle-zone-sort-btn.active { border-color: #d9b46a; background: #d9b46a; color: #241c10; }
+  .pg-window .battle-history-row { border-bottom-color: #4a3a28; }
+  .pg-window .battle-history-main { color: #f1e7d4; }
+  .pg-window .battle-history-date, .pg-window .battle-history-detail { color: #c0ad8c; }
+  .pg-window .battle-history-row.win .battle-history-outcome { background: rgba(217, 180, 106, .2); color: #f0d38a; }
+  /* 対戦ログの印（漢字1文字の札） */
+  .battle-log-entry-icon { font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-weight: 800; font-size: 12px; }
+  /* ===== スマホ幅のカードリスト：カード一覧を上、デッキの欄を下に縦に並べる（PCの幅には効かない） ===== */
+  @media (max-width: 760px) {
+    .app.builder-visible { flex-direction: column; }
+    .app.builder-visible > .pool { flex: 1 1 auto; min-height: 0; width: 100%; }
+    .app.builder-visible:not(.deck-expanded) > .deck { flex: none; width: 100%; min-width: 0; max-width: none; height: 40vh; border-left: 0; border-top: 1px solid #2a2f3d; }
+    .app.builder-visible.deck-expanded > .pool { display: none; }
+    .app.builder-visible.deck-expanded > .deck { width: 100%; min-width: 0; max-width: none; flex: 1 1 auto; }
+    /* 絞り込みは横にスクロールする1行にまとめ、カードの一覧の場所を空ける */
+    .app.builder-visible > .pool > .header .filter-row, .app.builder-visible > .pool > .header .title-row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .app.builder-visible > .pool > .header .filter-row > *, .app.builder-visible > .pool > .header .title-row > * { flex: none; }
+  }
   /* ===== プレイガイド：明るすぎず暗すぎない、茶を帯びた墨色の地に、少し明るい面・金と朱の差し色。
      図は実際の画面とカード。番号は場所を枠で囲み、枠の角に付けて中身を隠さない。要所でアマテラスが話しかける（絵文字は使わない） ===== */
   .pg-panel { --pg-bg: #241b14; --pg-panel: #31251a; --pg-panel2: #3c2e20; --pg-line: #5a4630; --pg-text: #f1e7d4; --pg-sub: #c0ad8c; --pg-head: #fff1c9; --pg-gold: #d9b46a; --pg-red: #e07d5e; }
@@ -4019,14 +4060,14 @@
   }
   .gm-draft-kami-mini {
     display: grid; grid-template-columns: 72px minmax(0, 1fr); align-items: center; gap: 8px;
-    padding: 6px; border: 1px solid #32394a; background: #171c27; border-radius: 6px;
+    padding: 6px; border: 1px solid #454c59; background: linear-gradient(160deg, #22262e, #171a20); border-radius: 6px;
   }
   /* 自分のカミの枠は、選択済みの緑と区別できるよう濃い黄色にする */
   .gm-draft-kami-mini.me,
   .gm-draft-kami-mini.me.done { border-color: #e0b64a; background: linear-gradient(160deg, #5c4815, #33280c); box-shadow: inset 0 0 0 1px rgba(242, 205, 122, .45); }
   .gm-draft-kami-mini.me .gm-draft-kami-seat { color: #f5dfa4; }
   .gm-draft-kami-mini.me.done .gm-draft-kami-progress { color: #ffe39a; }
-  .gm-draft-kami-mini.cpu { border-color: #7a6aa8; }
+  .gm-draft-kami-mini.cpu { border-color: #5c6372; }
   .gm-draft-kami-thumb {
     display: block; width: 72px; height: 80px; object-fit: contain;
   }
@@ -8425,7 +8466,7 @@
   loading.querySelector('.loading-kami-hint').textContent = 'ヒント：' + scene.hint;
 })();
 </script>
-<div id="app" v-cloak class="app" @click.capture="tutorialSurfaceClick($event)" @pointerdown.capture="tutorialCompletionInput($event)" :class="{ 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek, 'force-reduce-motion': reduceMotionPref === 'on', 'battle-v2': appView === 'battle' && battleLayoutV2 }">
+<div id="app" v-cloak class="app" @click.capture="tutorialSurfaceClick($event)" @pointerdown.capture="tutorialCompletionInput($event)" :class="{ 'builder-visible': deckBuilderVisible, 'deck-expanded': deckExpanded, 'capturing': capturing, 'return-mode-active': returnModeActive, 'shield-active': appView === 'shield', 'game-active': appView === 'game', 'modal-peeking': battleModalPeek, 'force-reduce-motion': reduceMotionPref === 'on', 'battle-v2': appView === 'battle' && battleLayoutV2 }">
 
   <!-- ===== タイトル画面：起動直後に一度だけ表示し、クリックでトップメニューへ入る =====
        クリックを挟むことで、ブラウザの自動再生制限で止まっているオーディオも同時に解禁できる。 -->
@@ -8481,7 +8522,7 @@
         </select>
       </div>
       <div class="global-sound-row">
-        <button class="bgm-looptest-open-btn" @click="openBgmLoopTester">🔁 BGMループ調整ツール</button>
+        <button class="bgm-looptest-open-btn" @click="openBgmLoopTester">BGMループ調整ツール</button>
       </div>
     </div>
   </div>
@@ -8489,7 +8530,7 @@
   <!-- ===== BGMループ調整ツール（開発用：ループ境界を耳で確認しながら秒数を探すための簡易ツール） ===== -->
   <div v-if="bgmLoopTesterOpen" class="battle-zone-modal" @click.self="closeBgmLoopTester">
     <div class="battle-zone-modal-panel">
-      <h3 class="battle-zone-modal-title">🔁 BGMループ調整ツール</h3>
+      <h3 class="battle-zone-modal-title">BGMループ調整ツール</h3>
       <p class="battle-deck-modal-message">
         境界の前後だけを試聴できます。しっくりくる秒数が見つかったら、下の欄の値を教えてください。
       </p>
@@ -8512,7 +8553,7 @@
         <span>{{ bgmLoopTesterDuration.toFixed(2) }} 秒</span>
       </div>
       <div class="bgm-looptest-row">
-        <button class="battle-back-btn" style="background:#2a5cb8;border-color:#6090e0;color:#fff;" @click="bgmLoopTesterPreview">▶ 境界を試聴（終了1.5秒前→開始1.5秒後）</button>
+        <button class="battle-back-btn" style="background:#2a5cb8;border-color:#6090e0;color:#fff;" @click="bgmLoopTesterPreview">境界を試聴（終了1.5秒前→開始1.5秒後）</button>
       </div>
       <div class="bgm-looptest-copy">{{ bgmLoopTesterCopyText() }}</div>
       <div class="battle-zone-modal-actions">
@@ -8808,14 +8849,14 @@
     </div>
     <div class="top-devtools">
       <div class="top-devtools-buttons">
-        <button class="top-menu-btn" style="background:linear-gradient(135deg,#5a3030,#7a3050);border-color:#bb6a8a;" @click="goToBattle">⚔ 対戦画面(α)</button>
-        <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(true)">🌐 対戦テスト：作成（2人同期確認）</button>
-        <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(false)">🌐 対戦テスト：参加（コード入力）</button>
-        <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleSpectate">🔍 対戦を観戦する（対戦テスト/星紡ぎ戦/創世決戦・コード入力）</button>
-        <button class="top-menu-btn" style="background:linear-gradient(135deg,#27344b,#1f293b);border-color:#6f8fc4;font-size:14px;" @click="downloadEffectCoverageAudit">🧪 全カード能力の実装監査JSON</button>
+        <button class="top-menu-btn" style="background:linear-gradient(135deg,#5a3030,#7a3050);border-color:#bb6a8a;" @click="goToBattle">対戦画面(α)</button>
+        <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(true)">対戦テスト：作成（2人同期確認）</button>
+        <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleTest(false)">対戦テスト：参加（コード入力）</button>
+        <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;" @click="startBattleSpectate">対戦を観戦する（対戦テスト/星紡ぎ戦/創世決戦・コード入力）</button>
+        <button class="top-menu-btn" style="background:linear-gradient(135deg,#27344b,#1f293b);border-color:#6f8fc4;font-size:14px;" @click="downloadEffectCoverageAudit">全カード能力の実装監査JSON</button>
         <button class="top-menu-btn" style="background:linear-gradient(135deg,#333,#222);border-color:#888;font-size:14px;"
                 @click="_sfxPlay('cancel'); cbDevEditorOpen = !cbDevEditorOpen; if (cbDevEditorOpen) _cbSubscribeStructureDecks()">
-          📜 理念構築戦：ストラクチャーデッキ編集 {{ cbDevEditorOpen ? '▲' : '▼' }}
+          理念構築戦：ストラクチャーデッキ編集 {{ cbDevEditorOpen ? '▲' : '▼' }}
         </button>
         <div v-if="cbDevEditorOpen" style="width:100%;max-width:420px;margin:0 auto;text-align:left;background:#181c26;border:1px dashed #3a4055;border-radius:6px;padding:10px;">
           <div v-for="sd in cbStructureDecks" :key="sd.id" class="gm-public-room-row" style="margin-bottom:6px;">
@@ -8952,7 +8993,7 @@
 
   <!-- ===== キーワード集モーダル（TOP画面「キーワード集」から。既存のKEYWORD_GLOSSARYをそのまま一覧表示） ===== -->
   <div v-if="glossaryModalOpen" class="battle-zone-modal" @click.self="glossaryModalOpen = false">
-    <div class="battle-zone-modal-panel">
+    <div class="battle-zone-modal-panel pg-window">
       <h3 class="battle-zone-modal-title">キーワード集</h3>
       <div class="glossary-list">
         <div v-for="kw in Object.keys(keywordGlossary)" :key="'gloss'+kw" class="glossary-item">
@@ -9388,25 +9429,11 @@
               <div><dt>破壊</dt><dd>場から墓地へ置く</dd></div>
               <div><dt>崩壊</dt><dd>ゲームから取り除き、崩壊エリアへ置く</dd></div>
               <div><dt>タップ／アンタップ</dt><dd>横向き（使用済み）／縦向き（使える）にする</dd></div>
-              <div><dt>出現時／死亡時</dt><dd>場に出たとき／レガシーが場から墓地へ送られたとき。崩壊では死亡時は発動しない</dd></div>
-              <div><dt>【疾駆】</dt><dd>出たターンから【戦闘】【神攻】できる</dd></div>
-              <div><dt>【奇襲】</dt><dd>出たターンから【戦闘】できる</dd></div>
-              <div><dt>【死角】</dt><dd>【死角】を持たないレガシーは、このレガシーを【戦闘】の攻撃対象に選ぶことができず、【守護】により攻撃先を変更することもできません</dd></div>
-              <div><dt>【守護】</dt><dd>相手の【戦闘】【神攻】の宣言時、このレガシーを横にして攻撃先を自分に変える</dd></div>
-              <div><dt>【不可侵】</dt><dd>相手のカードの効果の対象にならない（自分の効果では選べる）</dd></div>
-              <div><dt>【呪殺】</dt><dd>このレガシーと戦闘したレガシーは、戦闘力に関係なく破壊される</dd></div>
-              <div><dt>【選定：X】</dt><dd>いくつかの効果から、違うものをX個選んで使う</dd></div>
-              <div><dt>【誘X：条件】</dt><dd>山札からX枚を見て、条件に合う1枚まで見せて手札へ。残りは好きな順で山札の下へ</dd></div>
-              <div><dt>【霊視：X】</dt><dd>山札からX枚を見て、X枚まで墓地へ置いてよい。残りは好きな順で山札の上へ</dd></div>
-              <div><dt>【昇華X】</dt><dd>追加でXコストを払うと使える効果。手札以外から使ったときは使えない</dd></div>
-              <div><dt>【招来：対象】</dt><dd>トークンを場に出す。トークンは手札か墓地へ行くと崩壊する</dd></div>
-              <div><dt>【補正：X】／【神威：X】</dt><dd>そのターンだけ、戦闘力／神攻力をXだけ増減する</dd></div>
-              <div><dt>【進化：条件】</dt><dd>条件に合う自分のレガシー（無属性を除く）の上に重ねて出せる（重ねずに出してもよい）</dd></div>
+              <div v-for="kw in Object.keys(keywordGlossary)" :key="'pgkw' + kw"><dt>【{{ kw }}】</dt><dd>{{ keywordGlossary[kw] }}</dd></div>
             </dl>
             <details class="pg-more">
               <summary>進化のくわしいルール</summary>
               <ul class="pg-list">
-                <li>進化したレガシーは【進化中】の効果を使え、【疾駆】を持つ</li>
                 <li>下のレガシーの効果はなくなり、タップの状態は引き継ぐ</li>
                 <li>上のレガシーが破壊・崩壊・手札に戻ると、下のレガシーは墓地へ</li>
               </ul>
@@ -9838,7 +9865,7 @@
 
   <!-- ===== デッキ管理モーダル（保存スロット・デッキコード共有） ===== -->
   <div v-if="deckManagerOpen" class="battle-zone-modal" @click.self="closeDeckManager">
-    <div class="battle-zone-modal-panel">
+    <div class="battle-zone-modal-panel pg-window">
       <h3 class="battle-zone-modal-title">デッキ管理</h3>
       <div class="howto-list">
         <div class="howto-section">
@@ -9884,8 +9911,8 @@
 
   <!-- ===== 戦績・対戦履歴モーダル ===== -->
   <div v-if="battleHistoryModalOpen" class="battle-zone-modal" role="dialog" aria-modal="true" tabindex="-1" @click.self="closeBattleHistory">
-    <div class="battle-zone-modal-panel">
-      <h3 class="battle-zone-modal-title">📜 戦績・対戦履歴</h3>
+    <div class="battle-zone-modal-panel pg-window">
+      <h3 class="battle-zone-modal-title">戦績・対戦履歴</h3>
       <p class="howto-body" style="margin:0 0 10px;">この端末に保存された、対戦（星戦・星紡ぎ戦・対戦テスト）の勝敗記録です（最新200件まで）。</p>
       <div v-if="battleHistoryList.length" class="battle-history-stats">
         <div class="battle-history-stat"><span>対戦数</span><strong>{{ battleHistoryStats.total }}</strong></div>
@@ -9906,7 +9933,7 @@
           <div class="battle-history-info">
             <div class="battle-history-main">
               {{ entry.mode }}｜{{ entry.selfName }}（{{ entry.selfKamiName || 'カミ未選択' }}） vs
-              {{ entry.oppName }}{{ entry.oppIsCpu ? '🤖' : '' }}（{{ entry.oppKamiName || 'カミ未選択' }}）
+              {{ entry.oppName }}{{ entry.oppIsCpu ? '（CPU）' : '' }}（{{ entry.oppKamiName || 'カミ未選択' }}）
               <span v-if="battleHistoryReasonText(entry)">（{{ battleHistoryReasonText(entry) }}）</span>
             </div>
             <div v-if="entry.turn || entry.buildVersion" class="battle-history-detail">
@@ -10272,7 +10299,7 @@
       </div>
       <div class="deck-stats deck-stats-return">
         <button v-if="appView === 'construct' && cbBuilding" class="mode-toggle mt-structure"
-                @click="cbOpenStructurePicker">📜 ストラクチャーデッキから選ぶ</button>
+                @click="cbOpenStructurePicker">ストラクチャーデッキから選ぶ</button>
         <button v-else-if="!(gsPeeking && appView === 'game' && gsPeekingCpuSeat == null)" class="mode-toggle mt-return"
                 :class="{ active: returnModeActive }"
                 @click="_sfxPlay('cancel'); returnModeActive = !returnModeActive"
@@ -10369,7 +10396,7 @@
         </div>
       </div>
       <div class="empty" v-if="deckEntriesDisplay.length === 0 && deckEntriesGrouped.length > 0">検索結果なし</div>
-      <div class="empty" v-else-if="deckEntriesGrouped.length === 0">カード画像クリック または カード下の＋ボタンで追加<br>（右上の🔍アイコンで詳細プレビュー）</div>
+      <div class="empty" v-else-if="deckEntriesGrouped.length === 0">カード画像クリック または カード下の＋ボタンで追加<br>（右上の虫眼鏡で詳細を表示）</div>
       <div v-else>
         <div v-for="entry in deckEntriesDisplay" :key="(entry.returned?'r:':'a:') + fullName(entry.card)"
              class="deck-item"
@@ -11020,7 +11047,7 @@
                 :title="battleNet.spectating ? '観戦モード：操作はできません（両者の手札が全公開されています）' : (battleNetHealth.detail || '')"
                 :aria-expanded="battleNetDetailOpen ? 'true' : 'false'" aria-label="通信の詳細を開く"
                 @click.stop="_sfxPlay('cancel'); battleToggleHeaderPanel('battleNetDetailOpen')">
-          <span v-if="battleNet.spectating">{{ battleLayoutV2 ? '' : '🔍 ' }}観戦中</span>
+          <span v-if="battleNet.spectating">観戦中</span>
           <span v-else role="status" aria-live="polite"><span class="battle-sync-dot"></span> {{ battleNetHealth.label }}</span>
           <span class="battle-sync-caret" aria-hidden="true">▾</span>
         </button>
@@ -11037,20 +11064,20 @@
         </div>
       </div>
       <span v-if="battleNet.on && battleNet.syncWarning" class="battle-sync-status waiting" role="status">
-        {{ battleLayoutV2 ? '' : '⚠️ ' }}{{ battleNet.syncWarning }}
+        {{ battleNet.syncWarning }}
       </span>
       <button v-if="battleNet.on && !battleNet.spectating" class="battle-undo-btn"
               @click="battleForceResync" :disabled="battleNet.resyncing" aria-label="最新の共有盤面を再取得"
               title="Firebaseから最新の共有盤面を再取得します。手札と山札は端末の内容を保持します。">
-        {{ battleUiText(battleNet.resyncing ? '⏳ 再同期中…' : '🔄 再同期') }}
+        {{ battleUiText(battleNet.resyncing ? '再同期中…' : '再同期') }}
       </button>
       <span v-if="battleNet.on && battleNet.oppOnline === false" class="battle-sync-status error" role="alert"
             title="相手の接続が切断されています（自動検知）">
-        {{ battleLayoutV2 ? '' : '⚠️ ' }}相手が切断中{{ battleNetOppDisconnectedAgo ? '（' + battleNetOppDisconnectedAgo + '）' : '' }}
+        相手が切断中{{ battleNetOppDisconnectedAgo ? '（' + battleNetOppDisconnectedAgo + '）' : '' }}
       </span>
       <span v-if="battleNet.on && !battleNet.spectating && battleNet.spectatorCount > 0" class="battle-sync-status"
             title="この対戦を観戦しているユーザーの人数">
-        {{ battleLayoutV2 ? '' : '👁 ' }}観戦者 {{ battleNet.spectatorCount }}人
+        観戦者 {{ battleNet.spectatorCount }}人
       </span>
       <button v-if="battleLastActionSummary" class="battle-last-action" :class="battleLastActionSummary.side"
               :title="battleLastActionSummary.message" @click="battleOpenLogModal('log')">
@@ -11225,7 +11252,7 @@
     <!-- マリガン後の相手待ちオーバーレイ -->
     <div v-if="battleNet.on && battleNet.waitingForOppMulligan" class="battle-mulligan">
       <div class="bm-inner" style="text-align:center;">
-        <div class="bm-title">{{ battleLayoutV2 ? '' : '⏳ ' }}相手のマリガン待ち</div>
+        <div class="bm-title">相手のマリガン待ち</div>
         <div class="bm-sub" style="margin-top:14px;">
           あなたは準備完了しました。<br>
           相手プレイヤーのマリガン完了を待っています…<br>
@@ -11292,7 +11319,7 @@
         <div v-if="battleLifeWarning('self')" class="battle-main-life-critical-vignette"></div>
         <!-- ターン経過時間の目安上限を超えた時の警告表示（強制効果なし） -->
         <div v-if="battleTurnTimeUp" class="battle-turn-rope-warning">
-          <div class="battle-turn-rope-text">{{ battleLayoutV2 ? '' : '⏳ ' }}{{ battleView.activeSide === 'self' ? 'そろそろ' : '相手が' }}ターンを{{ battleView.activeSide === 'self' ? '終了しましょう' : '終了するのを待っています' }}</div>
+          <div class="battle-turn-rope-text">{{ battleView.activeSide === 'self' ? 'そろそろ' : '相手が' }}ターンを{{ battleView.activeSide === 'self' ? '終了しましょう' : '終了するのを待っています' }}</div>
         </div>
 
         <!-- 相手 上段：手札 | カミ(中央)+ステータス | レリック -->
@@ -11712,7 +11739,6 @@
             </template>
             <button v-if="!tutorial" type="button" role="menuitem" :disabled="!battleCanUndo" :title="battleUndoDisabledReason" @click="battleUndo"><span class="v2-menu-glyph" aria-hidden="true">↶</span>一手戻る<span v-if="battleUndoStack.length" class="v2-menu-count">{{ battleUndoStack.length }}</span></button>
             <button v-if="battleNet.on && !battleNet.spectating" type="button" role="menuitem" :disabled="battleNet.resyncing" @click="battleForceResync"><span class="v2-menu-glyph" aria-hidden="true">⟳</span>{{ battleNet.resyncing ? '再同期中…' : '最新の盤面を再取得（再同期）' }}</button>
-            <button v-if="!tutorial" type="button" role="menuitem" @click="battleMenuOpen = false; battleToggleLayoutV2()"><span class="v2-menu-glyph" aria-hidden="true">旧</span>従来の配置に切り替える（試作の見比べ用）</button>
             <button type="button" role="menuitem" @click="battleMenuOpen = false; battleReturn()"><span class="v2-menu-glyph" aria-hidden="true">◀</span>{{ battleReturnLabel }}へ戻る</button>
             <button v-if="!battleNet.spectating && !tutorial" type="button" role="menuitem" class="danger" @click="battleMenuOpen = false; battleSurrender()"><span class="v2-menu-glyph" aria-hidden="true">⚑</span>降参する</button>
           </div>
@@ -12189,7 +12215,7 @@
                   class="notice-card-link"
                   @click="openPreview(c)"
                   title="クリックでカード詳細を表示">
-            {{ battleLayoutV2 ? '' : '🔎 ' }}{{ fullName(c) }}
+            {{ fullName(c) }}
           </button>
         </div>
         <div class="battle-action-buttons"><button @click="_sfxPlay('decision'); battleNotice = null">確認</button></div>
@@ -12217,7 +12243,7 @@
                   class="notice-card-link"
                   @click="openPreview(c)"
                   title="クリックでカード詳細を表示">
-            {{ battleLayoutV2 ? '' : '🔎 ' }}{{ fullName(c) }}
+            {{ fullName(c) }}
           </button>
         </div>
         <div class="battle-action-buttons">
@@ -12324,16 +12350,16 @@
           </div>
         </div>
         <div v-show="!battleLayoutV2 || battleResultDetailsOpen" class="battle-result-review-actions">
-          <button @click="battleOpenLogModal('log')">{{ battleLayoutV2 ? '' : '📜 ' }}対戦ログを見る</button>
-          <button @click="battleOpenLogModal('diagnostic')">{{ battleLayoutV2 ? '' : '🛠 ' }}問題報告データ</button>
+          <button @click="battleOpenLogModal('log')">対戦ログを見る</button>
+          <button @click="battleOpenLogModal('diagnostic')">問題報告データ</button>
         </div>
         <div class="result-actions">
           <button v-if="battleUndoStack.length" @click="battleUndo">一手戻る</button>
           <button v-if="(battleContext.oppIsCpu || (battleNet.on && !battleNet.spectating)) && (battleContext.returnView === 'top' || battleContext.returnView === 'shield' || battleContext.returnView === 'construct')"
                   :disabled="battleWaitingForRematch" @click="battleRequestRematch">
-            {{ battleUiText(battleWaitingForRematch ? '相手の応答を待っています…' : ((battleContext.returnView === 'shield' || battleContext.returnView === 'construct') ? '🔁 同じデッキで再戦する' : '🔁 もう一度対戦する')) }}
+            {{ battleUiText(battleWaitingForRematch ? '相手の応答を待っています…' : ((battleContext.returnView === 'shield' || battleContext.returnView === 'construct') ? '同じデッキで再戦する' : 'もう一度対戦する')) }}
           </button>
-          <button v-if="battleContext.returnView === 'shield'" @click="battleReturn">{{ battleLayoutV2 ? '' : '🎴 ' }}パック選択からやり直す</button>
+          <button v-if="battleContext.returnView === 'shield'" @click="battleReturn">パック選択からやり直す</button>
           <button v-else @click="battleReturn">{{ battleContext.returnView === 'top' ? 'トップへ戻る' : (battleContext.returnView === 'game' ? '次へ進む' : battleReturnLabel + 'へ戻る') }}</button>
         </div>
       </div>
@@ -12476,7 +12502,7 @@
 
   <!-- ===== CPU対戦AI実行中の目隠し（内部的にself/oppを入れ替えて処理するため、その間は盤面を隠す） ===== -->
   <div v-if="battleCpuThinking" class="battle-cpu-thinking-overlay">
-    <div class="battle-cpu-thinking-label">{{ battleUiText(battleCpuThinkingLabel || '🤖 相手が考えています…') }}</div>
+    <div class="battle-cpu-thinking-label">{{ battleUiText(battleCpuThinkingLabel || '相手が考えています…') }}</div>
     <div class="battle-cpu-thinking-steps" aria-label="CPUターン進行状況">
       <span :class="battleCpuPhaseClass('review')">確認</span>
       <span :class="battleCpuPhaseClass('main')">カード使用</span>
@@ -12495,8 +12521,8 @@
   <!-- カミ図鑑の演出プレビュー：仮の対戦画面の上部に、再生・図鑑へ戻るボタンを出す -->
   <div v-if="appView === 'battle' && battleContext && battleContext.source === 'dexPreview' && !battleSkillCloseup && !battleLoading" class="dex-preview-bar" role="toolbar" aria-label="演出プレビュー">
     <span class="dex-preview-bar-label">演出プレビュー：{{ battleSample && battleSample.self.kami ? battleSample.self.kami.name : '' }}</span>
-    <button type="button" @click="dexPreviewPlay(1)">✨ 神技</button>
-    <button type="button" class="genesis" @click="dexPreviewPlay(2)">🌟 創世神技</button>
+    <button type="button" @click="dexPreviewPlay(1)">神技</button>
+    <button type="button" class="genesis" @click="dexPreviewPlay(2)">創世神技</button>
     <button type="button" class="back" @click="battleReturn">◀ カミ図鑑へ戻る</button>
   </div>
   <transition name="battle-skill-closeup-fade">
@@ -12597,7 +12623,6 @@
          @mouseenter="emoteWheel.hoverKey = t.key" @mouseleave="emoteWheel.hoverKey = null"
          @click.stop="battleEmoteWheelItemClick(t.key)">
       <span v-if="t.icon" class="emote-wheel-icon" :style="t.icon" aria-hidden="true"></span>
-      <span v-else class="emote-wheel-emoji">{{ t.emoji }}</span>
       <span class="emote-wheel-label">{{ t.label }}</span>
     </div>
   </div>
@@ -15164,29 +15189,30 @@ const GENESIS_STORY_SCENES = Object.freeze([
 /* ================================================================== */
 /* キーワード能力辞書（クリックでポップアップ表示）                     */
 /* ================================================================== */
+// 言い回しはプレイガイドの「用語・キーワード」と同じ（プレイガイドはこの一覧から表示する）
 const KEYWORD_GLOSSARY = {
   // ── タイミングで起動する能力 ──
-  "出現時": "カードがフィールドに出た瞬間に発動する効果です。明記されていない限り、デッキや墓地からフィールドに出た場合でも発動します。",
-  "死亡時": "レガシーがフィールドから墓地に送られた時に発動する効果です。「崩壊」した場合は発動しません。",
-  "神攻時": "レガシーが【神攻】を宣言した時に、神攻を処理する前に発動する効果です。",
-  "戦闘時": "レガシーが【戦闘】を宣言した時に、戦闘を処理する前に発動する効果です。",
+  "出現時": "場に出たときに発動する。山札や墓地から出たときも発動する",
+  "死亡時": "レガシーが場から墓地へ送られたときに発動する。崩壊したときは発動しない",
+  "神攻時": "【神攻】を宣言したとき、神攻の前に発動する",
+  "戦闘時": "【戦闘】を宣言したとき、戦闘の前に発動する",
   // ── キーワード能力 ──
-  "疾駆": "フィールドに出たターンから【戦闘】【神攻】を行うことができます。",
-  "奇襲": "フィールドに出たターンから【戦闘】を行うことができます。",
-  "死角": "【死角】を持たないレガシーは、このレガシーを【戦闘】の攻撃対象に選ぶことができず、【守護】により攻撃先を変更することもできません。",
-  "守護": "相手の【戦闘】または【神攻】の宣言時、このレガシーをタップすることで、攻撃先をこのレガシーへと強制的に変更させます。",
-  "不可侵": "相手のカードの効果の対象に選ばれません。（※自分のカードの効果の対象にすることは可能です）",
-  "呪殺": "このレガシーと【戦闘】したレガシーは、戦闘力に関わらず破壊されます。",
-  "選定": "複数ある効果の選択肢の中から、異なる X 個の効果をプレイヤー自身が選んで発動します。",
-  "進化": "この能力を持つレガシーが場に出る時、自分の場に［条件］に記載された属性や種族のレガシー（無属性カードを除く）がいれば、その上に重ねて出すことができます。進化せずに出すことも可能です。重ねて出した場合、以下のルールが適用されます。\n・【進化中】の効果を使用することができます。\n・そのレガシーは【疾駆】を持ちます。\n・下のレガシーが持つあらゆる効果は失われます（一部例外となる効果があります。詳細は「細則」をご確認ください）。\n・タップ／アンタップ状態は、下のレガシーの状態を引き継ぎます。\n・そのレガシーが破壊／崩壊される、もしくは手札に戻された場合、下のレガシーは墓地へ送られます。",
-  "誘": "デッキから非公開でX枚カードを引き、その中に条件を満たすカードがあれば、1枚までそれを公開して手札に加えます。残ったカードは、好きな順番で山札の一番下に戻します。",
-  "霊視": "デッキからX枚カードを確認し、確認したカードをX枚まで選択して墓地に置いてもよい。その後、残ったカードを好きな順番でデッキの上に戻します。",
-  "昇華": "追加でXコストを支払うことにより、得られる効果です。手札以外から使用された場合は、【昇華】を発動することができません。",
-  "招来": "対象に記載された無属性カード（トークン）を場に出します。無属性カード（トークン）は、手札か墓地に置かれると「崩壊」します。",
-  "補正": "Xの数だけ、このターン中戦闘力を上下させます。",
-  "神威": "Xの数だけ、このターン中神攻力を上下させます。",
-  "傀儡化": "相手の場のレガシーを自分の場に移動させ、あなたが操作権を得ます。その際、そのレガシーはアンタップされて【疾駆】を得ます。",
-  "拘束": "相手の場のレガシーを1枚選択してタップします。選択したレガシーは、次の相手ターン終了時までアンタップできません。",
+  "疾駆": "出たターンから【戦闘】【神攻】できる",
+  "奇襲": "出たターンから【戦闘】できる",
+  "死角": "【死角】を持たないレガシーは、このレガシーを【戦闘】の攻撃対象に選ぶことができず、【守護】により攻撃先を変更することもできません",
+  "守護": "相手の【戦闘】【神攻】の宣言時、このレガシーを横にして攻撃先を自分に変える",
+  "不可侵": "相手のカードの効果の対象にならない（自分の効果では選べる）",
+  "呪殺": "このレガシーと戦闘したレガシーは、戦闘力に関係なく破壊される",
+  "選定": "いくつかの効果から、違うものをX個選んで使う",
+  "進化": "条件に合う自分のレガシー（無属性を除く）の上に重ねて出せる（重ねずに出してもよい）。進化したレガシーは【進化中】の効果を使え、【疾駆】を持つ",
+  "誘": "山札からX枚を見て、条件に合う1枚まで見せて手札へ。残りは好きな順で山札の下へ",
+  "霊視": "山札からX枚を見て、X枚まで墓地へ置いてよい。残りは好きな順で山札の上へ",
+  "昇華": "追加でXコストを払うと使える効果。手札以外から使ったときは使えない",
+  "招来": "トークンを場に出す。トークンは手札か墓地へ行くと崩壊する",
+  "補正": "そのターンだけ、戦闘力をXだけ増減する",
+  "神威": "そのターンだけ、神攻力をXだけ増減する",
+  "傀儡化": "相手のレガシーを自分の場に移して操作する。そのレガシーはアンタップされ【疾駆】を得る",
+  "拘束": "相手のレガシー1枚を横にする。次の相手ターンの終わりまで縦に戻せない",
 };
 
 /* ------------------------------------------------------------------ */
@@ -16207,7 +16233,7 @@ new Vue({
           abilityIndex: ai,
           ability: ab,
           card,
-          label: '⚡ 墓地起動：場に出す' + (costStr ? `（${costStr}）` : ''),
+          label: '墓地起動：場に出す' + (costStr ? `（${costStr}）` : ''),
           payable,
           unpayableReason: reason,
         });
@@ -16349,7 +16375,7 @@ new Vue({
         list.push({
           abilityIndex: ai,
           ability: ab,
-          label: '⚡ 起動能力を発動' + (costStr ? `（${costStr}）` : ''),
+          label: '起動能力を発動' + (costStr ? `（${costStr}）` : ''),
           payable,
           unpayableReason: reason,
         });
@@ -22170,7 +22196,7 @@ new Vue({
       if (this._titleFlashOriginalTitle) { document.title = this._titleFlashOriginalTitle; }
     },
     /* 手番通知：タブがバックグラウンドの間に自分の手番が来たら知らせる */
-    _battleStartTurnTitleFlash() { this._startTitleFlash('🔴 あなたの番です！'); },
+    _battleStartTurnTitleFlash() { this._startTitleFlash('あなたの番です'); },
     _battleStopTurnTitleFlash() { this._stopTitleFlash(); },
     /* ヒットストップ：0.05秒だけ次の処理を遅延させ、衝撃の一瞬を演出する */
     _battleHitStop(ms = 50) {
@@ -23749,19 +23775,19 @@ new Vue({
       this._battleCpuAutoResolving = true;
       try {
         this.battleCpuPhase = 'review';
-        this.battleCpuThinkingLabel = '🤖 相手が手札とマナを確認しています…';
+        this.battleCpuThinkingLabel = '相手が手札とマナを確認しています…';
         await this._battleCpuThinkPause(420);
         this.battleCpuPhase = 'main';
         await this._battleCpuSummonAndUsePhase(stillMyTurn);
         if (stillMyTurn()) {
           this.battleCpuPhase = 'attack';
-          this.battleCpuThinkingLabel = '⚔️ 相手が攻撃可能なカードを確認しています…';
+          this.battleCpuThinkingLabel = '相手が攻撃可能なカードを確認しています…';
           await this._battleCpuThinkPause(360);
           await this._battleCpuAttackPhase(stillMyTurn);
         }
         if (stillMyTurn()) {
           this.battleCpuPhase = 'end';
-          this.battleCpuThinkingLabel = '⏳ 相手がターン終了処理を行っています…';
+          this.battleCpuThinkingLabel = '相手がターン終了処理を行っています…';
           await this._battleCpuThinkPause(300);
         }
       } catch (e) {
@@ -23816,7 +23842,7 @@ new Vue({
         if (handIdx < 0) continue;
         // 複数枚を同時に出したように見えて分かりにくいという指摘があったため、1枚ごとに
         // 「何を出そうとしているか」を思考中オーバーレイのラベルに表示しつつ、間を置いて1枚ずつ処理する
-        this.battleCpuThinkingLabel = `🤖 相手が「${this.fullName(pick.card)}」を場に出しています…`;
+        this.battleCpuThinkingLabel = `相手が「${this.fullName(pick.card)}」を場に出しています…`;
         await this._battleCpuThinkPause(500);
         if (!stillMyTurn()) break;
         await this.battlePlayFromHand(handIdx, zone, zone ? null : undefined);
@@ -23852,12 +23878,12 @@ new Vue({
             if (ap >= dp && dp > bestDp) { bestTargetIdx = dIdx; bestDp = dp; }
           });
           if (bestTargetIdx >= 0 && this.battleLegacyCanAct(attacker, 'battle').ok) {
-            this.battleCpuThinkingLabel = `⚔️ 相手が「${this.fullName(attacker)}」で攻撃対象を選んでいます…`;
+            this.battleCpuThinkingLabel = `相手が「${this.fullName(attacker)}」で攻撃対象を選んでいます…`;
             await this._battleCpuThinkPause(420);
             await this.battleResolveLegacyBattle('self', idx, 'opp', bestTargetIdx);
             acted = true;
           } else if (this.battleLegacyCanAct(attacker, 'divine').ok) {
-            this.battleCpuThinkingLabel = `✨ 相手が「${this.fullName(attacker)}」で神攻を行っています…`;
+            this.battleCpuThinkingLabel = `相手が「${this.fullName(attacker)}」で神攻を行っています…`;
             await this._battleCpuThinkPause(420);
             await this.battleResolveDivineAttack('self', idx);
             acted = true;
@@ -31151,14 +31177,14 @@ new Vue({
     /* ログ1件のアイコン絵文字（_battleLogEntryIconで分類したkindに対応） */
     battleLogIconGlyph(icon) {
       const map = {
-        play: '📥',
-        effect: '✨',
-        buff: '⬆️',
-        destroy: '💀',
-        damage: '💥',
-        draw: '🎴',
+        play: '出',
+        effect: '効',
+        buff: '強',
+        destroy: '破',
+        damage: '撃',
+        draw: '引',
       };
-      return map[icon] || '✨';
+      return map[icon] || '効';
     },
     battleZoneListCardClick(c) {
       if (Date.now() < (this._battleSuppressZoneListClickUntil || 0)) return;
@@ -32801,7 +32827,7 @@ new Vue({
       clearTimeout(this._gsPickTurnNoticeTimer);
       this.gsPickTurnNotice = true;
       this._sfxPlay('decision');
-      if (document.hidden) this._startTitleFlash('🎴 次のピックです！');
+      if (document.hidden) this._startTitleFlash('次のピックです');
       this._gsPickTurnNoticeTimer = setTimeout(() => { this.gsPickTurnNotice = false; }, 2400);
     },
     _gsStartPhaseTimer() {
