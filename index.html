@@ -1868,6 +1868,7 @@
   .cosmic-pick-panel > .gm-header .gm-close:hover { color: #fff3d6; }
   /* 画面の外側の余白12px＋枠1px＋ヘッダー54pxの中央に、36pxのボタンをそろえる */
   .global-sound-settings.in-pick-header { top: 23px; right: 27px; }
+  .global-sound-settings.in-pick-header .bgm-current-name { display: none; }
   .cosmic-pick-panel > .gm-draft { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 12px; }
   .gm-draft .gm-draft-head { flex: none; gap: 6px; margin-bottom: 6px; }
   /* 上の帯（表示）：手番は点と文字、数値は小さな見出し＋数字。押せるのは右端の「デッキを確認」だけ */
@@ -2528,6 +2529,186 @@
   .gs-kami-info-panel.kami-dex-panel, .battle-zone-modal-panel.manual-panel { display: flex; flex-direction: column; }
   .manual-panel > .manual-header { flex: none; }
   .manual-panel > .manual-scroll { flex: 1 1 auto; min-height: 0; height: auto; } /* 見出しの高さに関係なく、残りの高さをちょうど使う */
+  /* ===== プレイガイド：明るすぎず暗すぎない、茶を帯びた墨色の地に、少し明るい面・金と朱の差し色。
+     図は実際の画面とカード。番号は場所を枠で囲み、枠の角に付けて中身を隠さない。要所でアマテラスが話しかける（絵文字は使わない） ===== */
+  .pg-panel { --pg-bg: #2b2621; --pg-panel: #37312a; --pg-panel2: #403930; --pg-line: #574d3f; --pg-text: #eee6d6; --pg-sub: #bdb29c; --pg-head: #f3e4bf; --pg-gold: #d9b46a; --pg-red: #e07d5e; }
+  .pg-scroll { background: var(--pg-bg); color: var(--pg-text); }
+  .pg-cover { padding: 26px clamp(22px, 4vw, 52px) 18px; text-align: center; background: radial-gradient(ellipse 60% 140% at 50% 0%, rgba(217, 180, 106, .14), transparent 70%), #302a24; border-bottom: 1px solid var(--pg-line); }
+  .pg-kicker { font-size: 11px; letter-spacing: .4em; text-indent: .4em; color: var(--pg-gold); }
+  .pg-cover h1 { margin: 4px 0 6px; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: clamp(28px, 3vw, 38px); font-weight: 800; letter-spacing: .2em; text-indent: .2em; color: var(--pg-head); }
+  .pg-lead { margin: 0; color: var(--pg-sub); font-size: 14px; }
+  .pg-nav { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 10px 16px; background: rgba(43, 38, 33, .97); border-bottom: 1px solid var(--pg-line); }
+  .pg-nav a { padding: 5px 14px; border: 1px solid var(--pg-line); border-radius: 999px; background: var(--pg-panel); color: var(--pg-text); font-size: 13px; text-decoration: none; }
+  .pg-nav a:hover { border-color: var(--pg-gold); color: #fff3d6; }
+  .manual-main.pg-main { box-sizing: border-box; max-width: 1080px; margin: 0 auto; padding: 4px clamp(18px, 4vw, 44px) 40px; color: var(--pg-text); font-size: 14.5px; line-height: 1.8; }
+  .manual-main.pg-main strong { color: #f0c98a; }
+  .pg-main b { color: #fff3d6; }
+  .pg-p { margin: 0 0 12px !important; }
+  .pg-section { padding: 24px 0 30px; border-bottom: 1px solid var(--pg-line); scroll-margin-top: 54px; }
+  .pg-section:last-child { border-bottom: 0; }
+  .pg-section-head { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+  .pg-no { display: inline-grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 50%; border: 1px solid var(--pg-gold); color: var(--pg-head); font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 18px; }
+  .pg-section-head h2 { margin: 0; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 25px; font-weight: 800; letter-spacing: .14em; color: var(--pg-head); }
+  .pg-h3 { display: flex; align-items: baseline; gap: 10px; margin: 24px 0 10px; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 18px; font-weight: 800; color: var(--pg-head); letter-spacing: .08em; }
+  .pg-h3::before { content: ''; align-self: center; width: 5px; height: 1em; border-radius: 2px; background: var(--pg-gold); }
+  .pg-h3 small { font-family: system-ui, sans-serif; font-size: 12px; font-weight: 400; color: var(--pg-sub); letter-spacing: 0; }
+  .pg-main .pg-list { margin: 0; padding-left: 1.2em; }
+  .pg-main .pg-list li { margin: 3px 0; }
+  .pg-main .pg-list li::marker { color: var(--pg-gold); }
+  .pg-note { margin-top: 14px !important; font-size: 13.5px; color: var(--pg-sub); }
+  /* アマテラスの吹き出し */
+  .pg-talk { display: flex; align-items: flex-end; gap: 10px; margin: 16px 0; }
+  .pg-talk.right { flex-direction: row-reverse; }
+  .pg-talk-face { flex: none; width: 88px; height: 88px; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .4)); }
+  .pg-talk-bubble { position: relative; max-width: 640px; margin: 0 0 18px !important; padding: 11px 16px; border: 1.5px solid var(--pg-gold); border-radius: 14px; background: #f6efe0; color: #2b2620; font-size: 14px; line-height: 1.7; box-shadow: 0 4px 12px rgba(0, 0, 0, .3); }
+  .pg-talk-bubble::before { content: ''; position: absolute; bottom: 14px; left: -9px; width: 14px; height: 14px; background: #f6efe0; border-left: 1.5px solid var(--pg-gold); border-bottom: 1.5px solid var(--pg-gold); transform: rotate(45deg); }
+  .pg-talk.right .pg-talk-bubble::before { left: auto; right: -9px; transform: rotate(-135deg); }
+  /* 共通の面 */
+  .pg-tiles { display: grid; gap: 12px; }
+  .pg-tiles.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pg-tiles.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* はじめに：メインルールの創世決戦を、実際の画面つきで大きく */
+  .pg-main-mode { display: grid; grid-template-columns: minmax(0, 52%) minmax(0, 1fr); gap: 18px; align-items: center; padding: 16px; border: 1px solid var(--pg-gold); border-radius: 8px; background: linear-gradient(135deg, rgba(217, 180, 106, .12), rgba(217, 180, 106, 0) 60%), var(--pg-panel); }
+  .pg-main-mode img { display: block; width: 100%; height: auto; border-radius: 5px; box-shadow: 0 4px 12px rgba(0, 0, 0, .45); }
+  .pg-main-mode-meta { display: inline-block; margin-bottom: 8px; padding: 1px 10px; border-radius: 999px; background: var(--pg-gold); color: #241c10; font-size: 12px; font-weight: 800; }
+  .pg-main-mode .pg-list { font-size: 14.5px; }
+  .pg-formula.small { margin-top: 12px; }
+  .pg-formula.small span { padding: 4px 10px; font-size: 13px; }
+  .pg-h3-gap { margin-top: 34px; }
+  .pg-tile { --tile: 217, 180, 106; padding: 13px 16px 14px; border: 1px solid var(--pg-line); border-top: 3px solid rgb(var(--tile)); border-radius: 6px; background: var(--pg-panel); }
+  .pg-tile p { margin: 4px 0 0; color: var(--pg-text); font-size: 13.5px; line-height: 1.7; }
+  .pg-tile-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 16px; font-weight: 800; letter-spacing: .06em; color: rgb(var(--tile)); }
+  .pg-tile-title span { flex: none; padding: 1px 8px; border-radius: 999px; background: rgba(140, 186, 236, .18); color: #b9d6f6; font-family: system-ui, sans-serif; font-size: 11.5px; font-weight: 700; letter-spacing: 0; }
+  .pg-tile.dm-reflect { --tile: 190, 156, 240; }
+  .pg-tile.dm-fusion { --tile: 130, 186, 240; }
+  .pg-tile.dm-bloom { --tile: 236, 200, 110; }
+  .pg-deepen { margin: 4px 0 16px; }
+  /* 勝ち方 */
+  .pg-win { padding: 14px 16px; border: 1px solid var(--pg-line); border-radius: 8px; background: var(--pg-panel); text-align: center; }
+  .pg-win-icon { display: inline-grid; place-items: center; width: 58px; height: 58px; margin-bottom: 4px; }
+  .pg-win-icon img { width: 56px; height: 56px; object-fit: contain; }
+  .pg-win-icon .gm-soul-icon { width: 48px; height: 48px; font-size: 24px; }
+  .pg-win-title { font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 17px; font-weight: 800; color: var(--pg-head); }
+  .pg-win p { margin: 2px 0 0; color: var(--pg-sub); font-size: 13px; }
+  /* はじめの状態 */
+  .pg-stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+  .pg-stat { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; box-sizing: border-box; padding: 4px 18px; border: 1px solid var(--pg-line); border-radius: 999px; background: var(--pg-panel); }
+  .pg-stat img { width: 30px; height: 30px; margin-left: -8px; object-fit: contain; }
+  .pg-stat span { color: var(--pg-sub); font-size: 12px; }
+  .pg-stat b { font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 21px; color: var(--pg-head); }
+  /* 手順 */
+  .pg-steps { list-style: none; counter-reset: pgstep; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 12px; margin: 0; padding: 0; }
+  .pg-steps li { counter-increment: pgstep; position: relative; padding: 34px 12px 12px; border: 1px solid var(--pg-line); border-radius: 6px; background: var(--pg-panel); color: var(--pg-text); font-size: 13px; line-height: 1.6; }
+  .pg-steps li::before { content: counter(pgstep); position: absolute; top: 9px; left: 12px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--pg-gold); color: #241c10; font-size: 11px; font-weight: 800; line-height: 1; }
+  .pg-steps li:not(:last-child)::after { content: ''; position: absolute; top: 14px; right: -10px; border-left: 7px solid var(--pg-gold); border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+  .pg-steps li b { display: block; margin-bottom: 2px; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 15px; }
+  .pg-steps li small { display: block; margin-top: 2px; color: var(--pg-sub); font-size: 11.5px; }
+  /* 表 */
+  .pg-main .pg-table { min-width: 0; font-size: 13px; }
+  .pg-main .pg-table th, .pg-main .pg-table td { border: 0; border-bottom: 1px solid var(--pg-line); padding: 9px 12px; background: var(--pg-panel); color: var(--pg-text); }
+  .pg-main .pg-table thead th { background: var(--pg-panel2); color: var(--pg-sub); font-size: 12px; font-weight: 600; }
+  .pg-main .pg-table tbody th { color: var(--pg-head); font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-weight: 800; white-space: nowrap; }
+  .pg-main .pg-table small { color: var(--pg-sub); }
+  .pg-main .pg-table strong { color: #f0c98a; }
+  /* 図：枠で囲んだ場所に番号 */
+  .pg-figure { display: grid; gap: 18px; align-items: start; padding: 16px; border: 1px solid var(--pg-line); border-radius: 8px; background: var(--pg-panel); }
+  .pg-card-figure { grid-template-columns: minmax(260px, 360px) minmax(0, 1fr); align-items: center; }
+  .pg-card-figure .pg-shot { margin: 16px 20px; }
+  .pg-card-figure .pg-legend { grid-template-columns: 1fr; gap: 12px; font-size: 14px; }
+  .pg-shot { position: relative; margin: 12px; }
+  .pg-shot > img { display: block; width: 100%; height: auto; border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, .45); }
+  .pg-box { position: absolute; box-sizing: border-box; border: 2px solid #ffd479; border-radius: 4px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .65), inset 0 0 0 1px rgba(0, 0, 0, .45); pointer-events: none; }
+  .pg-box i { position: absolute; top: -12px; left: -12px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #ffd479; color: #241c10; font-style: normal; font-size: 12px; font-weight: 800; line-height: 1; box-shadow: 0 1px 4px rgba(0, 0, 0, .7); }
+  .pg-box.tag-right i { left: auto; right: -12px; }
+  .pg-box.tag-left-down i { top: auto; bottom: -12px; left: -14px; }
+  /* マナ：対戦画面のマナの星と同じ形・色 */
+  .pg-mana-star { width: 22px; height: 22px; flex: none; fill: #ffe7a3; stroke: #fff6d8; stroke-width: 1; filter: drop-shadow(0 0 4px rgba(255, 214, 110, .9)); }
+  .pg-stat .pg-mana-star { margin-left: -6px; }
+  .pg-dmana { position: relative; display: grid; place-items: center; min-width: 84px; height: 84px; }
+  .pg-dmana-stars { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; max-width: 100px; }
+  .pg-dmana-stars .pg-mana-star { width: 26px; height: 26px; }
+  .pg-diagram .pg-dzone { width: 90px; }
+  .pg-legend { list-style: none; counter-reset: pgl; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; margin: 0; padding: 0; font-size: 13px; }
+  .pg-legend.pg-legend-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pg-legend li { counter-increment: pgl; display: grid; grid-template-columns: 22px minmax(0, 1fr); column-gap: 8px; align-items: start; color: var(--pg-sub); line-height: 1.55; }
+  .pg-legend li::before { content: counter(pgl); grid-row: span 2; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #ffd479; color: #241c10; font-size: 11px; font-weight: 800; line-height: 1; }
+  .pg-legend li b { display: block; color: var(--pg-text); }
+  /* カードの種類 */
+  .pg-kinds { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .pg-kind { --tile: 217, 180, 106; padding: 12px; border: 1px solid var(--pg-line); border-top: 3px solid rgb(var(--tile)); border-radius: 6px; background: var(--pg-panel); text-align: center; }
+  .pg-kind-img { height: 158px; display: grid; place-items: center; }
+  .pg-kind-img img { max-height: 158px; max-width: 100%; border-radius: 5px; box-shadow: 0 4px 10px rgba(0, 0, 0, .45); }
+  .pg-kind-name { margin-top: 8px; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 17px; font-weight: 800; color: rgb(var(--tile)); letter-spacing: .1em; }
+  .pg-kind p { margin: 2px 0 0; color: var(--pg-text); font-size: 13px; line-height: 1.6; }
+  .pg-kind.kind-kami { --tile: 236, 200, 110; }
+  .pg-kind.kind-legacy { --tile: 232, 140, 110; }
+  .pg-kind.kind-oracle { --tile: 130, 186, 240; }
+  .pg-kind.kind-relic { --tile: 140, 206, 130; }
+  /* メインでできること */
+  .pg-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .pg-action { padding: 12px 16px 14px; border: 1px solid var(--pg-line); border-radius: 8px; background: var(--pg-panel); }
+  .pg-action-title { font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 17px; font-weight: 800; color: var(--pg-head); letter-spacing: .08em; }
+  .pg-action p { margin: 8px 0 0; color: var(--pg-text); font-size: 13.5px; line-height: 1.7; }
+  .pg-diagram { display: flex; align-items: center; justify-content: center; gap: 12px; height: 168px; margin-top: 8px; padding: 0 10px 14px; border-radius: 6px; background: #1f1b17; }
+  .pg-dcard { position: relative; width: 84px; flex: none; }
+  .pg-dcard img { display: block; width: 100%; border-radius: 5px; box-shadow: 0 4px 10px rgba(0, 0, 0, .5); }
+  .pg-dcard.kami { width: 90px; }
+  .pg-dcard.tapped { width: 84px; height: 84px; display: grid; place-items: center; }
+  .pg-dcard.tapped img { width: 84px; transform: rotate(90deg); filter: grayscale(.5) brightness(.65); }
+  .pg-dlabel { position: absolute; left: 50%; bottom: -12px; transform: translateX(-50%); padding: 1px 9px; border-radius: 999px; background: #120f0c; border: 1px solid var(--pg-gold); color: var(--pg-head); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+  .pg-dcard.tapped .pg-dlabel { bottom: -24px; }
+  .pg-dlabel.red { border-color: var(--pg-red); color: #ffd2c4; }
+  .pg-darrow { width: 56px; height: 20px; flex: none; fill: none; stroke: var(--pg-gold); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .pg-dkami { position: relative; display: grid; place-items: center; width: 84px; height: 84px; }
+  .pg-dkami img { width: 66px; height: 66px; object-fit: contain; }
+  .pg-dzone { display: grid; place-items: center; width: 110px; height: 76px; border: 1.5px dashed var(--pg-gold); border-radius: 6px; color: var(--pg-head); font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 15px; }
+  /* 創世決戦 */
+  .pg-loop { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 18px; padding: 16px; border: 1px solid var(--pg-line); border-radius: 8px; background: var(--pg-panel); }
+  .pg-loop-step { padding: 6px 14px; border-radius: 4px; background: var(--pg-panel2); border: 1px solid var(--pg-line); color: var(--pg-head); font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 15px; font-weight: 800; white-space: nowrap; }
+  .pg-loop-step.end { border-color: var(--pg-gold); }
+  .pg-loop-arrow { color: var(--pg-gold); font-size: 20px; line-height: 1; }
+  .pg-loop-group { position: relative; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 12px 22px; border: 1.5px dashed var(--pg-gold); border-radius: 10px; }
+  .pg-loop-times { position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); padding: 0 10px; border-radius: 999px; background: var(--pg-gold); color: #241c10; font-size: 12px; font-weight: 800; white-space: nowrap; }
+  .pg-phase { display: grid; grid-template-columns: minmax(0, 46%) minmax(0, 1fr); gap: 18px; align-items: start; margin: 14px 0; padding: 14px; border: 1px solid var(--pg-line); border-radius: 8px; background: var(--pg-panel); }
+  .pg-phase.no-shot { grid-template-columns: 1fr; }
+  .pg-phase-shot { display: block; width: 100%; height: auto; border-radius: 5px; box-shadow: 0 4px 12px rgba(0, 0, 0, .45); }
+  .pg-phase-title { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 19px; font-weight: 800; color: var(--pg-head); letter-spacing: .1em; }
+  .pg-phase-title span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--pg-gold); color: #241c10; font-family: system-ui, sans-serif; font-size: 13px; letter-spacing: 0; }
+  .pg-phase .manual-table-wrap { margin: 10px 0 0; }
+  .pg-formula { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 8px; }
+  .pg-formula span { padding: 6px 12px; border-radius: 4px; background: var(--pg-panel2); border: 1px solid var(--pg-line); color: var(--pg-text); font-weight: 700; }
+  .pg-formula span small { margin-left: 6px; color: var(--pg-sub); font-weight: 400; }
+  .pg-formula span.total { border-color: var(--pg-gold); color: #f0c98a; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 16px; }
+  .pg-formula i { font-style: normal; color: var(--pg-gold); font-weight: 800; }
+  /* 開く項目 */
+  .pg-more { margin-top: 14px; border: 1px solid var(--pg-line); border-radius: 6px; background: var(--pg-panel); }
+  .pg-more > summary { padding: 10px 14px; color: var(--pg-head); font-size: 13.5px; font-weight: 700; cursor: pointer; list-style: none; }
+  .pg-more > summary::-webkit-details-marker, .pg-qa > summary::-webkit-details-marker { display: none; }
+  .pg-more > summary::before { content: '＋'; margin-right: 8px; color: var(--pg-gold); }
+  .pg-more[open] > summary::before { content: '－'; }
+  .pg-more > p, .pg-more > ul { margin: 0 14px 12px !important; font-size: 13.5px; }
+  .pg-more > ul { padding-left: 1.4em !important; }
+  /* 用語 */
+  .pg-dict { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; margin: 0; }
+  .pg-dict > div { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--pg-line); }
+  .pg-dict dt { color: #f0c98a; font-weight: 800; font-size: 13.5px; }
+  .pg-dict dd { margin: 0; color: var(--pg-text); font-size: 13.5px; line-height: 1.7; }
+  .pg-keys kbd { display: inline-block; min-width: 24px; margin-right: 4px; padding: 1px 7px; border: 1px solid var(--pg-line); border-bottom-width: 3px; border-radius: 4px; background: var(--pg-panel2); color: var(--pg-text); font-family: system-ui, sans-serif; font-size: 12px; text-align: center; }
+  /* 細則 */
+  .pg-qa { border-bottom: 1px solid var(--pg-line); }
+  .pg-qa > summary { position: relative; padding: 11px 4px 11px 36px; color: var(--pg-text); cursor: pointer; list-style: none; }
+  .pg-qa > summary:hover { color: #fff3d6; }
+  .pg-qa > summary::before { content: 'Q'; position: absolute; left: 6px; top: 10px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--pg-gold); color: #241c10; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-weight: 800; font-size: 13px; }
+  .pg-qa > p { position: relative; margin: 0 0 12px !important; padding: 10px 14px 10px 36px; border-radius: 6px; background: var(--pg-panel); }
+  .pg-qa > p::before { content: 'A'; position: absolute; left: 9px; top: 10px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #7fc6be; color: #10201e; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-weight: 800; font-size: 12px; }
+  .pg-callout { margin-top: 14px; }
+  @media (max-width: 760px) {
+    .pg-tiles.three, .pg-tiles.two, .pg-main-mode, .pg-legend, .pg-legend.pg-legend-3, .pg-dict, .pg-actions, .pg-card-figure, .pg-phase { grid-template-columns: 1fr; }
+    .pg-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pg-steps { grid-auto-flow: row; grid-template-columns: 1fr; }
+    .pg-steps li::after { display: none; }
+    .pg-dict > div { grid-template-columns: 1fr; gap: 2px; }
+  }
   .gs-kami-info-panel.kami-dex-panel.orochi { border-color: #853a42; }
   .kami-dex-panel > .manual-header { flex: none; }
   .kami-dex-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: clamp(14px, 2vh, 22px) clamp(18px, 2.4vw, 30px) clamp(18px, 3vh, 30px); }
@@ -8771,285 +8952,432 @@
   </div>
 
   <div v-if="manualModalOpen" class="battle-zone-modal manual-modal" role="dialog" aria-modal="true" aria-label="ツクリヨ プレイガイド" @click.self="closePlayManual">
-    <div class="battle-zone-modal-panel manual-panel">
+    <div class="battle-zone-modal-panel manual-panel pg-panel">
       <div class="manual-header" :inert="manualSpoilerConfirmOpen ? '' : null">
         <div class="manual-header-mark" aria-hidden="true" title="プレイガイド"><span class="ui-icon ui-icon-play-guide" aria-hidden="true"></span></div>
         <div class="manual-header-copy">
           <div class="manual-header-title">ツクリヨ プレイガイド</div>
-          <div class="manual-header-sub">3つの対戦モード／星戦のルール／キーワード／細則</div>
+          <div class="manual-header-sub">はじめに／カード／星戦の遊び方／モード別の流れ（創世決戦・理念構築戦・星紡ぎ戦）／用語・細則</div>
         </div>
         <button class="manual-close" @click="closePlayManual">閉じる</button>
       </div>
-      <div class="manual-scroll" :inert="manualSpoilerConfirmOpen ? '' : null">
-        <section class="manual-cover">
-          <div class="manual-cover-copy">
-            <div class="manual-kicker">TSUKURIYO PLAY GUIDE</div>
-            <h1>ツクリヨ</h1>
-            <div class="manual-cover-lead">生命の記憶を集め、理念をデッキに刻み、次の世を創るカミとなれ。この説明書では、3つの対戦モード、星戦、カード用語、細則を順に説明します。</div>
-            <div class="manual-rule-badges">
-              <span class="manual-rule-badge">👥 2人／4人対戦</span>
-              <span class="manual-rule-badge">🃏 ドラフト／構築／パック選択</span>
-              <span class="manual-rule-badge">⚔ 3つの対戦モード</span>
-            </div>
-          </div>
-          <div class="manual-cover-cards" aria-hidden="true">
-            <img :src="assetPath('card_images/320/001.webp')" alt="">
-            <img :src="assetPath('kami_card_images/320/001.webp')" alt="">
-          </div>
+      <div class="manual-scroll pg-scroll" :inert="manualSpoilerConfirmOpen ? '' : null">
+        <!-- プレイガイド：はじめに → カード → 星戦 → モード別の流れ → 用語 → 細則 → 操作（チュートリアルと同じくカードが先）。
+             図は実際の画面とカード。番号は枠で囲んだ場所の角に付け、中身を隠さない。要所でアマテラスが吹き出しで話しかける -->
+        <section class="pg-cover">
+          <div class="pg-kicker">PLAY GUIDE</div>
+          <h1>ツクリヨの遊び方</h1>
+          <p class="pg-lead">カミとなってカードを選び合い、星戦で星魂を競う。4人で遊ぶ「創世決戦」がメインルールの対戦カードゲーム</p>
         </section>
 
-        <nav class="manual-quick-nav" aria-label="説明書の目次">
-          <a href="#manual-world">世界観</a>
-          <a href="#manual-goal">目的</a>
-          <a href="#manual-modes">対戦モード</a>
+        <nav class="pg-nav" aria-label="プレイガイドの目次">
+          <a href="#manual-start">はじめに</a>
           <a href="#manual-cards">カード</a>
-          <a href="#manual-flow">ゲーム進行</a>
-          <a href="#manual-draft">選別・深化</a>
-          <a href="#manual-battle">星戦</a>
+          <a href="#manual-battle">星戦の遊び方</a>
+          <a href="#manual-modes">モード別の流れ</a>
           <a href="#manual-keywords">用語</a>
-          <a href="#manual-faq">細則Q&amp;A</a>
+          <a href="#manual-faq">細則</a>
           <a href="#manual-shortcuts">操作</a>
         </nav>
 
-        <main class="manual-main manual-copy">
-          <section id="manual-world" class="manual-chapter">
-            <div class="manual-chapter-heading">
-              <div><div class="manual-chapter-tag">CHAPTER 01</div><h2>終焉の先に、次の世を</h2></div>
-              <figure class="manual-chapter-mascot"><img src="tutorial_guide/tutorial-normal-b45df0d641cb.webp" alt="アマテラスのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
+        <main class="manual-main manual-copy pg-main">
+          <!-- ===== 1. はじめに ===== -->
+          <section id="manual-start" class="pg-section">
+            <div class="pg-section-head"><span class="pg-no">壱</span><h2>はじめに</h2></div>
+            <div class="pg-talk">
+              <img class="pg-talk-face" src="tutorial_guide/tutorial-normal-b45df0d641cb.webp" alt="アマテラス" width="88" height="88" loading="lazy" draggable="false">
+              <p class="pg-talk-bubble">ようこそ！ここではツクリヨの遊び方を、実際の画面を見ながら紹介しますね</p>
             </div>
-            <p>突如飛来した無数の巨龍は文明を蹂躙し、生命を滅亡の淵へ追いやりました。古き神々は永い死闘の末に巨龍を打ち倒しましたが、その代償として星から生命の息吹は失われます。</p>
-            <p>神々が星の深淵で見つけたのは、かつて存在した生命の記憶の残滓――<strong>「レガシー」</strong>。神秘のエネルギー<strong>「星魂」</strong>によってレガシーに命を吹き込めば、新たな世界を創ることができます。</p>
-            <p>しかし、どの生命を蘇らせ、どのような未来を築くべきか。異なる理念を抱くカミたちは、創世の資格と星魂を賭けた闘争――<strong>「星戦」</strong>を選びました。</p>
-          </section>
 
-          <section id="manual-goal" class="manual-chapter">
-            <div class="manual-chapter-heading">
-              <div><div class="manual-chapter-tag">CHAPTER 02</div><h2>ゲームの目的</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/susanoo-chibi-44bc7e74782d.webp" alt="スサノオのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
-            </div>
-            <p>プレイヤーはカミの1人となり、ドラフト形式でカードを集め、自らの理念を体現するデッキを作ります。3回の星戦を終えた時、最も多くの<strong>星魂</strong>を持つプレイヤーが、次の世を創る勝者です。</p>
-            <div class="manual-grid">
-              <article class="manual-card">
-                <div class="manual-card-icon">⚔️</div>
-                <h3>星戦に勝つ</h3>
-                <p>星戦に1回勝利するたび、<strong>星魂10</strong>を獲得します。相手カミのライフを0にするか、相手が山札切れになると勝利です。</p>
-              </article>
-              <article class="manual-card">
-                <div class="manual-card-icon">★</div>
-                <h3>カードを還元する</h3>
-                <p>ゲーム終了時、集めた全カードにある<strong>返還値（0～2）</strong>の合計が星魂になります。途中で返還したカードの返還値も集計します。</p>
-              </article>
-            </div>
-            <div class="manual-callout"><strong>強さと星魂のバランスが重要です。</strong> 強力な能力を持つ代わりに返還値が低いカードもあります。強いカードだけでは終戦時の星魂が伸びず、返還値の高いカードだけでは星戦に勝ちにくくなります。星戦の勝利とカードから得る星魂の両方を見据えて構築しましょう。</div>
-          </section>
-
-          <section id="manual-modes" class="manual-chapter">
-            <div class="manual-chapter-heading">
-              <div><div class="manual-chapter-tag">CHAPTER 03</div><h2>3つの対戦モード</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/okuninushi-chibi-d8d6938583fd.webp" alt="オオクニヌシのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
-            </div>
-            <p>共通の星戦ルールを、カードの集め方が異なる3つのモードで遊べます。初めて遊ぶ場合は、すぐ対戦できるストラクチャーデッキを使った理念構築戦がおすすめです。</p>
-            <div class="manual-mode-grid">
-              <article class="manual-mode-card"><div class="manual-mode-meta">4人対戦（CPU参加時は2人から）</div><b>創世決戦</b><p>神託でカミを選び、3回の選別と深化を行いながら星戦を3回行います。星戦の勝利点と、集めたカードの返還値から得る星魂で最終順位を決めます。</p></article>
-              <article class="manual-mode-card"><div class="manual-mode-meta">2人対戦</div><b>理念構築戦</b><p>全カードプールから35枚を自由に選んで構築し、選んだカミとデッキで1回の星戦を行います。用意済みのストラクチャーデッキでも開始できます。</p></article>
-              <article class="manual-mode-card"><div class="manual-mode-meta">2人対戦</div><b>星紡ぎ戦</b><p>提示されたパックを交互に選び、合計48枚のカードを集めます。集めた48枚をそのままデッキとして使い、最後に選んだカミと1回の星戦を行います。</p></article>
-            </div>
-            <div class="manual-callout blue">星戦の盤面、ターン進行、手札上限などの対戦ルールは3モード共通です。創世決戦だけは3回の星戦を行い、星魂で最終順位を決めます。</div>
-          </section>
-
-          <section id="manual-cards" class="manual-chapter">
-            <div class="manual-chapter-heading">
-              <div><div class="manual-chapter-tag">CHAPTER 04</div><h2>カードの種類と見方</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/omoikane-7f21be1fc0ed.webp" alt="オモイカネのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
-            </div>
-            <div class="manual-grid">
-              <article class="manual-card"><div class="manual-card-icon">👑</div><h3>カミ</h3><p>プレイヤーの分身です。固有の天力トリガーと、神技・創世神技（そうせいじんぎ）を持ちます。メインフェイズ中、1ターンにどちらか1回だけ使用できます。</p></article>
-              <article class="manual-card"><div class="manual-card-icon">⚔️</div><h3>レガシー</h3><p>レガシーフィールドに出て戦います。戦闘力で相手レガシーと戦い、神攻力で相手カミへダメージを与えます。</p></article>
-              <article class="manual-card"><div class="manual-card-icon">✨</div><h3>オラクル</h3><p>使用すると効果を即座に解決し、その後は墓地へ置かれる使い切りのカードです。</p></article>
-              <article class="manual-card"><div class="manual-card-icon">🏺</div><h3>レリック</h3><p>レリックフィールドに置かれ、常在効果や起動効果で戦いを支えます。</p></article>
-            </div>
-            <div class="manual-card-figure">
-              <div class="manual-card-image-wrap">
-                <img :src="assetPath('card_images/600/001.webp')" alt="①から⑩の番号を重ねたレガシーカードの例">
-                <span class="manual-card-pin p1">①</span><span class="manual-card-pin p2">②</span>
-                <span class="manual-card-pin p3">③</span><span class="manual-card-pin p4">④</span>
-                <span class="manual-card-pin p5">⑤</span><span class="manual-card-pin p6">⑥</span>
-                <span class="manual-card-pin p7">⑦</span><span class="manual-card-pin p8">⑧</span>
-                <span class="manual-card-pin p9">⑨</span><span class="manual-card-pin p10">⑩</span>
+            <h3 class="pg-h3">メインルール：創世決戦</h3>
+            <div class="pg-main-mode">
+              <img src="ui_decorations/manual-genesis-draft-d157e49e7782.webp" alt="創世決戦の選別の儀の画面" width="1280" height="720" loading="lazy">
+              <div class="pg-main-mode-text">
+                <div class="pg-main-mode-meta">4人（CPU可）・星戦3回</div>
+                <ul class="pg-list">
+                  <li>4人で束を回してカードを選び合い（ドラフト）、自分のデッキを作る</li>
+                  <li>デッキを整えながら、星戦を3回戦う</li>
+                  <li>最後に<b>星魂</b>がいちばん多い人の勝ち</li>
+                </ul>
+                <div class="pg-formula small"><span>星戦の勝利<small>1勝10点</small></span><i>＋</i><span>集めたカードの返還値</span><i>＝</i><span class="total">星魂</span></div>
               </div>
-              <ol class="manual-number-list">
-                <li><strong>カード名</strong>：カードの名称です。</li>
-                <li><strong>コスト</strong>：使用に必要なマナ。形状はカード種類／レガシーの種族を示します。</li>
-                <li><strong>ラウンド</strong>：どのラウンドの選別で登場するカードかを示します。</li>
-                <li><strong>属性</strong>：赤・青・黄・緑・紫が基本。無属性と、基本5属性を併せ持つ創属性があります。</li>
-                <li><strong>種類・種族</strong>：レガシーの種族は、忍者・侍・人獣・神使・妖怪・龍の6種です。</li>
-                <li><strong>戦闘力</strong>：戦闘で比較する値。0以下になったレガシーは破壊されます。</li>
-                <li><strong>神攻力</strong>：神攻で相手カミに与えるダメージです。</li>
-                <li><strong>返還値</strong>：終戦時に星魂へ還元される値（0～2）です。</li>
-                <li><strong>効果</strong>：カード固有の能力です。</li>
-                <li><strong>カード枠</strong>：銀枠は各種2枚、金枠は各種<strong>1枚</strong>存在します。</li>
-              </ol>
             </div>
-            <div class="manual-callout blue">ジェネシスは深化の刻に獲得できる強力な創属性カードです。トークンはカード効果で招来され、通常のデッキには入りません。</div>
-          </section>
 
-          <section id="manual-flow" class="manual-chapter">
-            <div class="manual-chapter-heading">
-              <div><div class="manual-chapter-tag">CHAPTER 05</div><h2>創世決戦の流れ</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/yamato-takeru-chibi-d1e20004103f.webp" alt="ヤマトタケルのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
-            </div>
-            <div class="manual-flow">
-              <div class="manual-flow-step"><span>壱</span><b>神託の儀</b>3枚の候補から、自分のカミを1体選びます。</div>
-              <div class="manual-flow-step"><span>弐</span><b>選別の儀①</b>30枚をドラフトし、1枚を無料返還します。</div>
-              <div class="manual-flow-step"><span>参</span><b>深化の刻①</b>見識を使いデッキを調整して、星戦①へ。</div>
-              <div class="manual-flow-step"><span>肆</span><b>選別の儀②</b>10枚を追加し、2枚を無料返還します。</div>
-              <div class="manual-flow-step"><span>伍</span><b>深化の刻②</b>見識で強化して、組み合わせを変え星戦②へ。</div>
-              <div class="manual-flow-step"><span>陸</span><b>選別の儀③</b>5枚を追加し、2枚を無料返還します。</div>
-              <div class="manual-flow-step"><span>漆</span><b>深化の刻③</b>最後の調整を行い、星戦③を戦います。</div>
-              <div class="manual-flow-step"><span>捌</span><b>終戦</b>勝利点と全カードの返還値を合計します。</div>
-            </div>
-            <div class="manual-callout">オンライン版では、CPUを加えることで2人から創世決戦を開始できます。人間2人＋CPU2人の場合、星戦は人間同士の卓とCPU同士の卓に分かれ、人間だけで最終順位を競います。</div>
-          </section>
-
-          <section id="manual-draft" class="manual-chapter">
-            <div class="manual-chapter-heading">
-              <div><div class="manual-chapter-tag">CHAPTER 06</div><h2>神託・選別・深化</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/amenouzume-chibi-9b9ce3315169.webp" alt="アメノウズメのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
-            </div>
-            <h3>神託の儀</h3>
-            <p>プレイヤー1から順に、ランダムに提示された3枚のカミカードから1枚を選びます。選ばなかった2枚は候補へ戻り、次のプレイヤーへ進みます。</p>
-            <h3>選別の儀</h3>
-            <p>配られた束から全員が同時に1枚ずつ選び、残りを画面に示された方向の隣プレイヤーへ渡します。束がなくなるまで繰り返します。</p>
-            <div class="manual-table-wrap"><table class="manual-table">
-              <thead><tr><th>ラウンド</th><th>配布</th><th>1人が得る枚数</th><th>選別後の無料返還</th></tr></thead>
+            <h3 class="pg-h3">2人ですぐ遊べるモード</h3>
+            <div class="manual-table-wrap"><table class="manual-table pg-table">
+              <thead><tr><th>モード</th><th>人数</th><th>デッキの作り方</th><th>星戦</th></tr></thead>
               <tbody>
-                <tr><td>第1ラウンド</td><td>10枚束 × 3回</td><td><strong>30枚</strong></td><td><strong>1枚</strong></td></tr>
-                <tr><td>第2ラウンド</td><td>10枚束 × 1回</td><td><strong>10枚</strong></td><td><strong>2枚</strong></td></tr>
-                <tr><td>第3ラウンド</td><td>5枚束 × 1回</td><td><strong>5枚</strong></td><td><strong>2枚</strong></td></tr>
+                <tr><th>理念構築戦</th><td>2人</td><td>全カードから35枚を自由に組む（用意されたストラクチャーデッキでもよい）</td><td>1回</td></tr>
+                <tr><th>星紡ぎ戦</th><td>2人</td><td>パックを交互に選び、集めた48枚をそのままデッキにする</td><td>1回</td></tr>
               </tbody>
             </table></div>
-            <div class="manual-callout red"><strong>デフォルトデッキ削除（無料返還）</strong>は、各ラウンドの選別が終わった直後、深化の刻へ入る前に行います。返還したカードはデッキから取り除かれますが、その返還値は星魂として保持されます。</div>
-            <div v-if="manualOrochiRevealed" class="manual-callout blue"><strong>ヤマタノオロチ専用：</strong>第3ラウンドの選別が完了すると、「終焉龍・ディエスイレ」1枚が専用枠としてデッキへ自動的に加わります。</div>
-            <h3>深化の刻</h3>
-            <p>ゲーム開始時は全員が見識1を獲得します。第2・第3ラウンドの深化開始時は、直前の星戦の勝者が見識1、敗者が見識3を獲得します。見識は次のラウンドへ持ち越せます。</p>
-            <div class="manual-grid">
-              <article class="manual-card"><h3>省察 ／ 見識1</h3><p>デッキからカード1枚を選び、即座に星魂へ変換します。</p></article>
-              <article class="manual-card"><h3>習合 ／ 見識2</h3><p>次の星戦に限り、マリガンを2回行える権利を得ます。各深化で1回までです。</p></article>
-              <article class="manual-card"><h3>理の開花 ／ 見識3</h3><p>ジェネシスカードを3枚確認し、その中から1枚をデッキに加えます。</p></article>
-              <article class="manual-card"><h3>完了</h3><p>全員が深化完了を選ぶと、そのラウンドの星戦へ進みます。</p></article>
+            <div class="pg-talk right">
+              <img class="pg-talk-face" src="tutorial_guide/tutorial-joy-2331cc0867d2.webp" alt="アマテラス" width="88" height="88" loading="lazy" draggable="false">
+              <p class="pg-talk-bubble">ツクリヨの本番は創世決戦！はじめての人は、チュートリアルと理念構築戦で星戦に慣れてから挑むのがおすすめです</p>
             </div>
+
+            <details class="pg-more">
+              <summary>物語を読む</summary>
+              <p>突如飛来した無数の巨龍は文明を蹂躙し、生命を滅亡の淵へ追いやりました。古き神々は永い死闘の末に巨龍を打ち倒しましたが、その代償として星から生命の息吹は失われます。</p>
+              <p>神々が星の深淵で見つけたのは、かつて存在した生命の記憶の残滓――<strong>「レガシー」</strong>。神秘のエネルギー<strong>「星魂」</strong>によってレガシーに命を吹き込めば、新たな世界を創ることができます。</p>
+              <p>しかし、どの生命を蘇らせ、どのような未来を築くべきか。異なる理念を抱くカミたちは、創世の資格と星魂を賭けた闘争――<strong>「星戦」</strong>を選びました。</p>
+            </details>
           </section>
 
-          <section id="manual-battle" class="manual-chapter">
-            <div class="manual-chapter-heading">
-              <div><div class="manual-chapter-tag">CHAPTER 07</div><h2>星戦のルール</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/takemikazuchi-chibi-soft-hair-94091bc89bb9.webp" alt="タケミカヅチのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
+          <!-- ===== 2. カード ===== -->
+          <section id="manual-cards" class="pg-section">
+            <div class="pg-section-head"><span class="pg-no">弐</span><h2>カード</h2></div>
+
+            <h3 class="pg-h3">4つの種類</h3>
+            <div class="pg-kinds">
+              <div class="pg-kind kind-kami"><div class="pg-kind-img"><img v-if="manualDemo.kami" :src="cardImageUrl(manualDemo.kami, 320)" alt="" loading="lazy"></div><div class="pg-kind-name">カミ</div><p>あなたの分身。デッキには入らず、最初から場にいる。神技・創世神技を持つ</p></div>
+              <div class="pg-kind kind-legacy"><div class="pg-kind-img"><img v-if="manualDemo.weak" :src="cardImageUrl(manualDemo.weak, 320)" alt="" loading="lazy"></div><div class="pg-kind-name">レガシー</div><p>場に出て戦う。戦闘力で戦い、神攻力でカミを攻撃</p></div>
+              <div class="pg-kind kind-oracle"><div class="pg-kind-img"><img v-if="manualDemo.oracle" :src="cardImageUrl(manualDemo.oracle, 320)" alt="" loading="lazy"></div><div class="pg-kind-name">オラクル</div><p>使うとすぐ効果が出て、墓地へ行く使い切り</p></div>
+              <div class="pg-kind kind-relic"><div class="pg-kind-img"><img v-if="manualDemo.relic" :src="cardImageUrl(manualDemo.relic, 320)" alt="" loading="lazy"></div><div class="pg-kind-name">レリック</div><p>場に置いて、置いている間ずっと効果で支える</p></div>
             </div>
-            <h3>組み合わせ</h3>
-            <p>創世決戦の星戦は、セッション開始時にランダムな組み合わせが決まります。3ラウンドを通して同じ相手とは重複せず、4人全員が一度ずつ対戦します。各ラウンドの対戦相手は星戦画面で確認できます。</p>
-            <div class="manual-callout blue">人間2人＋CPU2人の場合は、人間同士の卓とCPU同士の卓に分かれます。理念構築戦と星紡ぎ戦は参加した2人で1回対戦します。</div>
-            <h3>対戦の準備</h3>
-            <div class="manual-rule-badges"><span class="manual-rule-badge">♥ ライフ：第1戦8／第2戦以降10</span><span class="manual-rule-badge">🔷 天力：0</span><span class="manual-rule-badge">🟢 マナ：0</span><span class="manual-rule-badge">🖐 初期手札：4枚</span></div>
-            <p>先攻・後攻を決め、後攻は戦闘開始前に【社の施し】トークン1枚を獲得します。各自デッキをシャッフルして4枚引き、0～4枚を選んで1回マリガンできます。習合の権利があれば2回行えます。</p>
-            <div class="manual-field-figure" aria-label="実際の対戦画面を使ったフィールド説明">
-              <div class="manual-field-shot">
-                <img src="ui_decorations/manual-battle-field.png" alt="実際の星戦画面。相手側が上、自分側が下に配置されている">
-                <span class="manual-field-pin f1">①</span><span class="manual-field-pin f2">②</span>
-                <span class="manual-field-pin f3">③</span><span class="manual-field-pin f4">④</span>
-                <span class="manual-field-pin f5">⑤</span><span class="manual-field-pin f6">⑥</span>
-                <span class="manual-field-pin f7">⑦</span><span class="manual-field-pin f8">⑧</span>
-                <span class="manual-field-pin f9">⑨</span>
+
+            <h3 class="pg-h3">カードの見方</h3>
+            <div class="pg-figure pg-card-figure">
+              <div class="pg-shot pg-card-shot">
+                <img :src="assetPath('card_images/600/001.webp')" alt="レガシーカードの例" width="600" height="838" loading="lazy" decoding="async">
+                <span class="pg-box tag-right" style="left:4%;top:8.6%;width:13.8%;height:41%"><i>1</i></span>
+                <span class="pg-box" style="left:0%;top:0%;width:16.6%;height:9.6%"><i>2</i></span>
+                <span class="pg-box tag-left-down" style="left:81.5%;top:1.6%;width:16%;height:6.8%"><i>3</i></span>
+                <span class="pg-box" style="left:1.8%;top:51.7%;width:15.6%;height:10%"><i>4</i></span>
+                <span class="pg-box tag-right" style="left:15.6%;top:57.4%;width:41.6%;height:5.4%"><i>5</i></span>
+                <span class="pg-box" style="left:2.4%;top:63%;width:95.2%;height:19.6%"><i>6</i></span>
+                <span class="pg-box" style="left:31.4%;top:89.8%;width:34.2%;height:9%"><i>7</i></span>
+                <span class="pg-box tag-right" style="left:73.8%;top:89.8%;width:24.8%;height:9%"><i>8</i></span>
+                <span class="pg-box" style="left:0.8%;top:93.2%;width:22.4%;height:6.6%"><i>9</i></span>
               </div>
-              <div class="manual-field-legend">
-                <div><b>① 相手の手札</b><br>内容は非公開で、裏面と枚数だけが表示されます。</div>
-                <div><b>② 相手のレリック</b><br>常在／起動効果を持つカード。上限5枚です。</div>
-                <div><b>③ 相手のレガシー</b><br>戦闘・神攻を行うカード。上限7枚です。</div>
-                <div><b>④ 自分のレガシー</b><br>手札からこの領域へドラッグして使用します。上限7枚です。</div>
-                <div><b>⑤ 自分のレリック</b><br>手札からこの領域へドラッグして使用します。上限5枚です。</div>
-                <div><b>⑥ 自分の手札</b><br>エンドフェイズ終了時の上限は8枚です。</div>
-                <div><b>⑦ カミとステータス</b><br>ライフ、天力／封印、カミ名、神技・創世神技を確認します。</div>
-                <div><b>⑧ デッキ／墓地／崩壊</b><br>各領域の枚数を表示。墓地と崩壊はクリックして内容を確認できます。</div>
-                <div><b>⑨ マナとターン</b><br>現在マナ、最大マナ、ターン番号、ターン終了操作を表示します。</div>
+              <ol class="pg-legend">
+                <li><b>名前</b></li>
+                <li><b>コスト</b>出すのに必要なマナ</li>
+                <li><b>ラウンド</b>創世決戦の何回目の選別で出るか</li>
+                <li><b>属性</b>赤・青・黄・緑・紫など</li>
+                <li><b>種類・種族</b>レガシーは忍者・侍・人獣・神使・妖怪・龍のどれか</li>
+                <li><b>効果</b></li>
+                <li><b>戦闘力</b>戦闘で比べる強さ。0以下になると破壊</li>
+                <li><b>神攻力</b>神攻で相手のカミに与えるダメージ</li>
+                <li><b>返還値</b>★の数。創世決戦では星魂になる</li>
+              </ol>
+            </div>
+            <div class="pg-talk">
+              <img class="pg-talk-face" src="tutorial_guide/tutorial-normal-b45df0d641cb.webp" alt="アマテラス" width="88" height="88" loading="lazy" draggable="false">
+              <p class="pg-talk-bubble">左下の★が返還値です。創世決戦ではこれが星魂になるので、強さと一緒に見てくださいね</p>
+            </div>
+            <ul class="pg-list pg-note">
+              <li><b>カードの枠</b>：銀枠のカードは2枚ずつ、金枠のカードは1枚ずつある</li>
+              <li><b>属性</b>：基本の5色のほかに、無属性と、5色すべてを持つ創属性がある</li>
+              <li><b>ジェネシス</b>：創世決戦の深化の刻で手に入る強力な創属性カード</li>
+              <li><b>トークン</b>：カードの効果で出る無属性カード。デッキには入らない</li>
+            </ul>
+          </section>
+
+          <!-- ===== 3. 星戦の遊び方 ===== -->
+          <section id="manual-battle" class="pg-section">
+            <div class="pg-section-head"><span class="pg-no">参</span><h2>星戦の遊び方</h2></div>
+            <p class="pg-p">星戦は1対1の対戦です。どのモードでも同じルールで戦います。</p>
+
+            <h3 class="pg-h3">星戦の勝ち方</h3>
+            <div class="pg-tiles two">
+              <div class="pg-win">
+                <div class="pg-win-icon"><img src="battle_ui/life-flame-17311a2ab05c.webp" alt="ライフ" loading="lazy"></div>
+                <div class="pg-win-title">相手のライフを0にする</div>
+                <p>レガシーの神攻やカードの効果でライフを減らす</p>
+              </div>
+              <div class="pg-win">
+                <div class="pg-win-icon"><img src="battle_ui/deck-icon-54dbb1e93fb1.webp" alt="山札" loading="lazy"></div>
+                <div class="pg-win-title">相手の山札を切らす</div>
+                <p>山札が0枚でカードを引けなくなった方が負け</p>
               </div>
             </div>
-            <h3>ターンの5フェーズ</h3>
-            <div class="manual-flow">
-              <div class="manual-flow-step"><span>1</span><b>ドロー</b>デッキから1枚引く。先攻の第1ターンのみスキップ。</div>
-              <div class="manual-flow-step"><span>2</span><b>スタンバイ</b>自分のレガシーとレリックをすべてアンタップ。</div>
-              <div class="manual-flow-step"><span>3</span><b>マナ</b>マナ最大値を1増やし、マナを最大値まで回復（上限10）。</div>
-              <div class="manual-flow-step"><span>4</span><b>メイン</b>カード使用、戦闘・神攻、効果、神技・創世神技を好きな順で行う。</div>
-              <div class="manual-flow-step"><span>5</span><b>エンド</b>終了時効果を解決し、手札が9枚以上なら8枚になるまで選んで墓地へ送る。</div>
+
+            <h3 class="pg-h3">はじめの状態</h3>
+            <div class="pg-stats">
+              <div class="pg-stat"><img src="battle_ui/life-flame-17311a2ab05c.webp" alt="" loading="lazy"><span>ライフ</span><b>10</b></div>
+              <div class="pg-stat"><img src="battle_ui/tenryoku-magatama-191624bd62e3.webp" alt="" loading="lazy"><span>天力</span><b>0</b></div>
+              <div class="pg-stat"><svg class="pg-mana-star" viewBox="-16 -16 32 32" aria-hidden="true"><path d="M0 -15 L4 -4 L15 0 L4 4 L0 15 L-4 4 L-15 0 L-4 -4 Z"/></svg><span>マナ</span><b>0</b></div>
+              <div class="pg-stat"><span>手札</span><b>4枚</b></div>
             </div>
-            <h3>メインフェイズでできること</h3>
-            <div class="manual-grid">
-              <article class="manual-card"><h3>カードの使用</h3><p>コスト分のマナを支払います。フィールドの上限はレガシー7枚・レリック5枚。オラクルは効果解決後に墓地へ置きます。</p></article>
-              <article class="manual-card"><h3>戦闘</h3><p>アンタップ状態のレガシーをタップし、タップ状態の相手レガシーを攻撃。戦闘力の低い側を破壊し、同値なら双方を破壊します。</p></article>
-              <article class="manual-card"><h3>神攻</h3><p>レガシーをタップして相手カミを攻撃し、その神攻力だけ相手のライフを減らします。</p></article>
-              <article class="manual-card"><h3>効果・神技</h3><p>起動できるカード効果を使用できます。神技と創世神技（そうせいじんぎ）は天力を支払って使います。1ターンにどちらか1回だけ使用できます。創世神技は、戦局を大きく変える必殺技のようなものです。</p></article>
+            <ul class="pg-list">
+              <li>先攻・後攻を決める。後攻は【社の施し】を1枚もらう</li>
+              <li>4枚引いたあと、好きな枚数を1回だけ引き直せる（習合を使ったら2回）</li>
+            </ul>
+
+            <h3 class="pg-h3">画面の見方</h3>
+            <div class="pg-figure pg-field-figure">
+              <div class="pg-shot">
+                <img src="ui_decorations/manual-battle-field-6dc9be7593cb.webp" alt="対戦画面。上が相手、下が自分" width="1600" height="900" loading="lazy" decoding="async">
+                <span class="pg-box" style="left:16.5%;top:1.1%;width:21.75%;height:12.7%"><i>1</i></span>
+                <span class="pg-box" style="left:61%;top:8%;width:15.75%;height:12.9%"><i>2</i></span>
+                <span class="pg-box" style="left:34.4%;top:28.4%;width:31%;height:19.6%"><i>3</i></span>
+                <span class="pg-box" style="left:34.4%;top:50.2%;width:31%;height:19.6%"><i>4</i></span>
+                <span class="pg-box" style="left:30.8%;top:79.2%;width:7.6%;height:12.9%"><i>5</i></span>
+                <span class="pg-box tag-right" style="left:61.4%;top:81.7%;width:21.75%;height:17.9%"><i>6</i></span>
+                <span class="pg-box" style="left:38.9%;top:72.9%;width:22.1%;height:26.8%"><i>7</i></span>
+                <span class="pg-box" style="left:0.5%;top:94.1%;width:13.1%;height:5.3%"><i>8</i></span>
+                <span class="pg-box" style="left:81.1%;top:20.9%;width:18.3%;height:58.6%"><i>9</i></span>
+              </div>
+              <ol class="pg-legend pg-legend-3">
+                <li><b>相手の手札</b>裏向きで枚数だけ見える</li>
+                <li><b>相手のレリック</b>最大5枚</li>
+                <li><b>相手のレガシー</b>最大7枚</li>
+                <li><b>自分のレガシー</b>手札からドラッグして出す。最大7枚</li>
+                <li><b>自分のレリック</b>手札からドラッグして置く。最大5枚</li>
+                <li><b>自分の手札</b>ターンの終わりに8枚まで</li>
+                <li><b>自分のカミ</b>右がライフ、左が天力。下の「神技」で技を使う</li>
+                <li><b>山札・墓地・崩壊</b>枚数。押すと中身を見られる</li>
+                <li><b>マナとターン</b>上が相手、下が自分のマナ。真ん中の円盤でターン終了</li>
+              </ol>
             </div>
-            <div class="manual-callout blue"><strong>リロール：</strong>手札から使用したカードと同じ色のカード1枚を公開すると、効果解決前に1枚引き、公開したカードをデッキへ戻してシャッフルできます。</div>
-            <h3>その他の勝敗ルール</h3>
-            <p><strong>山札切れ：</strong>デッキが0枚の状態でさらに引く必要があると敗北します（【誘】などで一時的に0枚になるだけなら除く）。<br><strong>疲労ダメージ：</strong>11ターン目以降、自分のターン開始時に1、2、3…と増えるダメージを受けます。</p>
+            <div class="pg-talk">
+              <img class="pg-talk-face" src="tutorial_guide/tutorial-serious-cde07e2b7e5a.webp" alt="アマテラス" width="88" height="88" loading="lazy" draggable="false">
+              <p class="pg-talk-bubble">最初は「手札からカードを出す」「右の円盤でターンを終える」の2つだけ覚えれば大丈夫です</p>
+            </div>
+
+            <h3 class="pg-h3">ターンの流れ</h3>
+            <ol class="pg-steps">
+              <li><b>ドロー</b>1枚引く<small>先攻の1ターン目はなし</small></li>
+              <li><b>スタンバイ</b>横向きの自分のカードをすべて縦に戻す</li>
+              <li><b>マナ</b>最大マナ＋1、マナが全回復<small>最大10</small></li>
+              <li><b>メイン</b>カードを出す・戦う・神技を使う</li>
+              <li><b>エンド</b>手札が9枚以上なら8枚まで捨てる</li>
+            </ol>
+
+            <h3 class="pg-h3">メインでできること</h3>
+            <div class="pg-actions">
+              <div class="pg-action">
+                <div class="pg-action-title">カードを出す</div>
+                <div class="pg-diagram">
+                  <div class="pg-dmana"><span class="pg-dmana-stars"><template v-for="n in manualPlayCost"><svg class="pg-mana-star" viewBox="-16 -16 32 32" aria-hidden="true"><path d="M0 -15 L4 -4 L15 0 L4 4 L0 15 L-4 4 L-15 0 L-4 -4 Z"/></svg></template></span><span class="pg-dlabel">マナ {{ manualPlayCost }}</span></div>
+                  <svg class="pg-darrow" viewBox="0 0 60 20" aria-hidden="true"><path d="M2 10h48M42 3l9 7-9 7"/></svg>
+                  <div class="pg-dcard"><img v-if="manualDemo.play" :src="cardImageUrl(manualDemo.play, 320)" alt="" loading="lazy"><span class="pg-dlabel">コスト {{ manualPlayCost }}</span></div>
+                  <svg class="pg-darrow" viewBox="0 0 60 20" aria-hidden="true"><path d="M2 10h48M42 3l9 7-9 7"/></svg>
+                  <div class="pg-dzone">場へ</div>
+                </div>
+                <p>カードの左上のコストと同じ数だけ、マナ（星）を使って出す。オラクルは効果のあと墓地へ、レガシーとレリックは場に残る</p>
+              </div>
+              <div class="pg-action">
+                <div class="pg-action-title">戦闘</div>
+                <div class="pg-diagram">
+                  <div class="pg-dcard"><img v-if="manualDemo.strong" :src="cardImageUrl(manualDemo.strong, 320)" alt="" loading="lazy"><span class="pg-dlabel">戦闘力 {{ manualDemo.strong ? manualDemo.strong.power : '' }}</span></div>
+                  <svg class="pg-darrow" viewBox="0 0 60 20" aria-hidden="true"><path d="M2 10h48M42 3l9 7-9 7"/></svg>
+                  <div class="pg-dcard tapped"><img v-if="manualDemo.weak" :src="cardImageUrl(manualDemo.weak, 320)" alt="" loading="lazy"><span class="pg-dlabel">戦闘力 {{ manualDemo.weak ? manualDemo.weak.power : '' }}</span></div>
+                </div>
+                <p>自分のレガシーを横にして、<b>横向き</b>の相手レガシーを攻撃。戦闘力が低い方が破壊される（同じなら両方）</p>
+              </div>
+              <div class="pg-action">
+                <div class="pg-action-title">神攻</div>
+                <div class="pg-diagram">
+                  <div class="pg-dcard"><img v-if="manualDemo.strong" :src="cardImageUrl(manualDemo.strong, 320)" alt="" loading="lazy"><span class="pg-dlabel">神攻力 {{ manualDemo.strong ? manualDemo.strong.attack : '' }}</span></div>
+                  <svg class="pg-darrow" viewBox="0 0 60 20" aria-hidden="true"><path d="M2 10h48M42 3l9 7-9 7"/></svg>
+                  <div class="pg-dkami"><img src="battle_ui/life-flame-17311a2ab05c.webp" alt="" loading="lazy"><span class="pg-dlabel red">ライフ −{{ manualDemo.strong ? manualDemo.strong.attack : '' }}</span></div>
+                </div>
+                <p>自分のレガシーを横にして相手のカミを攻撃。神攻力の分だけライフが減る</p>
+              </div>
+              <div class="pg-action">
+                <div class="pg-action-title">神技・創世神技</div>
+                <div class="pg-diagram">
+                  <div class="pg-dkami"><img src="battle_ui/tenryoku-magatama-191624bd62e3.webp" alt="" loading="lazy"><span class="pg-dlabel">天力を払う</span></div>
+                  <svg class="pg-darrow" viewBox="0 0 60 20" aria-hidden="true"><path d="M2 10h48M42 3l9 7-9 7"/></svg>
+                  <div class="pg-dcard kami"><img v-if="manualDemo.kami" :src="cardImageUrl(manualDemo.kami, 320)" alt="" loading="lazy"><span class="pg-dlabel">カミの技</span></div>
+                </div>
+                <p>天力を払ってカミの技を使う。1ターンにどちらか1回まで。天力はカミごとの条件（天力トリガー）で増える</p>
+              </div>
+            </div>
+            <div class="pg-talk right">
+              <img class="pg-talk-face" src="tutorial_guide/tutorial-surprised-cae0f1b74dfc.webp" alt="アマテラス" width="88" height="88" loading="lazy" draggable="false">
+              <p class="pg-talk-bubble">戦闘で狙えるのは横向きのレガシーだけ！縦向きのまま守っている相手には、神攻でカミを直接狙いましょう</p>
+            </div>
+
+            <details class="pg-more">
+              <summary>くわしいルール</summary>
+              <ul class="pg-list">
+                <li><b>出たターン</b>：レガシーは出たターンには戦闘・神攻できない（【疾駆】【奇襲】を持つものは除く）</li>
+                <li><b>リロール</b>：手札から使ったカードと同じ色のカードを1枚見せると、効果の前に1枚引ける。見せたカードは山札に戻してシャッフル</li>
+                <li><b>山札切れ</b>：山札が0枚のときにさらに引く必要があると負け（【誘】などで一時的に0枚になるだけなら負けない）</li>
+                <li><b>疲労ダメージ</b>：11ターン目から、自分のターンの始めに1、2、3…と増えるダメージを受ける</li>
+              </ul>
+            </details>
           </section>
 
-          <section id="manual-keywords" class="manual-chapter">
-            <div class="manual-chapter-heading">
-              <div><div class="manual-chapter-tag">CHAPTER 08</div><h2>カード用語・キーワード</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/hinokagutsuchi-chibi-eye-ornament-223149539520.webp" alt="ヒノカグツチのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
+          <!-- ===== 4. モード別の流れ ===== -->
+          <section id="manual-modes" class="pg-section">
+            <div class="pg-section-head"><span class="pg-no">肆</span><h2>モード別の流れ</h2></div>
+
+            <h3 class="pg-h3">創世決戦<small>メインルール・4人・星戦3回</small></h3>
+            <p class="pg-p">4人でカードを選び合ってデッキを作り、星戦を3回行います。最後に星魂がいちばん多い人の勝ちです。</p>
+            <div class="pg-loop" aria-label="創世決戦の進み方">
+              <span class="pg-loop-step">神託の儀</span>
+              <span class="pg-loop-arrow" aria-hidden="true">›</span>
+              <span class="pg-loop-group">
+                <span class="pg-loop-step">選別の儀</span><span class="pg-loop-arrow" aria-hidden="true">›</span>
+                <span class="pg-loop-step">返還</span><span class="pg-loop-arrow" aria-hidden="true">›</span>
+                <span class="pg-loop-step">深化の刻</span><span class="pg-loop-arrow" aria-hidden="true">›</span>
+                <span class="pg-loop-step">星戦</span>
+                <span class="pg-loop-times">3回くり返す</span>
+              </span>
+              <span class="pg-loop-arrow" aria-hidden="true">›</span>
+              <span class="pg-loop-step end">終戦</span>
             </div>
-            <div class="manual-table-wrap"><table class="manual-table">
-              <tbody><tr><th>破壊</th><td>対象のカードをフィールドから墓地へ置きます。</td></tr><tr><th>崩壊</th><td>対象のカードをゲームから取り除き、崩壊エリアへ置きます。</td></tr><tr><th>タップ／アンタップ</th><td>カードを使用済みの横向き状態／使用可能な縦向き状態にします。</td></tr><tr><th>出現時／死亡時</th><td>フィールドに出た時／レガシーがフィールドから墓地へ送られた時に発動します。崩壊では死亡時は発動しません。</td></tr></tbody>
-            </table></div>
-            <div class="manual-keyword-grid">
-              <div class="manual-keyword"><b>【疾駆】</b>出たターンから【戦闘】【神攻】を行えます。</div>
-              <div class="manual-keyword"><b>【奇襲】</b>出たターンから【戦闘】を行えます。</div>
-              <div class="manual-keyword"><b>【死角】</b>【死角】を持たないレガシーは、このレガシーを【戦闘】の攻撃対象に選ぶことができず、【守護】により攻撃先を変更することもできません。</div>
-              <div class="manual-keyword"><b>【守護】</b>相手の【戦闘】または【神攻】宣言時、このレガシーをタップして攻撃先を自身へ変更します。</div>
-              <div class="manual-keyword"><b>【不可侵】</b>相手カードの効果の対象に選ばれません。自分の効果では選べます。</div>
-              <div class="manual-keyword"><b>【呪殺】</b>このレガシーと戦闘したレガシーは、戦闘力に関係なく破壊されます。</div>
-              <div class="manual-keyword"><b>【選定：X】</b>複数の選択肢から、異なるX個の効果を選んで発動します。</div>
-              <div class="manual-keyword"><b>【誘X：条件】</b>デッキから非公開でX枚引き、条件を満たすカードを1枚まで公開して手札へ。残りは好きな順でデッキの下へ戻します。</div>
-              <div class="manual-keyword"><b>【霊視：X】</b>デッキからX枚確認し、確認したカードをX枚まで選んで墓地に置いてもよい。その後、残りを好きな順番でデッキの上に戻します。</div>
-              <div class="manual-keyword"><b>【昇華X】</b>追加でXコストを支払うことで得られる効果です。手札以外から使用された場合は、【昇華】を発動できません。</div>
-              <div class="manual-keyword"><b>【招来：対象】</b>対象の無属性カード（トークン）を場に出します。トークンは手札か墓地へ置かれると崩壊します。</div>
-              <div class="manual-keyword"><b>【補正：X】／【神威：X】</b>そのターン中、戦闘力／神攻力をXだけ上下させます。</div>
+
+            <div class="pg-phase">
+              <img class="pg-phase-shot" src="ui_decorations/manual-genesis-kami-03c0ead30ca9.webp" alt="神託の儀の画面" width="960" height="680" loading="lazy">
+              <div class="pg-phase-text">
+                <div class="pg-phase-title"><span>1</span>神託の儀</div>
+                <ul class="pg-list">
+                  <li>1人ずつ順番に、3柱の候補から自分のカミを1柱選ぶ</li>
+                  <li>カミを押すと、効果と理念を見てから決められる</li>
+                </ul>
+              </div>
             </div>
-            <h3>【進化：条件】</h3>
-            <p>この能力を持つレガシーが出る時、自分の場に条件を満たす属性／種族のレガシー（無属性を除く）がいれば、その上に重ねて出せます。進化せずに出すこともできます。</p>
-            <div class="manual-callout">進化したレガシーは、<strong>【進化中】の効果を使用でき、【疾駆】を持ちます。</strong> 下のレガシーの効果は失われ、タップ状態は引き継ぎます。上のレガシーが破壊・崩壊・手札へ戻された場合、下のレガシーは墓地へ送られます。</div>
+            <div class="pg-phase">
+              <img class="pg-phase-shot" src="ui_decorations/manual-genesis-draft-d157e49e7782.webp" alt="選別の儀の画面" width="1280" height="720" loading="lazy">
+              <div class="pg-phase-text">
+                <div class="pg-phase-title"><span>2</span>選別の儀</div>
+                <ul class="pg-list">
+                  <li>全員にカードの束が配られる</li>
+                  <li>束から1枚取り、残りを隣の人へ回す</li>
+                  <li>回ってきた束からまた1枚。束がなくなるまでくり返す</li>
+                </ul>
+                <div class="manual-table-wrap"><table class="manual-table pg-table">
+                  <thead><tr><th></th><th>束</th><th>集める枚数</th><th>見識を使わない返還</th></tr></thead>
+                  <tbody>
+                    <tr><th>1回目</th><td>10枚束 × 3回</td><td><strong>30枚</strong></td><td><strong>1枚</strong></td></tr>
+                    <tr><th>2回目</th><td>10枚束 × 1回</td><td><strong>10枚</strong></td><td><strong>2枚</strong></td></tr>
+                    <tr><th>3回目</th><td>5枚束 × 1回</td><td><strong>5枚</strong></td><td><strong>2枚</strong></td></tr>
+                  </tbody>
+                </table></div>
+              </div>
+            </div>
+            <div class="pg-phase">
+              <img class="pg-phase-shot" src="ui_decorations/manual-genesis-return-eb3ef4d8e99c.webp" alt="返還の画面" width="960" height="636" loading="lazy">
+              <div class="pg-phase-text">
+                <div class="pg-phase-title"><span>3</span>返還</div>
+                <ul class="pg-list">
+                  <li>選別のあと、上の表の枚数までカードをデッキから外せる</li>
+                  <li>外したカードの返還値は、星魂として残る</li>
+                  <li>強いけれど返還値の低いカード、弱いけれど返還値の高いカード。どれを残すかが腕の見せどころ</li>
+                </ul>
+              </div>
+            </div>
+            <div class="pg-phase">
+              <img class="pg-phase-shot" src="ui_decorations/manual-genesis-deepen-1fec3e79388c.webp" alt="深化の刻の画面" width="960" height="344" loading="lazy">
+              <div class="pg-phase-text">
+                <div class="pg-phase-title"><span>4</span>深化の刻</div>
+                <ul class="pg-list">
+                  <li><b>見識</b>というポイントを使って、星戦の前にデッキを整える</li>
+                  <li>見識は最初に1。星戦のあと、勝った人は1・負けた人は3もらえる（余りは持ち越せる）</li>
+                  <li>使い方は3つ。使わずに「深化を完了」してもよい</li>
+                </ul>
+              </div>
+            </div>
+            <div class="pg-tiles three pg-deepen">
+              <div class="pg-tile dm-reflect"><div class="pg-tile-title">省察<span>見識 1</span></div><p>デッキから1枚選んで外し、その返還値を星魂にする</p></div>
+              <div class="pg-tile dm-fusion"><div class="pg-tile-title">習合<span>見識 2</span></div><p>次の星戦だけ、最初の手札の引き直しが2回になる</p></div>
+              <div class="pg-tile dm-bloom"><div class="pg-tile-title">理の開花<span>見識 3</span></div><p>ジェネシスカード3枚から1枚選んでデッキに加える</p></div>
+            </div>
+            <div class="pg-phase no-shot">
+              <div class="pg-phase-text">
+                <div class="pg-phase-title"><span>5</span>星戦</div>
+                <ul class="pg-list">
+                  <li>2人ずつ2つの卓に分かれて対戦。勝つと星魂が10点増える</li>
+                  <li>対戦相手は始めにランダムで決まり、3回で全員と1回ずつ戦う</li>
+                  <li>CPUを入れて遊ぶときは、人とCPUは別の卓で戦い、順位は人だけで決める</li>
+                </ul>
+              </div>
+            </div>
+            <div class="pg-phase no-shot">
+              <div class="pg-phase-text">
+                <div class="pg-phase-title"><span>6</span>終戦</div>
+                <div class="pg-formula"><span>星戦の勝利<small>1勝10点</small></span><i>＋</i><span>デッキの返還値</span><i>＋</i><span>返還した星魂</span><i>＝</i><span class="total">星魂</span></div>
+                <ul class="pg-list"><li>同点なら勝利数が多い人、それも同じなら直接対決で勝った人が上</li></ul>
+              </div>
+            </div>
+            <div class="pg-talk right">
+              <img class="pg-talk-face" src="tutorial_guide/tutorial-celebrate-793535426f31.webp" alt="アマテラス" width="88" height="88" loading="lazy" draggable="false">
+              <p class="pg-talk-bubble">負けても見識が多くもらえるので、次の深化で巻き返せます。強さを取るか星魂を取るか、悩むのが創世決戦の楽しいところです</p>
+            </div>
+            <div v-if="manualOrochiRevealed" class="manual-callout blue pg-callout"><strong>ヤマタノオロチ専用：</strong>3回目の選別が終わると「終焉龍・ディエスイレ」1枚がデッキに加わる</div>
+
+            <h3 class="pg-h3 pg-h3-gap">理念構築戦<small>2人・星戦1回</small></h3>
+            <ol class="pg-steps">
+              <li><b>部屋に入る</b>オンラインの相手か、CPUと</li>
+              <li><b>デッキを組む</b>35枚とカミ1柱。返還値の合計は50以上</li>
+              <li><b>提出して星戦</b>2人そろったら対戦</li>
+            </ol>
+
+            <h3 class="pg-h3">星紡ぎ戦<small>2人・星戦1回</small></h3>
+            <ol class="pg-steps">
+              <li><b>パックを選ぶ</b>先攻から交互に1パックずつ、1人4パック（1パック12枚）</li>
+              <li><b>カミを選ぶ</b>候補から1柱</li>
+              <li><b>返還</b>48枚から40枚まで減らせる</li>
+              <li><b>星戦</b></li>
+            </ol>
           </section>
 
-          <section id="manual-faq" class="manual-chapter">
-            <div class="manual-chapter-heading">
-              <div><div class="manual-chapter-tag">CHAPTER 09</div><h2>細則（Q&amp;A）</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/omoikane-7f21be1fc0ed.webp" alt="オモイカネのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
-            </div>
-            <div class="manual-qa"><div class="manual-question">【出現時】などの効果が同時に発生した場合、どのような処理順になりますか。</div><div class="manual-answer">同時に発生した効果は、<strong>ターンプレイヤーから好きな順番</strong>で処理してください。</div></div>
-            <div class="manual-qa"><div class="manual-question">傀儡化されたレガシーの【死亡時】効果は、どちらのフィールドで発動しますか。</div><div class="manual-answer">傀儡化したプレイヤー側のフィールドで発動します。手札へ戻す効果を受けた場合は、元々使用していたプレイヤーの手札へ戻ります。</div></div>
-            <div class="manual-qa"><div class="manual-question">デッキや墓地から【進化】を持つレガシーを場に出した時、進化できますか。</div><div class="manual-answer">条件を満たすレガシーがすでにフィールドにいれば進化できます。同時に場へ出るレガシーを進化元にすることはできません。</div></div>
-            <div class="manual-qa"><div class="manual-question">【進化】や【誘】の条件が複数記載されている場合、すべて満たす必要がありますか。</div><div class="manual-answer">どれか1つを満たせば、条件を満たしたものとして扱います。</div></div>
-            <div class="manual-qa"><div class="manual-question">「旅路の終わり」で無属性（トークン）カードを戻して、別のカードを場に出せますか。</div><div class="manual-answer">出せます。手札に加わった無属性カードは即座に崩壊します。</div></div>
-            <div class="manual-qa"><div class="manual-question">「無垢なる信徒・チフユ」と「ヨリシロちゃん」が相手フィールドにいる状態で、「傲慢なる翼の竜人」を昇華せずに出した場合はどうなりますか。</div><div class="manual-answer">竜人の効果で相手レガシー全てに【補正：-1000】を付与します。まずチフユの戦闘力が0になり破壊され、その後チフユの効果を受けられなくなったヨリシロちゃんの戦闘力も0になり、破壊されます。</div></div>
-            <div class="manual-qa"><div class="manual-question">「飛苦無の淑女」の②「自分のターン中1回、【選定】の値を+1してもよい」を、自身の①【出現時】≫【選定：1】に適用できますか。</div><div class="manual-answer">適用できます。</div></div>
-            <div class="manual-qa"><div class="manual-question">フィールドのレガシーへ後から【守護】を付与した場合、アマテラスの天力トリガーは発動しますか。</div><div class="manual-answer">発動しません。</div></div>
-            <div class="manual-qa"><div class="manual-question">マナ最大値が10の状態で、さらにマナ最大値を増やすカードを使用した場合、アメノウズメの天力トリガーは発動しますか。</div><div class="manual-answer">発動します。</div></div>
-            <div class="manual-qa"><div class="manual-question">【誘X：カード】の場合でも、選んだカードを相手に公開する必要がありますか。</div><div class="manual-answer">公開する必要があります。</div></div>
+          <!-- ===== 5. 用語・キーワード ===== -->
+          <section id="manual-keywords" class="pg-section">
+            <div class="pg-section-head"><span class="pg-no">伍</span><h2>用語・キーワード</h2></div>
+            <dl class="pg-dict">
+              <div><dt>破壊</dt><dd>場から墓地へ置く</dd></div>
+              <div><dt>崩壊</dt><dd>ゲームから取り除き、崩壊エリアへ置く</dd></div>
+              <div><dt>タップ／アンタップ</dt><dd>横向き（使用済み）／縦向き（使える）にする</dd></div>
+              <div><dt>出現時／死亡時</dt><dd>場に出たとき／レガシーが場から墓地へ送られたとき。崩壊では死亡時は発動しない</dd></div>
+              <div><dt>【疾駆】</dt><dd>出たターンから【戦闘】【神攻】できる</dd></div>
+              <div><dt>【奇襲】</dt><dd>出たターンから【戦闘】できる</dd></div>
+              <div><dt>【死角】</dt><dd>【死角】を持たないレガシーは、このレガシーを【戦闘】の攻撃対象に選ぶことができず、【守護】により攻撃先を変更することもできません</dd></div>
+              <div><dt>【守護】</dt><dd>相手の【戦闘】【神攻】の宣言時、このレガシーを横にして攻撃先を自分に変える</dd></div>
+              <div><dt>【不可侵】</dt><dd>相手のカードの効果の対象にならない（自分の効果では選べる）</dd></div>
+              <div><dt>【呪殺】</dt><dd>このレガシーと戦闘したレガシーは、戦闘力に関係なく破壊される</dd></div>
+              <div><dt>【選定：X】</dt><dd>いくつかの効果から、違うものをX個選んで使う</dd></div>
+              <div><dt>【誘X：条件】</dt><dd>山札からX枚を見て、条件に合う1枚まで見せて手札へ。残りは好きな順で山札の下へ</dd></div>
+              <div><dt>【霊視：X】</dt><dd>山札からX枚を見て、X枚まで墓地へ置いてよい。残りは好きな順で山札の上へ</dd></div>
+              <div><dt>【昇華X】</dt><dd>追加でXコストを払うと使える効果。手札以外から使ったときは使えない</dd></div>
+              <div><dt>【招来：対象】</dt><dd>トークンを場に出す。トークンは手札か墓地へ行くと崩壊する</dd></div>
+              <div><dt>【補正：X】／【神威：X】</dt><dd>そのターンだけ、戦闘力／神攻力をXだけ増減する</dd></div>
+              <div><dt>【進化：条件】</dt><dd>条件に合う自分のレガシー（無属性を除く）の上に重ねて出せる（重ねずに出してもよい）</dd></div>
+            </dl>
+            <details class="pg-more">
+              <summary>進化のくわしいルール</summary>
+              <ul class="pg-list">
+                <li>進化したレガシーは【進化中】の効果を使え、【疾駆】を持つ</li>
+                <li>下のレガシーの効果はなくなり、タップの状態は引き継ぐ</li>
+                <li>上のレガシーが破壊・崩壊・手札に戻ると、下のレガシーは墓地へ</li>
+              </ul>
+            </details>
           </section>
 
-          <section id="manual-score" class="manual-chapter">
-            <div class="manual-chapter-heading">
-              <div><div class="manual-chapter-tag">CHAPTER 10</div><h2>終戦・星魂の集計</h2></div>
-              <figure class="manual-chapter-mascot"><img src="kami_chibi/tsukuyomi-chibi-7426887ec973.webp" alt="ツクヨミのちびキャラ" loading="lazy" decoding="async" width="136" height="136" draggable="false"></figure>
+          <!-- ===== 6. 細則 ===== -->
+          <section id="manual-faq" class="pg-section">
+            <div class="pg-section-head"><span class="pg-no">陸</span><h2>細則（Q&amp;A）</h2></div>
+            <div class="pg-talk">
+              <img class="pg-talk-face" src="tutorial_guide/tutorial-troubled-5fef15512115.webp" alt="アマテラス" width="88" height="88" loading="lazy" draggable="false">
+              <p class="pg-talk-bubble">細かい処理で迷ったら、気になる質問を押して答えを見てみてください</p>
             </div>
-            <p><strong>星魂 ＝ 星戦の勝利点（1勝につき10）＋ 集めた全カードの返還値</strong>です。デッキに残したカードと、無料返還／省察で星魂に変換したカードをすべて合計します。</p>
-            <p>星魂が最も多いプレイヤーが勝者です。同点なら星戦の勝利数が多いプレイヤー、勝利数も同じなら該当プレイヤー同士の星戦に勝ったプレイヤーが上位です。</p>
+            <details class="pg-qa"><summary>【出現時】などの効果が同時に起きたときの順番は？</summary><p>同時に発生した効果は、<strong>ターンプレイヤーから好きな順番</strong>で処理します。</p></details>
+            <details class="pg-qa"><summary>傀儡化されたレガシーの【死亡時】は、どちらの場で発動する？</summary><p>傀儡化したプレイヤーの場で発動します。手札へ戻す効果を受けたときは、元の持ち主の手札へ戻ります。</p></details>
+            <details class="pg-qa"><summary>山札や墓地から【進化】を持つレガシーを出したとき、進化できる？</summary><p>条件に合うレガシーがすでに場にいれば進化できます。同時に場に出るレガシーを進化元にはできません。</p></details>
+            <details class="pg-qa"><summary>【進化】や【誘】の条件が複数あるとき、全部満たす必要がある？</summary><p>どれか1つを満たせば条件を満たしたことになります。</p></details>
+            <details class="pg-qa"><summary>「旅路の終わり」でトークンを戻して、別のカードを出せる？</summary><p>出せます。手札に加わったトークンはすぐに崩壊します。</p></details>
+            <details class="pg-qa"><summary>相手の場に「無垢なる信徒・チフユ」と「ヨリシロちゃん」がいるとき、「傲慢なる翼の竜人」を昇華せずに出すと？</summary><p>竜人の効果で相手レガシー全てに【補正：-1000】が付きます。まずチフユの戦闘力が0になって破壊され、チフユの効果がなくなったヨリシロちゃんも戦闘力が0になって破壊されます。</p></details>
+            <details class="pg-qa"><summary>「飛苦無の淑女」の②（【選定】の値を+1）を、自分の①【出現時】≫【選定：1】に使える？</summary><p>使えます。</p></details>
+            <details class="pg-qa"><summary>場のレガシーにあとから【守護】を付けたとき、アマテラスの天力トリガーは発動する？</summary><p>発動しません。</p></details>
+            <details class="pg-qa"><summary>最大マナが10のときにさらに最大マナを増やすカードを使うと、アメノウズメの天力トリガーは発動する？</summary><p>発動します。</p></details>
+            <details class="pg-qa"><summary>【誘X：カード】でも、選んだカードを相手に見せる必要がある？</summary><p>見せる必要があります。</p></details>
           </section>
 
-          <!-- カミの一覧と難易度はカミ図鑑と重なるため、ユーザー指定で削除。この章は操作のショートカットだけにした -->
-          <section id="manual-shortcuts" class="manual-chapter">
-            <div class="manual-chapter-tag">CHAPTER 11</div>
-            <h2>操作のショートカット</h2>
-            <div class="manual-table-wrap"><table class="manual-table"><tbody><tr><th>Space / Enter</th><td>ターン終了</td></tr><tr><th>Z</th><td>一手戻る（Undo）</td></tr><tr><th>L</th><td>バトルログを表示</td></tr><tr><th>Q / E</th><td>カーソルを当てたフィールドカードのタップ状態を切り替え</td></tr><tr><th>Esc</th><td>開いているメニュー／モーダルを閉じる</td></tr></tbody></table></div>
+          <!-- ===== 7. 操作 ===== -->
+          <section id="manual-shortcuts" class="pg-section">
+            <div class="pg-section-head"><span class="pg-no">漆</span><h2>操作のショートカット</h2></div>
+            <dl class="pg-dict pg-keys">
+              <div><dt><kbd>Space</kbd><kbd>Enter</kbd></dt><dd>ターン終了</dd></div>
+              <div><dt><kbd>Z</kbd></dt><dd>一手戻る</dd></div>
+              <div><dt><kbd>L</kbd></dt><dd>対戦ログを開く</dd></div>
+              <div><dt><kbd>Q</kbd><kbd>E</kbd></dt><dd>カーソルを当てた場のカードの向きを切り替える</dd></div>
+              <div><dt><kbd>Esc</kbd></dt><dd>開いているメニュー・窓を閉じる</dd></div>
+            </dl>
           </section>
         </main>
       </div>
@@ -12758,10 +13086,10 @@
       <!-- ===== 終戦・集計 ===== -->
       <div v-else-if="gs.view === 'scoring'" class="gm-body gm-scoring">
         <div class="gm-done-title">最終結果</div>
-        <!-- 星魂＝勝利（1勝10）＋デッキの返還値＋返還した星魂。見出しの「＋」「＝」で式を示し、説明文は置かない -->
+        <!-- 星魂＝勝利（1勝10点）＋デッキの返還値＋返還した星魂。見出しの「＋」「＝」で式を示し、説明文は置かない -->
         <table class="gm-score-table">
           <thead>
-            <tr><th>順位</th><th>プレイヤー</th><th>カミ</th><th class="num c-win" title="1勝10">勝利</th><th class="op">＋</th><th class="num c-deck" title="デッキのカードの返還値">デッキ</th><th class="op">＋</th><th class="num c-ret" title="返還した星魂">返還</th><th class="op">＝</th><th class="num c-total">星魂</th></tr>
+            <tr><th>順位</th><th>プレイヤー</th><th>カミ</th><th class="num c-win" title="1勝10点">勝利</th><th class="op">＋</th><th class="num c-deck" title="デッキのカードの返還値">デッキ</th><th class="op">＋</th><th class="num c-ret" title="返還した星魂">返還</th><th class="op">＝</th><th class="num c-total">星魂</th></tr>
           </thead>
           <tbody>
             <tr v-for="row in gsScoreRows" :key="row.seat" :class="{ me: row.isMe, top: row.rank === 1 }">
@@ -17154,6 +17482,28 @@ new Vue({
     gsBattleBothRecorded() {
       const b = this.gsBattle;
       return b.t1Winner != null && b.t2Winner != null;
+    },
+    // プレイガイドの図に使う見本のカード（読み込んだカードから種類ごとに選ぶ）
+    manualDemo() {
+      const cards = (this.allCards || []).filter(c => !c.isToken && c.color !== '創');
+      const legacies = cards.filter(c => c.category === 'レガシー' && Number(c.power) > 0);
+      const weak = legacies.find(c => String(c.no) === '001' || Number(c.no) === 1) || legacies.find(c => Number(c.power) === 1000) || legacies[0] || null;
+      const strong = legacies.find(c => Number(c.power) >= 3000 && Number(c.attack) >= 2 && c !== weak) || legacies.find(c => c !== weak) || null;
+      const kamis = this.allKamiCards || [];
+      // 「カードを出す」の図は、星が1列に並ぶコスト3以下のレガシー（3があれば3）
+      const play = legacies.find(c => Number(c.cost) === 3) || legacies.find(c => Number(c.cost) <= 3 && Number(c.cost) >= 1) || weak;
+      return {
+        weak, strong, play,
+        // 赤ばかりだと「全部赤」と思われるので、オラクルは青・レリックは緑から選ぶ
+        oracle: cards.find(c => c.category === 'オラクル' && c.color === '青') || cards.find(c => c.category === 'オラクル') || null,
+        relic: cards.find(c => c.category === 'レリック' && c.color === '緑') || cards.find(c => c.category === 'レリック') || null,
+        kami: kamis.find(k => String(parseInt(k.no, 10)) === '8') || kamis[0] || null,
+      };
+    },
+    // プレイガイドの「カードを出す」の図：見本のカードのコスト（星を1列に並べるので3以下のカードを使う）
+    manualPlayCost() {
+      const card = this.manualDemo.play;
+      return Math.max(1, Math.min(3, parseInt(card && card.cost, 10) || 1));
     },
     // 自分の卓が決着済みか（決着後は「星戦を始める」を出さない）
     gsMyTableDecided() {

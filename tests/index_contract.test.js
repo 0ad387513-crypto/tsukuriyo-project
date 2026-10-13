@@ -157,21 +157,23 @@ test("play manual is separated from the pick guide and contains the revised rule
   assert.match(html, /10枚束 × 3回[\s\S]*?<strong>30枚<\/strong>/);
   assert.match(html, /10枚束 × 1回[\s\S]*?<strong>10枚<\/strong>/);
   assert.match(html, /5枚束 × 1回[\s\S]*?<strong>5枚<\/strong>/);
-  assert.match(html, /無料返還[\s\S]*?1枚[\s\S]*?2枚[\s\S]*?2枚/);
-  assert.match(html, /習合 ／ 見識2/);
-  assert.match(html, /手札が9枚以上なら8枚になるまで/);
+  assert.match(html, /見識を使わない返還[\s\S]*?1枚[\s\S]*?2枚[\s\S]*?2枚/);
+  assert.match(html, /習合<span>見識 2<\/span>/);
+  assert.match(html, /手札が9枚以上なら8枚まで捨てる/);
   assert.match(html, /理念構築戦[\s\S]*?星紡ぎ戦/);
   assert.match(html, /集めた48枚をそのままデッキ/);
-  assert.match(html, /ui_decorations\/manual-battle-field\.png/);
-  assert.equal((html.match(/manual-card-pin p\d+/g) || []).length, 10);
-  assert.match(html, /セッション開始時にランダムな組み合わせ/);
+  assert.match(html, /ui_decorations\/manual-battle-field-[0-9a-f]{12}\.webp/);
+  // カードと画面の説明は、場所を枠で囲んで角に番号を付ける（カード9か所・画面9か所）
+  assert.equal((html.match(/class="pg-box[" ]/g) || []).length, 18);
+  assert.match(html, /ui_decorations\/manual-genesis-draft-[0-9a-f]{12}\.webp/);
+  assert.match(html, /始めにランダムで決まり、3回で全員と1回ずつ戦う/);
   assert.match(html, /word-break:\s*auto-phrase/);
   assert.match(html, /【死角】を持たないレガシーは、このレガシーを【戦闘】の攻撃対象に選ぶことができず、【守護】により攻撃先を変更することもできません/);
   assert.match(html, /手札以外から使用された場合は、【昇華】を発動することができません/);
   assert.match(html, /同時に発生した効果は、<strong>ターンプレイヤーから好きな順番<\/strong>/);
   // カミの一覧と難易度はカミ図鑑と重なるため、プレイガイドから削除した（ユーザー指定）
   assert.doesNotMatch(html, /<div class="manual-kami-difficulty">/);
-  assert.match(html, /<section id="manual-shortcuts" class="manual-chapter">[\s\S]*?操作のショートカット/);
+  assert.match(html, /<section id="manual-shortcuts" class="pg-section">[\s\S]*?操作のショートカット/);
   assert.doesNotMatch(html, /隠密/);
 });
 
@@ -215,8 +217,10 @@ test("both guides reveal their secret Kami only after explicit confirmation and 
   assert.equal(vm.manualOrochiRevealed, false, 'reopening the pick guide hides spoilers');
   pickClose.call(vm);
   const manual = html.split('<div v-if="manualModalOpen"')[1].split('<!-- ===== ピックガイド')[0];
-  assert.match(manual, /v-if="manualOrochiRevealed"[^>]*class="manual-callout blue"/);
-  assert.equal((manual.match(/class="manual-chapter-mascot"/g) || []).length, 10);
+  assert.match(manual, /v-if="manualOrochiRevealed"[^>]*class="manual-callout blue/);
+  // 目的別の7つの章（はじめに・星戦・カード・モード・用語・細則・操作）。絵文字は使わない
+  assert.equal((manual.match(/class="pg-section"/g) || []).length, 7);
+  assert.doesNotMatch(manual, /[\u{1F300}-\u{1FAFF}\u2694\u2728]/u);
 });
 
 test("battle end phase enforces the eight-card hand limit", () => {
@@ -546,5 +550,5 @@ test("field zones hold up to 7 legacies and 5 relics", () => {
   assert.match(html, /\(me\.relics \|\| \[\]\)\.length >= this\.battleFieldLimit\('relics'\)/, "hand glow and end-turn warnings use the relic limit");
   assert.doesNotMatch(html, /(?:\}|レリック)フィールドには7枚まで配置できます/, "notices show the limit of each zone");
   assert.match(html, /フィールドには、レガシーは7枚まで、レリックは5枚まで置けます。/);
-  assert.match(html, /上限5枚です。/);
+  assert.match(html, /<b>相手のレリック<\/b>最大5枚/);
 });
