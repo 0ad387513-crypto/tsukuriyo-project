@@ -400,7 +400,8 @@ test("pick guide card list sorts by Kami fit and lists poor fits separately", ()
     gsCpuCardTagScore: card => card.fit, gsCpuBaseScore: card => card.base, fullName: card => card.name,
   };
   const isEligible = card => !card.isToken;
-  const tiers = appMethod("pickCardListTiers", "isEligible").call(vm, isEligible);
+  // 計算はカミの番号を受け取る pickGuideTiers にあり、おすすめカード一覧とピックガイドの最優先カードで共用する
+  const tiers = appMethod("pickGuideTiers", "no, isEligible").call(vm, "1", isEligible);
   assert.deepEqual(tiers.map(t => t.key), ["top", "good", "avoid"]);
   assert.equal(tiers[0].cards.length, 5);
   assert.equal(tiers[0].cards[0].no, "1");

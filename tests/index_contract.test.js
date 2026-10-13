@@ -237,9 +237,10 @@ test("pick guide annotates full nickname and card name before shorter aliases", 
   assert.match(html, /\.howto-card-ref\s*\{[\s\S]*?white-space:\s*nowrap/);
 });
 
-test("higanbana corner artwork decorates all three requested screens without blocking UI", () => {
-  assert.equal((html.match(/src="ui_decorations\/higanbana-left\.png"/g) || []).length, 3);
-  assert.equal((html.match(/src="ui_decorations\/higanbana-right\.png"/g) || []).length, 3);
+test("higanbana corner artwork decorates the top, mode and game-room screens without blocking UI", () => {
+  // TOP・モード紹介・創世決戦に加え、星紡ぎ戦・理念構築戦の窓の後ろにも置く（3モードの見た目をそろえる）
+  assert.equal((html.match(/src="ui_decorations\/higanbana-left\.png"/g) || []).length, 5);
+  assert.equal((html.match(/src="ui_decorations\/higanbana-right\.png"/g) || []).length, 5);
   assert.match(html, /\.higanbana-corner\s*\{[\s\S]*?pointer-events:\s*none/);
   assert.match(html, /@media \(max-width:\s*700px\)\s*\{[\s\S]*?\.higanbana-corner\s*\{\s*display:\s*none/);
   assert.match(html, /\.gm-modal\s*\{[\s\S]*?position:\s*relative;\s*z-index:\s*1/);
