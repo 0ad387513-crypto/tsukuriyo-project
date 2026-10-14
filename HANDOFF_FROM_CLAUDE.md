@@ -2148,3 +2148,4 @@
 - ユーザーの指示（方法1：Netlify のデプロイプレビューで共有、Codex の作業中の変更も含める）。.release-worktree の作業中の内容（output/ を除く）をそのまま1つにまとめ、別フォルダ .share-worktree で origin/main（v1.15.476 まで）を合わせた。食い違いは version.js（1.15.499 に）と optimized_assets.json（両方の項目を残す）だけ
 - optimized_assets.json から、git に入らない kami_redesign/（.gitignore 済み）の途中の画像595件の記録を外した（ゲームでは未使用。.release-worktree 側の記録はそのまま）。テストが読む output/ の registry.json 2つは入れた
 - npm test 243件成功。main には入れていない（本番は変わらない）
+- v1.15.500：ダッシュボード（tools/hub/hub.css）で [hidden] を display:none !important に。.badge の inline-block が hidden より強く、共有用URL（メンバー）でも「キジマとして表示中」の札が見えていた（権限の判定 OWNER 自体は正しく false）
