@@ -180,8 +180,8 @@
     }
   }
   const INTERACTIVE = "button, a, input, select, textarea, audio, video, label, summary, [role=button], [contenteditable]";
-  // 画像などの読み込みが終わる（load）のを待たず、ページの骨組みができた時点で準備する（読み込みに時間がかかるページでも、メンバー用のボタンのロックを早く掛ける）
-  setInterval(() => { try { const d = frame.contentDocument; if (d && d.readyState !== "loading" && d.body && d.URL !== "about:blank" && !d.__kjSetup) frame.dispatchEvent(new Event("load")); } catch (e) { /* 別のサイトのページ */ } }, 200);
+  // 画像などの読み込みが終わる（load）のを待たず、ページの中身が出始めた時点で準備する（カードジェネレーターのように読み込みに時間がかかるページでも、メンバー用のボタンのロックを早く掛ける）
+  setInterval(() => { try { const d = frame.contentDocument; if (d && d.head && d.body && d.URL !== "about:blank" && !d.__kjSetup) frame.dispatchEvent(new Event("load")); } catch (e) { /* 別のサイトのページ */ } }, 200);
   frame.addEventListener("load", () => {
     try { doc = frame.contentDocument; } catch (e) { doc = null; }
     if (!doc || doc.__kjSetup) return;
