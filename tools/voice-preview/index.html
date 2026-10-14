@@ -322,11 +322,20 @@
     });
     return box;
   }
+  // 読み方だけの違い（見えない区切り・「漢字（よみ）」・チチウエ→父上など）を除いて、台本と同じ文か（ゲームのカード詳細と同じ直し方）
+  const SPOKEN_SPELLINGS = [["チチウエ", "父上"], ["アニウエ", "兄上"], ["里", "郷"]];
+  function sameAsScript(script, spoken) {
+    const zw = /[\u200B-\u200D\uFEFF\u203F]/g, base = String(script || "").replace(zw, "");
+    let t = String(spoken || "").replace(zw, "").replace(/([\u3005\u4E00-\u9FFF])[（(][\u3041-\u3096\u30A1-\u30FA\u30FC]+[）)]/g, "$1").trim();
+    for (const [said, written] of SPOKEN_SPELLINGS) if (base.includes(written)) t = t.split(said).join(written);
+    return t === base || t === base.replace(/^[（(][^）)]*[）)]/, "");
+  }
   function showLine(it, spoken, orig, label) {
     const d = data.directions[it.ref] || {};
     spoken.textContent = d.text || it.text;
-    orig.textContent = d.text ? "台本の文：" + it.text : "";
-    orig.hidden = !d.text;
+    const differs = !!d.text && !sameAsScript(it.text, d.text);
+    orig.textContent = differs ? "台本の文：" + it.text : "";
+    orig.hidden = !differs;
     label.textContent = describe(it.ref);
   }
   function describe(ref) {
