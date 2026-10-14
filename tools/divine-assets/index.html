@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ツクリヨ カットイン・演出の画像</title>
+<link rel="stylesheet" href="/tools/hub/hub.css">
+<style>
+  /* カミごとに、神技・創世神技で使っている画像（カットイン・目元・演出の素材）を1枚ずつ並べる。画像を押すと、その画像への修正メモを書ける */
+  main.wrap { max-width: 1240px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tabs button { font: 700 14px/1.2 Meiryo, sans-serif; padding: 7px 13px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+  .tabs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .assets { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .asset { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .asset .pic { background: repeating-conic-gradient(#20263a 0 25%, #171c2b 0 50%) 0 0 / 18px 18px; border-radius: 6px; display: grid; place-items: center; min-height: 160px; }
+  .asset img { max-width: 100%; max-height: 360px; display: block; }
+  .asset .nm { font-weight: 700; }
+  .asset .file { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+  .asset a { font-size: 12px; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>カットイン・演出の画像</h1>
+  <p class="muted">神技・創世神技の演出で使っている画像を、カミごとに1枚ずつ確認できます。気になる画像を押すと、その画像への修正メモを書けます（透明な部分は市松模様で表示しています）。</p>
+  <div class="tabs" id="tabs"></div>
+  <div class="assets" id="assets"></div>
+</main>
+<script src="/divine_effects.js"></script>
+<script>
+(() => {
+  "use strict";
+  const NAMES = ["スサノオ", "ヤマトタケル", "オオクニヌシ", "タケミカヅチ", "オモイカネ", "アメノウズメ", "ヒノカグツチ", "アマテラス", "ツクヨミ", "ヤマタノオロチ"];
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  // 画像の役割を、ファイル名から分かる範囲で日本語にする
+  const roleOf = (url, no) => {
+    const f = url.split("/").pop();
+    if (/cutin/.test(f) && /kami_cutin/.test(url)) return "創世神技のカットイン";
+    if (/-open-/.test(f)) return "開眼の演出（目を開いた絵）";
+    if (/-half-/.test(f)) return "開眼の演出（半開きの絵）";
+    if (/awaken/.test(f)) return "開眼の演出";
+    if (/eyes|eye/.test(url)) return "神技のカットイン（目元）";
+    if (/atlas|frames?|poses/.test(f)) return "演出の素材（連続した絵）";
+    if (/dark|mask|crest|fragment/.test(f)) return "覚醒の演出";
+    return "演出の素材";
+  };
+  let current = 1;
+  function render() {
+    const kami = { no: current };
+    const urls = [];
+    try { const eye = divineSkill1EyeUrl(kami); if (eye) urls.push(eye); } catch (e) { /* 目元の絵がないカミ */ }
+    try { for (const u of divineSkillAssetUrls(kami)) if (u && !urls.includes(u)) urls.push(u); } catch (e) { /* 一覧がないとき */ }
+    document.getElementById("assets").replaceChildren(...urls.map((u, i) => {
+      const box = el("section", "asset");
+      const role = roleOf(u, current);
+      box.dataset.label = NAMES[current - 1] + "：" + role + "（" + u.split("/").pop() + "）";
+      const pic = el("div", "pic"); const img = el("img"); img.src = "/" + u.replace(/^\//, ""); img.alt = role; img.loading = "lazy"; pic.append(img);
+      const open = el("a", "", "原寸で開く"); open.href = "/" + u.replace(/^\//, ""); open.target = "_blank"; open.rel = "noopener";
+      box.append(el("div", "nm", role), pic, el("div", "file", u), open);
+      return box;
+    }));
+  }
+  const tabs = document.getElementById("tabs");
+  NAMES.forEach((n, i) => {
+    const b = el("button", "", n); b.type = "button"; b.setAttribute("aria-pressed", String(i + 1 === current));
+    b.addEventListener("click", () => { current = i + 1; for (const x of tabs.children) x.setAttribute("aria-pressed", String(x === b)); render(); });
+    tabs.append(b);
+  });
+  render();
+})();
+</script>
+</body>
+</html>

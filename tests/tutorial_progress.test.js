@@ -120,7 +120,7 @@ test("Orochi's four-seal cut-in uses the voice script line and waits for speech 
     playKamiVoice(card, key) { assert.equal(card, kami); assert.equal(key, 'skill1'); return voice; },
     _battleHoldSpeech(text, audio) { held = { text, audio }; return { timer: null, cancel() { canceled = true; } }; }
   };
-  const running = method('_battleShowOrochiSealFourCutin', 'kami,divineSkillTheme', true).call(vm, kami, () => ({}));
+  const running = method('_battleShowOrochiSealFourCutin', 'kami,divineSkillTheme,divineSkill1EyeUrl', true).call(vm, kami, () => ({}), require('../divine_effects.js').divineSkill1EyeUrl);
   running.then(() => { complete = true; });
   await Promise.resolve();
   assert.equal(vm.battleSkillCloseup.line, line);
@@ -175,7 +175,7 @@ test("skill 1 and skill 2 hold their dialogue until reading and audio finish at 
     const vm={battleAnimationSpeed:speed,_battleEmoteLineFor:()=> 'この台詞を読み終えるまで、カットインを残します。',
       playKamiVoice:()=>voice,_sfxPlay(){},_battleMotionMs:method('_battleMotionMs','ms')};
     const clock=speechClock(vm),theme=require('../divine_effects.js').divineSkillTheme;
-    const using=method('_battleShowSkill'+index+'Closeup','kami,skillName,divineSkillTheme,remoteTransfers=null,writerSide="self",remoteTargets=null',true).call(vm,{no:8},'神技',theme);
+    const using=method('_battleShowSkill'+index+'Closeup','kami,skillName,divineSkillTheme,remoteTransfers=null,writerSide="self",remoteTargets=null,divineSkill1EyeUrl',true).call(vm,{no:8},'神技',theme,null,'self',null,require('../divine_effects.js').divineSkill1EyeUrl);
     clock.advance(20000);await Promise.resolve();
     assert.ok(vm.battleSkillCloseup,'fast and minimal motion must not shorten the spoken dialogue');
     if(index===2)assert.equal(vm.battleSkillCloseup.phase,'portrait');
@@ -1014,24 +1014,25 @@ test("the stolen legacy stays hidden only during its scroll-bound transfer", () 
   assert.equal(style['--transfer-y'],'250px');
 });
 
-test("Susanoo's original cut-in falls back through existing portraits without affecting skill 1", () => {
+test("Susanoo's original cut-in keeps its fallbacks while skill 1 falls back to the current portrait", () => {
   const fallback=method('battleSkillCloseupImgError');
   const vm={battleSkillCloseup:{kami:{no:1},mode:'skill2',fallbackStage:0,imgUrl:'kami_cutin/1.webp'},kamiIllustrationUrl:()=> 'original.png'};
   fallback.call(vm);
   assert.equal(vm.battleSkillCloseup.imgUrl,'kami_cutin/1.png');
   fallback.call(vm);assert.equal(vm.battleSkillCloseup.imgUrl,'original.png');
   vm.battleSkillCloseup={kami:{no:1},mode:'skill1',fallbackStage:0};
-  fallback.call(vm);assert.equal(vm.battleSkillCloseup.imgUrl,'kami_cutin/1.webp');
+  fallback.call(vm);assert.equal(vm.battleSkillCloseup.imgUrl,'original.png');
 });
 
 test("skill 1 preserves the eye cut-in and adds only the background sigil for every Kami", async () => {
   for (let no=1; no<=10; no++) {
     const vm={_battleEmoteLineFor:()=>'',playKamiVoice(){},_battleMotionMs:()=>60000};
-    const using=method('_battleShowSkill1Closeup','kami,skillName,divineSkillTheme',true).call(vm,{no},'神技1',require('../divine_effects.js').divineSkillTheme);
+    const { divineSkillTheme, divineSkill1EyeUrl } = require('../divine_effects.js');
+    const using=method('_battleShowSkill1Closeup','kami,skillName,divineSkillTheme,divineSkill1EyeUrl',true).call(vm,{no},'神技1',divineSkillTheme,divineSkill1EyeUrl);
     assert.equal(vm.battleSkillCloseup.mode,'skill1');
     assert.equal(vm.battleSkillCloseup.effect,undefined);
     assert.equal(vm.battleSkillCloseup.sigil.index,1);
-    assert.equal(vm.battleSkillCloseup.imgUrl,`kami_cutin_eyes/${no}.png`);
+    assert.equal(vm.battleSkillCloseup.imgUrl,divineSkill1EyeUrl({no}));
     clearTimeout(vm._battleSkillCloseupT);vm._battleSkillCloseupResolve();await using;
   }
 });
@@ -1814,4 +1815,19 @@ test("scroll covers include the full corners of rotated and protruding cards fro
     }
     assert.equal(layout.enemy.width,800,'blade coordinates keep the original field dimensions');
   }
+});
+
+test("kami damage voice: 3 or more uses the heavy line, skips KO and never cuts another kami line", () => {
+  const play = method("_battlePlayKamiDamageVoice", "side,amount,life");
+  const calls = [];
+  const kami = { no: "8", isKami: true };
+  const vm = { appView: "battle", battleView: { self: { kami }, opp: { kami: { no: "1" } } }, _kamiVoiceAudio: null, playKamiVoice: (k, key) => calls.push([k.no, key]) };
+  play.call(vm, "self", 1, 9);
+  play.call(vm, "opp", 3, 5);
+  play.call(vm, "self", 4, 0); // 決着は勝敗の台詞に任せる
+  vm._kamiVoiceAudio = { paused: false, ended: false }; // 神技などの台詞が鳴っている
+  play.call(vm, "self", 2, 4);
+  vm._kamiVoiceAudio = null; vm.appView = "top";
+  play.call(vm, "self", 1, 8);
+  assert.deepEqual(calls, [["8", "damage"], ["1", "damage_heavy"]]);
 });

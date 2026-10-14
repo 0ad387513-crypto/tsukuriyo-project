@@ -368,6 +368,119 @@
           }
         }
       }
+    },
+    "devNotes": {
+      ".read": "auth != null",
+      ".indexOn": [
+        "createdAt"
+      ],
+      "$id": {
+        ".write": "auth != null && (data.exists() || newData.child('uid').val() == auth.uid)",
+        ".validate": "newData.hasChildren(['page', 'memo', 'prompt', 'status', 'uid', 'createdAt', 'updatedAt'])",
+        "page": {
+          ".validate": "newData.isString() && newData.val().length <= 200"
+        },
+        "pageTitle": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "target": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
+        "kind": {
+          ".validate": "newData.isString() && newData.val().matches(/^(voice|illust|effect|motion|se|ui|other)$/)"
+        },
+        "memo": {
+          ".validate": "newData.isString() && newData.val().length <= 2000"
+        },
+        "prompt": {
+          ".validate": "newData.isString() && newData.val().length <= 4000"
+        },
+        "result": {
+          ".validate": "newData.isString() && newData.val().length <= 4000"
+        },
+        "assignee": {
+          ".validate": "newData.isString() && newData.val().matches(/^(auto|claude|codex)$/)"
+        },
+        "status": {
+          ".validate": "newData.isString() && newData.val().matches(/^(memo|wait|approved|doing|review|done|rejected)$/)"
+        },
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 30"
+        },
+        "uid": {
+          ".validate": "newData.isString() && (!data.exists() || newData.val() == data.val())"
+        },
+        "createdAt": {
+          ".validate": "newData.isString() && newData.val().length <= 40 && (!data.exists() || newData.val() == data.val())"
+        },
+        "updatedAt": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "$other": {
+          ".validate": false
+        },
+        "proposal": {
+          ".validate": "newData.hasChildren()",
+          "color": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "type": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "cost": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "power": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "attack": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "round": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "ret": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "text": {
+            ".validate": "newData.isString() && newData.val().length <= 2000"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "devTasks": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null",
+        ".validate": "newData.hasChildren(['title', 'status'])",
+        "title": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
+        "group": {
+          ".validate": "newData.isString() && newData.val().length <= 30"
+        },
+        "status": {
+          ".validate": "newData.isString() && newData.val().matches(/^(todo|doing|review|done)$/)"
+        },
+        "lead": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "note": {
+          ".validate": "newData.isString() && newData.val().length <= 1000"
+        },
+        "order": {
+          ".validate": "newData.isNumber()"
+        },
+        "updatedAt": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     }
   }
 }

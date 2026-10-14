@@ -355,26 +355,31 @@
 .orochi-void {position:absolute;inset:0;background:#010003}
 .orochi-blood-mist {position:absolute;inset:0;background:radial-gradient(ellipse at 60% 45%,#9e09241f,transparent 65%)}
 .orochi-forbidden-flash {display:none}
-.orochi-dark-art {position:absolute;left:50%;top:50%;width:min(100vw,177.778vh);aspect-ratio:16/9;translate:-50% -50%;z-index:2}
+.orochi-dark-art {position:absolute;left:50%;top:50%;width:min(100vw,177.778vh);aspect-ratio:16/9;translate:-50% -50%;z-index:2;transform-origin:50% 43%;animation:orochiAwakeningCamera var(--fx-duration) linear both}
 .orochi-dark-portrait,.orochi-dark-mask,.orochi-mask-fragment {position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
 .orochi-dark-portrait {animation:orochiReveal var(--fx-duration) linear both}
 .orochi-dark-shroud {position:absolute;inset:0;background:#010003;mask-image:radial-gradient(ellipse 20% 45% at 50% 54%,transparent 54%,#000 88%);animation:orochiDragonReveal var(--fx-duration) linear both}
 @keyframes orochiDragonReveal {0%,72%{opacity:1} 92%,100%{opacity:0}}
-.orochi-dark-mask-stage {position:absolute;left:41%;top:19%;width:18%;aspect-ratio:1}
-.orochi-dark-mask {animation:orochiMaskedFade var(--fx-duration) linear both}
-.orochi-mask-fragment {z-index:3;transform-origin:50% 50%;animation:orochiMaskBreak var(--fx-duration) ease-in both}
-.orochi-mask-cracks {position:absolute;inset:0;width:100%;height:100%;z-index:4;fill:none;stroke:#eeb6ad;stroke-width:.45;stroke-linejoin:round;stroke-linecap:round;pointer-events:none;animation:orochiCracksFade var(--fx-duration) linear both}
+.orochi-dark-mask-stage {position:absolute;left:41%;top:25.5%;width:18%;aspect-ratio:1.16;rotate:-3deg}
+.orochi-dark-mask {animation:orochiMaskedFade var(--fx-duration) linear both,orochiMaskPressure var(--fx-duration) linear both}
+.orochi-mask-fragment {z-index:3;transform-origin:51% 52%;animation:orochiMaskBreak var(--fx-duration) linear both;animation-delay:calc(var(--fragment-order)*7ms)}
+.orochi-mask-cracks {position:absolute;inset:0;width:100%;height:100%;z-index:4;fill:none;stroke:#ffe9df;stroke-width:.32;stroke-linejoin:miter;stroke-linecap:butt;filter:drop-shadow(0 0 2px #ed244f);pointer-events:none;animation:orochiCracksFade var(--fx-duration) linear both}
 .orochi-mask-cracks path {stroke-dasharray:1;stroke-dashoffset:1;animation:orochiCrackFirst var(--fx-duration) linear both}
 .orochi-mask-cracks .crack-second {animation-name:orochiCrackSecond}
 .orochi-mask-cracks .crack-third {animation-name:orochiCrackThird}
 .orochi-roar-wave {position:absolute;left:60%;top:43.5%;width:24%;aspect-ratio:1;translate:-50% -50%;border:2px solid #d9354244;border-radius:50%;animation:fx-orochi-roar var(--fx-duration) ease-out both}
 @keyframes orochiMaskedFade {0%,43%{opacity:1} 45%,100%{opacity:0}}
-@keyframes orochiReveal {0%,40%{opacity:0} 60%,100%{opacity:1}}
-@keyframes orochiMaskBreak {0%,43%{opacity:1;translate:0 0;rotate:0deg} 47%{opacity:1;translate:calc(var(--fragment-x)*.08) calc(var(--fragment-y)*.08);rotate:calc(var(--fragment-turn)*.15)} 67%,100%{opacity:0;translate:var(--fragment-x) var(--fragment-y);rotate:var(--fragment-turn)}}
-@keyframes orochiCrackFirst {0%,8%{stroke-dashoffset:1} 25%,100%{stroke-dashoffset:0}}
-@keyframes orochiCrackSecond {0%,20%{stroke-dashoffset:1} 35%,100%{stroke-dashoffset:0}}
-@keyframes orochiCrackThird {0%,31%{stroke-dashoffset:1} 43%,100%{stroke-dashoffset:0}}
-@keyframes orochiCracksFade {0%,43%{opacity:1} 46%,100%{opacity:0}}
+@keyframes orochiReveal {0%,10%{opacity:0} 18%,38%{opacity:.22} 44%{opacity:.35} 60%,100%{opacity:1}}
+@keyframes orochiAwakeningCamera {0%{scale:1.9} 40%{scale:2.08} 44%{scale:2.1} 46%{scale:2.04;animation-timing-function:cubic-bezier(.18,.65,.3,1)} 76%,100%{scale:1}}
+@keyframes orochiMaskPressure {0%,33%{filter:brightness(1);scale:1} 40%{filter:brightness(1.18);scale:1.018} 43%,100%{filter:brightness(1);scale:1}}
+@keyframes orochiMaskBreak {0%,43%{opacity:1;translate:0 0;rotate:0deg;scale:1} 44%{opacity:1;translate:calc(var(--fragment-x)*-.018) calc(var(--fragment-y)*-.018);rotate:0deg;scale:.99;animation-timing-function:cubic-bezier(.08,.72,.15,1)} 59%{opacity:.9;translate:var(--fragment-x) var(--fragment-y);rotate:var(--fragment-turn);scale:.75} 71%,100%{opacity:0;translate:calc(var(--fragment-x)*1.3) calc(var(--fragment-y)*1.5);rotate:calc(var(--fragment-turn)*1.5);scale:.55}}
+@keyframes orochiCrackFirst {0%,16%{stroke-dashoffset:1} 22%,100%{stroke-dashoffset:0}}
+@keyframes orochiCrackSecond {0%,23%{stroke-dashoffset:1} 28%,100%{stroke-dashoffset:0}}
+@keyframes orochiCrackThird {0%,29%{stroke-dashoffset:1} 35%,100%{stroke-dashoffset:0}}
+@keyframes orochiCracksFade {0%,15%{opacity:0} 17%,40%{opacity:.8} 43%{opacity:1} 46%,100%{opacity:0}}
+/* 仮面の範囲内だけ光を溜め、割れる一瞬に薄い衝撃を広げる。 */
+.orochi-dark-mask-stage:after {content:'';position:absolute;inset:-25%;z-index:5;pointer-events:none;background:radial-gradient(ellipse,#ffe3dfcc 0%,#ef244b66 12%,#ba093922 35%,transparent 65%);opacity:0;animation:orochiFracturePulse var(--fx-duration) linear both}
+@keyframes orochiFracturePulse {0%,41%{opacity:0;scale:.2} 43%{opacity:.18;scale:.3} 44%{opacity:.8;scale:.55;animation-timing-function:ease-out} 48%{opacity:.15;scale:1.15} 54%,100%{opacity:0;scale:1.6}}
 @keyframes fx-orochi-roar {0%,80%{opacity:0;scale:.3} 83%{opacity:.35;scale:.5} 95%,100%{opacity:0;scale:3}}
 .orochi-seal-arrival {position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden}
 .battle-skill-closeup-overlay.orochi-seal-arrival-mode {background:transparent}
@@ -385,6 +390,7 @@
 @keyframes fx-orochi-crest-arrive {0%,51%{opacity:0;transform:translate(-50%,-50%) translate(var(--arrival-x),var(--arrival-y)) scale(var(--arrival-scale));border-color:transparent;background:transparent} 58%,66%{opacity:1;transform:translate(-50%,-50%) translate(var(--arrival-x),var(--arrival-y)) scale(var(--arrival-scale));border-color:transparent;background:transparent} 95%,100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 .divine-dragon ~ .divine-cinematic-title,.divine-dragon ~ .divine-effect-caption {display:none}
 @media(prefers-reduced-motion:reduce){
+ .orochi-dark-art {animation:none;scale:1}
  .spirit-volley-blade,.spirit-rain-blade:after,.summon-orb-mote,.summon-light-orb,.summon-morph-halo,.resolve-blade-current,.resolve-storm-burst,.resolve-storm-spark,.orochi-dark-mask-stage,.orochi-mask-fragment,.orochi-mask-cracks,.orochi-roar-wave,.orochi-seal-return {display:none}
  .spirit-rain-blade {animation:none;transform:scale(var(--blade-scale));opacity:.7}
  .summon-animal-form,.orochi-dark-portrait {animation:none;opacity:1;filter:none}
@@ -556,7 +562,7 @@
 .susanoo-eye-light {display:none}
 @media(prefers-reduced-motion:reduce){.susanoo-awakening-eyes.eyes-half{display:none}}
 
-.orochi-mask-cracks {mask-image:url('divine_assets/orochi-frontal-mask-f3b0b91b92a9.webp');mask-size:100% 100%;mask-repeat:no-repeat}
+.orochi-mask-cracks {mask-image:url('divine_assets/orochi-partial-mask-1e19308af08b.webp');mask-size:100% 100%;mask-repeat:no-repeat}
 
 @media(max-width:600px){.susanoo-awakening-camera{animation-name:susanooFaceApproachNarrow}}
 @keyframes susanooFaceApproachNarrow {0%{transform:scale(1)} 23%,100%{transform:scale(1.6)}}

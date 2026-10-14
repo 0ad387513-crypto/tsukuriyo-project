@@ -24,6 +24,26 @@ const DIVINE_SKILL_CUTINS = Object.freeze({
   "9": "kami_cutin/tsukuyomi-hand-B-5451adc68469.webp",
   "10": "kami_cutin/orochi-no-paper-6d3cd5f796d0.webp"
 });
+const DIVINE_SKILL1_EYES = Object.freeze({
+  "1": "kami_cutin_eyes/redesign/susanoo-5455bb4d3449.webp",
+  "2": "kami_cutin_eyes/redesign/yamato-takeru-46cae4b6c177.webp",
+  "3": "kami_cutin_eyes/redesign/okuninushi-20aae46bb33a.webp",
+  "4": "kami_cutin_eyes/redesign/takemikazuchi-51d31e402bfe.webp",
+  "5": "kami_cutin_eyes/redesign/omoikane-2eb36bc92dc1.webp",
+  "6": "kami_cutin_eyes/redesign/amenouzume-052ed499325a.webp",
+  "7": "kami_cutin_eyes/redesign/hinokagutsuchi-0a77fe747a89.webp",
+  "8": "kami_cutin_eyes/redesign/amaterasu-ceb522a53438.webp",
+  "9": "kami_cutin_eyes/redesign/tsukuyomi-f6ab915aec44.webp",
+  "10": "kami_cutin_eyes/redesign/orochi-four-seals-5d09ea15496b.webp"
+});
+function divineSkill1EyeUrl(kami) {
+  return DIVINE_SKILL1_EYES[String(kami && kami.no)] || null;
+}
+// 封印解除後の盤面だけ素顔へ切り替える。共有・巻き戻しにも同じ封印状態を使う。
+function divineBattlePortrait(kami, seal) {
+  if (!kami || String(kami.no) !== "10" || seal == null || seal === '' || Number(seal) !== 0) return null;
+  return { image: DIVINE_SKILL_CUTINS["10"], focus: [0.595, 0.43], aspect: 900 / 1600, zoom: 2.2 };
+}
 const DIVINE_SKILL_AWAKENINGS = Object.freeze({
   '1': 'kami_cutin/susanoo-open-8c6af90cd364.webp',
 });
@@ -51,7 +71,7 @@ const DIVINE_OROCHI_UNIFIED_SCENE = 'kami_cutin/orochi-no-paper-6d3cd5f796d0.web
 const DIVINE_OROCHI_MASKED_SCENE = 'kami_cutin/orochi-masked-e0aa2b8d2d70.webp';
 const DIVINE_OROCHI_MASK_OVERLAY = 'kami_cutin/orochi-mask-overlay-41e4332590d0.webp';
 const DIVINE_OROCHI_DARK_PORTRAIT = 'divine_assets/orochi-eight-expressions-deccd174b69e.webp';
-const DIVINE_OROCHI_DARK_MASK = 'divine_assets/orochi-frontal-mask-f3b0b91b92a9.webp';
+const DIVINE_OROCHI_DARK_MASK = 'divine_assets/orochi-partial-mask-1e19308af08b.webp';
 const DIVINE_OROCHI_MASK_CREST = 'divine_assets/orochi-mask-crest-58ac728c565c.webp';
 const DIVINE_FIELD_SCROLL = 'divine_assets/omoikane-cover-scroll-716871aa6baa.webp';
 const DIVINE_SPIRIT_OWL = 'divine_assets/okuninushi-spirit-owl-c314c28c139c.webp';
@@ -146,12 +166,22 @@ function divineBeastManifestations() {
   ].map((beast,i)=>Object.assign({},beast,{style:{left:beast.x+'%',top:beast.y+'%','--summon-color':beast.color,'--summon-start':i*.11,'--summon-span':.4,'--animal-cell':(i*100/3)+'%'},artStyle:beast.name==='owl'?{backgroundImage:"url('"+DIVINE_SPIRIT_OWL+"')",backgroundPosition:'center',backgroundSize:'contain'}:{}}));
 }
 function divineOrochiMaskFragments() {
-  const vertices = [[0,0],[50,0],[100,0],[100,50],[100,100],[50,100],[0,100],[0,50]];
-  const center = [50,50];
-  return vertices.map((p,i)=>{
-    const q=vertices[(i+1)%vertices.length], angle=(i-2)*Math.PI/4;
-    return {clipPath:'polygon('+[center,p,q].map(v=>v[0]+'% '+v[1]+'%').join(',')+')',
-      '--fragment-x':(Math.cos(angle)*180)+'px','--fragment-y':(Math.sin(angle)*145)+'px',
+  // 同じ折れた境界を共有する、不揃いな八つの破片。放射状の星形にはしない。
+  const pieces = [
+    [[0,0],[48,0],[44,21],[51,38],[29,42],[0,28]],
+    [[48,0],[100,0],[100,30],[74,36],[62,27],[51,38],[44,21]],
+    [[0,28],[29,42],[25,57],[0,68]],
+    [[29,42],[51,38],[57,52],[48,64],[25,57]],
+    [[51,38],[62,27],[74,36],[100,30],[100,67],[75,60],[57,52]],
+    [[0,68],[25,57],[48,64],[42,82],[53,100],[0,100]],
+    [[48,64],[57,52],[75,60],[72,78],[82,100],[53,100],[42,82]],
+    [[75,60],[100,67],[100,100],[82,100],[72,78]],
+  ];
+  return pieces.map((boundary,i)=>{
+    const center=boundary.reduce((a,p)=>[a[0]+p[0]/boundary.length,a[1]+p[1]/boundary.length],[0,0]);
+    const angle=Math.atan2(center[1]-52,center[0]-51);
+    return {clipPath:'polygon('+boundary.map(v=>v[0]+'% '+v[1]+'%').join(',')+')',
+      '--fragment-x':(Math.cos(angle)*(160+i%3*32))+'px','--fragment-y':(Math.sin(angle)*(125+i%3*27))+'px',
       '--fragment-turn':((i%2?1:-1)*(12+i*4))+'deg','--fragment-order':i};
   });
 }
@@ -426,9 +456,9 @@ if (typeof Vue !== 'undefined') {
               <img class="orochi-dark-mask" :src="orochiDarkMask" alt="">
               <img v-for="(fragment,i) in orochiFragments" :key="'fragment'+i" class="orochi-mask-fragment" :style="fragment" :src="orochiDarkMask" alt="">
               <svg class="orochi-mask-cracks" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                <path class="crack-first" pathLength="1" d="M48 15 L52 28 L47 39 L53 52 L49 70 L53 96"/>
-                <path class="crack-second" pathLength="1" d="M16 47 L33 49 L53 52 L67 46 L83 51"/>
-                <path class="crack-third" pathLength="1" d="M25 78 L38 64 L53 52 L64 67 L75 82"/>
+                <path class="crack-first" pathLength="1" d="M48 0 L44 21 L51 38 L57 52 L48 64 L42 82 L53 100"/>
+                <path class="crack-second" pathLength="1" d="M51 38 L29 42 L0 28 M57 52 L75 60 L100 67 M51 38 L62 27 L74 36 L100 30"/>
+                <path class="crack-third" pathLength="1" d="M29 42 L25 57 L0 68 M25 57 L48 64 M75 60 L72 78 L82 100"/>
               </svg>
             </div>
           </div>
@@ -439,4 +469,4 @@ if (typeof Vue !== 'undefined') {
     </div>`,
   });
 }
-if (typeof module !== 'undefined') module.exports = { DIVINE_OROCHI_DARK_PORTRAIT, DIVINE_OROCHI_DARK_MASK, divineOrochiMaskFragments, DIVINE_OROCHI_MASKED_SCENE, DIVINE_OROCHI_MASK_OVERLAY, DIVINE_OROCHI_MASK_CREST, DIVINE_FIELD_SCROLL, DIVINE_SPIRIT_OWL, divineFlameClawLayout, DIVINE_HINO_RED_SLASH, DIVINE_HINO_FIRE_WALL_FRAMES, DIVINE_OROCHI_UNIFIED_SCENE, DIVINE_UZUME_FAN_FRAMES, DIVINE_UZUME_HAGOROMO_POSES, divineUzumeSpiralPetalStyle, divineUzumeHagoromoPoseStyle, DIVINE_SKILL_THEMES, DIVINE_SKILL_CUTINS, DIVINE_SKILL_AWAKENINGS, DIVINE_SKILL_AWAKENING_FRAMES, divineSkillTheme, divineSkillAssetUrls, DIVINE_SPRITES, divineSpriteStyle, divineTransferStyle, divineBladeVolley, divineThunderBranches, divineFieldScrolls, divineThunderSwordStyle, divineSusanooSwordStyle, divineOrochiSealArrivalStyles, divineOrochiSealMarkStyle, divineBeastManifestations };
+if (typeof module !== 'undefined') module.exports = { DIVINE_SKILL1_EYES, divineSkill1EyeUrl, divineBattlePortrait, DIVINE_OROCHI_DARK_PORTRAIT, DIVINE_OROCHI_DARK_MASK, divineOrochiMaskFragments, DIVINE_OROCHI_MASKED_SCENE, DIVINE_OROCHI_MASK_OVERLAY, DIVINE_OROCHI_MASK_CREST, DIVINE_FIELD_SCROLL, DIVINE_SPIRIT_OWL, divineFlameClawLayout, DIVINE_HINO_RED_SLASH, DIVINE_HINO_FIRE_WALL_FRAMES, DIVINE_OROCHI_UNIFIED_SCENE, DIVINE_UZUME_FAN_FRAMES, DIVINE_UZUME_HAGOROMO_POSES, divineUzumeSpiralPetalStyle, divineUzumeHagoromoPoseStyle, DIVINE_SKILL_THEMES, DIVINE_SKILL_CUTINS, DIVINE_SKILL_AWAKENINGS, DIVINE_SKILL_AWAKENING_FRAMES, divineSkillTheme, divineSkillAssetUrls, DIVINE_SPRITES, divineSpriteStyle, divineTransferStyle, divineBladeVolley, divineThunderBranches, divineFieldScrolls, divineThunderSwordStyle, divineSusanooSwordStyle, divineOrochiSealArrivalStyles, divineOrochiSealMarkStyle, divineBeastManifestations };

@@ -8444,7 +8444,8 @@
 <link rel="preload" as="image" href="genesis_story/01-five-regions.webp">
 <link rel="preload" as="image" href="top_mode_icons/construct2p-style-9f261d899256.webp" fetchpriority="high">
 <link rel="preload" as="image" href="top_mode_icons/shield2p-menu-63550a24f4eb.webp" fetchpriority="high">
-<link rel="stylesheet" href="divine_effects.css?v=20261011-orochi-eight">
+<link rel="stylesheet" href="divine_effects.css?v=20261011-orochi-fracture">
+<link rel="stylesheet" href="kami_motion.css?v=20261014-pain-environments-v498">
 </head>
 <body>
 <div id="app-loading" role="status" aria-live="polite">
@@ -11344,12 +11345,14 @@
               <!-- 中央：カミ（X軸基準） -->
               <div class="kami-portrait"
                    :class="['kami-tier-' + battleOpponentSkillTone, { 'orochi-awakened': battleViewIsOrochi('opp') && battleView.opp.seal === 0, 'battle-target-kami': battleCanFieldDragToAttackTargets, 'kami-shattering': battleView.result && battleView.result.outcome === 'win' }]"
-                   :style="battleView.opp.kami && kamiIllustrationUrl(battleView.opp.kami) ? Object.assign({ backgroundImage: 'url(' + kamiIllustrationUrl(battleView.opp.kami) + ')' }, kamiPortraitFocusStyle(battleView.opp.kami)) : {}"
+                   :style="battleKamiPortraitStyle('opp')"
                    @click="battleOpponentKamiClick"
                    @dragover.prevent="battleUpdateFieldAttackTarget($event)"
                    @drop.prevent="battleFieldDragEnd($event)"
                    @mouseenter="battleOpponentKamiHover($event)"
                    @mouseleave="hideCardHover">
+                <kami-motion v-if="kamiMotionAvailable(battleView.opp.kami,'opp')" :kami-no="battleView.opp.kami.no"
+                             :crop="kamiMotionCrop(battleView.opp.kami)" :variant="kamiMotionVariant('opp')" :speed="battleAnimationSpeed" :reduced="_battleReducedMotion()" :idle-only="false" :event="kamiMotionDamageEvent('opp')" :load-image="_assetImage"></kami-motion>
                 <div v-if="!battleView.opp.kami" class="kami-placeholder">カミ(相手)</div>
                 <div v-else-if="!hasKamiIllustration(battleView.opp.kami)" class="kami-illust-missing">イラスト未登録</div>
                 <div v-if="battleView.opp.graveyardEvolutionEnabled && battleView.opp.kami && String(battleView.opp.kami.no) === '1'" class="kami-susanoo-mark kami-susanoo-mark-opp" :class="{'susanoo-mark-pending':battleSusanooMarkPending('opp')}" tabindex="0" role="button"
@@ -11525,13 +11528,15 @@
               <!-- 中央：カミ（X軸基準、神技段階で枠色変化） -->
               <div class="kami-portrait"
                    :class="['kami-tier-' + battleSkillTone, { 'orochi-awakened': battleViewIsOrochi('self') && battleView.self.seal === 0, 'kami-shattering': battleView.result && battleView.result.outcome === 'loss' }]"
-                   :style="battleView.self.kami && kamiIllustrationUrl(battleView.self.kami) ? Object.assign({ backgroundImage: 'url(' + kamiIllustrationUrl(battleView.self.kami) + ')' }, kamiPortraitFocusStyle(battleView.self.kami)) : {}"
+                   :style="battleKamiPortraitStyle('self')"
                    @click="battleSelfKamiClick"
                    @mousedown="battleEmoteDragStart"
                    @touchstart="battleEmoteDragStart"
                    @contextmenu.prevent="battleEmoteContextMenu"
                    @mouseenter="battleView.self.kami && showCardHover(battleView.self.kami, $event)"
                    @mouseleave="hideCardHover">
+                <kami-motion v-if="kamiMotionAvailable(battleView.self.kami,'self')" :kami-no="battleView.self.kami.no"
+                             :crop="kamiMotionCrop(battleView.self.kami)" :variant="kamiMotionVariant('self')" :speed="battleAnimationSpeed" :reduced="_battleReducedMotion()" :idle-only="false" :event="kamiMotionDamageEvent('self')" :load-image="_assetImage"></kami-motion>
                 <div v-if="!battleView.self.kami" class="kami-placeholder">カミ</div>
                 <div v-else-if="!hasKamiIllustration(battleView.self.kami)" class="kami-illust-missing">イラスト未登録</div>
                 <div v-if="battleView.self.graveyardEvolutionEnabled && battleView.self.kami && String(battleView.self.kami.no) === '1'" class="kami-susanoo-mark" :class="{'susanoo-mark-pending':battleSusanooMarkPending('self')}" tabindex="0" role="button"
@@ -13684,7 +13689,8 @@
 <script src="asset_hashes.js"></script>
 <script src="field_card_art.js?v=20261010"></script>
 <script src="card_voice_core.js"></script>
-<script src="divine_effects.js?v=20261011-orochi-expressions"></script>
+<script src="divine_effects.js?v=20261011-skill1-eyes"></script>
+<script src="kami_motion.js?v=20261014-pain-environments-v498"></script>
 <script src="firebase.js"></script>
 <script src="sync_core.js"></script>
 <script src="pack_generator.js"></script>
@@ -20994,7 +21000,7 @@ new Vue({
     // カミの神技・創世神技の演出素材の一覧（実際に登場するカミの分だけ先読みするため）
     _kamiVisualUrls(kami) {
       if (!kami || !/^(?:[1-9]|10)$/.test(String(kami.no))) return [];
-      return [`kami_cutin/${kami.no}.webp`, `kami_cutin_eyes/${kami.no}.png`, ...divineSkillAssetUrls(kami), KAMI_EMOTE_ICONS[String(kami.no)]].filter(Boolean);
+      return [`kami_cutin/${kami.no}.webp`, divineSkill1EyeUrl(kami), ...divineSkillAssetUrls(kami), KAMI_EMOTE_ICONS[String(kami.no)], ...kamiMotionUrls(kami.no)].filter(Boolean);
     },
     /* 画像の読み込み係。画面に今すぐ必要な画像（ロード画面・ピック中の束）を先に、4本ずつ読む。
        裏で用意しておく画像（カミの演出素材・ドラフトで出うるカード）は、今すぐ必要な画像が無いときだけ1本ずつ読み、
@@ -22599,6 +22605,7 @@ new Vue({
       const cur = this.battleStatDisplay[dispKey];
       // 実際の変更前の値を使い、カウント途中の値から誤った増減を算出しない。
       if (Number.isFinite(previous) && to !== previous) this._battlePushStatPop(dispKey, to - previous);
+      if (Number.isFinite(previous) && to < previous && /^(self|opp)Life$/.test(dispKey) && typeof this._battlePlayKamiDamageVoice === 'function') this._battlePlayKamiDamageVoice(dispKey.slice(0, -4), previous - to, to);
       if (typeof this._battleReducedMotion === 'function' && this._battleReducedMotion()) {
         const seq = (this._battleStatTweenSeq = this._battleStatTweenSeq || {});
         seq[dispKey] = (seq[dispKey] || 0) + 1;
@@ -22620,6 +22627,16 @@ new Vue({
         if (t < 1) requestAnimationFrame(step);
       };
       requestAnimationFrame(step);
+    },
+    /* カミのライフが減ったときのボイス（3以上は大ダメージ。カミの動きと同じ区切り）。
+       決着（ライフ0）は勝敗の台詞に任せ、ほかのカミの台詞（神技・エモートなど）が鳴っている間は割り込まない */
+    _battlePlayKamiDamageVoice(side, amount, life) {
+      if (this.appView !== 'battle' || !(life > 0)) return;
+      const kami = this.battleView && this.battleView[side] && this.battleView[side].kami;
+      if (!kami || kami.isKami === false) return;
+      const busy = this._kamiVoiceAudio && !this._kamiVoiceAudio.paused && !this._kamiVoiceAudio.ended;
+      if (busy) return;
+      this.playKamiVoice(kami, amount >= 3 ? 'damage_heavy' : 'damage');
     },
     /* ライフ/マナ等の増減ポップ：+は緑、-は赤で数字が浮き上がって消える */
     _battlePushStatPop(dispKey, delta) {
@@ -22929,15 +22946,13 @@ new Vue({
         this.battleSkillCloseup = null;
       }
     },
-    /* 神技：目線だけアップの軽量カットイン。専用画像（kami_cutin_eyes/{No}.png、目元中心の
-       横長トリミング推奨。例：1920x540程度、顔全体ではなく目のあたりだけが写るように用意）が
-       あればそれを使い、無ければ創世神技用の顔アップ（webp→png）→従来イラストの順にフォールバックする */
+    /* 神技：現行デザインの目元専用WebPを使用。読み込み失敗時も現行の通常イラストへ戻す。 */
     async _battleShowSkill1Closeup(kami, skillName) {
       this.battleSkillCloseup = {
         sigil: divineSkillTheme(kami, 1),
         mode: 'skill1',
-        imgUrl: kami ? `kami_cutin_eyes/${kami.no}.png` : null,
-        fallbackStage: 0, // 0=目アップ専用画像 1=創世神技用の顔アップ(webp) 2=同(png) 3=従来イラスト
+        imgUrl: divineSkill1EyeUrl(kami),
+        fallbackStage: 0, // 0=現行の目元専用画像 1=現行の通常イラスト
         kami,
         kamiNickname: kami ? (kami.nickname || '') : '',
         kamiName: kami ? kami.name : '',
@@ -22974,7 +22989,7 @@ new Vue({
     async _battleShowOrochiSealFourCutin(kami) {
       this.battleSkillCloseup = {
         effect: divineSkillTheme(kami, 1),
-        mode: 'orochi-seal-four', imgUrl: 'kami_cutin_eyes/10.png', fallbackStage: 0,
+        mode: 'orochi-seal-four', imgUrl: divineSkill1EyeUrl(kami), fallbackStage: 0,
         kami, kamiNickname: kami.nickname || '', kamiName: kami.name || 'ヤマタノオロチ',
         skillName: '四岐龍胤（封印四解放）', line: this._battleEmoteLineFor(kami, 'skill1'), _shownAt: Date.now(),
       };
@@ -22998,7 +23013,12 @@ new Vue({
     battleSkillCloseupImgError() {
       const c = this.battleSkillCloseup;
       if (!c || !c.kami) return;
-      if (c.dedicatedArt || c.mode === 'skill1' || c.mode === 'orochi-seal-four' || c.mode === 'orochi-skill2') {
+      if (c.mode === 'skill1' || c.mode === 'orochi-seal-four') {
+        c.imgUrl = c.fallbackStage === 0 ? this.kamiIllustrationUrl(c.kami) : null;
+        c.fallbackStage++;
+        return;
+      }
+      if (c.dedicatedArt || c.mode === 'orochi-skill2') {
         if (c.fallbackStage === 0) { c.fallbackStage = 1; c.imgUrl = `kami_cutin/${c.kami.no}.webp`; return; }
         if (c.fallbackStage === 1) { c.fallbackStage = 2; c.imgUrl = `kami_cutin/${c.kami.no}.png`; return; }
         if (c.fallbackStage === 2) { c.fallbackStage = 3; c.imgUrl = this.kamiIllustrationUrl(c.kami); return; }
@@ -34412,6 +34432,37 @@ new Vue({
       return url ? Object.assign({ '--ko-img': 'url(' + url + ')' }, this.kamiPortraitFocusStyle(kami)) : {};
     },
     /* 新配置（試作）：対戦画面のカミの窓。イラスト（1060×1484）を窓（614×464）の幅の win 倍にし、顔を窓の横の中央・上から36%に置く */
+    kamiMotionAvailable(kami, side = null) {
+      const player = side && this.battleView && this.battleView[side];
+      const variant = kami && String(kami.no) === '10' && player && player.seal != null && player.seal !== '' && Number(player.seal) === 0 ? 'awakened' : 'sealed';
+      return !!(kami && kami.isKami !== false && kamiMotionSet(kami.no, undefined, variant));
+    },
+    kamiMotionVariant(side) {
+      const player = this.battleView && this.battleView[side];
+      return player && player.kami && String(player.kami.no) === '10' && player.seal != null && player.seal !== '' && Number(player.seal) === 0 ? 'awakened' : 'sealed';
+    },
+    kamiMotionDamageEvent(side) {
+      const pop = this.battleViewPops && this.battleViewPops[side + 'Life'];
+      const delta = Number(pop && pop.text);
+      if (!pop || !pop.id || !Number.isFinite(delta) || delta >= 0) return null;
+      return { id: pop.id, type: delta <= -3 ? 'damageHeavy' : 'damage' };
+    },
+    kamiMotionCrop(kami) {
+      const focus = this.battleLayoutV2 ? this.kamiPortraitFocusStyle(kami) : {};
+      return { backgroundSize: focus['--kami-size'] || 'cover', backgroundPosition: focus['--kami-pos'] || 'center' };
+    },
+    battleKamiPortraitStyle(side) {
+      const player = this.battleView && this.battleView[side];
+      const kami = player && player.kami;
+      if (!kami) return {};
+      const awakened = divineBattlePortrait(kami, player.seal);
+      if (awakened) {
+        const crop = kamiFaceCrop(awakened.focus, 464 / 614, awakened.aspect, awakened.zoom, [0.5, 0.36]);
+        return { backgroundImage: 'url(' + awakened.image + ')', backgroundSize: crop.size, backgroundPosition: crop.pos, '--kami-size': crop.size, '--kami-pos': crop.pos };
+      }
+      const image = this.kamiIllustrationUrl(kami);
+      return image ? Object.assign({ backgroundImage: 'url(' + image + ')' }, this.kamiPortraitFocusStyle(kami)) : {};
+    },
     kamiPortraitFocusStyle(card) {
       const focus = card && KAMI_FACE_FOCUS[String(card.no)];
       if (!focus) return {};

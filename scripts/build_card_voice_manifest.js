@@ -30,6 +30,18 @@ function mixTogether(root) {
     else console.log(`${group}：${parts.length}人の音声を重ねました`);
   }
 }
+/* 画面に出す台詞の文字。試聴室の「台詞を変える」で言い換えた台詞は、実際に読ませた文（card_voice_direction.json の text）に合わせる。
+   読み方の指定「漢字（よみ）」のよみ、つなげて読む印、見えない区切り文字は表示から除く。全体がカッコ書き（効果音など）の台詞は台本のまま */
+// 読み方を合わせるために言い換えた書き方（左）は、台本がもとの書き方（右）なら表示では戻す
+const SPOKEN_SPELLINGS = [['チチウエ', '父上'], ['アニウエ', '兄上'], ['里', '郷']];
+function displayText(scriptText, spoken) {
+  const base = String(scriptText || '');
+  if (!spoken || /^[（(].*[）)]$/.test(String(spoken).trim())) return base;
+  let text = String(spoken).replace(/[\u200B-\u200D\uFEFF\u203F]/g, '')
+    .replace(/([\u3005\u4E00-\u9FFF])[（(][\u3041-\u3096\u30A1-\u30FA\u30FC]+[）)]/g, '$1').trim();
+  for (const [said, written] of SPOKEN_SPELLINGS) if (base.includes(written)) text = text.split(said).join(written);
+  return text || base;
+}
 function buildCardVoiceManifest(root) {
   const dir = path.join(root, 'tools', 'voice-script');
   const script = readJson(path.join(dir, 'card_voice_script.json'), { lines: {} });
@@ -39,13 +51,14 @@ function buildCardVoiceManifest(root) {
   const numbers = id => String(script.lines[id] && script.lines[id].nos || Number(id.replace(/^n/, '')))
     .split(/[,、\s]+/).filter(n => /^\d+$/.test(n) && Number(n) > 0).map(n => String(Number(n)));
   const groups = new Map(), together = togetherGroups(root);
+  const direction = readJson(path.join(dir, 'card_voice_direction.json'), {});
   for (const item of lines) {
     if (!/^(?:n\d{3}-(?:summon|attack|death|use)|p\d+-(?:line|reply))(?:-\d+)?$/.test(item.ref)) throw new Error('不正な台詞ID: ' + item.ref);
     const src = 'voices/cards/' + item.ref + '.mp3';
     if (!fs.existsSync(path.join(root, src)) || fs.statSync(path.join(root, src)).size === 0) { missing.push(item.ref); continue; }
     const group = item.group || item.ref.replace(/-\d+$/, '');
     if (!groups.has(group)) groups.set(group, []);
-    groups.get(group).push({ src, text: item.text || '' }); registered.push(item.ref);
+    groups.get(group).push({ src, text: displayText(item.text, (direction[item.ref] || {}).text) }); registered.push(item.ref);
   }
   // 複数話者は一連の台詞。途中の音声がまだ無い場合は部分再生しない。
   const complete = group => {

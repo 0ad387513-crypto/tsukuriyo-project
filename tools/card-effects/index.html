@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ツクリヨ カード効果の一覧</title>
+<link rel="stylesheet" href="/tools/hub/hub.css">
+<style>
+  /* 全カードを「画像・効果・出ている調整案」の行で並べる。カードを押すと、そのカードの調整案（メモ）を書ける */
+  main.wrap { max-width: 1180px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .filters input, .filters select { width: auto; }
+  .filters input[type="search"] { flex: 1 1 200px; }
+  .rows { display: flex; flex-direction: column; gap: 12px; }
+  .ce-card { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .ce-card img { width: 150px; border-radius: 6px; display: block; }
+  .ce-card .body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .ce-card .nm { font-weight: 700; font-size: 16px; }
+  .ce-card .text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .ce-card .flavor { color: var(--muted); font-size: 13px; white-space: pre-wrap; font-family: "Yu Mincho", serif; }
+  .proposals { display: flex; flex-direction: column; gap: 6px; border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 4px; }
+  .proposal { background: var(--sunken); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+  .proposal .t { white-space: pre-wrap; overflow-wrap: anywhere; }
+  @media (max-width: 560px) { .ce-card { grid-template-columns: 1fr; } .ce-card img { width: 180px; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>カード効果の一覧</h1>
+  <p class="muted">全カードの画像と効果です。効果を変えたいカードを押すと、調整後の効果を書けます。書いた調整案は、そのカードの下に誰でも見られる形で並びます。</p>
+  <div class="filters">
+    <input type="search" id="q" placeholder="名前・番号・効果の言葉で探す" aria-label="カードを探す">
+    <select id="cat" aria-label="種類"></select>
+    <select id="color" aria-label="属性"></select>
+    <label class="muted"><input type="checkbox" id="onlyProp"> 調整案があるカードだけ</label>
+    <span class="muted" id="count"></span>
+  </div>
+  <div class="rows" id="rows"><p class="muted">読み込んでいます…</p></div>
+</main>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="/version.js"></script>
+<script src="/firebase.js"></script>
+<script src="/tools/hub/dev-notes.js"></script>
+<script>
+(() => {
+  "use strict";
+  const N = window.DevNotes, $ = id => document.getElementById(id);
+  const PAGE = "/tools/card-effects/";
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const pad3 = n => String(parseInt(n, 10)).padStart(3, "0");
+  const label = c => "No." + (c.same ? c.same.join(",") : parseInt(c.no, 10)) + " " + (c.nickname ? c.nickname + "・" : "") + c.name;
+  let cards = [], notes = [];
+  // ページの枠（view.html）が、書く欄に今の値を入れるために呼ぶ
+  // そのカードの種類にある項目だけ（種族・戦闘力・神攻力はレガシーだけ）
+  const valuesOf = c => {
+    const v = { color: c.color || "", cost: String(c.cost ?? ""), round: c.round || "", ret: c.ret || "", text: c.text || "" };
+    if (c.category === "レガシー") Object.assign(v, { type: c.type || "", power: c.power || "", attack: c.attack || "" });
+    return v;
+  };
+  window.cardValuesFor = t => { const c = cards.find(x => N.sameTarget(t, label(x))); return c ? valuesOf(c) : null; };
+  const NAMES = Object.fromEntries((N.PROPOSAL || []).map(([k, l]) => [k, l]));
+  const props = c => notes.filter(n => n.page === PAGE && N.sameTarget(n.target, label(c)) && !["rejected"].includes(n.status)).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+  function render() {
+    const q = $("q").value.trim().toLowerCase(), cat = $("cat").value, color = $("color").value, only = $("onlyProp").checked;
+    const list = cards.filter(c => (!q || (label(c) + " " + c.text).toLowerCase().includes(q)) && (!cat || c.category === cat) && (!color || c.color === color) && (!only || props(c).length));
+    $("count").textContent = list.length + "枚";
+    $("rows").replaceChildren(...list.map(c => {
+      const row = el("section", "ce-card"); row.dataset.no = String(parseInt(c.no, 10));
+      const img = el("img"); img.src = "/card_images/320/" + pad3(c.no) + ".webp"; img.alt = label(c); img.loading = "lazy";
+      const body = el("div", "body");
+      const meta = [c.category, c.color && "属性：" + c.color, c.type && "種族：" + c.type, "マナ " + c.cost, c.power && "戦闘力 " + c.power, c.attack && "神攻力 " + c.attack, c.round && "ラウンド " + c.round, c.ret && "返還値 " + c.ret].filter(Boolean).join("　");
+      body.append(el("div", "nm", label(c)), el("div", "muted", meta), el("div", "text", c.text || "（効果なし）"));
+      // フレーバーは版ごとに違うので、番号ごとに出す
+      for (const m of c.members || [c]) if (m.flavor) body.append(el("div", "flavor", (c.members && c.members.length > 1 ? "No." + parseInt(m.no, 10) + "：" : "") + m.flavor));
+      const ps = props(c);
+      if (ps.length) {
+        const box = el("div", "proposals"); box.append(el("b", "", "調整案（" + ps.length + "件）"));
+        for (const p of ps) {
+          const item = el("div", "proposal");
+          const head = el("div", "row"); head.append(el("span", "badge " + p.status, N.STATUS[p.status] || p.status), el("span", "muted", p.name || ""));
+          item.append(head);
+          const v = valuesOf(c);
+          for (const [k, val] of Object.entries(p.proposal || {})) item.append(el("div", "t", (NAMES[k] || k) + "：" + (k === "text" ? val : v[k] + " → " + val)));
+          if (p.memo) item.append(el("div", "t muted", p.memo));
+          // キジマだけ：この調整案の効果を入れた状態で、カードジェネレーターを開く
+          if (N.OWNER) {
+            const go = el("button", "btn small primary", "この効果でカードジェネレーターを開く"); go.type = "button";
+            go.addEventListener("click", ev => {
+              ev.stopPropagation();
+              const q = new URLSearchParams({ p: "card-gen", no: String(parseInt(c.no, 10)) });
+              if (c.same && c.same.length > 1) q.set("also", c.same.slice(1).join(","));
+              for (const [k, val] of Object.entries(p.proposal || {})) q.set(k, val);
+              (window.top || window).location.href = "/tools/hub/view.html?" + q;
+            });
+            if (p.proposal) item.append(go);
+          }
+          box.append(item);
+        }
+        body.append(box);
+      }
+      row.append(img, body);
+      return row;
+    }));
+  }
+  (async () => {
+    try {
+      const j = await (await fetch("/tools/card-effects/cards.json", { cache: "no-store" })).json();
+      const all = j.cards.slice().sort((a, b) => parseInt(a.no, 10) - parseInt(b.no, 10));
+      const byNo = Object.fromEntries(all.map(c => [String(parseInt(c.no, 10)), c]));
+      // 同じカードの別版は、いちばん若い番号の行にまとめる
+      cards = all.filter(c => !c.same || c.same[0] === String(parseInt(c.no, 10))).map(c => Object.assign({}, c, { members: c.same ? c.same.map(n => byNo[n]).filter(Boolean) : [c] }));
+      const uniq = k => [...new Set(cards.map(c => c[k]).filter(Boolean))];
+      $("cat").replaceChildren(new Option("すべての種類", ""), ...uniq("category").map(v => new Option(v, v)));
+      $("color").replaceChildren(new Option("すべての属性", ""), ...uniq("color").map(v => new Option(v, v)));
+      render();
+    } catch (e) { $("rows").replaceChildren(el("p", "err", "カードの一覧を読み込めませんでした。")); }
+  })();
+  for (const id of ["q", "cat", "color", "onlyProp"]) $(id).addEventListener("input", render);
+  N.watch("devNotes", list => { notes = list; if (cards.length) render(); });
+})();
+</script>
+</body>
+</html>

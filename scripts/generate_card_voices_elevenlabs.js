@@ -480,14 +480,14 @@ async function lines() {
   if (takes && !onlyRef) { console.error("--takes は --ref と一緒に使ってください"); process.exitCode = 1; return; }
   fs.mkdirSync(outDir, { recursive: true });
   if (takes) fs.mkdirSync(takesDir, { recursive: true });
-  let chars = 0; const failed = [];
+  let chars = 0, skipped = 0; const failed = [];
   // 聞き取りの記録（試聴室に「聞き取り：…」と出す）。--no-check で確認を省く
   const heardFile = path.join(outDir, "heard.json");
   const heardLog = readJson(heardFile, {});
   const noCheck = args.includes("--no-check");
   for (const it of targets) {
     const out = path.join(outDir, `${it.ref}.mp3`);
-    if (!takes && fs.existsSync(out) && !force) continue;
+    if (!takes && fs.existsSync(out) && !force) { skipped++; continue; }
     const c = cast[it.cast] || {};
     const voiceId = c.kami ? (kamiIds[c.kami] && kamiIds[c.kami].id) : (record[it.cast] && record[it.cast].voiceId);
     if (!voiceId) { console.warn(`${it.ref}：${it.cast} の声が未登録です（design → pick を先に）`); failed.push(it.ref); continue; }
@@ -584,6 +584,9 @@ async function lines() {
     await sleep(300);
   }
   if (failed.length) console.error(`作れなかった台詞：${failed.join("、")}`);
+  // すでにある台詞は作り直さない。何も作らなかったときは、その理由と作り直し方を伝える
+  if (skipped && skipped === targets.length) console.log(`台詞${skipped}本はすべて作成済みのため、何も作りませんでした。今の声で作り直すときは「全台詞を作り直す」を押してください（台詞ごとに直すときは、各台詞の「直す・作り直す」から）。`);
+  else if (skipped) console.log(`（作成済みの${skipped}本はそのままにしました）`);
   if (chars) console.log(`今回読み上げた文字数：${chars}字`);
 }
 

@@ -6,7 +6,7 @@
 <!-- カードボイスの確認ページ（ローカル専用。npm run preview 中に http://localhost:8765/tools/voice-preview/ で開く。本番では _redirects で404）。
      voices/cards/voices.json（候補・登録状況）と tools/voice-script/card_voice_cast.json（キャスト）を読み、
      候補（voices/cards/previews/）と作った台詞（voices/cards/）を再生する。登録などの操作はボタンから確認用サーバー（/__dev/voice-run）経由で実行する -->
-<title>カードボイス 試聴室</title>
+<title>ボイス 試聴室</title>
 <style>
   :root {
     --bg: #12172a; --panel: #1a2133; --line: #323b54; --ink: #ece6d6; --muted: #9aa3b8;
@@ -157,6 +157,11 @@
   .step h4 { margin: 0; font-size: 13px; color: var(--gold); }
   .step textarea { font: inherit; font-size: 14px; padding: 6px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); resize: vertical; width: 100%; }
   .step textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  /* カミのボイス（「カミ」タブ） */
+  .kami-audios { display: grid; gap: 4px; }
+  .kami-audios small { color: var(--muted); font-size: 11px; }
+  .kami-row .dir-tag { display: block; margin-left: 0; }
+  .cast-head select { font: inherit; font-size: 13px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
   .step > .copy.small { justify-self: start; }
   .orig { color: var(--muted); }
   .orig[hidden] { display: none; }
@@ -168,8 +173,8 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>カードボイス 試聴室</h1>
-  <p class="lead">声の候補と、作った台詞を聴いて確認するページです。上のタブで種族とキャストを選びます。「この候補に決める」「台詞を作る」などのボタンを押すと、その場で ElevenLabs で作ります（PowerShell は使いません）。進み具合は画面の下に出て、終わると一覧が最新になります。台詞の「直す・作り直す」から、台詞の言い換えと演技の方針を台詞ごとに指定できます。指定はこのPCの確認用サーバーにだけ保存されます。</p>
+  <h1>ボイス 試聴室</h1>
+  <p class="lead">声の候補と、作った台詞を聴いて確認するページです。上のタブで種族とキャストを選びます（カミのボイスは「カミ」のタブ）。「この候補に決める」「台詞を作る」などのボタンを押すと、その場で ElevenLabs で作ります（PowerShell は使いません）。進み具合は画面の下に出て、終わると一覧が最新になります。台詞の「直す・作り直す」から、台詞の言い換えと演技の方針を台詞ごとに指定できます。指定はこのPCの確認用サーバーにだけ保存されます。</p>
   <div class="bar">
     <div class="tabs" role="tablist" aria-label="種族" id="tribes"></div>
     <div class="cast-tabs" role="tablist" aria-label="キャスト" id="castTabs"></div>
@@ -277,6 +282,33 @@
       data.readings = j.readings; renderReadings();
       toast(reading ? "「" + word + "」を「" + reading + "」と読むようにしました" : "「" + word + "」を辞書から外しました");
     } catch (e) { toast(e.message); }
+  }
+  /* 掛け合い（話しかけ → 返し）や、複数人で言う台詞を、相手の分まで通して再生する。
+     同時に話す台詞は同時に鳴らす。もう一度押すと止める */
+  const seqOf = it => {
+    const g = it.group || it.ref, pm = g.match(/^(p\d+)-(line|reply)$/);
+    const groups = pm ? [pm[1] + "-line", pm[1] + "-reply"] : [g];
+    return groups.map(gr => (data.items || []).filter(i => (i.group || i.ref) === gr).sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }))).filter(x => x.length);
+  };
+  let seqPlaying = null;
+  async function playSeq(it, button) {
+    if (seqPlaying) { const was = seqPlaying; seqPlaying.stop(); if (was.button === button) return; }
+    const steps = seqOf(it);
+    const me = { button, audios: [], stopped: false, stop() { this.stopped = true; this.audios.forEach(a => a.pause()); button.textContent = button.dataset.label; seqPlaying = null; } };
+    seqPlaying = me; button.textContent = "■ 止める";
+    const playOne = ref => new Promise(done => {
+      const a = new Audio("/voices/cards/" + encodeURIComponent(ref) + ".mp3" + bust());
+      a.volume = typeof volume === "number" ? volume : 1; me.audios.push(a);
+      a.addEventListener("ended", done); a.addEventListener("error", done); a.addEventListener("pause", done);
+      const p = a.play(); if (p && p.catch) p.catch(done);
+    });
+    for (const parts of steps) {
+      if (me.stopped) return;
+      // 同時に話す台詞は一緒に、順番に話す台詞は1人ずつ
+      if (parts.every(p => p.together)) await Promise.all(parts.map(p => playOne(p.ref)));
+      else for (const p of parts) { if (me.stopped) return; await playOne(p.ref); }
+    }
+    if (seqPlaying === me) me.stop();
   }
   function multiBox(it) {
     const parts = partsOf(it);
@@ -827,8 +859,25 @@
     render();
   }
   function renderTabs(keys) {
-    const tribes = ["作業中", "未着手", ...TRIBES, "その他"].filter(t => t === "作業中" || castsIn(t, keys).length);
+    const tribes = ["作業中", "未着手", ...TRIBES, "その他"].filter(t => t === "作業中" || castsIn(t, keys).length).concat(["カミ"]);
     if (!tribes.includes(view.tribe)) view.tribe = castsIn("作業中", keys).length ? "作業中" : TRIBES[0];
+    // カミのボイスは台本（voices/voice_script.json）が別なので、タブだけ並べて中身は renderKami で作る
+    if (view.tribe === "カミ") {
+      const kamis = Object.keys(data.kami.kami || {});
+      if (!kamis.includes(view.cast)) view.cast = kamis[0];
+      $("tribes").replaceChildren(...tribes.map(t => {
+        const b = el("button", "tab", t); b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(t === view.tribe));
+        b.append(el("small", "", t === "カミ" ? kamis.length + "柱" : castsIn(t, keys).length + "人"));
+        b.addEventListener("click", () => setView(t, null));
+        return b;
+      }));
+      $("castTabs").replaceChildren(...kamis.map(no => {
+        const b = el("button", "ctab done", data.kami.kami[no].name); b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(no === view.cast));
+        b.addEventListener("click", () => setView("カミ", no));
+        return b;
+      }));
+      return [];
+    }
     const inTribe = castsIn(view.tribe, keys);
     if (view.cast !== "*" && !inTribe.includes(view.cast)) view.cast = inTribe[0] || "*";
     $("tribes").replaceChildren(...tribes.map(t => {
@@ -857,10 +906,159 @@
     return view.cast === "*" ? inTribe : inTribe.filter(k => k === view.cast);
   }
 
+  // ===== カミのボイス（voices/voice_script.json）=====
+  // 台詞・読み上げる文・演技の方針を直して、試し作り（voices/trials/studio/）に作り直す。聴いて良ければ「ゲームに反映」でゲームのボイスにする
+  const KAMI_LABELS = { greeting: "挨拶", confusion: "困惑", praise: "称賛", surprise: "驚き", taunt: "挑発", boast: "理念", skill1: "神技", skill2: "創世神技", damage: "ダメージ（ライフ-1〜2）", damage_heavy: "大ダメージ（ライフ-3以上）", win_gs: "創世決戦で優勝", tutorial_end: "チュートリアル：終わり", tutorial_basic_complete: "チュートリアル：基本編クリア", tutorial_advanced_complete: "チュートリアル：応用編クリア" };
+  const KAMI_PRESETS = ["痛みをこらえて", "苦しげに", "歯を食いしばって", "強がって", "叫ぶように", "悔しそうに", "驚いて", "怒りをこめて", "見下すように", "余裕たっぷりに", "力強く", "不機嫌そうに", "弱々しく", "笑いながら"];
+  let kamiFilter = "damage";
+  const kamiLabel = key => { const m = /^win_(\d+)$/.exec(key); return m ? (((data.kami.kami || {})[m[1]] || {}).name || m[1]) + "に勝ったとき" : (KAMI_LABELS[key] || key); };
+  // el（「[タグ] 読み上げる文」）を、頭の演技タグと読み上げる文に分ける
+  const splitEl = el => { const m = /^((?:\[[^\]]*\]\s*)+)/.exec(el || ""); return m ? { tags: m[1].trim(), reading: el.slice(m[1].length).trim() } : { tags: "", reading: (el || "").trim() }; };
+  async function saveKamiLine(no, key, body) {
+    const res = await fetch("/__dev/kami-line?kami=" + no + "&key=" + encodeURIComponent(key), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.ok) throw new Error(j.message || "保存できませんでした（確認用サーバーを起動し直すと直ることがあります）");
+    data.kami.kami[no].lines[key] = j.line;
+    return j.line;
+  }
+  async function runKami(no, key, label) {
+    let res, j;
+    try {
+      res = await fetch("/__dev/voice-run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ steps: [{ command: "kami-lines", kami: no, key }], label }) });
+      j = await res.json().catch(() => ({}));
+    } catch (e) { j = { message: "確認用サーバーにつながりません" }; res = { ok: false }; }
+    if (!res.ok || !j.ok) { showRunner("実行できませんでした", "ng", (j.message || "失敗しました") + (j.needKey ? "\n\nElevenLabs のキーがこのPCに保存されていません。" : "")); return; }
+    runnerCmd = "node scripts/generate_voices_elevenlabs.js lines --kami " + no + " --key " + key + " --trial studio --current-voice --force";
+    showRunner("実行中…（" + label + "）", "", "ElevenLabs で作っています。数秒〜数十秒かかります。このまま待ってください。", "");
+    pollRunner();
+  }
+  function kamiPanel(no, key, line) {
+    const box = el("div", "dir"); box.hidden = true;
+    const parts = splitEl(line.el);
+    // ① 台詞（ゲームの吹き出しなどに出る文）
+    const s1 = el("section", "step");
+    const text = el("textarea"); text.rows = 2; text.value = line.text || ""; text.setAttribute("aria-label", "台詞");
+    s1.append(el("h4", "", "① 台詞を変える"), text, el("p", "dir-note", "ゲームの画面に出る文です。"));
+    // ② 読み上げる文（読み間違いを直すときだけ。ひらがなにしたり「……」で間を入れたりする）
+    const s2 = el("section", "step");
+    const reading = el("textarea"); reading.rows = 2; reading.value = parts.reading && parts.reading !== line.text ? parts.reading : ""; reading.setAttribute("aria-label", "読み上げる文");
+    reading.placeholder = "空なら①の台詞をそのまま読み上げます";
+    const copyText = el("button", "copy small", "①の台詞を写して直す"); copyText.type = "button";
+    copyText.addEventListener("click", () => { reading.value = text.value; reading.focus(); });
+    const b2 = el("div", "btns"); b2.append(copyText);
+    s2.append(el("h4", "", "② 読み上げる文（読み間違いを直すときだけ）"), reading, b2, el("p", "dir-note", "例：「力」→「ちから」、「膝」→「ひざ」。「……」で間を入れられます。ここは画面には出ません。"));
+    // ③ 演技の方針（日本語）→ 英語の演技タグ
+    const s3 = el("section", "step");
+    const direction = el("textarea"); direction.rows = 2; direction.value = line.el_direction || ""; direction.setAttribute("aria-label", "演技の方針");
+    direction.placeholder = "例：痛みをこらえて、強がって言い返す";
+    const presets = el("div", "presets");
+    for (const phrase of KAMI_PRESETS) {
+      const b = el("button", "preset", "＋" + phrase); b.type = "button";
+      b.addEventListener("click", () => { const v = direction.value.trim(); direction.value = v ? v.replace(/[。、]$/, "") + "、" + phrase : phrase; direction.dispatchEvent(new Event("input")); direction.focus(); });
+      presets.append(b);
+    }
+    const tags = el("input"); tags.type = "text"; tags.value = line.el_direction ? (line.el_tags || "") : parts.tags; tags.setAttribute("aria-label", "英語の演技タグ"); tags.placeholder = "例：[pained, defiant]";
+    const adv = el("details", "adv"); adv.open = !line.el_direction && !!parts.tags;
+    const r1 = el("div", "dir-row"); r1.append(tags); adv.append(el("summary", "", "英語の演技タグ（細かく効かせたいときだけ）"), r1);
+    const tagView = el("p", "dir-note tag-view");
+    const syncTags = () => {
+      const list = (tags.value.match(/\[[^\]]+\]/g) || []).flatMap(t => t.slice(1, -1).split(",")).map(t => t.trim()).filter(Boolean);
+      for (const [w, t] of data.directionMap || []) if (direction.value.includes(w) && !list.includes(t)) list.push(t);
+      tagView.textContent = list.length ? "→ 声に渡す演技タグ：[" + list.slice(0, 3).join(", ") + "]" + (list.length > 3 ? "（4つ目以降は使いません）" : "") : direction.value.trim() ? "→ この書き方では演技タグになりません。「苦しげに」「強がって」のような言葉を入れてください" : "→ 演技タグなし";
+    };
+    direction.addEventListener("input", syncTags); tags.addEventListener("input", syncTags); syncTags();
+    const sel = el("select"); sel.setAttribute("aria-label", "安定度");
+    for (const [v, t] of [["", "標準（0.5）"], ["0.3", "0.3：表情豊か"], ["0.4", "0.4：やや表情豊か"], ["0.5", "0.5：自然"]]) sel.append(new Option(t, v));
+    const curStability = line.el_stability === undefined ? "" : String(line.el_stability);
+    if (![...sel.options].some(o => o.value === curStability)) sel.append(new Option(curStability, curStability)); // 一覧に無い値（0.6 など）もそのまま選べるように
+    sel.value = curStability;
+    const r2 = el("div", "dir-row"); r2.append("安定度", sel);
+    s3.append(el("h4", "", "③ 演技の方針を書く"), direction, tagView, presets, r2, adv,
+      el("p", "dir-note", "どんな気持ち・言い方で言うのかを日本語で書くと、英語の演技タグに直して読み上げる文の頭に付けます（最大3つ）。タグは1〜2語が自然です。棒読みにつながる言葉（淡々と・静かに など）は避けてください。"));
+    // ④ 保存して作り直す
+    const s4 = el("section", "step");
+    const body = () => ({ text: text.value.trim(), reading: reading.value.trim(), direction: direction.value.trim(), tags: tags.value.trim(), stability: sel.value === "" ? null : Number(sel.value) });
+    const save = el("button", "copy main", "保存して作り直す"); save.type = "button";
+    save.addEventListener("click", async () => { try { await saveKamiLine(no, key, body()); await runKami(no, key, data.kami.kami[no].name + "・" + kamiLabel(key) + "を作り直す"); } catch (e) { toast(e.message); } });
+    const onlySave = el("button", "copy", "保存だけする"); onlySave.type = "button";
+    onlySave.addEventListener("click", async () => { try { await saveKamiLine(no, key, body()); rememberScroll(); await render(); restoreScroll(); toast("保存しました（音声はまだ作り直していません）"); } catch (e) { toast(e.message); } });
+    const btns = el("div", "btns"); btns.append(save, onlySave);
+    if (line.previous) {
+      const undo = el("button", "copy small", "1つ前の指定に戻す"); undo.type = "button";
+      undo.title = "台詞：" + (line.previous.text || "") + "\n読み上げ：" + (line.previous.el || "");
+      undo.addEventListener("click", () => { const p = splitEl(line.previous.el); text.value = line.previous.text || ""; reading.value = p.reading !== text.value ? p.reading : ""; direction.value = ""; tags.value = p.tags; sel.value = line.previous.el_stability === undefined ? "" : String(line.previous.el_stability); syncTags(); toast("1つ前の指定を入れました。「保存して作り直す」で反映します"); });
+      btns.append(undo);
+    }
+    s4.append(el("h4", "", "④ 保存して作り直す"), btns,
+      el("p", "dir-note", "作り直した音声は「試聴室で作った音声」に入ります。ゲームのボイスは、聴いて「ゲームに反映」を押すまで変わりません。①〜③を変えずに押すと、同じ指定のまま作り直します（毎回少しずつ違う読み方になります）。"));
+    box.append(s1, s2, s3, s4);
+    return box;
+  }
+  // カミのカード画像（kami_card_images/320、押すと 600 の大きい画像）
+  function kamiThumb(no, name) {
+    const id = String(no).padStart(3, "0");
+    const b = el("button", "thumb"); b.type = "button"; b.title = name; b.setAttribute("aria-label", name + "を大きく表示");
+    const img = el("img"); img.loading = "lazy"; img.alt = ""; img.src = "/kami_card_images/320/" + id + ".webp";
+    img.addEventListener("error", () => { b.hidden = true; });
+    b.append(img);
+    b.addEventListener("click", () => { $("viewerImg").src = "/kami_card_images/600/" + id + ".webp"; $("viewerImg").alt = name; $("viewerCap").textContent = name; $("viewer").showModal(); });
+    return b;
+  }
+  function renderKami() {
+    const no = view.cast, k = (data.kami.kami || {})[no];
+    if (!k) { $("list").replaceChildren(el("div", "empty", "カミの台本を読み込めませんでした。")); return; }
+    const game = ((data.kamiManifest || {}).kami || {})[no] || {}, studio = ((data.kamiStudio || {}).kami || {})[no] || {};
+    const sec = el("section", "cast"); sec.dataset.anchor = "kami:" + no;
+    const head = el("div", "cast-head");
+    const filter = el("select"); filter.setAttribute("aria-label", "表示する台詞");
+    for (const [v, t] of [["damage", "ダメージの台詞だけ"], ["", "すべての台詞"]]) filter.append(new Option(t, v));
+    filter.value = kamiFilter;
+    filter.addEventListener("change", () => { kamiFilter = filter.value; renderKami(); });
+    head.append(el("span", "cast-name", k.name), el("span", "labels", "カミのボイス｜台詞" + Object.keys(k.lines).length + "本"), filter);
+    const cards = el("div", "cards"); cards.append(kamiThumb(no, k.name));
+    sec.append(head, cards, el("p", "dir-note", "「直す・作り直す」で台詞・読み方・演技の方針を変えて作り直せます。作り直した音声は右の「試聴室で作った音声」に入り、聴いて良ければ「ゲームに反映」でゲームのボイスになります。"));
+    const list = el("div", "lines-list");
+    for (const [key, line] of Object.entries(k.lines)) {
+      if (kamiFilter === "damage" && !/^damage/.test(key)) continue;
+      const row = el("div", "line-row kami-row"); row.dataset.anchor = "kami:" + no + ":" + key;
+      const t = el("div");
+      const small = el("small", "", kamiLabel(key) + "｜" + key);
+      t.append(el("span", "spoken", line.text), small, el("small", "orig", "読み上げ：" + (line.el || line.text) + (line.el_stability !== undefined ? "｜安定度 " + line.el_stability : "")));
+      if (line.el_direction) t.append(el("small", "dir-tag", "方針：" + line.el_direction));
+      const audios = el("div", "kami-audios");
+      const cell = (label, src) => { const c = el("div"); c.append(el("small", "", label)); if (src) { const au = el("audio"); au.controls = true; au.preload = "none"; au.src = "/" + src + bust(); c.append(au); } else c.append(el("span", "missing", "なし")); return c; };
+      audios.append(cell("ゲームのボイス", game[key]), cell("試聴室で作った音声", studio[key]));
+      const panel = kamiPanel(no, key, line);
+      const act = el("button", "copy small", "直す・作り直す"); act.type = "button"; act.setAttribute("aria-expanded", "false");
+      act.addEventListener("click", () => { panel.hidden = !panel.hidden; act.setAttribute("aria-expanded", String(!panel.hidden)); act.textContent = panel.hidden ? "直す・作り直す" : "閉じる"; });
+      const acts = el("div", "line-acts"); acts.append(act);
+      if (studio[key]) {
+        const adopt = el("button", "copy small main", "ゲームに反映"); adopt.type = "button";
+        adopt.title = "試聴室で作った音声を、ゲームのボイスにします（前の音声は作業用の場所に残します）";
+        adopt.addEventListener("click", async () => {
+          if (!(await askConfirm("「" + k.name + "・" + kamiLabel(key) + "」を、試聴室で作った音声に差し替えますか？" + (game[key] ? "\n（今のゲームの音声は作業用の場所に残します）" : "")))) return;
+          try {
+            const res = await fetch("/__dev/kami-adopt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kami: no, key }) });
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok || !j.ok) throw new Error(j.message || "反映できませんでした");
+            rememberScroll(); await load(); restoreScroll(); toast("ゲームのボイスにしました");
+          } catch (e) { toast(e.message); }
+        });
+        acts.append(adopt);
+      }
+      row.append(kamiThumb(no, k.name), t, audios, acts, panel);
+      list.append(row);
+    }
+    sec.append(list);
+    $("list").replaceChildren(sec);
+    $("summary").textContent = "カミ" + Object.keys(data.kami.kami).length + "柱｜" + k.name + "：ゲームのボイス" + Object.keys(game).length + "本・試聴室で作った音声" + Object.keys(studio).length + "本";
+  }
+
   async function render() {
     const allKeys = Object.keys(data.cast).filter(k => !data.cast[k].kami);
     const keys = allKeys;
     const visible = new Set(renderTabs(allKeys));
+    if (view.tribe === "カミ") return renderKami();
     let shown = 0, withVoice = 0, withCand = 0;
     const frag = document.createDocumentFragment();
     for (const key of keys) {
@@ -880,7 +1078,12 @@
       if (r.voiceId && !r.released) {
         const mk = document.createElement("button"); mk.type = "button"; mk.className = "copy main"; mk.textContent = "台詞を作る（未作成の分）";
         mk.addEventListener("click", () => runCommand(`${TOOL} lines --cast ${key}`, "台詞を作る"));
-        head.append(mk);
+        mk.title = "まだ音声の無い台詞だけを作ります。すでにある台詞は変わりません";
+        // 声を選び直したあとなど、すでにある台詞を今の声で作り直すためのボタン
+        const redoAll = document.createElement("button"); redoAll.type = "button"; redoAll.className = "copy"; redoAll.textContent = "全台詞を作り直す";
+        redoAll.title = "登録中の声で、このキャラの台詞をすべて作り直します（ElevenLabs のクレジットを使います）";
+        redoAll.addEventListener("click", async () => { if (await askConfirm("「" + displayName(key) + "」の台詞" + (c.lines || 0) + "本を、登録中の声ですべて作り直しますか？\n（今の音声は上書きされます。ElevenLabs のクレジットを使います）")) runCommand(`${TOOL} lines --cast ${key} --force`, "全台詞を作り直す"); });
+        head.append(mk, redoAll);
       }
       sec.append(head, voiceEditor(key, c, r));
       {
@@ -966,6 +1169,14 @@
           const act = document.createElement("button"); act.type = "button"; act.className = "copy small"; act.textContent = "直す・作り直す"; act.setAttribute("aria-expanded", "false");
           act.addEventListener("click", () => { panel.hidden = !panel.hidden; act.setAttribute("aria-expanded", String(!panel.hidden)); act.textContent = panel.hidden ? "直す・作り直す" : "閉じる"; });
           const acts = document.createElement("div"); acts.className = "line-acts"; acts.append(act);
+          // 掛け合い・複数人の台詞は、相手の声まで通して聴けるボタンを付ける
+          const seq = seqOf(it);
+          if (seq.flat().length > 1) {
+            const all = document.createElement("button"); all.type = "button"; all.className = "copy small";
+            all.dataset.label = all.textContent = /^p\d+-/.test(it.group || it.ref) ? "▶ 掛け合いを通して聴く" : "▶ 全員分を通して聴く";
+            all.addEventListener("click", () => playSeq(it, all));
+            acts.prepend(all);
+          }
           row.append(cardThumb(it.cardId || it.ref, it.card), t, holder, acts, panel); list.append(row);
           exists(url).then(ok => {
             if (ok) { made++; const au = document.createElement("audio"); au.controls = true; au.preload = "none"; au.src = url + bust(); holder.replaceWith(au); }
@@ -997,7 +1208,13 @@
       getJson("/tools/voice-script/direction_tags.json", { map: [] }),
       getJson("/voices/cards/heard.json", {}),
     ]);
-    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {}, directionMap: tagMap.map || [], heard: heard || {} };
+    // カミのボイス：台本・ゲームの音声の一覧・試聴室で作った音声の一覧
+    const [kamiScript, kamiManifest, kamiStudio] = await Promise.all([
+      getJson("/voices/voice_script.json", { kami: {} }),
+      getJson("/voices/manifest.json", { kami: {} }),
+      getJson("/voices/trials/studio/manifest.json", { kami: {} }),
+    ]);
+    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {}, directionMap: tagMap.map || [], heard: heard || {}, kami: kamiScript || { kami: {} }, kamiManifest: kamiManifest || { kami: {} }, kamiStudio: kamiStudio || { kami: {} } };
     renderReadings();
     await render();
   }

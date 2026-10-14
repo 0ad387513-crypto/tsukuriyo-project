@@ -8,6 +8,8 @@
     node scripts/generate_sfx_elevenlabs.js make --new                 # まだ無い場面のSEを、1つにつき3候補ずつ作る
     node scripts/generate_sfx_elevenlabs.js make --keys hit,draw       # 指定したSEだけ作る（今あるSEの作り直しも同じ）
     node scripts/generate_sfx_elevenlabs.js make --keys hit --count 5  # 候補の数を変える
+    node scripts/generate_sfx_elevenlabs.js make --card 17 --count 2   # カードの効果音（No.17 の分だけ。全部は --card-all）
+    node scripts/generate_sfx_elevenlabs.js plan                       # 作る予定の数と長さ（クレジットの目安）を表示
     node scripts/generate_sfx_elevenlabs.js list                       # 作った候補の一覧
     node scripts/generate_sfx_elevenlabs.js use --key hit --file hit-20261009-0412-2.mp3   # 候補をゲームのSEにする
 
@@ -40,7 +42,11 @@ const plan = readJson(planFile, null);
 if (!plan) { console.error("tools/sfx-lab/plan.json を読めません。"); process.exit(1); }
 
 function apiKey() {
-  const key = process.env.ELEVENLABS_API_KEY;
+  // 環境変数がなければ、Windows のユーザー環境変数（カードボイスの試聴室と同じ場所）から読む。キーは表示しない
+  let key = process.env.ELEVENLABS_API_KEY;
+  if (!key && process.platform === "win32") {
+    try { key = require("node:child_process").execFileSync("powershell", ["-NoProfile", "-Command", "[Environment]::GetEnvironmentVariable('ELEVENLABS_API_KEY','User')"], { encoding: "utf8", windowsHide: true }).trim(); } catch (e) { key = ""; }
+  }
   if (!key) { console.error("環境変数 ELEVENLABS_API_KEY が設定されていません。"); process.exit(1); }
   return key;
 }
@@ -58,7 +64,11 @@ function pickItems() {
     return plan.items.filter(it => wanted.includes(it.key));
   }
   if (hasFlag("--new")) return plan.items.filter(it => it.status === "new");
-  console.error("make には --new か --keys キー1,キー2 が必要です。");
+  // カードの効果音（status: card）。--card 17 でそのカードの分だけ
+  if (hasFlag("--card-all")) return plan.items.filter(it => it.status === "card");
+  const card = argValue("--card");
+  if (card) { const list = plan.items.filter(it => it.status === "card" && String(it.card).split(",").includes(card)); if (!list.length) { console.error("No." + card + " のカードの効果音は plan.json にありません。"); process.exit(1); } return list; }
+  console.error("make には --new / --card-all / --card 番号 / --keys キー1,キー2 のどれかが必要です。");
   process.exit(1);
 }
 
@@ -102,6 +112,15 @@ async function make() {
   console.log("\n試聴：npm run preview → http://localhost:8765/tools/sfx-lab/");
 }
 
+/* 作る予定のSEの数と、合計の長さ（ElevenLabs の効果音は長さに応じてクレジットを使う）を表示する。API は使わない */
+function showPlan() {
+  const count = Math.max(1, Math.min(8, Number(argValue("--count")) || 3));
+  for (const [status, title] of [["new", "まだ無い場面のSE"], ["card", "カードの効果音"], ["existing", "今あるSE（作り直しの候補）"]]) {
+    const items = plan.items.filter(it => it.status === status);
+    const sec = items.reduce((n, it) => n + (Number(it.duration) || 1), 0);
+    console.log(`${title}：${items.length}件・合計${sec.toFixed(1)}秒（候補${count}個ずつなら${items.length * count}回・${(sec * count).toFixed(1)}秒ぶん）`);
+  }
+}
 function list() {
   const index = readJson(indexFile, { candidates: {} });
   for (const item of plan.items) {
@@ -139,6 +158,7 @@ function help() {
 (async () => {
   if (command === "make") await make();
   else if (command === "list") list();
+  else if (command === "plan") showPlan();
   else if (command === "use") use();
   else help();
 })();

@@ -22,7 +22,7 @@
 - `functions/`：将来の Blaze 移行用。Spark本番では使わない
 - 画像・音声：`card_images/`、`kami_*`、`tutorial_guide/`、`emote_icons/`（エモートの表情アイコン。カミごとに3×2のアトラス）、`bgm/`、`sfx/`、`voices/` など
 - `kami_cutin/genesis-generation.json`：創世神技カットインの現行URL・生成指示・差し替え履歴（ユーザー提供画像は `mode: "user-provided image; ..."`、旧版は `previousRevisions` に残す）
-- `tools/card-editor/`：カード編集室（ローカル専用。`npm run preview` 中に http://localhost:8765/tools/card-editor/ で開く。本番では `_redirects` で404）。使い方は同フォルダの README
+- `tools/card-editor/`：カードジェネレーター（ローカル専用。`npm run preview` 中に http://localhost:8765/tools/card-editor/ で開く。本番では `_redirects` で404）。使い方は同フォルダの README
 
 ## 画像を追加・差し替えるとき（ユーザー指定のルール。詳細は `AGENTS.md`）
 
@@ -33,7 +33,7 @@
 - このPCには Python がないため、同じ規則を Node の画像ライブラリ sharp で再現して処理する（sharp はリポジトリに入れず、作業用フォルダに `npm i sharp` して使う。`optimized_assets.json` の項目名は `import:保存先（ハッシュなし）`）
 - `tests/asset_contract.test.js` が、ハッシュと実際の中身の一致・容量上限・`bytes < sourceBytes` を検証する
 - 画像の差し替えも変更なので `version.js` を上げる
-- `card_images/`・`kami_card_images/`・`kami_illustrations/`・`voices/`・`bgm/`・`sfx/` の素材は本番で1年キャッシュし、ゲームは `asset_hashes.js`（中身の識別子の一覧）を使って URL に `?h=` を付けて読み込む。これらを追加・差し替えたら `npm run assets:hash`（`node scripts/build_asset_hashes.js`）で一覧を作り直す（古いままだと `npm test` が失敗し、本番では差し替えが届かない）。コードからこれらのフォルダを参照するときは必ず `assetUrl()` を通す。カード編集室で保存したカード画像は自動で一覧に反映される
+- `card_images/`・`kami_card_images/`・`kami_illustrations/`・`voices/`・`bgm/`・`sfx/` の素材は本番で1年キャッシュし、ゲームは `asset_hashes.js`（中身の識別子の一覧）を使って URL に `?h=` を付けて読み込む。これらを追加・差し替えたら `npm run assets:hash`（`node scripts/build_asset_hashes.js`）で一覧を作り直す（古いままだと `npm test` が失敗し、本番では差し替えが届かない）。コードからこれらのフォルダを参照するときは必ず `assetUrl()` を通す。カードジェネレーターで保存したカード画像は自動で一覧に反映される
 
 ## 確認方法
 
@@ -45,4 +45,4 @@
 - 画面や挙動を変えたら `version.js` のパッチ番号を1上げる（例: 1.15.187 → 1.15.188）
 - コミットメッセージの形式: `feat: 〜 v1.15.188` / `fix: 〜 v1.15.188`（日本語、末尾にバージョン）
 - `main` に push すると Netlify が自動で本番に公開し、GitHub Actions（`verify.yml`）がテストを実行する。**push はユーザーの確認を取ってから行う**
-- ユーザーとのやりとりは日本語で行う
+- ユーザーとのやりとりは日本語で行う。途中の連絡も最後の報告も全文を日本語で書き、送る前に英語の文が残っていないか読み直す

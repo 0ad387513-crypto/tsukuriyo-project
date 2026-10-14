@@ -40,7 +40,8 @@ test("Netlify revalidates entry points and mutable scripts", () => {
   assert.match(headers, /\/version\.js[\s\S]*no-cache, no-store, must-revalidate/);
   assert.match(headers, /\/\*\.js[\s\S]*no-cache, must-revalidate/);
   assert.match(headers, /X-Content-Type-Options: nosniff/);
-  assert.match(headers, /X-Frame-Options: DENY/);
+  // 開発ダッシュボードが同じサイトのページを枠に表示するため SAMEORIGIN（ほかのサイトからの埋め込みは引き続き禁止）
+  assert.match(headers, /X-Frame-Options: SAMEORIGIN/);
   assert.match(headers, /Permissions-Policy: camera=\(\), microphone=\(\), geolocation=\(\)/);
 });
 
@@ -428,7 +429,7 @@ test("battle opening, legacy readiness, Orochi cut-ins and scoring skip stay wir
   assert.match(html, /legacy-action-sick/);
   assert.match(html, /summon-piyopiyo/);
   assert.match(html, /legacy-action-both/);
-  assert.match(html, /kami_cutin_eyes\/10\.png/);
+  assert.match(html, /mode: 'orochi-seal-four', imgUrl: divineSkill1EyeUrl\(kami\)/);
   assert.match(html, /orochi-skill2/);
   assert.match(html, /this\._sfxStop\('endofwar'\)/);
   assert.match(html, /gsSkipScoringReveal/);

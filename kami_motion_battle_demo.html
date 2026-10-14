@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>カミのモーション 対戦デモ</title>
+<link rel="stylesheet" href="kami_motion.css?v=20261014-natural-idle-damage">
+<style>
+/* 対戦画面（新配置）と同じ大きさ・位置で、カミの窓・場の札・ライフを並べ、対戦の流れに沿ってモーションを再生する。
+   寸法は index.html の .battle-layout-v2 の値（--kami-h 23vh など）を、舞台の高さの1%（--u）に置き換えたもの */
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:#07080d;color:#efe4cd;font:14px sans-serif}
+#demo{display:flex;flex-direction:column;height:100%}
+header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid #695131;background:#100e13}
+h1{font-size:16px;margin:0 6px 0 0;white-space:nowrap}
+button,select{font:inherit;padding:6px 10px;background:#2b211b;color:#efe4cd;border:1px solid #957447;border-radius:5px;cursor:pointer}
+button.primary{background:#7a5a24;border-color:#d9b46a}button:disabled{opacity:.45;cursor:default}
+label{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.area{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.stage{position:relative;overflow:hidden;background:#07080d}
+.field-bg{position:absolute;inset:0;background:center/cover no-repeat;filter:brightness(1.05) saturate(.9)}
+.field-bg:before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 62% 58% at 50% 50%,rgba(5,8,15,.05),rgba(5,8,15,.35) 72%,rgba(5,8,15,.72)),linear-gradient(90deg,rgba(5,6,10,.55),rgba(5,6,10,0) 16%,rgba(5,6,10,0) 80%,rgba(5,6,10,.6)),linear-gradient(rgba(5,8,15,.5),rgba(5,8,15,.12) 22%,rgba(5,8,15,.12) 74%,rgba(5,8,15,.55))}
+.stage{--kami-h:calc(var(--u)*23);--kami-w:calc(var(--kami-h)*614/464);--card-h:calc(var(--u)*17.5);--tok-w:calc(var(--card-h)*.78);--emblem:clamp(30px,calc(var(--u)*8.5),98px)}
+/* カミの窓 */
+.col{position:absolute;left:50%;translate:-50% 0;width:var(--kami-w);z-index:20}
+.col.opp{top:calc(var(--u)*2.5)}.col.self{bottom:calc(var(--u)*2.5)}
+.kami-hud{position:relative;width:100%;height:var(--kami-h)}
+.kami-portrait{position:absolute;inset:calc(var(--u)*-.6);background:#1a1d28 center/cover no-repeat}
+.self .kami-portrait{border-radius:50% 50% calc(var(--u)*1.4) calc(var(--u)*1.4)/24% 24% calc(var(--u)*1.4) calc(var(--u)*1.4)}
+.opp .kami-portrait{border-radius:calc(var(--u)*1.4) calc(var(--u)*1.4) 50% 50%/calc(var(--u)*1.4) calc(var(--u)*1.4) 24% 24%}
+.kami-hud:after{content:'';position:absolute;z-index:4;pointer-events:none;left:calc(var(--kami-w)*-53/614);top:calc(var(--kami-w)*-63/614);width:calc(var(--kami-w)*720/614);height:calc(var(--kami-w)*576/614);background:url('battle_ui/kami-frame-c2b7632f7e2a.webp') center/100% 100% no-repeat;filter:drop-shadow(0 6px 14px rgba(0,0,0,.55))}
+.opp .kami-hud:after{top:calc(var(--kami-w)*-49/614);transform:scaleY(-1)}
+/* 天力（左）とライフ（右） */
+.orb{position:absolute;z-index:5;top:80%;display:flex;align-items:center;justify-content:center;width:var(--emblem);height:var(--emblem);color:#fff;font-family:"Yu Mincho",serif;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.85);filter:drop-shadow(0 4px 8px rgba(0,0,0,.6))}
+.opp .orb{top:20%}
+.orb.ten{left:calc(var(--kami-w)*-33.5/614 - var(--emblem)/2);translate:0 calc(-50% + var(--emblem)*35/210);background:url('battle_ui/tenryoku-magatama-191624bd62e3.webp') center/calc(100%*256/210) no-repeat;padding:0 0 calc(var(--emblem)*256/210*70/256) calc(var(--emblem)*256/210*14/256);font-size:calc(var(--emblem)*.36)}
+.orb.life{right:calc(var(--kami-w)*-33.5/614 - var(--emblem)/2 + var(--u)*.6);translate:0 calc(-50% - var(--emblem)*42/220 + var(--emblem)*.07);background:url('battle_ui/life-flame-17311a2ab05c.webp') center/calc(100%*256/220) no-repeat;padding:calc(var(--emblem)*256/220*84/256) 0 0;font-size:calc(var(--emblem)*.3);flex-direction:column}
+.orb.life small{font-size:calc(var(--emblem)*.15)}
+.pop{position:absolute;left:calc(100% + 8px);bottom:25%;z-index:20;padding:4px 7px;border-radius:6px;background:#10121edb;border:1px solid currentColor;color:#ff8a8a;font-size:calc(var(--emblem)*.34);line-height:1;animation:lifeDeltaPop 1.4s ease-out both;box-shadow:0 2px 9px #0009;font-family:sans-serif}
+@keyframes lifeDeltaPop{0%{opacity:0;translate:0 7px;scale:.8}15%,70%{opacity:1;translate:0 -3px;scale:1}100%{opacity:0;translate:0 -22px;scale:1}}
+/* 場の札 */
+.row{position:absolute;left:50%;translate:-50% 0;display:flex;gap:calc(var(--u)*6);height:var(--card-h);z-index:10}
+.row.opp{top:calc(var(--u)*29.4)}.row.self{top:calc(var(--u)*51.5)}
+.tok{position:relative;width:var(--tok-w);height:var(--card-h);border-radius:calc(var(--u)*1.4);background:var(--frame-bg,#a8a8a8);box-shadow:0 0 0 1.5px rgba(14,11,8,.9),0 8px 18px rgba(0,0,0,.6);transition:transform .28s cubic-bezier(.5,0,.8,.4)}
+.tok.hit{transition:transform .32s cubic-bezier(.2,.6,.3,1)}
+.tok .art{position:absolute;inset:2.5px;border-radius:calc(var(--u)*1.4 - 2.5px);background:#1a1d2a no-repeat;background-size:auto 200%;background-position:68% 8%}
+.tok .atk{position:absolute;top:calc(var(--u)*-1.1);right:calc(var(--u)*-1.1);width:calc(var(--u)*3.8);height:calc(var(--u)*3.8);display:flex;align-items:center;justify-content:center;background:url('battle_ui/attack-swords-e5ce7541eb8d.webp') center/100% no-repeat;color:#fff6e4;font-size:clamp(11px,calc(var(--u)*2),21px);text-shadow:0 0 2px #000,0 0 4px #000;filter:drop-shadow(0 2px 4px rgba(0,0,0,.7))}
+.tok .pw{position:absolute;left:50%;bottom:calc(var(--u)*-1.3);translate:-50% 0;padding:1px 8px;border-radius:4px;background:#14110e;border:1px solid #a8874c;color:#f4e6c4;font-size:clamp(10px,calc(var(--u)*1.8),18px);font-family:"Yu Mincho",serif;white-space:nowrap}
+.frame-赤{--frame-bg:#8e1c1c}.frame-青{--frame-bg:#1c3f80}.frame-緑{--frame-bg:#1b6e22}.frame-黄{--frame-bg:#8f7414}.frame-紫{--frame-bg:#63198c}
+/* 今の場面の説明（画面の左の中ほど） */
+.caption{position:absolute;left:calc(var(--u)*2.5);top:50%;translate:0 -50%;z-index:30;max-width:28%;padding:8px 12px;border-radius:8px;background:rgba(9,11,18,.78);border:1px solid rgba(217,180,106,.45);color:#f4e6c4;font-size:clamp(12px,calc(var(--u)*2.2),18px);line-height:1.5}
+.caption small{display:block;color:#bba98a;font-size:.8em}
+.turn{position:absolute;left:50%;top:50%;translate:-50% -50%;z-index:40;padding:.4em 1.4em;font-family:"Yu Mincho",serif;font-weight:700;font-size:clamp(18px,calc(var(--u)*5),48px);color:#f4e6c4;background:linear-gradient(90deg,transparent,rgba(9,11,18,.85) 20%,rgba(9,11,18,.85) 80%,transparent);letter-spacing:.2em;animation:turnBanner 1.4s ease-out both;pointer-events:none;white-space:nowrap}
+@keyframes turnBanner{0%{opacity:0;scale:1.15}15%,75%{opacity:1;scale:1}100%{opacity:0}}
+</style></head><body>
+<div id="demo">
+<header>
+  <h1>対戦デモ</h1>
+  <label>自分 <select aria-label="自分のカミ" v-model="selfNo"><option v-for="(n,no) in names" :value="no">{{n}}</option></select></label>
+  <label>相手 <select aria-label="相手のカミ" v-model="oppNo"><option v-for="(n,no) in names" :value="no">{{n}}</option></select></label>
+  <button class="primary" @click="start" :disabled="running">▶ 流れを再生</button>
+  <button @click="stop" :disabled="!running">止める</button>
+  <span style="color:#8d7f6a">｜ダメージだけ：</span>
+  <button @click="manual('opp',1)" :disabled="running">相手 -1</button>
+  <button @click="manual('opp',3)" :disabled="running">相手 -3</button>
+  <button @click="manual('self',1)" :disabled="running">自分 -1</button>
+  <button @click="manual('self',3)" :disabled="running">自分 -3</button>
+  <label><input type="checkbox" v-model="sound">音を出す</label>
+</header>
+<div class="area" ref="area">
+  <div class="stage" :style="stageStyle">
+    <div class="field-bg" style="background-image:url('battle_fields/shinshi-5c77fe940805.webp')"></div>
+    <div v-for="side in ['opp','self']" :key="'k'+side" class="col" :class="side">
+      <div class="kami-hud" :ref="'kami-'+side">
+        <div class="kami-portrait" :style="portraitStyle(kamiOf(side))">
+          <kami-motion v-if="hasMotion(kamiOf(side))" :key="side+kamiOf(side)" :kami-no="kamiOf(side)" variant="sealed" :crop="crop(kamiOf(side))" speed="normal" :reduced="false" :idle-only="false" :event="events[side]"></kami-motion>
+        </div>
+        <div class="orb ten">{{ ten[side] }}</div>
+        <div class="orb life">{{ life[side] }}<small>/10</small><span v-if="pops[side]" :key="pops[side].id" class="pop">{{ pops[side].text }}</span></div>
+      </div>
+    </div>
+    <div v-for="side in ['opp','self']" :key="'r'+side" class="row" :class="side">
+      <div v-for="(c,i) in field[side]" :key="side+i" class="tok" :class="['frame-'+c.color,{hit:c.back}]" :ref="side+'-tok-'+i" :style="c.move ? {transform:c.move} : null">
+        <span class="art" :style="{backgroundImage:'url(card_images/320/'+c.no+'.webp)'}"></span>
+        <span class="atk">{{ c.attack }}</span><span class="pw">{{ c.power }}</span>
+      </div>
+    </div>
+    <div v-if="caption" class="caption">{{ caption }}<small v-if="sub">{{ sub }}</small></div>
+    <div v-if="banner" :key="banner.id" class="turn">{{ banner.text }}</div>
+  </div>
+</div>
+</div>
+<script src="vendor/vue-2.6.14.min.js"></script><script src="kami_motion.js?v=20261014-natural-idle-damage"></script>
+<script>
+const NAMES={1:'スサノオ',2:'ヤマトタケル',3:'オオクニヌシ',4:'タケミカヅチ',5:'オモイカネ',6:'アメノウズメ',7:'ヒノカグツチ',8:'アマテラス',9:'ツクヨミ',10:'ヤマタノオロチ'};
+const FILES={1:'スサノオ',2:'ヤマトタケル',3:'オオクニヌシ',4:'タケミカズチ',5:'オモイカネ',6:'アメノウズメ',7:'ヒノカグツチ',8:'アマテラス',9:'ツクヨミ',10:'ヤマタノオロチ'};
+/* 対戦画面と同じ切り出し（index.html の KAMI_FACE_FOCUS の illust・win と kamiFaceCrop。値を変えたらこちらも合わせる） */
+const FOCUS={1:[[.46,.26],1.12],2:[[.47,.21],1.12],3:[[.46,.26],1.12],4:[[.55,.285],1.12],5:[[.52,.205],1],6:[[.34,.18],1.12],7:[[.39,.195],1.12],8:[[.46,.22],1.12],9:[[.49,.26],1],10:[[.52,.33],1.35]};
+function faceCrop(no){const [f,zoom]=FOCUS[no],box=464/614,img=1484/1060,visW=1/zoom,visH=visW*box/img,clamp=(v,m)=>Math.max(0,Math.min(m,v)),left=clamp(f[0]-.5*visW,1-visW),top=clamp(f[1]-.36*visH,1-visH);return {backgroundSize:(zoom*100).toFixed(1)+'% auto',backgroundPosition:(visW<1?left/(1-visW)*100:100).toFixed(1)+'% '+(visH<1?top/(1-visH)*100:0).toFixed(1)+'%'}}
+// 場の札（どのカミでも同じ。絵の切り出しは対戦画面の標準 68% 8%）
+const CARD=(no,color,power,attack)=>({no,color,power,attack,move:'',back:false});
+const FIELD=()=>({opp:[CARD('109','紫',4000,2),CARD('021','赤',7000,3),CARD('086','黄',4000,2)],self:[CARD('024','青',3000,1),CARD('044','青',7000,3),CARD('052','緑',1000,1)]});
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+new Vue({el:'#demo',data:{names:NAMES,selfNo:'8',oppNo:'1',life:{opp:10,self:10},ten:{opp:3,self:3},events:{opp:null,self:null},pops:{opp:null,self:null},field:FIELD(),caption:'',sub:'',banner:null,running:false,sound:true,u:6,seq:0,run:0},
+computed:{stageStyle(){const h=this.u*100;return {'--u':this.u+'px',width:Math.round(h*16/9)+'px',height:h+'px'}}},
+watch:{selfNo(){this.reset()},oppNo(){this.reset()}},
+mounted(){const fit=()=>{const a=this.$refs.area;if(!a)return;this.u=Math.max(2.4,Math.min(a.clientHeight/100,a.clientWidth*9/16/100))};fit();addEventListener('resize',fit);const q=new URLSearchParams(location.search);if(NAMES[q.get('self')])this.selfNo=q.get('self');if(NAMES[q.get('opp')])this.oppNo=q.get('opp');this.reset();this.caption='待機中：呼吸・まばたき';this.sub='「流れを再生」で、神攻でライフが減ったときの動きを順に見られます'},
+methods:{
+  kamiOf(side){return side==='self'?this.selfNo:this.oppNo},
+  hasMotion(no){return !!kamiMotionSet(no,undefined,'sealed')},
+  crop(no){return faceCrop(no)},
+  portraitStyle(no){return Object.assign({backgroundImage:'url(kami_illustrations/'+FILES[no]+'.webp)'},faceCrop(no))},
+  se(name){if(!this.sound)return;try{const a=new Audio('sfx/'+name+'.mp3');a.volume=.6;const p=a.play();if(p&&p.catch)p.catch(()=>{})}catch(e){}},
+  reset(){this.run++;this.running=false;this.life={opp:10,self:10};this.ten={opp:3,self:3};this.events={opp:null,self:null};this.pops={opp:null,self:null};this.field=FIELD();this.banner=null},
+  // 対戦画面と同じ決まり：ライフが減ると、3以上なら大ダメージ、それ未満ならダメージの動き
+  damage(side,n){this.seq++;this.life[side]=Math.max(1,this.life[side]-n);this.pops[side]={id:this.seq,text:'-'+n};this.$set(this.events,side,{id:this.seq,type:n>=3?'damageHeavy':'damage'})},
+  async attack(side,i,n,run){
+    const target=side==='self'?'opp':'self',card=this.field[side][i],tok=(this.$refs[side+'-tok-'+i]||[])[0],kami=(this.$refs['kami-'+target]||[])[0];
+    if(tok&&kami){const a=tok.getBoundingClientRect(),b=kami.getBoundingClientRect();card.back=false;card.move='translate('+((b.left+b.width/2)-(a.left+a.width/2))*.82+'px,'+((b.top+b.height/2)-(a.top+a.height/2))*.82+'px)'}
+    this.se(n>=3?'drag_Drop_Heavy':'drag_Drop');await wait(280);if(run!==this.run)return;
+    this.se('hit');this.damage(target,n);card.back=true;card.move='';await wait(340);
+  },
+  async manual(side,n){this.caption=(side==='self'?'自分':'相手')+'のカミに'+n+'ダメージ';this.sub=n>=3?'3以上は「大ダメージ」の動き':'「ダメージ」の動き';this.se('hit');this.damage(side,n);if(this.life[side]<=3){await wait(1500);this.life[side]=10}},
+  stop(){this.reset();this.caption='待機中：呼吸・まばたき';this.sub=''},
+  async start(){
+    this.reset();const run=this.run;this.running=true;const ok=()=>run===this.run;
+    const step=async(cap,sub,ms)=>{this.caption=cap;this.sub=sub||'';await wait(ms)};
+    const turn=async(text,se)=>{this.seq++;this.banner={id:this.seq,text};this.se(se);await wait(1500)};
+    await step('待機：呼吸・まばたき','カミは待っている間、呼吸とまばたきを続けます',2600);if(!ok())return;
+    await turn('自分のターン','my_turn');if(!ok())return;
+    await step('自分のシラトリが相手のカミに神攻','神攻力1 → 相手のライフ -1（ダメージの動き）',600);if(!ok())return;
+    await this.attack('self',0,1,run);if(!ok())return;await wait(1800);if(!ok())return;
+    await step('自分のサフィロスが相手のカミに神攻','神攻力3 → 相手のライフ -3（大ダメージの動き）',600);if(!ok())return;
+    await this.attack('self',1,3,run);if(!ok())return;await wait(2200);if(!ok())return;
+    await turn('相手のターン','enemy_turn');if(!ok())return;
+    await step('相手の紫の眷属が自分のカミに神攻','神攻力2 → 自分のライフ -2（ダメージの動き）',600);if(!ok())return;
+    await this.attack('opp',0,2,run);if(!ok())return;await wait(1800);if(!ok())return;
+    await step('相手のルベルが自分のカミに神攻','神攻力3 → 自分のライフ -3（大ダメージの動き）',600);if(!ok())return;
+    await this.attack('opp',1,3,run);if(!ok())return;await wait(2200);if(!ok())return;
+    this.running=false;this.caption='待機に戻りました';this.sub='もう一度見るときは「流れを再生」';
+  },
+}});
+</script></body></html>
