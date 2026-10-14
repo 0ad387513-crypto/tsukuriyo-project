@@ -178,7 +178,7 @@
   <div class="bar">
     <div class="tabs" role="tablist" aria-label="種族" id="tribes"></div>
     <div class="cast-tabs" role="tablist" aria-label="キャスト" id="castTabs"></div>
-    <div class="bar-foot"><button type="button" id="reload">最新の状態に更新</button><label class="vol" for="volume">音量 <input type="range" id="volume" min="0" max="100" step="5" value="80"> <output id="volumeText" for="volume">80</output></label><span class="summary" id="summary"></span></div>
+    <div class="bar-foot"><button type="button" id="reload">最新の状態に更新</button><label class="vol" for="volume">音量 <input type="range" id="volume" min="0" max="100" step="5" value="80"> <output id="volumeText" for="volume">80</output></label><span class="summary" id="summary"></span><span class="summary" id="pendingSync"></span></div>
   </div>
   <details class="readings" id="readings"><summary>読み方の辞書（イントネーション・読み間違いを直す）</summary>
     <p class="dir-note">言葉の書き方を変えると、読み方やイントネーションが変わります。たとえば「父上」→「ちちうえ」「チチウエ」「ちち、うえ」など。ここに入れた置き換えは、その言葉を含む全部の台詞に、読み上げるときだけ使われます（台本の表示は変わりません）。入れたあとは「この言葉の台詞を作り直す」で作り直してください。うまくいかないときは、台詞ごとの「直す・作り直す」の「言い方を3通り作って選ぶ」も試してください。台詞を作るときは毎回、音声認識で聞き取って確かめます。読ませた文と大きく違って聞こえたら自動で作り直し（最大3回）、聞き取った文は台詞の下に出ます。「避けたい聞こえ方」を入れておくと、その言葉に聞こえたときも作り直します（最大5回。例：葛ノ葉亭 が「果て」と聞こえたら作り直す）。<br>読み方の中に「‿」を入れると、そこで区切って読ませたうえで、間だけを自動で詰めます（例：天根ノ社 → あまねの‿やしろ。区切ると言い方が安定し、間を詰めるので続けて聞こえます）。</p>
@@ -208,6 +208,8 @@
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
     if (j.direction) data.directions[ref] = j.direction; else delete data.directions[ref];
+    // 台本も変わったとき（台詞を変えた）は、台詞の一覧を読み直す
+    if (j.rebuilt) { rememberScroll(); await load(); restoreScroll(); }
   }
   // 台詞の行の表示を、保存した指定に合わせて更新する
   // 2人以上で話す台詞（台本の 名前「…」名前「…」 や「2人同時に」で分かれたもの）
@@ -382,7 +384,7 @@
       text.value = multi || (data.directions[groupRef] || {}).script ? ((src && src[m[2]]) || scriptOf(it)) : it.text; syncKind();
     });
     s1.append(el("h4", "", multi ? "① 台詞を変える（この台詞は複数人で話します。全員分をまとめて編集します）" : "① 台詞を変える（必要なときだけ）"), text, kind,
-      el("p", "dir-note", "2人以上に分けるときは、名前「台詞」名前「台詞」と続けて書きます（例：アカマツ「いまだ！シラトリ！」シラトリ「はあっ！」）。名前は話す人の名前に合わせてください。1人の台詞は、読み間違いを直すときにひらがなにしたり「、」で間を入れたりできます。ここで変えた台詞はこのPCの試聴室だけに反映され、共有ページの台本は変わりません。"), reset);
+      el("p", "dir-note", "2人以上に分けるときは、名前「台詞」名前「台詞」と続けて書きます（例：アカマツ「いまだ！シラトリ！」シラトリ「はあっ！」）。名前は話す人の名前に合わせてください。1人の台詞は、読み間違いを直すときにひらがなにしたり「、」で間を入れたりできます。ここで変えた台詞は、このPCの台本ファイルにも入ります（読み方だけを変えたときは台本はそのまま）。共有ページの台本は、Claude に「共有ページの台本に合わせて」と伝えるとそろえます。"), reset);
 
     // ② 演技の方針（日本語で自由に）
     const s2 = el("section", "step");
@@ -1223,6 +1225,10 @@
       getJson("/voices/manifest.json", { kami: {} }),
       getJson("/voices/trials/studio/manifest.json", { kami: {} }),
     ]);
+    // 試聴室で変えて、まだ共有ページの台本に入れていない台詞
+    const pending = await getJson("/tools/voice-script/shared_sync_pending.json", {});
+    const nPending = Object.keys(pending || {}).length;
+    $("pendingSync").textContent = nPending ? "｜共有ページの台本にまだ入れていない台詞：" + nPending + "本（Claude に伝えるとそろえます）" : "";
     data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {}, directionMap: tagMap.map || [], heard: heard || {}, kami: kamiScript || { kami: {} }, kamiManifest: kamiManifest || { kami: {} }, kamiStudio: kamiStudio || { kami: {} } };
     renderReadings();
     await render();
