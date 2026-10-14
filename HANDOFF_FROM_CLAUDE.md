@@ -2155,3 +2155,9 @@
 - v1.15.504：試聴室の台詞のメモの対象名を直した。pages.js の label が最初の small（台本の文の欄 .orig。空のことが多い）を読み、アカマツの全台詞が「アカマツ：」になっていた。今は「アカマツ：見習い忍者 アカマツ（攻撃時）「いっくぜぇ！」」の形。メモ欄の「これまでのメモ」にも各メモの対象名を出す。らくちんしさんの既存メモ4件（2026-10-14 23:43〜44、対象「アカマツ：」）はどの台詞か不明
 - v1.15.505：カードボイスの台本を、実際に読ませた台詞（試聴室の言い換え card_voice_direction.json の text）に合わせた。59本（台詞58本＋n180 のハミングの秒数）を、共有ページ（artifact FhjJWGhKHFPbH2yiuGJFtj の db lines/pairs）と手元の card_voice_script.json・card_voice_pairs.json の両方で直し、台本と同じになった言い換え58本は消した（p09 の「チチウエ」は読み方の指定なので残す）。cast と voices/cards/manifest.json も作り直した。試聴室の「台本の文」は、読み方だけの違いでは出さない。10/11 の対応はゲームのカード詳細の表示（manifest の displayText）だけで、台本は直していなかったのが残っていた理由
 - v1.15.506：試聴室の「① 台詞を変える」で保存すると、手元の台本（card_voice_script.json・card_voice_pairs.json）も同じ台詞になる（serve.js の /__dev/voice-direction）。読み方だけの違い（漢字（よみ）・見えない区切り）は台本に入れず、読み上げる文として試聴室の指定に残す。複数人の台詞（名前「…」）も台本に書く。保存後に cast と voices/cards/manifest.json を作り直す。共有ページ（artifact FhjJWGhKHFPbH2yiuGJFtj）にまだ入れていない台詞は tools/voice-script/shared_sync_pending.json（git に入れない）にたまり、試聴室の上に本数が出る。ユーザーに言われたら Claude が ArtifactData で共有ページの lines/pairs に入れて、その項目を消す
+- v1.15.507：旗手（n003-summon）は、試聴室で「旗を掲げよ！」に変えた時点で声を外していて作り直せず、音声は「旗を掲げよ！全軍、続け！」のままだった。ユーザーの指示で台本を音声に合わせて戻した（手元・共有ページ db lines/n003）。
+  - 取りこぼしの原因：試聴室は台詞の指定を先に保存し、作り直しに失敗しても指定が残り、画面はその台詞を表示していた。v1.15.505 の同期も、その指定を「実際に読ませた台詞」とみなして確かめていなかった
+  - 防ぐ仕組み：generate_card_voices_elevenlabs.js が音声を作るたびに voices/cards/spoken.json に { 台詞ID: { line: 作ったときの台詞, at } } を書く（言い方の候補は 台詞ID#番号、切り出しも）。serve.js の「これにする」で候補の記録を本番の記録に写す。今ある422本は今の台詞で記録を作った（seeded: true）
+  - 試聴室：今の台詞と spoken.json の台詞が違うと「⚠ 音声はまだ前の台詞のまま（音声の台詞：…）」を出す。共有ページに未反映の本数の横に「うちN本は音声を作り直すまで入れません」
+  - 共有ページに合わせるとき：node scripts/shared_script_sync.js で「入れてよい台詞」（音声の記録と一致）だけを ArtifactData で入れ、入れたものを --done 台詞ID,... で pending から消す
+  - 古い記録 n065-attack-1（2人に分けていたころの攻撃時）を card_voice_direction.json から消した

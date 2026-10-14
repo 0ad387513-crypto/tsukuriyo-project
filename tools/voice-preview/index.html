@@ -116,6 +116,7 @@
   .dir-tag { font-size: 11px; color: var(--gold); margin-left: 6px; }
   .heard { color: var(--muted); display: block; font-size: 11px; }
   .heard.bad { color: #ffcf7a; font-weight: 700; }
+  .stale { display: block; color: #ffcf7a; font-weight: 700; font-size: 11px; }
   .takes { margin-top: 6px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--ok); background: var(--ok-soft); display: grid; gap: 6px; font-size: 12px; }
   .takes-head { font-weight: 700; color: var(--ok); font-size: 11px; }
   .take { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; }
@@ -338,6 +339,12 @@
     const differs = !!d.text && !sameAsScript(it.text, d.text);
     orig.textContent = differs ? "台本の文：" + it.text : "";
     orig.hidden = !differs;
+    // 音声を作ったときの台詞（voices/cards/spoken.json）が今の台詞と違えば、音声はまだ作り直していない
+    const made = (data.spoken || {})[it.ref], now = d.text || it.text;
+    const stale = !!made && made.line !== now && !sameAsScript(now, made.line) && !sameAsScript(made.line, now);
+    let warn = orig.parentNode && orig.parentNode.querySelector(".stale");
+    if (stale) { if (!warn) { warn = el("small", "stale"); orig.after(warn); } warn.textContent = "⚠ 音声はまだ前の台詞のまま（音声の台詞：" + made.line + "）。「直す・作り直す」から作り直してください"; }
+    else if (warn) warn.remove();
     label.textContent = describe(it.ref);
   }
   function describe(ref) {
@@ -1219,6 +1226,7 @@
       getJson("/tools/voice-script/direction_tags.json", { map: [] }),
       getJson("/voices/cards/heard.json", {}),
     ]);
+    const spokenLog = await getJson("/voices/cards/spoken.json", {});
     // カミのボイス：台本・ゲームの音声の一覧・試聴室で作った音声の一覧
     const [kamiScript, kamiManifest, kamiStudio] = await Promise.all([
       getJson("/voices/voice_script.json", { kami: {} }),
@@ -1228,8 +1236,10 @@
     // 試聴室で変えて、まだ共有ページの台本に入れていない台詞
     const pending = await getJson("/tools/voice-script/shared_sync_pending.json", {});
     const nPending = Object.keys(pending || {}).length;
-    $("pendingSync").textContent = nPending ? "｜共有ページの台本にまだ入れていない台詞：" + nPending + "本（Claude に伝えるとそろえます）" : "";
-    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {}, directionMap: tagMap.map || [], heard: heard || {}, kami: kamiScript || { kami: {} }, kamiManifest: kamiManifest || { kami: {} }, kamiStudio: kamiStudio || { kami: {} } };
+    // 音声がまだ前の台詞のものは、作り直すまで共有ページには入れない
+    const nWaiting = Object.entries(pending || {}).filter(([ref, p]) => { const m = (spokenLog || {})[ref]; return !m || !(m.line === p.text || sameAsScript(p.text, m.line)); }).length;
+    $("pendingSync").textContent = nPending ? "｜共有ページの台本にまだ入れていない台詞：" + nPending + "本（Claude に伝えるとそろえます" + (nWaiting ? "。うち" + nWaiting + "本は音声を作り直すまで入れません" : "") + "）" : "";
+    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {}, directionMap: tagMap.map || [], heard: heard || {}, spoken: spokenLog || {}, kami: kamiScript || { kami: {} }, kamiManifest: kamiManifest || { kami: {} }, kamiStudio: kamiStudio || { kami: {} } };
     renderReadings();
     await render();
   }

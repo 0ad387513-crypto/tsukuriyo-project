@@ -445,6 +445,13 @@ async function handleDev(req, res, url) {
       if (heard[ref + "#" + take]) heard[ref] = heard[ref + "#" + take]; else delete heard[ref];
       fs.writeFileSync(heardFile, JSON.stringify(heard, null, 2) + "\n");
     } catch (e) {}
+    // 音声を作ったときの台詞の記録も、選んだ候補のものにする
+    try {
+      const spokenFile = path.join(cards, "spoken.json");
+      const spoken = fs.existsSync(spokenFile) ? JSON.parse(fs.readFileSync(spokenFile, "utf8")) : {};
+      if (spoken[ref + "#" + take]) spoken[ref] = Object.assign({}, spoken[ref + "#" + take], { at: new Date().toISOString() }); else delete spoken[ref];
+      fs.writeFileSync(spokenFile, JSON.stringify(spoken, null, 2) + "\n");
+    } catch (e) {}
     console.log(`[voice-takes] ${ref} を言い方の候補${take}にした`);
     return sendJson(res, 200, { ok: true });
   }

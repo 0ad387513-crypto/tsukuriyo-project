@@ -484,6 +484,9 @@ async function lines() {
   // 聞き取りの記録（試聴室に「聞き取り：…」と出す）。--no-check で確認を省く
   const heardFile = path.join(outDir, "heard.json");
   const heardLog = readJson(heardFile, {});
+  // 音声を作ったときの台詞（試聴室で、今の台本と違うときに「音声はまだ前の台詞のまま」と出す。共有ページに台本を合わせるときにも使う）
+  const spokenFile = path.join(outDir, "spoken.json");
+  const spokenLog = readJson(spokenFile, {});
   const noCheck = args.includes("--no-check");
   for (const it of targets) {
     const out = path.join(outDir, `${it.ref}.mp3`);
@@ -553,6 +556,7 @@ async function lines() {
           if (attempt < tries) console.log(`  作り直します（${attempt + 1}回目）`);
         }
         fs.writeFileSync(file, best.audio);
+        spokenLog[heardKey] = { line: dir.text || it.text, at: new Date().toISOString() };
         if (best.heardText !== undefined && best.heardText !== null) { heardLog[heardKey] = { text: best.heardText, score: Math.round(best.score * 100) / 100, ok: !!best.ok, at: new Date().toISOString() }; }
         else delete heardLog[heardKey];
         // 仕上げ（区切りの間・速さ・高さ）。必要なときだけ、WAV に直してまとめて加工し、最後に1回だけ MP3 にする
@@ -580,6 +584,7 @@ async function lines() {
         await makeOne(out, it.ref);
       }
       writeJson(heardFile, heardLog);
+      writeJson(spokenFile, spokenLog);
     } catch (e) { console.error(`  × 失敗：${String(e.message || e).slice(0, 300)}`); failed.push(it.ref); }
     await sleep(300);
   }
@@ -672,6 +677,7 @@ async function cut() {
   fs.mkdirSync(takesDir, { recursive: true });
   for (const old of fs.readdirSync(takesDir)) if (old.startsWith(ref + "-") && /^\d+\.mp3$/.test(old.slice(ref.length + 1))) fs.unlinkSync(path.join(takesDir, old));
   const heardFile = path.join(outDir, "heard.json"); const heardLog = readJson(heardFile, {});
+  const spokenFile = path.join(outDir, "spoken.json"); const spokenLog = readJson(spokenFile, {});
   let n = 0;
   for (const sn of scored.slice(0, 5)) {
     // 前後の文との間（無音）の真ん中まで余白を取る。最大で前 0.08 秒・後ろ 0.18 秒
@@ -684,9 +690,11 @@ async function cut() {
     if (run.error || run.status !== 0 || !fs.existsSync(outFile)) { console.warn("  （切り出せませんでした。ffmpeg が必要です）" + String(run.stderr || "").slice(0, 120)); continue; }
     n++;
     heardLog[ref + "#" + n] = { text: sn.text, score: Math.round(sn.score * 100) / 100, ok: true, at: new Date().toISOString(), from: "preview" };
+    spokenLog[ref + "#" + n] = { line: dir.text || it.text, at: new Date().toISOString(), from: "preview" };
     console.log(`  → 言い方の候補${n}：${sn.text}（${from.toFixed(2)}〜${to.toFixed(2)}秒、${len.toFixed(2)}秒）`);
   }
   writeJson(heardFile, heardLog);
+  writeJson(spokenFile, spokenLog);
   console.log(`${ref}：候補${r.choice}の試聴音声から ${n} 個切り出しました。試聴室で聴いて「これにする」を押してください。`);
 }
 
