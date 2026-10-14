@@ -180,9 +180,12 @@
     }
   }
   const INTERACTIVE = "button, a, input, select, textarea, audio, video, label, summary, [role=button], [contenteditable]";
+  // 読み込みが速いと load の準備を取りこぼすことがあるので、読み込み済みでまだ準備していないページにも同じ準備をする
+  setInterval(() => { try { const d = frame.contentDocument; if (d && d.readyState === "complete" && d.URL !== "about:blank" && !d.__kjSetup) frame.dispatchEvent(new Event("load")); } catch (e) { /* 別のサイトのページ */ } }, 500);
   frame.addEventListener("load", () => {
     try { doc = frame.contentDocument; } catch (e) { doc = null; }
-    if (!doc) return;
+    if (!doc || doc.__kjSetup) return;
+    doc.__kjSetup = true;
     // ページ側に昔の「戻る」ボタンがあれば、この帯と重なるので消す
     doc.querySelectorAll('a[href*="claude.ai/artifact"]').forEach(a => { if (a.style.position === "fixed") a.remove(); });
     const style = doc.createElement("style");

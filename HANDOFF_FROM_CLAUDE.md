@@ -2149,3 +2149,4 @@
 - optimized_assets.json から、git に入らない kami_redesign/（.gitignore 済み）の途中の画像595件の記録を外した（ゲームでは未使用。.release-worktree 側の記録はそのまま）。テストが読む output/ の registry.json 2つは入れた
 - npm test 243件成功。main には入れていない（本番は変わらない）
 - v1.15.500：ダッシュボード（tools/hub/hub.css）で [hidden] を display:none !important に。.badge の inline-block が hidden より強く、共有用URL（メンバー）でも「キジマとして表示中」の札が見えていた（権限の判定 OWNER 自体は正しく false）
+- v1.15.501：view.html で、枠の中のページの load を取りこぼしたとき（読み込みが速いとき）にメンバー用のボタンのロックが掛からないことがあったため、0.5秒ごとに準備済みか確かめて、未準備なら同じ準備をする（doc.__kjSetup）
