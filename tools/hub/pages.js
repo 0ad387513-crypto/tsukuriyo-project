@@ -14,7 +14,7 @@
     { id: "voice", inside: "voices", group: "ボイス・音", title: "試聴室", path: "/tools/voice-preview/", kind: "voice", desc: "キャラごとの声と、作った台詞を聴いて確認。カミのボイスも「カミ」のタブで、台詞と演技の方針を直して作り直せます。",
       memberHide: { text: /決める|作る|作り直|削除|保存|追加|狙って|切り出|これにする|登録|コピー|まとめて|反映|戻す/, selectors: ["details", ".runner", "#runner", "input[type=checkbox]"] },
       items: [
-        { selector: ".line-row", label: e => { const cast = text(e.closest(".cast") || e, ".cast-name"); const info = text(e, "small").split("｜"); return cast + "：" + (info[0] || "") + (info[1] ? "（" + info[1] + "）" : ""); } },
+        { selector: ".line-row", label: e => { const cast = text(e.closest(".cast") || e, ".cast-name"); const info = text(e, "small:not(.orig):not(.heard)").split("｜"); const line = text(e, ".spoken"); return cast + "：" + (info[0] || "") + (info[1] ? "（" + info[1] + "）" : "") + (line ? "「" + line + "」" : ""); } }, // 台詞ごとに分かるよう、話す場面と台詞の文まで入れる（.orig は「台本の文」の欄なので使わない）
         { selector: ".cast-name", label: e => text(e) + "（声）" },
       ] },
     { id: "voice-script", inside: "voices", group: "ボイス・音", title: "台本", path: "/tools/voice-script/", kind: "voice", desc: "台詞と掛け合いの一覧。",
