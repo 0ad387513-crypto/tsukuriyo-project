@@ -394,3 +394,22 @@ test("ストラクチャーデッキは管理者だけ更新できる", async ()
   const admin = env.authenticatedContext("admin", { admin: true }).database();
   await assertSucceeds(set(ref(admin, "structureDecks/sample"), { name: "sample" }));
 });
+
+test("開発ダッシュボードの修正メモ：ログイン中の人は自分の名前で書け、未ログインは読めない", async () => {
+  const note = { page: "/tools/voice-preview/", pageTitle: "試聴室", target: "アカマツ", kind: "voice", memo: "声が低い", prompt: "", assignee: "auto", status: "memo", name: "A", uid: "member-a", result: "", createdAt: "2026-10-14T00:00:00Z", updatedAt: "2026-10-14T00:00:00Z" };
+  await assertFails(get(ref(db(null), "devNotes")));
+  await assertSucceeds(set(ref(db("member-a"), "devNotes/n1"), note));
+  await assertFails(set(ref(db("member-b"), "devNotes/n2"), note));
+  await assertSucceeds(get(ref(db("member-b"), "devNotes")));
+  await assertFails(set(ref(db("member-a"), "devNotes/n3"), Object.assign({}, note, { status: "hacked" })));
+  await assertFails(set(ref(db("member-a"), "devNotes/n4"), Object.assign({}, note, { extra: "x" })));
+  await assertFails(set(ref(db("member-a"), "devNotes/n5"), Object.assign({}, note, { memo: "x".repeat(2001) })));
+  await assertSucceeds(update(ref(db("member-b"), "devNotes/n1"), { status: "approved", updatedAt: "2026-10-14T01:00:00Z" }));
+  await assertFails(update(ref(db("member-b"), "devNotes/n1"), { uid: "member-b" }));
+});
+
+test("開発ダッシュボードの残タスク：決まった項目だけ書ける", async () => {
+  await assertSucceeds(set(ref(db("member-a"), "devTasks/t1"), { title: "SE作成", group: "音", status: "todo", lead: "Claude", note: "", order: 10, updatedAt: "2026-10-14T00:00:00Z" }));
+  await assertFails(set(ref(db("member-a"), "devTasks/t2"), { title: "x", status: "later" }));
+  await assertFails(get(ref(db(null), "devTasks")));
+});

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ツクリヨ 開発ダッシュボード</title>
+<link rel="stylesheet" href="/tools/hub/hub.css">
+<style>
+  /* 上にいまの状況（修正依頼の件数）、その下に確認するページを分類ごとに並べる */
+  .summary { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; font-variant-numeric: tabular-nums; }
+  .summary b { font-family: "Yu Mincho", serif; font-size: 22px; margin-right: 4px; }
+  .card .row { margin-top: 4px; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="row"><h1>ツクリヨ 開発ダッシュボード</h1><span class="badge owner" id="mode" hidden>キジマとして表示中</span><span class="muted" id="ver"></span></div>
+  <p class="muted">制作中のボイス・イラスト・演出を確認するページの入口です。各ページで気になったところ（カード・台詞など）を押すと、気づいたことをメモに書けます。書いたメモは「修正依頼ボード」にまとめて並びます。</p>
+  <div class="summary" id="summary"><span class="muted">修正依頼を読み込んでいます…</span></div>
+  <div id="groups"></div>
+</main>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="/version.js"></script>
+<script src="/firebase.js"></script>
+<script src="/tools/hub/dev-notes.js"></script>
+<script src="/tools/hub/notes-ui.js"></script>
+<script src="/tools/hub/pages.js"></script>
+<script>
+(() => {
+  "use strict";
+  const N = window.DevNotes, U = window.DevNotesUI, $ = id => document.getElementById(id);
+  $("mode").hidden = !N.OWNER;
+  $("ver").textContent = typeof TSUKURIYO_BUILD_VERSION === "string" ? "v" + TSUKURIYO_BUILD_VERSION : "";
+  let notes = [], loaded = false;
+  // まとめたページの中身（inside）は、まとめ（例：ボイス）の中のタブで開くので、一覧には出さない
+  const all = window.DEV_PAGES || [];
+  const pages = all.filter(p => (N.OWNER || !p.owner) && !p.inside);
+  const pathsOf = p => p.tabs ? p.tabs.map(id => (all.find(x => x.id === id) || {}).path) : [p.path];
+  function render() {
+    const open = n => !["done", "rejected"].includes(n.status);
+    const count = s => notes.filter(n => n.status === s || (s === "memo" && n.status === "wait")).length;
+    const sum = $("summary"); sum.replaceChildren();
+    if (loaded) for (const [s, label] of [["memo", "未確認のメモ"], ["approved", "作業待ち"], ["doing", "作業中"], ["review", "確認待ち"]]) { const x = U.el("span"); x.append(U.el("b", "", String(count(s))), label); sum.append(x); }
+    else sum.append(U.el("span", "muted", "修正依頼を読み込んでいます…"));
+    const board = U.el("a", "btn primary", "修正依頼ボードを開く"); board.href = "/tools/hub/requests.html"; sum.append(board);
+    const groups = [...new Set(pages.map(p => p.group))];
+    $("groups").replaceChildren(...groups.map(g => {
+      const sec = U.el("section"); sec.style.cssText = "display:flex;flex-direction:column;gap:12px;margin-bottom:22px";
+      const grid = U.el("div", "grid");
+      for (const p of pages.filter(x => x.group === g)) {
+        const a = U.el("a", "card"); a.href = "/tools/hub/view.html?p=" + p.id;
+        a.append(U.el("b", "", p.title), U.el("span", "", p.desc));
+        const n = notes.filter(x => pathsOf(p).includes(x.page) && open(x)).length;
+        const row = U.el("div", "row");
+        if (n) row.append(U.el("span", "badge wait", "修正メモ・依頼 " + n + "件"));
+        if (p.owner) row.append(U.el("span", "badge owner", "キジマ専用"));
+        if (row.childElementCount) a.append(row);
+        grid.append(a);
+      }
+      sec.append(U.el("h2", "", g), grid); return sec;
+    }));
+  }
+  render();
+  N.watch("devNotes", list => { notes = list; loaded = true; render(); }, e => { $("summary").replaceChildren(U.el("span", "err", "修正依頼を読み込めませんでした（" + ((e && e.message) || e) + "）")); });
+})();
+</script>
+</body>
+</html>

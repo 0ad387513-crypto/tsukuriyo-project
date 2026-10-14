@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8" />
-    <title>ツクリヨ カード編集室（ローカル専用）</title>
+    <title>ツクリヨ カードジェネレーター（ローカル専用）</title>
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="cropper.css" />
     <link rel="stylesheet" href="load.css">
@@ -12,7 +12,7 @@
 <body>
     <div id="app">
         <!-- ツクリヨのローカル確認用サーバー（npm run preview）でだけ保存できる。本番サイトでは /tools/ は公開しない -->
-        <div class="editor-link-status" :class="{ ready: gameLinkReady }">カード編集室（ローカル専用）：{{ gameLinkMessage }}</div>
+        <div class="editor-link-status" :class="{ ready: gameLinkReady }">カードジェネレーター（ローカル専用）：{{ gameLinkMessage }}</div>
         <div class="load" v-show="!loaded">
             <div class="box">
                 <div class="flower">
@@ -519,7 +519,8 @@
                         <label class="textLabel">フレーバー：</label>
                         <textarea class="i-text" v-model="cardFlavor" rows="3" style="resize:vertical; width:670px; font-family:'M PLUS Rounded 1c','Rounded Mplus 1c',sans-serif; font-size:16px;"></textarea>
                     </p>
-                    <p class="dlbtnArea" style="margin-top:10px;">
+                    <p v-if="linkNotice" style="margin-top:10px; padding:10px 12px; background:#fff3cd; border:2px solid #b8860b; color:#3a2a00; font-weight:bold;">{{ linkNotice }} <button v-if="linkNext" @click="openLinkNext" style="margin-left:8px; background:#b8860b; color:#fff; font-weight:bold;">続けて No.{{ linkNext }} を直す</button></p>
+                    <p class="dlbtnArea" id="publishArea" style="margin-top:10px;">
                         <button @click="imageDL">保存（画像）</button>
                         <button @click="saveToSheet" v-if="cardNo" style="margin-left:10px; background-color:#2e7d32; color:#fff;">スプレッドシートに保存</button>
                         <button @click="publishToGame(false)" v-if="cardNo" :disabled="!gameLinkReady" style="margin-left:10px; background-color:#b8860b; color:#fff; font-weight:bold;">シートとゲームに反映</button>
@@ -549,7 +550,7 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script src="cropper.js"></script>
-    <script src="frames.js?v=1791527431"></script>
+    <script src="frames.js?v=1791797583"></script>
     <script type="text/javascript">
     $(function() {
         var $uploadCrop;

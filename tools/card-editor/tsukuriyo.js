@@ -195,6 +195,11 @@
     //一括生成の進捗表示
     batchProgress: "",
 
+    // 開発ダッシュボード（カード効果の一覧）から開いたときの案内
+    linkNotice: "",
+    // 同じカードの別版で、続けて同じ修正を入れる番号（例：No.1 のあとに No.2）
+    linkNext: "",
+
     // テンプレート設定パネルの開閉（独立）
     templatePanelOpen: true,
     // 表示中の設定パネル（'card': カード各種設定 / 'kami': カミカード設定 / '': 両方閉じる）
@@ -412,6 +417,39 @@
       }
 
       this.textColor = "#fff";
+    },
+    /* 開発ダッシュボードの「この効果でカードジェネレーターを開く」から来たとき：
+       そのカードを選んで、効果文を調整案に置き換え、ゲームに反映するボタンの手前まで進める（反映は自分で押す） */
+    _applyLinkParams: function () {
+      var params = new URLSearchParams(location.search);
+      var no = params.get("no");
+      if (!no) return;
+      var list = this.templateList || {};
+      var key = Object.keys(list).find(function (k) { return String(parseInt(list[k][0], 10)) === String(parseInt(no, 10)); });
+      if (!key) { this.linkNotice = "No." + no + " のカードが一覧に見つかりませんでした。"; return; }
+      this.templatePanelOpen = true;
+      this.cardTemplate = key;
+      this.$nextTick(() => {
+        this.templateSet();
+        var map = { color: "cardColor", type: "cardType", cost: "cardCost", power: "cardPower", attack: "cardAttack", round: "cardRound", ret: "cardReturn", text: "cardText" };
+        var names = { color: "属性", type: "種族", cost: "マナ", power: "戦闘力", attack: "神攻力", round: "ラウンド", ret: "返還値", text: "効果" };
+        var applied = [];
+        Object.keys(map).forEach((k) => { var v = params.get(k); if (v !== null) { this[map[k]] = v; applied.push(names[k]); } });
+        this.$nextTick(() => { this.flameSet(); this.textSet(); });
+        var also = (params.get("also") || "").split(",").filter(Boolean);
+        this.linkNext = also[0] || "";
+        this.linkNotice = key + " の" + (applied.length ? applied.join("・") : "値") + "を調整案に置き換えました。" + (also.length ? "このカードには同じ内容の別版（No." + also.join("・No.") + "）があります。反映したら下の「続けて No." + also[0] + " を直す」を押してください。" : "") + "カードの画像を確かめてから「シートとゲームに反映」を押すと、ゲームに入ります（まだ反映していません）。";
+        setTimeout(() => { var el = document.getElementById("publishArea"); if (el) el.scrollIntoView({ block: "center" }); }, 400);
+      });
+    },
+    /* 同じカードの別版へ、同じ修正の指定のまま進む */
+    openLinkNext: function () {
+      var params = new URLSearchParams(location.search);
+      var also = (params.get("also") || "").split(",").filter(Boolean);
+      if (!also.length) return;
+      params.set("no", also[0]);
+      if (also.length > 1) params.set("also", also.slice(1).join(",")); else params.delete("also");
+      location.search = "?" + params.toString();
     },
     templateSet: function () {
       /*  選択されたテンプレートに沿って画像を設定する  */
@@ -1510,7 +1548,8 @@
   },
   mounted() {
     this._loadEditorConfig();
-    this.sendAPI();
+    // カードの一覧を読み込んだあと、URL で指定されたカードと効果文を入れる（?no=番号&text=調整後の効果）
+    this.sendAPI().then(() => this._applyLinkParams());
     this.flameSet();
     this.loadKamiSheet(true);
     this._initCostGradients();

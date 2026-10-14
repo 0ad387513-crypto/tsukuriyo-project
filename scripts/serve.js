@@ -58,14 +58,27 @@ function voiceRunArgs(step, castKeys) {
   }
   if (step.command === "lines" && step.ref && refOk(step.ref)) return ["lines", "--ref", step.ref].concat(step.force ? ["--force"] : []);
   if (step.command === "lines" && !step.ref && castOk(step.cast)) return ["lines", "--cast", step.cast].concat(step.force ? ["--force"] : []);
+  // カミのボイス（voices/voice_script.json）：1台詞ずつ、試し作り「studio」に今の声で作る（ゲームのボイスは「ゲームに反映」を押すまで変えない）
+  if (step.command === "kami-lines" && kamiLineOk(step.kami, step.key)) return [KAMI_TOOL, "lines", "--kami", String(step.kami), "--key", step.key, "--trial", KAMI_STUDIO, "--current-voice", "--force"];
   return null;
+}
+// カミのボイスの台本と、試聴室で作り直した音声の置き場所
+const KAMI_TOOL = "generate_voices_elevenlabs.js";
+const KAMI_STUDIO = "studio";
+const kamiScriptFile = () => path.join(root, "voices", "voice_script.json");
+function kamiLineOk(kami, key) {
+  if (!/^(10|[1-9])$/.test(String(kami || "")) || !/^[a-z0-9_]{1,40}$/.test(String(key || ""))) return false;
+  try { const k = JSON.parse(fs.readFileSync(kamiScriptFile(), "utf8")).kami[String(kami)]; return !!(k && k.lines && k.lines[key]); } catch { return false; }
 }
 function runVoiceSteps(job, key) {
   const next = () => {
     if (!job.queue.length) { job.running = false; job.code = 0; job.finishedAt = new Date().toISOString(); return; }
-    const args = job.queue.shift();
+    const queued = job.queue.shift();
+    // カミのボイスのときだけ、カミ用のスクリプトで作る
+    const tool = queued[0] === KAMI_TOOL ? KAMI_TOOL : "generate_card_voices_elevenlabs.js";
+    const args = tool === KAMI_TOOL ? queued.slice(1) : queued;
     job.log += "\n> " + args.join(" ") + "\n";
-    const child = spawn(process.execPath, [path.join(root, "scripts", "generate_card_voices_elevenlabs.js"), ...args], { cwd: root, env: Object.assign({}, process.env, { ELEVENLABS_API_KEY: key }), windowsHide: true });
+    const child = spawn(process.execPath, [path.join(root, "scripts", tool), ...args], { cwd: root, env: Object.assign({}, process.env, { ELEVENLABS_API_KEY: key }), windowsHide: true });
     const add = d => { job.log = (job.log + d.toString("utf8")).slice(-20000); };
     child.stdout.on("data", add); child.stderr.on("data", add);
     child.on("error", e => { add("起動できませんでした：" + e.message + "\n"); job.running = false; job.code = 1; });
@@ -79,7 +92,7 @@ function runVoiceSteps(job, key) {
 const root = path.resolve(__dirname, "..");
 const types = { ".html": "text/html; charset=utf-8", ".js": "application/javascript; charset=utf-8", ".json": "application/json; charset=utf-8", ".css": "text/css; charset=utf-8", ".webp": "image/webp", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".mp3": "audio/mpeg", ".wav": "audio/wav" };
 
-/* ===== カード編集室（tools/card-editor）用の保存口 =====
+/* ===== カードジェネレーター（tools/card-editor）用の保存口 =====
    このサーバーは 127.0.0.1 でだけ待ち受けるので、保存できるのはこのPCからだけ。本番（Netlify）には存在しない。 */
 const sendJson = (res, status, body) => { res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }); res.end(JSON.stringify(body)); };
 function readBody(req, limit) {
@@ -144,6 +157,93 @@ async function handleDev(req, res, url) {
   const origin = req.headers.origin;
   if (origin && !/^http:\/\/(localhost|127\.0\.0\.1):8765$/.test(origin)) return sendJson(res, 403, { ok: false, message: "許可されていない送信元です" });
   if (url.pathname === "/__dev/ping") return sendJson(res, 200, { ok: true });
+  // ===== 場のカードの切り取り調整（tools/field-card-crop）=====
+  // field_card_art.js の FIELD_CARD_ART_CROPS を1枚ずつ書き換える。カードの一覧は制作ダッシュボード用に作ったデータ（tools/board/dist/data/cards.json）を使う
+  if (url.pathname === "/__dev/field-art") {
+    const artFile = path.join(root, "field_card_art.js");
+    const read = () => {
+      const text = fs.readFileSync(artFile, "utf8").replace(/\r\n/g, "\n");
+      const start = text.indexOf("const FIELD_CARD_ART_CROPS = Object.freeze({\n"), end = text.indexOf("\n});", start);
+      if (start < 0 || end < 0) throw new Error("field_card_art.js の形が想定と違います");
+      const entries = {};
+      for (const line of text.slice(start, end).split("\n").slice(1)) {
+        const m = line.match(/^\s*"(\d+)":\s*(\{[^}]*\}),?(?:\s*\/\/\s*(.*))?$/);
+        if (!m) continue;
+        const body = Function("return " + m[2])();
+        entries[m[1]] = Object.assign(body, m[3] ? { note: m[3].trim() } : {});
+      }
+      return { text, start, end, entries };
+    };
+    if (req.method === "GET") {
+      try {
+        const { entries } = read();
+        const cardsFile = path.join(root, "tools", "board", "dist", "data", "cards.json");
+        const cards = fs.existsSync(cardsFile) ? JSON.parse(fs.readFileSync(cardsFile, "utf8")).cards : [];
+        return sendJson(res, 200, { ok: true, crops: entries, cards });
+      } catch (e) { return sendJson(res, 500, { ok: false, message: e.message }); }
+    }
+    if (req.method === "POST") {
+      let body;
+      try { body = JSON.parse((await readBody(req, 4096)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "形式が正しくありません" }); }
+      const no = String(parseInt(body.no, 10));
+      if (!(Number(no) >= 1 && Number(no) <= 999)) return sendJson(res, 400, { ok: false, message: "カード番号が正しくありません" });
+      const pct = /^-?\d+(?:\.\d+)?% -?\d+(?:\.\d+)?%$/, size = /^auto \d+(?:\.\d+)?%$/;
+      if (body.position !== undefined && !pct.test(body.position)) return sendJson(res, 400, { ok: false, message: "位置の形式が正しくありません" });
+      if (body.size !== undefined && !size.test(body.size)) return sendJson(res, 400, { ok: false, message: "拡大率の形式が正しくありません" });
+      const clean = v => String(v || "").replace(/[\r\n]/g, " ").replace(/\*\//g, "").slice(0, 60).trim();
+      const { text, start, end, entries } = read();
+      const entry = body.wide ? { wide: true } : Object.assign({}, body.position ? { position: body.position } : {}, body.size ? { size: body.size } : {});
+      if (Object.keys(entry).length) entries[no] = Object.assign(entry, { note: clean(body.note) || clean(body.name) });
+      else delete entries[no];
+      // 番号順に並べ直して、一覧の部分だけを書き換える（ほかの部分はそのまま）
+      const lines = Object.keys(entries).sort((a, b) => a - b).map(k => {
+        const { note, ...v } = entries[k];
+        const parts = Object.entries(v).map(([key, val]) => key + ": " + JSON.stringify(val));
+        return "  " + JSON.stringify(k) + ": { " + parts.join(", ") + " }," + (note ? " // " + note : "");
+      });
+      const next = text.slice(0, start) + "const FIELD_CARD_ART_CROPS = Object.freeze({\n" + lines.join("\n") + text.slice(end);
+      const tmp = artFile + ".tmp";
+      fs.writeFileSync(tmp, crlfOf(artFile) ? next.replace(/\n/g, "\r\n") : next); fs.renameSync(tmp, artFile);
+      console.log("[field-art] No." + no + " を" + (entries[no] ? "保存 " + JSON.stringify(entries[no]) : "既定に戻しました"));
+      return sendJson(res, 200, { ok: true, crops: read().entries });
+    }
+  }
+  // ===== 作業用ページのメモ・修正依頼（tools/hub/notes.json）=====
+  // 各ページに差し込む tools/hub/notes-widget.js と、入口ページの一覧が使う。Claude と Codex は作業前にこのファイルを読む
+  if (url.pathname === "/__dev/notes") {
+    const readNotes = () => { try { const j = JSON.parse(fs.readFileSync(notesFile, "utf8")); return Array.isArray(j.notes) ? j.notes : []; } catch { return []; } };
+    const writeNotes = notes => { const tmp = notesFile + ".tmp"; fs.writeFileSync(tmp, JSON.stringify({ notes }, null, 1) + "\n"); fs.renameSync(tmp, notesFile); };
+    if (req.method === "GET") return sendJson(res, 200, { ok: true, notes: readNotes() });
+    if (req.method === "DELETE") {
+      const notes = readNotes(), id = url.searchParams.get("id");
+      if (!notes.some(n => n.id === id)) return sendJson(res, 404, { ok: false, message: "そのメモは見つかりません" });
+      const rest = notes.filter(n => n.id !== id); writeNotes(rest);
+      return sendJson(res, 200, { ok: true, notes: rest });
+    }
+    if (req.method === "POST") {
+      let body;
+      try { body = JSON.parse((await readBody(req, 32 * 1024)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "形式が正しくありません" }); }
+      const str = (v, max) => typeof v === "string" ? v.trim().slice(0, max) : undefined;
+      const notes = readNotes(), now = new Date().toISOString();
+      const fields = { page: str(body.page, 200), pageTitle: str(body.pageTitle, 120), target: str(body.target, 80), memo: str(body.memo, 2000), prompt: str(body.prompt, 4000), result: str(body.result, 4000) };
+      if (body.assignee !== undefined) { if (!["auto", "claude", "codex"].includes(body.assignee)) return sendJson(res, 400, { ok: false, message: "担当の値が正しくありません" }); fields.assignee = body.assignee; }
+      if (body.status !== undefined) { if (!["memo", "todo", "doing", "review", "done"].includes(body.status)) return sendJson(res, 400, { ok: false, message: "状態の値が正しくありません" }); fields.status = body.status; }
+      for (const k of Object.keys(fields)) if (fields[k] === undefined) delete fields[k];
+      if (body.id) {
+        const note = notes.find(n => n.id === body.id);
+        if (!note) return sendJson(res, 404, { ok: false, message: "そのメモは見つかりません" });
+        Object.assign(note, fields, { updatedAt: now });
+        // 指示を足した・消したときは、状態もそれに合わせる（作業が始まったあとは変えない）
+        if (fields.status === undefined && ["memo", "todo"].includes(note.status)) note.status = note.prompt ? "todo" : "memo";
+      } else {
+        if (!fields.page || (!fields.memo && !fields.prompt)) return sendJson(res, 400, { ok: false, message: "メモか修正の指示のどちらかを書いてください" });
+        notes.push(Object.assign({ id: "m" + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36), target: "", memo: "", prompt: "", assignee: "auto", result: "" },
+          fields, { status: fields.prompt ? "todo" : "memo", createdAt: now, updatedAt: now }));
+      }
+      writeNotes(notes);
+      return sendJson(res, 200, { ok: true, notes });
+    }
+  }
   if (url.pathname === "/__dev/card-image" && req.method === "POST") {
     const kind = url.searchParams.get("kind");
     const no = parseInt(url.searchParams.get("no"), 10);
@@ -239,6 +339,65 @@ async function handleDev(req, res, url) {
     console.log(`[voice-run] ${voiceJob.label}：${queue.map(q => q.join(" ")).join(" → ")}`);
     runVoiceSteps(voiceJob, key);
     return sendJson(res, 200, { ok: true, id: voiceJob.id });
+  }
+  // ===== カミのボイスの台詞と演技（試聴室の「カミ」タブから）=====
+  // voices/voice_script.json の text（表示の文）・el（演技タグ＋読み上げる文）・el_stability・el_direction（日本語の方針）を書き換える
+  if (url.pathname === "/__dev/kami-line" && req.method === "POST") {
+    if (!req.headers.origin) return sendJson(res, 403, { ok: false, message: "試聴室のページから操作してください" });
+    const kami = url.searchParams.get("kami") || "", key = url.searchParams.get("key") || "";
+    if (!kamiLineOk(kami, key)) return sendJson(res, 404, { ok: false, message: "その台詞は台本にありません" });
+    let body;
+    try { body = JSON.parse((await readBody(req, 8192)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "保存する内容の形式が正しくありません" }); }
+    const str = (v, max, name) => { const t = String(v || "").replace(/\s+/g, " ").trim(); if (t.length > max || /[<>{}]/.test(t)) throw new Error(name + "が長すぎるか、使えない文字があります"); return t; };
+    let text, reading, direction, tags;
+    try { text = str(body.text, 200, "台詞"); reading = str(body.reading, 300, "読み上げる文"); direction = str(body.direction, 200, "演技の方針"); tags = str(body.tags, 120, "演技タグ"); }
+    catch (e) { return sendJson(res, 400, { ok: false, message: e.message }); }
+    if (!text) return sendJson(res, 400, { ok: false, message: "台詞を入れてください" });
+    const stability = body.stability === null || body.stability === undefined || body.stability === "" ? null : Number(body.stability);
+    if (stability !== null && !(stability >= 0 && stability <= 1)) return sendJson(res, 400, { ok: false, message: "安定度は0〜1で指定してください" });
+    // 方針（日本語）を英語の演技タグに直す（カードボイスと同じ対応表）。手で書いたタグを先に、合わせて最大3つ
+    const map = JSON.parse(fs.readFileSync(path.join(root, "tools", "voice-script", "direction_tags.json"), "utf8")).map || [];
+    const fromDirection = []; for (const [w, t] of map) if (direction.includes(w) && !fromDirection.includes(t)) fromDirection.push(t);
+    const tagList = [...new Set([...(tags.match(/\[[^\]]+\]/g) || []).flatMap(t => t.slice(1, -1).split(",")).map(t => t.trim()), ...fromDirection])].filter(Boolean).slice(0, 3);
+    const spoken = (reading || text).replace(/？/g, "?").replace(/！/g, "!");
+    const raw = fs.readFileSync(kamiScriptFile(), "utf8"), crlfScript = raw.includes("\r\n");
+    const script = JSON.parse(raw);
+    const line = script.kami[kami].lines[key];
+    const before = { text: line.text, el: line.el, el_stability: line.el_stability };
+    line.text = text;
+    line.el = (tagList.length ? "[" + tagList.join(", ") + "] " : "") + spoken;
+    if (stability === null) delete line.el_stability; else line.el_stability = stability;
+    if (direction) line.el_direction = direction; else delete line.el_direction;
+    if (tags) line.el_tags = tags; else delete line.el_tags;
+    // 1つ前の指定を残す（戻したいとき用）
+    if (before.text !== line.text || before.el !== line.el || before.el_stability !== line.el_stability) line.previous = before;
+    const out = JSON.stringify(script, null, 2) + "\n";
+    const tmp = kamiScriptFile() + ".tmp";
+    fs.writeFileSync(tmp, crlfScript ? out.replace(/\n/g, "\r\n") : out);
+    fs.renameSync(tmp, kamiScriptFile());
+    console.log(`[kami-line] ${kami} ${script.kami[kami].name} ${key}：${line.el}${line.el_stability !== undefined ? " 安定度" + line.el_stability : ""}`);
+    return sendJson(res, 200, { ok: true, line });
+  }
+  // 試聴室で作り直したカミの台詞（voices/trials/studio/）を、ゲームのボイス（voices/{No}/）にする
+  if (url.pathname === "/__dev/kami-adopt" && req.method === "POST") {
+    if (!req.headers.origin) return sendJson(res, 403, { ok: false, message: "試聴室のページから操作してください" });
+    let body;
+    try { body = JSON.parse((await readBody(req, 4096)).toString("utf8")); } catch { return sendJson(res, 400, { ok: false, message: "形式が正しくありません" }); }
+    const kami = String(body.kami || ""), key = String(body.key || "");
+    if (!kamiLineOk(kami, key)) return sendJson(res, 404, { ok: false, message: "その台詞は台本にありません" });
+    const src = path.join(root, "voices", "trials", KAMI_STUDIO, kami, key + ".mp3");
+    if (!fs.existsSync(src)) return sendJson(res, 404, { ok: false, message: "試聴室で作った音声がありません" });
+    const dest = path.join(root, "voices", kami, key + ".mp3");
+    // 前のゲームの音声は試し作りの場所に残す（git にも本番にも入らない）
+    if (fs.existsSync(dest)) { const old = path.join(root, "voices", "trials", KAMI_STUDIO, "_old"); fs.mkdirSync(old, { recursive: true }); fs.copyFileSync(dest, path.join(old, `${kami}-${key}-${Date.now()}.mp3`)); }
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.copyFileSync(src, dest);
+    try {
+      execFileSync(process.execPath, [path.join(root, "scripts", KAMI_TOOL), "manifest"], { cwd: root, stdio: "pipe" });
+      execFileSync(process.execPath, [path.join(root, "scripts", "build_asset_hashes.js")], { cwd: root, stdio: "pipe" });
+    } catch (e) { return sendJson(res, 500, { ok: false, message: "音声は入れましたが、一覧を作り直せませんでした：" + String(e.stderr || e.message).slice(0, 200) }); }
+    console.log(`[kami-adopt] ${kami} ${key} をゲームのボイスにした`);
+    return sendJson(res, 200, { ok: true });
   }
   // ===== 声の高さを測る（試聴室の候補に「高さ ○○Hz」と出す）=====
   // ffmpeg で 16kHz モノラルにして、自己相関で基本周波数（F0）の中央値を求める。ffmpeg が無ければ測れない
@@ -443,6 +602,8 @@ async function handleDev(req, res, url) {
   return sendJson(res, 404, { ok: false, message: "not found" });
 }
 
+const notesFile = path.join(root, "tools", "hub", "notes.json");
+const crlfOf = file => { try { return fs.readFileSync(file, "utf8").includes("\r\n"); } catch { return false; } };
 http.createServer((req, res) => {
   let pathname;
   let url;

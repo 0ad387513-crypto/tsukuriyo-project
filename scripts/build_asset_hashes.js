@@ -9,7 +9,7 @@
   使い方：画像・音声を追加・差し替えたら
     node scripts/build_asset_hashes.js          # 一覧を作り直す（npm run assets:hash でも同じ）
   一覧が古いままだと npm test（tests/asset_contract.test.js）が失敗する。
-  カード編集室（scripts/serve.js）でカード画像を保存したときは自動で更新される。
+  カードジェネレーター（scripts/serve.js）でカード画像を保存したときは自動で更新される。
 */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -76,7 +76,7 @@ function writeAssetHashes(root) {
   return hashes;
 }
 
-// 指定したファイルだけ識別子を更新する（カード編集室で1枚ずつ保存するとき用。全体を読み直すより速い）
+// 指定したファイルだけ識別子を更新する（カードジェネレーターで1枚ずつ保存するとき用。全体を読み直すより速い）
 function updateAssetHashes(root, relPaths) {
   const file = path.join(root, OUTPUT);
   let hashes = {};

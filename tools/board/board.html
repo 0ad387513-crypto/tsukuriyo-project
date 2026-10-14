@@ -1,0 +1,680 @@
+<title>ツクリヨ開発ダッシュボード</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+  /* 構成：上に固定のタブ、下に1つの作業面。進捗は工程ごとの一覧、依頼は書く欄＋待ち行列、カード・カミは一覧と詳細の2面 */
+  :root {
+    --bg: #eef0f5; --surface: #ffffff; --sunken: #e3e6ee; --line: #c9cedb; --fg: #1b2233; --muted: #5b6478;
+    --accent: #2f4a9a; --accent-fg: #ffffff; --accent-soft: #dfe5f6; --shu: #b23a2b;
+    --ok: #26734d; --ok-soft: #dcefe4; --warn: #8a5a00; --warn-soft: #f6e9cc; --idle-soft: #e3e6ee;
+    --display: "Shippori Mincho", "Yu Mincho", "Hiragino Mincho ProN", serif;
+    --body: "Zen Kaku Gothic New", "Yu Gothic", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #11141d; --surface: #1a1f2c; --sunken: #232a3a; --line: #343c50; --fg: #e6e9f2; --muted: #9aa3b8;
+    --accent: #8ea6f2; --accent-fg: #0f1320; --accent-soft: #27304b; --shu: #f08a7a;
+    --ok: #7fd0a2; --ok-soft: #1d3329; --warn: #e9c06a; --warn-soft: #3a3019; --idle-soft: #232a3a; color-scheme: dark } }
+  :root[data-theme="dark"] {
+    --bg: #11141d; --surface: #1a1f2c; --sunken: #232a3a; --line: #343c50; --fg: #e6e9f2; --muted: #9aa3b8;
+    --accent: #8ea6f2; --accent-fg: #0f1320; --accent-soft: #27304b; --shu: #f08a7a;
+    --ok: #7fd0a2; --ok-soft: #1d3329; --warn: #e9c06a; --warn-soft: #3a3019; --idle-soft: #232a3a; color-scheme: dark }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.7; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 0 64px; }
+  header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .top-in { max-width: 1120px; margin: 0 auto; padding: 12px 16px 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+  h1 { font-family: var(--display); font-size: 22px; font-weight: 800; margin: 0; letter-spacing: .06em; }
+  .who { color: var(--muted); font-size: 13px; margin-left: auto; }
+  nav.tabs { max-width: 1120px; margin: 0 auto; padding: 8px 16px 0; display: flex; gap: 4px; overflow-x: auto; }
+  nav.tabs button { border: 0; background: none; color: var(--muted); font: inherit; font-weight: 700; padding: 8px 14px; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; }
+  nav.tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+  nav.tabs button:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  section.pane { padding-top: 22px; display: flex; flex-direction: column; gap: 18px; }
+  h2 { font-family: var(--display); font-size: 19px; margin: 0; text-wrap: balance; }
+  h3 { font-size: 15px; margin: 0; }
+  p { margin: 0; }
+  .lead { color: var(--muted); max-width: 65ch; }
+  .inline-notes { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .inline-form { display: flex; flex-direction: column; gap: 8px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .grow { flex: 1 1 220px; min-width: 0; }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 700; }
+  input[type="text"], input[type="search"], select, textarea { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 100%; }
+  textarea { min-height: 84px; resize: vertical; }
+  button.btn { font: inherit; font-weight: 700; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+  a.hublink { font: inherit; font-weight: 700; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); border-radius: 6px; padding: 3px 12px; font-size: 13px; text-decoration: none; }
+  button.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  button.btn.small { padding: 3px 10px; font-size: 13px; }
+  button.btn:disabled { opacity: .5; cursor: default; }
+  .chip { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 99px; background: var(--idle-soft); color: var(--muted); white-space: nowrap; }
+  .chip.doing { background: var(--accent-soft); color: var(--accent); }
+  .chip.review { background: var(--warn-soft); color: var(--warn); }
+  .chip.done { background: var(--ok-soft); color: var(--ok); }
+  .chip.wait { background: var(--warn-soft); color: var(--warn); }
+  .chip.who-claude { background: var(--accent-soft); color: var(--accent); }
+  .chip.who-codex { background: var(--ok-soft); color: var(--ok); }
+  .note { font-size: 13px; color: var(--muted); }
+  .warnline { font-size: 13px; color: var(--shu); font-weight: 700; }
+  /* 進捗 */
+  .meter { display: flex; flex-wrap: wrap; gap: 8px 22px; font-variant-numeric: tabular-nums; }
+  .meter b { font-family: var(--display); font-size: 22px; margin-right: 4px; }
+  .bar { height: 8px; background: var(--sunken); border-radius: 99px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--ok); }
+  .group h3 { font-family: var(--display); font-size: 16px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  .task { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 4px 12px; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+  .task:last-child { border-bottom: 0; }
+  .task .t-title { font-weight: 700; }
+  .task .t-note { font-size: 13px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .task select { padding: 4px 6px; font-size: 13px; }
+  /* 依頼 */
+  .req { border-left: 4px solid var(--line); padding: 4px 0 4px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .req.approved { border-left-color: var(--accent); }
+  .req.done { border-left-color: var(--ok); }
+  .req .body { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .req .prompt { background: var(--sunken); border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }
+  .req .result { background: var(--ok-soft); border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { border: 0; background: var(--surface); color: var(--fg); font: inherit; font-size: 13px; font-weight: 700; padding: 6px 12px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+  /* カード */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+  .cardbtn { border: 0; padding: 0; background: none; cursor: pointer; text-align: left; color: inherit; font: inherit; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .thumb { width: 100%; aspect-ratio: 320 / 447; background-color: var(--sunken); background-repeat: no-repeat; border-radius: 5px; border: 1px solid var(--line); }
+  .cardbtn .nm { font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; }
+  .cardbtn .marks { display: flex; gap: 4px; flex-wrap: wrap; }
+  .dot { font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 99px; background: var(--warn-soft); color: var(--warn); }
+  .detail { display: grid; grid-template-columns: minmax(180px, 300px) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .detail .big { width: 100%; }
+  .detail.wide { grid-template-columns: minmax(220px, 440px) minmax(0, 1fr); }
+  .detail img { border-radius: 6px; border: 1px solid var(--line); }
+  .text { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .flavor { font-family: var(--display); color: var(--muted); font-size: 14px; white-space: pre-wrap; }
+  .voice { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: start; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+  .voice:last-child { border-bottom: 0; }
+  .voice .lbl { font-size: 12px; color: var(--muted); font-weight: 700; }
+  .kami { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .links { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .links a { color: var(--accent); font-weight: 700; overflow-wrap: anywhere; }
+  .links .panel { gap: 4px; }
+  .empty { color: var(--muted); padding: 18px 0; }
+  @media (max-width: 640px) { .detail { grid-template-columns: 1fr; } .detail .big { max-width: 240px; } .task { grid-template-columns: 1fr; } }
+</style>
+
+<header class="top">
+  <div class="top-in"><h1>ツクリヨ 開発ダッシュボード</h1><span class="note" id="built"></span><span class="who" id="who"></span></div>
+  <nav class="tabs" role="tablist" aria-label="表示の切り替え">
+    <button role="tab" data-tab="board" aria-selected="true">制作ボード</button>
+    <button role="tab" data-tab="voice" aria-selected="false">ボイス</button>
+    <button role="tab" data-tab="illust" aria-selected="false">イラスト</button>
+    <button role="tab" data-tab="effect" aria-selected="false">カード効果</button>
+    <button role="tab" data-tab="kami" aria-selected="false">カミ</button>
+    <button role="tab" data-tab="links" aria-selected="false" id="tabLinks" hidden>道具（制作者専用）</button>
+  </nav>
+</header>
+
+<div class="wrap">
+  <p class="warnline" id="dbState" hidden></p>
+
+  <section class="pane" id="pane-progress">
+    <h2>いまの状況</h2>
+    <div class="panel">
+      <div class="row"><h3>残タスク</h3><div class="meter" id="meter"></div></div>
+      <div class="bar"><i id="meterBar" style="width:0%"></i></div>
+      <div class="row"><h3>修正依頼</h3><div class="meter" id="reqMeter"></div><button class="btn small" id="jumpReqs" type="button">修正依頼の一覧へ</button></div>
+      <div><h3>次にやること</h3><div id="nextUp" class="note">読み込んでいます。</div></div>
+    </div>
+    <h2>残タスク</h2>
+    <div id="taskGroups"><p class="empty">作業の一覧を読み込んでいます。まだ何も登録されていない場合は、下の「作業を追加」から書けます。</p></div>
+    <div class="panel" id="taskAddPanel">
+      <h3>作業を追加</h3>
+      <div class="row">
+        <label class="f grow">作業の名前<input type="text" id="taskTitle" maxlength="80"></label>
+        <label class="f" style="flex:0 1 180px">分類<select id="taskGroup"></select></label>
+      </div>
+      <label class="f">メモ（任意）<textarea id="taskNote" maxlength="1000"></textarea></label>
+      <div class="row"><button class="btn primary" id="taskAdd">追加する</button><span class="note" id="taskMsg"></span></div>
+    </div>
+  </section>
+
+  <section class="pane" id="pane-requests" hidden>
+    <h2 id="reqTop">メモ・修正依頼</h2>
+    <p class="lead">メモと修正依頼は「ボイス」「イラスト」「カード効果」「カミ」の各ページで、その場で書きます。ここには全部がまとめて並びます。修正の指示は、制作者が承認したものから Claude か Codex が作業します。</p>
+    <details class="panel" id="reqFormBox">
+      <summary style="cursor:pointer;font-weight:700">カード・カミ以外のこと（画面・操作など）を書く</summary>
+      <h3 id="reqFormTitle">メモ・修正依頼を書く</h3>
+      <div class="row">
+        <label class="f grow">対象（カード名・カミ・画面など）<input type="text" id="reqTarget" maxlength="80" placeholder="例：死を纏う器／対戦画面のログ"></label>
+        <label class="f" style="flex:0 1 190px">種類<select id="reqKind"></select></label>
+      </div>
+      <label class="f">メモ（気づいたこと。これだけでも保存できます）<textarea id="reqMemo" maxlength="2000"></textarea></label>
+      <label class="f">修正の指示（直してほしい内容を具体的に。空欄ならメモだけ残ります）<textarea id="reqPrompt" maxlength="4000" placeholder="例：召喚時のボイスをもう少し低く、落ち着いた言い方にしてください"></textarea></label>
+      <div class="row">
+        <span class="note" style="font-weight:700">担当</span>
+        <div class="seg" id="reqAssignee" role="group" aria-label="担当">
+          <button type="button" data-v="auto" aria-pressed="true">おまかせ</button>
+          <button type="button" data-v="claude" aria-pressed="false">Claude</button>
+          <button type="button" data-v="codex" aria-pressed="false">Codex</button>
+        </div>
+        <span class="note">絵・アニメーションの作成は Codex、ボイスやコードは Claude が基本です。コードを Codex に頼むこともできます。</span>
+      </div>
+      <div class="row"><button class="btn primary" id="reqSave">保存する</button><button class="btn" id="reqCancel" hidden>編集をやめる</button><span class="note" id="reqMsg"></span></div>
+    </details>
+    <div class="row">
+      <div class="seg" id="reqFilter" role="group" aria-label="絞り込み">
+        <button type="button" data-v="open" aria-pressed="true">未完了</button>
+        <button type="button" data-v="wait" aria-pressed="false">承認待ち</button>
+        <button type="button" data-v="memo" aria-pressed="false">メモのみ</button>
+        <button type="button" data-v="done" aria-pressed="false">完了</button>
+        <button type="button" data-v="all" aria-pressed="false">すべて</button>
+      </div>
+      <span class="note" id="reqCount"></span>
+    </div>
+    <div id="reqList" style="display:flex;flex-direction:column;gap:16px"><p class="empty">メモや依頼はまだありません。上の欄から最初の1件を書けます。</p></div>
+  </section>
+
+  <section class="pane" id="pane-cards" hidden>
+    <div id="cardListView" style="display:flex;flex-direction:column;gap:14px">
+      <div class="row">
+        <label class="f grow">カード名で探す<input type="search" id="cardSearch" placeholder="名前・二つ名・番号"></label>
+        <label class="f" style="flex:0 1 150px">種類<select id="cardCat"></select></label>
+        <label class="f" style="flex:0 1 150px">属性<select id="cardColor"></select></label>
+        <label class="f" style="flex:0 1 190px">絞り込み<select id="cardFlag"><option value="">すべて</option><option value="voice">ボイスあり</option><option value="novoice">ボイスなし</option><option value="req">メモ・依頼あり</option></select></label>
+      </div>
+      <p class="note" id="cardCount"></p>
+      <div class="cards" id="cardGrid"></div>
+    </div>
+    <div id="cardDetailView" hidden style="display:flex;flex-direction:column;gap:14px">
+      <div class="row"><button class="btn" id="cardBack">◀ 一覧へ戻る</button><button class="btn small" id="cardPrev">前のカード</button><button class="btn small" id="cardNext">次のカード</button></div>
+      <div class="detail" id="cardDetail"></div>
+    </div>
+  </section>
+
+  <section class="pane" id="pane-kami" hidden>
+    <div id="kamiListView"><div class="kami" id="kamiGrid"></div></div>
+    <div id="kamiDetailView" hidden style="display:flex;flex-direction:column;gap:14px">
+      <div class="row"><button class="btn" id="kamiBack">◀ 一覧へ戻る</button></div>
+      <div class="detail" id="kamiDetail"></div>
+    </div>
+  </section>
+
+  <section class="pane" id="pane-links" hidden>
+    <p class="lead">このページは制作者にだけ表示されます。</p>
+    <h2>だれでも開けるページ</h2>
+    <div class="links" id="linksPublic"></div>
+    <h2>制作者のPCでだけ開けるページ</h2>
+    <p class="lead">音声を作る・カードを編集するなどの作業用の道具です。制作者のPCで確認用サーバーが動いているときだけ開けます。</p>
+    <div class="links" id="linksLocal"></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const TASK_GROUPS = ["素材・デザイン", "音", "ゲーム内容", "反映・確認", "公開・宣伝"];
+  const TASK_STATUS = [["todo", "未着手"], ["doing", "作業中"], ["review", "確認待ち"], ["done", "完了"]];
+  const REQ_KINDS = [["effect", "カード効果"], ["voice", "ボイス"], ["illust", "イラスト"], ["motion", "アニメーション・演出"], ["se", "SE・BGM"], ["ui", "画面・操作"], ["other", "その他"]];
+  const REQ_STATUS = { memo: "メモ", wait: "承認待ち", approved: "承認済み・作業待ち", doing: "作業中", review: "確認待ち", done: "完了", rejected: "見送り" };
+  const WHO = { auto: "おまかせ", claude: "Claude", codex: "Codex" };
+  const EVENTS = [["summon", "召喚時"], ["use", "使用時"], ["attack", "攻撃時"], ["death", "死亡時"]];
+  const state = { db: null, user: null, uid: null, canWrite: null, isOwner: false, tasks: [], reqs: [], approvals: {}, names: {},
+    cards: [], atlas: { cols: 5, rows: 4 }, kami: [], voices: { cards: {}, pairs: [] }, tab: "board", mode: "voice", card: null, kamiNo: null, editing: null, reqFilter: "open", target: "" };
+  const fullName = c => c ? (c.nickname ? c.nickname + "・" + c.name : c.name) : "";
+  const num = n => String(parseInt(n, 10));
+  const when = iso => { const d = new Date(iso); return isNaN(d) ? "" : (d.getMonth() + 1) + "/" + d.getDate() + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+
+  /* ---------- タブ ---------- */
+  const PANES = { board: ["progress", "requests"], voice: ["cards"], illust: ["cards"], effect: ["cards"], kami: ["kami"], links: ["links"] };
+  const MODE = { voice: { kind: "voice", label: "ボイス" }, illust: { kind: "illust", label: "絵" }, effect: { kind: "effect", label: "効果" } };
+  function showTab(tab, push) {
+    if (!PANES[tab]) tab = "board";
+    const modeChanged = MODE[tab] && state.mode !== tab;
+    state.tab = tab;
+    for (const b of document.querySelectorAll("nav.tabs button")) b.setAttribute("aria-selected", String(b.dataset.tab === tab));
+    for (const p of document.querySelectorAll("section.pane")) p.hidden = !PANES[tab].includes(p.id.replace("pane-", ""));
+    if (MODE[tab]) {
+      state.mode = tab;
+      if (modeChanged) { state.card = null; $("cardDetailView").hidden = true; $("cardListView").hidden = false; }
+      if (state.cards.length) { renderCardGrid(); if (state.card) renderCardDetail(); }
+    }
+    if (push) { try { history.replaceState(null, "", "#" + tab); } catch (e) { /* 表示だけ切り替える */ } }
+  }
+  for (const b of document.querySelectorAll("nav.tabs button")) b.addEventListener("click", () => showTab(b.dataset.tab, true));
+  const seg = (root, onPick) => { for (const b of root.querySelectorAll("button")) b.addEventListener("click", () => { for (const x of root.querySelectorAll("button")) x.setAttribute("aria-pressed", String(x === b)); onPick(b.dataset.v); }); };
+  const segValue = root => (root.querySelector('button[aria-pressed="true"]') || {}).dataset.v;
+  const segSet = (root, v) => { for (const x of root.querySelectorAll("button")) x.setAttribute("aria-pressed", String(x.dataset.v === v)); };
+
+  /* ---------- 進捗 ---------- */
+  for (const g of TASK_GROUPS) $("taskGroup").append(new Option(g, g));
+  function renderTasks() {
+    const tasks = state.tasks.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+    const count = k => tasks.filter(t => t.status === k).length;
+    $("meter").replaceChildren(...TASK_STATUS.map(([k, label]) => { const s = el("span"); s.append(el("b", "", String(count(k))), label); return s; }));
+    $("meterBar").style.width = (tasks.length ? Math.round(count("done") / tasks.length * 100) : 0) + "%";
+    // 次にやること：作業中 → 確認待ち → 未着手 の順に上から5件
+    const rank = { doing: 0, review: 1, todo: 2 };
+    const next = tasks.filter(t => t.status in rank).sort((a, b) => rank[a.status] - rank[b.status] || (a.order || 0) - (b.order || 0)).slice(0, 5);
+    $("nextUp").replaceChildren(...(next.length ? next.map(t => { const r = el("div", "row"); r.append(el("span", "chip " + t.status, (TASK_STATUS.find(x => x[0] === t.status) || [])[1]), el("span", "", t.title)); if (t.lead) r.append(el("span", "note", t.lead)); return r; }) : [document.createTextNode("残っている作業はありません。")]));
+    const box = $("taskGroups");
+    if (!tasks.length) { box.replaceChildren(el("p", "empty", "作業はまだ登録されていません。下の「作業を追加」から書けます。")); return; }
+    const groups = TASK_GROUPS.concat([...new Set(tasks.map(t => t.group))].filter(g => !TASK_GROUPS.includes(g)));
+    box.replaceChildren(...groups.filter(g => tasks.some(t => t.group === g)).map(g => {
+      const sec = el("div", "panel group"); sec.style.marginBottom = "14px"; sec.append(el("h3", "", g));
+      const list = el("div");
+      for (const t of tasks.filter(x => x.group === g)) {
+        const row = el("div", "task");
+        const left = el("div");
+        if (state.canWrite !== false) {
+          const sel = el("select"); sel.setAttribute("aria-label", t.title + " の状態");
+          for (const [k, label] of TASK_STATUS) sel.append(new Option(label, k));
+          sel.value = t.status || "todo";
+          sel.addEventListener("change", () => write(() => state.db.doc("tasks/" + t.id).update({ status: sel.value, updatedAt: new Date().toISOString() })));
+          left.append(sel);
+        } else left.append(el("span", "chip " + (t.status || ""), (TASK_STATUS.find(x => x[0] === t.status) || TASK_STATUS[0])[1]));
+        const right = el("div"); right.style.minWidth = "0";
+        const head = el("div", "row"); head.append(el("span", "t-title", t.title));
+        if (t.lead) head.append(el("span", "chip who-" + (t.lead === "Codex" ? "codex" : t.lead === "Claude" ? "claude" : ""), t.lead));
+        right.append(head);
+        if (t.note) right.append(el("div", "t-note", t.note));
+        if (state.canWrite !== false) {
+          const edit = el("button", "btn small", "メモを編集"); edit.type = "button"; edit.style.marginTop = "4px";
+          edit.addEventListener("click", () => {
+            const ta = el("textarea"); ta.value = t.note || ""; ta.maxLength = 1000;
+            const ok = el("button", "btn small primary", "保存"); ok.type = "button";
+            ok.addEventListener("click", () => write(() => state.db.doc("tasks/" + t.id).update({ note: ta.value.trim(), updatedAt: new Date().toISOString() })));
+            edit.replaceWith(ta, ok);
+          });
+          right.append(edit);
+        }
+        row.append(left, right); list.append(row);
+      }
+      sec.append(list); return sec;
+    }));
+  }
+  $("jumpReqs").addEventListener("click", () => $("reqTop").scrollIntoView({ block: "start" }));
+  $("taskAdd").addEventListener("click", async () => {
+    const title = $("taskTitle").value.trim();
+    if (!title) { $("taskMsg").textContent = "作業の名前を入れてください。"; return; }
+    const order = Math.max(0, ...state.tasks.map(t => t.order || 0)) + 10;
+    if (await write(() => state.db.collection("tasks").add({ title, group: $("taskGroup").value, status: "todo", note: $("taskNote").value.trim(), order, updatedAt: new Date().toISOString() }))) {
+      $("taskTitle").value = ""; $("taskNote").value = ""; $("taskMsg").textContent = "追加しました。";
+    }
+  });
+
+  /* ---------- メモ・依頼 ---------- */
+  for (const [k, label] of REQ_KINDS) $("reqKind").append(new Option(label, k));
+  seg($("reqAssignee"), () => {});
+  seg($("reqFilter"), v => { state.reqFilter = v; renderReqs(); });
+  const reqStatus = r => r.status === "wait" && state.approvals[r.id] ? "approved" : (r.status || "memo");
+  function resetReqForm() {
+    state.editing = null; state.target = "";
+    for (const id of ["reqTarget", "reqMemo", "reqPrompt"]) $(id).value = "";
+    segSet($("reqAssignee"), "auto"); $("reqCancel").hidden = true; $("reqFormTitle").textContent = "メモ・修正依頼を書く"; $("reqSave").textContent = "保存する";
+  }
+  $("reqCancel").addEventListener("click", resetReqForm);
+  $("reqSave").addEventListener("click", async () => {
+    const memo = $("reqMemo").value.trim(), prompt = $("reqPrompt").value.trim(), target = $("reqTarget").value.trim();
+    if (!memo && !prompt) { $("reqMsg").textContent = "メモか修正の指示のどちらかを書いてください。"; return; }
+    const now = new Date().toISOString();
+    const body = { target, targetKey: state.target || "", kind: $("reqKind").value, memo, prompt, assignee: segValue($("reqAssignee")) || "auto", updatedAt: now };
+    let ok;
+    if (state.editing) {
+      const cur = state.reqs.find(r => r.id === state.editing) || {};
+      // 指示を書き換えたら、承認はやり直し（承認した内容と違う指示が実行されないようにする）
+      const changed = (cur.prompt || "") !== prompt;
+      if (["memo", "wait"].includes(cur.status) || changed) body.status = prompt ? "wait" : "memo";
+      if (changed) body.promptRev = (cur.promptRev || 0) + 1;
+      ok = await write(() => state.db.doc("requests/" + state.editing).update(body));
+    } else {
+      ok = await write(() => state.db.collection("requests").add(Object.assign(body, { status: prompt ? "wait" : "memo", promptRev: 1, authorId: state.uid || "", createdAt: now, result: "" })));
+    }
+    if (ok) { resetReqForm(); $("reqMsg").textContent = prompt ? "保存しました。制作者の承認を待ちます。" : "メモを保存しました。"; }
+  });
+  function startRequest(targetKey, targetLabel, kind) {
+    resetReqForm(); state.target = targetKey; $("reqTarget").value = targetLabel; if (kind) $("reqKind").value = kind;
+    showTab("board", true); $("reqMemo").focus(); $("pane-requests").scrollIntoView({ block: "start" });
+  }
+  function reqNode(r, compact) {
+    const st = reqStatus(r);
+    const box = el("div", "req" + (st === "approved" || st === "doing" ? " approved" : st === "done" ? " done" : ""));
+    const head = el("div", "row");
+    head.append(el("span", "chip " + (st === "done" ? "done" : st === "wait" ? "wait" : st === "review" ? "review" : st === "doing" || st === "approved" ? "doing" : ""), REQ_STATUS[st] || st));
+    head.append(el("span", "chip", (REQ_KINDS.find(k => k[0] === r.kind) || ["", "その他"])[1]));
+    if (r.prompt) head.append(el("span", "chip who-" + (r.assignee === "codex" ? "codex" : r.assignee === "claude" ? "claude" : ""), "担当：" + (WHO[r.assignee] || "おまかせ")));
+    if (r.target && !compact) head.append(el("b", "", r.target));
+    head.append(el("span", "note", [state.names[r.authorId] || "", when(r.createdAt)].filter(Boolean).join("・")));
+    box.append(head);
+    if (r.memo) box.append(el("div", "body", r.memo));
+    if (r.prompt) { const p = el("div", "prompt"); p.append(el("div", "note", "修正の指示"), document.createTextNode(r.prompt)); box.append(p); }
+    if (r.result) { const p = el("div", "result"); p.append(el("div", "note", "作業の結果"), document.createTextNode(r.result)); box.append(p); }
+    const tools = el("div", "row");
+    if (state.canWrite !== false && ["memo", "wait"].includes(r.status)) {
+      const edit = el("button", "btn small", "編集"); edit.type = "button";
+      edit.addEventListener("click", () => {
+        state.editing = r.id; state.target = r.targetKey || ""; $("reqTarget").value = r.target || ""; $("reqKind").value = r.kind || "other"; $("reqMemo").value = r.memo || ""; $("reqPrompt").value = r.prompt || "";
+        segSet($("reqAssignee"), r.assignee || "auto"); $("reqCancel").hidden = false; $("reqFormTitle").textContent = "メモ・修正依頼を編集"; $("reqSave").textContent = "変更を保存";
+        showTab("board", true); $("reqFormBox").open = true; $("reqFormTitle").scrollIntoView({ block: "start" });
+      });
+      tools.append(edit);
+    }
+    if (state.isOwner && r.status === "wait") {
+      if (!state.approvals[r.id]) {
+        const ok = el("button", "btn small primary", "承認する（作業に回す）"); ok.type = "button";
+        ok.addEventListener("click", () => write(() => state.db.doc("approvals/" + r.id).set({ ok: true, rev: r.promptRev || 1, at: new Date().toISOString() })));
+        const no = el("button", "btn small", "見送る"); no.type = "button";
+        no.addEventListener("click", () => write(() => state.db.doc("requests/" + r.id).update({ status: "rejected", updatedAt: new Date().toISOString() })));
+        tools.append(ok, no);
+      } else {
+        const undo = el("button", "btn small", "承認を取り消す"); undo.type = "button";
+        undo.addEventListener("click", () => write(() => state.db.doc("approvals/" + r.id).delete()));
+        tools.append(undo);
+      }
+    }
+    if (state.isOwner && ["review", "doing"].includes(r.status)) {
+      const fin = el("button", "btn small primary", "確認した（完了にする）"); fin.type = "button";
+      fin.addEventListener("click", () => write(() => state.db.doc("requests/" + r.id).update({ status: "done", updatedAt: new Date().toISOString() })));
+      tools.append(fin);
+    }
+    if (state.canWrite !== false && (state.isOwner || (r.authorId && r.authorId === state.uid)) && ["memo", "wait", "rejected", "done"].includes(r.status)) {
+      const del = el("button", "btn small", "削除"); del.type = "button";
+      del.addEventListener("click", () => {
+        const sure = el("button", "btn small", "本当に削除する"); sure.type = "button"; sure.style.color = "var(--shu)";
+        sure.addEventListener("click", () => write(() => state.db.doc("requests/" + r.id).delete()));
+        del.replaceWith(sure);
+      });
+      tools.append(del);
+    }
+    if (tools.childElementCount) box.append(tools);
+    return box;
+  }
+  function renderReqs() {
+    const all = state.reqs.slice().sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    const f = state.reqFilter;
+    const list = all.filter(r => { const s = reqStatus(r); return f === "all" || (f === "open" && !["done", "rejected", "memo"].includes(s)) || (f === "wait" && s === "wait") || (f === "memo" && s === "memo") || (f === "done" && ["done", "rejected"].includes(s)); });
+    const wait = all.filter(r => reqStatus(r) === "wait").length;
+    const cnt = k => all.filter(r => reqStatus(r) === k).length;
+    $("reqMeter").replaceChildren(...[["wait", "承認待ち"], ["approved", "作業待ち"], ["doing", "作業中"], ["review", "確認待ち"]].map(([k, label]) => { const sp = el("span"); sp.append(el("b", "", String(cnt(k))), label); return sp; }));
+    $("reqCount").textContent = `表示 ${list.length}件／全${all.length}件（承認待ち ${wait}件）`;
+    $("reqList").replaceChildren(...(list.length ? list.map(r => reqNode(r)) : [el("p", "empty", all.length ? "この条件に当てはまるものはありません。" : "メモや依頼はまだありません。上の欄から最初の1件を書けます。")]));
+    if (state.cards.length) { renderCardGrid(); if (state.card) renderCardDetail(); if (state.kamiNo) renderKamiDetail(); }
+  }
+  /* カード・カミの画面の各欄（効果・ボイス・絵など）に置く、その欄のメモ・依頼の一覧と書く欄。
+     共有データが届くたびに描き直すので、書きかけの文は drafts に持っておく */
+  const drafts = {};
+  function noteBlock(key, label, kind, kindLabel) {
+    const id = key + "|" + kind, d = drafts[id] || (drafts[id] = { open: false, memo: "", prompt: "", assignee: "auto", msg: "" });
+    const box = el("div", "inline-notes");
+    const rs = reqsFor(key).filter(r => r.kind === kind);
+    for (const r of rs) box.append(reqNode(r, true));
+    if (state.canWrite === false) { if (!rs.length) box.hidden = true; return box; }
+    if (!d.open) {
+      const row = el("div", "row");
+      const b = el("button", "btn small", kindLabel + "のメモ・修正依頼を書く"); b.type = "button";
+      b.addEventListener("click", () => { d.open = true; d.msg = ""; rerenderDetails(); });
+      row.append(b); if (d.msg) row.append(el("span", "note", d.msg));
+      box.append(row); return box;
+    }
+    const form = el("div", "inline-form");
+    const memo = el("textarea"); memo.maxLength = 2000; memo.placeholder = "メモ（気づいたこと。これだけでも保存できます）"; memo.value = d.memo; memo.setAttribute("aria-label", kindLabel + "のメモ");
+    memo.addEventListener("input", () => { d.memo = memo.value; });
+    const prompt = el("textarea"); prompt.maxLength = 4000; prompt.placeholder = "修正の指示（直してほしい内容。空欄ならメモだけ残ります）"; prompt.value = d.prompt; prompt.setAttribute("aria-label", kindLabel + "の修正の指示");
+    prompt.addEventListener("input", () => { d.prompt = prompt.value; });
+    const who = el("div", "seg"); who.setAttribute("role", "group"); who.setAttribute("aria-label", "担当");
+    for (const [v, t] of Object.entries(WHO)) { const b = el("button", "", t); b.type = "button"; b.dataset.v = v; b.setAttribute("aria-pressed", String(v === d.assignee)); who.append(b); }
+    seg(who, v => { d.assignee = v; });
+    const save = el("button", "btn small primary", "保存する"); save.type = "button";
+    const close = el("button", "btn small", "やめる"); close.type = "button";
+    const msg = el("span", "note", d.msg);
+    close.addEventListener("click", () => { drafts[id] = undefined; rerenderDetails(); });
+    save.addEventListener("click", async () => {
+      const m = memo.value.trim(), p = prompt.value.trim();
+      if (!m && !p) { msg.textContent = "メモか修正の指示のどちらかを書いてください。"; return; }
+      const now = new Date().toISOString();
+      const ok = await write(() => state.db.collection("requests").add({ target: label, targetKey: key, kind, memo: m, prompt: p, assignee: d.assignee, status: p ? "wait" : "memo", promptRev: 1, authorId: state.uid || "", createdAt: now, updatedAt: now, result: "" }));
+      if (ok) { drafts[id] = { open: false, memo: "", prompt: "", assignee: "auto", msg: p ? "保存しました。制作者の承認を待ちます。" : "メモを保存しました。" }; rerenderDetails(); }
+    });
+    const row1 = el("div", "row"); row1.append(el("span", "note", "担当"), who);
+    const row2 = el("div", "row"); row2.append(save, close, msg);
+    form.append(memo, prompt, row1, row2); box.append(form);
+    return box;
+  }
+  function rerenderDetails() { if (state.card) renderCardDetail(); if (state.kamiNo) renderKamiDetail(); }
+  const reqsFor = key => state.reqs.filter(r => r.targetKey === key).sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+
+  /* ---------- 音声 ---------- */
+  let playing = null;
+  const packs = {};
+  const packData = src => packs[src] || (packs[src] = fetch(src).then(r => { if (!r.ok) throw new Error(src); return r.arrayBuffer(); }).catch(e => { delete packs[src]; throw e; }));
+  async function play(clips, btn) {
+    const same = playing && playing.btn === btn;
+    if (playing) { playing.stop = true; if (playing.audio) playing.audio.pause(); playing.btn.textContent = "▶ 再生"; playing = null; }
+    if (same) return;
+    const me = playing = { btn, stop: false, audio: null }; btn.textContent = "■ 停止";
+    for (const c of clips) {
+      if (me.stop) return;
+      // 音声は束ねたファイルの一部。束を1回だけ読み、この台詞の範囲を切り出す
+      let made = null;
+      try { made = URL.createObjectURL(new Blob([(await packData(c.src)).slice(c.start, c.end)], { type: "audio/mpeg" })); } catch (e) { continue; }
+      const url = made;
+      if (me.stop) { URL.revokeObjectURL(made); return; }
+      await new Promise(done => { const a = me.audio = new Audio(url); a.addEventListener("ended", done); a.addEventListener("error", done); a.addEventListener("pause", done); const p = a.play(); if (p && p.catch) p.catch(done); });
+      if (made) URL.revokeObjectURL(made);
+    }
+    if (playing === me) { btn.textContent = "▶ 再生"; playing = null; }
+  }
+  function voiceRow(label, clips) {
+    const row = el("div", "voice");
+    const btn = el("button", "btn small", "▶ 再生"); btn.type = "button"; btn.addEventListener("click", () => play(clips, btn));
+    const txt = el("div"); txt.append(el("div", "lbl", label)); for (const c of clips) txt.append(el("div", "", "「" + c.text + "」"));
+    row.append(btn, txt); return row;
+  }
+  function voiceRows(card) {
+    const no = num(card.no), rows = [], own = state.voices.cards[no] || {};
+    for (const [ev, label] of EVENTS) if (own[ev] && own[ev].length) rows.push(voiceRow(label, own[ev]));
+    const names = list => [...new Set((list || []).map(n => fullName(state.cards.find(c => num(c.no) === String(n)))).filter(Boolean))].join(" ／ ");
+    for (const p of state.voices.pairs) {
+      const mine = p.who.includes(no), theirs = p.target.includes(no);
+      if (!mine && !theirs) continue;
+      rows.push(voiceRow("掛け合い（" + (p.kind === "rival" ? "敵" : "味方") + "：" + names(mine ? p.target : p.who) + "）", p.clips));
+    }
+    return rows;
+  }
+
+  /* ---------- カード ---------- */
+  function thumb(card) {
+    const t = el("div", "thumb");
+    if (card.sheet != null) {
+      const { cols, rows } = state.atlas, x = card.cell % cols, y = Math.floor(card.cell / cols);
+      t.style.backgroundImage = `url("img/cards-${card.sheet}.webp")`;
+      t.style.backgroundSize = `${cols * 100}% ${rows * 100}%`;
+      t.style.backgroundPosition = `${x / (cols - 1) * 100}% ${y / (rows - 1) * 100}%`;
+    }
+    t.setAttribute("role", "img"); t.setAttribute("aria-label", fullName(card)); return t;
+  }
+  const hasVoice = card => { const no = num(card.no); return !!state.voices.cards[no] || state.voices.pairs.some(p => p.who.includes(no)); };
+  function filteredCards() {
+    const q = $("cardSearch").value.trim().toLowerCase(), cat = $("cardCat").value, color = $("cardColor").value, flag = $("cardFlag").value;
+    const mode = state.mode;
+    return state.cards.filter(c => (mode !== "voice" || flag === "novoice" || hasVoice(c)) && (!q || (fullName(c) + " " + c.no).toLowerCase().includes(q)) && (!cat || c.category === cat) && (!color || c.color === color)
+      && (!flag || (flag === "voice" && hasVoice(c)) || (flag === "novoice" && !hasVoice(c)) || (flag === "req" && reqsFor("card:" + num(c.no)).length)));
+  }
+  function renderCardGrid() {
+    const list = filteredCards();
+    $("cardCount").textContent = `${MODE[state.mode].label}の確認：${list.length}枚／全${state.cards.length}枚` + (state.mode === "voice" ? "（ボイスのあるカードだけ表示）" : "");
+    $("cardGrid").replaceChildren(...list.map(c => {
+      const b = el("button", "cardbtn"); b.type = "button";
+      const marks = el("div", "marks"), n = reqsFor("card:" + num(c.no)).filter(r => r.kind === MODE[state.mode].kind && !["done", "rejected"].includes(reqStatus(r))).length;
+      if (n) marks.append(el("span", "dot", "メモ・依頼 " + n));
+      b.append(thumb(c), el("span", "nm", "No." + num(c.no) + " " + fullName(c)), marks);
+      b.addEventListener("click", () => openCard(c));
+      return b;
+    }));
+  }
+  function openCard(c) { state.card = c; $("cardListView").hidden = true; $("cardDetailView").hidden = false; renderCardDetail(); $("pane-cards").scrollIntoView({ block: "start" }); }
+  function renderCardDetail() {
+    const c = state.card; if (!c) return;
+    const left = el("div", "big"); left.style.cssText = "display:flex;flex-direction:column;gap:10px"; left.append(thumb(c));
+    const right = el("div"); right.style.cssText = "display:flex;flex-direction:column;gap:14px;min-width:0";
+    const h = el("h2", "", fullName(c));
+    const meta = el("div", "row");
+    for (const v of ["No." + num(c.no), c.category, c.color && "属性：" + c.color, c.type, c.category !== "カミ" && "コスト " + c.cost, c.power && "戦闘力 " + c.power, c.attack && "神攻 " + c.attack].filter(Boolean)) meta.append(el("span", "chip", v));
+    const text = el("div", "panel"); text.append(el("h3", "", "効果"), el("div", "text", c.text || "（効果テキストなし）"));
+    if (c.flavor) text.append(el("div", "flavor", c.flavor));
+    const vr = voiceRows(c), voice = el("div", "panel"); voice.append(el("h3", "", "ボイス"));
+    if (vr.length) voice.append(...vr); else voice.append(el("p", "note", "このカードのボイスはありません。"));
+    // 開いているページ（ボイス・イラスト・カード効果）の内容だけを出し、メモ・修正依頼もその場で書く
+    const key = "card:" + num(c.no), name = fullName(c), mode = state.mode;
+    right.append(h, meta);
+    if (mode === "voice") { voice.append(noteBlock(key, name, "voice", "ボイス")); right.append(voice); }
+    else if (mode === "effect") { text.append(noteBlock(key, name, "effect", "効果")); right.append(text); }
+    else { const art = el("div", "panel"); art.append(el("h3", "", "絵"), el("p", "note", "カードの絵・枠・文字の見え方について。"), noteBlock(key, name, "illust", "絵")); right.append(art); }
+    $("cardDetail").classList.toggle("wide", mode === "illust");
+    // 実際に直すための道具は、制作者にだけ出す
+    if (state.isOwner) {
+      const tool = mode === "voice" ? ["カードボイス 試聴室を開く", "tools/voice-preview/"] : ["カードジェネレーターを開く", "tools/card-editor/"];
+      const row = el("div", "row"); const a = el("a", "hublink", tool[0]); a.href = "http://localhost:8765/" + tool[1]; a.target = "_blank"; a.rel = "noopener";
+      row.append(a, el("span", "note", "制作者だけに表示されます（このPCの確認用サーバーが必要）")); right.append(row);
+    }
+    $("cardDetail").replaceChildren(left, right);
+  }
+  $("cardBack").addEventListener("click", () => { state.card = null; $("cardDetailView").hidden = true; $("cardListView").hidden = false; });
+  const stepCard = d => { const list = filteredCards(), i = list.indexOf(state.card), n = list[i + d]; if (n) openCard(n); };
+  $("cardPrev").addEventListener("click", () => stepCard(-1)); $("cardNext").addEventListener("click", () => stepCard(1));
+  for (const id of ["cardSearch", "cardCat", "cardColor", "cardFlag"]) $(id).addEventListener("input", renderCardGrid);
+
+  /* ---------- カミ ---------- */
+  function renderKamiGrid() {
+    $("kamiGrid").replaceChildren(...state.kami.map(k => {
+      const b = el("button", "cardbtn"); b.type = "button";
+      if (k.card) { const img = el("img"); img.src = k.card; img.alt = fullName(k); img.loading = "lazy"; img.style.borderRadius = "5px"; b.append(img); }
+      b.append(el("span", "nm", fullName(k)));
+      b.addEventListener("click", () => { state.kamiNo = k.no; $("kamiListView").hidden = true; $("kamiDetailView").hidden = false; renderKamiDetail(); });
+      return b;
+    }));
+  }
+  function renderKamiDetail() {
+    const k = state.kami.find(x => x.no === state.kamiNo); if (!k) return;
+    const left = el("div", "big"); left.style.cssText = "display:flex;flex-direction:column;gap:10px";
+    for (const [src, alt] of [[k.card, "カード"], [k.art, "イラスト"]]) if (src) { const img = el("img"); img.src = src; img.alt = fullName(k) + "の" + alt; left.append(img); }
+    const right = el("div"); right.style.cssText = "display:flex;flex-direction:column;gap:14px;min-width:0";
+    const text = el("div", "panel");
+    text.append(el("h3", "", "天力トリガー"), el("div", "text", k.trigger || "—"),
+      el("h3", "", "神技：" + k.skill1name + "（天力 " + k.skill1cost + "）"), el("div", "text", k.skill1effect || "—"),
+      el("h3", "", "創世神技：" + k.skill2name + "（天力 " + k.skill2cost + "）"), el("div", "text", k.skill2effect || "—"));
+    const key = "kami:" + k.no, name = fullName(k);
+    text.append(noteBlock(key, name, "effect", "効果"));
+    left.append(noteBlock(key, name, "illust", "絵"));
+    // 対戦中のモーション（待機・まばたき・ダメージ）は Codex の確認ページをそのまま載せる（制作中のため、ボードを作り直した時点の状態）
+    const motion = el("div", "panel");
+    const frame = el("iframe"); frame.src = "motion/index.html#k" + k.no; frame.title = name + "の対戦中のモーション"; frame.loading = "lazy";
+    frame.style.cssText = "width:100%;height:min(820px,90vh);border:1px solid var(--line);border-radius:6px;background:#100e13";
+    const open = el("a", "", "大きな画面で開く"); open.href = "motion/index.html#k" + k.no; open.target = "_blank"; open.rel = "noopener"; open.style.color = "var(--accent)";
+    const head = el("div", "row"); head.append(el("h3", "", "対戦中のモーション（制作中）"), open);
+    motion.append(head, el("p", "note", "待機中の呼吸・まばたき、ダメージを受けたときの動き。上のボタンで「まばたき」「ダメージ」を確認できます。ほかのカミも上の選択欄で切り替えられます。"), frame,
+      el("h3", "", "カットイン・演出"), el("p", "note", "神技・創世神技のカットイン、待機モーション、ダメージの動きについてのメモ・修正依頼はここに書いてください。"), noteBlock(key, name, "motion", "モーション・演出"));
+    const kv = el("div", "panel"); kv.append(el("h3", "", "ボイス"), el("p", "note", "カミのボイスは本番のゲーム（カミ図鑑）で聴けます。"), noteBlock(key, name, "voice", "ボイス"));
+    right.append(el("h2", "", fullName(k)), text, motion, kv);
+    const others = reqsFor(key).filter(r => !["effect", "voice", "illust", "motion"].includes(r.kind));
+    if (others.length) { const o = el("div", "panel"); o.append(el("h3", "", "そのほかのメモ・依頼"), ...others.map(r => reqNode(r, true))); right.append(o); }
+    $("kamiDetail").replaceChildren(left, right);
+  }
+  $("kamiBack").addEventListener("click", () => { state.kamiNo = null; $("kamiDetailView").hidden = true; $("kamiListView").hidden = false; });
+
+  /* ---------- 確認ページ ---------- */
+  const linkCard = (title, url, text) => { const p = el("div", "panel"); const a = el("a", "", title); a.href = url; a.target = "_blank"; a.rel = "noopener"; p.append(a, el("span", "note", text), el("span", "note", url)); return p; };
+  $("linksPublic").append(
+    linkCard("ツクリヨ オンライン（本番）", "https://tsukuriyo-online.netlify.app/", "公開中のゲーム本体。"));
+  // このPCのページ（localhost）は、共有ページからはリンクで開けない。アドレスを写して、ブラウザの新しいタブに貼ってもらう
+  const localCard = (title, url, text) => {
+    const p = el("div", "panel"); const box = el("input"); box.type = "text"; box.readOnly = true; box.value = url; box.setAttribute("aria-label", title + " のアドレス");
+    box.addEventListener("focus", () => box.select());
+    const copy = el("button", "btn small", "アドレスをコピー"); copy.type = "button";
+    copy.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(url); copy.textContent = "コピーしました"; } catch (e) { box.focus(); box.select(); copy.textContent = "選択しました（Ctrl+C でコピー）"; }
+      setTimeout(() => { copy.textContent = "アドレスをコピー"; }, 2500);
+    });
+    const row = el("div", "row"); row.append(copy);
+    p.append(el("b", "", title), el("span", "note", text), box, row); return p;
+  };
+  const L = "http://localhost:8765/";
+  $("linksLocal").append(
+    linkCard("このPCで書いたメモ・修正依頼の一覧", L + "tools/hub/", "各道具のページの左下から書いたメモの一覧。"),
+    linkCard("ゲーム本体（確認用）", L + "index.html", "公開前の最新の状態。"),
+    linkCard("カードボイス 試聴室", L + "tools/voice-preview/", "声の候補づくり、台詞の作り直し、読み方の辞書。"),
+    linkCard("カードジェネレーター", L + "tools/card-editor/", "カードの文・画像の編集。"),
+    linkCard("場のカードの切り取り調整", L + "tools/field-card-crop/", "対戦の場に出したときに見える位置と拡大率を、カードごとに決めて保存。"),
+    linkCard("場のカードの絵の確認", L + "tools/field-card-art-preview.html", "対戦の場に出したときの絵の切り出し。"),
+    linkCard("神技・創世神技の演出", L + "effects_preview.html", "カミごとのカットイン演出の再生確認。"),
+    linkCard("SE 作業室", L + "tools/sfx-lab/", "効果音の計画と候補の試聴。"),
+    linkCard("演出の絵コンテ", L + "tools/vfx-storyboard/", "演出の流れの確認。"));
+
+  /* ---------- データの読み込み ---------- */
+  async function loadFiles() {
+    const get = async f => { const r = await fetch(f); if (!r.ok) throw new Error(f); return r.json(); };
+    try {
+      const [cards, kami, voices] = await Promise.all([get("data/cards.json"), get("data/kami.json"), get("data/voices.json")]);
+      state.cards = cards.cards; state.atlas = cards.atlas || state.atlas; state.kami = kami.kami; state.voices = voices;
+      $("built").textContent = "素材：v" + cards.version + "（" + when(cards.built) + " 時点）";
+      const uniq = k => [...new Set(state.cards.map(c => c[k]).filter(Boolean))];
+      $("cardCat").replaceChildren(new Option("すべて", ""), ...uniq("category").map(v => new Option(v, v)));
+      $("cardColor").replaceChildren(new Option("すべて", ""), ...uniq("color").map(v => new Option(v, v)));
+      renderCardGrid(); renderKamiGrid();
+    } catch (e) {
+      $("cardGrid").replaceChildren(el("p", "empty", "カードの一覧を読み込めませんでした。ページを開き直してください。"));
+    }
+  }
+  async function write(fn) {
+    if (!state.db) { $("dbState").hidden = false; $("dbState").textContent = "いまは保存できません（共有データに接続できていません）。"; return false; }
+    try { await fn(); return true; }
+    catch (e) {
+      if (e && e.code === "invalid_argument") { state.canWrite = false; lockWrites(); }
+      $("dbState").hidden = false;
+      $("dbState").textContent = e && e.code === "invalid_argument" ? "この画面では書き込みができません（閲覧のみの権限です）。書き込むには、制作者に「投稿者」以上の権限で共有してもらってください。"
+        : e && e.code === "quota_exceeded" ? "保存できる件数の上限に達しました。完了した依頼を削除してください。" : "保存に失敗しました。少し待ってからもう一度お試しください。";
+      return false;
+    }
+  }
+  function lockWrites() {
+    for (const id of ["taskAddPanel"]) $(id).hidden = true;
+    for (const id of ["reqSave", "reqTarget", "reqMemo", "reqPrompt", "reqKind"]) $(id).disabled = true;
+    renderTasks(); renderReqs();
+  }
+  async function resolveNames() {
+    if (!state.user) return;
+    const ids = [...new Set(state.reqs.map(r => r.authorId).filter(id => id && !(id in state.names)))];
+    if (!ids.length) return;
+    try { const ps = await state.user.profiles(ids); for (const id of ids) state.names[id] = (ps[id] && ps[id].name) || ""; renderReqs(); } catch (e) { /* 名前なしで表示する */ }
+  }
+  async function connect() {
+    const claude = window.claude;
+    if (!claude || !claude.use) { $("dbState").hidden = false; $("dbState").textContent = "このページは Claude の共有ページとして開いたときに、進捗やメモを読み書きできます。"; state.canWrite = false; lockWrites(); return; }
+    const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+    state.db = db; state.user = user;
+    if (user) {
+      try {
+        const [me, can] = await Promise.all([user.me(), user.can("data.write")]);
+        state.uid = me.id; state.isOwner = !!me.isOwner; state.canWrite = can;
+        $("tabLinks").hidden = !me.isOwner;
+        $("who").textContent = (me.name || "ゲスト") + (me.isOwner ? "（制作者）" : can === false ? "（閲覧のみ）" : "");
+      } catch (e) { /* だれが見ているか分からなくても読むことはできる */ }
+    }
+    if (!db) { $("dbState").hidden = false; $("dbState").textContent = "進捗とメモを読み込めませんでした（サインインが必要です）。カードとカミの確認はそのまま使えます。"; state.canWrite = false; lockWrites(); return; }
+    if (state.canWrite === false) lockWrites();
+    const rows = snap => snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    const fail = () => { $("dbState").hidden = false; $("dbState").textContent = "共有データとの接続が切れました。ページを開き直してください。"; };
+    db.collection("tasks").onSnapshot(s => { state.tasks = rows(s); renderTasks(); }, fail);
+    db.collection("requests").onSnapshot(s => { state.reqs = rows(s); renderReqs(); resolveNames(); }, fail);
+    // 承認は制作者だけが書ける場所に置く。指示が書き換えられたら（版が違ったら）承認なしとして扱う
+    db.collection("approvals").onSnapshot(s => {
+      const map = {}; for (const d of s.docs) map[d.id] = d.data();
+      state.approvals = new Proxy(map, { get: (t, id) => { const a = t[id], r = state.reqs.find(x => x.id === id); return a && a.ok && r && (a.rev || 1) === (r.promptRev || 1) ? a : undefined; } });
+      renderReqs();
+    }, fail);
+  }
+
+  const start = (location.hash || "").replace("#", "");
+  showTab(PANES[start] && start !== "links" ? start : "board", false);
+  renderTasks(); loadFiles(); connect();
+})();
+</script>

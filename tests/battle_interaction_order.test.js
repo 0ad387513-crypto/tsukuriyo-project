@@ -8,8 +8,38 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 function method(name, dependencies = {}) {
   const m = html.match(new RegExp('    (async )?' + name + '\\(([^\\n]*)\\) \\{([\\s\\S]*?)\\r?\\n    \\},'));
   assert.ok(m, name);
-  return Function(...Object.keys(dependencies), 'return ' + (m[1] || '') + 'function(' + m[2] + ') {' + m[3] + '}')(...Object.values(dependencies));
+  return Function(...Object.keys(dependencies), 'return ' + (m[1] || '') + 'function(' + m[2] + ') {' + m[3] + '\n}')(...Object.values(dependencies));
 }
+test('オロチの盤面画像は自分と相手の封印状態から独立して切り替わり、巻き戻しにも追従する', () => {
+  const { divineBattlePortrait, DIVINE_SKILL_CUTINS } = require('../divine_effects.js');
+  const crops = [];
+  const portrait = method('battleKamiPortraitStyle', { divineBattlePortrait,
+    kamiFaceCrop: (...args) => { crops.push(args); return { size: '220% auto', pos: '67% 52%' }; },
+  });
+  const kami = { no: '10' };
+  const vm = { battleView: { self: { kami, seal: 8 }, opp: { kami, seal: 0 } },
+    kamiIllustrationUrl: () => 'current-masked.webp', kamiPortraitFocusStyle: () => ({ '--kami-pos': 'center' }),
+  };
+  assert.equal(portrait.call(vm,'self').backgroundImage, 'url(current-masked.webp)');
+  assert.equal(portrait.call(vm,'opp').backgroundImage, 'url('+DIVINE_SKILL_CUTINS['10']+')');
+  assert.equal(crops[0][2], 900/1600, '横長の素顔画像に合う切り抜き');
+  vm.battleView.self.seal = 0;
+  assert.equal(portrait.call(vm,'self').backgroundImage, 'url('+DIVINE_SKILL_CUTINS['10']+')');
+  vm.battleView.self.seal = 4;
+  assert.equal(portrait.call(vm,'self').backgroundImage, 'url(current-masked.webp)');
+  vm.battleView.self.kami = { no: '9' }; vm.battleView.self.seal = 0;
+  assert.equal(portrait.call(vm,'self').backgroundImage, 'url(current-masked.webp)');
+  for (const seal of [null, undefined, '', 4, 8, -1, NaN]) assert.equal(divineBattlePortrait(kami, seal), null);
+  assert.deepEqual(portrait.call(vm,'absent'), {});
+});
+test('神技目元の読み込み失敗も旧デザインに戻らず、二度目の失敗は画像を消す', () => {
+  const onError = method('battleSkillCloseupImgError');
+  for (const mode of ['skill1', 'orochi-seal-four']) {
+    const vm = { battleSkillCloseup: { mode, kami: { no: '10' }, fallbackStage: 0 }, kamiIllustrationUrl: () => 'current.webp' };
+    onError.call(vm); assert.equal(vm.battleSkillCloseup.imgUrl, 'current.webp');
+    onError.call(vm); assert.equal(vm.battleSkillCloseup.imgUrl, null);
+  }
+});
 function attackHarness() {
   const card = { no: '2', category: 'レガシー' }, calls = [];
   const vm = {

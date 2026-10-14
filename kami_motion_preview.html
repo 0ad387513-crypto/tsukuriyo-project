@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>カミの呼吸・まばたき確認</title>
+<link rel="stylesheet" href="kami_motion.css?v=20261014-pain-environments-v498">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#100e13;color:#efe4cd;font:15px sans-serif}header{padding:18px 24px;border-bottom:1px solid #695131;display:flex;align-items:center;gap:12px;flex-wrap:wrap}h1{font-size:20px;margin:0}a{color:#e8c67e}button,select{font:inherit;padding:9px 13px;background:#2b211b;color:#efe4cd;border:1px solid #957447;border-radius:5px;cursor:pointer}main{max-width:1260px;margin:auto;padding:32px}.stage{display:flex;align-items:center;justify-content:space-around;gap:38px;flex-wrap:wrap;padding:38px 30px;background:linear-gradient(#0a0809a8,#0a0809cf),url('battle_fields/shinshi-5c77fe940805.webp') center/cover;border:1px solid #715430;border-radius:10px}.sample{text-align:center}.note{margin:32px 0 10px;font-size:13px}.status{margin:25px 0;line-height:1.8}table{border-collapse:collapse;width:100%;font-size:13px}td,th{padding:10px;text-align:left;border-bottom:1px solid #58402c}code{overflow-wrap:anywhere}label{display:flex;align-items:center;gap:7px}.row-break{flex-basis:100%;height:0}header{gap:8px 10px;padding:12px 18px}header select,header button{padding:7px 10px}header h1{font-size:18px}header label{gap:5px;font-size:14px}
+.kami-hud{position:relative;width:var(--kami-w);height:var(--kami-h)}
+.kami-portrait{position:absolute;inset:-.6vh;background:#1a1d28 center/cover no-repeat}
+.self .kami-portrait{border-radius:50% 50% 1.4vh 1.4vh / 24% 24% 1.4vh 1.4vh}
+.opp .kami-portrait{border-radius:1.4vh 1.4vh 50% 50% / 1.4vh 1.4vh 24% 24%}
+.kami-hud:after{content:'';position:absolute;z-index:4;pointer-events:none;left:calc(var(--kami-w)*-53/614);top:calc(var(--kami-w)*-63/614);width:calc(var(--kami-w)*720/614);height:calc(var(--kami-w)*576/614);background:url('battle_ui/kami-frame-c2b7632f7e2a.webp') center/100% 100% no-repeat;filter:drop-shadow(0 6px 14px #0008)}
+.opp .kami-hud:after{top:calc(var(--kami-w)*-49/614);transform:scaleY(-1)}
+.large{--kami-w:min(560px,70vw);--kami-h:calc(var(--kami-w)*464/614)}.actual{--kami-h:23vh;--kami-w:calc(var(--kami-h)*614/464)}
+.round .kami-hud{height:var(--kami-w)}.round .kami-portrait{inset:0;border:3px solid #bd914c;border-radius:50%}.round .kami-hud:after{display:none}.round.large{--kami-w:min(430px,70vw)}.round.actual{--kami-w:120px}
+@media(max-width:600px){main{padding:25px 14px}.stage{padding:35px 25px}.large{--kami-w:72vw}.actual{--kami-h:23vh;--kami-w:min(72vw,calc(var(--kami-h)*614/464))}table{font-size:11px}header{padding:14px;gap:8px}}
+</style></head><body><div id="preview"><header><h1>カミの呼吸・まばたき</h1>
+<select aria-label="カミ" v-model="kamiNo"><option v-for="(name,no) in names" :value="no">{{name}}</option></select>
+<select v-if="kamiNo==='10'" aria-label="オロチの封印状態" v-model="variant"><option value="sealed">仮面あり</option><option value="awakened">封印解放・素顔</option></select>
+<select aria-label="演出速度" v-model="speed"><option value="normal">通常</option><option value="fast">高速</option><option value="minimal">最小</option></select>
+<select aria-label="肖像枠" v-model="layout"><option value="self">自分側の枠</option><option value="opp">相手側の枠</option><option value="round">旧円形枠</option></select>
+<select aria-label="表情の静止確認" v-model="inspection" :disabled="!hasBlink&&!hasDamage"><option value="">表情：アニメーション</option><option value="half">表情：半閉じ</option><option value="closed">表情：まばたき</option><option value="damage">表情：軽いダメージ</option><option value="damageHeavy">表情：大ダメージ</option></select>
+<label><input type="checkbox" v-model="reduced">動きを減らす</label><label><input type="checkbox" v-model="motionOn">モーションを表示</label>
+<label><input type="checkbox" v-model="characterOnly" :disabled="!motionOn||reduced||speed==='minimal'">人物素材だけを確認</label>
+<button v-if="['4','5','6'].includes(kamiNo)" @click="previewCue++" :disabled="reduced||speed==='minimal'">背景演出を確認</button>
+<span class="row-break" aria-hidden="true"></span><button @click="blink" :disabled="!!inspection||!registered||!hasBlink||reduced||speed==='minimal'">まばたきを確認</button>
+<button @click="damage('damage')" :disabled="!!inspection||!registered||reduced||speed==='minimal'">ダメージを確認</button>
+<button @click="damage('damageHeavy')" :disabled="!!inspection||!registered||reduced||speed==='minimal'">大ダメージを確認</button></header>
+<main><section class="stage">
+<div v-for="size in ['large','actual']" :key="size" class="sample" :class="[size,layout]"><div class="kami-hud"><div class="kami-portrait" :style="portraitStyle">
+<kami-motion v-if="registered&&motionOn" ref="motions" :key="kamiNo+'-'+layout+'-'+size" :kami-no="kamiNo" :variant="kamiNo==='10'?variant:'sealed'" :crop="crop" :speed="speed" :reduced="reduced" :inspection="inspection" :character-only="characterOnly" :preview-cue="previewCue" :idle-only="false"></kami-motion>
+</div></div><div class="note">{{size==='large'?'拡大表示':'対戦画面の大きさ（窓の高さ23vh）'}}</div></div>
+</section><p class="status" v-if="registered">{{names[kamiNo]}}：人物・背景・小物・光を分けて重ねています。{{environmentNotes[kamiNo]}} 「人物素材だけを確認」で、服や髪に背景や演出が混ざっていないことを確認できます。呼吸・髪や衣のなびき、顔全体のまばたき・被弾も維持しています。<span v-if="hasBlink"> 自動のまばたきは呼吸が落ち着いたタイミングで再生します。「まばたきを確認」はすぐ再生します。</span></p>
+<p class="status" v-else>このカミは未登録です。従来の1枚絵を表示しています。</p>
+<table v-if="registered"><tr><th>作成画像</th><th>用途</th></tr><tr v-for="item in assets" :key="item.src"><td><a :href="item.src" target="_blank"><code>{{item.src}}</code></a></td><td>{{item.label}}</td></tr></table>
+<p class="note">「動きを減らす」、端末の動き軽減、演出速度「最小」では背景・小物・色の演出・呼吸・まばたき・被弾反応が止まります。</p></main></div>
+<script src="vendor/vue-2.6.14.min.js"></script><script src="kami_motion.js?v=20261014-pain-environments-v498"></script>
+<script>
+const NAMES={1:'スサノオ',2:'ヤマトタケル',3:'オオクニヌシ',4:'タケミカヅチ',5:'オモイカネ',6:'アメノウズメ',7:'ヒノカグツチ',8:'アマテラス',9:'ツクヨミ',10:'ヤマタノオロチ'};
+const FILES={1:'スサノオ',2:'ヤマトタケル',3:'オオクニヌシ',4:'タケミカズチ',5:'オモイカネ',6:'アメノウズメ',7:'ヒノカグツチ',8:'アマテラス',9:'ツクヨミ',10:'ヤマタノオロチ'};
+const ENVIRONMENT_NOTES={1:'風と紅葉が流れます。大ダメージでは両目を閉じ、歯を食いしばって耐えます。',2:'3本の霊剣が別々の周期で浮遊し、青い光が流れます。',3:'フクロウと狐は体・足を固定し、胸の呼吸と短いまばたきで動き、まばたきは口やひげの位置を変えずに再生します。',4:'枝分かれした青い雷と稲光が背景に走り、剣にも青白い電撃がほとばしります。',5:'巻物の30か所の文字が別々のタイミングで浮き上がって消えます。大ダメージの口と目元も修正しました。',6:'赤白の椿の花びらが、それぞれ違う位置・速度・揺れ方でちらちら降ります。',7:'赤い炎と紫の火が強弱をつけて揺らめき、背景だけに陽炎が生じます。',8:'鏡が浮かび、上から太陽光がゆっくり強くなったり弱くなったりしながら降り注ぎ、桜の花びらが舞います。',9:'上から優しい月光が差し、別々の絵の2匹の蝶が12コマで羽ばたきます。',10:'元の左右2体の大きな龍がこちらを向き、別々の周期で動きます。封印状態で仮面と素顔を切り替え、解放後は少し大きい赤黒い紫の玉になります。玉と霊気は、表情を変えるときも顔の前面に残ります。'};
+const FOCUS={1:[[.46,.26],1.12],2:[[.47,.21],1.12],3:[[.46,.26],1.12],4:[[.55,.285],1.12],5:[[.52,.205],1],6:[[.34,.18],1.12],7:[[.39,.195],1.12],8:[[.46,.22],1.12],9:[[.49,.26],1],10:[[.52,.33],1.35]};
+function portraitCrop(no){const [p,z]=FOCUS[no],vw=1/z,vh=vw*(464/614)/(1484/1060),clamp=(v,m)=>Math.max(0,Math.min(m,v)),x=clamp(p[0]-.5*vw,1-vw),y=clamp(p[1]-.36*vh,1-vh);return {backgroundSize:(z*100).toFixed(1)+'% auto',backgroundPosition:(vw<1?x/(1-vw)*100:100).toFixed(1)+'% '+(y/(1-vh)*100).toFixed(1)+'%'}}
+new Vue({el:'#preview',data:{names:NAMES,environmentNotes:ENVIRONMENT_NOTES,kamiNo:'1',variant:'sealed',previewCue:0,speed:'normal',layout:'self',inspection:'',characterOnly:false,reduced:false,motionOn:true},watch:{kamiNo(){this.inspection='';this.previewCue=0}},computed:{
+registered(){return !!kamiMotionSet(this.kamiNo,undefined,this.kamiNo==='10'?this.variant:'sealed')},hasBlink(){const s=kamiMotionSet(this.kamiNo,undefined,this.kamiNo==='10'?this.variant:'sealed');return !!(s&&s.blink)},hasDamage(){return !!kamiMotionSet(this.kamiNo,undefined,this.kamiNo==='10'?this.variant:'sealed')?.poses?.damage},crop(){return this.layout==='round'?{backgroundSize:'cover',backgroundPosition:'center'}:portraitCrop(this.kamiNo)},
+portraitStyle(){if(this.kamiNo==='10'&&this.variant==='awakened')return {backgroundImage:'url(kami_cutin/orochi-no-paper-6d3cd5f796d0.webp)',backgroundSize:'220% auto',backgroundPosition:'67.4% 54%'};return Object.assign({backgroundImage:'url(kami_illustrations/'+FILES[this.kamiNo]+'.webp)'},this.crop)},
+assets(){const s=kamiMotionSet(this.kamiNo,undefined,this.kamiNo==='10'?this.variant:'sealed');if(!s)return [];const seen=new Set();return [{src:s.rig.background,label:'独立した背景'},...s.layers.map(a=>({src:a.src,label:a.idle.includes('hair')?'髪・飾り（透過）':a.idle==='robe'?'衣（透過）':'人物（透過）'})),...(s.blink?[{src:s.blink.frames[0],label:'半閉じ・顔全体（透過）'},{src:s.blink.frames[1],label:'まばたき・顔全体（透過）'}]:[]),...(s.poses.damage?[{src:s.poses.damage.frames?s.poses.damage.frames[0]:s.poses.damage.src,label:'被弾・顔全体（透過）'}]:[]),...(s.poses.damageHeavy?[{src:s.poses.damageHeavy.frames?s.poses.damageHeavy.frames[0]:s.poses.damageHeavy.src,label:'大ダメージ・顔全体（透過）'}]:[]),...(s.rig.petal?[{src:s.rig.petal,label:'動く花びら（透過）'}]:[]),...(s.rig.wind?[{src:s.rig.wind,label:'流れる風・木の葉（透過）'}]:[]),...(s.rig.effects||[]).map(a=>({src:a.src,label:'色の演出（透過）'})),...(s.rig.actors||[]).flatMap(a=>[{src:a.src,label:'独立した小物・動物（'+a.idle+'）'},...(a.breathSrc?[{src:a.breathSrc,label:'動物の胸の呼吸（透過）'}]:[])])].filter(a=>a.src&&!seen.has(a.src)&&seen.add(a.src))},
+},methods:{blink(){(this.$refs.motions||[]).forEach(m=>{if(typeof m._playBlink==='function')m._playBlink();else m._requestBlink()})},damage(type){(this.$refs.motions||[]).forEach(m=>m.play(type))}}});
+</script></body></html>

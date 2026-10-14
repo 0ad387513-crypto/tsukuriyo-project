@@ -38,7 +38,7 @@
     セリフや声を差し替えた別バージョン：--script ファイル で、そのファイルの voice・lines を台本に上書きして作る（ゲームの台本は変えない）
       node scripts/generate_voices_elevenlabs.js design --kami 6 --trial uzume-playful --script tools/voice-variants/uzume-playful.json
       node scripts/generate_voices_elevenlabs.js lines --kami 6 --trial uzume-playful --script tools/voice-variants/uzume-playful.json --model eleven_v4
-    聞き比べ：確認用サーバー起動中に http://localhost:8765/tools/voice-compare/
+    試聴：確認用サーバー起動中に http://localhost:8765/tools/voice-preview/ の「カミ」タブ（試し作り studio の音声。台詞・演技の直しと作り直しもここで）
     採用：聞き比べて良かったカミの試し作りの音声を、ゲームのボイスにする（声の登録も切り替わり、一覧も作り直す）
       node scripts/generate_voices_elevenlabs.js adopt --kami 3 --trial v4
       → 前の声はゲームで使わなくなるので、声の枠が足りなければ voices-list で確認して voice-delete で消せる
@@ -269,7 +269,7 @@ async function design() {
   }
   if (failed.length) console.error(`候補を作れなかったカミ：${failed.join("、")}`);
   console.log(trial
-    ? `試聴：http://localhost:8765/tools/voice-compare/?trial=${trial}　気に入った候補は pick --kami 番号 --choice 候補番号 --trial ${trial} で登録します。`
+    ? `試聴：voices/trials/${trial}/previews/ の音声ファイル　気に入った候補は pick --kami 番号 --choice 候補番号 --trial ${trial} で登録します。`
     : "試聴：http://localhost:8765/voices/preview.html　気に入った候補は pick --kami 番号 --choice 候補番号 で登録します。");
 }
 
@@ -394,7 +394,7 @@ function writeManifest(forTrial = !!trial) {
   writeJson(path.join(baseDir, "manifest.json"), manifest);
   if (forTrial) rememberTrial();
   console.log(`${base}/manifest.json を更新しました（${Object.keys(manifest.kami).length}柱分）`);
-  if (forTrial) console.log(`聞き比べ：http://localhost:8765/tools/voice-compare/?trial=${trial}`);
+  if (forTrial) console.log(trial === "studio" ? "試聴：http://localhost:8765/tools/voice-preview/ の「カミ」タブ" : `試し作りの音声：voices/trials/${trial}/`);
 }
 
 /* 採用：試し作りの音声をゲームのボイスにする。

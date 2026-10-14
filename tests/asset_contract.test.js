@@ -41,7 +41,7 @@ test("approved production art retains its source bytes and is wired into every d
   for (const [group,count] of [['card',9],['chibi',10],['rest',9],['emotes',10],['menus',4],['op',5],['tutorial',6],['framedCard',20]]) {
     assert.equal(record.assets.filter(e => e.group === group).length, count, group);
   }
-  assert.equal(record.assets.find(e=>e.group==='tutorial'&&e.slug==='tutorial-celebrate').file, 'tutorial_guide/tutorial-celebrate-e3b0de49814b.webp');
+  assert.equal(record.assets.find(e=>e.group==='tutorial'&&e.slug==='tutorial-celebrate').file, 'tutorial_guide/tutorial-celebrate-793535426f31.webp');
 });
 
 test("Uzume's fan, legible petals and four fading silk poses move in a widening breeze", () => {
@@ -120,7 +120,7 @@ function appMethod(name, params = "") {
 
 test("startup image preloads stay below 2 MB and never request divine art", () => {
   const refs = localReferences(/<link[^>]+rel="preload"[^>]+as="image"[^>]+href="([^"]+)"/g);
-  assert.ok(refs.includes("ui_decorations/title-key-visual.webp"));
+  assert.ok(refs.includes("ui_decorations/title-key-visual-01f1e1f7c186.webp"));
   assert.ok(refs.every(ref => !ref.startsWith("divine_assets/")));
   const bytes = refs.reduce((total, ref) => total + fs.statSync(path.join(root, ref)).size, 0);
   assert.ok(bytes < 2 * 1024 * 1024, `startup preload budget exceeded: ${bytes}`);
@@ -400,7 +400,8 @@ test("pick guide card list sorts by Kami fit and lists poor fits separately", ()
     gsCpuCardTagScore: card => card.fit, gsCpuBaseScore: card => card.base, fullName: card => card.name,
   };
   const isEligible = card => !card.isToken;
-  const tiers = appMethod("pickCardListTiers", "isEligible").call(vm, isEligible);
+  // 計算はカミの番号を受け取る pickGuideTiers にあり、おすすめカード一覧とピックガイドの最優先カードで共用する
+  const tiers = appMethod("pickGuideTiers", "no, isEligible").call(vm, "1", isEligible);
   assert.deepEqual(tiers.map(t => t.key), ["top", "good", "avoid"]);
   assert.equal(tiers[0].cards.length, 5);
   assert.equal(tiers[0].cards[0].no, "1");

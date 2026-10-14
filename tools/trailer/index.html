@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ツクリヨ ゲームトレーラー</title>
+<link rel="stylesheet" href="/tools/hub/hub.css">
+<style>
+  /* 構成案（TRAILER_PLAN.md）をそのまま読みやすく表示する。場面の行や見出しの区切りを押すと、そこへの修正メモを書ける */
+  main.wrap { max-width: 1180px; }
+  .status { background: var(--surface); border: 1px solid var(--warn); border-radius: 8px; padding: 12px 16px; }
+  .plan h2 { margin-top: 10px; }
+  .plan h3 { margin: 6px 0 0; font-size: 15px; }
+  .plan .part { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .plan ul { margin: 0; padding-left: 1.4em; }
+  .plan li { margin: 2px 0; }
+  .plan .tbl { overflow-x: auto; }
+  .plan table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  .plan th, .plan td { border: 1px solid var(--line); padding: 6px 8px; vertical-align: top; text-align: left; }
+  .plan th { background: var(--sunken); white-space: nowrap; }
+  .plan tr.tr-item { cursor: pointer; }
+  .plan tr.tr-item:hover td { background: rgba(142, 166, 242, .08); }
+  .plan code { background: var(--sunken); padding: 0 4px; border-radius: 4px; font-size: 13px; }
+  .plan .note { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>ゲームトレーラー</h1>
+  <div class="status">
+    <b>いまの状態：構成案の段階です。</b>
+    <p class="muted">動画の制作は、ゲームのデザインがすべて固まってから始めます。下は 2026年10月5日に作った構成案（Steam向け・約1分30秒）です。内容はまだ決まっていないので、気になる場面の行や区切りを押して、気軽にメモを残してください。</p>
+  </div>
+  <div class="plan" id="plan"><p class="muted">読み込んでいます…</p></div>
+</main>
+<script>
+(() => {
+  "use strict";
+  const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const inline = s => esc(s).replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
+  /* 構成案の Markdown を表示用に組み立てる（見出し・表・箇条書き・注記だけ使っている） */
+  function render(md) {
+    const lines = md.replace(/\r/g, "").split("\n");
+    const out = []; let part = null, list = null, table = null, title = "";
+    const flushList = () => { if (list) { part.push("<ul>" + list.join("") + "</ul>"); list = null; } };
+    const flushTable = () => {
+      if (!table) return;
+      const [head, , ...rows] = table;
+      const cells = r => r.replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim());
+      const th = cells(head).map(c => "<th>" + inline(c) + "</th>").join("");
+      const trs = rows.map(r => { const c = cells(r); const label = (title ? title.replace(/^\d+\.\s*/, "") + "：" : "") + c.slice(0, 2).join(" ").replace(/\*\*/g, ""); return '<tr class="tr-item" data-label="' + esc(label) + '">' + c.map(x => "<td>" + inline(x) + "</td>").join("") + "</tr>"; }).join("");
+      part.push('<div class="tbl"><table><thead><tr>' + th + "</tr></thead><tbody>" + trs + "</tbody></table></div>");
+      table = null;
+    };
+    const closePart = () => { flushList(); flushTable(); if (part) out.push('<section class="part" data-label="' + esc(title.replace(/^\d+\.\s*/, "")) + '">' + part.join("") + "</section>"); part = null; };
+    for (const line of lines) {
+      if (/^# /.test(line)) continue;
+      if (/^## /.test(line)) { closePart(); title = line.slice(3).trim(); part = ["<h2>" + inline(title) + "</h2>"]; continue; }
+      if (!part) { if (line.trim() && !/^作成日/.test(line)) out.push('<p class="muted">' + inline(line) + "</p>"); continue; }
+      if (/^\|/.test(line)) { flushList(); (table || (table = [])).push(line); continue; }
+      flushTable();
+      if (/^\s*- /.test(line)) { (list || (list = [])).push("<li>" + inline(line.replace(/^\s*- (\[ \] )?/, "")) + "</li>"); continue; }
+      flushList();
+      if (/^### /.test(line)) part.push("<h3>" + inline(line.slice(4)) + "</h3>");
+      else if (/^※/.test(line)) part.push('<p class="note">' + inline(line) + "</p>");
+      else if (/^\d+\. /.test(line)) part.push("<p>" + inline(line) + "</p>");
+      else if (line.trim()) part.push("<p>" + inline(line) + "</p>");
+    }
+    closePart();
+    return out.join("");
+  }
+  fetch("/tools/trailer/TRAILER_PLAN.md", { cache: "no-store" }).then(r => r.text()).then(md => { document.getElementById("plan").innerHTML = render(md); })
+    .catch(() => { document.getElementById("plan").innerHTML = '<p class="err">構成案を読み込めませんでした。</p>'; });
+})();
+</script>
+</body>
+</html>

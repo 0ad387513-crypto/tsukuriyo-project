@@ -4,7 +4,7 @@
 
 1. 試聴室で声と採用テイクを選び、台詞を作成します。採用音声は `voices/cards/{台詞ID}.mp3` に保存されます。`previews`、`takes`、`library`、`_old` 内の音声はゲームの対象外です。
 2. プロジェクト直下のターミナルで `npm run voices:prepare -- --root .release-worktree` を実行します。台本から `voices/cards/manifest.json` を生成し、音声の変更を知らせる `asset_hashes.js` も更新します。音声を追加・差し替えるたびに実行してください。正本の台本と作成済み台詞一覧は `tools/voice-script/card_voice_script.json` と `card_voice_lines.json` です。台本を変更した場合は、作成ツールの `cast` で一覧を作り直してから実行します。
-3. http://localhost:8765/tools/card-voice-preview.html で「一覧を更新」を押して確認します。実際のゲームは http://localhost:8765/index.html を再読み込みします。
+3. http://localhost:8765/index.html を再読み込みし、カードの詳細画面のボイスの再生ボタンで確認します（確認用の一覧ページは 2026-10-14 に削除）。
 4. 本番反映前は、音声直下の採用MP3、manifest、ハッシュ、今回のコードだけを他の作業者の最新コードへ統合します。ローカルの古い `index.html` 全体や未採用テイクを本番へコピーしないでください。現在は本番未反映です。
 
 別のチェックアウトで音声を作成するときは、そのディレクトリで `npm run voices:prepare` を実行します。ルートには作成中の音声を複製していません。

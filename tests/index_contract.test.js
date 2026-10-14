@@ -40,7 +40,8 @@ test("Netlify revalidates entry points and mutable scripts", () => {
   assert.match(headers, /\/version\.js[\s\S]*no-cache, no-store, must-revalidate/);
   assert.match(headers, /\/\*\.js[\s\S]*no-cache, must-revalidate/);
   assert.match(headers, /X-Content-Type-Options: nosniff/);
-  assert.match(headers, /X-Frame-Options: DENY/);
+  // 開発ダッシュボードが同じサイトのページを枠に表示するため SAMEORIGIN（ほかのサイトからの埋め込みは引き続き禁止）
+  assert.match(headers, /X-Frame-Options: SAMEORIGIN/);
   assert.match(headers, /Permissions-Policy: camera=\(\), microphone=\(\), geolocation=\(\)/);
 });
 
@@ -83,7 +84,7 @@ test("mobile viewport and reduced-motion support are enabled", () => {
 
 test("four-player draft exposes return values and recommendation reasons", () => {
   assert.match(html, /class="gm-pack-return-overlay"/);
-  assert.match(html, /デッキ返還値 <b>\{\{ gsMyDraftDeckReturnTotal \}\}<\/b>/);
+  assert.match(html, /返還値<\/span><b>\{\{ gsMyDraftDeckReturnTotal \}\}<\/b>/);
   assert.match(html, /gsDraftCardReturnValue\(card\)/);
   assert.match(html, /gsCpuScoreBreakdown\(card, ctx\)/);
   assert.match(html, /kami: 'カミ', tribe: '種族', color: '属性', curve: 'コスト', other: 'その他'/);
@@ -116,8 +117,9 @@ test("four-player Kami choice requires reviewing effects, pick policy and creati
     assert.ok(Array.isArray(guide.pick) && guide.pick.length >= 2);
   }
   assert.match(html, /class="gs-kami-info-overlay"/);
-  assert.match(html, /カミの情報を確認する/);
-  assert.match(html, /選別の儀 ― ピックの基本方針/);
+  // 候補はカードを押すとプロフィールが開き、ピック方針はピックガイドへのリンクで見る
+  assert.match(html, /@click="gsOpenKamiInfo\(card\)"/);
+  assert.match(html, /openPickGuideForKami\(gsKamiInfoCard\)/);
   assert.match(html, /gsKamiAcceptanceLabel\(gsKamiInfoCard\)/);
   assert.match(html, /kamiSelectionIllustrationUrl\(gsKamiInfoCard\)/);
   assert.match(html, /kami_illustrations\/selection\/\$\{String\(no\)\.padStart\(3, '0'\)\}\.webp/);
@@ -156,21 +158,25 @@ test("play manual is separated from the pick guide and contains the revised rule
   assert.match(html, /10枚束 × 3回[\s\S]*?<strong>30枚<\/strong>/);
   assert.match(html, /10枚束 × 1回[\s\S]*?<strong>10枚<\/strong>/);
   assert.match(html, /5枚束 × 1回[\s\S]*?<strong>5枚<\/strong>/);
-  assert.match(html, /無料返還[\s\S]*?1枚[\s\S]*?2枚[\s\S]*?2枚/);
-  assert.match(html, /習合 ／ 見識2/);
-  assert.match(html, /手札が9枚以上なら8枚になるまで/);
+  assert.match(html, /見識を使わない返還[\s\S]*?1枚[\s\S]*?2枚[\s\S]*?2枚/);
+  assert.match(html, /習合<span>見識 2<\/span>/);
+  assert.match(html, /手札が9枚以上なら8枚まで捨てる/);
   assert.match(html, /理念構築戦[\s\S]*?星紡ぎ戦/);
   assert.match(html, /集めた48枚をそのままデッキ/);
-  assert.match(html, /ui_decorations\/manual-battle-field\.png/);
-  assert.equal((html.match(/manual-card-pin p\d+/g) || []).length, 10);
-  assert.match(html, /セッション開始時にランダムな組み合わせ/);
+  assert.match(html, /ui_decorations\/manual-battle-field-[0-9a-f]{12}\.webp/);
+  // カードと画面の説明は、場所を枠で囲んで角に番号を付ける（カード9か所・画面9か所）
+  assert.equal((html.match(/class="pg-box[" ]/g) || []).length, 18);
+  assert.match(html, /ui_decorations\/manual-genesis-draft-[0-9a-f]{12}\.webp/);
+  assert.match(html, /始めにランダムで決まり、3回で全員と1回ずつ戦う/);
   assert.match(html, /word-break:\s*auto-phrase/);
   assert.match(html, /【死角】を持たないレガシーは、このレガシーを【戦闘】の攻撃対象に選ぶことができず、【守護】により攻撃先を変更することもできません/);
-  assert.match(html, /手札以外から使用された場合は、【昇華】を発動することができません/);
+  assert.match(html, /"昇華": "追加でXコストを払うと使える効果。手札以外から使ったときは使えない"/);
+  // 用語の説明はプレイガイドの表とキーワード集で同じ一覧（KEYWORD_GLOSSARY）を使う
+  assert.match(html, /v-for="kw in Object\.keys\(keywordGlossary\)" :key="'pgkw' \+ kw"/);
   assert.match(html, /同時に発生した効果は、<strong>ターンプレイヤーから好きな順番<\/strong>/);
   // カミの一覧と難易度はカミ図鑑と重なるため、プレイガイドから削除した（ユーザー指定）
   assert.doesNotMatch(html, /<div class="manual-kami-difficulty">/);
-  assert.match(html, /<section id="manual-shortcuts" class="manual-chapter">[\s\S]*?操作のショートカット/);
+  assert.match(html, /<section id="manual-shortcuts" class="pg-section">[\s\S]*?操作のショートカット/);
   assert.doesNotMatch(html, /隠密/);
 });
 
@@ -214,8 +220,10 @@ test("both guides reveal their secret Kami only after explicit confirmation and 
   assert.equal(vm.manualOrochiRevealed, false, 'reopening the pick guide hides spoilers');
   pickClose.call(vm);
   const manual = html.split('<div v-if="manualModalOpen"')[1].split('<!-- ===== ピックガイド')[0];
-  assert.match(manual, /v-if="manualOrochiRevealed"[^>]*class="manual-callout blue"/);
-  assert.equal((manual.match(/class="manual-chapter-mascot"/g) || []).length, 10);
+  assert.match(manual, /v-if="manualOrochiRevealed"[^>]*class="manual-callout blue/);
+  // 目的別の7つの章（はじめに・星戦・カード・モード・用語・細則・操作）。絵文字は使わない
+  assert.equal((manual.match(/class="pg-section"/g) || []).length, 7);
+  assert.doesNotMatch(manual, /[\u{1F300}-\u{1FAFF}\u2694\u2728]/u);
 });
 
 test("battle end phase enforces the eight-card hand limit", () => {
@@ -232,9 +240,10 @@ test("pick guide annotates full nickname and card name before shorter aliases", 
   assert.match(html, /\.howto-card-ref\s*\{[\s\S]*?white-space:\s*nowrap/);
 });
 
-test("higanbana corner artwork decorates all three requested screens without blocking UI", () => {
-  assert.equal((html.match(/src="ui_decorations\/higanbana-left\.png"/g) || []).length, 3);
-  assert.equal((html.match(/src="ui_decorations\/higanbana-right\.png"/g) || []).length, 3);
+test("higanbana corner artwork decorates the top, mode and game-room screens without blocking UI", () => {
+  // TOP・モード紹介・創世決戦に加え、星紡ぎ戦・理念構築戦の窓の後ろにも置く（3モードの見た目をそろえる）
+  assert.equal((html.match(/src="ui_decorations\/higanbana-left\.png"/g) || []).length, 5);
+  assert.equal((html.match(/src="ui_decorations\/higanbana-right\.png"/g) || []).length, 5);
   assert.match(html, /\.higanbana-corner\s*\{[\s\S]*?pointer-events:\s*none/);
   assert.match(html, /@media \(max-width:\s*700px\)\s*\{[\s\S]*?\.higanbana-corner\s*\{\s*display:\s*none/);
   assert.match(html, /\.gm-modal\s*\{[\s\S]*?position:\s*relative;\s*z-index:\s*1/);
@@ -332,7 +341,6 @@ test("battle effect guidance and motion preferences are available", () => {
   assert.match(html, /battle-mobile-nav/);
   assert.match(html, /battleMobileScroll/);
   assert.match(html, /対戦盤面の横移動/);
-  assert.match(html, /aria-label="音量と演出設定を開く"/);
   assert.match(html, /battleNetworkBlocked/);
   assert.match(html, /battle-connection-blocker/);
   assert.match(html, /通信が復旧しました/);
@@ -421,7 +429,7 @@ test("battle opening, legacy readiness, Orochi cut-ins and scoring skip stay wir
   assert.match(html, /legacy-action-sick/);
   assert.match(html, /summon-piyopiyo/);
   assert.match(html, /legacy-action-both/);
-  assert.match(html, /kami_cutin_eyes\/10\.png/);
+  assert.match(html, /mode: 'orochi-seal-four', imgUrl: divineSkill1EyeUrl\(kami\)/);
   assert.match(html, /orochi-skill2/);
   assert.match(html, /this\._sfxStop\('endofwar'\)/);
   assert.match(html, /gsSkipScoringReveal/);
@@ -525,7 +533,7 @@ test("Kashima disables choices whose required targets do not exist", () => {
 test("settings screen gathers sound, motion, battle and data options", () => {
   assert.match(html, /<div v-if="settingsModalOpen" class="battle-zone-modal settings-modal" role="dialog" aria-modal="true"/);
   for (const handler of ["toggleMasterMute", "toggleMuteWhenHidden", "battleSetAnimationSpeed", "setReduceMotionPref",
-    "battleToggleTurnTimer", "battleToggleEndTurnAssist", "togglePickAssist", "toggleCpuAutoPlay",
+    "battleToggleTurnTimer", "battleToggleEndTurnAssist", "toggleCpuAutoPlay",
     "resetTutorialProgress", "resetSettingsToDefault"]) {
     assert.ok(html.includes(`@change="${handler}`) || html.includes(`@click="${handler}`), handler);
   }
@@ -546,5 +554,5 @@ test("field zones hold up to 7 legacies and 5 relics", () => {
   assert.match(html, /\(me\.relics \|\| \[\]\)\.length >= this\.battleFieldLimit\('relics'\)/, "hand glow and end-turn warnings use the relic limit");
   assert.doesNotMatch(html, /(?:\}|レリック)フィールドには7枚まで配置できます/, "notices show the limit of each zone");
   assert.match(html, /フィールドには、レガシーは7枚まで、レリックは5枚まで置けます。/);
-  assert.match(html, /上限5枚です。/);
+  assert.match(html, /<b>相手のレリック<\/b>最大5枚/);
 });

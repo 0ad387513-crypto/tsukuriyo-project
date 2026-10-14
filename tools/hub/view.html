@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ツクリヨ 開発ダッシュボード</title>
+<link rel="stylesheet" href="/tools/hub/hub.css">
+<style>
+  /* 上に細い帯（ダッシュボードへ戻る・ページ名）、その下にページ本体。ページの中の項目を押すと、右側にその項目の修正メモが開く */
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .bar h1 { font-size: 17px; }
+  .bar .hint { color: var(--muted); font-size: 13px; }
+  .body { flex: 1 1 auto; display: flex; min-height: 0; position: relative; }
+  iframe { flex: 1 1 auto; border: 0; width: 100%; min-width: 0; background: #11141d; }
+  aside { position: absolute; top: 0; right: 0; bottom: 0; z-index: 10; box-shadow: -8px 0 24px rgba(0, 0, 0, .5); width: min(420px, 100%); border-left: 1px solid var(--line); background: var(--bg); overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  aside[hidden] { display: none; }
+  @media (max-width: 760px) { aside { top: auto; width: 100%; border-left: 0; border-top: 1px solid var(--line); max-height: 60vh; } }
+  .vol { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .vol input { width: 110px; accent-color: var(--accent); padding: 0; }
+  #memoMode[aria-pressed="true"] { background: var(--warn); color: #1a1408; border-color: var(--warn); }
+  .list { display: flex; flex-direction: column; gap: 10px; }
+  .panel-head { display: flex; gap: 8px; align-items: flex-start; }
+  .panel-head h2 { flex: 1 1 auto; border: 0; padding: 0; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <a class="btn" href="/tools/hub/">◀ 開発ダッシュボード</a>
+  <h1 id="title">読み込んでいます</h1>
+  <span class="badge owner" id="mode" hidden>キジマとして表示中</span>
+  <label class="vol" title="このページで鳴る音（ボイス・SE・BGM）の大きさ。この端末で覚えておきます">🔊 <input type="range" id="volume" min="0" max="100" step="5" aria-label="音量"> <span id="volumeText"></span></label>
+  <button class="btn" type="button" id="memoMode" aria-pressed="false">✎ メモを書く：オフ</button>
+  <span class="hint" id="hint"></span>
+</div>
+<div class="body">
+  <iframe id="frame" title="ページ本体"></iframe>
+  <aside id="panel" hidden aria-label="修正メモ・依頼">
+    <div class="panel-head"><h2 id="panelTitle"></h2><button class="btn small" type="button" id="close">閉じる</button></div>
+    <p class="muted" id="panelSub"></p>
+    <div id="form"></div>
+    <p class="err" id="err" hidden></p>
+    <div class="list" id="list"></div>
+  </aside>
+</div>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="/version.js"></script>
+<script src="/firebase.js"></script>
+<script src="/tools/hub/dev-notes.js"></script>
+<script src="/tools/hub/notes-ui.js"></script>
+<script src="/tools/hub/pages.js"></script>
+<script>
+(() => {
+  "use strict";
+  const N = window.DevNotes, U = window.DevNotesUI, $ = id => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const want = params.get("p");
+  const all = window.DEV_PAGES || [];
+  const found = all.find(p => p.id === want || p.path === want || (p.aliases || []).includes(want));
+  // いくつかのページをまとめたもの（例：ボイス）は、上のタブで中のページを切り替える
+  const group = found && (found.tabs ? found : found.inside ? all.find(p => p.id === found.inside) : null);
+  const page = group ? all.find(p => p.id === (found.tabs ? (params.get("t") || group.tabs[0]) : found.id)) || all.find(p => p.id === group.tabs[0]) : found;
+  if (!page || (page.owner && !N.OWNER)) { $("title").textContent = "ページが見つかりません"; return; }
+  document.title = (group ? group.title + "：" : "") + page.title + "｜ツクリヨ 開発ダッシュボード";
+  $("title").textContent = group ? group.title : page.title;
+  if (group) {
+    const bar = document.createElement("div"); bar.className = "seg"; bar.setAttribute("role", "tablist"); bar.setAttribute("aria-label", group.title + "の切り替え");
+    for (const id of group.tabs) {
+      const p = all.find(x => x.id === id); if (!p) continue;
+      const b = document.createElement("button"); b.type = "button"; b.textContent = p.title; b.setAttribute("role", "tab"); b.setAttribute("aria-pressed", String(p === page));
+      b.addEventListener("click", () => { location.href = "/tools/hub/view.html?p=" + group.id + "&t=" + p.id; });
+      bar.append(b);
+    }
+    $("title").after(bar);
+  }
+  $("mode").hidden = !N.OWNER;
+  // メモを書くモード：オンのときだけ、押した項目のメモ欄を開く（この端末で覚えておく）
+  let memoMode = false;
+  try { memoMode = sessionStorage.getItem("tsukuriyo-memo-mode") === "1"; } catch (e) { /* 覚えられなくても動く */ }
+  const paintMode = () => {
+    $("memoMode").setAttribute("aria-pressed", String(memoMode));
+    $("memoMode").textContent = memoMode ? "✎ メモを書く：オン" : "✎ メモを書く：オフ";
+    $("hint").textContent = !(page.items || page.whole) ? "" : memoMode ? "メモを書きたいところ（カード・台詞など）を押してください" : "メモを書くときは「メモを書く」をオンにしてください";
+    try { const d = frame.contentDocument; if (d && d.documentElement) d.documentElement.classList.toggle("kj-memo-mode", memoMode); } catch (e) { /* 読み込み前 */ }
+  };
+  $("memoMode").addEventListener("click", () => {
+    memoMode = !memoMode; try { sessionStorage.setItem("tsukuriyo-memo-mode", memoMode ? "1" : "0"); } catch (e) { /* 覚えられなくても動く */ }
+    if (!memoMode) $("panel").hidden = true;
+    paintMode();
+  });
+  if (!(page.items || page.whole)) $("memoMode").hidden = true;
+  const frame = $("frame");
+  /* 音量：ページの中で鳴る音すべてに掛ける（ページが決めた音量 × この値）。初めは控えめの 50% */
+  let master = 0.5;
+  try { const v = parseFloat(localStorage.getItem("tsukuriyo-dev-volume")); if (v >= 0 && v <= 1) master = v; } catch (e) { /* 覚えられなくても動く */ }
+  const base = new WeakMap(), live = new Set();
+  let rawGet = null, rawSet = null; // ページの音量を、掛け算をせずに読み書きする元の仕組み
+  const setRaw = (a, v) => { const x = Math.max(0, Math.min(1, v)); if (rawSet) rawSet.call(a, x); else a.volume = x; };
+  const applyTo = a => { try { if (!base.has(a)) base.set(a, rawGet ? rawGet.call(a) : a.volume); setRaw(a, base.get(a) * master); live.add(a); } catch (e) { /* 鳴らせない音は飛ばす */ } };
+  const paintVolume = () => { $("volume").value = String(Math.round(master * 100)); $("volumeText").textContent = Math.round(master * 100) + "%"; };
+  $("volume").addEventListener("input", () => {
+    master = Number($("volume").value) / 100; paintVolume();
+    try { localStorage.setItem("tsukuriyo-dev-volume", String(master)); } catch (e) { /* 覚えられなくても動く */ }
+    for (const a of live) { try { if (base.has(a)) setRaw(a, base.get(a) * master); } catch (e) { live.delete(a); } }
+  });
+  paintVolume();
+  // ページの中の音は、鳴らす直前に音量を掛ける（new Audio で作った音も、ページに置いた音も）
+  const hookAudio = () => {
+    try {
+      const w = frame.contentWindow, proto = w && w.HTMLMediaElement && w.HTMLMediaElement.prototype;
+      if (!proto || proto.__kjVolume) return;
+      const play = proto.play;
+      proto.play = function () { applyTo(this); return play.apply(this, arguments); };
+      // ページが音量を変えたときは、それをもとの音量として覚え直す
+      const desc = Object.getOwnPropertyDescriptor(w.HTMLMediaElement.prototype, "volume");
+      if (desc && desc.set) {
+        rawGet = desc.get; rawSet = desc.set;
+        Object.defineProperty(proto, "volume", { configurable: true, get() { return base.has(this) ? base.get(this) : desc.get.call(this); }, set(v) { base.set(this, v); live.add(this); desc.set.call(this, Math.max(0, Math.min(1, v * master))); } });
+      }
+      proto.__kjVolume = true;
+    } catch (e) { /* 別のサイトのページなどは触らない */ }
+  };
+  // ダッシュボードの枠が使う p・focus 以外の指定（例：カードジェネレーターの no・text）は、そのままページに渡す
+  const pass = new URLSearchParams(params); pass.delete("p"); pass.delete("focus"); pass.delete("t");
+  frame.src = page.path + (String(pass) ? "?" + pass : "");
+  // 読み込みの途中で鳴る音にも効くよう、ページの中身ができ始めた時点でも仕掛ける
+  const earlyHook = setInterval(() => { try { if (frame.contentWindow && frame.contentWindow.HTMLMediaElement) hookAudio(); } catch (e) { /* 読み込み前 */ } }, 50);
+  frame.addEventListener("load", () => { clearInterval(earlyHook); hookAudio(); });
+  paintMode();
+  let doc = null, notes = [], uid = null, target = null, editing = null;
+  const focus = params.get("focus");
+
+  /* ---------- 修正メモの欄 ---------- */
+  const showErr = e => { $("err").hidden = false; $("err").textContent = "保存・読み込みができませんでした（" + ((e && e.message) || e) + "）"; };
+  function openPanel(t) {
+    target = t; editing = null;
+    $("panel").hidden = false; $("panelTitle").textContent = t || page.title;
+    $("panelSub").textContent = "分類：" + (N.KINDS[page.kind] || "その他") + "　ページ：" + page.title;
+    renderForm(); renderList();
+  }
+  // カード効果の一覧：押したカードの今の値（属性・種族・マナなど）をページから受け取る
+  const currentOf = t => { try { return page.proposal && frame.contentWindow.cardValuesFor ? frame.contentWindow.cardValuesFor(t) : null; } catch (e) { return null; } };
+  function renderForm() { if (!$("panel").hidden) $("form").replaceChildren(U.form({ page, target, editing, current: currentOf(target), onDone: () => { editing = null; renderForm(); } })); }
+  function renderList() {
+    paintBadges();
+    if ($("panel").hidden) return;
+    const mine = notes.filter(n => n.page === page.path && N.sameTarget(n.target, target)).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    $("list").replaceChildren(...(mine.length ? [U.el("h2", "", "これまでのメモ（" + mine.length + "件）"), ...mine.map(n => U.noteNode(n, { uid, showTarget: false, ownerAction, current: currentOf(target), onEdit: x => { editing = x; renderForm(); $("panel").scrollTop = 0; }, onError: showErr }))] : [U.el("p", "muted", "まだメモはありません。")]));
+  }
+  // カード効果の調整案は、キジマが押すとその効果を入れたカードジェネレーターを開く
+  const ownerAction = page.id === "card-effects" ? { label: "この効果でカードジェネレーターを開く", when: n => /^No\.\d+/.test(n.target || ""),
+    run: n => {
+      // 調整案の値（変えた項目だけ）をカードジェネレーターに渡す。同じカードの別版（No.1,2 など）は also で続けて直せるようにする
+      const nums = (n.target.match(/^No\.([\d,]+)/) || [])[1].split(",");
+      const q = new URLSearchParams({ p: "card-gen", no: nums[0] });
+      if (nums.length > 1) q.set("also", nums.slice(1).join(","));
+      for (const [k, v] of Object.entries(n.proposal || {})) q.set(k, v);
+      location.href = "/tools/hub/view.html?" + q;
+    } } : null;
+  $("close").addEventListener("click", () => { $("panel").hidden = true; target = null; });
+
+  /* ---------- ページの中の項目 ---------- */
+  const labelOf = (el) => {
+    for (const it of page.items || []) { const hit = el.closest(it.selector); if (!hit) continue; const label = it.label(hit); if (label) return { el: hit, label }; }
+    return null;
+  };
+  // 項目の右上に、残っているメモの件数を出す
+  function paintBadges() {
+    if (!doc || !page.items) return;
+    const open = notes.filter(n => n.page === page.path && !["done", "rejected"].includes(n.status));
+    for (const it of page.items) for (const e of doc.querySelectorAll(it.selector)) {
+      const label = it.label(e), n = open.filter(x => N.sameTarget(x.target, label)).length;
+      let b = e.querySelector(":scope > .kj-badge");
+      if (!n) { if (b) b.remove(); continue; }
+      if (!b) { b = doc.createElement("span"); b.className = "kj-badge"; if (getComputedStyle(e).position === "static") e.style.position = "relative"; e.append(b); }
+      b.textContent = "メモ " + n;
+    }
+  }
+  const INTERACTIVE = "button, a, input, select, textarea, audio, video, label, summary, [role=button], [contenteditable]";
+  frame.addEventListener("load", () => {
+    try { doc = frame.contentDocument; } catch (e) { doc = null; }
+    if (!doc) return;
+    // ページ側に昔の「戻る」ボタンがあれば、この帯と重なるので消す
+    doc.querySelectorAll('a[href*="claude.ai/artifact"]').forEach(a => { if (a.style.position === "fixed") a.remove(); });
+    const style = doc.createElement("style");
+    style.textContent = ".kj-badge{position:absolute;top:4px;right:4px;z-index:5;background:#e9c06a;color:#1a1408;font:700 11px/1.4 Meiryo,sans-serif;padding:0 7px;border-radius:99px;pointer-events:none}"
+      + ".kj-pick{outline:3px solid #e9c06a!important;outline-offset:2px}"
+      + ".kijima-only{opacity:.45!important;cursor:not-allowed!important;filter:grayscale(.6)}"
+      + (page.items ? page.items.map(it => ".kj-memo-mode " + it.selector + "{cursor:copy}.kj-memo-mode " + it.selector + ":hover{outline:2px dashed #e9c06a;outline-offset:2px}").join("") : "")
+      + (!N.OWNER && page.memberHide ? (page.memberHide.selectors || []).map(s => s + "{display:none!important}").join("") : "");
+    doc.head.append(style);
+
+    // メンバーには、キジマにしかできない操作のボタンを押せなくする（「キジマ専用」と表示）
+    if (!N.OWNER && page.memberHide) {
+      const rule = page.memberHide;
+      const lock = b => { if (b.dataset.kijimaOnly) return; b.dataset.kijimaOnly = "1"; b.disabled = true; b.classList.add("kijima-only"); b.title = "キジマ専用"; if (!/キジマ専用/.test(b.textContent)) b.append("（キジマ専用）"); };
+      const sweep = () => { for (const b of doc.querySelectorAll("button")) if (rule.text && rule.text.test(b.textContent || "")) lock(b); };
+      sweep(); new MutationObserver(sweep).observe(doc.body, { childList: true, subtree: true });
+    }
+    if (page.items) new MutationObserver(() => { clearTimeout(paintBadges._t); paintBadges._t = setTimeout(paintBadges, 200); }).observe(doc.body, { childList: true, subtree: true });
+
+    // 項目を押したら、その項目の修正メモを開く。キジマが押したときは、修正画面があればそちらも開く
+    doc.addEventListener("click", ev => {
+      if (!memoMode) return; // 「メモを書く」がオフのときは、ページを普通に操作できる
+      const t = ev.target;
+      const hit = page.items ? labelOf(t) : null;
+      if (hit) {
+        if (t.closest(INTERACTIVE) && !hit.el.matches(INTERACTIVE)) return; // 再生ボタンなどの操作はそのまま
+        doc.querySelectorAll(".kj-pick").forEach(x => x.classList.remove("kj-pick")); hit.el.classList.add("kj-pick");
+        openPanel(hit.label);
+        if (N.OWNER && page.edit) { const to = (window.DEV_PAGES || []).find(p => p.id === page.edit); if (to) location.href = "/tools/hub/view.html?p=" + to.id + "&focus=" + encodeURIComponent(hit.label); }
+      } else if (page.whole) {
+        // 決まった項目以外の場所：選んでいるもの（カミ・カードなど）を対象にする
+        if (t.closest(INTERACTIVE)) return;
+        openPanel(page.whole.target(doc));
+      }
+    }, true);
+    paintBadges(); paintMode();
+    if (focus) setTimeout(() => focusItem(focus), 600);
+  });
+  /* 修正依頼ボードや別のページから「この項目」を指定して開いたとき：その項目を探して見える位置に出し、メモを開く */
+  function focusItem(label) {
+    if (!doc || !page.items) { openPanel(label); return; }
+    const words = label.split(/[：（）\s]/).filter(w => w.length >= 2);
+    for (const it of page.items) for (const e of doc.querySelectorAll(it.selector)) {
+      const l = it.label(e);
+      if (l === label || words.some(w => l.includes(w))) {
+        e.scrollIntoView({ block: "center" }); e.classList.add("kj-pick");
+        if (e.matches(".item, .cell")) e.click(); // 場のカード：そのカードの調整画面を開く
+        openPanel(l === label ? label : l); return;
+      }
+    }
+    openPanel(label);
+  }
+  N.uid().then(id => { uid = id; renderList(); }).catch(showErr);
+  N.watch("devNotes", list => { notes = list; renderList(); }, showErr);
+})();
+</script>
+</body>
+</html>

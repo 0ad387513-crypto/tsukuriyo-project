@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ツクリヨ 修正依頼ボード</title>
+<link rel="stylesheet" href="/tools/hub/hub.css">
+<style>
+  /* いまの状況 → 修正メモ・依頼の一覧 → 残タスク。依頼の承認・状態の変更はキジマとして表示中でだけ出る */
+  .summary { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; font-variant-numeric: tabular-nums; }
+  .summary b { font-family: "Yu Mincho", serif; font-size: 22px; margin-right: 4px; }
+  .list { display: flex; flex-direction: column; gap: 10px; }
+  .task { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 4px 12px; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+  .task:last-child { border-bottom: 0; }
+  .task select { padding: 4px 6px; font-size: 13px; }
+  .task .t-note { font-size: 13px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .group { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; }
+  .group h3 { margin: 0 0 4px; font-family: "Yu Mincho", serif; }
+  @media (max-width: 600px) { .task { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="row"><a class="btn" href="/tools/hub/">◀ 開発ダッシュボード</a><h1>修正依頼ボード</h1><span class="badge owner" id="mode" hidden>キジマとして表示中</span></div>
+  <p class="muted">各ページで書かれた修正メモと、残っている作業の一覧です。キジマがメモを見て、直すものを「Claude に回す」「Codex に回す」で作業に回します。作業が終わると「確認待ち」になります。</p>
+  <div class="summary" id="summary"></div>
+  <p class="err" id="err" hidden></p>
+
+  <h2>修正メモ・依頼</h2>
+  <div class="row">
+    <div id="filters"></div>
+    <select id="page" aria-label="ページで絞り込む" style="width:auto"></select>
+    <span class="muted" id="count"></span>
+  </div>
+  <div id="editBox"></div>
+  <div class="list" id="notes"><p class="muted">読み込んでいます…</p></div>
+
+  <h2>残タスク</h2>
+  <div id="next"></div>
+  <div class="list" id="tasks"></div>
+  <details class="group" id="addTaskBox" hidden>
+    <summary style="cursor:pointer;font-weight:700">作業を追加する</summary>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+      <input type="text" id="taskTitle" maxlength="80" placeholder="作業の名前" aria-label="作業の名前">
+      <input type="text" id="taskGroup" maxlength="30" placeholder="分類（例：素材・デザイン）" aria-label="分類">
+      <textarea id="taskNote" maxlength="1000" placeholder="メモ（任意）" aria-label="メモ"></textarea>
+      <div class="row"><button class="btn primary" type="button" id="taskAdd">追加する</button><span class="muted" id="taskMsg"></span></div>
+    </div>
+  </details>
+</main>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="/version.js"></script>
+<script src="/firebase.js"></script>
+<script src="/tools/hub/dev-notes.js"></script>
+<script src="/tools/hub/notes-ui.js"></script>
+<script src="/tools/hub/pages.js"></script>
+<script>
+(() => {
+  "use strict";
+  const N = window.DevNotes, U = window.DevNotesUI, $ = id => document.getElementById(id);
+  $("mode").hidden = !N.OWNER; $("addTaskBox").hidden = !N.OWNER;
+  let notes = [], tasks = [], uid = null, filter = "memo", editing = null;
+  const showErr = e => { $("err").hidden = false; $("err").textContent = "保存・読み込みができませんでした（" + ((e && e.message) || e) + "）"; };
+  const FILTERS = { memo: "未確認のメモ", work: "作業待ち・作業中", review: "確認待ち", open: "未完了すべて", done: "完了・直さない", all: "すべて" };
+  $("filters").append(U.seg(FILTERS, filter, v => { filter = v; renderNotes(); }, "状態で絞り込む"));
+  $("page").addEventListener("change", () => renderNotes());
+  const match = n => filter === "all" || (filter === "open" && !["done", "rejected"].includes(n.status))
+    || (filter === "work" && ["approved", "doing"].includes(n.status)) || (filter === "review" && n.status === "review") || (filter === "memo" && ["memo", "wait"].includes(n.status)) || (filter === "done" && ["done", "rejected"].includes(n.status));
+  function renderSummary() {
+    const sum = $("summary"); sum.replaceChildren();
+    const c = s => notes.filter(n => n.status === s || (s === "memo" && n.status === "wait")).length;
+    for (const [s, label] of [["memo", "未確認のメモ"], ["approved", "作業待ち"], ["doing", "作業中"], ["review", "確認待ち"]]) { const x = U.el("span"); x.append(U.el("b", "", String(c(s))), label); sum.append(x); }
+    const t = s => tasks.filter(x => x.status === s).length;
+    const x = U.el("span"); x.append(U.el("b", "", String(t("todo") + t("doing") + t("review"))), "残タスク"); sum.append(x);
+  }
+  function renderNotes() {
+    const pages = [...new Map(notes.map(n => [n.page, n.pageTitle || n.page])).entries()];
+    const cur = $("page").value;
+    $("page").replaceChildren(new Option("すべてのページ", ""), ...pages.map(([p, t]) => new Option(t, p)));
+    $("page").value = pages.some(([p]) => p === cur) ? cur : "";
+    const list = notes.filter(n => match(n) && (!$("page").value || n.page === $("page").value)).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    $("count").textContent = list.length + "件";
+    $("notes").replaceChildren(...(list.length ? list.map(n => U.noteNode(n, { uid, showPage: true, onError: showErr, onEdit: x => { editing = x; renderEdit(); } })) : [U.el("p", "muted", notes.length ? "この条件に当てはまるものはありません。" : "まだ何も書かれていません。各ページの「修正メモ・依頼」から書けます。")]));
+    renderSummary();
+  }
+  function renderEdit() {
+    if (!editing) { $("editBox").replaceChildren(); return; }
+    const page = (window.DEV_PAGES || []).find(p => p.path === editing.page) || { path: editing.page, title: editing.pageTitle, kind: editing.kind };
+    const box = U.el("div", "group"); box.append(U.el("h3", "", "修正メモ・依頼を編集"), U.form({ page, editing, onDone: () => { editing = null; renderEdit(); } }));
+    $("editBox").replaceChildren(box); box.scrollIntoView({ block: "start" });
+  }
+  function renderTasks() {
+    const rank = { doing: 0, review: 1, todo: 2 };
+    const sorted = tasks.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+    const next = sorted.filter(t => t.status in rank).sort((a, b) => rank[a.status] - rank[b.status] || (a.order || 0) - (b.order || 0)).slice(0, 5);
+    const nb = U.el("div", "group"); nb.append(U.el("h3", "", "次にやること"));
+    for (const t of next) { const r = U.el("div", "row"); r.append(U.el("span", "badge " + t.status, N.TASK_STATUS[t.status]), U.el("span", "", t.title)); if (t.lead) r.append(U.el("span", "muted", t.lead)); nb.append(r); }
+    if (!next.length) nb.append(U.el("p", "muted", "残っている作業はありません。"));
+    $("next").replaceChildren(nb);
+    const groups = [...new Set(sorted.map(t => t.group))];
+    $("tasks").replaceChildren(...groups.map(g => {
+      const box = U.el("div", "group"); box.append(U.el("h3", "", g));
+      for (const t of sorted.filter(x => x.group === g)) {
+        const row = U.el("div", "task"), left = U.el("div"), right = U.el("div");
+        if (N.OWNER) {
+          const sel = U.el("select"); sel.setAttribute("aria-label", t.title + " の状態");
+          for (const [k, label] of Object.entries(N.TASK_STATUS)) sel.append(new Option(label, k));
+          sel.value = t.status; sel.addEventListener("change", () => N.updateTask(t.id, { status: sel.value }).catch(showErr)); left.append(sel);
+        } else left.append(U.el("span", "badge " + t.status, N.TASK_STATUS[t.status] || t.status));
+        const head = U.el("div", "row"); head.append(U.el("b", "", t.title)); if (t.lead) head.append(U.el("span", "badge", t.lead));
+        right.append(head); if (t.note) right.append(U.el("div", "t-note", t.note));
+        row.append(left, right); box.append(row);
+      }
+      return box;
+    }));
+    renderSummary();
+  }
+  $("taskAdd").addEventListener("click", async () => {
+    const title = $("taskTitle").value.trim(); if (!title) { $("taskMsg").textContent = "作業の名前を入れてください。"; return; }
+    try { await N.addTask({ title, group: $("taskGroup").value, note: $("taskNote").value, order: Math.max(0, ...tasks.map(t => t.order || 0)) + 10 }); $("taskTitle").value = ""; $("taskNote").value = ""; $("taskMsg").textContent = "追加しました。"; }
+    catch (e) { showErr(e); }
+  });
+  N.uid().then(id => { uid = id; renderNotes(); }).catch(showErr);
+  N.watch("devNotes", list => { notes = list; renderNotes(); }, showErr);
+  N.watch("devTasks", list => { tasks = list; renderTasks(); }, showErr);
+})();
+</script>
+</body>
+</html>
