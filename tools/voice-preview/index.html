@@ -116,6 +116,7 @@
   .dir-tag { font-size: 11px; color: var(--gold); margin-left: 6px; }
   .heard { color: var(--muted); display: block; font-size: 11px; }
   .heard.bad { color: #ffcf7a; font-weight: 700; }
+  .stale { display: block; color: #ffcf7a; font-weight: 700; font-size: 11px; }
   .takes { margin-top: 6px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--ok); background: var(--ok-soft); display: grid; gap: 6px; font-size: 12px; }
   .takes-head { font-weight: 700; color: var(--ok); font-size: 11px; }
   .take { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; }
@@ -178,7 +179,7 @@
   <div class="bar">
     <div class="tabs" role="tablist" aria-label="種族" id="tribes"></div>
     <div class="cast-tabs" role="tablist" aria-label="キャスト" id="castTabs"></div>
-    <div class="bar-foot"><button type="button" id="reload">最新の状態に更新</button><label class="vol" for="volume">音量 <input type="range" id="volume" min="0" max="100" step="5" value="80"> <output id="volumeText" for="volume">80</output></label><span class="summary" id="summary"></span></div>
+    <div class="bar-foot"><button type="button" id="reload">最新の状態に更新</button><label class="vol" for="volume">音量 <input type="range" id="volume" min="0" max="100" step="5" value="80"> <output id="volumeText" for="volume">80</output></label><span class="summary" id="summary"></span><span class="summary" id="pendingSync"></span></div>
   </div>
   <details class="readings" id="readings"><summary>読み方の辞書（イントネーション・読み間違いを直す）</summary>
     <p class="dir-note">言葉の書き方を変えると、読み方やイントネーションが変わります。たとえば「父上」→「ちちうえ」「チチウエ」「ちち、うえ」など。ここに入れた置き換えは、その言葉を含む全部の台詞に、読み上げるときだけ使われます（台本の表示は変わりません）。入れたあとは「この言葉の台詞を作り直す」で作り直してください。うまくいかないときは、台詞ごとの「直す・作り直す」の「言い方を3通り作って選ぶ」も試してください。台詞を作るときは毎回、音声認識で聞き取って確かめます。読ませた文と大きく違って聞こえたら自動で作り直し（最大3回）、聞き取った文は台詞の下に出ます。「避けたい聞こえ方」を入れておくと、その言葉に聞こえたときも作り直します（最大5回。例：葛ノ葉亭 が「果て」と聞こえたら作り直す）。<br>読み方の中に「‿」を入れると、そこで区切って読ませたうえで、間だけを自動で詰めます（例：天根ノ社 → あまねの‿やしろ。区切ると言い方が安定し、間を詰めるので続けて聞こえます）。</p>
@@ -208,6 +209,8 @@
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.ok) throw new Error(j.message || "保存できませんでした");
     if (j.direction) data.directions[ref] = j.direction; else delete data.directions[ref];
+    // 台本も変わったとき（台詞を変えた）は、台詞の一覧を読み直す
+    if (j.rebuilt) { rememberScroll(); await load(); restoreScroll(); }
   }
   // 台詞の行の表示を、保存した指定に合わせて更新する
   // 2人以上で話す台詞（台本の 名前「…」名前「…」 や「2人同時に」で分かれたもの）
@@ -322,11 +325,26 @@
     });
     return box;
   }
+  // 読み方だけの違い（見えない区切り・「漢字（よみ）」・チチウエ→父上など）を除いて、台本と同じ文か（ゲームのカード詳細と同じ直し方）
+  const SPOKEN_SPELLINGS = [["チチウエ", "父上"], ["アニウエ", "兄上"], ["里", "郷"]];
+  function sameAsScript(script, spoken) {
+    const zw = /[\u200B-\u200D\uFEFF\u203F]/g, base = String(script || "").replace(zw, "");
+    let t = String(spoken || "").replace(zw, "").replace(/([\u3005\u4E00-\u9FFF])[（(][\u3041-\u3096\u30A1-\u30FA\u30FC]+[）)]/g, "$1").trim();
+    for (const [said, written] of SPOKEN_SPELLINGS) if (base.includes(written)) t = t.split(said).join(written);
+    return t === base || t === base.replace(/^[（(][^）)]*[）)]/, "");
+  }
   function showLine(it, spoken, orig, label) {
     const d = data.directions[it.ref] || {};
     spoken.textContent = d.text || it.text;
-    orig.textContent = d.text ? "台本の文：" + it.text : "";
-    orig.hidden = !d.text;
+    const differs = !!d.text && !sameAsScript(it.text, d.text);
+    orig.textContent = differs ? "台本の文：" + it.text : "";
+    orig.hidden = !differs;
+    // 音声を作ったときの台詞（voices/cards/spoken.json）が今の台詞と違えば、音声はまだ作り直していない
+    const made = (data.spoken || {})[it.ref], now = d.text || it.text;
+    const stale = !!made && made.line !== now && !sameAsScript(now, made.line) && !sameAsScript(made.line, now);
+    let warn = orig.parentNode && orig.parentNode.querySelector(".stale");
+    if (stale) { if (!warn) { warn = el("small", "stale"); orig.after(warn); } warn.textContent = "⚠ 音声はまだ前の台詞のまま（音声の台詞：" + made.line + "）。「直す・作り直す」から作り直してください"; }
+    else if (warn) warn.remove();
     label.textContent = describe(it.ref);
   }
   function describe(ref) {
@@ -373,7 +391,7 @@
       text.value = multi || (data.directions[groupRef] || {}).script ? ((src && src[m[2]]) || scriptOf(it)) : it.text; syncKind();
     });
     s1.append(el("h4", "", multi ? "① 台詞を変える（この台詞は複数人で話します。全員分をまとめて編集します）" : "① 台詞を変える（必要なときだけ）"), text, kind,
-      el("p", "dir-note", "2人以上に分けるときは、名前「台詞」名前「台詞」と続けて書きます（例：アカマツ「いまだ！シラトリ！」シラトリ「はあっ！」）。名前は話す人の名前に合わせてください。1人の台詞は、読み間違いを直すときにひらがなにしたり「、」で間を入れたりできます。ここで変えた台詞はこのPCの試聴室だけに反映され、共有ページの台本は変わりません。"), reset);
+      el("p", "dir-note", "2人以上に分けるときは、名前「台詞」名前「台詞」と続けて書きます（例：アカマツ「いまだ！シラトリ！」シラトリ「はあっ！」）。名前は話す人の名前に合わせてください。1人の台詞は、読み間違いを直すときにひらがなにしたり「、」で間を入れたりできます。ここで変えた台詞は、このPCの台本ファイルにも入ります（読み方だけを変えたときは台本はそのまま）。共有ページの台本は、Claude に「共有ページの台本に合わせて」と伝えるとそろえます。"), reset);
 
     // ② 演技の方針（日本語で自由に）
     const s2 = el("section", "step");
@@ -1208,13 +1226,20 @@
       getJson("/tools/voice-script/direction_tags.json", { map: [] }),
       getJson("/voices/cards/heard.json", {}),
     ]);
+    const spokenLog = await getJson("/voices/cards/spoken.json", {});
     // カミのボイス：台本・ゲームの音声の一覧・試聴室で作った音声の一覧
     const [kamiScript, kamiManifest, kamiStudio] = await Promise.all([
       getJson("/voices/voice_script.json", { kami: {} }),
       getJson("/voices/manifest.json", { kami: {} }),
       getJson("/voices/trials/studio/manifest.json", { kami: {} }),
     ]);
-    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {}, directionMap: tagMap.map || [], heard: heard || {}, kami: kamiScript || { kami: {} }, kamiManifest: kamiManifest || { kami: {} }, kamiStudio: kamiStudio || { kami: {} } };
+    // 試聴室で変えて、まだ共有ページの台本に入れていない台詞
+    const pending = await getJson("/tools/voice-script/shared_sync_pending.json", {});
+    const nPending = Object.keys(pending || {}).length;
+    // 音声がまだ前の台詞のものは、作り直すまで共有ページには入れない
+    const nWaiting = Object.entries(pending || {}).filter(([ref, p]) => { const m = (spokenLog || {})[ref]; return !m || !(m.line === p.text || sameAsScript(p.text, m.line)); }).length;
+    $("pendingSync").textContent = nPending ? "｜共有ページの台本にまだ入れていない台詞：" + nPending + "本（Claude に伝えるとそろえます" + (nWaiting ? "。うち" + nWaiting + "本は音声を作り直すまで入れません" : "") + "）" : "";
+    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {}, directionMap: tagMap.map || [], heard: heard || {}, spoken: spokenLog || {}, kami: kamiScript || { kami: {} }, kamiManifest: kamiManifest || { kami: {} }, kamiStudio: kamiStudio || { kami: {} } };
     renderReadings();
     await render();
   }

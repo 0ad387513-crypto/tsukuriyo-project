@@ -12,6 +12,40 @@ function method(name, params = "", async = false) {
   return new (async ? Object.getPrototypeOf(async function(){}).constructor : Function)(params, body[1]);
 }
 
+test("Orochi emotes preserve masked and unmasked variants for both players and the Kami gallery", () => {
+  const start=html.indexOf('const EMOTE_TYPES = ['),end=html.indexOf('// TOP画面の各モードタイル',start);
+  const emotes=Function(html.slice(start,end)+';return {types:EMOTE_TYPES,icons:KAMI_EMOTE_ICONS,unmasked:OROCHI_UNMASKED_EMOTE_ATLAS,style:emoteIconStyle};')();
+  const variant=method('battleEmoteVariant','side');
+  const vm={battleSample:{self:{kami:{no:10},seal:4},opp:{kami:{no:10},seal:0}}};
+  assert.equal(variant.call(vm,'self'),'normal');assert.equal(variant.call(vm,'opp'),'unmasked');
+  assert.match(emotes.style(10,'greeting',variant.call(vm,'self')).backgroundImage,/masked-emoteAtlas/);
+  assert.ok(emotes.style(10,'greeting',variant.call(vm,'opp')).backgroundImage.includes(emotes.unmasked));
+  vm.battleSample.self.seal=0;assert.equal(variant.call(vm,'self'),'unmasked');
+  vm.battleSample.self.kami.no=9;assert.equal(variant.call(vm,'self'),'normal');
+  assert.deepEqual(emotes.style(9,'boast','unmasked'),emotes.style(9,'boast','normal'));
+  const galleryBody=html.match(/    kamiDexEmotes\(\) \{([\s\S]*?)\r?\n    \},/)[1];
+  const gallery=Function('EMOTE_TYPES','emoteIconStyle',galleryBody);
+  const entries=gallery.call({kamiDexNo:'10'},emotes.types,emotes.style);
+  assert.equal(entries.length,12);assert.equal(new Set(entries.map(e=>e.key)).size,12);
+  assert.equal(entries.filter(e=>e.label.startsWith('仮面あり')).length,6);
+  assert.equal(entries.filter(e=>e.label.startsWith('素顔')).length,6);
+  assert.equal(gallery.call({kamiDexNo:'9'},emotes.types,emotes.style).length,6);
+  const bubbles={battleSample:{self:{kami:{no:10},seal:4},opp:{kami:{no:10},seal:0}},emoteBubbles:{},
+    $set:(object,key,value)=>{object[key]=value},battleEmoteVariant:variant,_battleHoldSpeech:()=>({cancel(){}})};
+  const show=method('_battleShowEmoteBubble','side,text,voice=null,onDone=null,speechOptions={}');
+  const options={emote:{kamiNo:'10',key:'greeting'}};
+  show.call(bubbles,'self','自分の台詞',null,null,options);
+  show.call(bubbles,'opp','相手の台詞',null,null,options);
+  assert.equal(bubbles.emoteBubbles.self.emote.variant,'normal');
+  assert.equal(bubbles.emoteBubbles.opp.emote.variant,'unmasked');
+  assert.equal(options.emote.variant,undefined,'input metadata stays unchanged');
+  const urlsBody=html.match(/    _kamiVisualUrls\(kami\) \{([\s\S]*?)\r?\n    \},/)[1];
+  const urls=Function('kami','divineSkill1EyeUrl','divineSkillAssetUrls','KAMI_EMOTE_ICONS','OROCHI_UNMASKED_EMOTE_ATLAS','kamiMotionUrls',urlsBody);
+  const forKami=no=>urls({no},()=>null,()=>[],emotes.icons,emotes.unmasked,()=>[]);
+  assert.ok(forKami(10).includes(emotes.icons['10']));assert.ok(forKami(10).includes(emotes.unmasked));
+  assert.ok(!forKami(9).includes(emotes.icons['10']));assert.ok(!forKami(9).includes(emotes.unmasked));
+});
+
 test("wheel zoom changes only a visible card preview and keeps it on screen", () => {
   const screen={innerWidth:1280,innerHeight:720},rect={left:1100,right:1200,top:500,height:120};
   const geometry=method('cardHoverGeometry','rect,baseWidth,zoom,evolved,window');

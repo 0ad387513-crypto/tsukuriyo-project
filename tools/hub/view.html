@@ -148,7 +148,7 @@
     paintBadges();
     if ($("panel").hidden) return;
     const mine = notes.filter(n => n.page === page.path && N.sameTarget(n.target, target)).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-    $("list").replaceChildren(...(mine.length ? [U.el("h2", "", "これまでのメモ（" + mine.length + "件）"), ...mine.map(n => U.noteNode(n, { uid, showTarget: false, ownerAction, current: currentOf(target), onEdit: x => { editing = x; renderForm(); $("panel").scrollTop = 0; }, onError: showErr }))] : [U.el("p", "muted", "まだメモはありません。")]));
+    $("list").replaceChildren(...(mine.length ? [U.el("h2", "", "これまでのメモ（" + mine.length + "件）"), ...mine.map(n => U.noteNode(n, { uid, ownerAction, current: currentOf(target), onEdit: x => { editing = x; renderForm(); $("panel").scrollTop = 0; }, onError: showErr }))] : [U.el("p", "muted", "まだメモはありません。")]));
   }
   // カード効果の調整案は、キジマが押すとその効果を入れたカードジェネレーターを開く
   const ownerAction = page.id === "card-effects" ? { label: "この効果でカードジェネレーターを開く", when: n => /^No\.\d+/.test(n.target || ""),

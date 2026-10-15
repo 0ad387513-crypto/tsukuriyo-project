@@ -2166,11 +2166,32 @@
 - Release source/pixel/merge/snapshot/test records: .release-worktree/output/orochi-card-mask-only-release-20261014/. Version504. Production commit/PUSH and delivery verification are next; final result will be appended locally. Earlier no-PUSH instructions remain the default for future work unless user authorizes another release.
 
 
+## Codex release completed v1.15.504 (2026-10-14)
+
+- Published commit d5d8638e78605c949ead55dce66254cc1e4f8507 to origin/main (fast-forward f1c805f→d5d8638), as explicitly authorized by user. Production https://tsukuriyo-online.netlify.app/ serves1.15.504.184 public files (HTML/code,121 active motion textures,9 Genesis cards in2 sizes, mask-only Orochi2 sizes/generator source,20 Kami damage voices, refreshed skill1 eyes and Claude hub/voice pages) match the commit bytes; production-verification.json has0 errors. JS/CSS Windows working-tree CRLF was correctly compared to Git's LF commit blobs.
+- Final production worktree .codex-art-production-20261009 is clean at the same commit as origin/main. All351 staged files reviewed; no output/raw/discarded variants/private settings included. Main UI/menu/manual changes through476 retained, Claude voice/card/tool/dashboard changes through503 included. npm243/Python4 pass; final18 asset contract/hash tests pass. Actual in-browser gameplay/motion playback was not inspected (Codex game browser remains prohibited).
+- Local8765 continues serving current504 files; card/generator on-mask-only approved result. Published production_art record and release note copied back into.release-worktree; local unused-image optimization history preserved. Older source branches remain uncommitted as before (no reset/clear of other worker's staging). Root handoff appended only. Release source/merge/snapshot/proof/HTTP/tests in .release-worktree/output/orochi-card-mask-only-release-20261014/. No further publication is authorized by this completed request alone.
+- v1.15.504：試聴室の台詞のメモの対象名を直した。pages.js の label が最初の small（台本の文の欄 .orig。空のことが多い）を読み、アカマツの全台詞が「アカマツ：」になっていた。今は「アカマツ：見習い忍者 アカマツ（攻撃時）「いっくぜぇ！」」の形。メモ欄の「これまでのメモ」にも各メモの対象名を出す。らくちんしさんの既存メモ4件（2026-10-14 23:43〜44、対象「アカマツ：」）はどの台詞か不明
+- v1.15.505：カードボイスの台本を、実際に読ませた台詞（試聴室の言い換え card_voice_direction.json の text）に合わせた。59本（台詞58本＋n180 のハミングの秒数）を、共有ページ（artifact FhjJWGhKHFPbH2yiuGJFtj の db lines/pairs）と手元の card_voice_script.json・card_voice_pairs.json の両方で直し、台本と同じになった言い換え58本は消した（p09 の「チチウエ」は読み方の指定なので残す）。cast と voices/cards/manifest.json も作り直した。試聴室の「台本の文」は、読み方だけの違いでは出さない。10/11 の対応はゲームのカード詳細の表示（manifest の displayText）だけで、台本は直していなかったのが残っていた理由
+- v1.15.506：試聴室の「① 台詞を変える」で保存すると、手元の台本（card_voice_script.json・card_voice_pairs.json）も同じ台詞になる（serve.js の /__dev/voice-direction）。読み方だけの違い（漢字（よみ）・見えない区切り）は台本に入れず、読み上げる文として試聴室の指定に残す。複数人の台詞（名前「…」）も台本に書く。保存後に cast と voices/cards/manifest.json を作り直す。共有ページ（artifact FhjJWGhKHFPbH2yiuGJFtj）にまだ入れていない台詞は tools/voice-script/shared_sync_pending.json（git に入れない）にたまり、試聴室の上に本数が出る。ユーザーに言われたら Claude が ArtifactData で共有ページの lines/pairs に入れて、その項目を消す
+- v1.15.507：旗手（n003-summon）は、試聴室で「旗を掲げよ！」に変えた時点で声を外していて作り直せず、音声は「旗を掲げよ！全軍、続け！」のままだった。ユーザーの指示で台本を音声に合わせて戻した（手元・共有ページ db lines/n003）。
+  - 取りこぼしの原因：試聴室は台詞の指定を先に保存し、作り直しに失敗しても指定が残り、画面はその台詞を表示していた。v1.15.505 の同期も、その指定を「実際に読ませた台詞」とみなして確かめていなかった
+  - 防ぐ仕組み：generate_card_voices_elevenlabs.js が音声を作るたびに voices/cards/spoken.json に { 台詞ID: { line: 作ったときの台詞, at } } を書く（言い方の候補は 台詞ID#番号、切り出しも）。serve.js の「これにする」で候補の記録を本番の記録に写す。今ある422本は今の台詞で記録を作った（seeded: true）
+  - 試聴室：今の台詞と spoken.json の台詞が違うと「⚠ 音声はまだ前の台詞のまま（音声の台詞：…）」を出す。共有ページに未反映の本数の横に「うちN本は音声を作り直すまで入れません」
+  - 共有ページに合わせるとき：node scripts/shared_script_sync.js で「入れてよい台詞」（音声の記録と一致）だけを ArtifactData で入れ、入れたものを --done 台詞ID,... で pending から消す
+  - 古い記録 n065-attack-1（2人に分けていたころの攻撃時）を card_voice_direction.json から消した
+
+
 ## Codex TOP art and shield pack labels v1.15.508 (2026-10-15)
 
 - User explicitly authorized production PUSH after this task, overriding the default local-only rule for this release. TOP Genesis Amaterasu and shield Okuninushi left hand corrected to five digits; Omoikane brush shaft straightened with original hand preserved. Built-in image_gen crop edits composited onto original masters, no differences outside edit crops before WebP. Initial six-digit Amaterasu candidate rejected, corrected and counted before adoption. Three standard scene WebPs stay below300000 bytes and use content hashes. TOP/preload/detail URLs, optimized_assets and production_art updated; old sources/history retained.
 - Shield pack tiles now label pack number,12 total,public3 and private9 with nine common CSS card backs. No private card identifiers/images are rendered, no gameplay/selection/return changes. Added a contract test combining generated pack counts across3 seeds with hidden presentation privacy. Local npm244 and Python importer4 pass. Existing8765 preview server preserved; no Codex game browser opened. Existing user Chrome discovered with computer-use but get_window_state app approval timed out, so browser UI inspection remains unperformed; visual art/pixel/HTTP checks used instead.
 - Release is integrated as this task's delta onto latest main in existing .codex-art-production-20261009. Concurrent uncommitted Claude voice505–507 work remains in local .release-worktree, not included in this release or reverted. Version508. Local generated originals/proofs/prompts/verification and before snapshots: .release-worktree/output/top-hand-brush-pack-20261015/. Production publication/verification results to be appended locally after completion.
+
+
+## Codex TOP release completed v1.15.508 (2026-10-15)
+
+- Published dab43db8d622026187802e064e7e4278ffb51877 to origin/main; Netlify production now serves508. All7 checked public files (index/version/art metadata/optimized metadata/three new menu WebPs) match committed bytes,0 delivery errors. Publication worktree clean and identical to origin/main. Local8765 serves current508 assets and UI,7 byte comparisons pass. npm244/Python4 pass in both source and publication trees. Existing user Chrome app-approval timed out, actual browser interaction not verified. Local menu/final catalogs updated with new URLs and original history, no raw images/output/private data published. Concurrent Claude505-507 voice work preserved locally.
 
 
 ## Codex TOP brush/grip and shield follow-up v1.15.509 (2026-10-15)
@@ -2180,6 +2201,23 @@
 - Source and publication npm245 pass including private cardback/count/privacy and numeric sort/non-mutation tests; Python importer4 pass. Publication index diff reviewed: only brush references, one cardback background and Kami display sort; no unrelated Claude voice changes. Prior authorized PUSH extended to this follow-up; integrate only task delta, preserving concurrent Claude voice work. Existing8765 server; no Codex game browser or new Windows approval requested after previous timeout.
 
 
+## Codex brush/cardback/Kami order release completed v1.15.509 (2026-10-15)
+
+- Published 9b5c75467fd4bc5a628727b6128f2b4622060bb8 to origin/main. Production https://tsukuriyo-online.netlify.app/ serves509;6 files (entry/version/art+optimized metadata/brush menu/cardback) match Git commit bytes with0 errors. Source8765 matches6 local files. npm245/Python4 pass; production worktree clean at origin/main. Tiny private9 cardbacks keep12x18 layout; Kami001-010 sort copies the candidate array. Original hand/brush replaced only inside crop before WebP; all other approved art and Claude local voice work preserved. Prompts/proofs/release and HTTP records in .release-worktree/output/omoikane-brush-axis-20261015/. No Codex game browser opened; actual UI interaction not reattempted after previous approval timeout.
+
+
+## Codex voice BGM attenuation v1.15.510 (2026-10-15)
+
+- User requested only a slight BGM reduction during battle voices. Changed card-voice gain multiplier0.55→0.9 in both live volume updates and initial BGM AudioContext setup. Voice completion restores multiplier1; saved BGM/voice/SFX settings and mute behavior unchanged. No new audio/images. Local npm245 pass; runtime gain probe confirms .4 setting gives .36 during voice, .4 after,0 on mute, with setting preserved. Existing8765 preview. Latest-main production change limited to two gain expressions/version/handoff; unrelated Claude local work preserved. Following ongoing authorized production publication; no game browser/audio audition attempted. Records: .release-worktree/output/bgm-voice-ducking-20261015/.
+
+
+## Codex BGM publication completed and local Orochi chibi four corners (2026-10-15)
+
+- Initial BGM commit/PUSH was rejected by automatic approval review: current user request lacked explicit publication authorization and standing instructions forbid commits/PUSH. No mutation occurred from that rejected command. Asked for the completed90% gain change only; user explicitly answered「BGM調整を本番公開する」. Then published 4a4d5be6604489e70c911e5e768494b008471ac2 (v1.15.510), verified4 production files against commit bytes,0 errors. Production worktree clean at origin/main. Local/source and release npm245 pass; initial/live/end/mute gains verified. No audio audition performed. This approval covers BGM only.
+- User additionally requested Orochi chibi elemental dragons at four corners. Retained8 heads/central masked character, moved existing green/yellow elemental mouths to lower-left/lower-right; red/blue remain upper-left/upper-right. Built-in image_gen output locally composited in4 mouth regions onto original1254sq PNG. Central character, hand, mask without talisman, top elemental heads and all pixels outside edit mask preserved before compression. Final720sq transparent sprite116672B, content hash ab56d52a3e1f. Standard importer updates guide/dex/pick-guide common references, local alias, optimized/production metadata; cache rule and local catalog updated. Local version1.15.511, npm245/importer4 pass,5 HTTP files match. Sources/prompts/proofs: .release-worktree/output/orochi-chibi-four-corners-20261015/.
+- Chibi update remains LOCAL ONLY; not committed/PUSHed/deployed, because BGM approval did not include chibi. Existing8765 server preserved, no Codex game browser opened. Other work and original sources retained.
+- v1.15.508：ユーザーの指示で、カードジェネレーター（pages.js の card-gen）からメモの対象（whole）を外した。「メモを書く」のボタンが出ない。既存のメモは無かった
+- v1.15.509：ダッシュボード「イラスト」に「イラスト・画像の一覧」（tools/art-gallery/）を追加。カミのイラスト・カミ選択の絵・敗北の絵・カミのカード・創世神技カットイン（＋スサノオ覚醒）・神技の目元・ジェネシスカード・ちびキャラ・エモート・チュートリアル案内役・TOPのモードの絵・タイトルの飾り・プレイガイドの図。今使っている画像は、開いたときに index.html と divine_effects.js（DIVINE_SKILL_CUTINS など）、kami_illustrations/manifest.json、台本の genesis から読み取るので、差し替えると自動で新しくなる。各画像にメモを書ける
 ## Codex voice BGM attenuation v1.15.510 (2026-10-15)
 
 - User requested only a slight BGM reduction during battle voices. Changed card-voice gain multiplier0.55→0.9 in both live volume updates and initial BGM AudioContext setup. Voice completion restores multiplier1; saved BGM/voice/SFX settings and mute behavior unchanged. No new audio/images. Local npm245 pass; runtime gain probe confirms .4 setting gives .36 during voice, .4 after,0 on mute, with setting preserved. Existing8765 preview. Latest-main production change limited to two gain expressions/version/handoff; unrelated Claude local work preserved. Following ongoing authorized production publication; no game browser/audio audition attempted. Records: .release-worktree/output/bgm-voice-ducking-20261015/.
@@ -2204,3 +2242,8 @@
 - （同日・追加3）カミの行だけ縦を広げ（72px／結果の行58px）、カミのサムネはカミ欄と同じ縦横比のまま。
 - （同日・追加2）カミは二つ名込みの正式名。カミの行動は「〇〇の天力トリガー」（kind trigger）・「〇〇の神技／創世神技「技名」」。リロールは「┗〇〇をリロール」（結果）。対戦開始の欄に「自分が先攻／相手が後攻」（自分の画面だけ）とマリガン（kind mulligan。相手へは枚数だけ送り、受け取った側で「相手が N 枚引き直した」にする）。最初の手番にも見出しを足す（`_battleLogFirstTurnMarker`）。帯は暗い紺（21,23,31）に、金／銀のうっすらした色をサムネの手前（68%）まで残す。
 - sync_test にバトルログの確認を追加（50項目）。npm test 245件成功。本番 v1.15.512 として公開。
+
+## Claude share v1.15.513 (2026-10-15): 共有用ブランチを手元の最新と main（v1.15.512）にそろえ直した
+- ユーザーの指摘：共有用URLのジェネシスカードが古い画像のまま。原因は、共有用ブランチを作った後に main へ入った16件（maekawa さんのバトルログ・同期修正、Codex の「publish redesigned Genesis cards」など、v1.15.504〜512）を取り込んでいなかったこと
+- .release-worktree の作業中の内容（output/ を除く）を共有用ブランチに取り込み直し、origin/main をマージ。食い違いは手元の新しい方を採用（index.html はオロチ素顔のエモートを含む手元の行）、HANDOFF・.gitignore は両方、optimized_assets.json は両方の項目を残して git に入らない kami_redesign/ の記録を外した。voices/cards/manifest.json と asset_hashes.js を作り直した
+- npm test 246件成功

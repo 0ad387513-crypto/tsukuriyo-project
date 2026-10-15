@@ -94,7 +94,7 @@ function prepare(root) {
   writeAssetHashes(root);
   return result.report;
 }
-module.exports = { buildCardVoiceManifest, prepare };
+module.exports = { buildCardVoiceManifest, prepare, displayText };
 if (require.main === module) {
   const args = process.argv.slice(2), at = args.indexOf('--root');
   const root = at >= 0 ? path.resolve(args[at + 1]) : path.resolve(__dirname, '..');
