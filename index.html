@@ -3594,7 +3594,10 @@
   .gm-cpu-deck-title { font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 16px; color: var(--gs-title); letter-spacing: .08em; }
   .gm-cpu-deck-title small { margin-left: 8px; font-family: inherit; font-size: 12px; color: var(--gs-sub); letter-spacing: 0; }
   /* 神託の儀のプロフィール：英字の見出し・注記・ピック方針の本文は置かず、効果の文字を大きく */
-  .gs-oracle-guide-row { display: flex; justify-content: flex-end; margin-top: 12px; }
+  /* 名前の横にピックガイド。名前は1行に収まらなければ折り返す（見切れない） */
+  .gs-oracle-profile .gs-oracle-name-row { display: flex; align-items: flex-start; gap: 12px; margin: 2px 50px 14px 0; }
+  .gs-oracle-profile .gs-oracle-name-row .gs-kami-info-name { flex: 1 1 auto; min-width: 0; margin: 0; white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.3; font-size: clamp(20px, 2vw, 30px); }
+  .gs-oracle-profile .gs-oracle-name-row .gs-oracle-guide-link { margin-top: 4px; }
   .pick-guide-link.gs-oracle-guide-link { flex: none; width: auto; margin: 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px 7px 10px; font-size: 13px; box-shadow: 0 2px 0 rgba(0, 0, 0, .5); }
   .gs-oracle-guide-link .ui-icon { width: 20px; height: 20px; }
   .gs-oracle-profile .gs-kami-info-section-title { font-size: 15px; }
@@ -3854,6 +3857,9 @@
     box-shadow: inset 0 0 0 4px rgba(14, 12, 10, .97), inset 0 0 0 5px rgba(226, 212, 176, .25), 0 12px 45px rgba(0,0,0,.6), 0 0 26px rgba(226, 196, 126, .22);
     pointer-events: none;
   }
+  /* 選別の儀では、上の帯の高さに小さく出す（カードの上に重ねない） */
+  .gm-draft .gm-pick-turn-callout { top: 70px; min-width: 0; width: max-content; max-width: calc(100vw - 32px); padding: 10px 30px; font-size: 19px; }
+  .gm-draft .gm-pick-turn-callout small { display: inline; margin: 0 0 0 14px; }
   .gm-pick-turn-callout small { display:block; margin-top:6px; color:#c9bfa8; font-family: system-ui, sans-serif; font-size:13px; font-weight: 600; letter-spacing: .04em; }
   .gm-pick-turn-enter-active, .gm-pick-turn-leave-active { transition: opacity .22s, transform .22s; }
   .gm-pick-turn-enter, .gm-pick-turn-leave-to { opacity:0; transform:translate(-50%, -14px) scale(.96); }
@@ -6905,6 +6911,16 @@
   .battle-layout-v2 .battle-header .battle-last-action { display: none !important; }
   .battle-layout-v2 .bh-text { display: none; }
   .battle-layout-v2 .battle-header .battle-sync-status { white-space: nowrap; }
+  /* 通信の表示：左上の丸いボタンと同じ黒地に金の縁。正常なときは小さな丸に点だけ、問題があるときだけ文字を出す */
+  .battle-layout-v2 .battle-header .battle-sync-detail-btn { height: calc(var(--ui-btn) * .72); padding: 0 12px; border-radius: 999px; border: 1px solid rgba(217, 180, 106, .55); background: rgba(14, 12, 10, .82); color: #f1e6cc; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: clamp(11px, 1.4vh, 14px); box-shadow: 0 2px 6px rgba(0, 0, 0, .55); cursor: pointer; }
+  .battle-layout-v2 .battle-header .battle-sync-detail-btn.ready { width: calc(var(--ui-btn) * .72); padding: 0; justify-content: center; }
+  .battle-layout-v2 .battle-header .battle-sync-detail-btn.ready .battle-sync-label,
+  .battle-layout-v2 .battle-header .battle-sync-detail-btn .battle-sync-caret { display: none; }
+  .battle-layout-v2 .battle-header .battle-sync-detail-btn .battle-sync-dot { width: 8px; height: 8px; }
+  .battle-layout-v2 .battle-header .battle-sync-detail-btn.ready .battle-sync-dot { color: #8fd6a2; box-shadow: 0 0 6px rgba(143, 214, 162, .8); }
+  .battle-layout-v2 .battle-header .battle-sync-detail-btn.waiting { border-color: rgba(240, 184, 108, .7); color: #ffe2a8; }
+  .battle-layout-v2 .battle-header .battle-sync-detail-btn.syncing { border-color: rgba(140, 180, 240, .7); color: #dbeaff; }
+  .battle-layout-v2 .battle-header .battle-sync-detail-btn.error { border-color: rgba(240, 108, 108, .8); background: rgba(60, 14, 14, .88); color: #ffd8d8; }
   .v2-round-btn {
     width: var(--ui-btn); height: var(--ui-btn); padding: 0; border-radius: 50%; cursor: pointer;
     display: inline-flex; align-items: center; justify-content: center;
@@ -11064,7 +11080,7 @@
                 :aria-expanded="battleNetDetailOpen ? 'true' : 'false'" aria-label="通信の詳細を開く"
                 @click.stop="_sfxPlay('cancel'); battleToggleHeaderPanel('battleNetDetailOpen')">
           <span v-if="battleNet.spectating">観戦中</span>
-          <span v-else role="status" aria-live="polite"><span class="battle-sync-dot"></span> {{ battleNetHealth.label }}</span>
+          <span v-else role="status" aria-live="polite" :aria-label="battleNetHealth.label"><span class="battle-sync-dot"></span><span class="battle-sync-label"> {{ battleNetHealth.label }}</span></span>
           <span class="battle-sync-caret" aria-hidden="true">▾</span>
         </button>
         <div v-if="battleNetDetailOpen" class="global-sound-popover battle-header-sound-popover battle-net-detail" @click.stop>
@@ -11331,7 +11347,7 @@
           <span class="battle-field-name">{{ battleFieldTheme.label }}</span>
         </div>
         <div v-if="battleHitFlashActive" class="battle-hit-flash" :class="{ final: battleShakeFinal }"></div>
-        <div v-if="battleOpponentSelecting" class="battle-opponent-selecting">相手が選択中です。攻撃をお待ちください。</div>
+        <div v-if="battleOpponentSelecting && battleView && battleView.activeSide === 'self'" class="battle-opponent-selecting">相手が効果を選択中です</div>
         <div v-if="battleLifeWarning('self')" class="battle-main-life-critical-vignette"></div>
         <!-- ターン経過時間の目安上限を超えた時の警告表示（強制効果なし） -->
         <div v-if="battleTurnTimeUp" class="battle-turn-rope-warning">
@@ -12906,7 +12922,10 @@
                  :style="kamiSelectionIllustrationUrl(gsKamiInfoCard) ? { backgroundImage: 'url(' + kamiSelectionIllustrationUrl(gsKamiInfoCard) + ')' } : {}"></div>
           </div>
           <div>
-            <div id="gs-kami-info-title" class="gs-kami-info-name">{{ fullName(gsKamiInfoCard) }}</div>
+            <div class="gs-oracle-name-row">
+              <div id="gs-kami-info-title" class="gs-kami-info-name">{{ fullName(gsKamiInfoCard) }}</div>
+              <button type="button" class="pick-guide-link gs-oracle-guide-link" @click="openPickGuideForKami(gsKamiInfoCard)"><span class="ui-icon ui-icon-pick-guide" aria-hidden="true"></span>ピックガイド</button>
+            </div>
 
             <div class="gs-kami-info-section">
               <div class="gs-kami-info-section-title">カミの効果</div>
@@ -12928,10 +12947,6 @@
               <div class="gs-kami-info-section-title">創生理念</div>
               <p>{{ gsKamiGuide(gsKamiInfoCard).cause }}</p>
               <p>{{ gsKamiVisionParts(gsKamiInfoCard).before }}<strong class="gs-kami-world-emphasis">{{ gsKamiVisionParts(gsKamiInfoCard).world }}</strong>{{ gsKamiVisionParts(gsKamiInfoCard).after }}</p>
-            </div>
-
-            <div class="gs-oracle-guide-row">
-              <button type="button" class="pick-guide-link gs-oracle-guide-link" @click="openPickGuideForKami(gsKamiInfoCard)"><span class="ui-icon ui-icon-pick-guide" aria-hidden="true"></span>ピックガイドを見る</button>
             </div>
 
             <div class="gs-kami-confirm">
@@ -16197,6 +16212,7 @@ new Vue({
     battleCanEndTurn() {
       if (this.battleSample.result) return false;
       if (this.battleNet && this.battleNet.spectating) return false;
+      if (this.battleActionLocked) return false;
       if (this.battleNet && this.battleNet.on) {
         return this.battleSample.activeSide === 'self';
       }
@@ -16403,8 +16419,17 @@ new Vue({
       });
       return list;
     },
+    /* オンライン対戦で手番側が操作できない間（相手の判断待ち・相手が効果を選択中）。
+       相手のターン中に相手が自分のカードの処理（守護・死亡時効果など）で選ぶ番になったときは、
+       それが終わるまで手番側はカードを使う・攻撃する・ターンを終えるなどの操作をできない */
+    battleActionLocked() {
+      const n = this.battleNet;
+      if (!n || !n.on || n.spectating) return false;
+      if (this.battleSample.activeSide !== 'self') return false;
+      return !!(this.battleWaitingLabel || this.battleOpponentSelecting);
+    },
     battleCanFieldDragToAttackTargets() {
-      if (this.battleOpponentSelecting) return false;
+      if (this.battleActionLocked) return false;
       return !!(this.battleFieldDrag && this.battleFieldDrag.zone === 'legacies');
     },
     battleDeckModalTitle() {
@@ -20421,7 +20446,7 @@ new Vue({
         }
         payload = {
           writer: n.mySeat, activeSeat, turn: bs.turn, result: bs.result || null,
-          sides, selectionBySeat: bs.selectionBySeat || {}, buildVersion: this.BUILD_VERSION,
+          sides, buildVersion: this.BUILD_VERSION,
           turnDeadlineAt: timerCanRun && this.battleTurnEnforced ? n.turnDeadlineAt : null, ts: Date.now(),
         };
         // 効果発動グロー演出：前回の公開以降に自分側で発動した効果を、この公開に便乗させて相手にも伝える
@@ -20492,7 +20517,6 @@ new Vue({
         this._battleApplySide('self', sides[n.mySeat], true);   // 自分席（手札/山札はローカル保持）
         this._battleApplySide('opp',  sides[n.oppSeat], false); // 相手席
         if (voiceBefore) this._battleRemoteDeathVoices(voiceBefore);
-        this.$set(this.battleSample, 'selectionBySeat', Object.assign({}, state.selectionBySeat || {}));
         // 効果発動グロー演出：相手側で発動した効果を、このスナップショットのopp配列に対する
         // インデックスとして解決し、ローカルの再生キューに積む（1枚ずつ順番に光らせる）
         this._battleApplyRemoteGlowEvents(state);
@@ -20721,6 +20745,13 @@ new Vue({
       }
     },
     _battleUpdateOpponentPresence(value) {
+      // 相手の選択中（効果の対象を選んでいる間は、こちらの攻撃を待つ）
+      const n0 = this.battleNet;
+      if (n0 && n0.oppSeat) {
+        const map = Object.assign({}, this.battleSample.selectionBySeat || {});
+        map[String(n0.oppSeat)] = !!(value && value.online && value.selecting);
+        this.$set(this.battleSample, 'selectionBySeat', map);
+      }
       clearTimeout(this._battleDisconnectForfeitTimer);
       this._battleDisconnectForfeitTimer = null;
       const online = value ? !!value.online : null;
@@ -20864,6 +20895,7 @@ new Vue({
         // 在席状態（プレゼンス）：.info/connected + onDisconnect で自分の切断を検知させ、
         // 相手側の在席パスを購読することで「相手が切断した」ことを能動的に把握できるようにする
         const presenceBase = path.replace(/\/state$/, '/presence');
+        this.$set(this.battleNet, 'presencePath', presenceBase);
         const myPresenceRef = getDb().ref(`${presenceBase}/${mySeat}`);
         const connectedRef = getDb().ref('.info/connected');
         const connectedHandler = snap => {
@@ -24017,6 +24049,7 @@ new Vue({
     },
     async battleEndTurn() {
       if (this.battleNet && this.battleNet.spectating) return;
+      if (this.battleActionLocked) return;
       if (this.battleNet && this.battleNet.on && this.battleSample.activeSide !== 'self') return;
       if (this.battleSample.result) return;
       if (this.battleSample.activeSide === 'self') this._sfxPlay('decision');
@@ -27373,13 +27406,21 @@ new Vue({
        untilSideは常にこちらの視点での'opp'（＝相手自身の視点では'self'）で固定のため、
        相手クライアント側では「自分のターン終了時に解除」として保存してもらう。 */
     async _battleClaimRemoteRequest(reqPath, payload) {
-      const now = Date.now();
-      const result = await getDb().ref(reqPath).transaction(current => {
-        if (current && now - Number(current.ts || now) < BATTLE_REMOTE_DECISION_TIMEOUT_MS) return;
-        return { ...payload, ts: now };
-      });
-      if (!result.committed) throw new Error('相手への未解決依頼があります。完了または時間切れを待ってください');
-      return result.snapshot.val();
+      // 置き場が使用中なら、空くまで少し待ってから送る（相手の死亡時効果の処理中に、その結果でこちらの
+      // レガシーが破壊され、こちらへ死亡時効果を返す…のように依頼が続けて起きることがある）
+      const waitUntil = Date.now() + 30 * 1000;
+      for (;;) {
+        const now = Date.now();
+        const result = await getDb().ref(reqPath).transaction(current => {
+          if (current && now - Number(current.ts || now) < BATTLE_REMOTE_DECISION_TIMEOUT_MS) return;
+          return { ...payload, ts: now };
+        });
+        if (result.committed) return result.snapshot.val();
+        if (Date.now() >= waitUntil || !this.battleNet || !this.battleNet.on) {
+          throw new Error('相手への未解決依頼があります。完了または時間切れを待ってください');
+        }
+        await new Promise(r => setTimeout(r, 300));
+      }
     },
     async _battleDelegateEffectDisableHand(criteria, untilTurn) {
       const n = this.battleNet;
@@ -28127,15 +28168,17 @@ new Vue({
       this._battleSyncSideCounts('self');
       this.dslRefreshStaticAbilities();
       destroyed.forEach(card => this.battleRunDeathKeywordEffects(card));
+      // 盤面を先に送ってから「終わった」を返す（逆だと手番側が古い写しで処理結果を上書きする）
+      // 自分のターンでなくても、この単発の状態変化は明示的に公開する
+      // （通常のウォッチャーはアクティブ側のみが公開する設計のため）
+      this._battlePublishState();
       const ansPath = `battleTables/${n.code}/${n.table}/pendingDelegateAnswer/${data.id}`;
       try {
+        await new Promise(r => setTimeout(r, 400)); // 盤面の送信が先に届くよう少し待つ
         await getDb().ref(ansPath).set({ writer: n.mySeat, cardNos: moved.map(c => String(c.no)), ts: Date.now() });
       } catch (e) {
         console.error('[sync] 委譲結果の送信失敗:', e);
       }
-      // 自分のターンでなくても、この単発の状態変化は明示的に公開する
-      // （通常のウォッチャーはアクティブ側のみが公開する設計のため）
-      this._battlePublishState();
     },
     /* 「相手の場のカードを相手の手札に戻す」効果（バウンス）の委譲実行。
        手札は非公開情報のため、対象を選ぶのは発動側だが、実際の移動（場から取り除き手札へ加える）は
@@ -28155,13 +28198,15 @@ new Vue({
         this._battleSyncSideCounts('self');
         this.dslRefreshStaticAbilities();
       }
+      // 盤面を先に送ってから「終わった」を返す（逆だと手番側が古い写しで処理結果を上書きする）
+      this._battlePublishState();
       const ansPath = `battleTables/${n.code}/${n.table}/pendingDelegateAnswer/${data.id}`;
       try {
+        await new Promise(r => setTimeout(r, 400)); // 盤面の送信が先に届くよう少し待つ
         await getDb().ref(ansPath).set({ writer: n.mySeat, ok, ts: Date.now() });
       } catch (e) {
         console.error('[sync] 委譲結果の送信失敗:', e);
       }
-      this._battlePublishState();
     },
     /* 指定サイドのローカルミラー（legacies/relics）からカードを除去するだけの処理。
        移動先は決めない（＝どこにも積み直さない）：バウンス委譲・相手選択破棄委譲のように、
@@ -28814,7 +28859,9 @@ new Vue({
       const deathGlowPlayerObj = cardOwnerSide === 'opp' ? this.battleSample.opp : this.battleSample.self;
       const deathGlowIsTrueSelf = cardOwnerSide === 'self';
       if (cardOwnerSide === 'opp' && n && n.on && !n.spectating) {
-        this._battleDelegateDeathTrigger(card);
+        // 相手のカードの死亡時効果は相手の画面で処理する。処理が終わるまで手番側は操作できない（待っている表示を出す）
+        this._battleDelegatePendingBegin('相手の死亡時効果を処理中…');
+        this._battleDelegateDeathTrigger(card).finally(() => this._battleDelegatePendingEnd());
         return true;
       }
       // 委譲できない場合（CPU戦・ソロプレイ等、相手クライアントが実在しない）で持ち主が相手側なら、
@@ -28878,8 +28925,16 @@ new Vue({
        （手札/デッキのみ操作、場のデータには触れない）と競合しないため。保留してしまうと、
        応答待ちの間ずっとこの正しい破壊結果の公開が遅れ、相手の画面では「死亡時効果は発動した
        のにレガシーは場に残ったまま」に見えてしまう不具合になっていた。 */
-    async _battleDelegateDeathTrigger(card) {
+    _battleDelegateDeathTrigger(card) {
+      // 依頼の置き場は1つなので、複数のレガシーが同時に破壊されたときは前の依頼が終わってから順に送る
+      const run = () => this._battleDelegateDeathTriggerNow(card);
+      const next = (this._battleDeathDelegateChain || Promise.resolve()).then(run, run);
+      this._battleDeathDelegateChain = next.catch(() => {});
+      return next;
+    },
+    async _battleDelegateDeathTriggerNow(card) {
       const n = this.battleNet;
+      if (!n || !n.on) return;
       const reqId = 't' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
       const reqPath = `battleTables/${n.code}/${n.table}/pendingDelegate`;
       const ansPath = `battleTables/${n.code}/${n.table}/pendingDelegateAnswer/${reqId}`;
@@ -28926,13 +28981,15 @@ new Vue({
       } finally {
         this._battleExecutingDelegatedAbility = false;
       }
+      // 盤面を先に送ってから「終わった」を返す（逆だと手番側が古い写しで処理結果を上書きする）
+      this._battlePublishState();
       const ansPath = `battleTables/${n.code}/${n.table}/pendingDelegateAnswer/${data.id}`;
       try {
+        await new Promise(r => setTimeout(r, 400)); // 盤面の送信が先に届くよう少し待つ
         await getDb().ref(ansPath).set({ writer: n.mySeat, ok: !!card, ts: Date.now() });
       } catch (e) {
         console.error('[sync] 委譲結果の送信失敗:', e);
       }
-      this._battlePublishState();
     },
     /* カード上のキーワード効果を全列挙してキューへ。1つずつ順に処理する */
     _battleQueueAndRunEffects(card, paidCost, triggerLabel) {
@@ -29476,6 +29533,10 @@ new Vue({
     /* 手札カード → 場/発動。マナ消費・昇華選択・オラクル演出を含む統合エントリ */
     battleEnsureSelfTurn(actionLabel = 'カードの使用') {
       if (this.battleNet && this.battleNet.spectating) return false; // 観戦モードは操作不可
+      if (this.battleActionLocked) {
+        this._battlePushToast('相手の処理を待っています', '相手の選択が終わるまでお待ちください。', 'warning');
+        return false;
+      }
       if (this.battleSample.activeSide === 'self') return true;
       this.battleShowNotice(
         '相手ターン中は使用できません',
@@ -30097,7 +30158,7 @@ new Vue({
       return Number(card && card._summonedTurn) === Number(this.battleSample.turn);
     },
     battleLegacyCanAct(card, action) {
-      if (this.battleOpponentSelecting) return { ok: false, reason: '相手が効果の対象を選択中です。選択が終わるまで攻撃できません。' };
+      if (this.battleActionLocked) return { ok: false, reason: '相手の選択を待っています。選択が終わるまで攻撃できません。' };
       if (!card) return { ok: false, reason: 'カードがありません。' };
       if (card._tapped) return { ok: false, reason: `「${this.fullName(card)}」はタップされています。` };
       if ((action === 'battle' || action === 'divine')) {
@@ -31584,6 +31645,7 @@ new Vue({
     },
     battleHandDragStart(index, e) {
       if (this.battleSample.result) { e.preventDefault(); return; }
+      if (this.battleActionLocked) { e.preventDefault(); return; }
       this.battleDragIndex = index;
       this.battleDragOverZone = null;
       const rect = e.currentTarget && e.currentTarget.getBoundingClientRect ? e.currentTarget.getBoundingClientRect() : null;
@@ -32106,8 +32168,9 @@ new Vue({
           if (timer) clearTimeout(timer);
           ansRef.off('value', handler);
           ansRef.remove().catch(() => {});
+          // 答えが届いた後も依頼を残すと、時間切れまで次の依頼が「未解決の依頼があります」で送れない
+          getDb().ref(reqPath).transaction(cur => (cur && String(cur.id) === String(reqId)) ? null : cur).catch(() => {});
           if (timedOut) {
-            getDb().ref(reqPath).transaction(cur => (cur && String(cur.id) === String(reqId)) ? null : cur).catch(() => {});
             this._battlePushToast('相手の応答がありません', `${label || '確認処理'}は時間切れのため見送りとして処理しました。`, 'warning');
           }
           resolve(value);
@@ -35044,6 +35107,14 @@ new Vue({
     },
     /* 対戦画面のキーボードショートカット用：何らかのモーダル/メニューが開いていて
        ターン終了・一手戻るを誤操作させたくない状態かどうか */
+    /* オンライン対戦で「相手に攻撃を待ってもらう」選択中の状態。カードや効果を選ぶ窓だけを数える
+       （対戦ログ・演出・お知らせなどの見るだけの窓は含めない。含めると相手の攻撃が不必要に止まる） */
+    _battleIsChoosing() {
+      return !!(
+        this.battleTokenPickModal || this.battleConfirmModal || this.battleSublimModal || this.battleSkillModal ||
+        this.dslTargetModal || this.dslChoiceModal || this.dslOptionalModal || this.battleSenteiModal || this.battleRemoteConfirm
+      );
+    },
     _battleHasBlockingModal() {
       return !!(
         this.battleFieldMenu || this.battleFieldZoneMenu || this.battleTokenPickModal ||
@@ -36234,15 +36305,17 @@ new Vue({
     }, { deep: true });
     // Synchronize choice windows so the opponent cannot attack while a player
     // is resolving a target/effect selection.
-    this.$watch(() => this._battleHasBlockingModal(), (selecting) => {
+    // 選択中かどうかは、盤面（state）ではなく自分の在席の欄（presence/{席}/selecting）だけで伝える。
+    // 以前は盤面全体を送り直していたため、手番でない側の古い写しで手番側の最新の操作を上書きしていた
+    this.$watch(() => this._battleIsChoosing(), (selecting) => {
       const n = this.battleNet;
-      if (!n || !n.on || n.spectating || !n.mySeat || this.appView !== 'battle') return;
+      if (!n || !n.on || n.spectating || !n.mySeat || this.appView !== 'battle' || !n.presencePath) return;
       const map = Object.assign({}, this.battleSample.selectionBySeat || {});
       if (map[String(n.mySeat)] === !!selecting) return;
       map[String(n.mySeat)] = !!selecting;
       this.$set(this.battleSample, 'selectionBySeat', map);
-      // 相手ターン中に発生する選択でも、通常の手番同期を待たず即時に伝える。
-      this.$nextTick(() => this._battlePublishState());
+      getDb().ref(`${n.presencePath}/${n.mySeat}`).update({ online: true, selecting: !!selecting, ts: firebase.database.ServerValue.TIMESTAMP })
+        .catch(e => console.warn('[sync] 選択中の送信失敗:', e && e.message));
     });
     // モーダルを開いたら操作対象へフォーカスし、閉じたら直前の位置へ戻す。
     this.$watch(() => this._battleHasBlockingModal(), (opened) => {

@@ -2183,3 +2183,10 @@
 ## Codex voice BGM attenuation v1.15.510 (2026-10-15)
 
 - User requested only a slight BGM reduction during battle voices. Changed card-voice gain multiplier0.55→0.9 in both live volume updates and initial BGM AudioContext setup. Voice completion restores multiplier1; saved BGM/voice/SFX settings and mute behavior unchanged. No new audio/images. Local npm245 pass; runtime gain probe confirms .4 setting gives .36 during voice, .4 after,0 on mute, with setting preserved. Existing8765 preview. Latest-main production change limited to two gain expressions/version/handoff; unrelated Claude local work preserved. Following ongoing authorized production publication; no game browser/audio audition attempted. Records: .release-worktree/output/bgm-voice-ducking-20261015/.
+## Claude v1.15.511（2026-10-15）オンライン同期の修正／全カードの対人自動テスト
+
+- 同期の上書き：手番でない側が、選択と関係ない窓（オラクル演出・ログ・通知）を開いただけで盤面を丸ごと送り直し、手番側の最新の操作を消していた（晴れ空の門出のマナ・麗しの狐姫が消える・攻撃待ちが止まる、など）。「効果を選択中」は `presence/{seat}/selecting` で送るようにし、`_battleIsChoosing()` は本当の選択窓だけを数える。
+- 相手のターン中に自分のカードの処理（守護・死亡時）で選ぶ番になったら、手番側は操作できない（`battleActionLocked`）。死亡時効果の委譲は処理が終わるまで待ち、委譲を処理した側は盤面を先に送ってから答えを返す。
+- 委譲の依頼が答えの後も残っていて、90秒間は次の依頼が「未解決の依頼があります」で失敗していた → `_battleWaitForRemoteAnswer` で答えが届いたら依頼を消す。同時に複数の死亡時効果が起きたときは `_battleDelegateDeathTrigger` で1件ずつ順に送る。死亡時効果の処理中にさらに相手へ返す依頼が起きたら、`_battleClaimRemoteRequest` が置き場が空くまで（最大30秒）待ってから送る。
+- `tools/sync-e2e/`：2つのブラウザで対戦テストの部屋を作って確かめる（README 参照）。`card_sweep.js` で全カード（トークン・カミ以外の190枚）を1枚ずつ使い、両方の画面の一致・消失・エラー・停止・選択中のロックを確認 → 190/190 OK（23分）。
+- 本番 v1.15.511 として公開（v1.15.510 の上に重ねた）。
