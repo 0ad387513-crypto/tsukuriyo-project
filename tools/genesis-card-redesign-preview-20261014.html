@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ジェネシスカード・新イラスト確認</title>
+<style>body{margin:0;background:#141217;color:#ece4d3;font:15px/1.7 sans-serif}main{max-width:1400px;margin:auto;padding:28px}a{color:#e8c780}h1{font-size:24px}section{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}article{padding:15px;background:#242027;border:1px solid #655439;border-radius:8px}h2{font-size:18px;margin:0 0 10px}.pair{display:flex;gap:10px}.pair figure{margin:0;width:50%}img{width:100%;height:auto;display:block}figcaption{font-size:12px;color:#c1b7a7}.large{display:block;margin-top:10px}p{max-width:1000px}#error{color:#ffc1b8}</style></head>
+<body><main><h1>ジェネシスカード・新イラスト確認</h1><p>採用済みイラストへ更新した9枚です。左が修正前、右が現在のゲーム用画像。効果文・枠・コストは維持しています。一覧の320px画像と詳細の600px画像を更新し、ジェネレーターの原本も揃えました。</p>
+<p><a href="../index.html">ゲームを確認</a> ／ <a href="card-editor/">カードジェネレーター</a></p><p id="error"></p><section id="cards"></section>
+<p>ヤマタノオロチのカミカードも、お札なし・お面ありに統一しました。ディエスイレは変更していません。</p></main>
+<script>
+const names=['スサノオ','ヤマトタケル','オオクニヌシ','タケミカヅチ','オモイカネ','アメノウズメ','ヒノカグツチ','アマテラス','ツクヨミ'];
+fetch('../output/genesis-redesign-cards-20261014/cards.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('一覧を取得できませんでした');return r.json()}).then(rows=>{
+ for(const [i,row] of rows.entries()){
+  const card=row.cards.find(c=>c.width===600),thumb=row.cards.find(c=>c.width===320),article=document.createElement('article'),h=document.createElement('h2');h.textContent=`No.${row.no} ${names[i]}`;article.append(h);
+  const pair=document.createElement('div');pair.className='pair';
+  for(const [label,url] of [['修正前',`../output/genesis-redesign-cards-20261014/before/card_images/600/${row.no}.webp`],['新イラスト',`../${thumb.alias}?h=${thumb.sha256.slice(0,10)}`]]){
+   const figure=document.createElement('figure'),img=document.createElement('img'),caption=document.createElement('figcaption');img.src=url;img.alt=`${names[i]} ${label}`;img.loading='lazy';caption.textContent=label;figure.append(img,caption);pair.append(figure);
+  }
+  const link=document.createElement('a');link.href=`../${card.alias}?h=${card.sha256.slice(0,10)}`;link.textContent='現在の600px画像を開く';link.className='large';article.append(pair,link);document.getElementById('cards').append(article);
+ }
+}).catch(e=>document.getElementById('error').textContent=e.message);
+</script></body></html>

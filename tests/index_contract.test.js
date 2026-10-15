@@ -8,6 +8,44 @@ const path = require("node:path");
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const effectSpec = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "effect_spec.json"), "utf8"));
 
+test("shield packs explain twelve cards without exposing the hidden nine", () => {
+  const { generatePacks } = require("../pack_generator.js");
+  const pool = Array.from({ length: 180 }, (_, no) => ({ no, return: no < 15 ? 0 : no < 90 ? 1 : 2, category: "レガシー" }));
+  for (const seed of [1, 19, 20261015]) {
+    for (const pack of generatePacks(pool, seed).packs) {
+      assert.equal(pack.visible.length, 3);
+      assert.equal(pack.all.length, 12);
+      assert.equal(pack.all.filter(card => !pack.visible.includes(card)).length, 9);
+    }
+  }
+  const picking = html.slice(html.indexOf('v-for="(pack, i) in sb.packs"'), html.indexOf('<!-- /sp-picking-main -->'));
+  assert.match(picking, /sp-pack-number-label">パック/);
+  assert.match(picking, /公開 3枚/);
+  assert.match(picking, /12枚入り/);
+  assert.match(picking, /非公開 9枚/);
+  const backs = picking.match(/<div class="sp-pack-hidden">([\s\S]*?)<\/div>/)[1];
+  assert.match(backs, /v-for="n in 9"/);
+  assert.match(backs, /aria-hidden="true"/);
+  assert.doesNotMatch(backs, /pack\.|cardImageUrl|fullName|:title|@mouse/);
+  assert.match(picking, /@click\.stop="onPickPack\(i\)"/);
+  const backStyle = html.match(/\.sp-pack-back \{([^}]+)\}/)[1];
+  assert.match(backStyle, /width: 12px; height: 18px;/);
+  const backFile = backStyle.match(/url\('([^']+)'\)/)[1];
+  assert.match(backFile, /^ui_decorations\/tsukuriyo-pack-cardback-[a-f0-9]{12}\.webp$/);
+  assert.ok(fs.existsSync(path.join(__dirname, '..', backFile)));
+  assert.doesNotMatch(html, /\.sp-pack-back::after/);
+});
+
+test("shield Kami choices display in numeric Kami order without changing the candidate pool", () => {
+  const body = html.match(/sbKamiCandidatesOrdered\(\) \{([\s\S]*?)\n    \},/)[1];
+  const ordered = new Function(body);
+  const candidates = ['010', '002', '009', '001', '003', '007', '005', '006', '004', '008'].map(no => ({ no }));
+  const before = candidates.slice();
+  assert.deepEqual(ordered.call({ sb: { kamiCandidates: candidates } }).map(k => k.no), ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010']);
+  assert.deepEqual(candidates, before);
+  assert.match(html, /v-for="kami in sbKamiCandidatesOrdered"/);
+});
+
 test("inline application scripts are valid JavaScript", () => {
   const scripts = Array.from(html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi));
   assert.ok(scripts.length > 0);

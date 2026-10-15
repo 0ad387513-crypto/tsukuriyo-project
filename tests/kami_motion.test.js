@@ -370,7 +370,7 @@ test('椿の花びらは前後で別の位置・速さ・位相を持ち、横�
 });
 
 test('左右2体の龍は元の原画での大きさを保ち、封印前後で小さくならない', () => {
-  const source=JSON.parse(fs.readFileSync(path.join(root,'output/kami-motion-separated-20261014/registry.json'),'utf8'));
+  const source=JSON.parse(fs.readFileSync(path.join(root,'tests/fixtures/kami-motion-original-dragons.json'),'utf8'));
   for(const variant of ['sealed','awakened']) {
     const dragons=motion.kamiMotionSet(10,undefined,variant).rig.actors.filter(a=>a.idle==='dragon');
     assert.equal(dragons.length,2);assert.deepEqual(dragons[0].box,source['10'].rig.actors[3].box);assert.deepEqual(dragons[1].box,source['10'].rig.actors[4].box);
@@ -445,7 +445,7 @@ test('陽炎はヒノカグツチの背景だけ。軽減・最小・非表示�
 });
 
 test('剣の電撃はタケミカヅチだけ、背景演出や先読み画像を増やさず人物と同じ座標', () => {
-  const set=motion.kamiMotionSet(4),old=JSON.parse(fs.readFileSync(path.join(root,'output/omoikane-heavy-repair-20261014/before/registry.json'),'utf8'));
+  const set=motion.kamiMotionSet(4),old=JSON.parse(fs.readFileSync(path.join(root,'tests/fixtures/kami-motion-before-weapon.json'),'utf8'));
   assert.deepEqual(motion.kamiMotionUrls(4),motion.kamiMotionUrls(4,old));
   assert.equal(set.rig.weaponLightning.length,4);
   for(const arc of set.rig.weaponLightning)for(const point of arc.points.split(' ')) {

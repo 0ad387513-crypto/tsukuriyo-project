@@ -3437,7 +3437,7 @@
   .shield-panel.cosmic-pick-bg .sp-pack-card:hover:not(.taken):not(.disabled) { border-color: rgba(226, 212, 176, .6); }
   .shield-panel.cosmic-pick-bg .sp-pack-card.taken-by-me { opacity: 1; border-color: #e3cc92; box-shadow: inset 0 0 0 1px rgba(227, 204, 146, .35); }
   .shield-panel.cosmic-pick-bg .sp-pack-card.taken { opacity: .35; }
-  .shield-panel.cosmic-pick-bg .sp-pack-header { gap: 10px; justify-content: flex-start; padding: 8px 12px 4px; }
+  .shield-panel.cosmic-pick-bg .sp-pack-header { gap: 6px; flex-wrap: wrap; justify-content: flex-start; padding: 8px 10px 4px; }
   .shield-panel.cosmic-pick-bg .sp-pack-header .ph-no { font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 16px; color: var(--gs-title); }
   .shield-panel.cosmic-pick-bg .sp-pack-sum { display: inline-flex; align-items: center; gap: 4px; padding: 0; font-size: 13px; color: var(--gs-text); }
   .sp-pack-tag { margin-left: auto; padding: 1px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
@@ -4424,6 +4424,15 @@
   .sp-pack-visible {
     display: flex; gap: 4px; padding: 6px 10px;
   }
+  .sp-pack-header .ph-no { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+  .sp-pack-number-label { font-size: 11px; }
+  .sp-pack-header .ph-no b { font-size: 17px; font-weight: 600; }
+  .sp-pack-content-label { display: flex; justify-content: space-between; gap: 4px; padding: 2px 10px 0; font-size: 11px; color: #c8c2af; }
+  .sp-pack-content-label strong { color: #e4d6ac; font-weight: 600; white-space: nowrap; }
+  .sp-pack-hidden { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px; padding: 5px 10px 7px; font-size: 11px; color: #c8c2af; }
+  .sp-pack-backs { display: flex; flex: 0 0 auto; align-items: center; padding-right: 1px; }
+  .sp-pack-back { display: block; position: relative; width: 12px; height: 18px; border: 1px solid #a68a4f; border-radius: 2px; background: #f1f0ec url('ui_decorations/tsukuriyo-pack-cardback-a09585f1b55a.webp') center/100% 100% no-repeat; box-shadow: 0 1px 2px #0008; }
+  .sp-pack-back + .sp-pack-back { margin-left: -3px; }
   .sp-pack-vis-thumb {
     flex: 1; aspect-ratio: 744/1039;
     background: #0a0c12 center/cover no-repeat;
@@ -8440,10 +8449,10 @@
 </style>
 <!-- 起動時の先読みは容量上限内に抑える。カードリストの画像は表示時に読み込む。 -->
 <link rel="preload" as="image" href="ui_decorations/title-key-visual-01f1e1f7c186.webp" fetchpriority="high">
-<link rel="preload" as="image" href="top_mode_icons/genesis4p-amaterasu-natural-pose-03f1a5a05694.webp" fetchpriority="high">
+<link rel="preload" as="image" href="top_mode_icons/genesis4p-five-fingers-df93c8609ee0.webp" fetchpriority="high">
 <link rel="preload" as="image" href="genesis_story/01-five-regions.webp">
 <link rel="preload" as="image" href="top_mode_icons/construct2p-style-9f261d899256.webp" fetchpriority="high">
-<link rel="preload" as="image" href="top_mode_icons/shield2p-menu-63550a24f4eb.webp" fetchpriority="high">
+<link rel="preload" as="image" href="top_mode_icons/shield2p-five-fingers-3c4f8dd71ac7.webp" fetchpriority="high">
 <link rel="stylesheet" href="divine_effects.css?v=20261011-orochi-fracture">
 <link rel="stylesheet" href="kami_motion.css?v=20261014-pain-environments-v498">
 </head>
@@ -8587,7 +8596,7 @@
     <div class="top-mode-grid">
       <div class="top-mode-column top-mode-column-game">
         <button class="top-mode-card game" @click="openModeDetail('game')">
-          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/genesis4p-amaterasu-natural-pose-03f1a5a05694.webp)' }"></span>
+          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/genesis4p-five-fingers-df93c8609ee0.webp)' }"></span>
           <span class="top-mode-label">創世決戦</span>
           <span class="top-mode-sub">4人でカードを選び、3回の対戦と星魂で競う</span>
         </button>
@@ -8599,14 +8608,14 @@
           <span class="top-mode-sub">2人対戦・35枚デッキ／構築済みデッキでも遊べる</span>
         </button>
         <button class="top-mode-card shield" @click="openModeDetail('shield')">
-          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/shield2p-menu-63550a24f4eb.webp)' }"></span>
+          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/shield2p-five-fingers-3c4f8dd71ac7.webp)' }"></span>
           <span class="top-mode-label">星紡ぎ戦</span>
           <span class="top-mode-sub">2人でパックを選び、集めた48枚で対戦</span>
         </button>
       </div>
       <div class="top-mode-column top-mode-column-side">
         <button class="top-mode-card cardlist" @click="openModeDetail('cardlist')">
-          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/cardlist-style-e5bf5eca0731.webp)' }"></span>
+          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/cardlist-brush-natural-grip-2f1eabb627f6.webp)' }"></span>
           <span class="top-mode-label">カードリスト</span>
           <span class="top-mode-sub">全カードの確認と、デッキの作成・管理</span>
         </button>
@@ -9518,7 +9527,7 @@
   <div v-if="howToPlayModalOpen" class="battle-zone-modal pick-guide-modal" role="dialog" aria-modal="true" aria-label="ピックガイド" @click.self="closePickGuide">
     <div class="battle-zone-modal-panel pick-guide-panel">
       <div class="manual-header" :inert="manualSpoilerConfirmOpen ? '' : null"><div class="manual-header-mark" aria-hidden="true"><span class="ui-icon ui-icon-pick-guide" aria-hidden="true"></span></div><div class="manual-header-copy"><div class="manual-header-title">カミ別ピックガイド</div><div class="manual-header-sub">選別の儀・パック選択の参考に</div></div><button class="manual-close" @click="closePickGuide">閉じる</button></div>
-      <nav class="manual-quick-nav pick-guide-nav pk-nav" aria-label="カミ別ピック指南" :inert="manualSpoilerConfirmOpen ? '' : null"><a href="#pick-susanoo"><img src="kami_chibi/susanoo-chibi-44bc7e74782d.webp" alt="" loading="lazy">スサノオ</a><a href="#pick-yamato-takeru"><img src="kami_chibi/yamato-takeru-chibi-d1e20004103f.webp" alt="" loading="lazy">ヤマトタケル</a><a href="#pick-okuninushi"><img src="kami_chibi/okuninushi-chibi-d8d6938583fd.webp" alt="" loading="lazy">オオクニヌシ</a><a href="#pick-takemikazuchi"><img src="kami_chibi/takemikazuchi-chibi-soft-hair-94091bc89bb9.webp" alt="" loading="lazy">タケミカヅチ</a><a href="#pick-omoikane"><img src="kami_chibi/omoikane-7f21be1fc0ed.webp" alt="" loading="lazy">オモイカネ</a><a href="#pick-amenouzume"><img src="kami_chibi/amenouzume-chibi-9b9ce3315169.webp" alt="" loading="lazy">アメノウズメ</a><a href="#pick-hinokagutsuchi"><img src="kami_chibi/hinokagutsuchi-chibi-eye-ornament-223149539520.webp" alt="" loading="lazy">ヒノカグツチ</a><a href="#pick-amaterasu"><img src="tutorial_guide/tutorial-normal-b45df0d641cb.webp" alt="" loading="lazy">アマテラス</a><a href="#pick-tsukuyomi"><img src="kami_chibi/tsukuyomi-chibi-7426887ec973.webp" alt="" loading="lazy">ツクヨミ</a><a href="#pick-yamata-no-orochi"><img v-if="manualOrochiRevealed" src="kami_chibi/yamata-no-orochi-chibi-73317d54db17.webp" alt="" loading="lazy"><span v-else class="pk-nav-q">？</span>{{ manualOrochiRevealed ? 'ヤマタノオロチ' : '？？？' }}</a></nav>
+      <nav class="manual-quick-nav pick-guide-nav pk-nav" aria-label="カミ別ピック指南" :inert="manualSpoilerConfirmOpen ? '' : null"><a href="#pick-susanoo"><img src="kami_chibi/susanoo-chibi-44bc7e74782d.webp" alt="" loading="lazy">スサノオ</a><a href="#pick-yamato-takeru"><img src="kami_chibi/yamato-takeru-chibi-d1e20004103f.webp" alt="" loading="lazy">ヤマトタケル</a><a href="#pick-okuninushi"><img src="kami_chibi/okuninushi-chibi-d8d6938583fd.webp" alt="" loading="lazy">オオクニヌシ</a><a href="#pick-takemikazuchi"><img src="kami_chibi/takemikazuchi-chibi-soft-hair-94091bc89bb9.webp" alt="" loading="lazy">タケミカヅチ</a><a href="#pick-omoikane"><img src="kami_chibi/omoikane-7f21be1fc0ed.webp" alt="" loading="lazy">オモイカネ</a><a href="#pick-amenouzume"><img src="kami_chibi/amenouzume-chibi-9b9ce3315169.webp" alt="" loading="lazy">アメノウズメ</a><a href="#pick-hinokagutsuchi"><img src="kami_chibi/hinokagutsuchi-chibi-eye-ornament-223149539520.webp" alt="" loading="lazy">ヒノカグツチ</a><a href="#pick-amaterasu"><img src="tutorial_guide/tutorial-normal-b45df0d641cb.webp" alt="" loading="lazy">アマテラス</a><a href="#pick-tsukuyomi"><img src="kami_chibi/tsukuyomi-chibi-7426887ec973.webp" alt="" loading="lazy">ツクヨミ</a><a href="#pick-yamata-no-orochi"><img v-if="manualOrochiRevealed" src="kami_chibi/yamata-no-orochi-four-corners-ab56d52a3e1f.webp" alt="" loading="lazy"><span v-else class="pk-nav-q">？</span>{{ manualOrochiRevealed ? 'ヤマタノオロチ' : '？？？' }}</a></nav>
       <!-- ピックガイド：プレイガイドと同じ作り。カミごとに「最優先でピックしたいカード（絵）」「ポイント3つ（続きは開く）」「おすすめカード一覧」。
            本文のカード名は _howtoAnnotateCardRefs が見つけて、重ねると絵が出るようにする -->
       <div class="howto-list pick-guide-content pk-content" :inert="manualSpoilerConfirmOpen ? '' : null">
@@ -9817,7 +9826,7 @@
         </section>
         <section v-if="manualOrochiRevealed" id="pick-yamata-no-orochi" class="pk-kami">
           <div class="pk-side">
-            <img class="pk-chibi" src="kami_chibi/yamata-no-orochi-chibi-73317d54db17.webp" alt="ヤマタノオロチのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(10, $event)" @focus="showGuideKami(10, $event)" @mouseleave="hideCardHover" @blur="hideCardHover">
+            <img class="pk-chibi" src="kami_chibi/yamata-no-orochi-four-corners-ab56d52a3e1f.webp" alt="ヤマタノオロチのちびキャラ" width="240" height="260" loading="lazy" decoding="async" draggable="false" tabindex="0" @mouseenter="showGuideKami(10, $event)" @focus="showGuideKami(10, $event)" @mouseleave="hideCardHover" @blur="hideCardHover">
             <h2 class="pk-name" ref="pickOrochiTitle" tabindex="-1">ヤマタノオロチ</h2>
             <div class="pk-tag">龍</div>
             <div class="pk-hint">ちびキャラに重ねるとカミのカード</div>
@@ -10698,12 +10707,13 @@
                    'disabled': !sbIsMyPickTurn || sbAllPickedPacks.includes(i),
                  }">
               <div class="sp-pack-header">
-                <span class="ph-no">{{ i + 1 }}</span>
-                <span class="sp-pack-sum" title="このパックの返還値の合計"><span class="gm-soul-icon" aria-hidden="true">★</span>{{ pack.actualSum }}</span>
+                <span class="ph-no"><span class="sp-pack-number-label">パック</span><b>{{ i + 1 }}</b></span>
+                <span class="sp-pack-sum" title="このパック12枚の返還値の合計"><span class="gm-soul-icon" aria-hidden="true">★</span>{{ pack.actualSum }}</span>
                 <span v-if="sbMyPickedPacks.includes(i)" class="sp-pack-tag mine">取得</span>
                 <span v-else-if="sbEnemyPickedPacks.includes(i)" class="sp-pack-tag enemy">相手</span>
               </div>
               <!-- 可視カード3枚サムネイル（カーソルを当てると拡大プレビュー） -->
+              <div class="sp-pack-content-label"><span>公開 3枚</span><strong>12枚入り</strong></div>
               <div class="sp-pack-visible">
                 <div v-for="card in pack.visible" :key="card.no"
                      class="sp-pack-vis-thumb"
@@ -10712,6 +10722,11 @@
                      @mouseenter="showSbHover(card, $event)"
                      @mouseleave="hideSbHover">
                 </div>
+              </div>
+              <!-- 非公開カードは識別情報を参照せず、共通の裏面9枚だけ表示する。 -->
+              <div class="sp-pack-hidden">
+                <span class="sp-pack-backs" aria-hidden="true"><span v-for="n in 9" :key="n" class="sp-pack-back"></span></span>
+                <span>非公開 9枚</span>
               </div>
               <!-- 明示的な選択ボタン（カードの絵はカーソルで拡大するので、押す場所を分ける） -->
               <button v-if="sbIsMyPickTurn && !sbAllPickedPacks.includes(i)"
@@ -10760,7 +10775,7 @@
             <button class="gm-btn gs-sub-btn" :disabled="sbMyDeckEntries.length === 0" @click="peekDeckDetail">デッキを確認</button>
           </div>
           <div class="sp-kami-grid">
-            <div v-for="kami in sb.kamiCandidates" :key="kami.no"
+            <div v-for="kami in sbKamiCandidatesOrdered" :key="kami.no"
                  class="sp-kami-card"
                  :class="{
                    selected: sb.tempKami && String(sb.tempKami.no) === String(kami.no),
@@ -14030,7 +14045,7 @@ const KAMI_CHIBI_FILES = Object.freeze({
   '7': 'kami_chibi/hinokagutsuchi-chibi-eye-ornament-223149539520.webp',
   '8': 'kami_chibi/amaterasu-chibi-b45df0d641cb.webp',
   '9': 'kami_chibi/tsukuyomi-chibi-7426887ec973.webp',
-  '10': 'kami_chibi/yamata-no-orochi-chibi-73317d54db17.webp',
+  '10': 'kami_chibi/yamata-no-orochi-four-corners-ab56d52a3e1f.webp',
 });
 const KAMI_EMOTE_LINES = {
   "1": { // スサノオ
@@ -14259,7 +14274,7 @@ const KAMI_DEX_CHIBIS = Object.freeze({
     { file: 'tutorial_guide/tutorial-troubled-5fef15512115.webp', label: '困り顔' },
   ],
   "9": [{ file: 'kami_chibi/tsukuyomi-chibi-7426887ec973.webp', label: '通常' }],
-  "10": [{ file: 'kami_chibi/yamata-no-orochi-chibi-73317d54db17.webp', label: '通常' }],
+  "10": [{ file: 'kami_chibi/yamata-no-orochi-four-corners-ab56d52a3e1f.webp', label: '通常' }],
 });
 /* ロード画面用の休憩差分は、図鑑の既存差分の後ろへ足す。ヤマタノオロチには用意しない。 */
 const KAMI_DEX_REST_CHIBIS = Object.freeze({
@@ -14424,10 +14439,11 @@ const KAMI_EMOTE_ICONS = Object.freeze({
   '7': 'emote_icons/hinokagutsuchi-emoteAtlas-4bbcdfdf259a.webp',
   '8': 'emote_icons/amaterasu-emoteAtlas-0fb54de9fcce.webp',
   '9': 'emote_icons/tsukuyomi-emoteAtlas-af669750f9ed.webp',
-  '10': 'emote_icons/yamata-no-orochi-emoteAtlas-7a31cf6e15ee.webp',
+  '10': 'emote_icons/yamata-no-orochi-masked-emoteAtlas-6ea7c7906698.webp',
 });
-function emoteIconStyle(kamiNo, key) {
-  const url = KAMI_EMOTE_ICONS[String(kamiNo)];
+const OROCHI_UNMASKED_EMOTE_ATLAS = 'emote_icons/yamata-no-orochi-emoteAtlas-7a31cf6e15ee.webp';
+function emoteIconStyle(kamiNo, key, variant = 'normal') {
+  const url = String(kamiNo) === '10' && variant === 'unmasked' ? OROCHI_UNMASKED_EMOTE_ATLAS : KAMI_EMOTE_ICONS[String(kamiNo)];
   const i = EMOTE_TYPES.findIndex(t => t.key === key);
   if (!url || i < 0) return null;
   return { backgroundImage: `url('${url}')`, backgroundPosition: `${(i % 3) * 50}% ${Math.floor(i / 3) * 100}%` };
@@ -14439,7 +14455,7 @@ function emoteIconStyle(kamiNo, key) {
 const MODE_DETAIL_INFO = {
   cardlist: {
     title: 'カードリスト',
-    image: 'top_mode_icons/cardlist-style-e5bf5eca0731.webp',
+    image: 'top_mode_icons/cardlist-brush-natural-grip-2f1eabb627f6.webp',
     lead: 'カードを調べて、デッキを組む。',
     points: [
       { name: '絞り込み', text: '色・カード種別・種族・コストなどで、目的のカードを素早く探せます。' },
@@ -14451,7 +14467,7 @@ const MODE_DETAIL_INFO = {
   },
   game: {
     title: '創世決戦', players: '4人対戦',
-    image: 'top_mode_icons/genesis4p-amaterasu-natural-pose-03f1a5a05694.webp',
+    image: 'top_mode_icons/genesis4p-five-fingers-df93c8609ee0.webp',
     lead: 'カミを選び、カードを集め、三度の星戦へ。',
     steps: [
       { name: '神託の儀', text: '3枚の候補から、自分のカミを1体選びます。' },
@@ -14477,7 +14493,7 @@ const MODE_DETAIL_INFO = {
   },
   shield: {
     title: '星紡ぎ戦', players: '2人対戦',
-    image: 'top_mode_icons/shield2p-menu-63550a24f4eb.webp',
+    image: 'top_mode_icons/shield2p-five-fingers-3c4f8dd71ac7.webp',
     lead: '選んだ48枚、そのまま勝負へ。',
     stepsLayout: 'row', // 手順が3つと少ないので、縦の一覧ではなく横に並べたカードで流れを見せる
     steps: [
@@ -15971,7 +15987,11 @@ new Vue({
     },
     // カミのエモート6種（エモート用の画像があるカミだけ）
     kamiDexEmotes() {
-      return EMOTE_TYPES.map(t => ({ key: t.key, label: t.label, style: emoteIconStyle(this.kamiDexNo, t.key) })).filter(e => e.style);
+      const variants = this.kamiDexNo === '10' ? [['normal', '仮面あり・'], ['unmasked', '素顔・']] : [['normal', '']];
+      return variants.flatMap(([variant, prefix]) => EMOTE_TYPES.map(t => ({
+        key: this.kamiDexNo === '10' ? variant + '-' + t.key : t.key,
+        label: prefix + t.label, style: emoteIconStyle(this.kamiDexNo, t.key, variant),
+      }))).filter(e => e.style);
     },
     kamiDexProfile() {
       const profile = KAMI_DEX_PROFILES[this.kamiDexNo];
@@ -16566,7 +16586,7 @@ new Vue({
         const x = Math.cos(angle) * radius;
         const y = Math.sin(angle) * radius;
         const scale = hoverKey === t.key ? 1.15 : 1;
-        const icon = kami ? emoteIconStyle(kami.no, t.key) : null;
+        const icon = kami ? emoteIconStyle(kami.no, t.key, this.battleEmoteVariant('self')) : null;
         return Object.assign({}, t, { icon, style: { transform: `translate(${x}px, ${y}px) scale(${scale})` } });
       });
     },
@@ -17219,6 +17239,9 @@ new Vue({
       const all = [...groups.values()];
       all.sort((a, b) => cardSortCompare(a.card, b.card));
       return all;
+    },
+    sbKamiCandidatesOrdered() {
+      return [...this.sb.kamiCandidates].sort((a, b) => Number(a.no) - Number(b.no));
     },
     sbIsMyKamiTurn() {
       return this.sb.roomData.kamiSelectTurn === this.sb.role;
@@ -21000,7 +21023,7 @@ new Vue({
     // カミの神技・創世神技の演出素材の一覧（実際に登場するカミの分だけ先読みするため）
     _kamiVisualUrls(kami) {
       if (!kami || !/^(?:[1-9]|10)$/.test(String(kami.no))) return [];
-      return [`kami_cutin/${kami.no}.webp`, divineSkill1EyeUrl(kami), ...divineSkillAssetUrls(kami), KAMI_EMOTE_ICONS[String(kami.no)], ...kamiMotionUrls(kami.no)].filter(Boolean);
+      return [`kami_cutin/${kami.no}.webp`, divineSkill1EyeUrl(kami), ...divineSkillAssetUrls(kami), KAMI_EMOTE_ICONS[String(kami.no)], ...(String(kami.no) === '10' ? [OROCHI_UNMASKED_EMOTE_ATLAS] : []), ...kamiMotionUrls(kami.no)].filter(Boolean);
     },
     /* 画像の読み込み係。画面に今すぐ必要な画像（ロード画面・ピック中の束）を先に、4本ずつ読む。
        裏で用意しておく画像（カミの演出素材・ドラフトで出うるカード）は、今すぐ必要な画像が無いときだけ1本ずつ読み、
@@ -21408,7 +21431,7 @@ new Vue({
     },
     _applyAudioVolumes() {
       if (this._sfxGain) this._sfxGain.gain.value = this._effectiveVolume(this.battleSfxVolume);
-      if (this._bgmGain) this._bgmGain.gain.value = this._effectiveVolume(this.bgmVolume) * (this._cardVoiceDucking ? 0.55 : 1);
+      if (this._bgmGain) this._bgmGain.gain.value = this._effectiveVolume(this.bgmVolume) * (this._cardVoiceDucking ? 0.9 : 1);
       if (this._cardVoicePlayer) this._cardVoicePlayer.setVolume();
       if (this._kamiVoiceAudio) this._kamiVoiceAudio.volume = this._effectiveVolume(this.voiceVolume);
     },
@@ -21502,7 +21525,7 @@ new Vue({
         const Ctx = window.AudioContext || window.webkitAudioContext;
         this._bgmCtx = new Ctx();
         this._bgmGain = this._bgmCtx.createGain();
-        this._bgmGain.gain.value = this._effectiveVolume(this.bgmVolume) * (this._cardVoiceDucking ? 0.55 : 1);
+        this._bgmGain.gain.value = this._effectiveVolume(this.bgmVolume) * (this._cardVoiceDucking ? 0.9 : 1);
         this._bgmGain.connect(this._bgmCtx.destination);
       }
       return this._bgmCtx;
@@ -23173,7 +23196,10 @@ new Vue({
       const bubbleHeight = speechOptions.emote ? 84 : 56;
       if (pos && typeof window !== 'undefined' && pos.y + bubbleHeight > window.innerHeight) Object.assign(pos, { y: rect.top - 10, above: true });
       // speechOptions.emote（{ kamiNo, key }）があれば、吹き出しにそのカミの表情アイコンを添える
-      this.$set(this.emoteBubbles, side, { text, id, pos, emote: speechOptions.emote || null });
+      const emote = speechOptions.emote ? Object.assign({}, speechOptions.emote, {
+        variant: Number(speechOptions.emote.kamiNo) === 10 ? this.battleEmoteVariant(side) : 'normal',
+      }) : null;
+      this.$set(this.emoteBubbles, side, { text, id, pos, emote });
       this._emoteSpeechHolds = this._emoteSpeechHolds || {};
       if (this._emoteSpeechHolds[side]) this._emoteSpeechHolds[side].cancel();
       this._emoteSpeechHolds[side] = this._battleHoldSpeech(text, voice, () => {
@@ -23234,8 +23260,12 @@ new Vue({
       this._battleShowEmoteBubble('opp', text, this.playKamiVoice(kami, payload.key), null, { emote: { kamiNo: String(kami.no), key: String(payload.key) } });
     },
     // 吹き出しに添える表情アイコンの表示位置（アトラスの該当コマ）。エモート以外の吹き出し・アイコンの無いカミは null
+    battleEmoteVariant(side) {
+      const actor = this.battleSample && this.battleSample[side];
+      return actor && actor.kami && Number(actor.kami.no) === 10 && actor.seal === 0 ? 'unmasked' : 'normal';
+    },
     emoteBubbleIcon(bubble) {
-      return bubble && bubble.emote ? emoteIconStyle(bubble.emote.kamiNo, bubble.emote.key) : null;
+      return bubble && bubble.emote ? emoteIconStyle(bubble.emote.kamiNo, bubble.emote.key, bubble.emote.variant || 'normal') : null;
     },
     // 自分のカミポートレートのクリック：エモートのドラッグ操作直後は誤ってプレビューを開かないよう抑止する
     battleSelfKamiClick() {
