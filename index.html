@@ -21426,7 +21426,7 @@ new Vue({
     },
     _applyAudioVolumes() {
       if (this._sfxGain) this._sfxGain.gain.value = this._effectiveVolume(this.battleSfxVolume);
-      if (this._bgmGain) this._bgmGain.gain.value = this._effectiveVolume(this.bgmVolume) * (this._cardVoiceDucking ? 0.55 : 1);
+      if (this._bgmGain) this._bgmGain.gain.value = this._effectiveVolume(this.bgmVolume) * (this._cardVoiceDucking ? 0.9 : 1);
       if (this._cardVoicePlayer) this._cardVoicePlayer.setVolume();
       if (this._kamiVoiceAudio) this._kamiVoiceAudio.volume = this._effectiveVolume(this.voiceVolume);
     },
@@ -21520,7 +21520,7 @@ new Vue({
         const Ctx = window.AudioContext || window.webkitAudioContext;
         this._bgmCtx = new Ctx();
         this._bgmGain = this._bgmCtx.createGain();
-        this._bgmGain.gain.value = this._effectiveVolume(this.bgmVolume) * (this._cardVoiceDucking ? 0.55 : 1);
+        this._bgmGain.gain.value = this._effectiveVolume(this.bgmVolume) * (this._cardVoiceDucking ? 0.9 : 1);
         this._bgmGain.connect(this._bgmCtx.destination);
       }
       return this._bgmCtx;
