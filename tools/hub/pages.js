@@ -24,6 +24,8 @@
     { id: "card-effects", group: "カード", title: "カード効果の一覧", path: "/tools/card-effects/", kind: "effect", desc: "全カードの画像と効果。変えたいカードを押すと、今の値が入った欄で属性・マナ・戦闘力・効果などを直せます。",
       proposal: true,
       items: [{ selector: ".ce-card", label: e => text(e, ".nm") }] },
+    { id: "art", group: "イラスト", title: "イラスト・画像の一覧", path: "/tools/art-gallery/", kind: "illust", desc: "カミのイラスト・カミのカード・創世神技カットイン・ジェネシスカード・ちびキャラ（エモート・チュートリアル）・TOP画面の画像を、種類ごとに確認。",
+      items: [{ selector: ".art", label: e => e.dataset.label }] },
     { id: "field-crop", aliases: ["field-art"], group: "イラスト", title: "場のカードの絵", path: "/tools/field-card-crop/", kind: "illust", desc: "対戦の場に出したときに見える部分をカードごとに確認。位置と拡大率はその場で試せます（保存はキジマ専用）。",
       items: [{ selector: ".cell", label: e => text(e, ".nm") }, { selector: ".item", label: e => text(e, ".nm") }] },
     { id: "card-gen", group: "カード", title: "カードジェネレーター", path: "/tools/card-editor/", kind: "illust", desc: "カードの文と画像を作る道具。見るのは誰でも、保存や反映はキジマ専用。",

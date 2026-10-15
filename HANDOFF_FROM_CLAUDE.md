@@ -2162,3 +2162,4 @@
   - 共有ページに合わせるとき：node scripts/shared_script_sync.js で「入れてよい台詞」（音声の記録と一致）だけを ArtifactData で入れ、入れたものを --done 台詞ID,... で pending から消す
   - 古い記録 n065-attack-1（2人に分けていたころの攻撃時）を card_voice_direction.json から消した
 - v1.15.508：ユーザーの指示で、カードジェネレーター（pages.js の card-gen）からメモの対象（whole）を外した。「メモを書く」のボタンが出ない。既存のメモは無かった
+- v1.15.509：ダッシュボード「イラスト」に「イラスト・画像の一覧」（tools/art-gallery/）を追加。カミのイラスト・カミ選択の絵・敗北の絵・カミのカード・創世神技カットイン（＋スサノオ覚醒）・神技の目元・ジェネシスカード・ちびキャラ・エモート・チュートリアル案内役・TOPのモードの絵・タイトルの飾り・プレイガイドの図。今使っている画像は、開いたときに index.html と divine_effects.js（DIVINE_SKILL_CUTINS など）、kami_illustrations/manifest.json、台本の genesis から読み取るので、差し替えると自動で新しくなる。各画像にメモを書ける
