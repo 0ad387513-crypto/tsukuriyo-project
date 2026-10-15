@@ -2190,3 +2190,17 @@
 - 委譲の依頼が答えの後も残っていて、90秒間は次の依頼が「未解決の依頼があります」で失敗していた → `_battleWaitForRemoteAnswer` で答えが届いたら依頼を消す。同時に複数の死亡時効果が起きたときは `_battleDelegateDeathTrigger` で1件ずつ順に送る。死亡時効果の処理中にさらに相手へ返す依頼が起きたら、`_battleClaimRemoteRequest` が置き場が空くまで（最大30秒）待ってから送る。
 - `tools/sync-e2e/`：2つのブラウザで対戦テストの部屋を作って確かめる（README 参照）。`card_sweep.js` で全カード（トークン・カミ以外の190枚）を1枚ずつ使い、両方の画面の一致・消失・エラー・停止・選択中のロックを確認 → 190/190 OK（23分）。
 - 本番 v1.15.511 として公開（v1.15.510 の上に重ねた）。
+
+## Claude v1.15.512（2026-10-15）守護の戦闘／待機表示の重なり／カミの詳細の文字／バトルログ
+
+- 守護：神攻が守護で戦闘に変わったとき、v1.15.511 で入れた操作ロック（相手の「選択中」表示が残っている間）に `battleResolveLegacyBattle` の入口が止められ、戦闘が起きずどちらも破壊されなかった → `viaDivineGuard` のときは操作の受付チェックを通さない。`tools/sync-e2e/sync_test.js` に「戦闘力の低い方が破壊される」の確認を追加（40項目）。
+- 「相手が効果を選択中です」と左上の「応答待ち／待機中」が同時に出ていた → 前者は `battleWaitingLabel` がないときだけ。
+- 神託の儀のカミの詳細：文字を画面の高さに合わせて大きく（clamp＋vh。720pでは従来どおり、1080pで下の余白を使う）。ヤマタノオロチは効果の文が長いので少し小さめ。
+- バトルログ：ログは古い順に「あなたのターン N／相手のターン N」の見出しで区切り、開くと一番下（最新）。帯は自分＝金・相手＝銀、右にカードの絵。プレイは自分・相手ごとに同じカードを枚数でまとめてコスト順（`battleLogTurns` / `battlePlayLogByCost`）。
+- CPU戦で、CPUの手番中のプレイ・効果のログが「自分」側に記録されていた → `_battleTrackPlayedCard` と `_battleAppendLogEntry` で `_dslToTrueSide` を通す。
+- バトルログの文を簡潔に：通知の文は出さず、1行の出来事だけを `_battleLogBrief(kind, text, card, side)` で記録（play／effect／battle／divine／guard／destroy／crumble／return／tenryoku／skill）。記録する場所は `_battleTrackPlayedCard`・`dslRunSpec`（最初の能力の発動時）・`battleResolveLegacyBattle`・`battleResolveDivineAttack`・`battleDestroyLegacy`・`_dslMoveFromField`・`_battleKamiGainTenryoku`・`_dslOpStat`・`battleUseKamiSkill`。相手へは操作履歴（actionLog）に kind `b:…` で送り、`_battleApplyRemoteLogEvent` で受け取る（ターンの区切りは `b:turn`。カミは番号がカードと重なるので cardNos に K を付ける）。Rules の変更は不要。
+- アイコンはゲーム内の絵柄（交差した刀・墓・崩壊・手札・勾玉）と金の平たいSVG。絵は左上の情報欄と同じ切り抜き（deckItemBgStyle／kamiBgStyle）。見出しは「自分のターン N／相手のターン N」。プレイのタブは同じ名前の版違いも1行にまとめる。
+- （同日・追加）アイコンは外した。行動（play／effect／divine／battle／skill）を親の行、結果（destroy／crumble／return／guard／damage／heal／tenryoku＝`BATTLE_LOG_RESULT_KINDS`）を直前の行動の下に「┗」で並べる。文言は「〇〇の効果」「〇〇の神攻」「××のライフにNダメージ」「〇〇の天力+1」。サムネは左上の情報欄の部品（`.deck-item`＋deckItemBgStyle／`.battle-hand-info-kami`＋kamiBgStyle）を zoom で行の高さに縮小して置き、行の地の色を情報欄と同じ rgb(21,23,31) にした。相手の画面で処理する死亡時効果はカードの写しなので `_lastFieldSide` で側を決める。
+- （同日・追加3）カミの行だけ縦を広げ（72px／結果の行58px）、カミのサムネはカミ欄と同じ縦横比のまま。
+- （同日・追加2）カミは二つ名込みの正式名。カミの行動は「〇〇の天力トリガー」（kind trigger）・「〇〇の神技／創世神技「技名」」。リロールは「┗〇〇をリロール」（結果）。対戦開始の欄に「自分が先攻／相手が後攻」（自分の画面だけ）とマリガン（kind mulligan。相手へは枚数だけ送り、受け取った側で「相手が N 枚引き直した」にする）。最初の手番にも見出しを足す（`_battleLogFirstTurnMarker`）。帯は暗い紺（21,23,31）に、金／銀のうっすらした色をサムネの手前（68%）まで残す。
+- sync_test にバトルログの確認を追加（50項目）。npm test 245件成功。本番 v1.15.512 として公開。

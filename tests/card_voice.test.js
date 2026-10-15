@@ -118,7 +118,7 @@ test('ゲームの出現イベントがトークンを含めて音声へつな�
   const calls = [], card = { no: '2', category: 'レガシー' };
   const context = { appView: 'battle', cardVoiceManifest: { cards: { '2': { summon: [{ src: 'summon' }] } }, pairs: [] },
     battleSample: { turn: 1, self: { legacies: [card] }, opp: { legacies: [] } }, battlePlayLog: {}, battleLog: [],
-    fullName: c => 'Card ' + c.no, _battlePublishSemanticOperation() {}, _battlePublishNotice() {},
+    fullName: c => 'Card ' + c.no, _battlePublishSemanticOperation() {}, _battlePublishNotice() {}, _dslToTrueSide: side => side,
     _cardVoicePlayerGet: () => ({ enqueue: clips => { if (!clips.length) return false; calls.push(clips); return true; } }) };
   context._battleCardVoice = appMethod('_battleCardVoice', { CardVoiceCore: core });
   const track = appMethod('_battleTrackPlayedCard');

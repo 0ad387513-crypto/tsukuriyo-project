@@ -145,7 +145,15 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); consol
   await wait(2500);
   check('守護：答えたあとは手番側が動ける', !(await vmCall(active, 'return vm.battleActionLocked;')));
   await agree('守護で引き受けたあと');
-  check('守護：引き受けたレガシーが横向き', await vmCall(other, `return vm.battleSample.self.legacies.some(c => vm.battleCardHasKeyword(c, '守護') && c._tapped);`));
+  // 戦闘力の低い方が破壊される（同じなら両方）
+  const guardBattle = await vmCall(active, `
+    const atk = vm.battleSample.self.legacies.slice(-2)[0];
+    const guardCard = vm.allCards.find(c => c.category === 'レガシー' && !c.isToken && vm.battleCardHasKeyword(c, '守護'));
+    const s = vm.battleSample;
+    return { atkPower: Number(atk ? atk.power : 0), atkOnField: !!atk && s.self.legacies.includes(atk), guardPower: Number(guardCard.power), guardOnField: s.opp.legacies.some(c => String(c.no) === String(guardCard.no)), guardInGrave: (s.opp.graveyard || []).some(c => String(c.no) === String(guardCard.no)) };`);
+  const expectGuardDies = guardBattle.atkPower >= guardBattle.guardPower;
+  check('守護：戦闘力の低い方が破壊される', expectGuardDies ? (!guardBattle.guardOnField && guardBattle.guardInGrave) : !guardBattle.atkOnField, JSON.stringify(guardBattle));
+  check('守護：相手の画面でも同じ', await vmCall(other, `const g = vm.allCards.find(c => c.category === 'レガシー' && !c.isToken && vm.battleCardHasKeyword(c, '守護')); return vm.battleSample.self.legacies.some(c => String(c.no) === String(g.no));`) === guardBattle.guardOnField);
 
   // 5) 死亡時：相手の二尾の猫女を戦闘で倒すと、相手の画面で死亡時効果（相手レガシーを1枚破壊してもよい）を選ぶ。選び終わるまで手番側は動けない
   const catIdx = await vmCall(active, `return vm.battleSample.opp.legacies.findIndex(c => c.name === '二尾の猫女');`);
@@ -168,6 +176,27 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); consol
   const catNo = await vmCall(active, `return String(vm.allCards.find(c => c.name === '二尾の猫女').no);`);
   check('死亡時：二尾の猫女が相手の墓地にある', d.o.self.graveyard.includes(catNo));
   check('死亡時：効果で手番側のレガシーが1枚減っている', d.a.self.legacies.length < beforeDeath.self.legacies.length, `${beforeDeath.self.legacies.length} → ${d.a.self.legacies.length}`);
+
+  // 6) バトルログ：手番側の出来事（プレイ・神攻・守護・戦闘・破壊）が相手の画面のログにも、相手側として並ぶ
+  await wait(1500);
+  // 先攻・後攻とマリガンは見る側で文が変わる（自分が／相手が）ので、比べる対象から外して別に確かめる
+  const logA = await vmCall(active, `return vm.battleLog.filter(e => e.isBrief && !['start', 'mulligan'].includes(e.kind)).map(e => e.side + '|' + e.brief);`);
+  const logO = await vmCall(other, `return vm.battleLog.filter(e => e.isBrief && !['start', 'mulligan'].includes(e.kind)).map(e => e.side + '|' + e.brief);`);
+  for (const [label, p] of [['手番側', active], ['相手', other]]) {
+    const m = await vmCall(p, `return vm.battleLog.filter(e => e.isBrief && e.kind === 'mulligan').map(e => e.side + '|' + e.brief);`);
+    check(`バトルログ：${label}の画面に両方のマリガンがある`, m.some(l => l.startsWith('self|自分')) && m.some(l => l.startsWith('opp|相手')), JSON.stringify(m));
+  }
+  const flip = line => line.replace(/^self\|/, 'X|').replace(/^opp\|/, 'self|').replace(/^X\|/, 'opp|');
+  for (const word of ['をプレイ', 'の神攻', 'が守護', 'に戦闘', 'が破壊された']) {
+    check(`バトルログ：「${word}」が手番側にある`, logA.some(l => l.includes(word)), JSON.stringify(logA.slice(-12)));
+  }
+  const missing = logA.filter(l => !logO.includes(flip(l)));
+  const catNoName = '「二尾の猫女」の効果';
+  check('バトルログ：相手の死亡時効果が相手側の行になる', logA.some(l => l === 'opp|' + catNoName) && !logA.some(l => l === 'self|' + catNoName), JSON.stringify(logA.filter(l => l.includes('二尾'))));
+  check('バトルログ：手番側の出来事が相手の画面にも同じ側で並ぶ', missing.length === 0, JSON.stringify(missing.slice(0, 6)));
+  const turnsO = await vmCall(other, `return vm.battleLog.filter(e => e.isTurnMarker).map(e => e.side + e.turn).join(',');`);
+  const turnsA = await vmCall(active, `return vm.battleLog.filter(e => e.isTurnMarker).map(e => (e.side === 'self' ? 'opp' : 'self') + e.turn).join(',');`);
+  check('バトルログ：ターンの区切りが両方の画面で同じ', turnsO === turnsA, turnsA + ' / ' + turnsO);
 
   await browser.close();
   const ng = results.filter(r => !r.ok);

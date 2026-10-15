@@ -3600,11 +3600,17 @@
   .gs-oracle-profile .gs-oracle-name-row .gs-oracle-guide-link { margin-top: 4px; }
   .pick-guide-link.gs-oracle-guide-link { flex: none; width: auto; margin: 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px 7px 10px; font-size: 13px; box-shadow: 0 2px 0 rgba(0, 0, 0, .5); }
   .gs-oracle-guide-link .ui-icon { width: 20px; height: 20px; }
-  .gs-oracle-profile .gs-kami-info-section-title { font-size: 15px; }
-  .gs-oracle-profile .gs-kami-effect-label { font-size: 13px; margin-bottom: 4px; }
-  .gs-oracle-profile .gs-kami-effect-text { font-size: 16px; line-height: 1.75; }
-  .gs-oracle-profile .gs-kami-effect-row + .gs-kami-effect-row { margin-top: 12px; padding-top: 12px; }
-  .gs-oracle-profile .gs-kami-philosophy p { font-size: 15px; }
+  /* 文字は画面の高さに合わせて大きくする（低い画面では今までどおり、1080pなどでは下の余白を使って読みやすく） */
+  .gs-oracle-profile .gs-kami-info-section-title { font-size: clamp(15px, 1.75vh, 20px); }
+  .gs-oracle-profile .gs-kami-effect-label { font-size: clamp(13px, 1.5vh, 17px); margin-bottom: 4px; }
+  .gs-oracle-profile .gs-kami-effect-text { font-size: clamp(16px, 1.95vh, 22px); line-height: 1.7; }
+  .gs-oracle-profile .gs-kami-effect-row + .gs-kami-effect-row { margin-top: clamp(12px, 1.5vh, 18px); padding-top: clamp(12px, 1.5vh, 18px); }
+  .gs-oracle-profile .gs-kami-philosophy p { font-size: clamp(15px, 1.8vh, 20px); }
+  .gs-oracle-profile .gs-oracle-name-row .gs-kami-info-name { font-size: clamp(22px, 3vh, 36px); }
+  .gs-oracle-profile .gs-kami-confirm-question { font-size: clamp(14px, 1.9vh, 20px); }
+  /* ヤマタノオロチは効果の文が長いので少し小さめ */
+  .gs-oracle-profile.orochi .gs-kami-effect-text { font-size: clamp(15px, 1.75vh, 20px); line-height: 1.65; }
+  .gs-oracle-profile .gs-kami-accept-btn, .gs-oracle-profile .gs-kami-decline-btn { font-size: clamp(14px, 1.8vh, 19px); padding-top: clamp(12px, 1.4vh, 16px); padding-bottom: clamp(12px, 1.4vh, 16px); }
   /* 準備完了・提出済み：はんこ風をやめ、後半の画面の完了の印（金の丸にチェック）と同じ形にする */
   .gs-ready-seal { display: inline-flex; align-items: center; gap: 6px; color: var(--gs-title); font-size: 12.5px; font-weight: 700; letter-spacing: .08em; }
   .gs-ready-seal::before { content: ""; flex: none; width: 17px; height: 17px; border-radius: 50%; background: var(--gs-hi) url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Cpath d=%27M4 8.4 6.8 11.1 12 5.4%27 fill=%27none%27 stroke=%27%2317110a%27 stroke-width=%272.2%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E") center / 12px no-repeat; }
@@ -8019,6 +8025,59 @@
     box-shadow: inset 0 0 0 3px rgba(12, 10, 8, .95), inset 0 0 0 4px rgba(201, 168, 98, .22), 0 8px 26px rgba(0, 0, 0, .6); color: #f4d9cf; border-color: rgba(210, 90, 70, .85); font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; letter-spacing: .06em;
   }
 
+  /* ---------- バトルログ（新）：ターンの見出し＋帯。自分は金・相手は銀。帯の右にカードの絵 ---------- */
+  .bl-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 2px 10px 10px 2px; display: flex; flex-direction: column; gap: 6px; }
+  .bl-turn { display: flex; flex-direction: column; gap: 6px; }
+  .bl-turn-head { margin: 14px 0 4px; text-align: center; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: clamp(16px, 2.1vh, 22px); font-weight: 700; letter-spacing: .24em; color: #e2c47e; display: flex; align-items: center; gap: 14px; }
+  .bl-turn-head::before, .bl-turn-head::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(201, 168, 98, 0), rgba(201, 168, 98, .55)); }
+  .bl-turn-head::after { background: linear-gradient(90deg, rgba(201, 168, 98, .55), rgba(201, 168, 98, 0)); }
+  .bl-turn:first-child .bl-turn-head { margin-top: 2px; }
+  .bl-turn-head.opp { color: #c9d2e2; }
+  .bl-turn-head.opp::before { background: linear-gradient(90deg, rgba(170, 180, 200, 0), rgba(170, 180, 200, .5)); }
+  .bl-turn-head.opp::after { background: linear-gradient(90deg, rgba(170, 180, 200, .5), rgba(170, 180, 200, 0)); }
+  .bl-turn-head.start { color: #a99f8c; font-size: 14px; }
+  .bl-cost-head { color: #ecd9a6; }
+  .bl-turn-empty { text-align: center; font-size: 13px; color: #8f8574; padding: 4px 0; }
+  .bl-item { display: flex; flex-direction: column; gap: 2px; }
+  /* 地は左上の情報欄と同じ暗い紺（21,23,31）。自分＝金・相手＝銀のうっすらした色を、右のサムネの手前まで残してから地の色へ */
+  .bl-row { --bl-base: 21, 23, 31; --bl-tint: 201, 168, 98;
+    position: relative; flex: none; display: flex; align-items: center; gap: 10px; height: 50px; padding: 0 14px 0 14px; border-radius: 3px; overflow: hidden;
+    border: 1px solid rgba(201, 168, 98, .3); border-left: 4px solid #c9a862;
+    background: linear-gradient(90deg, rgba(var(--bl-tint), .2) 0%, rgba(var(--bl-tint), .13) 50%, rgba(var(--bl-tint), 0) 68%), rgb(var(--bl-base)); }
+  .bl-row.opp { --bl-tint: 170, 182, 204; border-color: rgba(160, 172, 194, .28); border-left-color: rgba(176, 186, 206, .85); }
+  .bl-thumb .deck-item.bl-thumb-card { box-shadow: inset -55px 0 24px -8px rgb(var(--bl-base)) !important; }
+  .bl-thumb .deck-item.bl-thumb-card::before {
+    background: radial-gradient(ellipse 95px 52px at 100% 0%, rgba(var(--bl-base), 1) 0%, rgba(var(--bl-base), 1) 55%, rgba(var(--bl-base), 0) 100%),
+      linear-gradient(90deg, rgba(var(--bl-base), 1) 0%, rgba(var(--bl-base), 1) 25%, rgba(var(--bl-base), .85) 35%, rgba(var(--bl-base), .65) 47%, rgba(var(--bl-base), .45) 62%, rgba(var(--bl-base), .28) 80%, rgba(var(--bl-base), .15) 100%); }
+  .bl-thumb .battle-hand-info-kami.bl-thumb-kami { background-color: rgb(var(--bl-base)); }
+  .bl-thumb .battle-hand-info-kami .battle-hand-info-kami-shade {
+    background: linear-gradient(90deg, rgba(var(--bl-base), 1) 0%, rgba(var(--bl-base), 1) 25%, rgba(var(--bl-base), .85) 35%, rgba(var(--bl-base), .65) 47%, rgba(var(--bl-base), .45) 62%, rgba(var(--bl-base), .28) 80%, rgba(var(--bl-base), .15) 100%); }
+  .bl-row-body { position: relative; z-index: 1; flex: 1 1 auto; min-width: 0; padding-right: 220px; }
+  .bl-row-text { font-size: clamp(14px, 1.75vh, 17px); line-height: 1.4; color: #f1e8d4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0, 0, 0, .8); }
+  .bl-row.opp .bl-row-text { color: #e9edf5; }
+  /* 結果：行動の下に一段下げて、小さめに */
+  .bl-sub { height: 40px; margin-left: 30px; border-left-width: 2px; }
+  .bl-sub .bl-row-text { font-size: clamp(13px, 1.6vh, 15px); color: #efe4cc; }
+  .bl-sub.opp .bl-row-text { color: #e3e8f1; }
+  .bl-sub-mark { position: relative; z-index: 1; flex: none; color: #8f8574; font-size: 14px; margin-right: -4px; }
+  /* サムネ：左上の情報欄と同じ部品（カードはデッキ行 359×56、カミはカミ欄 359×83）を、行の高さに合わせて縮小する */
+  .bl-thumb { position: absolute; top: 0; right: 0; bottom: 0; display: flex; justify-content: flex-end; align-items: flex-start; pointer-events: none; }
+  .bl-thumb .deck-item.bl-thumb-card { width: 359px; height: 56px; min-height: 56px; padding: 0; border: 0; cursor: default; zoom: calc(50 / 56); }
+  .bl-thumb .deck-item.bl-thumb-card:hover { filter: none; }
+  /* カミはカミ欄と同じ縦横比（359×83）のまま、行だけ縦に広げて口元まで見せる（幅はカードのサムネとほぼ同じ） */
+  .bl-row.has-kami { height: 72px; }
+  .bl-sub.has-kami { height: 58px; }
+  .bl-thumb .battle-hand-info-kami.bl-thumb-kami { width: 359px; height: calc(359px * 76 / 327); zoom: calc(72 / (359 * 76 / 327)); }
+  .bl-sub .bl-thumb .deck-item.bl-thumb-card { zoom: calc(40 / 56); }
+  .bl-sub .bl-thumb .battle-hand-info-kami.bl-thumb-kami { zoom: calc(58 / (359 * 76 / 327)); }
+  .bl-play-name { font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-weight: 700; letter-spacing: .06em; font-size: clamp(15px, 1.9vh, 19px); }
+  .bl-play-row { cursor: pointer; height: 50px; }
+  .bl-play-row:hover { filter: brightness(1.12); }
+  .bl-play-count { position: relative; z-index: 2; flex: none; font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; font-size: 20px; font-weight: 700; color: #fff4d8; text-shadow: 0 1px 4px rgba(0, 0, 0, .95); }
+  .battle-zone-modal-panel.bl-panel { width: min(1040px, 96vw); height: min(86vh, 900px); max-height: 86vh; }
+  .battle-zone-modal-panel.bl-panel .battle-zone-modal-title { font-size: clamp(16px, 2.1vh, 22px); }
+  .battle-zone-modal-panel.bl-panel .battle-zone-sort-btn { font-size: clamp(13px, 1.6vh, 17px); padding: 6px 18px; }
+  .battle-zone-modal-panel.bl-panel .battle-diagnostic-panel { overflow-y: auto; }
   /* ---------- 対戦ログ：青・赤の色分けをやめ、自分は金・相手は銀の細い縦線。ターンの区切りは明朝体 ---------- */
   .app.battle-v2 .battle-log-turn-marker {
     font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho ProN', 'Noto Serif JP', serif; letter-spacing: .2em; border-color: rgba(201, 168, 98, .3);
@@ -11347,7 +11406,7 @@
           <span class="battle-field-name">{{ battleFieldTheme.label }}</span>
         </div>
         <div v-if="battleHitFlashActive" class="battle-hit-flash" :class="{ final: battleShakeFinal }"></div>
-        <div v-if="battleOpponentSelecting && battleView && battleView.activeSide === 'self'" class="battle-opponent-selecting">相手が効果を選択中です</div>
+        <div v-if="battleOpponentSelecting && !battleWaitingLabel && battleView && battleView.activeSide === 'self'" class="battle-opponent-selecting">相手が効果を選択中です</div>
         <div v-if="battleLifeWarning('self')" class="battle-main-life-critical-vignette"></div>
         <!-- ターン経過時間の目安上限を超えた時の警告表示（強制効果なし） -->
         <div v-if="battleTurnTimeUp" class="battle-turn-rope-warning">
@@ -11927,36 +11986,40 @@
 
     <!-- ===== バトルログモーダル ===== -->
     <div v-if="battleLogModal" class="battle-zone-modal" role="dialog" aria-modal="true" tabindex="-1" @click.self="_sfxPlay('cancel'); battleLogModal = null">
-      <div class="battle-zone-modal-panel">
+      <div class="battle-zone-modal-panel bl-panel">
         <h3 class="battle-zone-modal-title">バトルログ</h3>
         <div class="battle-zone-modal-sort">
-          <button class="battle-zone-sort-btn" :class="{ active: battleLogModal.tab === 'log' }" @click="_sfxPlay('cancel'); battleLogModal.tab = 'log'">ログ</button>
+          <button class="battle-zone-sort-btn" :class="{ active: battleLogModal.tab === 'log' }" @click="_sfxPlay('cancel'); battleLogModal.tab = 'log'; _battleLogScrollToEnd()">ログ</button>
           <button class="battle-zone-sort-btn" :class="{ active: battleLogModal.tab === 'play' }" @click="_sfxPlay('cancel'); battleLogModal.tab = 'play'">プレイ</button>
           <button class="battle-zone-sort-btn" :class="{ active: battleLogModal.tab === 'diagnostic' }" @click="_sfxPlay('cancel'); battleLogModal.tab = 'diagnostic'">問題報告</button>
         </div>
         <template v-if="battleLogModal.tab === 'log'">
           <div v-if="!battleLog.length" class="battle-zone-modal-empty">ログがありません</div>
-          <div v-else class="battle-log-entries">
-            <template v-for="(entry, i) in battleLogReversed">
-              <div v-if="entry.isTurnMarker" :key="'t'+i" class="battle-log-turn-marker" :class="entry.side">
-                {{ entry.message }}
-              </div>
-              <div v-else :key="i" class="battle-log-entry" :class="entry.side"
-                   @mouseenter="entry.cards && entry.cards[0] ? showCardHover(entry.cards[0], $event) : null"
-                   @mouseleave="hideCardHover">
-                <span class="battle-log-entry-icon" :class="'icon-' + (entry.icon || 'effect')">{{ battleLogIconGlyph(entry.icon) }}</span>
-                <div class="battle-log-entry-body">
-                  <div class="battle-log-entry-meta">
-                    <span class="battle-log-entry-side-tag" :class="entry.side">{{ entry.side === 'self' ? '自分' : '相手' }}</span>
-                    <span class="battle-log-entry-turn-tag">ターン{{ entry.turn }}</span>
-                    <span class="battle-log-entry-title">{{ entry.title }}</span>
-                  </div>
-                  <span class="battle-log-entry-message">{{ entry.message }}</span>
+          <div v-else class="bl-scroll bl-chrono">
+            <section v-for="g in battleLogTurns" :key="g.key" class="bl-turn">
+              <h4 class="bl-turn-head" :class="g.side">{{ g.label }}</h4>
+              <div v-for="(item, i) in g.entries" :key="g.key + '-' + i" class="bl-item">
+                <div class="bl-row" :class="[item.e.side, { 'has-kami': item.e.cards && item.e.cards[0] && item.e.cards[0].category === 'カミ' }]"
+                     @mouseenter="item.e.cards && item.e.cards[0] ? showCardHover(item.e.cards[0], $event) : null"
+                     @mouseleave="hideCardHover">
+                  <div class="bl-row-body"><div class="bl-row-text">{{ item.e.brief }}</div></div>
+                  <div v-if="item.e.cards && item.e.cards[0]" class="bl-thumb" aria-hidden="true">
+                  <div v-if="item.e.cards[0].category === 'カミ'" class="battle-hand-info-kami bl-thumb-kami" :style="kamiBgStyle(item.e.cards[0])"><div class="battle-hand-info-kami-shade"></div></div>
+                  <div v-else class="deck-item bl-thumb-card" :style="deckItemBgStyle(item.e.cards[0])"></div>
                 </div>
-                <div v-if="entry.cards && entry.cards[0]" class="battle-log-entry-thumb"
-                     :style="cardImageUrl(entry.cards[0]) ? { backgroundImage: 'url(' + cardImageUrl(entry.cards[0]) + ')' } : {}"></div>
+                </div>
+                <div v-for="(c, j) in item.children" :key="g.key + '-' + i + '-' + j" class="bl-row bl-sub" :class="[c.side, { 'has-kami': c.cards && c.cards[0] && c.cards[0].category === 'カミ' }]"
+                     @mouseenter="c.cards && c.cards[0] ? showCardHover(c.cards[0], $event) : null"
+                     @mouseleave="hideCardHover">
+                  <span class="bl-sub-mark" aria-hidden="true">┗</span>
+                  <div class="bl-row-body"><div class="bl-row-text">{{ c.brief }}</div></div>
+                  <div v-if="c.cards && c.cards[0]" class="bl-thumb" aria-hidden="true">
+                  <div v-if="c.cards[0].category === 'カミ'" class="battle-hand-info-kami bl-thumb-kami" :style="kamiBgStyle(c.cards[0])"><div class="battle-hand-info-kami-shade"></div></div>
+                  <div v-else class="deck-item bl-thumb-card" :style="deckItemBgStyle(c.cards[0])"></div>
+                </div>
+                </div>
               </div>
-            </template>
+            </section>
           </div>
         </template>
         <template v-else-if="battleLogModal.tab === 'play'">
@@ -11965,19 +12028,18 @@
             <button class="battle-zone-sort-btn" :class="{ active: battleLogModal.playSide === 'opp' }" @click="_sfxPlay('cancel'); battleLogModal.playSide = 'opp'">相手がプレイしたカード</button>
           </div>
           <div v-if="!battlePlayLog[battleLogModal.playSide].length" class="battle-zone-modal-empty">プレイしたカードがありません</div>
-          <div v-else class="battle-zone-modal-list">
-            <div v-for="(entry, i) in battlePlayLog[battleLogModal.playSide]" :key="i"
-                 class="battle-zone-list-item"
-                 @click="openPreview(entry.card)"
-                 @mouseenter="showCardHover(entry.card, $event)"
-                 @mouseleave="hideCardHover">
-              <div class="battle-zone-list-thumb"
-                   :style="cardImageUrl(entry.card) ? { backgroundImage: 'url(' + cardImageUrl(entry.card) + ')' } : {}"></div>
-              <div>
-                <div class="battle-log-play-name">{{ fullName(entry.card) }}</div>
-                <div class="battle-log-play-meta">ターン{{ entry.turn }}</div>
+          <div v-else class="bl-scroll">
+            <section v-for="grp in battlePlayLogByCost(battleLogModal.playSide)" :key="'cost' + grp.cost" class="bl-turn">
+              <h4 class="bl-turn-head bl-cost-head">コスト {{ grp.cost }}</h4>
+              <div v-for="item in grp.items" :key="item.no" class="bl-row bl-play-row" :class="battleLogModal.playSide"
+                   @click="openPreview(item.card)"
+                   @mouseenter="showCardHover(item.card, $event)"
+                   @mouseleave="hideCardHover">
+                <div class="bl-row-body"><div class="bl-row-text bl-play-name">{{ fullName(item.card) }}</div></div>
+                <div class="bl-thumb" aria-hidden="true"><div class="deck-item bl-thumb-card" :style="deckItemBgStyle(item.card)"></div></div>
+                <span class="bl-play-count">×{{ item.count }}</span>
               </div>
-            </div>
+            </section>
           </div>
         </template>
         <template v-else>
@@ -13871,6 +13933,10 @@ const BATTLE_TURN_LIMIT_SEC = 90; // 通常の警告開始
 const BATTLE_ONLINE_TURN_LIMIT_SEC = 180; // オンライン対戦では3分で自動的にターンを終了する
 const BATTLE_HAND_LIMIT = 8; // エンドフェイズ終了時の手札上限
 const BATTLE_DISCONNECT_GRACE_SEC = 90; // 切断後、この猶予を過ぎても戻らなければ相手の勝利
+/* バトルログで、直前の行動の下に「┗」で並べる結果の種類 */
+const BATTLE_LOG_RESULT_KINDS = ['destroy', 'crumble', 'return', 'guard', 'damage', 'heal', 'tenryoku', 'reroll'];
+/* バトルログで「対戦開始」の欄に入れる種類（先攻・後攻、マリガン） */
+const BATTLE_LOG_START_KINDS = ['start', 'mulligan'];
 const BATTLE_REMOTE_DECISION_TIMEOUT_MS = 90 * 1000; // 相手依存の確認・選択を無期限に待たない
 const COLOR_ORDER = { '赤': 0, '青': 1, '緑': 2, '黄': 3, '紫': 4, '創': 5, '無': 6 };
 function colorRank(c) {
@@ -16203,9 +16269,36 @@ new Vue({
       if (this.battleContext.returnView === 'kamiDex') return 'カミ図鑑';
       return 'トップ';
     },
-    /* バトルログ：新しい出来事ほど上に来るよう逆順で表示する（都度スクロールしなくて済むように） */
-    battleLogReversed() {
-      return this.battleLog.slice().reverse();
+    /* バトルログ：古い順に、ターンの見出しで区切る（先攻1 → 後攻1 → 先攻2 …）。開いたときは一番下（最新）を見せる */
+    battleLogTurns() {
+      const groups = [];
+      let cur = null;
+      let startGroup = null;
+      (this.battleLog || []).forEach((entry, i) => {
+        if (!entry) return;
+        if (entry.isTurnMarker) {
+          const side = entry.side === 'opp' ? 'opp' : 'self';
+          cur = { key: 't' + i, side, label: (side === 'self' ? '自分' : '相手') + 'のターン ' + (entry.turn || ''), entries: [] };
+          groups.push(cur);
+          return;
+        }
+        // 1行の出来事だけを出す（効果の細かい結果・注意書きは出さない）
+        if (!entry.isBrief) return;
+        // 先攻・後攻とマリガンは、届く順に関係なく「対戦開始」の欄へ
+        if (BATTLE_LOG_START_KINDS.includes(entry.kind)) {
+          if (!startGroup) { startGroup = { key: 'start', side: 'start', label: '対戦開始', entries: [] }; groups.unshift(startGroup); }
+          startGroup.entries.push({ e: entry, children: [] });
+          return;
+        }
+        if (!cur) { cur = startGroup || { key: 'start', side: 'start', label: '対戦開始', entries: [] }; if (!startGroup) { startGroup = cur; groups.push(cur); } }
+        const prev = cur.entries[cur.entries.length - 1];
+        // 結果（破壊・崩壊・手札に戻る・守護・ダメージ・天力）は、直前の行動の下に「┗」で並べる
+        if (BATTLE_LOG_RESULT_KINDS.includes(entry.kind) && prev) { prev.children.push(entry); return; }
+        // 同じカードの「効果」が続いたら1行にまとめる
+        if (prev && (entry.kind === 'effect' || entry.kind === 'trigger') && prev.e.kind === entry.kind && prev.e.brief === entry.brief && prev.e.side === entry.side) return;
+        cur.entries.push({ e: entry, children: [] });
+      });
+      return groups;
     },
     /* オンライン対戦テスト中は手番プレイヤーのみ「ターン終了」を押せる
        （オフラインの単独シミュレーション時は従来通りどちらの手番でも押せる） */
@@ -20111,6 +20204,12 @@ new Vue({
       if (!this.battleCoinFlip) return;
       clearTimeout(this._battleCoinFlipT1);
       clearTimeout(this._battleCoinFlipT2);
+      if (this._battleLogBrief) {
+        const first = this.battleContext.firstSide === 'opp' ? 'opp' : 'self';
+        const second = first === 'self' ? 'opp' : 'self';
+        this._battleLogBrief('start', (first === 'self' ? '自分' : '相手') + 'が先攻', this.battleSample[first] && this.battleSample[first].kami, first, false);
+        this._battleLogBrief('start', (second === 'self' ? '自分' : '相手') + 'が後攻', this.battleSample[second] && this.battleSample[second].kami, second, false);
+      }
       this.battleCoinFlip = null;
       this.battleMulligan = { remaining: this.battleContext.selfMulligans || 1, selectedIdx: [], returnedCards: [] };
     },
@@ -20178,6 +20277,12 @@ new Vue({
     battleFinishMulligan() {
       // 引き直したカードは、すべてのマリガンが終わってから山札へ戻す。
       const returned = this.battleMulligan && this.battleMulligan.returnedCards;
+      if (this._battleLogBrief && this.battleMulligan) {
+        const count = Array.isArray(returned) ? returned.length : 0;
+        this._battleLogBrief('mulligan', count > 0 ? `自分が${count}枚引き直した` : '自分は引き直さなかった', this.battleSample.self.kami, 'self', String(count));
+        // CPUは引き直さない
+        if (this.battleContext && this.battleContext.oppIsCpu) this._battleLogBrief('mulligan', '相手は引き直さなかった', this.battleSample.opp.kami, 'opp', false);
+      }
       if (Array.isArray(returned) && returned.length) {
         const self = this.battleSample.self;
         self.deck.push(...returned);
@@ -20191,13 +20296,13 @@ new Vue({
         this._battlePublishMulliganReady(true);
         // 相手も準備完了済みなら即ターン開始、そうでなければ待機
         if (n.mulliganReady && n.mulliganReady[n.oppSeat]) {
-          this._battleStartTurnFor(this.battleContext.firstSide);
+          this._battleLogFirstTurnMarker(); this._battleStartTurnFor(this.battleContext.firstSide);
         } else {
           this.$set(this.battleNet, 'waitingForOppMulligan', true);
         }
         return;
       }
-      this._battleStartTurnFor(this.battleContext.firstSide);
+      this._battleLogFirstTurnMarker(); this._battleStartTurnFor(this.battleContext.firstSide);
       // CPUが先攻なら、マリガンが終わったここからCPUの最初の手番を動かす
       this._battleScheduleCpuTurn();
     },
@@ -20243,7 +20348,7 @@ new Vue({
       const mySeat = String(n.mySeat), oppSeat = String(n.oppSeat);
       if (n.waitingForOppMulligan && n.mulliganReady[mySeat] && n.mulliganReady[oppSeat]) {
         this.$set(this.battleNet, 'waitingForOppMulligan', false);
-        this._battleStartTurnFor(this.battleContext.firstSide);
+        this._battleLogFirstTurnMarker(); this._battleStartTurnFor(this.battleContext.firstSide);
       }
     },
 
@@ -20892,6 +20997,10 @@ new Vue({
         const emoteRef = getDb().ref(emotePath);
         const emoteHandler = snap => this._battleApplyRemoteEmote(snap.val());
         emoteRef.on('value', emoteHandler);
+        // バトルログ：相手の1行の出来事（操作履歴のうち b: で始まるもの）。入った時点より後のものだけ
+        const logEventRef = getDb().ref(path.replace(/\/state$/, '/actionLog')).orderByKey().startAt(getDb().ref().push().key);
+        const logEventHandler = snap => this._battleApplyRemoteLogEvent(snap.val());
+        logEventRef.on('child_added', logEventHandler);
         // 在席状態（プレゼンス）：.info/connected + onDisconnect で自分の切断を検知させ、
         // 相手側の在席パスを購読することで「相手が切断した」ことを能動的に把握できるようにする
         const presenceBase = path.replace(/\/state$/, '/presence');
@@ -20940,6 +21049,7 @@ new Vue({
           try { skill2Ref.off('value', skill2Handler); } catch (e) {}
           try { oracleEffectRef.off('value', oracleEffectHandler); } catch (e) {}
           try { emoteRef.off('value', emoteHandler); } catch (e) {}
+          try { logEventRef.off('child_added', logEventHandler); } catch (e) {}
           try { connectedRef.off('value', connectedHandler); } catch (e) {}
           try { oppPresenceRef.off('value', presenceHandler); } catch (e) {}
           try { rematchRef.off('value', rematchHandler); } catch (e) {}
@@ -21007,6 +21117,10 @@ new Vue({
         const emoteRef = getDb().ref(emotePath);
         const emoteHandler = snap => this._battleApplyRemoteEmote(snap.val());
         emoteRef.on('value', emoteHandler);
+        // バトルログ：相手の1行の出来事（操作履歴のうち b: で始まるもの）。入った時点より後のものだけ
+        const logEventRef = getDb().ref(path.replace(/\/state$/, '/actionLog')).orderByKey().startAt(getDb().ref().push().key);
+        const logEventHandler = snap => this._battleApplyRemoteLogEvent(snap.val());
+        logEventRef.on('child_added', logEventHandler);
         // 観戦者数を対戦者側に見せるための在席登録（自分がこの部屋を観戦中であることを記録するだけ）
         const spectatorsPath = path.replace(/\/state$/, '/spectators');
         const mySpectatorRef = getDb().ref(`${spectatorsPath}/${this._battleClientId()}`);
@@ -21018,6 +21132,7 @@ new Vue({
           try { skill2Ref.off('value', skill2Handler); } catch (e) {}
           try { oracleEffectRef.off('value', oracleEffectHandler); } catch (e) {}
           try { emoteRef.off('value', emoteHandler); } catch (e) {}
+          try { logEventRef.off('child_added', logEventHandler); } catch (e) {}
           try { mySpectatorRef.onDisconnect().cancel(); } catch (e) {}
           try { mySpectatorRef.remove(); } catch (e) {}
           try { spectatorAccessRef.onDisconnect().cancel(); } catch (e) {}
@@ -23605,6 +23720,10 @@ new Vue({
       if (!p || !n) return;
       p.tenryoku = Math.max(0, Math.min(10, (Number(p.tenryoku) || 0) + n)); // 天力は10が上限
       const kamiName = p.kami ? this.fullName(p.kami) : 'カミ';
+      if (this._battleLogBrief && p.kami) {
+        this._battleLogBrief('trigger', `「${this._battleLogName(p.kami)}」の天力トリガー`, p.kami, side);
+        this._battleLogBrief('tenryoku', `「${this._battleLogName(p.kami)}」の天力+${n}`, p.kami, side);
+      }
       this.battleShowNotice(
         `天力トリガー：${reason}`,
         `${side === 'opp' ? '相手' : '自分'}のカミ「${kamiName}」の効果で天力 +${n}（現在 ${p.tenryoku}）`,
@@ -23723,6 +23842,8 @@ new Vue({
       const card = payload && payload.card;
       if (card) this._battleCardVoice(card, card.category === 'レガシー' ? 'summon' : 'use', side);
       if (!card || card.isToken) return;
+      // CPUの手番代行中は自分/相手が入れ替わっているため、本当の持ち主の側で記録する
+      side = this._dslToTrueSide(side);
       const list = this.battlePlayLog[side] || (this.battlePlayLog[side] = []);
       const alreadyPlayed = list.some(e => e.card === card);
       if (!alreadyPlayed) list.push({ turn: this.battleSample.turn, card });
@@ -23732,16 +23853,8 @@ new Vue({
       // 一切公開されなかったため、相手の画面のログには「プレイした」という行自体が
       // 一切現れなかった＝オラクル等の使用がバトルログに反映されない不具合の原因だった）。
       const message = `「${this.fullName(card)}」をプレイした`;
-      const playEntry = {
-        turn: this.battleSample.turn,
-        side,
-        title: 'プレイ',
-        message,
-        cards: [card],
-        icon: 'play',
-      };
-      this.battleLog.push(playEntry);
-      this._battlePublishSemanticOperation(playEntry);
+      // side は本当の側に直してあるので、生の側へ戻して渡す
+      this._battleLogBrief && this._battleLogBrief('play', `「${this.fullName(card)}」をプレイ`, card, this._dslToTrueSide(side));
       this._battlePublishNotice('プレイ', message, [card]);
     },
     _battleFireKamiEventKamiEffects(side, eventType, payload) {
@@ -24088,7 +24201,7 @@ new Vue({
         turn: bs.turn,
         side: nextSide,
         title: 'ターン',
-        message: `${nextSide === 'self' ? 'あなた' : '相手'}のターン (${bs.turn})`,
+        message: `${nextSide === 'self' ? '自分' : '相手'}のターン (${bs.turn})`,
         isTurnMarker: true,
         icon: 'turn',
       };
@@ -24944,6 +25057,8 @@ new Vue({
         const loc = this._dslFindCardLocation(list[0]);
         if (loc) side = loc.side;
       }
+      // CPUの手番代行中は自分/相手が入れ替わっているため、本当の側に直す
+      side = this._dslToTrueSide(side);
       const entry = {
         turn: this.battleSample.turn,
         side,
@@ -24955,18 +25070,72 @@ new Vue({
       this.battleLog.push(entry);
       if (!options.remote) this._battlePublishSemanticOperation(entry);
     },
+    /* バトルログ：1行の出来事（〇〇をプレイ・〇〇が破壊された など）を記録し、相手にも送る。
+       side は生の自分/相手（CPUの手番代行中は入れ替わっている）。省略時はカードの場所から決める */
+    /* バトルログ：対戦の最初の手番の見出し（以降の見出しはターン終了時に足す） */
+    _battleLogFirstTurnMarker() {
+      if (!this.battleSample || (this.battleLog || []).some(e => e && e.isTurnMarker)) return;
+      const side = this.battleContext.firstSide === 'opp' ? 'opp' : 'self';
+      this.battleLog.push({ turn: this.battleSample.turn || 1, side, title: 'ターン', message: `${side === 'self' ? '自分' : '相手'}のターン (${this.battleSample.turn || 1})`, isTurnMarker: true, icon: 'turn' });
+    },
+    _battleLogBrief(kind, text, card, side, publishText) {
+      if (!this.battleSample || !text) return;
+      let s = side || null;
+      if (!s && card && card.category === 'カミ') {
+        if (this.battleSample.self && this.battleSample.self.kami === card) s = 'self';
+        else if (this.battleSample.opp && this.battleSample.opp.kami === card) s = 'opp';
+      }
+      if (!s && card) { const loc = this._dslFindCardLocation(card); if (loc) s = loc.side; }
+      // 相手の画面で処理する死亡時効果などは、送られてきたカードの写しなので場所が見つからない。最後にいた側を使う
+      if (!s && card && card._lastFieldSide) s = card._lastFieldSide;
+      s = this._dslToTrueSide(s || this.battleSample.activeSide || 'self');
+      const entry = { turn: this.battleSample.turn, side: s, isBrief: true, kind, brief: String(text), title: kind, message: String(text), cards: card ? [card] : [], icon: kind };
+      this.battleLog.push(entry);
+      if (publishText === false) return; // 自分の画面だけに残す（先攻・後攻など）
+      this._battlePublishSemanticOperation(publishText != null ? Object.assign({}, entry, { message: String(publishText) }) : entry);
+    },
+    /* ログに出す名前：カードは正式名、カミは名前だけ（例：アマテラス） */
+    _battleLogName(card) {
+      return card ? this.fullName(card) : '';
+    },
+    /* 相手から届いた1行の出来事（操作履歴の b: で始まる種類）をログに足す */
+    _battleApplyRemoteLogEvent(val) {
+      const n = this.battleNet;
+      if (!val || !n || !n.on) return;
+      if (!n.spectating && String(val.writer) === String(n.mySeat)) return;
+      const kind = String(val.kind || '');
+      if (!kind.startsWith('b:')) return;
+      const side = String(val.sideSeat) === String(n.mySeat) ? 'self' : 'opp';
+      const turn = Number(val.turn || 0);
+      if (kind === 'b:turn') {
+        const last = this.battleLog.slice().reverse().find(e => e && e.isTurnMarker);
+        if (last && Number(last.turn) === turn && last.side === side) return;
+        this.battleLog.push({ turn, side, title: 'ターン', message: '', isTurnMarker: true, icon: 'turn' });
+        return;
+      }
+      const cards = (Array.isArray(val.cardNos) ? val.cardNos : []).map(no => {
+        const key = String(no);
+        if (key.startsWith('K')) return this.allKamiCards.find(k => String(k.no) === key.slice(1)) || null;
+        return this.cardByNo[key] || null;
+      }).filter(Boolean);
+      const k = kind.slice(2);
+      let text = String(val.message || '');
+      if (k === 'mulligan') { const n = Number(text) || 0; text = n > 0 ? `相手が${n}枚引き直した` : '相手は引き直さなかった'; }
+      this.battleLog.push({ turn, side, isBrief: true, kind: k, brief: text, title: k, message: text, cards, icon: k });
+    },
     _battlePublishSemanticOperation(entry) {
       const n = this.battleNet;
       if (!n || !n.on || n.spectating || !n.statePath || !entry) return;
       const actionLogPath = n.statePath.replace(/\/state$/, '/actionLog');
-      const cardNos = (entry.cards || []).map(card => card && card.no != null ? String(card.no) : null).filter(Boolean);
+      // カミは番号がカードと重なるので K を付ける
+      const cardNos = (entry.cards || []).map(card => card && card.no != null ? (card.category === 'カミ' ? 'K' : '') + String(card.no) : null).filter(Boolean);
       const sideSeat = entry.side === 'self' ? n.mySeat : n.oppSeat;
       getDb().ref(actionLogPath).push({
         writer: n.mySeat,
         sideSeat,
         revision: Number(n.lastRevision || 0),
         turn: Number(entry.turn || this.battleSample.turn || 0),
-        kind: entry.icon || 'effect',
+        kind: entry.isBrief ? ('b:' + entry.kind).slice(0, 24) : (entry.isTurnMarker ? 'b:turn' : (entry.icon || 'effect')),
         title: String(entry.title || '').slice(0, 80),
         message: String(entry.message || '').slice(0, 500),
         cardNos: cardNos.slice(0, 20),
@@ -25363,6 +25532,13 @@ new Vue({
           if (ab.コスト) {
             const paid = await this.dslPayAbilityCost(ab.コスト, card, `${triggerLabel}コスト`);
             if (!paid) continue;
+          }
+          if (!ran && this._battleLogBrief) {
+            if (card && card.category === 'カミ') {
+              if (!/神技/.test(String(triggerLabel || ''))) this._battleLogBrief('trigger', `「${this._battleLogName(card)}」の天力トリガー`, card);
+            } else {
+              this._battleLogBrief('effect', `「${this._battleLogName(card)}」の効果`, card);
+            }
           }
           ran = true;
           if (_ptKey) {
@@ -27664,6 +27840,9 @@ new Vue({
               owner.crumbled = owner.crumbled || []; owner.crumbled.push(card);
               this._sfxPlay('crumble');
             }
+            if (lz === 'hand') this._battleLogBrief && this._battleLogBrief('return', `「${this.fullName(card)}」が手札に戻った`, card, side);
+            else if (lz === 'graveyard') this._battleLogBrief && this._battleLogBrief('destroy', `「${this.fullName(card)}」が破壊された`, card, side);
+            else if (lz === 'crumbled') this._battleLogBrief && this._battleLogBrief('crumble', `「${this.fullName(card)}」が崩壊した`, card, side);
             // 天力トリガー：レガシー破壊（K7 ヒノカグツチ）— 墓地行きのみ・レガシーのみ
             if (destZone === 'graveyard' && zone === 'legacies') {
               this.battleRecordLegacyDestroyed(side, card);
@@ -27709,6 +27888,11 @@ new Vue({
       this.battleSaveUndo();
       const next = Math.max(0, (Number(p[key]) || 0) + n);
       p[key] = key === 'tenryoku' ? Math.min(10, next) : next; // 天力は10が上限
+      if (key === 'tenryoku' && n) {
+        const kami = p.kami;
+        const amount = `天力${n >= 0 ? '+' : ''}${n}`;
+        this._battleLogBrief && this._battleLogBrief('tenryoku', kami ? `「${this._battleLogName(kami)}」の${amount}` : amount, kami || null, side);
+      }
       this.battleShowNotice('天力変化', `${side === 'opp' ? '相手' : '自分'}の天力が ${n >= 0 ? '+' : ''}${n} (現在 ${p[key]})`);
     },
     _dslOpLife(act, sourceCard) {
@@ -27744,6 +27928,10 @@ new Vue({
         const displaySide = this.battleViewSide(side);
         const portrait = this.$el && this.$el.querySelector(displaySide === 'self' ? '.battle-row-self-bot .kami-portrait' : '.battle-row-opp-top .kami-portrait');
         if (portrait) this._battleShowDivineResolution(this._battleDivineContext.kami, this._battleDivineContext.index, portrait.getBoundingClientRect());
+      }
+      if (this._battleLogBrief && actualDelta) {
+        const who = p.kami ? '「' + this._battleLogName(p.kami) + '」' : (side === 'opp' ? '相手' : '自分');
+        this._battleLogBrief(actualDelta < 0 ? 'damage' : 'heal', actualDelta < 0 ? `${who}のライフに${-actualDelta}ダメージ` : `${who}のライフ+${actualDelta}`, p.kami || null, side);
       }
       this.battleShowNotice('ライフ変化', `${side === 'opp' ? '相手' : '自分'}ライフ ${n >= 0 ? '+' : ''}${n}（現在 ${p.life}/${max}）`);
       if (typeof this._battleCheckResult === 'function') this._battleCheckResult();
@@ -29646,6 +29834,7 @@ new Vue({
       player.deck = this._battleShuffle(player.deck);
       player.handCount = player.hand.length;
       player.deckCount = player.deck.length;
+      this._battleLogBrief && this._battleLogBrief('reroll', `「${this.fullName(revealed)}」をリロール`, revealed, 'self');
       this.battleShowNotice(
         'リロール',
         `「${this.fullName(revealed)}」を公開してデッキに戻し、シャッフルした上で${drawn ? '1枚ドローしました。' : 'デッキが尽きていたためドローできませんでした。'}`,
@@ -30559,6 +30748,7 @@ new Vue({
       player[destZone] = player[destZone] || [];
       player[destZone].push(card);
       this._sfxPlay(destZone === 'crumbled' ? 'crumble' : 'destroy');
+      this._battleLogBrief && this._battleLogBrief(destZone === 'crumbled' ? 'crumble' : 'destroy', `「${this.fullName(card)}」が${destZone === 'crumbled' ? '崩壊した' : '破壊された'}`, card, side);
       this.battleRecordLegacyDestroyed(side, card);
       // 天力トリガー（K7ヒノカグツチ）：戦闘でレガシーが破壊された場合も発火
       this.battleFireKamiEvent('self', 'legacyDestroyed', { card });
@@ -30572,7 +30762,11 @@ new Vue({
       // 相手ターン中は戦闘できない（死亡時・守護などの誘発は攻撃側のターン内で解決されるため、
       // それらは activeSide が攻撃側のままで到達しここには引っかからない）。
       // CPUのターンは _dslSwapSelfOpp で activeSide ごと入れ替わるので同様に通過する。
-      if (!this.battleEnsureSelfTurn('レガシーでの戦闘')) return;
+      // 神攻が守護で戦闘に変わったときは、神攻の続きとして処理する（相手の「選択中」の表示が消える前に
+      // ここへ来るため、操作の受付チェックで止めると戦闘が起きず、どちらも破壊されないままになっていた）
+      if (opts && opts.viaDivineGuard) {
+        if (this.battleSample.activeSide !== 'self') return;
+      } else if (!this.battleEnsureSelfTurn('レガシーでの戦闘')) return;
       const attackerPlayer = this.battleSample[attackerSide];
       const defenderPlayer = this.battleSample[defenderSide];
       const attacker = attackerPlayer && attackerPlayer.legacies[attackerIndex];
@@ -30618,7 +30812,9 @@ new Vue({
       if (guarded) {
         defenderIndex = guard.index;
         defender = guard.card;
+        this._battleLogBrief && this._battleLogBrief('guard', `「${this.fullName(defender)}」が守護`, defender, defenderSide);
       }
+      this._battleLogBrief && this._battleLogBrief('battle', `「${this.fullName(attacker)}」が「${this.fullName(defender)}」に戦闘`, attacker, attackerSide);
       if (guarded) {
         this.$set(defender, '_tapped', true);
         this.dslRefreshStaticAbilities();
@@ -30715,8 +30911,13 @@ new Vue({
       if (this.battleSample.result) return;
       attackerIndex = this.battleSample.self.legacies.indexOf(attacker);
       if (attackerIndex < 0) return;
+      {
+        const targetKami = this.battleSample.opp && this.battleSample.opp.kami;
+        this._battleLogBrief && this._battleLogBrief('divine', `「${this.fullName(attacker)}」の神攻`, attacker, 'self');
+      }
       const guard = await this._battleChooseGuard(attacker, 'opp', null);
       if (guard) {
+        this._battleLogBrief && this._battleLogBrief('guard', `「${this.fullName(guard.card)}」が守護`, guard.card, 'opp');
         // 【神攻時】は宣言時点（上記）で既に発動済みのため、ここでは再発動させない。
         // 死亡時トリガーの人間確認待ち等があり得るため、CPU戦の攻撃フェーズ側が先走らないようawaitする。
         await this.battleResolveLegacyBattle(attackerSide, attackerIndex, 'opp', guard.index, { viaDivineGuard: true });
@@ -30748,6 +30949,10 @@ new Vue({
       const beforeLife = Number(this.battleSample.opp.life) || 0;
       this.battleSample.opp.life = Math.max(0, this.battleSample.opp.life - damage);
       const actualDamage = Math.max(0, beforeLife - this.battleSample.opp.life);
+      if (this._battleLogBrief) {
+        const oppKami = this.battleSample.opp.kami;
+        this._battleLogBrief('damage', `${oppKami ? '「' + this._battleLogName(oppKami) + '」' : '相手'}のライフに${actualDamage}ダメージ`, oppKami || null, 'opp');
+      }
       if (actualDamage > 0) {
         this._dslLastLifeReduced = actualDamage;
         this._dslCurrentEvent = {
@@ -31125,6 +31330,13 @@ new Vue({
     battleOpenLogModal(tab) {
       this._sfxPlay('decision');
       this.battleLogModal = { tab: tab || 'log', playSide: 'self' };
+      this._battleLogScrollToEnd();
+    },
+    _battleLogScrollToEnd() {
+      this.$nextTick(() => {
+        const el = document.querySelector('.bl-chrono');
+        if (el) el.scrollTop = el.scrollHeight;
+      });
     },
     _battleBuildDiagnosticReport() {
       const net = this.battleNet || {};
@@ -31274,6 +31486,28 @@ new Vue({
       }
     },
     /* ログ1件のアイコン絵文字（_battleLogEntryIconで分類したkindに対応） */
+    /* プレイのタブ：同じカードは枚数でまとめ、コストの小さい順に並べる */
+    battlePlayLogByCost(side) {
+      const list = (this.battlePlayLog && this.battlePlayLog[side]) || [];
+      const byNo = new Map();
+      list.forEach(entry => {
+        const card = entry && entry.card;
+        if (!card) return;
+        // 同じ名前で番号の違う版（No.1・No.2 など）も1行にまとめる
+        const no = this.fullName(card);
+        const item = byNo.get(no);
+        if (item) item.count += 1;
+        else byNo.set(no, { no, card, count: 1 });
+      });
+      const costOf = card => { const n = Number(card.cost); return card.cost !== '' && card.cost != null && Number.isFinite(n) ? n : 0; };
+      const groups = new Map();
+      [...byNo.values()].forEach(item => {
+        const cost = costOf(item.card);
+        if (!groups.has(cost)) groups.set(cost, []);
+        groups.get(cost).push(item);
+      });
+      return [...groups.keys()].sort((a, b) => a - b).map(cost => ({ cost, items: groups.get(cost) }));
+    },
     battleLogIconGlyph(icon) {
       const map = {
         play: '出',
@@ -31725,6 +31959,7 @@ new Vue({
       this.battleSkillModal = null;
       if (this.tutorial && !this._dslSwapped) this.$set(this.tutorial.flags, 'skill', true);
       this.battleShowNotice(`${skill.name}を発動`, `${this._dslSwapped ? this.battleContext.oppName : this.battleContext.selfName}が${index === 2 ? '創世神技' : '神技'}「${skill.name}」を発動し、天力を${skill.cost}消費しました。`, []);
+      if (this.battleSample.self.kami) this._battleLogBrief && this._battleLogBrief('skill', `「${this._battleLogName(this.battleSample.self.kami)}」の${index === 2 ? '創世神技' : '神技'}「${skill.name}」`, this.battleSample.self.kami, 'self');
       // DSL：神技spec を実行（index は 1/2 → spec 内の神技契機を順番で対応付け）
       const kami = this.battleSample.self.kami;
       if (!kami || !this.effectSpecsReady) return;
