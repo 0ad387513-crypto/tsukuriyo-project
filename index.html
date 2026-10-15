@@ -4431,9 +4431,8 @@
   .sp-pack-content-label strong { color: #e4d6ac; font-weight: 600; white-space: nowrap; }
   .sp-pack-hidden { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px; padding: 5px 10px 7px; font-size: 11px; color: #c8c2af; }
   .sp-pack-backs { display: flex; flex: 0 0 auto; align-items: center; padding-right: 1px; }
-  .sp-pack-back { display: block; position: relative; width: 12px; height: 18px; border: 1px solid #a68a4f; border-radius: 2px; background: linear-gradient(135deg, #25213e, #111a2c); box-shadow: 0 1px 2px #0008; }
+  .sp-pack-back { display: block; position: relative; width: 12px; height: 18px; border: 1px solid #a68a4f; border-radius: 2px; background: #f1f0ec url('ui_decorations/tsukuriyo-pack-cardback-a09585f1b55a.webp') center/100% 100% no-repeat; box-shadow: 0 1px 2px #0008; }
   .sp-pack-back + .sp-pack-back { margin-left: -3px; }
-  .sp-pack-back::after { content: ''; position: absolute; inset: 4px 3px; border: 1px solid #a68a4f; transform: rotate(45deg); }
   .sp-pack-vis-thumb {
     flex: 1; aspect-ratio: 744/1039;
     background: #0a0c12 center/cover no-repeat;
@@ -8616,7 +8615,7 @@
       </div>
       <div class="top-mode-column top-mode-column-side">
         <button class="top-mode-card cardlist" @click="openModeDetail('cardlist')">
-          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/cardlist-straight-brush-83108b8547f1.webp)' }"></span>
+          <span class="top-mode-thumb" :style="{ backgroundImage: 'url(top_mode_icons/cardlist-brush-natural-grip-2f1eabb627f6.webp)' }"></span>
           <span class="top-mode-label">カードリスト</span>
           <span class="top-mode-sub">全カードの確認と、デッキの作成・管理</span>
         </button>
@@ -10776,7 +10775,7 @@
             <button class="gm-btn gs-sub-btn" :disabled="sbMyDeckEntries.length === 0" @click="peekDeckDetail">デッキを確認</button>
           </div>
           <div class="sp-kami-grid">
-            <div v-for="kami in sb.kamiCandidates" :key="kami.no"
+            <div v-for="kami in sbKamiCandidatesOrdered" :key="kami.no"
                  class="sp-kami-card"
                  :class="{
                    selected: sb.tempKami && String(sb.tempKami.no) === String(kami.no),
@@ -14455,7 +14454,7 @@ function emoteIconStyle(kamiNo, key) {
 const MODE_DETAIL_INFO = {
   cardlist: {
     title: 'カードリスト',
-    image: 'top_mode_icons/cardlist-straight-brush-83108b8547f1.webp',
+    image: 'top_mode_icons/cardlist-brush-natural-grip-2f1eabb627f6.webp',
     lead: 'カードを調べて、デッキを組む。',
     points: [
       { name: '絞り込み', text: '色・カード種別・種族・コストなどで、目的のカードを素早く探せます。' },
@@ -17235,6 +17234,9 @@ new Vue({
       const all = [...groups.values()];
       all.sort((a, b) => cardSortCompare(a.card, b.card));
       return all;
+    },
+    sbKamiCandidatesOrdered() {
+      return [...this.sb.kamiCandidates].sort((a, b) => Number(a.no) - Number(b.no));
     },
     sbIsMyKamiTurn() {
       return this.sb.roomData.kamiSelectTurn === this.sb.role;

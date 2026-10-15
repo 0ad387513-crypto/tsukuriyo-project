@@ -28,6 +28,22 @@ test("shield packs explain twelve cards without exposing the hidden nine", () =>
   assert.match(backs, /aria-hidden="true"/);
   assert.doesNotMatch(backs, /pack\.|cardImageUrl|fullName|:title|@mouse/);
   assert.match(picking, /@click\.stop="onPickPack\(i\)"/);
+  const backStyle = html.match(/\.sp-pack-back \{([^}]+)\}/)[1];
+  assert.match(backStyle, /width: 12px; height: 18px;/);
+  const backFile = backStyle.match(/url\('([^']+)'\)/)[1];
+  assert.match(backFile, /^ui_decorations\/tsukuriyo-pack-cardback-[a-f0-9]{12}\.webp$/);
+  assert.ok(fs.existsSync(path.join(__dirname, '..', backFile)));
+  assert.doesNotMatch(html, /\.sp-pack-back::after/);
+});
+
+test("shield Kami choices display in numeric Kami order without changing the candidate pool", () => {
+  const body = html.match(/sbKamiCandidatesOrdered\(\) \{([\s\S]*?)\n    \},/)[1];
+  const ordered = new Function(body);
+  const candidates = ['010', '002', '009', '001', '003', '007', '005', '006', '004', '008'].map(no => ({ no }));
+  const before = candidates.slice();
+  assert.deepEqual(ordered.call({ sb: { kamiCandidates: candidates } }).map(k => k.no), ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010']);
+  assert.deepEqual(candidates, before);
+  assert.match(html, /v-for="kami in sbKamiCandidatesOrdered"/);
 });
 
 test("inline application scripts are valid JavaScript", () => {
