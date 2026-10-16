@@ -2247,3 +2247,10 @@
 - ユーザーの指摘：共有用URLのジェネシスカードが古い画像のまま。原因は、共有用ブランチを作った後に main へ入った16件（maekawa さんのバトルログ・同期修正、Codex の「publish redesigned Genesis cards」など、v1.15.504〜512）を取り込んでいなかったこと
 - .release-worktree の作業中の内容（output/ を除く）を共有用ブランチに取り込み直し、origin/main をマージ。食い違いは手元の新しい方を採用（index.html はオロチ素顔のエモートを含む手元の行）、HANDOFF・.gitignore は両方、optimized_assets.json は両方の項目を残して git に入らない kami_redesign/ の記録を外した。voices/cards/manifest.json と asset_hashes.js を作り直した
 - npm test 246件成功
+
+## Claude v1.15.517 (2026-10-16): 創世決戦のCPU検証で見つけた不具合の修正
+- ユーザーの依頼で、創世決戦（4人）を4席ともCPUで回す検証を作業用フォルダ（Claude の scratchpad/sim。puppeteer-core。ゲームには入れていない）で実施。80セッション・星戦960試合
+- 修正1：CPU が創世神技を使う（_battleCpuUseGenesisSkill。カードを出す前と攻撃の前）。カットイン中は CPU の覆いを出さない
+- 修正2：創世決戦の CPU のカミ選び（gsCpuChooseKami）。相性の点数が数十倍違うため常に同じカミ（オオクニヌシ・タケミカヅチ）を選び、ヤマトタケル・ヤマタノオロチは一度も選ばれなかった。候補3柱から重み0.5〜1.5のくじに変更
+- 修正3：CPU の手番中に人間側のカードの死亡時効果で人間が選ぶ間も CPU が先へ進み、「人間が選ぶ」状態のまま CPU 自身の【誘】【選定】の選択画面が人間側に出て、CPU の覆いの下で止まっていた。battleRunDeathKeywordEffects を実行中の一覧（_battlePendingDeathEffects）に記録し、CPU は1枚出すごと・攻撃ごと・創世神技のあと・手番を終える前に _battleWaitPendingDeathEffects で待つ。検証では止まる試合が約1割→40試合で0
+- 検証の結果（カミの勝率など）はユーザーへの報告を参照。先攻の勝率は約61%

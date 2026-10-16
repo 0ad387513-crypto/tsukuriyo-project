@@ -12521,7 +12521,7 @@
   <div v-if="battleTurnWipe && appView === 'battle'" :key="'wipe'+battleTurnWipe.id" class="battle-turn-wipe" :class="battleTurnWipe.side"></div>
 
   <!-- ===== CPU対戦AI実行中の目隠し（内部的にself/oppを入れ替えて処理するため、その間は盤面を隠す） ===== -->
-  <div v-if="battleCpuThinking" class="battle-cpu-thinking-overlay">
+  <div v-if="battleCpuThinking && !battleSkillCloseup" class="battle-cpu-thinking-overlay"><!-- 神技のカットイン中は覆いを外して、相手の神技を暗くせずに見せる -->
     <div class="battle-cpu-thinking-label">{{ battleUiText(battleCpuThinkingLabel || '相手が考えています…') }}</div>
     <div class="battle-cpu-thinking-steps" aria-label="CPUターン進行状況">
       <span :class="battleCpuPhaseClass('review')">確認</span>
@@ -23828,13 +23828,18 @@ new Vue({
         this.battleCpuThinkingLabel = '相手が手札とマナを確認しています…';
         await this._battleCpuThinkPause(420);
         this.battleCpuPhase = 'main';
+        // 創世神技は、カードを出す前と攻撃の前に、使えるなら使う（出す前に使えば盤面を空けてから展開できる）
+        await this._battleCpuUseGenesisSkill(stillMyTurn);
         await this._battleCpuSummonAndUsePhase(stillMyTurn);
+        await this._battleCpuUseGenesisSkill(stillMyTurn);
         if (stillMyTurn()) {
           this.battleCpuPhase = 'attack';
           this.battleCpuThinkingLabel = '相手が攻撃可能なカードを確認しています…';
           await this._battleCpuThinkPause(360);
           await this._battleCpuAttackPhase(stillMyTurn);
         }
+        // 入れ替えを戻す前に、まだ動いている死亡時効果（人間の選択待ちを含む）を終わらせる
+        await this._battleWaitPendingDeathEffects();
         if (stillMyTurn()) {
           this.battleCpuPhase = 'end';
           this.battleCpuThinkingLabel = '相手がターン終了処理を行っています…';
@@ -23853,6 +23858,18 @@ new Vue({
       if (!this.battleSample.result && this.battleSample.activeSide === 'opp' && this.battleSample.turn === turnAtStart) {
         this.battleEndTurn();
       }
+    },
+    /* CPUの創世神技：天力が足りていて使える状態なら使う（入れ替え中なので battleSkillOptions は CPU 自身の神技を指す）。
+       ヤマタノオロチは封印数で自動発動するため battleSkillOptions に出ず、ここでは何もしない */
+    async _battleCpuUseGenesisSkill(stillMyTurn) {
+      if (!stillMyTurn()) return;
+      const skill = (this.battleSkillOptions || []).find(s => s.index === 2 && s.enabled);
+      if (!skill) return;
+      this.battleCpuThinkingLabel = `相手が創世神技「${skill.name}」を発動しています…`;
+      await this._battleCpuThinkPause(500);
+      if (!stillMyTurn()) return;
+      try { await this.battleUseKamiSkill(2); await this._battleWaitPendingDeathEffects(); }
+      catch (e) { console.warn('[cpu-battle] 創世神技の発動に失敗しました:', e); }
     },
     // CPU手番の演出用に一定時間待つ（キャンセル不要な単純な間なので専用のawaitヘルパーとして切り出す）
     _battleCpuThinkPause(ms) {
@@ -23896,6 +23913,7 @@ new Vue({
         await this._battleCpuThinkPause(500);
         if (!stillMyTurn()) break;
         await this.battlePlayFromHand(handIdx, zone, zone ? null : undefined);
+        await this._battleWaitPendingDeathEffects();
         if (this.battleOracleEffect) {
           // 発動演出は本来手動で閉じるまで残るが、CPU自身のプレイでは短時間で自動的に閉じる
           const effRef = this.battleOracleEffect;
@@ -23931,11 +23949,13 @@ new Vue({
             this.battleCpuThinkingLabel = `相手が「${this.fullName(attacker)}」で攻撃対象を選んでいます…`;
             await this._battleCpuThinkPause(420);
             await this.battleResolveLegacyBattle('self', idx, 'opp', bestTargetIdx);
+            await this._battleWaitPendingDeathEffects();
             acted = true;
           } else if (this.battleLegacyCanAct(attacker, 'divine').ok) {
             this.battleCpuThinkingLabel = `相手が「${this.fullName(attacker)}」で神攻を行っています…`;
             await this._battleCpuThinkPause(420);
             await this.battleResolveDivineAttack('self', idx);
+            await this._battleWaitPendingDeathEffects();
             acted = true;
           }
           if (this.battleSample.result) return;
@@ -28811,7 +28831,27 @@ new Vue({
       if (ranLayer1) this.battleGlowCardEffect(card);
       return ranLayer1;
     },
-    async battleRunDeathKeywordEffects(card) {
+    /* 死亡時効果は呼び出し元が待たずに走らせることが多い（まとめて破壊したとき等）。
+       CPUの手番中に人間側のカードの死亡時効果で人間に選んでもらう間も、CPUが先へ進むと
+       「人間が選ぶ」状態のまま CPU 自身のカード（【誘】【選定】など）の選択画面が人間側に出てしまい、
+       CPUの覆いの下に隠れたまま対戦が止まっていた。実行中の死亡時効果を記録し、CPU は終わるまで待つ */
+    battleRunDeathKeywordEffects(card) {
+      const pending = this._battlePendingDeathEffects || (this._battlePendingDeathEffects = new Set());
+      const run = this._battleRunDeathKeywordEffectsInner(card);
+      pending.add(run);
+      const done = () => pending.delete(run);
+      run.then(done, done);
+      return run;
+    },
+    /* 実行中の死亡時効果（そこから連鎖したものも含む）がすべて終わるまで待つ */
+    async _battleWaitPendingDeathEffects() {
+      for (let i = 0; i < 50; i++) {
+        const pending = this._battlePendingDeathEffects;
+        if (!pending || !pending.size) return;
+        await Promise.allSettled([...pending]);
+      }
+    },
+    async _battleRunDeathKeywordEffectsInner(card) {
       // このカードの本当の持ち主が実行中クライアント(手番側)と異なる場合（例：相手ターン中に
       // 自分のカードが戦闘で破壊された時の【死亡時】、または傀儡化等で持ち主が変わったカードの
       // 【死亡時】）、DSLの「自分」は常に実行側自身を指すため、このままここで処理すると
@@ -33274,15 +33314,20 @@ new Vue({
        どれだけ刺さるかを合計し、最も戦いやすいカミを選ぶ */
     gsCpuChooseKami(offerNos) {
       const pool = this.draftPoolNos(1).map(no => this.cardByNo[String(no)]).filter(Boolean);
-      let best = offerNos[0], bestScore = -Infinity;
-      for (const no of offerNos) {
+      // 相性の点数はカミによって数十倍の差がある（例：タケミカヅチ約2000・ヤマトタケル約80）ため、
+      // 一番高いものを選ぶと毎回同じカミになり、ヤマトタケルなどは一度も選ばれなかった。
+      // 配られた候補の中から、点数に応じた重み（0.5〜1.5）でくじを引く（相性の良いカミが少し選ばれやすい程度）
+      const scores = offerNos.map(no => {
         const tags = this.gsCpuKamiAffinityTags(no);
         let s = 0;
         for (const card of pool) s += this.gsCpuCardTagScore(card, tags, []);
-        s *= (0.9 + Math.random() * 0.2); // 揺らぎ（毎回同じカミにならないように）
-        if (s > bestScore) { bestScore = s; best = no; }
-      }
-      return best;
+        return Math.max(0, s);
+      });
+      const max = Math.max(...scores, 1);
+      const weights = scores.map(s => 0.5 + s / max);
+      let r = Math.random() * weights.reduce((a, b) => a + b, 0);
+      for (let i = 0; i < offerNos.length; i++) { r -= weights[i]; if (r <= 0) return offerNos[i]; }
+      return offerNos[offerNos.length - 1];
     },
     /* CPU席のピック済みカード（Firebase上のdecks由来） */
     gsCpuPickedCards(seat) {
