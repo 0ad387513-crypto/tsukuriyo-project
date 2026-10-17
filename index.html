@@ -10066,6 +10066,13 @@
           </label>
           <label class="settings-row">
             <span class="settings-row-text">
+              <span class="settings-row-label">CPUの強さ</span>
+              <span class="settings-row-desc">初心者向けは、<wbr>出せる中で<wbr>いちばん高い<wbr>カードから出し、<wbr>倒せる相手に<wbr>攻撃する<wbr>単純な動きです。<wbr>標準は、<wbr>損得を考えて<wbr>攻撃し、<wbr>マナを<wbr>使い切ります。<wbr>創世決戦では<wbr>部屋の難易度が<wbr>「初心者」のとき<wbr>初心者向けになります。</span>
+            </span>
+            <span class="settings-row-control"><select :value="cpuStrength" @change="setCpuStrength($event.target.value)" aria-label="CPUの強さ"><option value="beginner">初心者向け</option><option value="standard">標準</option></select></span>
+          </label>
+          <label class="settings-row">
+            <span class="settings-row-text">
               <span class="settings-row-label">CPUが自分で<wbr>カードを使う</span>
               <span class="settings-row-desc">ひとりで試す対戦で、<wbr>CPUが<wbr>カードの使用や<wbr>攻撃を行います。<wbr>オフにすると<wbr>待機するだけになります。</span>
             </span>
@@ -15677,6 +15684,7 @@ new Vue({
     pickAssistEnabled: loadStoredBool('tsukuriyo_pickAssistEnabled', true), // 選別の儀（4人対戦ドラフト）の「⭐おすすめ」ピック補助表示（初心者向け、OFF可）。シールド戦のパック選択には適用しない
     poolDenseView: loadStoredBool('tsukuriyo_poolDenseView', false), // カードリスト（左のカードプール）を小さいカードで多く並べる表示に切り替えるか（見方だけの切替。機能は従来通り）
     deckDenseView: loadStoredBool('tsukuriyo_deckDenseView', false), // デッキ一覧（右のデッキパネル）の各行を詰めて多く表示するか（マナカーブ等の統計表示は変わらず維持）
+    cpuStrength: (() => { try { return localStorage.getItem('tsukuriyo_cpuStrength') === 'beginner' ? 'beginner' : 'standard'; } catch (e) { return 'standard'; } })(), // CPUの強さ（'beginner'＝初心者向けの単純な動き／'standard'＝損得を考える）
     cpuAutoPlayEnabled: loadStoredBool('tsukuriyo_cpuAutoPlayEnabled', true), // ソロテスト時：CPUが自律してカードプレイ・攻撃を行うか（OFF＝従来通り待機のみ）
     battleTurnElapsedSec: 0,      // 現在のターンの経過秒数
     battleResultRevealReady: false, // false の間はひび割れ→破壊演出を表示し、勝敗オーバーレイ自体は隠す
@@ -19465,6 +19473,7 @@ new Vue({
       const oppInfo = seats[oppSeat] || {};
       this._battleInitialize({
         source: 'game', modeLabel: '4人対戦', returnView: 'game', round,
+        cpuStrength: this.gsSettings && this.gsSettings.difficulty === 'beginner' ? 'beginner' : 'standard',
         selfName: myInfo.name || `P${mySeat}`,
         oppName: oppInfo.name || opponent.name || `P${oppSeat}`,
         firstSide, life: 10,
@@ -20002,6 +20011,7 @@ new Vue({
         selfName: self.name, oppName: opp.name, firstSide,
         selfMulligans: config.selfMulligans || 1, oppMulligans: config.oppMulligans || 1,
         oppIsCpu: !!config.oppIsCpu, // 相手席がCPU（駆動する2人目のクライアントが実在しない）場合、マリガン/ターンをこちらの1クライアントで自動進行する
+        cpuStrength: config.cpuStrength || this.cpuStrength, // 対戦ごとに固定（創世決戦は部屋の難易度から渡す）
         oppCpuAutoPlay: this.cpuAutoPlayEnabled, // CPUが自律してカードプレイ・攻撃を行うか（開始時点の設定を対戦中固定で使う。OFF＝従来通り待機のみ）
         fieldTheme: this._battlePickFieldTheme(config, self, opp),
         turnLimitSec: config.turnLimitSec, // 手番の制限時間（秒・null＝なし・undefined＝モードの既定）
@@ -22170,6 +22180,10 @@ new Vue({
       this.deckDenseView = !this.deckDenseView;
       try { localStorage.setItem('tsukuriyo_deckDenseView', String(this.deckDenseView)); } catch (e) { /* 保存できなくても続行 */ }
     },
+    setCpuStrength(value) {
+      this.cpuStrength = value === 'beginner' ? 'beginner' : 'standard';
+      try { localStorage.setItem('tsukuriyo_cpuStrength', this.cpuStrength); } catch (e) { /* 保存できなくても続行 */ }
+    },
     toggleCpuAutoPlay() {
       this.cpuAutoPlayEnabled = !this.cpuAutoPlayEnabled;
       try { localStorage.setItem('tsukuriyo_cpuAutoPlayEnabled', String(this.cpuAutoPlayEnabled)); } catch (e) { /* 保存できなくても続行 */ }
@@ -23830,13 +23844,15 @@ new Vue({
         this.battleCpuPhase = 'main';
         // 創世神技は、カードを出す前と攻撃の前に、使えるなら使う（出す前に使えば盤面を空けてから展開できる）
         await this._battleCpuUseGenesisSkill(stillMyTurn);
-        await this._battleCpuSummonAndUsePhase(stillMyTurn);
+        if (this._battleCpuIsStandard()) await this._battleCpuSmartMainPhase(stillMyTurn);
+        else await this._battleCpuSummonAndUsePhase(stillMyTurn);
         await this._battleCpuUseGenesisSkill(stillMyTurn);
         if (stillMyTurn()) {
           this.battleCpuPhase = 'attack';
           this.battleCpuThinkingLabel = '相手が攻撃可能なカードを確認しています…';
           await this._battleCpuThinkPause(360);
-          await this._battleCpuAttackPhase(stillMyTurn);
+          if (this._battleCpuIsStandard()) await this._battleCpuSmartAttackPhase(stillMyTurn);
+          else await this._battleCpuAttackPhase(stillMyTurn);
         }
         // 入れ替えを戻す前に、まだ動いている死亡時効果（人間の選択待ちを含む）を終わらせる
         await this._battleWaitPendingDeathEffects();
@@ -23961,6 +23977,190 @@ new Vue({
           if (this.battleSample.result) return;
         }
         if (!acted) break;
+      }
+    },
+    /* ===== CPU（標準）：盤面の点数化・アドバンテージを考えた攻撃・マナを使い切る出し方 =====
+       初心者向け（上の _battleCpuSummonAndUsePhase / _battleCpuAttackPhase）は「高いカードから出す・
+       倒せる相手がいれば戦闘・いなければ神攻」の単純な動きのまま残す。
+       標準は、カード1枚の価値（戦闘力・神攻力・キーワード）を点数にして、
+       ・攻撃：得な交換（自分の損より相手の損が大きい）を選び、損な攻撃や、相手に狙われるだけの攻撃はしない。とどめを刺せるときは神攻に集中する
+       ・出し方：そのターンのマナを無駄なく使い切る組み合わせを選ぶ
+       入れ替え中（CPU自身が self）に呼ばれる前提。 */
+    _battleCpuWeights() {
+      return Object.assign({ faceHigh: 1.6, faceMid: 2, faceLow: 3, exposure: 0.2, threshold: 0.1, holdGuard: true }, this._battleCpuWeightsOverride || {});
+    },
+    _battleCpuIsStandard() {
+      const ctx = this.battleContext || {};
+      return (ctx.cpuStrength || this.cpuStrength || 'standard') !== 'beginner';
+    },
+    // カード1枚の価値（場に残っているときの強さの目安）
+    _battleCpuCardValue(card) {
+      if (!card) return 0;
+      let v = Number(card.power || 0) / 1000 + Number(card.attack || 0) * 1.5 + Number(card.cost || 0) * 0.3;
+      if (this.battleCardHasKeyword(card, '守護')) v += 1;
+      if (this.battleCardHasKeyword(card, '呪殺')) v += 1.5;
+      if (this.battleCardHasKeyword(card, '死角')) v += 0.8;
+      if (this.battleCardHasKeyword(card, '不可侵')) v += 0.5;
+      if (card.isToken) v -= 0.5;
+      return Math.max(0.2, v);
+    },
+    // 戦闘の結果の予想（戦闘力が高い方が残る・同じなら両方破壊・【呪殺】は戦闘力に関係なく相手を破壊）
+    _battleCpuPredictBattle(attacker, defender) {
+      const ap = Number(attacker.power || 0), dp = Number(defender.power || 0);
+      return {
+        defenderDies: ap >= dp || this.battleCardHasKeyword(attacker, '呪殺'),
+        attackerDies: dp >= ap || this.battleCardHasKeyword(defender, '呪殺'),
+      };
+    },
+    // 攻撃して横になったカードは、次の相手ターンに戦闘で狙われる。狙われたら負けそうなら、その分を損とみなす
+    _battleCpuExposureCost(card) {
+      const foes = (this.battleSample.opp.legacies || []);
+      const threatened = foes.some(f => this.battleCanTargetLegacy(f, card) && this._battleCpuPredictBattle(f, card).defenderDies);
+      return threatened ? this._battleCpuCardValue(card) * this._battleCpuWeights().exposure : 0;
+    },
+    // 相手の縦向きの【守護】（神攻・戦闘の攻撃先を自分に変えられる）
+    _battleCpuEnemyGuards(attacker) {
+      return (this.battleSample.opp.legacies || []).filter(g => !g._tapped && this.battleCardHasKeyword(g, '守護') && this.battleCanTargetLegacy(attacker, g));
+    },
+    // 1枚の攻撃者について、いちばん得な行動（戦闘・神攻・何もしない）を点数つきで返す
+    _battleCpuBestAttack(attacker, idx) {
+      const me = this.battleSample.self, foe = this.battleSample.opp;
+      const myValue = this._battleCpuCardValue(attacker);
+      const exposure = this._battleCpuExposureCost(attacker);
+      let best = { score: 0, kind: null };
+      // 戦闘：相手のタップ済みレガシー（戦闘の対象にできるもの）との交換
+      if (this.battleLegacyCanAct(attacker, 'battle').ok) {
+        (foe.legacies || []).forEach((d, dIdx) => {
+          if (!this.battleCanDeclareAttackTarget(attacker, d)) return;
+          const r = this._battleCpuPredictBattle(attacker, d);
+          const score = (r.defenderDies ? this._battleCpuCardValue(d) : 0) - (r.attackerDies ? myValue : exposure);
+          if (score > best.score) best = { score, kind: 'battle', idx, target: dIdx };
+        });
+      }
+      // 神攻：相手のライフを減らす。相手の【守護】が受けると戦闘になるので、その結果で見積もる
+      if (this.battleLegacyCanAct(attacker, 'divine').ok) {
+        const dmg = Number(attacker.attack || 0);
+        const guards = this._battleCpuEnemyGuards(attacker);
+        let score;
+        if (guards.length) {
+          // 守護で受けられる：いちばん受けやすい守護（攻撃者を倒せるもの）との戦闘になるとみなす
+          const outcomes = guards.map(g => { const r = this._battleCpuPredictBattle(attacker, g); return (r.defenderDies ? this._battleCpuCardValue(g) : 0) - (r.attackerDies ? myValue : exposure); });
+          score = Math.min(...outcomes);
+        } else {
+          // ライフ1点の重み：相手のライフが少ないほど重くする
+          const W = this._battleCpuWeights();
+          const weight = foe.life <= 3 ? W.faceLow : foe.life <= 6 ? W.faceMid : W.faceHigh;
+          score = dmg * weight - exposure;
+        }
+        if (score > best.score) best = { score, kind: 'divine', idx };
+      }
+      // 自分のライフが危ないときは、【守護】を持つカードは攻撃に使わず守りに残す
+      if (best.kind && this._battleCpuWeights().holdGuard && this.battleCardHasKeyword(attacker, '守護')) {
+        const threat = (foe.legacies || []).reduce((sum, f) => sum + Number(f.attack || 0), 0);
+        if (me.life <= threat + 1 && best.score < myValue) best = { score: 0, kind: null };
+      }
+      return best;
+    },
+    // とどめを刺せるか：神攻できる全員の神攻力から、相手の守護に受けられる分（大きい順）を引いても相手のライフ以上
+    _battleCpuHasLethal() {
+      const me = this.battleSample.self, foe = this.battleSample.opp;
+      const ready = (me.legacies || []).filter(c => this.battleLegacyCanAct(c, 'divine').ok);
+      if (!ready.length) return false;
+      const dmg = ready.map(c => Number(c.attack || 0)).sort((a, b) => b - a);
+      const guards = (foe.legacies || []).filter(g => !g._tapped && this.battleCardHasKeyword(g, '守護')).length;
+      const through = dmg.slice(guards).reduce((a, b) => a + b, 0);
+      return through >= Number(foe.life || 0);
+    },
+    async _battleCpuSmartAttackPhase(stillMyTurn) {
+      for (let guard = 0; guard < 20 && stillMyTurn(); guard++) {
+        const me = this.battleSample.self;
+        // とどめを刺せるなら、神攻力の小さい順に神攻する（守護に受けさせるのは小さい攻撃から）
+        if (this._battleCpuHasLethal()) {
+          const ready = (me.legacies || []).filter(c => this.battleLegacyCanAct(c, 'divine').ok).sort((a, b) => Number(a.attack || 0) - Number(b.attack || 0));
+          const attacker = ready[0];
+          this.battleCpuThinkingLabel = `相手が「${this.fullName(attacker)}」で神攻を行っています…`;
+          await this._battleCpuThinkPause(420);
+          await this.battleResolveDivineAttack('self', me.legacies.indexOf(attacker));
+          await this._battleWaitPendingDeathEffects();
+          if (this.battleSample.result) return;
+          continue;
+        }
+        // そうでなければ、全員の中でいちばん得な1手を選んで実行し、盤面が変わるので選び直す
+        let best = { score: this._battleCpuWeights().threshold, kind: null };
+        (me.legacies || []).forEach((attacker, idx) => {
+          if (attacker._tapped) return;
+          const option = this._battleCpuBestAttack(attacker, idx);
+          if (option.kind && option.score > best.score) best = option;
+        });
+        if (!best.kind) break;
+        const attacker = me.legacies[best.idx];
+        if (best.kind === 'battle') {
+          this.battleCpuThinkingLabel = `相手が「${this.fullName(attacker)}」で攻撃対象を選んでいます…`;
+          await this._battleCpuThinkPause(420);
+          await this.battleResolveLegacyBattle('self', best.idx, 'opp', best.target);
+        } else {
+          this.battleCpuThinkingLabel = `相手が「${this.fullName(attacker)}」で神攻を行っています…`;
+          await this._battleCpuThinkPause(420);
+          await this.battleResolveDivineAttack('self', best.idx);
+        }
+        await this._battleWaitPendingDeathEffects();
+        if (this.battleSample.result) return;
+      }
+    },
+    // オラクルが今使っても無駄になりそうか（相手の場を対象にする効果なのに、相手の場が空など）
+    _battleCpuOracleUseless(card) {
+      const spec = this._dslGetSpec ? this._dslGetSpec(card) : null;
+      const text = JSON.stringify(spec || {}) + String(card.text || card.effect || '');
+      const targetsEnemyField = /"対象側":"opp"|相手(の)?レガシー|相手フィールド/.test(text) && /破壊|補正:-|拘束|手札に戻/.test(text);
+      return targetsEnemyField && !(this.battleSample.opp.legacies || []).length;
+    },
+    async _battleCpuSmartMainPhase(stillMyTurn) {
+      for (let step = 0; step < 20 && stillMyTurn(); step++) {
+        const player = this.battleSample.self;
+        const candidates = [];
+        (player.hand || []).forEach(card => {
+          if (!card || !['レガシー', 'レリック', 'オラクル'].includes(card.category)) return;
+          const options = this.battleSublimCostOptions(card);
+          if (options.length !== 1) return; // 昇華・進化の選択が絡むカードは、まだ扱わない（初心者向けと同じ）
+          const cost = options[0];
+          if (cost > player.mana) return;
+          if (card.category === 'オラクル' && this._battleCpuOracleUseless(card)) return;
+          const value = card.category === 'レガシー' ? this._battleCpuCardValue(card) : 1 + cost * 0.3;
+          candidates.push({ card, cost, value, zone: card.category === 'レガシー' ? 'legacies' : card.category === 'レリック' ? 'relics' : null });
+        });
+        if (!candidates.length) break;
+        // マナを無駄なく使い切る組み合わせ（使うマナが最大、同じなら価値の合計が大きいもの）を全通り試して選ぶ
+        const free = { legacies: this.battleFieldLimit('legacies') - (player.legacies || []).length, relics: this.battleFieldLimit('relics') - (player.relics || []).length };
+        const list = candidates.slice(0, 12);
+        let bestSet = null, bestKey = -1;
+        for (let mask = 1; mask < (1 << list.length); mask++) {
+          let mana = 0, value = 0, legs = 0, rels = 0;
+          for (let i = 0; i < list.length; i++) if (mask & (1 << i)) { mana += list[i].cost; value += list[i].value; if (list[i].zone === 'legacies') legs++; if (list[i].zone === 'relics') rels++; }
+          if (mana > player.mana || legs > free.legacies || rels > free.relics) continue;
+          const key = mana * 100 + value;
+          if (key > bestKey) { bestKey = key; bestSet = list.filter((_, i) => mask & (1 << i)); }
+        }
+        if (!bestSet || !bestSet.length) break;
+        // 組み合わせの中から1枚出し、ドローなどで手札が変わるので選び直す（レリック → レガシー（高い順） → オラクルの順）
+        const order = { relics: 0, legacies: 1, null: 2 };
+        bestSet.sort((a, b) => (order[a.zone] - order[b.zone]) || (b.cost - a.cost));
+        const pick = bestSet[0];
+        const handIdx = player.hand.indexOf(pick.card);
+        if (handIdx < 0) break;
+        this.battleCpuThinkingLabel = `相手が「${this.fullName(pick.card)}」を場に出しています…`;
+        await this._battleCpuThinkPause(500);
+        if (!stillMyTurn()) break;
+        const manaBefore = player.mana, handBefore = player.hand.length;
+        await this.battlePlayFromHand(handIdx, pick.zone, pick.zone ? null : undefined);
+        await this._battleWaitPendingDeathEffects();
+        if (this.battleOracleEffect) {
+          const effRef = this.battleOracleEffect;
+          setTimeout(() => { if (this.battleOracleEffect === effRef) this.battleOracleEffect = null; }, 1800);
+        }
+        if (!stillMyTurn()) break;
+        // 出せなかった（マナも手札も変わらない）ときは繰り返さない
+        if (player.mana === manaBefore && player.hand.length === handBefore) break;
+        await this._battleCpuThinkPause(600);
       }
     },
     /* 確認の画面の文から「カード名」を拾い、カードに結び付ける（場に出ているカードを優先。トークンなど一覧に無いものも場から拾える） */
@@ -25850,8 +26050,19 @@ new Vue({
       // （傀儡化＝コントロール奪取や破壊等は最強のレガシーを狙うのが定石のため）。
       if (this._battleCpuAutoResolving) {
         const canSkip = !!sel.任意 || /任意/.test(remarks);
-        if (canSkip) return Promise.resolve([]);
+        const standard = typeof this._battleCpuIsStandard === 'function' && this._battleCpuIsStandard();
+        if (canSkip && !standard) return Promise.resolve([]);
         let ranked = pool;
+        if (standard) {
+          const isCost = /破壊|墓地|捨て|崩壊|手札に戻/.test(remarks + JSON.stringify(sel));
+          const oppCards = pool.filter(c => this._battleFieldCardSide(c) === 'opp');
+          const selfCards = pool.filter(c => this._battleFieldCardSide(c) !== 'opp');
+          const byValue = list => list.slice().sort((a, b) => this._battleCpuCardValue(b) - this._battleCpuCardValue(a));
+          if (sel.対象側 === 'opp' || (sel.対象側 === 'both' && oppCards.length && (opts.preferOpponent || isCost))) ranked = byValue(oppCards.length ? oppCards : pool);
+          else if (isCost) { if (canSkip) return Promise.resolve([]); ranked = byValue(selfCards.length ? selfCards : pool).reverse(); }
+          else ranked = byValue(selfCards.length ? selfCards : pool);
+          return Promise.resolve(ranked.slice(0, Math.min(need, ranked.length)));
+        }
         if (sel.対象側 === 'opp' && pool.every(c => c && c.category === 'レガシー')) {
           ranked = pool.slice().sort((a, b) => (Number(b.power) || 0) - (Number(a.power) || 0));
         } else if (sel.対象側 === 'both' && opts.preferOpponent) {
@@ -27935,10 +28146,15 @@ new Vue({
       await this.dslRunActions(chosen.処理 || [], sourceCard);
     },
     /* 任意能力の発動可否を尋ねる。kind='reroll' の場合はカード効果ではなくシステムルールとして文言を出し分ける */
+    _battleCpuShouldUseOptional(summary) {
+      const text = String(summary || '');
+      return !/自分の[^。]*(破壊|墓地へ|捨て|崩壊)|ことで|ライフを[^。]*(失|減らす)|自分ライフ/.test(text);
+    },
     dslAskOptional(card, triggerLabel, summary, kind = 'ability', options = {}) {
       if (this.battleOracleEffect && !this._battleCpuAutoResolving) return this._battleWaitForOracleEffect().then(ok => ok ? this.dslAskOptional(card, triggerLabel, summary, kind, options) : false);
-      // CPU自動対戦中：人間の確認を待てないため、任意効果は安全側（発動しない）に倒す
-      if (this._battleCpuAutoResolving) return Promise.resolve(false);
+      // CPU自動対戦中：人間の確認を待てないため、初心者向けは任意効果を安全側（発動しない）に倒す。
+      // 標準は、自分のカードを破壊・墓地へ送る・捨てる、ライフを失うといった代償が無ければ使う
+      if (this._battleCpuAutoResolving) return Promise.resolve(typeof this._battleCpuIsStandard === 'function' && this._battleCpuIsStandard() && this._battleCpuShouldUseOptional(summary));
       return new Promise((resolve) => {
         this.dslOptionalModal = {
           sourceCard: card,

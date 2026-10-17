@@ -2254,3 +2254,10 @@
 - 修正2：創世決戦の CPU のカミ選び（gsCpuChooseKami）。相性の点数が数十倍違うため常に同じカミ（オオクニヌシ・タケミカヅチ）を選び、ヤマトタケル・ヤマタノオロチは一度も選ばれなかった。候補3柱から重み0.5〜1.5のくじに変更
 - 修正3：CPU の手番中に人間側のカードの死亡時効果で人間が選ぶ間も CPU が先へ進み、「人間が選ぶ」状態のまま CPU 自身の【誘】【選定】の選択画面が人間側に出て、CPU の覆いの下で止まっていた。battleRunDeathKeywordEffects を実行中の一覧（_battlePendingDeathEffects）に記録し、CPU は1枚出すごと・攻撃ごと・創世神技のあと・手番を終える前に _battleWaitPendingDeathEffects で待つ。検証では止まる試合が約1割→40試合で0
 - 検証の結果（カミの勝率など）はユーザーへの報告を参照。先攻の勝率は約61%
+
+## Claude v1.15.518 (2026-10-17): CPU の強さ（初心者向け／標準）
+- ユーザーの指示で、今までの CPU を「初心者向け」として残し、「標準」を追加。設定の「対戦」タブに「CPUの強さ」（localStorage tsukuriyo_cpuStrength、既定は標準）。創世決戦は部屋の難易度が beginner のとき初心者向け、それ以外は標準（_startGameBattle の cpuStrength）。battleContext.cpuStrength は対戦ごとに固定
+- 標準（_battleCpuIsStandard）：カードの価値 _battleCpuCardValue（戦闘力・神攻力・守護/呪殺/死角/不可侵）、戦闘結果の予想（高い方が残る・同じなら両方・呪殺）、攻撃で横になって狙われる損 _battleCpuExposureCost、とどめの計算 _battleCpuHasLethal、得な1手ずつ選ぶ _battleCpuSmartAttackPhase、マナを使い切る組み合わせ（最大12枚の全通り）の _battleCpuSmartMainPhase、相手の場が空のときの無駄な妨害オラクルを出さない。重みは _battleCpuWeights（検証では _battleCpuWeightsOverride で差し替え）
+- 標準だけ「〜してもよい」効果を使う（dslAskOptional：自分のカード破壊・墓地へ・捨てる・ライフを失う／〜することで の代償が無ければ使う）。任意の対象も見送らず選ぶ（dslChooseTargets：相手は価値の高い順、自分の効果は価値の高い順、代償は低い順）。初心者向けは従来どおり使わない
+- 検証（創世決戦で組まれたデッキ・カミで、同じ組を入れ替えて対戦）：標準の対初心者向け勝率 66.5%（155試合）、追加検証 54〜60%（各約60試合）。攻撃の重みの調整だけでは約50%で、任意効果を使うようにしたのが効いた。わざと攻撃しない標準は 5% で、検証の仕組みが働いていることも確認
+- 未解決：共有用の版（main の v1.15.511〜512 を含む）でだけ、まれにページ全体が固まる（CPU検証で約3%、手元の版では起きない）。原因は特定できていない
