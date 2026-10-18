@@ -2292,3 +2292,10 @@
 - 試聴室（tools/voice-preview/index.html）に window.kjReveal(対象) を追加：対象の「キャラ名：…」からキャラ（カミならカミのタブ）を選んで表示する
 - 枠（tools/hub/view.html）の focusItem：ページに kjReveal があれば呼んでから、文が同じ行を最大8秒待って探す（読み方の添え書き「陰陽（いんよう）」と空白は無視して比べる）。見つからなければいちばん似た行へ（kjReveal の無いページは2秒で）。ほかのページの飛び先の決め方も同じ処理になる
 - 確認：手元・共有用の版とも、強欲なる爪の竜人・陰陽かぶれの犬神のメモから約1秒で台詞の行へ動き、メモが開くことを内蔵ブラウザで確認
+
+## Claude v1.15.523 (2026-10-18): 声の修正メモから、試聴室に「声の作り直しの提案」を用意する
+- ユーザーの依頼：修正依頼ボードで声のメモを「Claude に回す」と、Claude がメモをもとに直す準備（声の高さなどを変える説明の作成）をする
+- 流れ：キジマが「Claude に回す」→ Claude に「依頼を見て」と伝える（Claude は押されたことに自分では気づけない。ボードの該当メモにもそう表示）→ Claude が `node scripts/dev_notes.js list --status approved --assignee claude` で読み、tools/voice-preview/proposals.json にキャストのキー（card_voice_cast.json と同じ）ごとに提案を書き、メモを review にして結果を書く → キジマが試聴室で「この提案を欄に入れる」→「保存して、候補を作る」
+- proposals.json の形：{ proposals: { キャストのキー: { noteIds, memos[{memo,name,target}], reason（日本語の説明）, voice: { spec（SPEC と同じ値）, description（英語・1000文字以内、無ければ spec から作る）, design_text, pitch_shift }, lines: { 台詞ID: { direction, tags, text, stability } } } } }。提案が終わったら Claude が消す
+- 試聴室：キャラの見出しに「💡 Claude の提案あり」、「声のイメージを変える」を開いた状態にして先頭に提案（メモ・変えるところ・今の設定 → 提案）。「この提案を欄に入れる」は欄に入れるだけで保存しない。台詞ごとの方針の提案は「この方針を保存」
+- 1件目：強欲なる爪の竜人（竜人:n113）の「猫撫で声のザ・メンヘラみたいなバージョンも聞きたい」に、今の候補を残して別の版を足す案（女性・20代・高め・柔らかい・息まじり・優しい・感情豊か＋甘く依存する説明、見本の文は甘えて引き止める台詞）

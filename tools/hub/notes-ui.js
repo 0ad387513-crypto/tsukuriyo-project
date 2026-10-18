@@ -30,6 +30,8 @@
     if (n.memo) box.append(el("div", "body", n.memo));
     if (n.prompt) box.append(el("div", "prompt", "指示：" + n.prompt));
     if (n.result) box.append(el("div", "result", "結果：" + n.result));
+    // Claude は押されたことに自分では気づけないので、伝え方を添える
+    if (N.OWNER && n.status === "approved" && n.assignee === "claude") box.append(el("div", "muted", "Claude に「依頼を見て」と伝えると、この内容をもとに直す準備をします（声のメモなら、試聴室に声の作り直しの提案を用意します）。"));
     const tools = el("div", "row");
     const fail = e => opts.onError && opts.onError(e);
     const mine = opts.uid && n.uid === opts.uid;

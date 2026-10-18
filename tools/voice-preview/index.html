@@ -153,6 +153,8 @@
   .tag-view { color: var(--ok); font-weight: 700; }
   .dir-note { font-size: 11px; color: var(--muted); margin: 0; white-space: pre-line; }
   .dir { gap: 12px; }
+  .proposal { border: 1px solid var(--gold); border-radius: 8px; padding: 10px 12px; background: var(--gold-soft); }
+  .proposal .plist { white-space: pre-line; font-size: 13px; margin: 0; }
   .step { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
   .step:last-child { border-bottom: 0; padding-bottom: 0; }
   .step h4 { margin: 0; font-size: 13px; color: var(--gold); }
@@ -589,6 +591,7 @@
     const hasCands = (r.candidates || []).length > 0;
     const cmd = TOOL + " design --cast " + key + (hasCands ? " --keep" : "");
     const sp = JSON.parse(JSON.stringify(c.voice_spec || {}));
+    const syncs = [];
     const text = el("textarea"); text.rows = 6; text.value = c.el_description || ""; text.setAttribute("aria-label", "声の説明（英語）");
     const count = el("span", "count");
     const syncCount = () => { const n = text.value.replace(/\s+/g, " ").trim().length; count.textContent = n + " / 1000文字"; count.classList.toggle("over", n > 1000); };
@@ -627,7 +630,7 @@
         });
         group.append(b);
       }
-      sync(); row.append(group); s1.append(row);
+      sync(); syncs.push(sync); row.append(group); s1.append(row);
     }
     const role = el("input"); role.type = "text"; role.value = sp.role || ""; role.placeholder = "例：熱血な見習い忍者。先生を慕っている"; role.setAttribute("aria-label", "役柄（日本語）");
     role.addEventListener("input", () => { sp.role = role.value.trim(); rebuild(); });
@@ -682,7 +685,59 @@
     }
     s5.append(el("h4", "", "前の説明（戻したいときに）"), hist);
     renderHistory(); syncCount();
-    ve.append(s1, s3, s4, s5);
+    // Claude の提案（修正メモをもとに用意したもの）：欄に入れるだけで、保存・候補づくりはキジマが押す
+    const prop = (data.proposals || {})[key];
+    let sP = null;
+    if (prop && (prop.voice || prop.lines)) {
+      sP = el("section", "step proposal");
+      sP.append(el("h4", "", "💡 Claude の提案（修正メモから）"));
+      for (const m of prop.memos || []) sP.append(el("p", "dir-note", "メモ：「" + m.memo + "」" + (m.name ? "（" + m.name + "）" : "") + (m.target ? "\n対象：" + m.target : "")));
+      if (prop.reason) sP.append(el("p", "plist", prop.reason));
+      const v = prop.voice;
+      if (v) {
+        const word = (field, val) => { const opts = new Map(SPEC[field].options); return Array.isArray(val) ? (val.map(x => opts.get(x) || x).join("・") || "なし") : (opts.get(val) || val || "なし"); };
+        const rows = [];
+        const cur = c.voice_spec || {};
+        for (const field of Object.keys(SPEC)) {
+          if (!v.spec || v.spec[field] === undefined) continue;
+          const before = word(field, cur[field]), after = word(field, v.spec[field]);
+          rows.push(SPEC[field].label + "：" + (before === after ? after + "（そのまま）" : before + " → " + after));
+        }
+        if (v.spec && v.spec.note !== undefined) rows.push("その他の指示：" + (v.spec.note || "なし"));
+        if (v.design_text !== undefined) rows.push("見本の文：" + (v.design_text || "（空：台詞から自動）"));
+        if (v.pitch_shift !== undefined) rows.push("台詞の高さを後から変える：" + (v.pitch_shift > 0 ? v.pitch_shift + "段階上げる" : v.pitch_shift < 0 ? -v.pitch_shift + "段階下げる" : "変えない"));
+        sP.append(el("p", "plist", rows.join("\n")));
+        const apply = el("button", "copy main", "この提案を欄に入れる（まだ保存しません）"); apply.type = "button";
+        apply.addEventListener("click", () => {
+          for (const k of Object.keys(sp)) delete sp[k];
+          Object.assign(sp, JSON.parse(JSON.stringify(Object.assign({}, c.voice_spec || {}, v.spec || {}))));
+          role.value = sp.role || ""; note.value = sp.note || "";
+          if (v.design_text !== undefined) sample.value = v.design_text;
+          if (v.pitch_shift !== undefined) shiftSel.value = String(v.pitch_shift);
+          syncs.forEach(fn => fn()); rebuild();
+          if (v.description) { text.value = v.description; syncCount(); }
+          syncHint(); s3.scrollIntoView({ block: "center" });
+          toast("提案を欄に入れました。内容を確かめて「保存して、候補を作る」を押してください");
+        });
+        const b = el("div", "btns"); b.append(apply); sP.append(b);
+        sP.append(el("p", "dir-note", "今ある候補は残ったまま、新しい説明の候補が増えます（気に入らなければ「前の説明」から戻せます）。"));
+      }
+      // 台詞ごとの演技の方針の提案
+      for (const [ref, d] of Object.entries(prop.lines || {})) {
+        const it = (data.items || []).find(x => x.ref === ref);
+        const row = el("div", "btns");
+        const desc = [d.direction && "方針：" + d.direction, d.tags && "タグ：" + d.tags, d.text && "読む文：" + d.text].filter(Boolean).join("／");
+        row.append(el("span", "", (it ? it.situation || ref : ref) + "「" + (it ? it.text : "") + "」 → " + desc));
+        const save = el("button", "copy small", "この方針を保存"); save.type = "button";
+        save.addEventListener("click", async () => {
+          const cur = data.directions[ref] || {};
+          try { await saveDirection(ref, { text: d.text !== undefined ? d.text : (cur.text || ""), direction: d.direction !== undefined ? d.direction : (cur.direction || ""), tags: d.tags !== undefined ? d.tags : (cur.tags || ""), stability: d.stability !== undefined ? d.stability : (cur.stability ?? null), tempo: cur.tempo ?? null }); toast("保存しました。台詞を作り直すと反映されます"); render(); } catch (e) { toast(e.message); }
+        });
+        row.append(save); sP.append(row);
+      }
+      box.open = true;
+    }
+    ve.append(...[sP, s1, s3, s4, s5].filter(Boolean));
     box.append(ve);
     return box;
   }
@@ -1108,6 +1163,7 @@
       state.textContent = r.released ? "声削除済み" : r.voiceId ? (r.source === "library" ? "ライブラリの声で登録済み" : `候補${r.choice}で登録済み`) : cands.length ? `候補${cands.length}個` : "未着手";
       const labels = document.createElement("span"); labels.className = "labels"; labels.textContent = (c.labels || []).join("／") + `｜台詞${c.lines || 0}本`;
       head.append(name, state, labels);
+      if ((data.proposals || {})[key]) { const pc = document.createElement("span"); pc.className = "chip"; pc.textContent = "💡 Claude の提案あり"; pc.title = "修正メモをもとにした提案があります。「声のイメージを変える」の中にあります"; head.append(pc); }
       if (r.voiceId && !r.released) {
         const mk = document.createElement("button"); mk.type = "button"; mk.className = "copy main"; mk.textContent = "台詞を作る（未作成の分）";
         mk.addEventListener("click", () => runCommand(`${TOOL} lines --cast ${key}`, "台詞を作る"));
@@ -1241,6 +1297,8 @@
       getJson("/tools/voice-script/direction_tags.json", { map: [] }),
       getJson("/voices/cards/heard.json", {}),
     ]);
+    // 修正メモをもとに Claude が用意した、声の作り直し・演技の方針の提案（tools/voice-preview/proposals.json）
+    const proposalsRes = await getJson("/tools/voice-preview/proposals.json", { proposals: {} });
     const spokenLog = await getJson("/voices/cards/spoken.json", {});
     // カミのボイス：台本・ゲームの音声の一覧・試聴室で作った音声の一覧
     const [kamiScript, kamiManifest, kamiStudio] = await Promise.all([
@@ -1254,7 +1312,7 @@
     // 音声がまだ前の台詞のものは、作り直すまで共有ページには入れない
     const nWaiting = Object.entries(pending || {}).filter(([ref, p]) => { const m = (spokenLog || {})[ref]; return !m || !(m.line === p.text || sameAsScript(p.text, m.line)); }).length;
     $("pendingSync").textContent = nPending ? "｜共有ページの台本にまだ入れていない台詞：" + nPending + "本（Claude に伝えるとそろえます" + (nWaiting ? "。うち" + nWaiting + "本は音声を作り直すまで入れません" : "") + "）" : "";
-    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {}, directionMap: tagMap.map || [], heard: heard || {}, spoken: spokenLog || {}, kami: kamiScript || { kami: {} }, kamiManifest: kamiManifest || { kami: {} }, kamiStudio: kamiStudio || { kami: {} } };
+    data = { cast: cast.cast || {}, record, lines: script.lines || {}, pairs: pairs.pairs || {}, items: list && list.items, directions: dirs.directions || {}, takes: takesRes.takes || {}, readings: readingsRes.readings || {}, directionMap: tagMap.map || [], heard: heard || {}, spoken: spokenLog || {}, kami: kamiScript || { kami: {} }, kamiManifest: kamiManifest || { kami: {} }, kamiStudio: kamiStudio || { kami: {} }, proposals: (proposalsRes && proposalsRes.proposals) || {} };
     renderReadings();
     await render();
   }
