@@ -225,16 +225,38 @@
     if (focus) setTimeout(() => focusItem(focus), 600);
   });
   /* 修正依頼ボードや別のページから「この項目」を指定して開いたとき：その項目を探して見える位置に出し、メモを開く */
-  function focusItem(label) {
+  // 1つの項目ずつ表示するページ（試聴室など）は、ページの kjReveal(対象) で対象の項目を表示してから探す。
+  // 読み込みや表示の切り替えに時間がかかるので、文が同じ項目が見つかるまで少し待つ（見つからなければ、似た項目に飛ぶ）
+  async function focusItem(label) {
     if (!doc || !page.items) { openPanel(label); return; }
-    const words = label.split(/[：（）\s]/).filter(w => w.length >= 2);
-    for (const it of page.items) for (const e of doc.querySelectorAll(it.selector)) {
-      const l = it.label(e);
-      if (l === label || words.some(w => l.includes(w))) {
-        e.scrollIntoView({ block: "center" }); e.classList.add("kj-pick");
-        if (e.matches(".item, .cell")) e.click(); // 場のカード：そのカードの調整画面を開く
-        openPanel(l === label ? label : l); return;
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const words = label.split(/[：（）「」\s]/).filter(w => w.length >= 2);
+    // 台詞の読み方の添え書き（例：陰陽（いんよう））と空白は、同じ項目かどうかの比べ方では無視する
+    const plain = s => String(s).replace(/（[ぁ-んァ-ヶー・\s]+）/g, "").replace(/\s+/g, "");
+    const go = (e, l) => {
+      doc.querySelectorAll(".kj-pick").forEach(x => x.classList.remove("kj-pick"));
+      e.scrollIntoView({ block: "center" }); e.classList.add("kj-pick");
+      if (e.matches(".item, .cell")) e.click(); // 場のカード：そのカードの調整画面を開く
+      openPanel(l);
+    };
+    let revealed = false;
+    for (let i = 0; i < 40; i++) {
+      const win = frame.contentWindow;
+      if (!revealed && win && typeof win.kjReveal === "function") {
+        try { revealed = !!win.kjReveal(label); } catch (e) { /* ページ側の都合で表示できなかった */ }
+        if (revealed) await sleep(300);
       }
+      let best = null, bestScore = 0;
+      for (const it of page.items) for (const e of doc.querySelectorAll(it.selector)) {
+        const l = it.label(e);
+        if (!l) continue;
+        if (l === label || plain(l) === plain(label)) { go(e, label); return; }
+        const score = words.filter(w => l.includes(w)).length;
+        if (score > bestScore) { best = { e, l }; bestScore = score; }
+      }
+      // 文が同じ項目が無いまま待ち終えたら（台詞を直したあとなど）、いちばん似ている項目に飛ぶ
+      if (best && (i === 39 || (i >= 10 && !revealed))) { go(best.e, best.l); return; }
+      await sleep(200);
     }
     openPanel(label);
   }

@@ -870,6 +870,21 @@
     const list = tribe === "作業中" ? keys.filter(k => castState(k) !== "todo" || data.record[k]) : tribe === "未着手" ? keys.filter(k => !data.record[k]) : keys.filter(k => tribesOf(k).includes(tribe));
     return list.sort((a, b) => firstNo(a) - firstNo(b));
   }
+  /* 開発ダッシュボードの枠から呼ぶ：修正メモの対象（「キャラ名：場面「台詞」」や「キャラ名（声）」）のキャラを表示する。
+     見つかったら true（表示を切り替えたら、枠が台詞の行を探してその位置へ動かす） */
+  window.kjReveal = label => {
+    if (!data || !data.cast || !data.items) return false; // まだ読み込み中
+    const name = String(label || "").split("：")[0].replace(/（声）$/, "").trim();
+    if (!name) return false;
+    const kamis = (data.kami && data.kami.kami) || {};
+    const kamiNo = Object.keys(kamis).find(no => kamis[no].name === name);
+    if (kamiNo) { if (view.tribe !== "カミ" || view.cast !== kamiNo) setView("カミ", kamiNo); return true; }
+    const key = Object.keys(data.cast).filter(k => !data.cast[k].kami).find(k => displayName(k) === name || k === name);
+    if (!key) return false;
+    // いま見えているならそのまま（「すべて表示」中など）。見えていなければそのキャラの種族の一覧に切り替える
+    if (!(view.cast === key || (view.cast === "*" && castsIn(view.tribe, [key]).length))) setView(tribesOf(key)[0], key);
+    return true;
+  };
   function setView(tribe, cast) {
     view = { tribe, cast };
     try { const saved = JSON.parse(sessionStorage.getItem(SCROLL_KEY) || "{}") || {}; sessionStorage.setItem(SCROLL_KEY, JSON.stringify(Object.assign(saved, { tribe, cast, anchor: null, y: 0 }))); } catch (e) {}
