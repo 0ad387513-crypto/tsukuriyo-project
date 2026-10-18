@@ -23550,6 +23550,21 @@ new Vue({
       }, this._battleMotionMs(2500));
     },
     // 手動の効果選択は中央演出を閉じてから開始する。CPUは既存の自動解決を続ける。
+    /* 同じ種類の選択画面（任意の確認・選択肢・対象選択）がすでに開いているとき、閉じるまで待つ。
+       待たずに開くと前の画面と答えの受け取り先が上書きされ、前の確認の答えが届かずに処理が止まる
+       （例：イズモの補正で自分のレガシーが同時に複数倒れ、墓地起動の確認が重なった）。
+       対戦が終わった・切り替わったときは false を返す */
+    _dslWaitModalFree(key) {
+      const battle = this.battleSample;
+      const cancelled = () => this.appView !== 'battle' || this.battleSample !== battle || !!(battle && battle.result);
+      return new Promise(resolve => {
+        const unwatch = this.$watch(() => cancelled() || !this[key], free => {
+          if (!free) return;
+          unwatch();
+          resolve(!cancelled());
+        });
+      });
+    },
     _battleWaitForOracleEffect() {
       if (!this.battleOracleEffect || this._battleCpuAutoResolving) return Promise.resolve(true);
       const battle = this.battleSample;
@@ -25131,7 +25146,24 @@ new Vue({
     /* 「自分レガシーが破壊されたとき」条件の墓地起動能力を、戦闘・効果破壊を問わず破壊された直後に
        自動で確認する（例：#114怨嗟の狂骨②）。従来は墓地カードを右クリックしないと発動機会に気づけなかった。
        あくまで発動タイミングの自動検知＋確認ダイアログであり、発動自体は引き続き任意（プレイヤーが選ぶ）。 */
-    async _battleCheckGraveyardActivationPrompt(side) {
+    /* 墓地起動（自分レガシーが破壊されたとき）の確認は、同時に複数枚倒れても1回ずつ順に行う
+       （同時に進めると確認の画面・コストの支払い・効果が重なる） */
+    _battleCheckGraveyardActivationPrompt(side) {
+      // 対戦が変わったら前の対戦の待ちは引き継がない
+      if (this._battleGraveyardPromptBattle !== this.battleSample) { this._battleGraveyardPromptBattle = this.battleSample; this._battleGraveyardPromptChain = null; this._battleGraveyardPromptBusy = 0; }
+      // 実行中の確認が無ければすぐ始める（従来どおり、呼ばれた時点の視点で始まる）。実行中なら終わってから
+      const start = () => {
+        this._battleGraveyardPromptBusy = (this._battleGraveyardPromptBusy || 0) + 1;
+        const inner = this._battleCheckGraveyardActivationPromptInner(side);
+        const done = () => { this._battleGraveyardPromptBusy = Math.max(0, (this._battleGraveyardPromptBusy || 1) - 1); };
+        inner.then(done, done);
+        return inner;
+      };
+      const run = this._battleGraveyardPromptBusy && this._battleGraveyardPromptChain ? this._battleGraveyardPromptChain.then(start) : start();
+      this._battleGraveyardPromptChain = run.catch(() => {});
+      return run;
+    },
+    async _battleCheckGraveyardActivationPromptInner(side) {
       if (side !== 'self' || !this.effectSpecsReady || !this.battleSample) return;
       const player = this.battleSample[side];
       if (!player || !Array.isArray(player.graveyard)) return;
@@ -26612,7 +26644,8 @@ new Vue({
         }
         return Promise.resolve(ranked.slice(0, Math.min(need, ranked.length)));
       }
-      // プレイヤー手動：モーダル
+      // プレイヤー手動：モーダル（別の対象選択が開いていれば閉じるまで待つ）
+      if (this.dslTargetModal) return this._dslWaitModalFree('dslTargetModal').then(ok => ok ? this.dslChooseTargets(sel, promptLabel, opts) : []);
       return new Promise((resolve) => {
         this.dslTargetModal = {
           sourceCard: this._dslCurrentSource,
@@ -26634,6 +26667,7 @@ new Vue({
       if (this._battleCpuAutoResolving) {
         return Promise.resolve(canSkip ? [] : pool.slice(0, Math.min(Math.max(1, Number(need) || 1), pool.length)));
       }
+      if (this.dslTargetModal) return this._dslWaitModalFree('dslTargetModal').then(ok => ok ? this.dslAskCustomTargets(promptLabel, candidates, need, sourceCard, canSkip, exactCount, options) : []);
       return new Promise((resolve) => {
         this.dslTargetModal = {
           sourceCard: sourceCard || this._dslCurrentSource,
@@ -28722,6 +28756,7 @@ new Vue({
       // CPU自動対戦中：人間の確認を待てないため、初心者向けは任意効果を安全側（発動しない）に倒す。
       // 標準は、自分のカードを破壊・墓地へ送る・捨てる、ライフを失うといった代償が無ければ使う
       if (this._battleCpuAutoResolving) return Promise.resolve(typeof this._battleCpuIsStandard === 'function' && this._battleCpuIsStandard() && this._battleCpuShouldUseOptional(summary));
+      if (this.dslOptionalModal) return this._dslWaitModalFree('dslOptionalModal').then(ok => ok ? this.dslAskOptional(card, triggerLabel, summary, kind, options) : false);
       return new Promise((resolve) => {
         this.dslOptionalModal = {
           sourceCard: card,
@@ -29035,6 +29070,7 @@ new Vue({
         }
         return Promise.resolve(idx);
       }
+      if (this.dslChoiceModal) return this._dslWaitModalFree('dslChoiceModal').then(ok => ok ? this.dslAskChoice(card, prompt, options, meta) : -1);
       return new Promise((resolve) => {
         this.dslChoiceModal = {
           sourceCard: card,
@@ -29542,20 +29578,21 @@ new Vue({
       this.$set(p, 'effectMultiplierUsed', Object.assign({}, used, { [turnKey]: true }));
       return true;
     },
-    battleRunDoubledEnterEffect(card, paidCost) {
+    async battleRunDoubledEnterEffect(card, paidCost) {
       const side = this._battleFieldCardSide(card);
       if (!this.effectSpecsReady || !this.dslHasSpecForTrigger(card, '出現時')) return;
       if (!this.battleHasStaticEffectMultiplier(side, 'shinshiEnter', card)) return;
       if (card._dslDoubleEnterRunning) return;
       this.$set(card, '_dslDoubleEnterRunning', true);
       try {
-        this.dslRunSpec(card, '出現時', paidCost);
+        // 2回目も終わるまで待つ（待たないと1回目の呼び出し元の続きと同時に進み、選択画面が重なったり、視点の入れ替えが戻った後に動いたりする）
+        await this.dslRunSpec(card, '出現時', paidCost);
         this.battleShowNotice('効果倍化', `「${this.fullName(card)}」の出現時効果を追加でもう1回発動しました。`, [card]);
       } finally {
         this.$set(card, '_dslDoubleEnterRunning', false);
       }
     },
-    battleRunDoubledDeathEffect(card) {
+    async battleRunDoubledDeathEffect(card) {
       const side = this._battleFieldCardSide(card);
       if (!this.effectSpecsReady || !this.dslHasSpecForTrigger(card, '死亡時')) return;
       const deathSide = card._lastFieldSide || side;
@@ -29564,7 +29601,8 @@ new Vue({
       if (card._dslDoubleDeathRunning) return;
       this.$set(card, '_dslDoubleDeathRunning', true);
       try {
-        this.dslRunSpec(card, '死亡時', null);
+        // 2回目も終わるまで待つ（死亡時効果は持ち主の視点に入れ替えて動くため、待たないと入れ替えが戻った後に逆の視点で動く）
+        await this.dslRunSpec(card, '死亡時', null);
         this.battleShowNotice('効果倍化', `「${this.fullName(card)}」の死亡時効果を追加でもう1回発動しました。`, [card]);
       } finally {
         this.$set(card, '_dslDoubleDeathRunning', false);
@@ -29604,7 +29642,7 @@ new Vue({
         if (hasEnter) await this.dslRunSpec(card, '出現時', paidCost);
         else if (hasUse) await this.dslRunSpec(card, '使用時', paidCost);
         if (hasSublim) await this.dslRunSpec(card, '昇華', paidCost);
-        if (hasEnter) this.battleRunDoubledEnterEffect(card, paidCost);
+        if (hasEnter) await this.battleRunDoubledEnterEffect(card, paidCost);
         if (hasEnter) this.battleGlowCardEffect(card); // 【出現時】が実際に発動した場合のみカードを光らせる（オラクルは除外）
         return true;
       }
@@ -29713,7 +29751,7 @@ new Vue({
         }
         if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '死亡時')) {
           await this.dslRunSpec(card, '死亡時', null);
-          this.battleRunDoubledDeathEffect(card);
+          await this.battleRunDoubledDeathEffect(card);
           this.battleGlowGraveyardEffect(deathGlowPlayerObj, deathGlowIsTrueSelf);
           return true;
         }
@@ -29790,7 +29828,7 @@ new Vue({
             this.battleShowNotice('効果無効化中', `「${this.fullName(card)}」は効果を失っているため、死亡時効果は発動しません。`, [card]);
           } else if (this.effectSpecsReady && this.dslHasSpecForTrigger(card, '死亡時')) {
             await this.dslRunSpec(card, '死亡時', null);
-            this.battleRunDoubledDeathEffect(card);
+            await this.battleRunDoubledDeathEffect(card);
           } else if (!(this.effectSpecsReady && this._dslGetSpec(card))) {
             this._battleQueueAndRunEffects(card, null, '死亡時');
           }
