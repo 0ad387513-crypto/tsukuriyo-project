@@ -11,23 +11,51 @@ function togetherGroups(root) {
   const list = readJson(path.join(root, 'tools', 'voice-script', 'card_voice_together.json'), []);
   return new Set(Array.isArray(list) ? list.filter(g => /^(?:n\d{3}-(?:summon|attack|death|use)|p\d+-(?:line|reply))$/.test(g)) : []);
 }
-const togetherSrc = group => 'voices/cards/' + group + '-together.mp3';
+const partNo = item => Number((/-(\d+)$/.exec(item.ref) || [0, 0])[1]);
+const groupOf = item => item.group || item.ref.replace(/-\d+$/, '');
+/* 台詞のまとまり（グループ）を話す順に並べ、「同時に言う」部分をひとまとめにする。
+   台詞の一覧（card_voice_lines.json）で together の印が付いた部分が2つ以上続くところを、同時に言う1つのまとまりにする
+   （例：ライカ「恐怖は」→ コマ「二人で」→ 2人同時に「乗り越える！」）。card_voice_together.json に書いたグループは全体を同時にする */
+function togetherRuns(parts, wholeGroup) {
+  const runs = [];
+  for (const it of parts) {
+    const t = wholeGroup || !!it.together;
+    const last = runs[runs.length - 1];
+    if (t && last && last.together) last.items.push(it); else runs.push({ items: [it], together: t });
+  }
+  for (const run of runs) if (run.items.length < 2) run.together = false;
+  return runs;
+}
+// 重ねた音声のファイル名：グループ全体を重ねたら グループID-together.mp3、一部だけなら グループID-together-最初の番号.mp3
+const togetherSrc = (group, run, runs) => 'voices/cards/' + group + '-together' + (runs.length === 1 ? '' : '-' + partNo(run.items[0])) + '.mp3';
+function groupedParts(lines) {
+  const map = new Map();
+  for (const item of lines) { const g = groupOf(item); if (!map.has(g)) map.set(g, []); map.get(g).push(item); }
+  for (const list of map.values()) list.sort((a, b) => partNo(a) - partNo(b));
+  return map;
+}
 function mixTogether(root) {
   const lines = readJson(path.join(root, 'tools', 'voice-script', 'card_voice_lines.json'), { items: [] }).items;
-  for (const group of togetherGroups(root)) {
-    const parts = lines.filter(i => (i.group || i.ref.replace(/-\d+$/, '')) === group).map(i => path.join(root, 'voices', 'cards', i.ref + '.mp3'));
-    const out = path.join(root, togetherSrc(group));
-    if (parts.length < 2 || !parts.every(p => fs.existsSync(p))) continue;
-    if (fs.existsSync(out) && parts.every(p => fs.statSync(p).mtimeMs <= fs.statSync(out).mtimeMs)) continue;
-    const args = ['-v', 'error', '-y'];
-    for (const p of parts) args.push('-i', p);
-    // 重ねても音が割れないよう、人数に合わせて少し下げてから足し、最後に上限をかける
-    args.push('-filter_complex', parts.map((_, i) => `[${i}:a]volume=${(1 / Math.sqrt(parts.length)).toFixed(3)}[a${i}]`).join(';') + ';'
-      + parts.map((_, i) => `[a${i}]`).join('') + `amix=inputs=${parts.length}:duration=longest:normalize=0,alimiter=limit=0.9[o]`,
-      '-map', '[o]', '-ac', '1', '-ar', '44100', '-b:a', '128k', out);
-    const run = require('node:child_process').spawnSync('ffmpeg', args, { encoding: 'utf8', windowsHide: true });
-    if (run.error || run.status !== 0) console.warn(`${group}：同時再生用の音声を作れませんでした（ffmpeg が必要です）`);
-    else console.log(`${group}：${parts.length}人の音声を重ねました`);
+  const listed = togetherGroups(root);
+  for (const [group, items] of groupedParts(lines)) {
+    if (items.length < 2) continue;
+    const runs = togetherRuns(items, listed.has(group));
+    for (const run of runs) {
+      if (!run.together) continue;
+      const parts = run.items.map(i => path.join(root, 'voices', 'cards', i.ref + '.mp3'));
+      const out = path.join(root, togetherSrc(group, run, runs));
+      if (!parts.every(p => fs.existsSync(p))) continue;
+      if (fs.existsSync(out) && parts.every(p => fs.statSync(p).mtimeMs <= fs.statSync(out).mtimeMs)) continue;
+      const args = ['-v', 'error', '-y'];
+      for (const p of parts) args.push('-i', p);
+      // 重ねても音が割れないよう、人数に合わせて少し下げてから足し、最後に上限をかける
+      args.push('-filter_complex', parts.map((_, i) => `[${i}:a]volume=${(1 / Math.sqrt(parts.length)).toFixed(3)}[a${i}]`).join(';') + ';'
+        + parts.map((_, i) => `[a${i}]`).join('') + `amix=inputs=${parts.length}:duration=longest:normalize=0,alimiter=limit=0.9[o]`,
+        '-map', '[o]', '-ac', '1', '-ar', '44100', '-b:a', '128k', out);
+      const result = require('node:child_process').spawnSync('ffmpeg', args, { encoding: 'utf8', windowsHide: true });
+      if (result.error || result.status !== 0) console.warn(`${group}：同時再生用の音声を作れませんでした（ffmpeg が必要です）`);
+      else console.log(`${path.basename(out)}：${parts.length}人の音声を重ねました`);
+    }
   }
 }
 /* 画面に出す台詞の文字。試聴室の「台詞を変える」で言い換えた台詞は、実際に読ませた文（card_voice_direction.json の text）に合わせる。
@@ -50,24 +78,27 @@ function buildCardVoiceManifest(root) {
   const manifest = { schemaVersion: 1, cards: {}, pairs: [] }, missing = [], registered = [];
   const numbers = id => String(script.lines[id] && script.lines[id].nos || Number(id.replace(/^n/, '')))
     .split(/[,、\s]+/).filter(n => /^\d+$/.test(n) && Number(n) > 0).map(n => String(Number(n)));
-  const groups = new Map(), together = togetherGroups(root);
+  const clipOf = new Map(), together = togetherGroups(root), partsOf = groupedParts(lines);
   const direction = readJson(path.join(dir, 'card_voice_direction.json'), {});
   for (const item of lines) {
     if (!/^(?:n\d{3}-(?:summon|attack|death|use)|p\d+-(?:line|reply))(?:-\d+)?$/.test(item.ref)) throw new Error('不正な台詞ID: ' + item.ref);
     const src = 'voices/cards/' + item.ref + '.mp3';
     if (!fs.existsSync(path.join(root, src)) || fs.statSync(path.join(root, src)).size === 0) { missing.push(item.ref); continue; }
-    const group = item.group || item.ref.replace(/-\d+$/, '');
-    if (!groups.has(group)) groups.set(group, []);
-    groups.get(group).push({ src, text: displayText(item.text, (direction[item.ref] || {}).text) }); registered.push(item.ref);
+    clipOf.set(item.ref, { src, text: displayText(item.text, (direction[item.ref] || {}).text) }); registered.push(item.ref);
   }
   // 複数話者は一連の台詞。途中の音声がまだ無い場合は部分再生しない。
   const complete = group => {
-    const expected = lines.filter(i => (i.group || i.ref.replace(/-\d+$/, '')) === group);
-    const clips = groups.get(group) || [];
-    if (!expected.length || clips.length !== expected.length) return [];
-    // 同時に言う台詞は、重ねた1本があればそれだけを鳴らす
-    if (clips.length > 1 && together.has(group) && fs.existsSync(path.join(root, togetherSrc(group)))) return [{ src: togetherSrc(group), text: clips[0].text }];
-    return clips;
+    const expected = partsOf.get(group) || [];
+    if (!expected.length || !expected.every(i => clipOf.has(i.ref))) return [];
+    // 同時に言うまとまりは、重ねた1本があればそれを鳴らす（無ければ1人ずつ順に鳴らす）
+    const runs = togetherRuns(expected, together.has(group));
+    const out = [];
+    for (const run of runs) {
+      const src = run.together ? togetherSrc(group, run, runs) : null;
+      if (src && fs.existsSync(path.join(root, src))) out.push({ src, text: clipOf.get(run.items[0].ref).text });
+      else for (const i of run.items) out.push(clipOf.get(i.ref));
+    }
+    return out;
   };
   for (const id of Object.keys(script.lines)) {
     if (!/^n\d{3}$/.test(id)) continue;

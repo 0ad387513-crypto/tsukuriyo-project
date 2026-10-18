@@ -2299,3 +2299,9 @@
 - proposals.json の形：{ proposals: { キャストのキー: { noteIds, memos[{memo,name,target}], reason（日本語の説明）, voice: { spec（SPEC と同じ値）, description（英語・1000文字以内、無ければ spec から作る）, design_text, pitch_shift }, lines: { 台詞ID: { direction, tags, text, stability } } } } }。提案が終わったら Claude が消す
 - 試聴室：キャラの見出しに「💡 Claude の提案あり」、「声のイメージを変える」を開いた状態にして先頭に提案（メモ・変えるところ・今の設定 → 提案）。「この提案を欄に入れる」は欄に入れるだけで保存しない。台詞ごとの方針の提案は「この方針を保存」
 - 1件目：強欲なる爪の竜人（竜人:n113）の「猫撫で声のザ・メンヘラみたいなバージョンも聞きたい」に、今の候補を残して別の版を足す案（女性・20代・高め・柔らかい・息まじり・優しい・感情豊か＋甘く依存する説明、見本の文は甘えて引き止める台詞）
+
+## Claude v1.15.524（手元 v1.15.531）(2026-10-18): 複数人で同じ台詞を言うカードを同時に鳴らす
+- ユーザーの依頼。台詞の一覧（card_voice_lines.json）の together の印は付いていたが、ゲームの一覧（voices/cards/manifest.json）は card_voice_together.json に書いた n176-use（鎮魂の花畑）しか同時にしていなかった
+- scripts/build_card_voice_manifest.js：together の印の付いた部分が2つ以上続くところを1つの「同時に言う」まとまりにして ffmpeg で重ねる（全体ならグループID-together.mp3、一部だけならグループID-together-最初の番号.mp3）。印の無い部分は従来どおり順に鳴らす。重ねた音声が無ければ1人ずつ順に鳴らす。card_voice_together.json も引き続き使える
+- 結果：n065-summon（絆の最前線 ライカ＆コマ）はライカ→コマ→2人同時「乗り越える！」、n139-use（覚悟の出陣）2人同時、n161-use（断禍の三重奏）3人同時、n176-use はそのまま。n153-use（託された一閃）と n065-death は別の台詞の掛け合いなので順番のまま
+- テスト：tests/card_voice.test.js に1件追加。asset_hashes.js も作り直し
