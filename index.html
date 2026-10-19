@@ -8530,6 +8530,7 @@
 <link rel="preload" as="image" href="top_mode_icons/shield2p-five-fingers-3c4f8dd71ac7.webp" fetchpriority="high">
 <link rel="stylesheet" href="divine_effects.css?v=20261011-orochi-fracture">
 <link rel="stylesheet" href="kami_motion.css?v=20261014-pain-environments-v498">
+<link rel="stylesheet" href="field_card_frames.css?v=20261019-533">
 </head>
 <body>
 <div id="app-loading" role="status" aria-live="polite">
@@ -11509,12 +11510,14 @@
             <div class="battle-card-row" :style="{ '--n': battleView.opp.relics.length }">
               <div v-for="(card, i) in battleView.opp.relics" :key="'or'+i"
                    class="battle-card field-card"
+                   :data-field-kind="battleLayoutV2 ? battleFieldKind(card) : null"
                    :class="{ ['frame-' + battleFrameAttr(card)]: true, tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive, 'divine-transfer-hidden': battleDivineTransferHidden(card) }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
                    @mouseenter="showCardHover(card, $event)"
                    @mouseleave="hideCardHover">
                 <span v-if="battleLayoutV2" class="token-art" aria-hidden="true" :style="battleFieldArtStyle(card)"><span v-if="battleFieldArtIsWide(card)" class="token-art-wide" :style="cardImageStyle(card)"></span></span>
+                <span v-if="battleLayoutV2" class="field-kind-frame" aria-hidden="true" v-html="battleFieldFrame(card, 'opp-relic-' + i)"></span>
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
               </div>
             </div>
@@ -11528,6 +11531,7 @@
             <div class="battle-card-row legacy-row" :style="{ '--n': battleView.opp.legacies.length }">
               <div v-for="(card, i) in battleView.opp.legacies" :key="'ol'+i" :data-tcard="tutorial ? 'opp-field:' + fullName(card) : null"
                    class="battle-card field-card opp-legacy-target"
+                   :data-field-kind="battleLayoutV2 ? battleFieldKind(card) : null"
                    :class="{ ['frame-' + battleFrameAttr(card)]: true, 'has-surprise': battleCardHasKeyword(card, '奇襲') && battleLegacyIsSummonedThisTurn(card), 'battle-target-legacy': battleCanFieldDragToAttackTargets, tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive, 'divine-transfer-hidden': battleDivineTransferHidden(card), [battleSummonAuraClass(card, 'opp')]: !!battleSummonAuraClass(card, 'opp') }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @click="openPreview(card)"
@@ -11535,6 +11539,7 @@
                    @drop.prevent="battleFieldDragEnd($event)"
                    @mouseenter="showCardHover(card, $event)" @mouseleave="hideCardHover">
                 <span v-if="battleLayoutV2" class="token-art" aria-hidden="true" :style="battleFieldArtStyle(card)"><span v-if="battleFieldArtIsWide(card)" class="token-art-wide" :style="cardImageStyle(card)"></span></span>
+                <span v-if="battleLayoutV2" class="field-kind-frame" aria-hidden="true" v-html="battleFieldFrame(card, 'opp-legacy-' + i)"></span>
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
                 <span class="battle-card-overlay battle-card-attack" :class="battleLayoutV2 ? 'stat-' + battleStatTone(card, 'attack') : ''"><span class="bh-text">⚔ </span>{{ card.attack || 0 }}</span>
                 <span class="battle-card-overlay battle-card-power" :class="battleLayoutV2 ? 'stat-' + battleStatTone(card, 'power') : ''"><span class="bh-text">戦闘力 </span>{{ card.power || 0 }}</span>
@@ -11563,6 +11568,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('legacies', $event)">
               <div v-for="(card, i) in battleView.self.legacies" :key="'sl'+i" :data-tcard="tutorial ? 'self-field:' + fullName(card) : null"
                    class="battle-card field-card"
+                   :data-field-kind="battleLayoutV2 ? battleFieldKind(card) : null"
                    :class="{ ['frame-' + battleFrameAttr(card)]: true, 'has-surprise': battleCardHasKeyword(card, '奇襲') && battleLegacyIsSummonedThisTurn(card), tapped: card._tapped, evolved: card._evolved, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'legacies' && battleFieldDrag.index === i, 'evolve-target': battleHandDragOverBaseIdx === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive, 'divine-transfer-hidden': battleDivineTransferHidden(card), [battleSummonAuraClass(card, 'self')]: !!battleSummonAuraClass(card, 'self') }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','legacies',i,$event)"
@@ -11571,6 +11577,7 @@
                    @mouseenter="battleSetFieldHover('self','legacies',i,card,$event)"
                    @mouseleave="battleClearFieldHover('self','legacies',i)">
                 <span v-if="battleLayoutV2" class="token-art" aria-hidden="true" :style="battleFieldArtStyle(card)"><span v-if="battleFieldArtIsWide(card)" class="token-art-wide" :style="cardImageStyle(card)"></span></span>
+                <span v-if="battleLayoutV2" class="field-kind-frame" aria-hidden="true" v-html="battleFieldFrame(card, 'self-legacy-' + i)"></span>
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
                 <span class="battle-card-overlay battle-card-attack" :class="battleLayoutV2 ? 'stat-' + battleStatTone(card, 'attack') : ''"><span class="bh-text">⚔ </span>{{ card.attack || 0 }}</span>
                 <span class="battle-card-overlay battle-card-power" :class="battleLayoutV2 ? 'stat-' + battleStatTone(card, 'power') : ''"><span class="bh-text">戦闘力 </span>{{ card.power || 0 }}</span>
@@ -11599,6 +11606,7 @@
                  @contextmenu.self.prevent="battleOpenFieldZoneMenu('relics', $event)">
               <div v-for="(card, i) in battleView.self.relics" :key="'sr'+i" :data-tcard="tutorial ? 'self-relic:' + fullName(card) : null"
                    class="battle-card field-card"
+                   :data-field-kind="battleLayoutV2 ? battleFieldKind(card) : null"
                    :class="{ ['frame-' + battleFrameAttr(card)]: true, tapped: card._tapped, 'effect-disabled': card._effectsDisabled, 'battle-attack-dragging': battleFieldDrag && battleFieldDrag.zone === 'relics' && battleFieldDrag.index === i, 'field-card-landed': card._justPlaced, 'field-card-heavy': card._justHeavyPlaced, 'card-effect-glow': card._glowActive, 'divine-transfer-hidden': battleDivineTransferHidden(card) }"
                    :style="cardImageUrl(card) ? { backgroundImage: 'url(' + cardImageUrl(card) + ')' } : {}"
                    @mousedown="battleFieldPointerDown('self','relics',i,$event)"
@@ -11607,6 +11615,7 @@
                    @mouseenter="battleSetFieldHover('self','relics',i,card,$event)"
                    @mouseleave="battleClearFieldHover('self','relics',i)">
                 <span v-if="battleLayoutV2" class="token-art" aria-hidden="true" :style="battleFieldArtStyle(card)"><span v-if="battleFieldArtIsWide(card)" class="token-art-wide" :style="cardImageStyle(card)"></span></span>
+                <span v-if="battleLayoutV2" class="field-kind-frame" aria-hidden="true" v-html="battleFieldFrame(card, 'self-relic-' + i)"></span>
                 <span class="battle-card-overlay battle-card-cost">{{ card.cost }}</span>
               </div>
             </div>
@@ -13787,6 +13796,7 @@
 <!-- 画像・音声の中身の識別子（node scripts/build_asset_hashes.js で作る）。assetUrl() が URL に付ける -->
 <script src="asset_hashes.js"></script>
 <script src="field_card_art.js?v=20261010"></script>
+<script src="field_card_frames.js?v=20261019-533"></script>
 <script src="card_voice_core.js"></script>
 <script src="divine_effects.js?v=20261011-skill1-eyes"></script>
 <script src="kami_motion.js?v=20261014-pain-environments-v498"></script>
@@ -32835,6 +32845,12 @@ new Vue({
       return { x, y, tail: `M${tx} ${ty} A${R} ${R} 0 0 1 ${x} ${y}` };
     },
     /* 新配置（試作）：場のカードの枠の色。カードの属性（色）で決める。創は5色の虹 */
+    battleFieldKind(card) {
+      return fieldCardKind(card, this.allCards);
+    },
+    battleFieldFrame(card, slot) {
+      return fieldCardFrameForCard(card, this.allCards, slot);
+    },
     battleFrameAttr(card) {
       const map = { '赤': 'red', '青': 'blue', '緑': 'green', '黄': 'yellow', '紫': 'purple', '無': 'colorless', '創': 'genesis' };
       return (card && map[card.color]) || 'colorless';

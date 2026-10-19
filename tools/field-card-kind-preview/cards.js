@@ -1,0 +1,135 @@
+// Actual card metadata; existing WebP assets are reused.
+const FIELD_KIND_PREVIEW_CARDS = [
+  {
+    "no": "1",
+    "nickname": "見習い忍者",
+    "name": "アカマツ",
+    "category": "レガシー",
+    "color": "赤",
+    "cost": 1,
+    "power": "1000",
+    "attack": "1",
+    "kind": "basic",
+    "image": "card_images/600/001.webp?v=add2f5ace74f"
+  },
+  {
+    "no": "141",
+    "nickname": "",
+    "name": "恐怖の手記",
+    "category": "レリック",
+    "color": "赤",
+    "cost": 2,
+    "power": "",
+    "attack": "",
+    "kind": "basic",
+    "image": "card_images/600/141.webp?v=fd1c0341b2af"
+  },
+  {
+    "no": "176",
+    "nickname": "",
+    "name": "鎮魂の花畑",
+    "category": "レリック",
+    "color": "赤",
+    "cost": 3,
+    "power": "",
+    "attack": "",
+    "kind": "unique",
+    "image": "card_images/600/176.webp?v=22196a044a49"
+  },
+  {
+    "no": "13",
+    "nickname": "慈愛の忍",
+    "name": "イロハ",
+    "category": "レガシー",
+    "color": "赤",
+    "cost": 4,
+    "power": "3000",
+    "attack": "1",
+    "kind": "unique",
+    "image": "card_images/600/013.webp?v=c3054ea2ab64"
+  },
+  {
+    "no": "21",
+    "nickname": "紅翼龍",
+    "name": "ルベル",
+    "category": "レガシー",
+    "color": "赤",
+    "cost": 7,
+    "power": "7000",
+    "attack": "3",
+    "kind": "dragon",
+    "image": "card_images/600/021.webp?v=83bf9aa936b0"
+  },
+  {
+    "no": "30",
+    "nickname": "",
+    "name": "平穏の祈り手",
+    "category": "レガシー",
+    "color": "青",
+    "cost": 3,
+    "power": "2000",
+    "attack": "1",
+    "kind": "basic",
+    "image": "card_images/600/030.webp?v=70dd31f716f9"
+  },
+  {
+    "no": "44",
+    "nickname": "蒼鱗龍",
+    "name": "サフィロス",
+    "category": "レガシー",
+    "color": "青",
+    "cost": 7,
+    "power": "7000",
+    "attack": "3",
+    "kind": "dragon",
+    "image": "card_images/600/044.webp?v=9e351e984990"
+  },
+  {
+    "no": "80",
+    "nickname": "平和を願う剣",
+    "name": "アヤト",
+    "category": "レガシー",
+    "color": "黄",
+    "cost": 4,
+    "power": "4000",
+    "attack": "2",
+    "kind": "unique",
+    "image": "card_images/600/080.webp?v=6bff5c5fa1f3"
+  },
+  {
+    "no": "198",
+    "nickname": "終焉龍",
+    "name": "ディエスイレ",
+    "category": "レガシー",
+    "color": "創",
+    "cost": 10,
+    "power": "10000",
+    "attack": "3",
+    "kind": "dragon",
+    "image": "card_images/600/198.webp?v=4ed8e9b99bfb"
+  },
+  {
+    "no": "187",
+    "nickname": "",
+    "name": "隷属の龍血",
+    "category": "オラクル",
+    "color": "無",
+    "cost": 0,
+    "power": "",
+    "attack": "",
+    "kind": "token",
+    "image": "card_images/600/187.webp?v=c9b85f6d59cf"
+  },
+  {
+    "no": "181",
+    "nickname": "",
+    "name": "ヨリシロちゃん",
+    "category": "レガシー",
+    "color": "無",
+    "cost": 1,
+    "power": "1000",
+    "attack": "1",
+    "kind": "token",
+    "image": "card_images/600/181.webp?v=6e16a5c673d9"
+  }
+];

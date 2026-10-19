@@ -2219,3 +2219,15 @@
 - index integrated by three-way task delta from pre-CPU515 snapshot to current source, resolving two old CPU block conflicts in favor of reviewed new logic; all changed runtime methods match tested source. Session obsolete PAIRINGS export removed. Tests and audit/validation docs included; local raw simulations/private feedback/tools/audio edits excluded.
 - Final CPU experiment previously recorded 5040 clean matched star battles, first68.61->59.33%, second31.39->40.67%; this is CPU evidence, not human winrates. Local source has additional unpublished voice/tool changes; do not copy it wholesale to production.
 - Pre-publication validation: production npm338/local349 pass; Python importer4 pass in production. Real production-code VM plays4 complete creation tournaments/24 star battles covering all10Kami,0 stops/effect warnings. Diff whitespace clean. No asset/audio/feedback/security-rule files included.
+
+
+## Codex v1.15.533 (2026-10-19): H案のフィールド枠採用・E/H/Iをダッシュボードへ
+
+- ユーザーがH案採用とE/H/I比較のダッシュボード掲載・本番公開を明示的に依頼。今回のコミット・PUSH・公開はこの最新指示に基づく。旧AGENTSの公開禁止は今回の公開指示により上書き。ゲームをCodex内ブラウザでは開かない指示は継続。
+- field_card_frames.js/.cssを追加。Hの高蒔絵を自分・相手のレガシーとレリックへ適用。基本=銀、ユニーク=金、龍=赤黒、トークン=青緑の翡翠。レリックは既存の八角形を維持した専用枠。内側の属性色、数値、キーワード、行動可能・タップ表示を維持。Hは静止素材なので最小速度・動きを減らす設定でも追加アニメーション無し。
+- 種類はトークン優先→龍→創→全カードプールの同名収録数で判定（ピックと同じ正式名基準）。戦闘中にisTokenが省略されたコピーも元カードから判定。SVGはカードと表示スロットごとにWeakMapで再利用し、ID衝突・数値更新ごとのHTML再生成を避ける。v-htmlへ渡すのは固定SVG形状と列挙値のみ。カード名や任意の入力文字列をSVGへ埋め込まない。
+- 比較ページは同じ共通レンダラーを使用。E/H/Iを残し、ダッシュボード「カード」→「フィールドカードの枠 E・H・I」から開く。旧tools内の重複レンダラーは廃止。レリック比較も八角形。公開用は本番で使っている既存カード画像に内容ハッシュを合わせ、ローカルの未公開カード画像は同梱しない。
+- 検証: 本番用npm342件、ローカルnpm353件、画像取り込みPython4件成功。新規tests/field_card_frames.test.jsは分類・安定したSVG再利用・表示インスタンスID分離・後から読み込むカードデータ・八角形・4場への組み込み・ダッシュボードを検証。実198枚のうちフィールド142枚=基本64/ユニーク56/龍16/トークン6を監査。SVG参照先とID衝突無し、枠8形状をオフライン描画・目視確認。ローカル25リソースHTTP200・最終ソース一致。実ブラウザの対戦操作確認ではない。
+- 公開差分は今回の13ファイルのみ。最新origin/main d5e6959を確認した既存のクリーンな公開worktreeへ最小差分を適用。index.htmlやダッシュボードの共有ファイルは丸ごとコピーせず必要箇所だけ追加。未公開のボイス・画像・フィードバック等は保留したまま。ルール・AI・元画像・optimized_assets.jsonは変更なし。version533。
+- ローカル: http://localhost:8765/index.html ／ 比較: http://localhost:8765/tools/field-card-kind-preview/ 。本番ダッシュボード: https://tsukuriyo-online.netlify.app/tools/hub/ 。公開後のHTTP照合とコミットはローカルの完了追記に記録。
+- 検証記録: .release-worktree/output/field-frame-release-20261019/（npmログ、importerログ、142枚監査、オフライン枠見本、ローカル/本番の基準スナップショット）。dev_notes読取はfetch failed、メモの変更無し。
