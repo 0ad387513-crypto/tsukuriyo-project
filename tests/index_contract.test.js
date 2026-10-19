@@ -587,7 +587,7 @@ test("field zones hold up to 7 legacies and 5 relics", () => {
   assert.equal(battleFieldLimit("legacies"), 7);
   assert.equal(battleFieldLimit("relics"), 5);
   // 置き場の上限はすべて battleFieldLimit を通す（レガシー専用の判定だけが7を直接使う）
-  const literalChecks = Array.from(html.matchAll(/^.*\.length\s*(?:>=|<)\s*7\b.*$/gm), match => match[0].trim());
+  const literalChecks = Array.from(html.matchAll(/^.*\.length\s*(?:>=|<)\s*7\b.*$/gm), match => match[0].trim()).filter(line => !/\bhand\b/.test(line));
   for (const line of literalChecks) assert.match(line, /legacies/, line);
   assert.match(html, /\(me\.relics \|\| \[\]\)\.length >= this\.battleFieldLimit\('relics'\)/, "hand glow and end-turn warnings use the relic limit");
   assert.doesNotMatch(html, /(?:\}|レリック)フィールドには7枚まで配置できます/, "notices show the limit of each zone");
