@@ -9,7 +9,7 @@
   const selectedOptions = doc => [...doc.querySelectorAll("select")].map(s => s.selectedOptions[0] ? s.selectedOptions[0].textContent.trim() : "").filter(Boolean);
   const selectedOption = doc => { const s = doc.querySelector("select"); return s && s.selectedOptions[0] ? s.selectedOptions[0].textContent.trim() : ""; };
   window.DEV_PAGES = [
-    { id: "field-kinds", group: "カード", title: "フィールドカードの枠", path: "/tools/field-card-kind-preview/", kind: "ui", desc: "場に出たカードの枠を確認・比較。基本は銀、ユニークは金、龍は赤黒、トークンは翡翠の枠。状態や大きさを切り替えて確認できます。",
+    { id: "field-kinds", group: "カード", title: "フィールドカードの枠", path: "/tools/field-card-kind-preview/", kind: "ui", desc: "場に出たカードの枠を確認・比較。採用中の枠と、太い縁・大きな角飾り・強いオーラの案を、対戦サイズや7枚の並びで見比べられます。",
       items: [{ selector: ".comparison-table tbody td", label: e => text(e.parentElement, ".row-title") + "：" + text(e.closest("table").querySelector("thead th:nth-child(" + (e.cellIndex + 1) + ")")) }],
       whole: { target: doc => "フィールドカードの枠：" + selectedOptions(doc).join("・") } },
     { id: "voices", group: "ボイス・音", title: "ボイス", kind: "voice", desc: "試聴室と台本を1か所で。上のタブで切り替えます。",
