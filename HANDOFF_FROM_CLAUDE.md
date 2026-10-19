@@ -2247,3 +2247,14 @@
 - オフラインSVG32組（H/J/K/L×4種類×肖像/八角形）の描画と内部参照・ID重複無しを検証。比較と7枚並びの静止画を目視確認。ブラウザの操作確認ではない。ユーザー指定に従いCodex内ブラウザは開いていない。dev_notes読取fetch failed、変更なし。確認記録は.release-worktree/output/field-frame-large-release-20261019/。
 - 本番ダッシュボード: https://tsukuriyo-online.netlify.app/tools/hub/ ／ ローカル比較: http://localhost:8765/tools/field-card-kind-preview/ 。公開後の照合とテスト結果は完了記録へ追記。
 - 公開前検証: npm testは公開用342件／ローカル353件すべて成功。ローカル8765のHTML・JS・CSS・参照画像を含む24リソースがHTTP200かつ最終ソースと完全一致。共通の採用枠JS/CSSは公開前と同一。最新origin/main=d90fd54を再確認し、公開差分は比較ページ・hub説明・version・引き継ぎの8ファイルのみ。
+
+
+## Codex v1.15.537 (2026-10-19): 本番修正履歴をダッシュボードへ・創世神技の字幕撤去を公開
+
+- ユーザーが本番修正履歴のダッシュボード掲載、他メンバーの修正も掲載、前回の創世神技の文字削除を含めたPUSHを明示的に依頼。今回の公開はこの最新指示に基づく。v536はローカルだけだったため、公開はv535からv537へ更新する。
+- tools/hub/releases.html/.js/.cssを追加し、ダッシュボード上部に「本番の修正履歴」を追加。日時・バージョン・Git作成者・修正内容・コミットへのリンク。検索・担当者の絞り込み・30件ずつ追加表示。日本時間のコミット日時と個別公開日時を区別して明記。Firebaseに依存せず同じ公開物のJSONを取得。本文はtextContent、リンクは固定GitHubドメインと検証済みSHAのみ。
+- netlify.tomlで公開ビルドにscripts/build_release_history.jsを組み込み、COMMIT_REFから到達可能な全担当者のコミット（マージ元も含む）を最大300件自動記録。ローカルではorigin/mainから生成し、作業中のversion/indexは参照しない。過去の公開スナップショットを同梱し、浅いcheckoutでも過去分を保持。生成失敗は公開ビルドを失敗させる。docs/release-notes.jsonで日本語の詳細説明を補完。過去300件にキジマ・maekawa両名を確認。
+- 全メンバー共通の手順をAGENTS.md／CLAUDE.mdへ追記し、docs/production-history.mdに仕様・公開範囲・記載方法を保存。個人メールやコミット本文は表示しない。_headersで履歴JSONをno-store。Git外の手動公開・未公開ブランチの作業は自動対象外。
+- 創世神技の共通の上見出しと下説明文をゲーム/演出プレビューから削除。カットイン技名・台詞と演出コンポーネントの列が公開前と同一であることを確認。公開用indexは全文コピーせず2要素だけ撤去し、未公開の音声・画像・フィードバック等は保留。共通演出JS/CSS・カードルール・AIは公開差分に含めない。
+- 検証: npm test公開用346件／ローカル357件成功。新規4テストで全担当者、無版数コミット、浅い履歴の保持、重複排除、壊れたGitデータの失敗、検索、公開導線を確認。HTML内JSと追加JS構文成功。ローカル8765の8リソースがHTTP200・最終ソースと完全一致。出力は.release-worktree/output/production-history-release-20261019/。Codex内ブラウザは開かず、ブラウザ操作による目視確認は未実施。dev_notes読取fetch failed、メモの変更なし。
+- 本番履歴: https://tsukuriyo-online.netlify.app/tools/hub/releases.html ／ ローカル: http://localhost:8765/tools/hub/releases.html 。本番生成JSONと公開コミットの照合は完了後にローカルへ追記する。
