@@ -8,3 +8,9 @@
 - `tools/hub/release-history.json` は直近の本番を記録した静的スナップショット。初期履歴も同梱し、Netlifyのチェックアウト履歴が浅い場合は記録済みの過去分を保持する。最大300件。生成に失敗した場合はビルドを失敗させ、古い履歴を最新と表示したまま公開しない。
 - 日時は日本時間のコミット日時。各コミットの個別公開時刻を保証するものではない。mainに含まれない作業や、Git/Netlifyを経由しない手動公開は対象外。
 - ゲームやダッシュボード本体はGitHub APIを呼ばず、同じ公開物に含まれるJSONだけを読む。個人のメールアドレスやコミット本文は載せない。
+
+## 公開スキャンの既存設定
+
+netlify.tomlの誤検出例外は、元から公開されているFirebase Web設定と旧カード作成ツールのSheets参照用設定の2値への完全一致だけ。秘密検査・smart検査は継続する。新しいキーや管理者用キーをこの例外へ自動追加しない。キーの値・権限やFirebase Rulesはこの対応では変更していない。
+
+参考: https://firebase.google.com/docs/projects/api-keys ／ https://docs.netlify.com/manage/security/secret-scanning/

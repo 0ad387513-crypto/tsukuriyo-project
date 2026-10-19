@@ -2258,3 +2258,10 @@
 - 創世神技の共通の上見出しと下説明文をゲーム/演出プレビューから削除。カットイン技名・台詞と演出コンポーネントの列が公開前と同一であることを確認。公開用indexは全文コピーせず2要素だけ撤去し、未公開の音声・画像・フィードバック等は保留。共通演出JS/CSS・カードルール・AIは公開差分に含めない。
 - 検証: npm test公開用346件／ローカル357件成功。新規4テストで全担当者、無版数コミット、浅い履歴の保持、重複排除、壊れたGitデータの失敗、検索、公開導線を確認。HTML内JSと追加JS構文成功。ローカル8765の8リソースがHTTP200・最終ソースと完全一致。出力は.release-worktree/output/production-history-release-20261019/。Codex内ブラウザは開かず、ブラウザ操作による目視確認は未実施。dev_notes読取fetch failed、メモの変更なし。
 - 本番履歴: https://tsukuriyo-online.netlify.app/tools/hub/releases.html ／ ローカル: http://localhost:8765/tools/hub/releases.html 。本番生成JSONと公開コミットの照合は完了後にローカルへ追記する。
+
+
+## Codex v1.15.538 (2026-10-20): 公開ビルドの既存クライアント設定の誤検出に対応
+
+- v537のPUSH後、Netlify履歴生成は580msで成功したが、smart secrets scanが既存firebase.jsのWeb設定と旧カード作成ツールのSheets読み取り用キーを検出し、公開を停止。本番はv535を維持。APIでログ本文を取得できず一度ユーザーにログ提供を依頼したが、その後Netlifyの公開管理画面でログを読めたため提供不要と連絡。ツクリヨゲームはCodexブラウザで開いていない。Netlify公式管理画面だけを読取で使用。
+- Firebase公式の公開Web設定の説明とNetlify公式のfalse-positive safelist仕様を確認。既存の2つのクライアント設定値だけをnetlify.tomlのSECRETS_SCAN_SMART_DETECTION_OMIT_VALUESへ完全一致で登録。secret検査全体やsmart検査を無効化せず、ワイルドカード/パス除外も追加しない。元のキー・APIの権限・Firebase Rules・データは変更しない。一般の管理者キーやサービスアカウントには適用しない。
+- v538は同じ公開依頼を完了するための追加修正。v537の履歴ページ・全メンバー自動記録・創世神技の文字削除は維持。確認用URLや本番の照合記録はoutput/production-history-release-20261019/を継続使用。

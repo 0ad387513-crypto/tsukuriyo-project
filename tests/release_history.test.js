@@ -52,3 +52,14 @@ test("ダッシュボード導線と公開時の自動生成設定がある",()=
   const ids=new Set([...read("tools/hub/releases.html").matchAll(/id="([^"]+)"/g)].map(m=>m[1]));
   for(const match of js.matchAll(/\$\("([a-z-]+)"\)/g)) assert.ok(ids.has(match[1]),match[1]);
 });
+
+test("公開設定の誤検出例外は既存のブラウザ設定2値だけで、秘密検査は維持する",()=>{
+  const read=f=>fs.readFileSync(path.join(__dirname,"..",f),"utf8");
+  const config=read("netlify.toml");
+  const actual=config.match(/SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES\s*=\s*"([^"]+)"/)[1].split(",");
+  const firebase=read("firebase.js").match(/apiKey:\s*"(AIza[\w-]+)"/)[1];
+  const sheets=[...new Set(read("tools/card-editor/tsukuriyo.js").match(/AIza[\w-]+/g))];
+  assert.deepEqual(actual,[firebase,...sheets]); assert.equal(actual.length,2);
+  assert.doesNotMatch(config,/SECRETS_SCAN_(?:SMART_DETECTION_)?ENABLED\s*=\s*"?false/);
+  assert.doesNotMatch(config,/OMIT_(?:PATHS|KEYS)/);
+});
