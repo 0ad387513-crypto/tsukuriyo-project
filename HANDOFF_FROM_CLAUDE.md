@@ -2231,3 +2231,9 @@
 - 公開差分は今回の13ファイルのみ。最新origin/main d5e6959を確認した既存のクリーンな公開worktreeへ最小差分を適用。index.htmlやダッシュボードの共有ファイルは丸ごとコピーせず必要箇所だけ追加。未公開のボイス・画像・フィードバック等は保留したまま。ルール・AI・元画像・optimized_assets.jsonは変更なし。version533。
 - ローカル: http://localhost:8765/index.html ／ 比較: http://localhost:8765/tools/field-card-kind-preview/ 。本番ダッシュボード: https://tsukuriyo-online.netlify.app/tools/hub/ 。公開後のHTTP照合とコミットはローカルの完了追記に記録。
 - 検証記録: .release-worktree/output/field-frame-release-20261019/（npmログ、importerログ、142枚監査、オフライン枠見本、ローカル/本番の基準スナップショット）。dev_notes読取はfetch failed、メモの変更無し。
+
+
+## Codex v1.15.534 (2026-10-19): ダッシュボードの枠ページ名を簡潔に
+
+- 前回公開の継続修正。ユーザーの指定どおり、表示名を「フィールドカードの枠」へ変更し、説明文からも案の記号を外した。比較ページ内の案やHの採用状態・対戦表示には変更なし。対応する既存テスト期待値とREADMEの案内名を更新。version534。
+- ローカルと公開worktreeの該当箇所だけを変更。今回の公開依頼の文言修正として本番反映。従来の未公開作業は維持。dev_notes読取はfetch failed、変更なし。Codex内ブラウザは開かない。

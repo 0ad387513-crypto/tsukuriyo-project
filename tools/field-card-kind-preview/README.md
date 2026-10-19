@@ -30,7 +30,7 @@ HはEの方向性を保ったまま、反射面・溝・唐草の陰影を少し
 
 ## 変更範囲
 
-v1.15.533でHをゲーム本体へ採用。共通の `field_card_frames.js` と `field_card_frames.css` を使用する。レリックは従来の八角形に沿う専用の枠を使用。ゲームルール・元画像・カードデータ・設定・先読みは変更せず、種類の表示だけを追加。`version.js` は533へ更新し、ラスター素材に変更がないため `optimized_assets.json` は変更しない。ダッシュボードの「カード」→「フィールドカードの枠 E・H・I」から開ける。
+v1.15.533でHをゲーム本体へ採用。共通の `field_card_frames.js` と `field_card_frames.css` を使用する。レリックは従来の八角形に沿う専用の枠を使用。ゲームルール・元画像・カードデータ・設定・先読みは変更せず、種類の表示だけを追加。`version.js` は533へ更新し、ラスター素材に変更がないため `optimized_assets.json` は変更しない。ダッシュボードの「カード」→「フィールドカードの枠」から開ける。
 
 初回の文字・アイコン付き案は `output/field-card-kind-design-20261019/previous-text-icon-proposals/`、第2版の幾何学的な4案は `previous-geometric-proposals/` に履歴として保存。第3版E/F/Gは `previous-crafted-proposals/` に保存。現在の確認URLはE/H/Iの3案を表示する。
 

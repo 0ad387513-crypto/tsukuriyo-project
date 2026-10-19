@@ -66,5 +66,5 @@ test('only four current-layout field zones receive H frames, including the oppon
   vm.runInNewContext(fs.readFileSync(path.join(root,'tools/hub/pages.js'),'utf8'),context);
   const page=context.window.DEV_PAGES.find(p=>p.id==='field-kinds');
   assert.equal(page.path,'/tools/field-card-kind-preview/');
-  assert.match(page.desc,/H/);
+  assert.equal(page.title,'フィールドカードの枠');
 });
