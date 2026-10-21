@@ -2,9 +2,9 @@
 
 // 現在の本番は結びの枠　E/H/I/J/K/Lは過去の比較用
 const designs = [
-  { id: 'current', title: '結びの枠', tag: '本番で採用中',
-    note: '縁の太さと結びの位置をそろえ、種類を素材の色で見分ける枠　マナの輪・刀・戦闘力の札も同じ色に統一',
-    points: ['銀の結び枠・基本', '金の結び枠・ユニーク', 'メタリックな黒の結び枠・龍', '青緑のクリスタル・トークン'] },
+  { id: 'current', title: '現在の本番の枠', tag: '本番の更新に追従',
+    note: '担当者を問わず、本番で公開された描画・寸法・フォント・素材の更新を自動取得します',
+    points: ['現在の基本レガシー', '現在のユニークレガシー', '現在の龍レガシー', '現在のトークン'] },
   { id: 'e', title: '黒漆・蒔絵', tag: '従来案・比較元',
     note: '漆の黒い溝に金銀を象嵌。ユニークは雲の彫りと曲線の角飾り、龍は黒鉄に鱗の彫り。強く光らせず、工芸品のような質感を目指す案。',
     points: ['黒漆に細い銀の象嵌', '金の雲彫りと唐草の角飾り', '黒鉄の鱗彫りと暗い朱の内縁', '青緑の翡翠・上下に分かれた半枠'] },
@@ -31,36 +31,16 @@ const fullName = card => (card.nickname ? card.nickname + '・' : '') + card.nam
 const escapeHtml = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function makeCard(card, design, state = 'normal') {
-  const kind = card.kind;
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = `field-card design-${design} kind-${kind} attr-${card.color} state-${state}${card.category === 'レリック' ? ' relic' : ''}`;
-  button.setAttribute('aria-label', `${fullName(card)}、${labels[kind]}、${card.color}属性${state === 'tapped' ? '、タップ中' : state === 'ready' ? '、行動可能' : ''}`);
-  button.title = `${fullName(card)} / ${labels[kind]} / ${card.color}属性`;
-  button.innerHTML = `<span class="action-ring" aria-hidden="true"></span><span class="aura" aria-hidden="true"></span>
-    <span class="kind-frame" aria-hidden="true"></span><span class="art"><span class="art-image"></span></span>
-    <span class="edge-detail" aria-hidden="true"></span><span class="corners" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-    ${design === 'current' ? currentFieldFramePreview(kind, card.category === 'レリック' ? 'octagon' : 'portrait') : largeFieldFrame(kind, design, card.category === 'レリック' ? 'octagon' : 'portrait')}
-    <span class="stat cost">${card.cost}</span>${card.category === 'レガシー' ? `<span class="stat attack">${card.attack}</span><span class="power">${card.power}</span>` : ''}
-    <span class="tap-shade" aria-hidden="true"></span><span class="tap-mark" aria-hidden="true"></span>
-    <span class="disabled-label">効果無効</span>`;
-  const art = button.querySelector('.art-image');
-  const crop = fieldCardArtCrop(card);
-  art.style.backgroundImage = `url("../../${card.image}")`;
-  art.style.backgroundPosition = crop?.position || '68% 8%';
-  art.style.backgroundSize = crop?.size || 'auto 200%';
-  if (crop?.wide) {
-    // Same illustration-only crop as .token-art-wide in the current field.
-    art.classList.add('wide');
-    art.style.backgroundSize = '129.87% 201.207%';
-    art.style.backgroundPosition = '78.261% 11.08%';
-  }
-  button.addEventListener('click', () => {
+  const host = document.createElement('div');
+  LiveBattlePreview.mount(host, card, design, state, { scale: Number(controls.scale.value), motion: controls.motion.checked });
+  const select = () => {
     document.querySelectorAll('.is-selected').forEach(el => el.classList.remove('is-selected'));
-    button.classList.add('is-selected');
-    document.getElementById('selection').textContent = `${fullName(card)}　/　${labels[kind]}　/　${card.color}属性　/　${card.category}`;
-  });
-  return button;
+    host.classList.add('is-selected');
+    document.getElementById('selection').textContent = fullName(card) + ' / ' + labels[card.kind] + ' / ' + card.color + '属性';
+  };
+  host.addEventListener('click', select);
+  host.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); } });
+  return host;
 }
 
 function samples() {
@@ -70,6 +50,7 @@ function samples() {
 }
 
 function render() {
+  LiveBattlePreview.dispose();
   document.documentElement.style.setProperty('--scale', controls.scale.value);
   document.body.classList.toggle('motion-off', !controls.motion.checked);
   document.body.classList.toggle('monochrome', controls.mono.checked);
@@ -112,4 +93,16 @@ function render() {
   document.getElementById('selection').textContent = 'カードを選択して確認';
 }
 Object.values(controls).forEach(control => control.addEventListener('change', render));
-render();
+let shownProductionVersion = '';
+async function updateProduction(force = false) {
+  const status = document.getElementById('production-source');
+  try {
+    const source = await LiveBattlePreview.refresh(force);
+    status.textContent = '現在の本番 v' + source.version + ' を表示（全メンバーの公開後の更新に自動で追従）';
+    if (force || source.version !== shownProductionVersion) { shownProductionVersion = source.version; render(); }
+  } catch (error) { status.textContent = '本番の最新版を確認できません：' + error.message; }
+}
+document.getElementById('refresh-production').addEventListener('click', () => updateProduction(true));
+setInterval(() => { if (!document.hidden) updateProduction(); }, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) updateProduction(); });
+updateProduction();

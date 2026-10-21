@@ -2402,3 +2402,16 @@
 - 本番修正履歴: deploy-preview/branch-deployのビルドでは本番の公開済みJSONを同梱し、共有だけの変更が本番履歴へ混ざらないよう修正。productionは従来のCOMMIT_REF生成を継続。取得失敗や形式不正で公開を止めるテストを追加。
 - テスト: 共有統合後npm349件、ローカル359件成功。Python importer4件成功（最初はsandboxのTEMPへの権限がなく失敗、作業用output内へテスト一時ディレクトリを指定して成功）。構文チェック・24素材の寸法容量/ハッシュを確認。既存8765が停止していたため、プロジェクトのnpm run previewを同ポートで起動（exec session80169、root=.release-worktree）。Codexブラウザでゲームやダッシュボードを開いていない。
 - 記録: .release-worktree/output/dashboard-current-frames-20261022/（preview-url-audit、merge-audit、画像出典、npmログ、実装検証、オフライン見本）。PR2をこのチャットへ添付。共有への非force PUSH後、指定URLのversion/UI/画像/本番履歴をHTTP照合してから完了を報告する。
+
+
+## Codex v1.15.546: 本番のカード枠へ追従・数値表示を本体と共通化・全担当者の履歴 (2026-10-22)
+
+- ユーザーの追加依頼: 他メンバーのカード枠更新をダッシュボードへ反映、数字のフォント/マナ・神攻力枠の寸法を本体に近づける。続いてキジマ以外の修正履歴も掲載。
+- 現行枠は固定本番の公開HTMLからCSSとカード構造を取得し、公開field_card_frames.js/field_card_art.jsと外部CSSを使ってShadow DOM内で描画。確認ページのGeorgia指定と独自バッジ寸法は使用しない。拡大は全体zoom。大きなCSSは複数カードで共用。HTMLはtemplateの不活性内容として解析し、ゲーム全体の画像読み込みやVue/Firebase起動を避ける。独立した空iframeで2つの描画用JSだけを読む。
+- 本番versionを60秒ごと・画面復帰時に確認。担当者に依存せず公開後の変更へ追従。手動再読込も可能。Hはe410a65/v538の描画JSとCSSを凍結し、以前の見た目を保持（URLだけ公開本番の絶対パスへ解決）。過去案と現行は既定の2行比較を維持。HのJSは当時のGit blobと改行を除き一致。新規画像生成/圧縮なし。
+- 同一オリジンの/__production/を新設。共有用_redirectsに固定本番の公開ファイルとCSSを読む経路、ローカルにはscripts/production_proxy.jsを追加。GET/HEADのみ、認証・Cookieやユーザー指定ホストを転送しない。index/本体JS/CSSは変更せず、mainへPUSHしない。HTML構造/APIの非互換変更や取得失敗を黙って旧版へ代用しない。
+- 本番履歴はすでにmaekawa45件とキジマ255件の計300件を含んでいた。最新の本番公開履歴を同じ代理取得口から読み、担当者別件数/絞り込みボタン、キジマ以外の件数を明記。全担当者を既定。60秒/画面復帰で最新化、取得失敗時だけ同梱履歴であることを明示して表示。共有専用コミットを本番履歴に混ぜない方針は維持。
+- ローカル370件成功、共有用354件成功。新規5件で固定読取先・POST/トラバーサル拒否・Cookie非転送・全担当者/無版数修正・CSSの寸法とフォントを変更しないURL解決・種類分類を検証。ローカル8765から本番CSS/描画JS/切り抜き/HTML/履歴8口の取得成功。実本番のHTMLにレガシー/レリックが各2個存在し、独立iframeのsrcdocが正しい2scriptになることをparse5で確認。ブラウザ上のピクセル比較は未実施（ユーザー指示によりCodexブラウザを開いていない）。
+- 作業前dev_notes list approved/assignee codexはfetch failed、修正メモの変更なし。自動共有は部分的な公開を避けるためsession91728を停止し、startWithPreviewを一時false。8765サーバーは公開情報の取得口付きでnpm run previewにより再起動、session23677。今回の共有公開が完了したら設定trueに戻し、監視を再開する。
+- 記録: .release-worktree/output/dashboard-production-20261022/、output/dashboard-production-tests.log、output/dashboard-production-shared-tests.log。docs/dashboard-production-preview.mdに他メンバー向け手順を保存。共有公開後のSHAと取得照合結果はローカルへ追記。
+

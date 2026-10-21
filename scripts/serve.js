@@ -643,11 +643,12 @@ async function handleDev(req, res, url) {
 
 const notesFile = path.join(root, "tools", "hub", "notes.json");
 const crlfOf = file => { try { return fs.readFileSync(file, "utf8").includes("\r\n"); } catch { return false; } };
-http.createServer((req, res) => {
+http.createServer(async (req, res) => {
   let pathname;
   let url;
   try { url = new URL(req.url, "http://localhost"); pathname = decodeURIComponent(url.pathname); }
   catch { res.writeHead(400).end(); return; }
+  if(await require("./production_proxy.js").productionProxy(req,res,pathname)) return;
   if (pathname.startsWith("/__dev/")) { handleDev(req, res, url).catch(err => sendJson(res, 500, { ok: false, message: String(err && err.message || err) })); return; }
   // 「/tools/card-editor/」のようにフォルダで終わるURLは、その中の index.html を返す
   const file = path.resolve(root, "." + (pathname.endsWith("/") ? pathname + "index.html" : pathname));
