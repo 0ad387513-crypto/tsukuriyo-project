@@ -81,7 +81,7 @@ async function joinConstructRoom(roomCode, playerName) {
   const room = snap.val();
   assertCompatibleBuild(room.buildVersion);
   if (Date.now() - Number(room.createdAt || 0) >= CONSTRUCT_ROOM_TTL_MS) {
-    throw new Error("この部屋は期限切れです。公開一覧から別の部屋を選んでください");
+    throw new Error("この部屋は期限切れです\n公開一覧から別の部屋を選んでください");
   }
   if (room.phase !== "lobby") throw new Error("この部屋はすでに対戦準備が始まっています");
   if (room.guest) throw new Error("この部屋はすでに満員です");
@@ -95,7 +95,7 @@ async function joinConstructRoom(roomCode, playerName) {
     cur.phase = "building";
     return cur;
   });
-  if (!res.committed) throw new Error("部屋への参加に失敗しました。満員・期限切れ・バージョン違いの可能性があります");
+  if (!res.committed) throw new Error("部屋への参加に失敗しました\n満員・期限切れ・バージョン違いの可能性があります");
 
   if (typeof publicRoomRemove === "function") publicRoomRemove(roomCode);
   return { playerId, role: "guest" };

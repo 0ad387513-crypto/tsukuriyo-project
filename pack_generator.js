@@ -76,7 +76,7 @@ function validatePool(cards) {
     warnings.push(`カード枚数が180枚ではありません（${cards.length}枚）`);
   }
   if (total !== 255) {
-    warnings.push(`全カード返還値合計が255ではありません（実際: ${total}）。パック生成に影響が出る場合があります。`);
+    warnings.push(`全カード返還値合計が255ではありません（実際: ${total}）\nパック生成に影響が出る場合があります`);
   }
   if (lowCount < PACK_COUNT * VISIBLE_COUNT) {
     warnings.push(`返還値0/1のカードが${PACK_COUNT * VISIBLE_COUNT}枚未満です（実際: ${lowCount}枚）`);
@@ -194,7 +194,7 @@ function generatePacks(allCards, seed) {
   }
 
   if (targetMisses > 0) {
-    warnings.push(`${targetMisses}パックで返還値合計が${TARGET_SUM}になりませんでした。`);
+    warnings.push(`${targetMisses}パックで返還値合計が${TARGET_SUM}になりませんでした`);
   }
 
   const diagnostics = {

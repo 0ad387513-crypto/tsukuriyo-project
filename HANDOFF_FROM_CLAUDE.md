@@ -2305,3 +2305,100 @@
 - scripts/build_card_voice_manifest.js：together の印の付いた部分が2つ以上続くところを1つの「同時に言う」まとまりにして ffmpeg で重ねる（全体ならグループID-together.mp3、一部だけならグループID-together-最初の番号.mp3）。印の無い部分は従来どおり順に鳴らす。重ねた音声が無ければ1人ずつ順に鳴らす。card_voice_together.json も引き続き使える
 - 結果：n065-summon（絆の最前線 ライカ＆コマ）はライカ→コマ→2人同時「乗り越える！」、n139-use（覚悟の出陣）2人同時、n161-use（断禍の三重奏）3人同時、n176-use はそのまま。n153-use（託された一閃）と n065-death は別の台詞の掛け合いなので順番のまま
 - テスト：tests/card_voice.test.js に1件追加。asset_hashes.js も作り直し
+
+
+## Codex authorized Orochi chibi/emote publication v1.15.514 (2026-10-15)
+
+- User explicitly requested production PUSH for completed local511/512 work. Latest origin/main advanced from510 to3bd964e (v512), with concurrent online sync, battle log, guardian and turn-control fixes. Reconstructed only this task delta against exact published510 baseline, then three-way merged onto latest main without conflicts. Audited resulting index diff:4 chibi references, masked/unmasked emote selection/gallery/bubble snapshot/selected-Kami loading only; no rollback of latest battle fixes. New local513 Claude dashboard/voice work remains uncommitted, not published. Main changes backmerged to local index conflict-free, preserving local additions; version514.
+- Included four-corner elemental Orochi chibi (720sq116672B), masked6 emote atlas (840x560159668B), canonical chibi alias, existing unmasked variant retained, metadata/caching/docs/test changes,2 standalone image inventory/comparison pages. Victory/defeat art/cropping unchanged; all20 source portrait files match prior audit. Standard WebP limits maintained, alpha preserved, originals/prompts/private settings/output histories excluded from publication. Source generation/proofs in output/orochi-chibi-four-corners-20261015 and output/result-portraits-orochi-emotes-20261015.
+- Publication npm246 and importer4 pass; diff check clean; new emote test covers both actors, gallery12 entries, immutable bubble variant snapshot and selected-Orochi-only loading. Local8765 retained. No Codex game browser opened or browser interactions performed. Approved dev_notes CLI read attempted per current AGENTS but returned fetch failed; no notes changed. Staging/publication verification records: .release-worktree/output/orochi-emote-release-20261015/. Delivery results appended locally after PUSH.
+
+
+## Codex release v1.15.532 (2026-10-19): Standard CPU planning and decision fixes
+
+- Explicit user authorization: 本番にPUSHしてください. Integrated accumulated CPU pick/skill/evolution/sublimation/second-player/shrine/choice improvements onto latest production514. Includes required score/death-copy/full-field-summon/modal-queue fixes; preserves production UI/assets/voices and other uncommitted local tooling. Card values, extra-draw, mana from Shrine and fatigue rules unchanged. Proposed +2 Shrine/extra Ambush rules NOT implemented.
+- index integrated by three-way task delta from pre-CPU515 snapshot to current source, resolving two old CPU block conflicts in favor of reviewed new logic; all changed runtime methods match tested source. Session obsolete PAIRINGS export removed. Tests and audit/validation docs included; local raw simulations/private feedback/tools/audio edits excluded.
+- Final CPU experiment previously recorded 5040 clean matched star battles, first68.61->59.33%, second31.39->40.67%; this is CPU evidence, not human winrates. Local source has additional unpublished voice/tool changes; do not copy it wholesale to production.
+- Pre-publication validation: production npm338/local349 pass; Python importer4 pass in production. Real production-code VM plays4 complete creation tournaments/24 star battles covering all10Kami,0 stops/effect warnings. Diff whitespace clean. No asset/audio/feedback/security-rule files included.
+
+
+## Codex v1.15.533 (2026-10-19): H案のフィールド枠採用・E/H/Iをダッシュボードへ
+
+- ユーザーがH案採用とE/H/I比較のダッシュボード掲載・本番公開を明示的に依頼。今回のコミット・PUSH・公開はこの最新指示に基づく。旧AGENTSの公開禁止は今回の公開指示により上書き。ゲームをCodex内ブラウザでは開かない指示は継続。
+- field_card_frames.js/.cssを追加。Hの高蒔絵を自分・相手のレガシーとレリックへ適用。基本=銀、ユニーク=金、龍=赤黒、トークン=青緑の翡翠。レリックは既存の八角形を維持した専用枠。内側の属性色、数値、キーワード、行動可能・タップ表示を維持。Hは静止素材なので最小速度・動きを減らす設定でも追加アニメーション無し。
+- 種類はトークン優先→龍→創→全カードプールの同名収録数で判定（ピックと同じ正式名基準）。戦闘中にisTokenが省略されたコピーも元カードから判定。SVGはカードと表示スロットごとにWeakMapで再利用し、ID衝突・数値更新ごとのHTML再生成を避ける。v-htmlへ渡すのは固定SVG形状と列挙値のみ。カード名や任意の入力文字列をSVGへ埋め込まない。
+- 比較ページは同じ共通レンダラーを使用。E/H/Iを残し、ダッシュボード「カード」→「フィールドカードの枠 E・H・I」から開く。旧tools内の重複レンダラーは廃止。レリック比較も八角形。公開用は本番で使っている既存カード画像に内容ハッシュを合わせ、ローカルの未公開カード画像は同梱しない。
+- 検証: 本番用npm342件、ローカルnpm353件、画像取り込みPython4件成功。新規tests/field_card_frames.test.jsは分類・安定したSVG再利用・表示インスタンスID分離・後から読み込むカードデータ・八角形・4場への組み込み・ダッシュボードを検証。実198枚のうちフィールド142枚=基本64/ユニーク56/龍16/トークン6を監査。SVG参照先とID衝突無し、枠8形状をオフライン描画・目視確認。ローカル25リソースHTTP200・最終ソース一致。実ブラウザの対戦操作確認ではない。
+- 公開差分は今回の13ファイルのみ。最新origin/main d5e6959を確認した既存のクリーンな公開worktreeへ最小差分を適用。index.htmlやダッシュボードの共有ファイルは丸ごとコピーせず必要箇所だけ追加。未公開のボイス・画像・フィードバック等は保留したまま。ルール・AI・元画像・optimized_assets.jsonは変更なし。version533。
+- ローカル: http://localhost:8765/index.html ／ 比較: http://localhost:8765/tools/field-card-kind-preview/ 。本番ダッシュボード: https://tsukuriyo-online.netlify.app/tools/hub/ 。公開後のHTTP照合とコミットはローカルの完了追記に記録。
+- 検証記録: .release-worktree/output/field-frame-release-20261019/（npmログ、importerログ、142枚監査、オフライン枠見本、ローカル/本番の基準スナップショット）。dev_notes読取はfetch failed、メモの変更無し。
+
+
+## Codex v1.15.534 (2026-10-19): ダッシュボードの枠ページ名を簡潔に
+
+- 前回公開の継続修正。ユーザーの指定どおり、表示名を「フィールドカードの枠」へ変更し、説明文からも案の記号を外した。比較ページ内の案やHの採用状態・対戦表示には変更なし。対応する既存テスト期待値とREADMEの案内名を更新。version534。
+- ローカルと公開worktreeの該当箇所だけを変更。今回の公開依頼の文言修正として本番反映。従来の未公開作業は維持。dev_notes読取はfetch failed、変更なし。Codex内ブラウザは開かない。
+
+
+## Codex v1.15.535 (2026-10-19): 大きく目立つフィールド枠の比較をダッシュボードへ
+
+- ユーザーの追加依頼により、Hを維持しつつJ太縁／K大きな角飾り／L強いオーラの3案を追加。文字・種類アイコンはカードへ追加せず、基本=銀、ユニーク=金、龍=赤黒、トークン=翡翠を維持。元のE/H/Iも選択可能。
+- tools/field-card-kind-preview/でHと新3案を既定表示。実対戦の高さ17.5vhと最小間隔2.8vhで7枚を比較。拡大・タップ・行動可能・効果無効・白黒・動きOFF・八角形レリックにも対応。Lの光は絵の外側だけで明滅、OSの動きを減らす設定でも停止。
+- ダッシュボード名は「フィールドカードの枠」のまま。今回の「ダッシュボードにも反映」依頼で比較ページを本番公開。実ゲームの採用H、共通枠JS/CSS、ゲームHTML、原画、ルール、AI、未公開の並行作業は変更せず。公開専用worktreeへ比較5ファイル・hub説明1箇所・version・この記録のみを移し、ローカル未公開画像に依存するcards.jsは移さない。
+- オフラインSVG32組（H/J/K/L×4種類×肖像/八角形）の描画と内部参照・ID重複無しを検証。比較と7枚並びの静止画を目視確認。ブラウザの操作確認ではない。ユーザー指定に従いCodex内ブラウザは開いていない。dev_notes読取fetch failed、変更なし。確認記録は.release-worktree/output/field-frame-large-release-20261019/。
+- 本番ダッシュボード: https://tsukuriyo-online.netlify.app/tools/hub/ ／ ローカル比較: http://localhost:8765/tools/field-card-kind-preview/ 。公開後の照合とテスト結果は完了記録へ追記。
+- 公開前検証: npm testは公開用342件／ローカル353件すべて成功。ローカル8765のHTML・JS・CSS・参照画像を含む24リソースがHTTP200かつ最終ソースと完全一致。共通の採用枠JS/CSSは公開前と同一。最新origin/main=d90fd54を再確認し、公開差分は比較ページ・hub説明・version・引き継ぎの8ファイルのみ。
+
+
+## Codex v1.15.537 (2026-10-19): 本番修正履歴をダッシュボードへ・創世神技の字幕撤去を公開
+
+- ユーザーが本番修正履歴のダッシュボード掲載、他メンバーの修正も掲載、前回の創世神技の文字削除を含めたPUSHを明示的に依頼。今回の公開はこの最新指示に基づく。v536はローカルだけだったため、公開はv535からv537へ更新する。
+- tools/hub/releases.html/.js/.cssを追加し、ダッシュボード上部に「本番の修正履歴」を追加。日時・バージョン・Git作成者・修正内容・コミットへのリンク。検索・担当者の絞り込み・30件ずつ追加表示。日本時間のコミット日時と個別公開日時を区別して明記。Firebaseに依存せず同じ公開物のJSONを取得。本文はtextContent、リンクは固定GitHubドメインと検証済みSHAのみ。
+- netlify.tomlで公開ビルドにscripts/build_release_history.jsを組み込み、COMMIT_REFから到達可能な全担当者のコミット（マージ元も含む）を最大300件自動記録。ローカルではorigin/mainから生成し、作業中のversion/indexは参照しない。過去の公開スナップショットを同梱し、浅いcheckoutでも過去分を保持。生成失敗は公開ビルドを失敗させる。docs/release-notes.jsonで日本語の詳細説明を補完。過去300件にキジマ・maekawa両名を確認。
+- 全メンバー共通の手順をAGENTS.md／CLAUDE.mdへ追記し、docs/production-history.mdに仕様・公開範囲・記載方法を保存。個人メールやコミット本文は表示しない。_headersで履歴JSONをno-store。Git外の手動公開・未公開ブランチの作業は自動対象外。
+- 創世神技の共通の上見出しと下説明文をゲーム/演出プレビューから削除。カットイン技名・台詞と演出コンポーネントの列が公開前と同一であることを確認。公開用indexは全文コピーせず2要素だけ撤去し、未公開の音声・画像・フィードバック等は保留。共通演出JS/CSS・カードルール・AIは公開差分に含めない。
+- 検証: npm test公開用346件／ローカル357件成功。新規4テストで全担当者、無版数コミット、浅い履歴の保持、重複排除、壊れたGitデータの失敗、検索、公開導線を確認。HTML内JSと追加JS構文成功。ローカル8765の8リソースがHTTP200・最終ソースと完全一致。出力は.release-worktree/output/production-history-release-20261019/。Codex内ブラウザは開かず、ブラウザ操作による目視確認は未実施。dev_notes読取fetch failed、メモの変更なし。
+- 本番履歴: https://tsukuriyo-online.netlify.app/tools/hub/releases.html ／ ローカル: http://localhost:8765/tools/hub/releases.html 。本番生成JSONと公開コミットの照合は完了後にローカルへ追記する。
+
+
+## Codex v1.15.538 (2026-10-20): 公開ビルドの既存クライアント設定の誤検出に対応
+
+- v537のPUSH後、Netlify履歴生成は580msで成功したが、smart secrets scanが既存firebase.jsのWeb設定と旧カード作成ツールのSheets読み取り用キーを検出し、公開を停止。本番はv535を維持。APIでログ本文を取得できず一度ユーザーにログ提供を依頼したが、その後Netlifyの公開管理画面でログを読めたため提供不要と連絡。ツクリヨゲームはCodexブラウザで開いていない。Netlify公式管理画面だけを読取で使用。
+- Firebase公式の公開Web設定の説明とNetlify公式のfalse-positive safelist仕様を確認。既存の2つのクライアント設定値だけをnetlify.tomlのSECRETS_SCAN_SMART_DETECTION_OMIT_VALUESへ完全一致で登録。secret検査全体やsmart検査を無効化せず、ワイルドカード/パス除外も追加しない。元のキー・APIの権限・Firebase Rules・データは変更しない。一般の管理者キーやサービスアカウントには適用しない。
+- v538は同じ公開依頼を完了するための追加修正。v537の履歴ページ・全メンバー自動記録・創世神技の文字削除は維持。確認用URLや本番の照合記録はoutput/production-history-release-20261019/を継続使用。
+## Claude v1.15.539（2026-10-18〜21、v1.15.538 の上に重ねた）文とデザインのブレを抑える
+
+- CLAUDE.md に「画面の文とデザインの決まり」を追加（句点を文末に付けない・文の区切りは改行、改行は全体の基本設定に任せる、記号の飾りを足さない、同種の要素は色と形をそろえる、補足を付け足さない、用語はプレイガイドを正）。Codex 側も同じ決まりでお願いします。
+- 全体の基本：`html { line-break: strict; word-break: auto-phrase; overflow-wrap: break-word; }`、`p, li, dd, summary, blockquote { text-wrap: pretty; }`。
+- モード紹介：番号の丸の色をそろえた（くり返す段階だけ金色にしていたのをやめた）、↻を外した、文末の句点を外した、「CPUを加えれば、2人からでも開始できます。」を外して見出しを「4人対戦・CPU参加可」に、「3柱の候補から、自分のカミを1柱選びます」。
+- プレイガイド：流れ図の「終戦」だけ金の枠だったのをそろえた。説明の文の句点を外し、文の区切りは改行に。
+- 句点を全画面でまとめて外した（index.html の文字列約690か所・テンプレート約130か所、construct_battle.js・shield_battle.js・firebase.js・pack_generator.js のエラー文）。文末は削除、文の途中は改行（テンプレートは <br>、文字列は \n）、TOP のヒント・お知らせは全角の空白。物語（GENESIS_STORY_SCENES・プレイガイドの物語）は残した。カミ図鑑の要約は句点で1文ずつに分けているのでデータは残し、kamiDexSentences で表示時に外す。
+- \n を出す場所（プレイガイドの用語・チュートリアル・読み込み中のヒント・カミ図鑑のボイス・エモート・創生理念・効果の案内・通信の停止・勝利の台詞など）に white-space: pre-line。勝利の台詞の区切りに \n を追加。ピックガイドのカード名の下線処理が textContent で <br> を消していたので、タグを残して文字だけ置き換えるようにした。
+- npm test 246件成功。未コミット・push なし。
+- （同日・追加）句点を改行に置き換えて行が増えたところを、文そのものを1文につなげて書き直した（プレイガイド・ピックガイド・用語集・設定の説明・読み込み中のヒントなど）。カードの4つの種類は「短い一言＋説明」の2行にそろえた。勝利・終戦・エモートの台詞は改行をやめて全角の空白で区切り、台詞の枠を結果画面の幅いっぱいにして、全90通りが 1920×1080・1280×720 で2行以内に収まることを確かめた。「メインでできること」の説明と図の間を広げた。CLAUDE.md の決まりに「機械的に改行へ置き換えず、文をつなげて書き直す」を追加。チュートリアルの台詞は1文ずつ改行のまま（吹き出しの最大の高さは変更前と同じ）。
+
+## Claude v1.15.539（2026-10-21）場の札のレアリティ枠を作り直し
+
+- ユーザー指定：H 枠は装飾に統一感がなく、色でレアリティが分かりにくいので根本から作り直す。縁の太さはすべて同じ、飾りは全種類同じ場所にさりげなく、色は 返還値2＝銀・1＝金・龍＝メタリックな黒・トークン＝クリスタル（H 案の青緑を採用）。
+- field_card_frames.js に rarityFrame(kind, shape) を追加し、fieldCardFrameForCard はこちらを使う（創は金）。縁＝外と内の輪郭＋金属のグラデーション＋内側の細い光、飾りは上辺中央の小さな菱形だけ。レリックの八角形も同じ作り。materialFrame / materialRelicFrame（H/E/I の案）は見比べ用の画面のために残してある。
+- field_card_frames.css：トークンだけの内側の線をやめた。読み込み番号 ?v=20261021-539。
+- マナの輪：場の札は data-field-kind ごとの --rar-metal を輪の形（--mana-ring-mask / --mana-ring-relic-mask）で切り抜いて塗る。輪の中は属性の色。手札のマナは従来どおり金。
+- 句点の整理（v1.15.515 として手元にあった分）も v1.15.538 の上に重ねた。衝突した通知の行は Codex 側の処理を採り、文末の句点だけ外した。CPUの強さの説明も1文に。
+- （追加）ユーザーの選択で、場のレガシーの枠を「結び」（ChatGPT 生成の6案のうち 4「小さめの結び」）に。design_assets/memory-knot-frame-variations-v1/generated-original.png から切り出し（387×454）、背景を抜いて4色（銀・金・メタリックな黒・クリスタル）に塗り分け、battle_ui/field-knot-frame-<色>-<hash>.webp（sprite、各11〜12KB）として取り込み、optimized_assets.json に import:battle_ui/field-knot-frame-<色>.webp で記録。作り方は design_assets/field-knot-frame-v1/manifest.json。field_card_frames.js の knotFrame(kind) が <img> を返し、画像の縁の内側（KNOT_FRAME_INNER）をカードの絵の端（--frame-w の内側）に合わせて置く。レリック（八角形）は rarityFrame のまま。戦闘力の札・刀の印・マナの輪の色分けはそのまま。背景6種で見え方を確認済み。
+- （追加）マナの輪と神攻力の刀の印を、枠と同じ「明るさ→色」の7段で塗った画像に（案1）。battle_ui/mana-ring-{circle,octagon,diamond}-{silver,gold,black,crystal}-<hash>.webp と attack-swords-<色>-<hash>.webp（刀は金の縁取りを半径2.2px太らせ、黒い面はそのまま）。作り方は design_assets/field-knot-frame-v1/rings/。CSS は data-field-kind ごとに --rar-ring-circle/octagon/diamond・--rar-swords を持たせ、場のレガシー・レリック、手札（レガシー＝丸、レリック＝八角形、オラクル＝菱形）、左上の情報欄（.battle-hand-info に :data-field-kind）で使う。手札の昇華（「2/5」など横に伸びるマナ）は cost-wide で、輪の画像の代わりに同じ金属のグラデーションの縁取り。戦闘力の札も battle_ui/power-plaque-<色>-<hash>.webp（金の縁取りだけ同じ7段で塗り直し）にし、--rar-plaque-filter は廃止。左上の情報欄の神攻力・戦闘力（.battle-hand-info-attack / -power）も --rar-swords / --rar-plaque。
+- （追加）左上の情報欄：返還値の行（.battle-hand-info-band）をなくし、神攻力・戦闘力（.battle-hand-info-stats.on-thumb）をサムネの右端に縦に重ねた（右上に刀、右下に札、右端をそろえる）。名前は右に64px空ける。
+- （追加）マナの輪：外側の黒い線（画像の外周の線と、CSS の box-shadow 0 0 0 1.5px の暗い縁取り）をなくし、色を濃い7段（銀は明暗を強く、金は彩度を上げ、黒は面を暗く光を明るく、クリスタルは鮮やかな青緑）にした。その後、結びの枠・刀の印・戦闘力の札・レリックの八角形の縁（RARITY_FRAME_COLORS）・手札の横長マナ（--rar-metal）も同じ濃い色にそろえた（各 *import2.js で作り直し、URL を差し替え）。
+- （追加）色の段階を見直し（design_assets/field-knot-frame-v1/palette.js）：銀は白くならない灰色の金属、金は深みのある金、マナの輪の黒だけ明るい帯を抑えた（blackRing）。枠・刀・札・輪・RARITY_FRAME_COLORS・--rar-metal を作り直し。場のレガシーは結びの枠の画像で縁を描くので、カード自体の属性の色の地と暗い縁取り（box-shadow 0 0 0 1.5px）を field_card_frames.css で消した（角や辺から緑などが漏れていた）。影は !important を付けず、行動できる金の光（アニメーション）は残る。
+- npm test 347件成功。本番 v1.15.539 として公開。
+
+
+## Codex v1.15.540 (2026-10-22): 共有確認用URLを最新mainへ統合・本番の結び枠をダッシュボードへ
+
+- 最新依頼: ダッシュボードへ基本/ユニーク/龍のカード枠を反映。続いて、https://deploy-preview-2--tsukuriyo-online.netlify.app/tools/hub/ が古いので最新版へ更新するよう明示。現在のAGENTSの公開禁止に対し、この追加依頼を指定の共有確認用ブランチだけを更新する許可として扱う。本番mainへはPUSHしない。
+- 診断: 共有確認用はPR2（claude/share-preview-20261014）のv524で停止、カード枠ページは404。本番mainは141fc5d/v539で、Claudeの新しい結び枠を採用済みだが、比較ページが旧H採用のままだった。
+- 既存のクリーンな公開用worktreeをcodex/dashboard-preview-current-20261022へ切り替え、共有ブランチのリモートHEAD341d004から最新main141fc5dをマージ。indexの31重複箇所は全てmainの最新CPU判断/表記へ統一、共有側だけのCPUカットイン時の覆い解除を維持。その他のボイス・修正メモ等の共有機能を保持。最終indexのmainとの差分はCPU覆いの1行のみ。最適化メタデータはキー単位の3-wayで合成し、両側で同時変更したキーは0。共有変更や未コミットの.release/.shareを丸ごと公開しない。
+- 比較ページ: currentを既定にし、銀=基本/金=ユニーク/メタリックな黒=龍/青緑クリスタル=トークンの結び枠とマナの輪・刀・戦闘力の札を表示。レリックは同素材の八角形。E/H/I/J/K/Lは過去の比較用に維持。Hを採用中とする旧表示を訂正。ダッシュボード上部へ直接の入口を追加し、カード分類の説明も更新。
+- current_frame_preview.jsは本体のknotFrame/rarityFrameを優先し、ゲーム本体が旧版のローカルの場合だけmain141fc5dの同一関数を内部使用。srcを比較ページの階層へ解決。ローカルのゲームJS/CSSは触らず、mainから既存の最適化WebP24件と元の登録データをそのまま取得（再生成・再圧縮なし、全ハッシュと120KB上限を確認）。8形状が現行mainと同一、旧6案・7枚表示をNode DOMで確認。オフライン素材描画を目視確認（ブラウザ画面ではない）。
+- 本番修正履歴: deploy-preview/branch-deployのビルドでは本番の公開済みJSONを同梱し、共有だけの変更が本番履歴へ混ざらないよう修正。productionは従来のCOMMIT_REF生成を継続。取得失敗や形式不正で公開を止めるテストを追加。
+- テスト: 共有統合後npm349件、ローカル359件成功。Python importer4件成功（最初はsandboxのTEMPへの権限がなく失敗、作業用output内へテスト一時ディレクトリを指定して成功）。構文チェック・24素材の寸法容量/ハッシュを確認。既存8765が停止していたため、プロジェクトのnpm run previewを同ポートで起動（exec session80169、root=.release-worktree）。Codexブラウザでゲームやダッシュボードを開いていない。
+- 記録: .release-worktree/output/dashboard-current-frames-20261022/（preview-url-audit、merge-audit、画像出典、npmログ、実装検証、オフライン見本）。PR2をこのチャットへ添付。共有への非force PUSH後、指定URLのversion/UI/画像/本番履歴をHTTP照合してから完了を報告する。

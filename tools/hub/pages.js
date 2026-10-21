@@ -9,6 +9,9 @@
   const selectedOptions = doc => [...doc.querySelectorAll("select")].map(s => s.selectedOptions[0] ? s.selectedOptions[0].textContent.trim() : "").filter(Boolean);
   const selectedOption = doc => { const s = doc.querySelector("select"); return s && s.selectedOptions[0] ? s.selectedOptions[0].textContent.trim() : ""; };
   window.DEV_PAGES = [
+    { id: "field-kinds", group: "カード", title: "フィールドカードの枠", path: "/tools/field-card-kind-preview/", kind: "ui", desc: "現在の本番の枠を確認　基本は銀、ユニークは金、龍はメタリックな黒　マナの輪・神攻力・戦闘力の札と過去の案も比較できます",
+      items: [{ selector: ".comparison-table tbody td", label: e => text(e.parentElement, ".row-title") + "：" + text(e.closest("table").querySelector("thead th:nth-child(" + (e.cellIndex + 1) + ")")) }],
+      whole: { target: doc => "フィールドカードの枠：" + selectedOptions(doc).join("・") } },
     { id: "voices", group: "ボイス・音", title: "ボイス", kind: "voice", desc: "試聴室と台本を1か所で。上のタブで切り替えます。",
       tabs: ["voice", "voice-script"] },
     { id: "voice", inside: "voices", group: "ボイス・音", title: "試聴室", path: "/tools/voice-preview/", kind: "voice", desc: "キャラごとの声と、作った台詞を聴いて確認。カミのボイスも「カミ」のタブで、台詞と演技の方針を直して作り直せます。",

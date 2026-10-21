@@ -1,0 +1,29 @@
+/* Accepted H frame. Limited to field cards in the current layout. */
+.battle-layout-v2 .field-card .field-kind-frame {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  pointer-events: none;
+  overflow: visible;
+}
+.battle-layout-v2 .field-kind-frame > .material-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.battle-layout-v2 .field-kind-frame .field-frame-attribute { stroke: var(--frame-bg, #888); }
+/* The original octagonal artwork mask stays on .token-art; numbers stay above the rim. */
+.battle-layout-v2 .battle-row-opp-top > .battle-zone.field .field-card[data-field-kind],
+.battle-layout-v2 .self-relic-drop .field-card[data-field-kind] {
+  -webkit-mask: none;
+  mask: none;
+  background: transparent !important;
+}
+/* レガシーは結びの枠（画像）で縁を描くので、カード自体の属性の色の地と暗い縁取りは出さない（角や辺から漏れて見えるため）。影だけ残す */
+.battle-layout-v2 .legacy-field .field-card[data-field-kind] { background-color: transparent !important; box-shadow: 0 8px 18px rgba(0, 0, 0, .6); }
+/* レアリティ枠（2026-10）はどの種類も同じ作りなので、トークンだけの内側の線は付けない */
+.battle-layout-v2 .field-card .field-kind-frame ~ .battle-card-overlay { z-index: 2; }
+.battle-layout-v2 .field-card .status-icon-row { z-index: 3; }
+/* H is static, so reduced motion/minimum speed needs no extra animation or asset load. */

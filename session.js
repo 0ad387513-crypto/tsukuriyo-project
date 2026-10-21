@@ -869,7 +869,7 @@ if (typeof module !== "undefined") {
     startDeepen, deepenReflect, deepenFusion, deepenBloomDraw, deepenBloomPick,
     draftFreeReturn, draftFreeReturnUndo, draftFreeReturnDone, draftFreeReturnLimit,
     deepenSetDone, packCards,
-    PAIRINGS, battleWonBySeat, recordBattleResult, advanceAfterBattle,
+    battleWonBySeat, recordBattleResult, advanceAfterBattle,
     cpuSeatsOf, sessionHasCpu, addCpuSeat, removeCpuSeat, pairingsFor,
     setPickTimeLimits, abortSession,
     GAME_DIFFICULTY_PRESETS, GAME_TIMER_DEFAULTS, normalizeGameSettings, setGameSettings,
