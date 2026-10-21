@@ -77,15 +77,16 @@ function render() {
   host.replaceChildren();
   const table = document.createElement('table');
   table.className = 'comparison-table';
-  table.innerHTML = '<caption>現在の本番の枠と過去の案を確認</caption>';
+  table.innerHTML = '<caption>現在の枠と以前採用したH案を比較できます</caption>';
   const head = document.createElement('thead');
   head.innerHTML = `<tr><th scope="col">デザイン案</th>${samples().map(card => `<th scope="col">${labels[card.kind]}<small>${escapeHtml(fullName(card))}</small></th>`).join('')}</tr>`;
   const body = document.createElement('tbody');
   for (const design of designs) {
     const view = controls.view.value;
+    if (view === 'adopted' && !['current','h'].includes(design.id)) continue;
     if (view === 'large' && !['h','j','k','l'].includes(design.id)) continue;
     if (view === 'previous' && !['e','h','i'].includes(design.id)) continue;
-    if (!['all','large','previous'].includes(view) && view !== design.id) continue;
+    if (!['adopted','all','large','previous'].includes(view) && view !== design.id) continue;
     const row = document.createElement('tr');
     row.innerHTML = `<th scope="row"><span class="row-title"><span class="letter${design.id === 'current' ? ' current-letter' : ''}">${design.id === 'current' ? '採用' : design.id.toUpperCase()}</span>${design.title}</span>${design.tag ? `<span class="recommend-tag">${escapeHtml(design.tag)}</span>` : ''}<p>${design.note}</p></th>`;
     for (const [i, card] of samples().entries()) {
