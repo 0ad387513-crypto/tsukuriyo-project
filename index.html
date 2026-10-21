@@ -12688,7 +12688,7 @@
   <div v-if="battleTurnWipe && appView === 'battle'" :key="'wipe'+battleTurnWipe.id" class="battle-turn-wipe" :class="battleTurnWipe.side"></div>
 
   <!-- ===== CPU対戦AI実行中の目隠し（内部的にself/oppを入れ替えて処理するため、その間は盤面を隠す） ===== -->
-  <div v-if="battleCpuThinking" class="battle-cpu-thinking-overlay">
+  <div v-if="battleCpuThinking && !battleSkillCloseup" class="battle-cpu-thinking-overlay"><!-- 神技のカットイン中は覆いを外して、相手の神技を暗くせずに見せる -->
     <div class="battle-cpu-thinking-label">{{ battleUiText(battleCpuThinkingLabel || '相手が考えています…') }}</div>
     <div class="battle-cpu-thinking-steps" aria-label="CPUターン進行状況">
       <span :class="battleCpuPhaseClass('review')">確認</span>

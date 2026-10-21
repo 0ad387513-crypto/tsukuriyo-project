@@ -3,7 +3,7 @@
 // Preview only. The battle renderer continues to select the accepted H frame.
 let largeFrameSequence = 0;
 const largeProposalBaseFrame = typeof module !== 'undefined' && module.exports
-  ? require('../../field_card_frames.js').materialFrame : materialFrame;
+  ? require('./historical_field_frames.js').materialFrame : materialFrame;
 function largeFieldFrame(kind, design, shape = 'portrait') {
   if (!['j','k','l'].includes(design)) return largeProposalBaseFrame(kind,design,shape);
   const id=`large-frame-${++largeFrameSequence}`, height=shape==='octagon'?227:308;

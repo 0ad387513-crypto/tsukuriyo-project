@@ -41,6 +41,31 @@ test('通常版/進化版を共有し、不完全な複数話者・未作成台�
   manifest = buildCardVoiceManifest(root).manifest;
   assert.equal(manifest.cards['4'].summon.length, 2);
 });
+test('同時に言う印の付いた部分は、重ねた1本があればそれを鳴らし、印の無い部分は順に鳴らす', t => {
+  const { root, write } = fixture(t);
+  write('tools/voice-script/card_voice_script.json', { lines: { n001: { nos: '1' }, n003: { nos: '3' }, n005: { nos: '5' } } });
+  write('tools/voice-script/card_voice_lines.json', { items: [
+    // 一部だけ同時：1人目 → 2人目 → 2人同時に
+    { ref: 'n001-summon-1', group: 'n001-summon', text: '恐怖は' },
+    { ref: 'n001-summon-2', group: 'n001-summon', text: '二人で' },
+    { ref: 'n001-summon-3', group: 'n001-summon', text: '乗り越える！', together: true },
+    { ref: 'n001-summon-4', group: 'n001-summon', text: '乗り越える！', together: true },
+    // 全員が同時
+    { ref: 'n003-use-1', group: 'n003-use', text: 'はぁっ！', together: true },
+    { ref: 'n003-use-2', group: 'n003-use', text: 'はぁっ！', together: true },
+    // 重ねた音声がまだ無い：1人ずつ順に鳴らす
+    { ref: 'n005-use-1', group: 'n005-use', text: 'いざ', together: true },
+    { ref: 'n005-use-2', group: 'n005-use', text: 'いざ', together: true },
+  ] });
+  for (const ref of ['n001-summon-1', 'n001-summon-2', 'n001-summon-3', 'n001-summon-4', 'n003-use-1', 'n003-use-2', 'n005-use-1', 'n005-use-2']) write('voices/cards/' + ref + '.mp3', 'audio');
+  write('voices/cards/n001-summon-together-3.mp3', 'audio');
+  write('voices/cards/n003-use-together.mp3', 'audio');
+  const { manifest } = buildCardVoiceManifest(root);
+  assert.deepEqual(manifest.cards['1'].summon.map(c => c.src), ['voices/cards/n001-summon-1.mp3', 'voices/cards/n001-summon-2.mp3', 'voices/cards/n001-summon-together-3.mp3']);
+  assert.equal(manifest.cards['1'].summon[2].text, '乗り越える！');
+  assert.deepEqual(manifest.cards['3'].use.map(c => c.src), ['voices/cards/n003-use-together.mp3']);
+  assert.deepEqual(manifest.cards['5'].use.map(c => c.src), ['voices/cards/n005-use-1.mp3', 'voices/cards/n005-use-2.mp3']);
+});
 test('掛け合いは正しい陣営・相手・通常版/進化版に限定し、一対戦一度', t => {
   const { root } = fixture(t), manifest = buildCardVoiceManifest(root).manifest;
   const self = { legacies: [{ no: '2' }] }, opp = { legacies: [{ no: '4' }] };
@@ -118,7 +143,7 @@ test('ゲームの出現イベントがトークンを含めて音声へつな�
   const calls = [], card = { no: '2', category: 'レガシー' };
   const context = { appView: 'battle', cardVoiceManifest: { cards: { '2': { summon: [{ src: 'summon' }] } }, pairs: [] },
     battleSample: { turn: 1, self: { legacies: [card] }, opp: { legacies: [] } }, battlePlayLog: {}, battleLog: [],
-    fullName: c => 'Card ' + c.no, _battlePublishSemanticOperation() {}, _battlePublishNotice() {}, _dslToTrueSide: side => side,
+    fullName: c => 'Card ' + c.no, _dslToTrueSide: side => side, _battlePublishSemanticOperation() {}, _battlePublishNotice() {},
     _cardVoicePlayerGet: () => ({ enqueue: clips => { if (!clips.length) return false; calls.push(clips); return true; } }) };
   context._battleCardVoice = appMethod('_battleCardVoice', { CardVoiceCore: core });
   const track = appMethod('_battleTrackPlayedCard');

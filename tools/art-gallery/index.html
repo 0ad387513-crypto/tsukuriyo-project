@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ツクリヨ イラスト・画像の一覧</title>
+<link rel="stylesheet" href="/tools/hub/hub.css">
+<style>
+  /* ゲームで今使っているイラスト・画像を種類ごとに並べる。どの画像を使っているかは、ゲームのコード（index.html・divine_effects.js）から読み取るので、差し替えると自動でここも新しくなる */
+  main.wrap { max-width: 1240px; }
+  .jump { display: flex; flex-wrap: wrap; gap: 6px; }
+  .jump a { font-size: 13px; padding: 3px 11px; border-radius: 99px; background: var(--sunken); color: var(--fg); text-decoration: none; }
+  section.cat { display: grid; gap: 10px; scroll-margin-top: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--min, 180px), 1fr)); gap: 12px; }
+  .art { display: grid; gap: 6px; align-content: start; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px; min-width: 0; }
+  .art button.pic { all: unset; cursor: zoom-in; display: grid; place-items: center; background: repeating-conic-gradient(#20263a 0 25%, #191e2d 0 50%) 0 0 / 16px 16px; border-radius: 6px; aspect-ratio: var(--ratio, 1); overflow: hidden; }
+  .art button.pic:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .art img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+  .art .nm { font-weight: 700; font-size: 14px; }
+  .art .path { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+  .wide { --min: 300px; --ratio: 16 / 9; }
+  .tall { --min: 160px; --ratio: 5 / 7; }
+  .portrait { --min: 170px; --ratio: 1060 / 1484; }
+  dialog.viewer { border: 0; padding: 0; background: transparent; max-width: 94vw; max-height: 94vh; }
+  dialog.viewer::backdrop { background: rgba(0, 0, 0, .8); }
+  dialog.viewer img { display: block; max-width: 94vw; max-height: 86vh; object-fit: contain; border-radius: 8px; cursor: zoom-out; background: repeating-conic-gradient(#20263a 0 25%, #191e2d 0 50%) 0 0 / 16px 16px; }
+  dialog.viewer p { margin: 6px 0 0; text-align: center; color: #fff; font-size: 13px; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>イラスト・画像の一覧</h1>
+  <p class="muted">ゲームで今使っているイラストと画像を、種類ごとに並べています。画像を押すと大きく表示します。差し替えた画像は、ここにも自動で新しいものが並びます。</p>
+  <nav class="jump" id="jump" aria-label="種類へ移動"></nav>
+  <div id="list"><p class="muted">読み込んでいます…</p></div>
+</main>
+<dialog class="viewer" id="viewer" aria-label="画像の拡大表示"><img id="viewerImg" alt=""><p id="viewerCap"></p></dialog>
+<script src="/asset_hashes.js"></script>
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const KAMI = ["スサノオ", "ヤマトタケル", "オオクニヌシ", "タケミカヅチ", "オモイカネ", "アメノウズメ", "ヒノカグツチ", "アマテラス", "ツクヨミ", "ヤマタノオロチ"];
+  // ファイル名の英字 → カミの名前
+  const SLUG = [["yamata-no-orochi", "ヤマタノオロチ"], ["orochi", "ヤマタノオロチ"], ["yamato-takeru", "ヤマトタケル"], ["susanoo", "スサノオ"], ["okuninushi", "オオクニヌシ"], ["takemikazuchi", "タケミカヅチ"], ["omoikane", "オモイカネ"], ["amenouzume", "アメノウズメ"], ["hinokagutsuchi", "ヒノカグツチ"], ["amaterasu", "アマテラス"], ["tsukuyomi", "ツクヨミ"]];
+  const kamiOf = file => (SLUG.find(([s]) => file.includes(s)) || [, ""])[1];
+  const hashed = src => (window.ASSET_HASHES && ASSET_HASHES[src] ? "/" + src + "?h=" + ASSET_HASHES[src] : "/" + src);
+  const getText = url => fetch(url, { cache: "no-store" }).then(r => (r.ok ? r.text() : ""));
+  const getJson = url => fetch(url, { cache: "no-store" }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  // コードの中に書いてある、そのフォルダの画像の場所（重複なし、書かれている順）
+  const refs = (code, folder) => [...new Set((code.match(new RegExp(folder.replace(/[/]/g, "\\/") + "\\/[A-Za-z0-9_./-]+\\.(?:webp|png)", "g")) || []))];
+  // divine_effects.js の { "1": "…", … } の表を読む
+  const table = (code, name) => { const m = new RegExp("const " + name + " = Object\\.freeze\\(\\{([\\s\\S]*?)\\}\\);").exec(code); const out = {}; if (m) for (const x of m[1].matchAll(/["']?(\d+)["']?\s*:\s*["']([^"']+)["']/g)) out[x[1]] = x[2]; return out; };
+
+  function card(item) {
+    const box = el("div", "art"); box.dataset.label = item.label;
+    const pic = el("button", "pic"); pic.type = "button"; pic.setAttribute("aria-label", item.label + "を大きく表示");
+    const img = el("img"); img.loading = "lazy"; img.alt = item.label; img.src = hashed(item.src);
+    img.addEventListener("error", () => { pic.replaceChildren(el("span", "muted", "画像がありません")); });
+    pic.append(img);
+    pic.addEventListener("click", () => { $("viewerImg").src = hashed(item.src); $("viewerImg").alt = item.label; $("viewerCap").textContent = item.label; $("viewer").showModal(); });
+    box.append(pic, el("div", "nm", item.name), el("div", "path", item.src));
+    return box;
+  }
+  function render(cats) {
+    $("jump").replaceChildren(...cats.map((c, i) => { const a = el("a", "", c.title + "（" + c.items.length + "）"); a.href = "#cat" + i; return a; }));
+    $("list").replaceChildren(...cats.map((c, i) => {
+      const sec = el("section", "cat"); sec.id = "cat" + i;
+      sec.append(el("h2", "", c.title), ...(c.note ? [el("p", "muted", c.note)] : []));
+      const grid = el("div", "grid " + (c.shape || "")); grid.append(...c.items.map(it => card(Object.assign({ label: c.title + "：" + it.name }, it))));
+      sec.append(grid);
+      return sec;
+    }));
+  }
+  (async () => {
+    try {
+      const [html, divine, illust, script] = await Promise.all([getText("/index.html"), getText("/divine_effects.js"), getJson("/kami_illustrations/manifest.json"), getJson("/tools/voice-script/card_voice_script.json")]);
+      const code = html + "\n" + divine;
+      const byKami = list => list.map(src => ({ src, name: kamiOf(src) || src.split("/").pop() }));
+      const cutins = table(divine, "DIVINE_SKILL_CUTINS"), eyes = table(divine, "DIVINE_SKILL1_EYES"), awake = table(divine, "DIVINE_SKILL_AWAKENINGS");
+      const genesis = Object.entries((script && script.lines) || {}).filter(([, v]) => v.kind === "genesis").map(([id, v]) => ({ src: "card_images/600/" + id.slice(1) + ".webp", name: "No." + Number(id.slice(1)) + " " + v.card }));
+      const cats = [
+        { title: "カミのイラスト", shape: "portrait", items: Object.entries(illust || {}).map(([no, f]) => ({ src: "kami_illustrations/" + f, name: KAMI[no - 1] || f })) },
+        // カミ選択の絵は番号から、敗北の絵は通常のイラストと同じ名前で、ゲームが場所を作る
+        { title: "カミ選択の絵", note: "対戦前にカミを選ぶ画面の絵。", shape: "portrait", items: KAMI.map((n, i) => ({ src: "kami_illustrations/selection/" + String(i + 1).padStart(3, "0") + ".webp", name: n })) },
+        { title: "カミの敗北の絵", shape: "portrait", items: Object.entries(illust || {}).map(([no, f]) => ({ src: "kami_illustrations/defeat/" + f, name: KAMI[no - 1] || f })) },
+        { title: "カミのカード", shape: "tall", items: KAMI.map((n, i) => ({ src: "kami_card_images/600/" + String(i + 1).padStart(3, "0") + ".webp", name: n })) },
+        { title: "創世神技カットイン", shape: "wide", items: [...Object.entries(cutins).map(([no, src]) => ({ src, name: KAMI[no - 1] })), ...Object.entries(awake).map(([no, src]) => ({ src, name: KAMI[no - 1] + "（覚醒）" }))] },
+        { title: "神技カットイン（目元）", shape: "wide", items: Object.entries(eyes).map(([no, src]) => ({ src, name: KAMI[no - 1] })) },
+        { title: "ジェネシスカード", shape: "tall", items: genesis },
+        { title: "ちびキャラ", items: byKami(refs(code, "kami_chibi")) },
+        { title: "エモートの表情", note: "カミごとに3×2の6つの表情を1枚にまとめた画像。", items: byKami(refs(code, "emote_icons")) },
+        { title: "チュートリアルの案内役", items: refs(code, "tutorial_guide").map(src => ({ src, name: { normal: "通常", troubled: "困り顔", surprised: "驚き", serious: "真剣", joy: "喜び", celebrate: "お祝い" }[(src.match(/tutorial-([a-z]+)-/) || [])[1]] || src })) },
+        { title: "TOP画面のモードの絵", items: refs(code, "top_mode_icons").map(src => ({ src, name: { genesis4p: "創世決戦", shield2p: "星紡ぎ戦", construct2p: "理念構築戦", cardlist: "カード一覧" }[(src.match(/top_mode_icons\/([a-z0-9]+)-/) || [])[1]] || src })) },
+        { title: "タイトル・TOP画面の飾り", items: refs(code, "ui_decorations").filter(src => !/manual-/.test(src)).map(src => ({ src, name: { "title-key-visual": "タイトルの絵", "top-wordmark": "ロゴ", "tsukuriyo-pack-cardback": "パックのカード裏", "higanbana-left": "彼岸花（左）", "higanbana-right": "彼岸花（右）" }[(src.match(/ui_decorations\/(.+?)(?:-[0-9a-f]{12})?\.(?:webp|png)$/) || [])[1]] || src })) },
+        { title: "プレイガイドの図", items: refs(code, "ui_decorations").filter(src => /manual-/.test(src)).map(src => ({ src, name: { "manual-battle-field": "対戦画面", "manual-genesis-draft": "創世決戦：選別の儀", "manual-genesis-return": "創世決戦：返還", "manual-genesis-kami": "創世決戦：カミ", "manual-genesis-deepen": "創世決戦：深化" }[(src.match(/ui_decorations\/(.+?)-[0-9a-f]{12}\./) || [])[1]] || src })) },
+      ].filter(c => c.items.length);
+      render(cats);
+    } catch (e) { $("list").replaceChildren(el("p", "err", "画像の一覧を読み込めませんでした。")); }
+  })();
+  $("viewer").addEventListener("click", () => $("viewer").close());
+})();
+</script>
+</body>
+</html>

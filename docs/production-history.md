@@ -14,3 +14,9 @@
 netlify.tomlの誤検出例外は、元から公開されているFirebase Web設定と旧カード作成ツールのSheets参照用設定の2値への完全一致だけ。秘密検査・smart検査は継続する。新しいキーや管理者用キーをこの例外へ自動追加しない。キーの値・権限やFirebase Rulesはこの対応では変更していない。
 
 参考: https://firebase.google.com/docs/projects/api-keys ／ https://docs.netlify.com/manage/security/secret-scanning/
+
+## 共有確認用の履歴
+
+Netlifyのdeploy-preview／branch-deployでは、本番サイトの公開済み履歴JSONを取得して同梱する
+共有ブランチだけの修正を本番の履歴として記録しない
+本番のproductionビルドは従来どおりCOMMIT_REFの履歴を生成する

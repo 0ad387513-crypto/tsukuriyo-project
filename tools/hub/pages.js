@@ -9,7 +9,7 @@
   const selectedOptions = doc => [...doc.querySelectorAll("select")].map(s => s.selectedOptions[0] ? s.selectedOptions[0].textContent.trim() : "").filter(Boolean);
   const selectedOption = doc => { const s = doc.querySelector("select"); return s && s.selectedOptions[0] ? s.selectedOptions[0].textContent.trim() : ""; };
   window.DEV_PAGES = [
-    { id: "field-kinds", group: "カード", title: "フィールドカードの枠", path: "/tools/field-card-kind-preview/", kind: "ui", desc: "場に出たカードの枠を確認・比較。採用中の枠と、太い縁・大きな角飾り・強いオーラの案を、対戦サイズや7枚の並びで見比べられます。",
+    { id: "field-kinds", group: "カード", title: "フィールドカードの枠", path: "/tools/field-card-kind-preview/", kind: "ui", desc: "現在の本番の枠と以前採用したH案を並べて比較　マナの輪・神攻力・戦闘力の札と過去の案も確認できます",
       items: [{ selector: ".comparison-table tbody td", label: e => text(e.parentElement, ".row-title") + "：" + text(e.closest("table").querySelector("thead th:nth-child(" + (e.cellIndex + 1) + ")")) }],
       whole: { target: doc => "フィールドカードの枠：" + selectedOptions(doc).join("・") } },
     { id: "voices", group: "ボイス・音", title: "ボイス", kind: "voice", desc: "試聴室と台本を1か所で。上のタブで切り替えます。",
@@ -17,7 +17,7 @@
     { id: "voice", inside: "voices", group: "ボイス・音", title: "試聴室", path: "/tools/voice-preview/", kind: "voice", desc: "キャラごとの声と、作った台詞を聴いて確認。カミのボイスも「カミ」のタブで、台詞と演技の方針を直して作り直せます。",
       memberHide: { text: /決める|作る|作り直|削除|保存|追加|狙って|切り出|これにする|登録|コピー|まとめて|反映|戻す/, selectors: ["details", ".runner", "#runner", "input[type=checkbox]"] },
       items: [
-        { selector: ".line-row", label: e => { const cast = text(e.closest(".cast") || e, ".cast-name"); const info = text(e, "small").split("｜"); return cast + "：" + (info[0] || "") + (info[1] ? "（" + info[1] + "）" : ""); } },
+        { selector: ".line-row", label: e => { const cast = text(e.closest(".cast") || e, ".cast-name"); const info = text(e, "small:not(.orig):not(.heard)").split("｜"); const line = text(e, ".spoken"); return cast + "：" + (info[0] || "") + (info[1] ? "（" + info[1] + "）" : "") + (line ? "「" + line + "」" : ""); } }, // 台詞ごとに分かるよう、話す場面と台詞の文まで入れる（.orig は「台本の文」の欄なので使わない）
         { selector: ".cast-name", label: e => text(e) + "（声）" },
       ] },
     { id: "voice-script", inside: "voices", group: "ボイス・音", title: "台本", path: "/tools/voice-script/", kind: "voice", desc: "台詞と掛け合いの一覧。",
@@ -27,10 +27,12 @@
     { id: "card-effects", group: "カード", title: "カード効果の一覧", path: "/tools/card-effects/", kind: "effect", desc: "全カードの画像と効果。変えたいカードを押すと、今の値が入った欄で属性・マナ・戦闘力・効果などを直せます。",
       proposal: true,
       items: [{ selector: ".ce-card", label: e => text(e, ".nm") }] },
+    { id: "art", group: "イラスト", title: "イラスト・画像の一覧", path: "/tools/art-gallery/", kind: "illust", desc: "カミのイラスト・カミのカード・創世神技カットイン・ジェネシスカード・ちびキャラ（エモート・チュートリアル）・TOP画面の画像を、種類ごとに確認。",
+      items: [{ selector: ".art", label: e => e.dataset.label }] },
     { id: "field-crop", aliases: ["field-art"], group: "イラスト", title: "場のカードの絵", path: "/tools/field-card-crop/", kind: "illust", desc: "対戦の場に出したときに見える部分をカードごとに確認。位置と拡大率はその場で試せます（保存はキジマ専用）。",
       items: [{ selector: ".cell", label: e => text(e, ".nm") }, { selector: ".item", label: e => text(e, ".nm") }] },
     { id: "card-gen", group: "カード", title: "カードジェネレーター", path: "/tools/card-editor/", kind: "illust", desc: "カードの文と画像を作る道具。見るのは誰でも、保存や反映はキジマ専用。",
-      memberHide: { text: /保存|反映|生成|削除|設定|フォルダ|読み込み|更新/, selectors: [] }, whole: { target: () => "カードジェネレーター" } },
+      memberHide: { text: /保存|反映|生成|削除|設定|フォルダ|読み込み|更新/, selectors: [] } }, // メモは残さないページ（「メモを書く」のボタンを出さない）
     { id: "motion", group: "演出", title: "カミの対戦中モーション", kind: "motion", desc: "待機の呼吸・まばたき・ダメージの動きと、対戦画面と同じ配置で流れを見るデモ。上のタブで切り替えます。", tabs: ["motion-battle", "motion-parts"] },
     { id: "motion-battle", inside: "motion", group: "演出", title: "対戦デモ", path: "/kami_motion_battle_demo.html", kind: "motion", desc: "対戦画面と同じ配置で、神攻でライフが減ったときのカミの動きを順に再生。", whole: { target: doc => { const o = selectedOptions(doc); return "対戦デモ（自分：" + (o[0] || "") + "・相手：" + (o[1] || "") + "）"; } } },
     { id: "motion-parts", inside: "motion", group: "演出", title: "1柱ずつ確認", path: "/kami_motion_preview.html", kind: "motion", desc: "待機の呼吸・まばたき・ダメージの動きを1柱ずつ。", whole: { target: doc => selectedOption(doc) + "（モーション）" } },

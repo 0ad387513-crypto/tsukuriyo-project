@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { createSnapshot } = require("../scripts/build_release_history.js");
+const { fetchPublishedHistory } = require("../scripts/build_release_history.js");
 const { filterReleaseEntries } = require("../tools/hub/releases.js");
 const head = "a".repeat(40), older = "b".repeat(40), archived = "c".repeat(40);
 const row = (id,author,subject) => [id,"2026-10-19T21:00:00+09:00",author,subject].join("\x1f")+"\x1e\n";
@@ -41,6 +42,17 @@ test("履歴をキーワードと担当者で絞り込める",()=>{
   assert.equal(filterReleaseEntries(entries,"1.15.512","")[0].author,"B");
   assert.equal(filterReleaseEntries(entries,"創世神技","B").length,0);
   assert.equal(filterReleaseEntries(entries,"","").length,2);
+});
+
+test("共有プレビューの本番履歴は公開済みの本番から取得し、取得失敗を隠さない",async()=>{
+  const published={schemaVersion:1,repository:"https://github.com/0ad387513-crypto/tsukuriyo-project",commit:head,version:"1.15.539",entries:[]};
+  const result=await fetchPublishedHistory(async(url,options)=>{
+    assert.equal(url,"https://tsukuriyo-online.netlify.app/tools/hub/release-history.json");
+    assert.equal(options.cache,"no-store");return {ok:true,json:async()=>published};
+  });
+  assert.equal(result,published);
+  await assert.rejects(fetchPublishedHistory(async()=>({ok:false,status:503})),/HTTP 503/);
+  await assert.rejects(fetchPublishedHistory(async()=>({ok:true,json:async()=>({})})),/形式/);
 });
 test("ダッシュボード導線と公開時の自動生成設定がある",()=>{
   const read=f=>fs.readFileSync(path.join(__dirname,"..",f),"utf8");

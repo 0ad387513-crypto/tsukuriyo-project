@@ -5,23 +5,25 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>フィールドカード・種類の見分け方｜ツクリヨ</title>
-  <link rel="stylesheet" href="styles.css?v=20261019-535">
+  <link rel="stylesheet" href="styles.css?v=20261022-545">
   <script src="../../field_card_art.js"></script>
   <script src="cards.js?v=20261019-1"></script>
-  <script src="../../field_card_frames.js?v=20261019-533"></script>
+  <script src="historical_field_frames.js?v=538"></script>
+  <script src="../hub/production-source.js?v=545"></script>
+  <script src="live_battle_preview.js?v=545"></script>
   <script src="large_frame_proposals.js?v=20261019-535"></script>
-  <script src="preview.js?v=20261019-535" defer></script>
+  <script src="preview.js?v=20261022-545" defer></script>
 </head>
 <body>
   <header class="page-head">
     <div><p class="eyebrow">ツクリヨオンライン / フィールドカード試作</p>
-      <h1>対戦中でも、枠がはっきり見えるように。</h1>
-      <p class="intro">採用中のH案に、太縁・大きな角飾り・強いオーラの3案を追加。絵の大きさを変えず、枠の存在感を強めています。</p>
+      <h1>フィールドカードの枠</h1>
+      <p class="intro">現在の本番の枠と、以前採用したH案を並べて確認できます<br>基本・ユニーク・龍・トークンを同じカードで比較します</p>
     </div>
-    <span class="prototype-note">H案を対戦で採用</span>
+    <span class="prototype-note">本番の最新版を参照</span>
   </header>
   <nav class="controls" aria-label="比較の設定">
-    <label>表示 <select id="view"><option value="large">Hと大きい3案を比較</option><option value="all">すべての6案を比較</option><option value="previous">従来のE・H・Iを比較</option><option value="h">H 現在の対戦の枠</option><option value="j">J 太縁・高蒔絵</option><option value="k">K 大角飾り・高蒔絵</option><option value="l">L 光彩・高蒔絵</option><option value="e">E 黒漆・蒔絵</option><option value="i">I 黒漆・金銀象嵌</option></select></label>
+    <label>表示 <select id="view"><option value="adopted">現在の枠と以前採用したH案を比較</option><option value="current">現在の本番の枠</option><option value="all">現在の枠と過去の6案を比較</option><option value="large">旧Hと大きい3案を比較</option><option value="previous">従来のE・H・Iを比較</option><option value="h">H 以前の採用案</option><option value="j">J 太縁・高蒔絵</option><option value="k">K 大角飾り・高蒔絵</option><option value="l">L 光彩・高蒔絵</option><option value="e">E 黒漆・蒔絵</option><option value="i">I 黒漆・金銀象嵌</option></select></label>
     <label>カードの例 <select id="samples"><option value="same-color">同じ赤属性で比較</option><option value="mixed">複数の属性で比較</option><option value="relic">レリックも確認</option></select></label>
     <label>大きさ <select id="scale"><option value="1">対戦サイズ（17.5vh）</option><option value="1.45">拡大（145%）</option><option value="2.2">彫りの詳細（220%）</option><option value=".75">小さめ（75%）</option></select></label>
     <label>状態 <select id="state"><option value="normal">通常</option><option value="tapped">タップ中</option><option value="ready">行動可能</option><option value="disabled">効果無効</option></select></label>
@@ -30,23 +32,24 @@
   </nav>
   <main>
     <div class="legend" aria-label="種類の目印">
-      <span><i class="swatch basic"></i>基本：銀</span><span><i class="swatch unique"></i>ユニーク：金</span>
-      <span><i class="swatch dragon"></i>龍：黒と深紅</span><span><i class="swatch token"></i>トークン：青緑の翡翠</span>
-      <small>内側の色枠＝属性 / 外側の飾り＝種類</small>
+      <span>基本</span><span>ユニーク</span><span>龍</span><span>トークン</span>
+      <small>表示中の本番の仕様で比較します</small>
     </div>
-    <p class="comparison-hint">カードのサイズは現行の対戦と同じ高さ17.5vh。種類を示す文字・アイコンは使わず、銀・金・赤黒・翡翠の枠で区別します。下部の7枚表示は対戦と同じ最小間隔です。</p>
-    <div id="designs" class="designs" role="region" aria-label="Hと大きい3案のカード比較表" tabindex="0"></div>
+    <p class="comparison-hint">対戦で使う数字のフォント・枠の寸法・配置をそのまま表示します<br>拡大ではカード全体を同じ倍率で拡大します</p>
+    <p id="production-source" class="comparison-hint" role="status">本番の最新版を読み込み中…</p>
+    <button type="button" id="refresh-production">最新版を確認</button>
+    <div id="designs" class="designs" role="region" aria-label="基本・ユニーク・龍の現在の枠と過去案の比較表" tabindex="0"></div>
     <section class="field-section" aria-labelledby="field-title">
       <div class="section-heading"><div><p class="eyebrow">実際の見え方</p><h2 id="field-title">相手の場に混在したとき</h2></div>
-        <label>確認する案 <select id="field-design"><option value="j">J 太縁・高蒔絵</option><option value="h">H 現在の対戦の枠</option><option value="k">K 大角飾り・高蒔絵</option><option value="l">L 光彩・高蒔絵</option><option value="e">E 黒漆・蒔絵</option><option value="i">I 黒漆・金銀象嵌</option></select></label>
+        <label>確認する案 <select id="field-design"><option value="current">現在の本番の枠</option><option value="j">J 太縁・高蒔絵</option><option value="h">H 以前の採用案</option><option value="k">K 大角飾り・高蒔絵</option><option value="l">L 光彩・高蒔絵</option><option value="e">E 黒漆・蒔絵</option><option value="i">I 黒漆・金銀象嵌</option></select></label>
       </div>
-      <p class="field-caption">属性・種類・タップ中・行動可能を同時に表示。行動可能は比較用の水色の外周線です。カードを選ぶと名前と種類を確認できます。</p>
+      <p class="field-caption">属性・種類・タップ中・行動可能を同時に表示。行動可能も対戦と同じ表示です。カードを選ぶと名前と種類を確認できます。</p>
       <div id="field" class="field-scene"></div>
       <p id="selection" class="selection" role="status" aria-live="polite">カードを選択して確認</p>
     </section>
-    <section class="recommendation"><strong>まずは J の太縁から。</strong><p>枠の色が面として見えるので、小さい表示でも基本・ユニーク・龍・トークンを区別しやすくする狙いです。Kは輪郭、Lは光を重視。追加の3案は比較用で、対戦の採用枠は現在のHを維持しています。</p></section>
-    <details class="notes"><summary>比較ページについて</summary><p>現行のカード画像とフィールド用の切り抜き設定を再利用しています。H案を対戦画面のレガシー・レリックへ適用しています。トークン判定を優先し、次に龍、ジェネシス、基本／ユニークを判別する想定です。創属性の龍は「龍」として表示し、属性の色枠で創を示します。</p><p>数値やタップ中・行動可能の表示は比較用です。実際の対戦データは変更しません。OSの「動きを減らす」でもアニメーションは止まります。</p></details>
+    <section class="recommendation"><strong>採用した枠の比較</strong><p>現在の本番の枠と、以前採用したH案（黒漆・高蒔絵）を確認できます<br>H案の龍は黒と深紅が混じる鱗の枠です。E・I・J・K・Lの過去の案も表示の切り替えで確認できます</p></section>
+    <details class="notes"><summary>比較ページについて</summary><p>現行のカード画像とフィールド用の切り抜き設定を再利用しています。現行版は本番の描画処理・HTML・CSSを直接使い、H案は当時のCSSと枠で表示します<br>トークン判定を優先し、次に龍、ジェネシス、基本／ユニークを判別する想定です。創属性の龍は「龍」として表示し、属性の色枠で創を示します。</p><p>数値は比較用のカード情報です。枠・数値のフォント・寸法・タップ中・行動可能は対戦の表示を使います。実際の対戦データは変更しません。OSの「動きを減らす」でもアニメーションは止まります。</p></details>
   </main>
-  <footer>フィールドカード・種類別デザイン / 2026.10.19</footer>
+  <footer>フィールドカード・種類別デザイン / 2026.10.22</footer>
 </body>
 </html>

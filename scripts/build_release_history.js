@@ -39,13 +39,31 @@ function createSnapshot({ ref, git, notes = [], previous = null, now = new Date(
     limit: LIMIT, entries: entries.slice(0, LIMIT) };
 }
 
-function main() {
+async function fetchPublishedHistory(fetcher = fetch) {
+  const response = await fetcher("https://tsukuriyo-online.netlify.app/tools/hub/release-history.json", {
+    cache: "no-store", signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) throw Error("本番の修正履歴を取得できません: HTTP " + response.status);
+  const data = await response.json();
+  if (data.schemaVersion !== 1 || data.repository !== REPOSITORY || !/^[a-f0-9]{40}$/.test(data.commit)
+      || !/^\d+\.\d+\.\d+$/.test(data.version) || !Array.isArray(data.entries)) throw Error("本番の修正履歴の形式が不正です");
+  return data;
+}
+
+async function main() {
+  const output = path.join(ROOT, OUTPUT);
+  // 共有確認用の未公開変更を「本番の修正履歴」へ混ぜない
+  if (["deploy-preview", "branch-deploy"].includes(process.env.CONTEXT)) {
+    const published = await fetchPublishedHistory();
+    fs.writeFileSync(output, JSON.stringify(published, null, 2) + "\n");
+    console.log(`本番修正履歴を共有確認用へ反映: v${published.version} / ${published.commit.slice(0, 7)}`);
+    return;
+  }
   const git = args => {
     const result = cp.spawnSync("git", ["-c", "safe.directory=" + ROOT, ...args], { cwd: ROOT, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
     if (result.status !== 0) throw Error("公開履歴を生成できません: " + (result.stderr || result.error));
     return result.stdout;
   };
-  const output = path.join(ROOT, OUTPUT);
   const snapshot = createSnapshot({ ref: process.env.COMMIT_REF || "origin/main", git,
     notes: JSON.parse(fs.readFileSync(path.join(ROOT, "docs/release-notes.json"), "utf8")),
     previous: fs.existsSync(output) ? JSON.parse(fs.readFileSync(output, "utf8")) : null });
@@ -53,5 +71,5 @@ function main() {
   console.log(`本番修正履歴: v${snapshot.version} / ${snapshot.entries.length}件 / ${snapshot.commit.slice(0, 7)}`);
 }
 
-if (require.main === module) main();
-module.exports = { createSnapshot };
+if (require.main === module) main().catch(error => { console.error(error.message); process.exitCode = 1; });
+module.exports = { createSnapshot, fetchPublishedHistory };

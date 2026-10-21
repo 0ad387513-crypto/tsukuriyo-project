@@ -445,6 +445,13 @@ async function handleDev(req, res, url) {
       if (heard[ref + "#" + take]) heard[ref] = heard[ref + "#" + take]; else delete heard[ref];
       fs.writeFileSync(heardFile, JSON.stringify(heard, null, 2) + "\n");
     } catch (e) {}
+    // 音声を作ったときの台詞の記録も、選んだ候補のものにする
+    try {
+      const spokenFile = path.join(cards, "spoken.json");
+      const spoken = fs.existsSync(spokenFile) ? JSON.parse(fs.readFileSync(spokenFile, "utf8")) : {};
+      if (spoken[ref + "#" + take]) spoken[ref] = Object.assign({}, spoken[ref + "#" + take], { at: new Date().toISOString() }); else delete spoken[ref];
+      fs.writeFileSync(spokenFile, JSON.stringify(spoken, null, 2) + "\n");
+    } catch (e) {}
     console.log(`[voice-takes] ${ref} を言い方の候補${take}にした`);
     return sendJson(res, 200, { ok: true });
   }
@@ -578,16 +585,48 @@ async function handleDev(req, res, url) {
     if (stability !== null && !(stability >= 0 && stability <= 1)) return sendJson(res, 400, { ok: false, message: "安定度は0〜1で指定してください" });
     const all = fs.existsSync(voiceDirectionFile) ? JSON.parse(fs.readFileSync(voiceDirectionFile, "utf8")) : {};
     const prevScript = (all[ref] || {}).script || "";
-    if (!script && !text && !direction && !tags && stability === null && tempo === null) delete all[ref];
-    else all[ref] = Object.assign({}, script ? { script } : {}, text ? { text } : {}, direction ? { direction } : {}, tags ? { tags } : {}, stability !== null ? { stability } : {}, tempo !== null ? { tempo } : {}, { updatedAt: new Date().toISOString() });
+    // 台詞を変えたときは、手元の台本（card_voice_script.json・card_voice_pairs.json）も同じ台詞にする（台本と試聴室の台詞が食い違わないように）。
+    // 読み方だけの違い（「漢字（よみ）」・見えない区切りなど）は台本に入れず、読み上げる文として試聴室の指定に残す。共有ページの台本は Claude が合わせる（shared_sync_pending.json）
+    let scriptText = script, spokenText = text, scriptChanged = false;
+    const m = /^([np]\d+)-([a-z]+)$/.exec(ref);
+    if (m && (script || text)) {
+      const [, id, field] = m, isPair = id[0] === "p";
+      const file = path.join(root, "tools", "voice-script", isPair ? "card_voice_pairs.json" : "card_voice_script.json");
+      const raw = fs.readFileSync(file, "utf8"), doc = JSON.parse(raw);
+      const entry = (isPair ? doc.pairs : doc.lines)[id];
+      if (entry && typeof entry[field] === "string") {
+        const { displayText } = require("./build_card_voice_manifest.js");
+        const next = script || (/^[（(].*[）)]$/.test(text) ? text : displayText(entry[field], text));
+        if (next && next !== entry[field]) {
+          entry[field] = next; entry.updatedAt = new Date().toISOString();
+          const out = JSON.stringify(doc, null, (/\n( +)"/.exec(raw) || [, " "])[1].length) + "\n";
+          const tmpScript = file + ".tmp";
+          fs.writeFileSync(tmpScript, raw.includes("\r\n") ? out.replace(/\n/g, "\r\n") : out);
+          fs.renameSync(tmpScript, file);
+          scriptChanged = true;
+          const pendingFile = path.join(root, "tools", "voice-script", "shared_sync_pending.json");
+          const pending = fs.existsSync(pendingFile) ? JSON.parse(fs.readFileSync(pendingFile, "utf8")) : {};
+          pending[ref] = { collection: isPair ? "pairs" : "lines", id, field, text: next, at: entry.updatedAt };
+          fs.writeFileSync(pendingFile, JSON.stringify(pending, null, 1) + "\n");
+          console.log(`[voice-direction] 台本も「${next}」に変えた（${ref}）`);
+        }
+        // 台本に入れたので、試聴室の指定には残さない（読み方だけ違うときは、読み上げる文として残す）
+        if (script) scriptText = "";
+        if (text && text === next) spokenText = "";
+      }
+    }
+    if (!scriptText && !spokenText && !direction && !tags && stability === null && tempo === null) delete all[ref];
+    else all[ref] = Object.assign({}, scriptText ? { script: scriptText } : {}, spokenText ? { text: spokenText } : {}, direction ? { direction } : {}, tags ? { tags } : {}, stability !== null ? { stability } : {}, tempo !== null ? { tempo } : {}, { updatedAt: new Date().toISOString() });
     const tmp = voiceDirectionFile + ".tmp";
     fs.writeFileSync(tmp, JSON.stringify(all, null, 1) + "\n");
     fs.renameSync(tmp, voiceDirectionFile);
     // 台詞を書き換えたら（話す人が増える・変わることがある）キャストと台詞の一覧を作り直す
     let rebuilt = false;
-    if (script !== prevScript) {
+    if (script !== prevScript || scriptChanged) {
       try { execFileSync(process.execPath, [path.join(root, "scripts", "generate_card_voices_elevenlabs.js"), "cast"], { cwd: root, stdio: "pipe" }); rebuilt = true; }
       catch (e) { return sendJson(res, 500, { ok: false, message: "台詞の一覧を作り直せませんでした：" + String(e.stderr || e.message).slice(0, 200) }); }
+      // ゲームのカード詳細に出す台詞の文字（voices/cards/manifest.json）も新しい台本で作り直す
+      try { execFileSync(process.execPath, [path.join(root, "scripts", "build_card_voice_manifest.js")], { cwd: root, stdio: "pipe" }); } catch (e) { console.log("[voice-direction] 音声一覧を作り直せませんでした：" + String(e.stderr || e.message).slice(0, 200)); }
       // 分け方が変わって使われなくなった音声（例：2人の台詞を1人にしたときの -1・-2）は _old に移す
       const current = new Set(JSON.parse(fs.readFileSync(path.join(root, "tools", "voice-script", "card_voice_lines.json"), "utf8")).items.map(i => i.ref));
       const cards = path.join(root, "voices", "cards");
@@ -604,11 +643,12 @@ async function handleDev(req, res, url) {
 
 const notesFile = path.join(root, "tools", "hub", "notes.json");
 const crlfOf = file => { try { return fs.readFileSync(file, "utf8").includes("\r\n"); } catch { return false; } };
-http.createServer((req, res) => {
+http.createServer(async (req, res) => {
   let pathname;
   let url;
   try { url = new URL(req.url, "http://localhost"); pathname = decodeURIComponent(url.pathname); }
   catch { res.writeHead(400).end(); return; }
+  if(await require("./production_proxy.js").productionProxy(req,res,pathname)) return;
   if (pathname.startsWith("/__dev/")) { handleDev(req, res, url).catch(err => sendJson(res, 500, { ok: false, message: String(err && err.message || err) })); return; }
   // 「/tools/card-editor/」のようにフォルダで終わるURLは、その中の index.html を返す
   const file = path.resolve(root, "." + (pathname.endsWith("/") ? pathname + "index.html" : pathname));

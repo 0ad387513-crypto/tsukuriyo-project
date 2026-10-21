@@ -61,7 +61,8 @@ test('only four current-layout field zones receive H frames, including the oppon
   assert.match(css,/pointer-events: none/);
   assert.match(css,/\.battle-layout-v2/);
   const preview=fs.readFileSync(path.join(root,'tools/field-card-kind-preview/index.html'),'utf8');
-  assert.match(preview,/\.\.\/\.\.\/field_card_frames\.js/);
+  assert.match(preview,/historical_field_frames\.js/);
+  assert.match(preview,/live_battle_preview\.js/);
   const context={window:{}};
   vm.runInNewContext(fs.readFileSync(path.join(root,'tools/hub/pages.js'),'utf8'),context);
   const page=context.window.DEV_PAGES.find(p=>p.id==='field-kinds');
