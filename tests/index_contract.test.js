@@ -62,7 +62,7 @@ test("Firebase Auth loads before application modules", () => {
 test("structure deck administration requires an admin claim and keeps a built-in fallback", () => {
   assert.match(html, /firebaseCurrentUserIsAdmin/);
   assert.match(html, /firebaseAdminChecked/);
-  assert.match(html, /閲覧専用です。編集にはFirebase管理者権限が必要です/);
+  assert.match(html, /閲覧専用です（編集にはFirebase管理者権限が必要です）/);
   assert.match(html, /CB_STRUCTURE_DECK_SEED_DEFAULTS\.map/);
 });
 
@@ -208,7 +208,7 @@ test("play manual is separated from the pick guide and contains the revised rule
   assert.match(html, /始めにランダムで決まり、3回で全員と1回ずつ戦う/);
   assert.match(html, /word-break:\s*auto-phrase/);
   assert.match(html, /【死角】を持たないレガシーは、このレガシーを【戦闘】の攻撃対象に選ぶことができず、【守護】により攻撃先を変更することもできません/);
-  assert.match(html, /"昇華": "追加でXコストを払うと使える効果。手札以外から使ったときは使えない"/);
+  assert.match(html, /"昇華": "追加でXコストを払うと使える効果（手札以外から使ったときは使えない）"/);
   // 用語の説明はプレイガイドの表とキーワード集で同じ一覧（KEYWORD_GLOSSARY）を使う
   assert.match(html, /v-for="kw in Object\.keys\(keywordGlossary\)" :key="'pgkw' \+ kw"/);
   assert.match(html, /同時に発生した効果は、<strong>ターンプレイヤーから好きな順番<\/strong>/);
@@ -591,6 +591,6 @@ test("field zones hold up to 7 legacies and 5 relics", () => {
   for (const line of literalChecks) assert.match(line, /legacies/, line);
   assert.match(html, /\(me\.relics \|\| \[\]\)\.length >= this\.battleFieldLimit\('relics'\)/, "hand glow and end-turn warnings use the relic limit");
   assert.doesNotMatch(html, /(?:\}|レリック)フィールドには7枚まで配置できます/, "notices show the limit of each zone");
-  assert.match(html, /フィールドには、レガシーは7枚まで、レリックは5枚まで置けます。/);
+  assert.match(html, /フィールドには、レガシーは7枚まで、レリックは5枚まで置けます'/);
   assert.match(html, /<b>相手のレリック<\/b>最大5枚/);
 });

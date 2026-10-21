@@ -140,7 +140,7 @@ async function joinRoom(roomCode, playerName) {
   const room = snap.val();
   assertCompatibleBuild(room.buildVersion);
   if (Date.now() - Number(room.createdAt || 0) >= SHIELD_ROOM_TTL_MS) {
-    throw new Error("この部屋は期限切れです。公開一覧から別の部屋を選んでください");
+    throw new Error("この部屋は期限切れです\n公開一覧から別の部屋を選んでください");
   }
   if (room.phase !== "lobby") throw new Error("この部屋はすでに対戦が始まっています");
   if (room.guest) throw new Error("この部屋はすでに満員です");
@@ -163,7 +163,7 @@ async function joinRoom(roomCode, playerName) {
     return cur;
   }, undefined, false); // 確定前の仮の値を購読側へ流さない（受け取った側の書き込みで、この入室が「set」で中断されるのを防ぐ）
   const joined = res.committed && res.snapshot && res.snapshot.val();
-  if (!joined || !joined.guest || joined.guest.id !== playerId) throw new Error("部屋への参加に失敗しました。満員・期限切れ・バージョン違いの可能性があります");
+  if (!joined || !joined.guest || joined.guest.id !== playerId) throw new Error("部屋への参加に失敗しました\n満員・期限切れ・バージョン違いの可能性があります");
 
   // guestが入って満員になったので公開一覧からは外す
   if (typeof publicRoomRemove === "function") publicRoomRemove(roomCode);

@@ -2265,3 +2265,27 @@
 - v537のPUSH後、Netlify履歴生成は580msで成功したが、smart secrets scanが既存firebase.jsのWeb設定と旧カード作成ツールのSheets読み取り用キーを検出し、公開を停止。本番はv535を維持。APIでログ本文を取得できず一度ユーザーにログ提供を依頼したが、その後Netlifyの公開管理画面でログを読めたため提供不要と連絡。ツクリヨゲームはCodexブラウザで開いていない。Netlify公式管理画面だけを読取で使用。
 - Firebase公式の公開Web設定の説明とNetlify公式のfalse-positive safelist仕様を確認。既存の2つのクライアント設定値だけをnetlify.tomlのSECRETS_SCAN_SMART_DETECTION_OMIT_VALUESへ完全一致で登録。secret検査全体やsmart検査を無効化せず、ワイルドカード/パス除外も追加しない。元のキー・APIの権限・Firebase Rules・データは変更しない。一般の管理者キーやサービスアカウントには適用しない。
 - v538は同じ公開依頼を完了するための追加修正。v537の履歴ページ・全メンバー自動記録・創世神技の文字削除は維持。確認用URLや本番の照合記録はoutput/production-history-release-20261019/を継続使用。
+## Claude v1.15.539（2026-10-18〜21、v1.15.538 の上に重ねた）文とデザインのブレを抑える
+
+- CLAUDE.md に「画面の文とデザインの決まり」を追加（句点を文末に付けない・文の区切りは改行、改行は全体の基本設定に任せる、記号の飾りを足さない、同種の要素は色と形をそろえる、補足を付け足さない、用語はプレイガイドを正）。Codex 側も同じ決まりでお願いします。
+- 全体の基本：`html { line-break: strict; word-break: auto-phrase; overflow-wrap: break-word; }`、`p, li, dd, summary, blockquote { text-wrap: pretty; }`。
+- モード紹介：番号の丸の色をそろえた（くり返す段階だけ金色にしていたのをやめた）、↻を外した、文末の句点を外した、「CPUを加えれば、2人からでも開始できます。」を外して見出しを「4人対戦・CPU参加可」に、「3柱の候補から、自分のカミを1柱選びます」。
+- プレイガイド：流れ図の「終戦」だけ金の枠だったのをそろえた。説明の文の句点を外し、文の区切りは改行に。
+- 句点を全画面でまとめて外した（index.html の文字列約690か所・テンプレート約130か所、construct_battle.js・shield_battle.js・firebase.js・pack_generator.js のエラー文）。文末は削除、文の途中は改行（テンプレートは <br>、文字列は \n）、TOP のヒント・お知らせは全角の空白。物語（GENESIS_STORY_SCENES・プレイガイドの物語）は残した。カミ図鑑の要約は句点で1文ずつに分けているのでデータは残し、kamiDexSentences で表示時に外す。
+- \n を出す場所（プレイガイドの用語・チュートリアル・読み込み中のヒント・カミ図鑑のボイス・エモート・創生理念・効果の案内・通信の停止・勝利の台詞など）に white-space: pre-line。勝利の台詞の区切りに \n を追加。ピックガイドのカード名の下線処理が textContent で <br> を消していたので、タグを残して文字だけ置き換えるようにした。
+- npm test 246件成功。未コミット・push なし。
+- （同日・追加）句点を改行に置き換えて行が増えたところを、文そのものを1文につなげて書き直した（プレイガイド・ピックガイド・用語集・設定の説明・読み込み中のヒントなど）。カードの4つの種類は「短い一言＋説明」の2行にそろえた。勝利・終戦・エモートの台詞は改行をやめて全角の空白で区切り、台詞の枠を結果画面の幅いっぱいにして、全90通りが 1920×1080・1280×720 で2行以内に収まることを確かめた。「メインでできること」の説明と図の間を広げた。CLAUDE.md の決まりに「機械的に改行へ置き換えず、文をつなげて書き直す」を追加。チュートリアルの台詞は1文ずつ改行のまま（吹き出しの最大の高さは変更前と同じ）。
+
+## Claude v1.15.539（2026-10-21）場の札のレアリティ枠を作り直し
+
+- ユーザー指定：H 枠は装飾に統一感がなく、色でレアリティが分かりにくいので根本から作り直す。縁の太さはすべて同じ、飾りは全種類同じ場所にさりげなく、色は 返還値2＝銀・1＝金・龍＝メタリックな黒・トークン＝クリスタル（H 案の青緑を採用）。
+- field_card_frames.js に rarityFrame(kind, shape) を追加し、fieldCardFrameForCard はこちらを使う（創は金）。縁＝外と内の輪郭＋金属のグラデーション＋内側の細い光、飾りは上辺中央の小さな菱形だけ。レリックの八角形も同じ作り。materialFrame / materialRelicFrame（H/E/I の案）は見比べ用の画面のために残してある。
+- field_card_frames.css：トークンだけの内側の線をやめた。読み込み番号 ?v=20261021-539。
+- マナの輪：場の札は data-field-kind ごとの --rar-metal を輪の形（--mana-ring-mask / --mana-ring-relic-mask）で切り抜いて塗る。輪の中は属性の色。手札のマナは従来どおり金。
+- 句点の整理（v1.15.515 として手元にあった分）も v1.15.538 の上に重ねた。衝突した通知の行は Codex 側の処理を採り、文末の句点だけ外した。CPUの強さの説明も1文に。
+- （追加）ユーザーの選択で、場のレガシーの枠を「結び」（ChatGPT 生成の6案のうち 4「小さめの結び」）に。design_assets/memory-knot-frame-variations-v1/generated-original.png から切り出し（387×454）、背景を抜いて4色（銀・金・メタリックな黒・クリスタル）に塗り分け、battle_ui/field-knot-frame-<色>-<hash>.webp（sprite、各11〜12KB）として取り込み、optimized_assets.json に import:battle_ui/field-knot-frame-<色>.webp で記録。作り方は design_assets/field-knot-frame-v1/manifest.json。field_card_frames.js の knotFrame(kind) が <img> を返し、画像の縁の内側（KNOT_FRAME_INNER）をカードの絵の端（--frame-w の内側）に合わせて置く。レリック（八角形）は rarityFrame のまま。戦闘力の札・刀の印・マナの輪の色分けはそのまま。背景6種で見え方を確認済み。
+- （追加）マナの輪と神攻力の刀の印を、枠と同じ「明るさ→色」の7段で塗った画像に（案1）。battle_ui/mana-ring-{circle,octagon,diamond}-{silver,gold,black,crystal}-<hash>.webp と attack-swords-<色>-<hash>.webp（刀は金の縁取りを半径2.2px太らせ、黒い面はそのまま）。作り方は design_assets/field-knot-frame-v1/rings/。CSS は data-field-kind ごとに --rar-ring-circle/octagon/diamond・--rar-swords を持たせ、場のレガシー・レリック、手札（レガシー＝丸、レリック＝八角形、オラクル＝菱形）、左上の情報欄（.battle-hand-info に :data-field-kind）で使う。手札の昇華（「2/5」など横に伸びるマナ）は cost-wide で、輪の画像の代わりに同じ金属のグラデーションの縁取り。戦闘力の札も battle_ui/power-plaque-<色>-<hash>.webp（金の縁取りだけ同じ7段で塗り直し）にし、--rar-plaque-filter は廃止。左上の情報欄の神攻力・戦闘力（.battle-hand-info-attack / -power）も --rar-swords / --rar-plaque。
+- （追加）左上の情報欄：返還値の行（.battle-hand-info-band）をなくし、神攻力・戦闘力（.battle-hand-info-stats.on-thumb）をサムネの右端に縦に重ねた（右上に刀、右下に札、右端をそろえる）。名前は右に64px空ける。
+- （追加）マナの輪：外側の黒い線（画像の外周の線と、CSS の box-shadow 0 0 0 1.5px の暗い縁取り）をなくし、色を濃い7段（銀は明暗を強く、金は彩度を上げ、黒は面を暗く光を明るく、クリスタルは鮮やかな青緑）にした。その後、結びの枠・刀の印・戦闘力の札・レリックの八角形の縁（RARITY_FRAME_COLORS）・手札の横長マナ（--rar-metal）も同じ濃い色にそろえた（各 *import2.js で作り直し、URL を差し替え）。
+- （追加）色の段階を見直し（design_assets/field-knot-frame-v1/palette.js）：銀は白くならない灰色の金属、金は深みのある金、マナの輪の黒だけ明るい帯を抑えた（blackRing）。枠・刀・札・輪・RARITY_FRAME_COLORS・--rar-metal を作り直し。場のレガシーは結びの枠の画像で縁を描くので、カード自体の属性の色の地と暗い縁取り（box-shadow 0 0 0 1.5px）を field_card_frames.css で消した（角や辺から緑などが漏れていた）。影は !important を付けず、行動できる金の光（アニメーション）は残る。
+- npm test 347件成功。本番 v1.15.539 として公開。

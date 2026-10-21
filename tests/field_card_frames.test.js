@@ -36,7 +36,7 @@ test('field frames reuse stable SVG across stat updates, with distinct ids per d
   assert.notEqual(a.match(/id="([^"]+)/)[1],b.match(/id="([^"]+)/)[1]);
   assert.notEqual(a.match(/id="([^"]+)/)[1],c.match(/id="([^"]+)/)[1]);
   card.type = '龍';
-  assert.match(fieldCardFrameForCard(card,pool,'self-legacy-0'),/material-h material-dragon/);
+  assert.match(fieldCardFrameForCard(card,pool,'self-legacy-0'),/rarity-dragon/);
   assert.equal(fieldCardFrameForCard(null,pool),'');
 });
 
@@ -53,7 +53,7 @@ test('only four current-layout field zones receive H frames, including the oppon
   const root = path.join(__dirname,'..');
   const html = fs.readFileSync(path.join(root,'index.html'),'utf8');
   assert.equal((html.match(/class="field-kind-frame"/g)||[]).length,4);
-  assert.equal((html.match(/:data-field-kind="battleLayoutV2 \? battleFieldKind\(card\) : null"/g)||[]).length,4);
+  assert.equal((html.match(/:data-field-kind="battleLayoutV2 \? battleFieldKind\(card\) : null"/g)||[]).length,5,'four field zones plus the hand (rarity of the mana ring)');
   for(const slot of ['opp-relic-','opp-legacy-','self-legacy-','self-relic-']) assert.ok(html.includes("battleFieldFrame(card, '"+slot+"' + i)"));
   assert.equal((html.match(/<script src="field_card_frames\.js\?/g)||[]).length,1);
   assert.ok(html.includes('field_card_frames.css?v='));

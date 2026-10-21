@@ -21,15 +21,9 @@
   mask: none;
   background: transparent !important;
 }
-.battle-layout-v2 .legacy-field .field-card[data-field-kind="token"] { background: transparent !important; }
-.battle-layout-v2 .legacy-field .field-card[data-field-kind="token"] .field-kind-frame::after {
-  content: '';
-  position: absolute;
-  inset: var(--frame-w);
-  border: 1px solid var(--frame-bg, #aaa);
-  border-radius: calc(1.4vh - var(--frame-w));
-  pointer-events: none;
-}
+/* レガシーは結びの枠（画像）で縁を描くので、カード自体の属性の色の地と暗い縁取りは出さない（角や辺から漏れて見えるため）。影だけ残す */
+.battle-layout-v2 .legacy-field .field-card[data-field-kind] { background-color: transparent !important; box-shadow: 0 8px 18px rgba(0, 0, 0, .6); }
+/* レアリティ枠（2026-10）はどの種類も同じ作りなので、トークンだけの内側の線は付けない */
 .battle-layout-v2 .field-card .field-kind-frame ~ .battle-card-overlay { z-index: 2; }
 .battle-layout-v2 .field-card .status-icon-row { z-index: 3; }
 /* H is static, so reduced motion/minimum speed needs no extra animation or asset load. */

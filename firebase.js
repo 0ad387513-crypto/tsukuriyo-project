@@ -111,7 +111,7 @@ function getAppBuildVersion() {
 function assertCompatibleBuild(remoteVersion) {
   const localVersion = getAppBuildVersion();
   if (!remoteVersion || remoteVersion !== localVersion) {
-    throw new Error(`バージョンが一致しません（部屋: ${remoteVersion || "旧版"} / あなた: ${localVersion}）。ページを再読み込みしてください。`);
+    throw new Error(`バージョンが一致しません（部屋: ${remoteVersion || "旧版"} / あなた: ${localVersion}）\nページを再読み込みしてください`);
   }
 }
 
@@ -146,11 +146,11 @@ function generateRoomCode() {
 function validatePlayerName(name) {
   const value = String(name == null ? "" : name).trim();
   if (!value) return { ok: true, value: "" };
-  if (value.length > 20) return { ok: false, message: "プレイヤー名は20文字以内にしてください。" };
-  if (/[\u0000-\u001f\u007f]/.test(value) || /[<>]/.test(value)) return { ok: false, message: "使用できない文字が含まれています。" };
+  if (value.length > 20) return { ok: false, message: "プレイヤー名は20文字以内にしてください" };
+  if (/[\u0000-\u001f\u007f]/.test(value) || /[<>]/.test(value)) return { ok: false, message: "使用できない文字が含まれています" };
   const normalized = value.toLowerCase().replace(/[\s\-_.・]/g, "");
   const banned = ["死ね", "しね", "殺す", "ころす", "ころし", "ばか", "バカ", "あほ", "アホ", "ちんこ", "ちんぽ", "まんこ", "セックス", "ふぁっく", "fuck", "shit", "asshole", "nigger", "retard", "rape"];
-  if (banned.some(word => normalized.includes(word.toLowerCase()))) return { ok: false, message: "そのプレイヤー名は使用できません。別の名前にしてください。" };
+  if (banned.some(word => normalized.includes(word.toLowerCase()))) return { ok: false, message: "そのプレイヤー名は使用できません\n別の名前にしてください" };
   return { ok: true, value };
 }
 
