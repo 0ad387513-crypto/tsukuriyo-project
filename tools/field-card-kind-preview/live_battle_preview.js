@@ -77,6 +77,22 @@
     .preview-motion-off *{animation:none!important}
     @media(prefers-reduced-motion:reduce){.sample-layout *{animation:none!important}}
   `;
+  // 場のカードの大きさ（--card-h・--tok-w など）は、本番では対戦画面の外枠（.battle-overlay.battle-layout-v2）に書いてある。
+  // 見本の配置にはその外枠が無いので、外枠に書かれた変数（いちばん外側の規則だけ）を取り出して見本の配置に付ける
+  const overlayVarCache=new Map();
+  function overlayVars(css) {
+    if (overlayVarCache.has(css)) return overlayVarCache.get(css);
+    const decls=[];let depth=0,start=0;
+    for (let i=0;i<css.length;i++) {
+      const ch=css[i];
+      if (ch==="{") { if(depth===0){const selectors=css.slice(start,i).split(",").map(s=>s.trim());const end=css.indexOf("}",i);if(end>i&&selectors.includes(".battle-overlay.battle-layout-v2")) decls.push(...(css.slice(i+1,end).match(/--[\w-]+\s*:[^;{}]+/g)||[]));} depth++; }
+      else if (ch==="}") { depth=Math.max(0,depth-1); if(depth===0) start=i+1; }
+      else if (ch===";"&&depth===0) start=i+1;
+    }
+    const rule=decls.length?"\n.sample-layout{"+decls.join(";")+"}":"";
+    overlayVarCache.set(css,rule);
+    return rule;
+  }
   async function archiveCss() {
     if (!historyCss) historyCss=fetch("historical_battle.css",{cache:"no-cache"}).then(r=>{if(!r.ok)throw Error("以前の採用版を取得できません");return r.text();});
     return historyCss;
@@ -95,7 +111,8 @@
       // 呼び出し側は mount のあとでカードを画面に入れる。本番の情報を取得済みだと待ちが無いので、ひと呼吸おいてから画面にあるかを確かめる
       if(!host.isConnected) await new Promise(resolve=>setTimeout(resolve,0));
       if(!host.isConnected){mounted.delete(entry);return;}
-      const css=(isHistoric?await archiveCss():source.css)+"\n"+layoutCss;
+      const baseCss=isHistoric?await archiveCss():source.css;
+      const css=baseCss+"\n"+layoutCss+overlayVars(baseCss);
       const layout=document.createElement("div");layout.className="battle-layout-v2 sample-layout"+(settings.motion?"":" preview-motion-off");layout.style.zoom=String(settings.scale||1);
       const zone=document.createElement("div");zone.className="battle-zone field sample-zone "+(card.category==="レリック"?"self-relic-drop":"legacy-field");
       const row=document.createElement("div");row.className="battle-card-row sample-row";row.style.setProperty("--n","1");
