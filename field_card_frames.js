@@ -260,7 +260,7 @@ function fieldCardKind(card, allCards = []) {
 const RARITY_FRAME_COLORS = {
   // [縁のグラデーション（5段）, 外側と内側の輪郭, 縁の内側の細い光]
   // 明るすぎると樹脂のように見えるので、どれも少し沈んだ金属の色にする
-  basic : [['#b6bcc1', '#4a525a', '#99a1a8', '#2c3238', '#7c858d'], '#0e1114', '#b6bcc1'],
+  basic : [['#dde1e4', '#59616a', '#bcc2c7', '#343a40', '#98a0a7'], '#101316', '#dde1e4'],
   unique: [['#fff0b0', '#a8720f', '#f6d468', '#6b4306', '#e8b83a'], '#2a1802', '#fff0b0'],
   dragon: [['#8a8e98', '#09090b', '#4a4e57', '#020203', '#22242a'], '#000000', '#8a8e98'],
   token : [['#cceae4', '#2a726a', '#94cac2', '#164a46', '#62aaa0'], '#082020', '#cceae4'],
@@ -296,26 +296,26 @@ function rarityFrame(kind, shape = 'portrait') {
 /* 場のレガシーの枠（結び・2026-10）：生成画像の「小さめの結び」を4色に塗り分けた透過画像。
    画像の縁の内側（KNOT_FRAME_INNER）を、カードの絵の端（縁の太さ --frame-w の内側）に合わせて置く。
    作り方は design_assets/field-knot-frame-v1/manifest.json（元画像・切り出し位置）
-   金（unique）だけ上辺から外へはみ出す装飾があり、その分だけ画像の上に余白（KNOT_FRAME_TOP_EXTRA）を足してある
-   （元は design_assets/frame-gold-top-ornament-v5-thin/frame-gold-J.png）
+   金（unique）は上辺の中央にも結びがあり、その分だけ画像の上に余白（KNOT_FRAME_TOP_EXTRA）を足してある
+   （結びはユーザー提供の画像から切り出し、帯の太さを合わせて縮めた。design_assets/field-knot-frame-v1/field-knot-frame-gold-topknot.png）
    龍（dragon）は枠が変形した角が上辺から左右の外へ伸びる。漆黒の枠で、角の先だけがカードの属性の色に灯る（創は灰）。
-   上に55・左右に17の余白を足してある（元は design_assets/frame-dragon-horns-v3-massive、作り方は design_assets/field-knot-frame-v1/dragon/files.json） */
+   上に55・左右に17の余白を足してある（元は design_assets/frame-dragon-horns-v4-root-blend（角の付け根を帯から地続きに描き直した版）、作り方は design_assets/field-knot-frame-v1/dragon/files.json） */
 const KNOT_FRAME_FILES = {
-  basic: 'battle_ui/field-knot-frame-silver-b9c9d856174f.webp',
-  unique: 'battle_ui/field-knot-frame-gold-771466e07939.webp',
+  basic: 'battle_ui/field-knot-frame-silver-5825499544e2.webp',
+  unique: 'battle_ui/field-knot-frame-gold-340e89863457.webp',
   token: 'battle_ui/field-knot-frame-crystal-892881c66371.webp',
 };
 const KNOT_FRAME_DRAGON_FILES = {
-  '赤': 'battle_ui/field-knot-frame-dragon-red-80e8eda98882.webp',
-  '青': 'battle_ui/field-knot-frame-dragon-blue-1b158bcdcfb8.webp',
-  '緑': 'battle_ui/field-knot-frame-dragon-green-bcb4dcc89cac.webp',
-  '黄': 'battle_ui/field-knot-frame-dragon-yellow-e472e27019cf.webp',
-  '紫': 'battle_ui/field-knot-frame-dragon-purple-44216f86a4a7.webp',
-  '創': 'battle_ui/field-knot-frame-dragon-ash-6d7b5b139e0f.webp',
+  '赤': 'battle_ui/field-knot-frame-dragon-red-bdf2fc4b3ac5.webp',
+  '青': 'battle_ui/field-knot-frame-dragon-blue-a826c85a4fa6.webp',
+  '緑': 'battle_ui/field-knot-frame-dragon-green-592ac41c52ac.webp',
+  '黄': 'battle_ui/field-knot-frame-dragon-yellow-0f74104a8fca.webp',
+  '紫': 'battle_ui/field-knot-frame-dragon-purple-381ab2f0558e.webp',
+  '創': 'battle_ui/field-knot-frame-dragon-ash-0c4231f87551.webp',
 };
 const KNOT_FRAME_SIZE = { width: 387, height: 454 };
 const KNOT_FRAME_INNER = { left: 16, right: 372, top: 14, bottom: 440 };
-const KNOT_FRAME_TOP_EXTRA = { unique: 39, dragon: 55 };
+const KNOT_FRAME_TOP_EXTRA = { unique: 15, dragon: 55 };
 const KNOT_FRAME_SIDE_EXTRA = { dragon: 17 };
 let knotFrameSequence = 0;
 function knotFrame(kind, color = '') {

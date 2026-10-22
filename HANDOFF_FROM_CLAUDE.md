@@ -2306,3 +2306,12 @@
 
 - ユーザー指定：龍の枠は光沢を足す前の漆黒と v1.15.540 の間（dragonimport の OBSIDIAN：#000000〜#8a8e98、「少しだけ光沢」）。マナの輪は blackRing（明るい帯だけ抑えた漆黒）。刀・戦闘力の札はユーザー指定で枠の漆黒より少しだけ明るい黒（palette.js の black：#050506〜#9a9ea8）にして見えやすくした。RARITY_FRAME_COLORS.dragon と --rar-metal（dragon）も同じ漆黒。
 - npm test 347件成功。
+
+## Claude v1.15.542（2026-10-22）戦闘力の札の黒い面・ワード効果の紋の色
+
+- 戦闘力の札（power-plaque-{gold,silver,crystal}）の面と輪郭（色の段階のいちばん暗い所）を無彩色の黒 #0b0a09 にした。金の札の面が #2a1802 で茶色に見えていたため。作り直しは scratch の plaqueface.js と同じ手順（明るさ→t を逆算し、t<0.1 を黒、0.1〜0.2 をなめらかに混ぜる）。
+- ワード効果の紋（.status-icon）の色はワードごとの色をやめ、すべて #f4efe4（黒地に白）。縁も currentColor なので白の細線。
+- 金の上辺の装飾を J（トゲ状）から「結び」に変更（龍の角とかぶるため）。ユーザー提供の金枠画像の中央の結びを切り出し、帯の太さ（37px→12px）に合わせて縦横同倍率で縮め、左右のまっすぐな帯の部分で今の枠の帯へ溶かしてつないだ（scratch の goldknotcenter2.js 相当）。上の余白は15（KNOT_FRAME_TOP_EXTRA.unique）。元画像は design_assets/field-knot-frame-v1/field-knot-frame-gold-topknot.png。
+- 龍の角の付け根を、帯がふくらんで角になる地続きの形に（ChatGPT で付け根だけ描き直した design_assets/frame-dragon-horns-v4-root-blend）。色はそのまま。
+- 銀を少しきれいな銀に（palette.js の silver：#101316〜#dde1e4）。枠・マナの輪3形・刀・戦闘力の札を塗り直し、RARITY_FRAME_COLORS.basic と --rar-metal も同じ色。
+- npm test 347件成功。
