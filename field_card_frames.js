@@ -262,7 +262,7 @@ const RARITY_FRAME_COLORS = {
   // 明るすぎると樹脂のように見えるので、どれも少し沈んだ金属の色にする
   basic : [['#b6bcc1', '#4a525a', '#99a1a8', '#2c3238', '#7c858d'], '#0e1114', '#b6bcc1'],
   unique: [['#fff0b0', '#a8720f', '#f6d468', '#6b4306', '#e8b83a'], '#2a1802', '#fff0b0'],
-  dragon: [['#a6abb5', '#0a0a0c', '#5c606a', '#030304', '#2a2c32'], '#000000', '#a6abb5'],
+  dragon: [['#8a8e98', '#09090b', '#4a4e57', '#020203', '#22242a'], '#000000', '#8a8e98'],
   token : [['#cceae4', '#2a726a', '#94cac2', '#164a46', '#62aaa0'], '#082020', '#cceae4'],
 };
 let rarityFrameSequence = 0;
@@ -306,12 +306,12 @@ const KNOT_FRAME_FILES = {
   token: 'battle_ui/field-knot-frame-crystal-892881c66371.webp',
 };
 const KNOT_FRAME_DRAGON_FILES = {
-  '赤': 'battle_ui/field-knot-frame-dragon-red-21e4fe8c4a56.webp',
-  '青': 'battle_ui/field-knot-frame-dragon-blue-ba1ae23c4d70.webp',
-  '緑': 'battle_ui/field-knot-frame-dragon-green-9528b89cc09e.webp',
-  '黄': 'battle_ui/field-knot-frame-dragon-yellow-de3d7b0f64e7.webp',
-  '紫': 'battle_ui/field-knot-frame-dragon-purple-44f26f5faf7d.webp',
-  '創': 'battle_ui/field-knot-frame-dragon-ash-7a09d132f826.webp',
+  '赤': 'battle_ui/field-knot-frame-dragon-red-80e8eda98882.webp',
+  '青': 'battle_ui/field-knot-frame-dragon-blue-1b158bcdcfb8.webp',
+  '緑': 'battle_ui/field-knot-frame-dragon-green-bcb4dcc89cac.webp',
+  '黄': 'battle_ui/field-knot-frame-dragon-yellow-e472e27019cf.webp',
+  '紫': 'battle_ui/field-knot-frame-dragon-purple-44216f86a4a7.webp',
+  '創': 'battle_ui/field-knot-frame-dragon-ash-6d7b5b139e0f.webp',
 };
 const KNOT_FRAME_SIZE = { width: 387, height: 454 };
 const KNOT_FRAME_INNER = { left: 16, right: 372, top: 14, bottom: 440 };

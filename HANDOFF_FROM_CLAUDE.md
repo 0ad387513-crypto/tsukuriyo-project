@@ -2301,3 +2301,8 @@
 - 龍の刀・戦闘力の札は縁を枠の光沢の色（palette.js の black、明るい黒鉄）、マナの輪は漆黒の暗い部分（blackRing）。RARITY_FRAME_COLORS.dragon と --rar-metal（dragon）は漆黒の7段。
 - ワード効果の紋（.status-icon）：2.8vh、縁は 1px の currentColor（金の縁取りはやめた）。守護は盾の左半分を塗る（色は #fff3cf）、死角は開いた目（輪郭＋瞳、色は #cfe0ff。守護と色を入れ替えた）、呪殺は大鎌（シャドバの必殺の印を参考に、まっすぐな柄・細く長い弧の刃・刃と柄の境目に暗い線）。奇襲・疾駆の紋は以前から display:none（index.html の .status-icon.surprise-icon, .status-icon.dash-icon）のまま。
 - npm test 347件成功。
+
+## Claude v1.15.541（2026-10-22）龍の枠の光沢を控えめに
+
+- ユーザー指定：龍の枠は光沢を足す前の漆黒と v1.15.540 の間（dragonimport の OBSIDIAN：#000000〜#8a8e98、「少しだけ光沢」）。マナの輪は blackRing（明るい帯だけ抑えた漆黒）。刀・戦闘力の札はユーザー指定で枠の漆黒より少しだけ明るい黒（palette.js の black：#050506〜#9a9ea8）にして見えやすくした。RARITY_FRAME_COLORS.dragon と --rar-metal（dragon）も同じ漆黒。
+- npm test 347件成功。
