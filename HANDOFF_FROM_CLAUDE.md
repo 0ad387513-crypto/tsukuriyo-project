@@ -2415,3 +2415,10 @@
 - 作業前dev_notes list approved/assignee codexはfetch failed、修正メモの変更なし。自動共有は部分的な公開を避けるためsession91728を停止し、startWithPreviewを一時false。8765サーバーは公開情報の取得口付きでnpm run previewにより再起動、session23677。今回の共有公開が完了したら設定trueに戻し、監視を再開する。
 - 記録: .release-worktree/output/dashboard-production-20261022/、output/dashboard-production-tests.log、output/dashboard-production-shared-tests.log。docs/dashboard-production-preview.mdに他メンバー向け手順を保存。共有公開後のSHAと取得照合結果はローカルへ追記。
 
+
+## Claude v1.15.548（手元 v1.15.546）(2026-10-23): ダッシュボードの「フィールドカードの枠」が「本番の表示を読み込み中…」のまま止まる
+- ユーザーの報告。共有用の版（deploy-preview-2）の /tools/hub/view.html?p=field-kinds で、本番の版（v1.15.543）は取れているのに、カードがすべて「本番の表示を読み込み中…」のまま、エラーも出なかった
+- 原因：tools/field-card-kind-preview/preview.js の makeCard は LiveBattlePreview.mount(host, …) を呼んでから host を画面に入れる。live_battle_preview.js の mount は、本番の情報を取得済み（live がある）だと待ちが無く、すぐ `if(!host.isConnected){…return;}` に進むため、画面に入る前のカードを「不要」として何もせず終えていた。最初の取得を待つあいだに画面へ入る初回だけは表示できるが、updateProduction は取得してから render() するので、実際には常に止まっていた（v1.15.546 の本番追従で入った不具合）
+- 修正：mount で画面にまだ無いときは setTimeout(0) でひと呼吸待ってから確かめる。手元の確認用サーバーで、初回・「最新版を確認」のあとともに15枚すべて表示されることを確かめた
+- テスト：tests/dashboard_production.test.js に1件追加
+- 確認用の作業フォルダ（.share-worktree）は、ほかの作業者が確認用ブランチへ push した v1.15.546 まで進めてから直した

@@ -41,3 +41,10 @@ test("本番の代理取得ルートとローカルのルートは同じ公開�
   assert.ok(!live.includes("eval("));assert.ok(!live.includes("new Function"));
   assert.ok(live.includes(".cloneNode(true)"));
 });
+test("本番の情報を取得済みでも、カードを画面に入れる前に表示をあきらめない（読み込み中のまま止まらない）",()=>{
+  const src=fs.readFileSync(path.join(root,"tools/field-card-kind-preview/live_battle_preview.js"),"utf8");
+  const wait=src.indexOf("if(!host.isConnected) await new Promise"),bail=src.indexOf("if(!host.isConnected){mounted.delete(entry);return;}");
+  assert.ok(wait>0&&bail>wait,"画面にまだ無いときは、ひと呼吸待ってから確かめる");
+  const caller=fs.readFileSync(path.join(root,"tools/field-card-kind-preview/preview.js"),"utf8");
+  assert.ok(caller.includes("LiveBattlePreview.mount(host"),"呼び出し側は mount のあとで画面に入れる作りのまま");
+});
