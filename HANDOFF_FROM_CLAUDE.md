@@ -2289,3 +2289,15 @@
 - （追加）マナの輪：外側の黒い線（画像の外周の線と、CSS の box-shadow 0 0 0 1.5px の暗い縁取り）をなくし、色を濃い7段（銀は明暗を強く、金は彩度を上げ、黒は面を暗く光を明るく、クリスタルは鮮やかな青緑）にした。その後、結びの枠・刀の印・戦闘力の札・レリックの八角形の縁（RARITY_FRAME_COLORS）・手札の横長マナ（--rar-metal）も同じ濃い色にそろえた（各 *import2.js で作り直し、URL を差し替え）。
 - （追加）色の段階を見直し（design_assets/field-knot-frame-v1/palette.js）：銀は白くならない灰色の金属、金は深みのある金、マナの輪の黒だけ明るい帯を抑えた（blackRing）。枠・刀・札・輪・RARITY_FRAME_COLORS・--rar-metal を作り直し。場のレガシーは結びの枠の画像で縁を描くので、カード自体の属性の色の地と暗い縁取り（box-shadow 0 0 0 1.5px）を field_card_frames.css で消した（角や辺から緑などが漏れていた）。影は !important を付けず、行動できる金の光（アニメーション）は残る。
 - npm test 347件成功。本番 v1.15.539 として公開。
+
+## Claude v1.15.540（2026-10-22）金のレガシーの枠に上辺の装飾
+
+- ユーザー指定：金と龍のレアリティをもっと分かるように（結びは共通の土台として残す）。王冠・角などを上に載せる案は「単体でダサい・枠と地続きでなく取ってつけたコラに見える」で不採用。枠の画像そのものに描き足す方式にした。
+- 金：ChatGPT（Codex 側の image_gen）で金の結びの枠の上辺から生える装飾を描き足し、何度か大きさを調整したJ版（design_assets/frame-gold-top-ornament-v5-thin/frame-gold-J.png、線の太さはレールと同じまま大きく）を採用。マナ・効果の印・神攻力の印と重ならない左右の空きに置く。
+- 取り込み：J と元の画像の差分（装飾の画素だけ）を結びの枠の座標（387×454）へ縮め、元の金の結びの枠の下に敷き、上に39pxの余白を足した 387×493 の battle_ui/field-knot-frame-gold-<hash>.webp（sprite）。optimized_assets.json の import:battle_ui/field-knot-frame-gold.webp を更新、古い gold の webp は削除。
+- field_card_frames.js：KNOT_FRAME_TOP_EXTRA = { unique: 39 }。knotFrame は種類ごとに画像の高さと縁の内側の上端をその分ずらして置く。読み込み番号 ?v=20261022-540。
+- 龍：ChatGPT で枠から生える角ばった太い角（design_assets/frame-dragon-horns-v3-massive）を描き足し、hornmake.js 相当の手順で結びの枠の座標（上55・左右17の余白、421×509）へ。色は「熾火・属性の色」：漆黒（光沢を少し持ち上げた7段）に、角の先ほどカードの属性の色に灯る（創＝ディエスイレは灰）。battle_ui/field-knot-frame-dragon-{red,blue,green,yellow,purple,ash}-<hash>.webp。作り方は design_assets/field-knot-frame-v1/dragon/files.json。field_card_frames.js の KNOT_FRAME_DRAGON_FILES（色→画像）、KNOT_FRAME_TOP_EXTRA.dragon=55、KNOT_FRAME_SIDE_EXTRA.dragon=17、knotFrame(kind, color)、キャッシュのキーに色を含める。以前の黒い結びの枠（field-knot-frame-black）は削除。
+- 色の見直し（案4-A）：銀＝いぶし銀、金＝明るい金、トークン＝くすんだ青緑のクリスタル。今の素材の明るさを旧7段から逆算して新7段で塗り直し（枠・マナの輪3形・刀・戦闘力の札の18点）、URL を差し替え。RARITY_FRAME_COLORS と --rar-metal も同じ色に。色の段階は design_assets/field-knot-frame-v1/palette.js。龍のマナの輪・刀・札は従来の黒のまま。
+- 龍の刀・戦闘力の札は縁を枠の光沢の色（palette.js の black、明るい黒鉄）、マナの輪は漆黒の暗い部分（blackRing）。RARITY_FRAME_COLORS.dragon と --rar-metal（dragon）は漆黒の7段。
+- ワード効果の紋（.status-icon）：2.8vh、縁は 1px の currentColor（金の縁取りはやめた）。守護は盾の左半分を塗る（色は #fff3cf）、死角は開いた目（輪郭＋瞳、色は #cfe0ff。守護と色を入れ替えた）、呪殺は大鎌（シャドバの必殺の印を参考に、まっすぐな柄・細く長い弧の刃・刃と柄の境目に暗い線）。奇襲・疾駆の紋は以前から display:none（index.html の .status-icon.surprise-icon, .status-icon.dash-icon）のまま。
+- npm test 347件成功。
