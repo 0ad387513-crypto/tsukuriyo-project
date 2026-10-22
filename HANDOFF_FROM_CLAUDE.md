@@ -2315,3 +2315,9 @@
 - 龍の角の付け根を、帯がふくらんで角になる地続きの形に（ChatGPT で付け根だけ描き直した design_assets/frame-dragon-horns-v4-root-blend）。色はそのまま。
 - 銀を少しきれいな銀に（palette.js の silver：#101316〜#dde1e4）。枠・マナの輪3形・刀・戦闘力の札を塗り直し、RARITY_FRAME_COLORS.basic と --rar-metal も同じ色。
 - npm test 347件成功。
+
+## Claude v1.15.543（2026-10-22）横の結びを反転
+
+- ユーザー指定：左右の辺の結びを「穴2つが外・1つが内」に。ChatGPT で銀の大きい枠の横の結びだけ描き直した design_assets/frame-silver-outside-knots-v2-original-shape/frame-silver-outside-knots.png から、結びの範囲（結びの枠の座標で y 141〜309、左右の端から75px）を切り出し、明るさを v1.15.539 の銀の7段から逆算して各枠の色で塗り、銀・金・トークン・龍6色の枠に差し替えた（scratch の sideknots.js）。右の結びは ChatGPT 版の描き込みが乱れていたので、左の結びを鏡に映して使っている。
+- 結びが外へはみ出すので、銀・金・トークンの枠にも左右15pxの余白を足した（KNOT_FRAME_SIDE_EXTRA = { basic: 15, unique: 15, token: 15, dragon: 17 }）。
+- npm test 347件成功。

@@ -301,22 +301,23 @@ function rarityFrame(kind, shape = 'portrait') {
    龍（dragon）は枠が変形した角が上辺から左右の外へ伸びる。漆黒の枠で、角の先だけがカードの属性の色に灯る（創は灰）。
    上に55・左右に17の余白を足してある（元は design_assets/frame-dragon-horns-v4-root-blend（角の付け根を帯から地続きに描き直した版）、作り方は design_assets/field-knot-frame-v1/dragon/files.json） */
 const KNOT_FRAME_FILES = {
-  basic: 'battle_ui/field-knot-frame-silver-5825499544e2.webp',
-  unique: 'battle_ui/field-knot-frame-gold-340e89863457.webp',
-  token: 'battle_ui/field-knot-frame-crystal-892881c66371.webp',
+  basic: 'battle_ui/field-knot-frame-silver-66528d1dd3fd.webp',
+  unique: 'battle_ui/field-knot-frame-gold-171c5bee3866.webp',
+  token: 'battle_ui/field-knot-frame-crystal-e5cb2b16447b.webp',
 };
 const KNOT_FRAME_DRAGON_FILES = {
-  '赤': 'battle_ui/field-knot-frame-dragon-red-bdf2fc4b3ac5.webp',
-  '青': 'battle_ui/field-knot-frame-dragon-blue-a826c85a4fa6.webp',
-  '緑': 'battle_ui/field-knot-frame-dragon-green-592ac41c52ac.webp',
-  '黄': 'battle_ui/field-knot-frame-dragon-yellow-0f74104a8fca.webp',
-  '紫': 'battle_ui/field-knot-frame-dragon-purple-381ab2f0558e.webp',
-  '創': 'battle_ui/field-knot-frame-dragon-ash-0c4231f87551.webp',
+  '赤': 'battle_ui/field-knot-frame-dragon-red-7196991a4fdd.webp',
+  '青': 'battle_ui/field-knot-frame-dragon-blue-2018c618871a.webp',
+  '緑': 'battle_ui/field-knot-frame-dragon-green-06fed1f21421.webp',
+  '黄': 'battle_ui/field-knot-frame-dragon-yellow-9ce6a12da399.webp',
+  '紫': 'battle_ui/field-knot-frame-dragon-purple-43b92d4abd67.webp',
+  '創': 'battle_ui/field-knot-frame-dragon-ash-6cdf19a5a926.webp',
 };
 const KNOT_FRAME_SIZE = { width: 387, height: 454 };
 const KNOT_FRAME_INNER = { left: 16, right: 372, top: 14, bottom: 440 };
 const KNOT_FRAME_TOP_EXTRA = { unique: 15, dragon: 55 };
-const KNOT_FRAME_SIDE_EXTRA = { dragon: 17 };
+// 横の結びは穴2つが外へはみ出すので、どの枠も左右に余白がある（龍は角の分も含めて 17）
+const KNOT_FRAME_SIDE_EXTRA = { basic: 15, unique: 15, token: 15, dragon: 17 };
 let knotFrameSequence = 0;
 function knotFrame(kind, color = '') {
   const file = kind === 'dragon' ? (KNOT_FRAME_DRAGON_FILES[color] || KNOT_FRAME_DRAGON_FILES['創']) : (KNOT_FRAME_FILES[kind] || KNOT_FRAME_FILES.unique);
