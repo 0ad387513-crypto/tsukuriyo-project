@@ -48,3 +48,13 @@ test("本番の情報を取得済みでも、カードを画面に入れる前�
   const caller=fs.readFileSync(path.join(root,"tools/field-card-kind-preview/preview.js"),"utf8");
   assert.ok(caller.includes("LiveBattlePreview.mount(host"),"呼び出し側は mount のあとで画面に入れる作りのまま");
 });
+test("見本の配置に、対戦画面の外枠にあるカードの大きさの変数（--card-h・--tok-w）を付ける（無いと幅0で枠だけはみ出す）",()=>{
+  const src=fs.readFileSync(path.join(root,"tools/field-card-kind-preview/live_battle_preview.js"),"utf8");
+  const i=src.indexOf("const overlayVarCache"),j=src.indexOf("async function archiveCss");
+  const overlayVars=new Function(src.slice(i,j)+";return overlayVars;")();
+  const css=".battle-overlay.battle-layout-v2{--card-h: 17.5vh;--tok-w: calc(var(--card-h) * .78);color:red}@media (max-width:1px){.battle-overlay.battle-layout-v2{--card-h: 1vh}}.other{--x:1}";
+  const rule=overlayVars(css);
+  assert.equal(rule.trim(),".sample-layout{--card-h: 17.5vh;--tok-w: calc(var(--card-h) * .78)}");
+  assert.ok(!rule.includes("1vh")&&!rule.includes("--x"),"条件つきの規則やほかの規則の変数は混ぜない");
+  assert.ok(src.includes("layoutCss+overlayVars(baseCss)"),"本番・以前の採用版のどちらにも付ける");
+});
