@@ -92,6 +92,8 @@
     const pending=document.createElement("span");pending.textContent="本番の表示を読み込み中…";root.append(pending);
     try {
       const source=live||await refresh(),isHistoric=design!=="current";
+      // 呼び出し側は mount のあとでカードを画面に入れる。本番の情報を取得済みだと待ちが無いので、ひと呼吸おいてから画面にあるかを確かめる
+      if(!host.isConnected) await new Promise(resolve=>setTimeout(resolve,0));
       if(!host.isConnected){mounted.delete(entry);return;}
       const css=(isHistoric?await archiveCss():source.css)+"\n"+layoutCss;
       const layout=document.createElement("div");layout.className="battle-layout-v2 sample-layout"+(settings.motion?"":" preview-motion-off");layout.style.zoom=String(settings.scale||1);
