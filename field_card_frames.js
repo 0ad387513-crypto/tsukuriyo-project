@@ -296,26 +296,26 @@ function rarityFrame(kind, shape = 'portrait') {
 /* 場のレガシーの枠（結び・2026-10）：生成画像の「小さめの結び」を4色に塗り分けた透過画像。
    画像の縁の内側（KNOT_FRAME_INNER）を、カードの絵の端（縁の太さ --frame-w の内側）に合わせて置く。
    作り方は design_assets/field-knot-frame-v1/manifest.json（元画像・切り出し位置）
-   金（unique）は上辺の中央にも結びがあり、その分だけ画像の上に余白（KNOT_FRAME_TOP_EXTRA）を足してある
-   （結びはユーザー提供の画像から切り出し、帯の太さを合わせて縮めた。design_assets/field-knot-frame-v1/field-knot-frame-gold-topknot.png）
+   金（unique）は上辺の中央に、左右の渦巻きと金の留め金の飾りがあり、その分だけ画像の上に余白（KNOT_FRAME_TOP_EXTRA）を足してある
+   （ChatGPT 版 design_assets/frame-gold-swirl-clasp-v1 を今の金の枠へ移した。design_assets/field-knot-frame-v1/field-knot-frame-gold-swirl-clasp.png）
    龍（dragon）は枠が変形した角が上辺から左右の外へ伸びる。漆黒の枠で、角の先だけがカードの属性の色に灯る（創は灰）。
-   上に55・左右に17の余白を足してある（元は design_assets/frame-dragon-horns-v4-root-blend（角の付け根を帯から地続きに描き直した版）、作り方は design_assets/field-knot-frame-v1/dragon/files.json） */
+   上に77・左右に17の余白を足してある（元は design_assets/frame-dragon-horns-v5-short（短く太い角、付け根は帯から地続き）、作り方は design_assets/field-knot-frame-v1/dragon/files.json） */
 const KNOT_FRAME_FILES = {
   basic: 'battle_ui/field-knot-frame-silver-66528d1dd3fd.webp',
-  unique: 'battle_ui/field-knot-frame-gold-171c5bee3866.webp',
+  unique: 'battle_ui/field-knot-frame-gold-9bcf735d8d42.webp',
   token: 'battle_ui/field-knot-frame-crystal-e5cb2b16447b.webp',
 };
 const KNOT_FRAME_DRAGON_FILES = {
-  '赤': 'battle_ui/field-knot-frame-dragon-red-7196991a4fdd.webp',
-  '青': 'battle_ui/field-knot-frame-dragon-blue-2018c618871a.webp',
-  '緑': 'battle_ui/field-knot-frame-dragon-green-06fed1f21421.webp',
-  '黄': 'battle_ui/field-knot-frame-dragon-yellow-9ce6a12da399.webp',
-  '紫': 'battle_ui/field-knot-frame-dragon-purple-43b92d4abd67.webp',
-  '創': 'battle_ui/field-knot-frame-dragon-ash-6cdf19a5a926.webp',
+  '赤': 'battle_ui/field-knot-frame-dragon-red-d2e3d2fe93e2.webp',
+  '青': 'battle_ui/field-knot-frame-dragon-blue-b64228b9613d.webp',
+  '緑': 'battle_ui/field-knot-frame-dragon-green-9806a0d28404.webp',
+  '黄': 'battle_ui/field-knot-frame-dragon-yellow-d7514784930b.webp',
+  '紫': 'battle_ui/field-knot-frame-dragon-purple-f5f872952a14.webp',
+  '創': 'battle_ui/field-knot-frame-dragon-ash-63a19008b56b.webp',
 };
 const KNOT_FRAME_SIZE = { width: 387, height: 454 };
 const KNOT_FRAME_INNER = { left: 16, right: 372, top: 14, bottom: 440 };
-const KNOT_FRAME_TOP_EXTRA = { unique: 15, dragon: 55 };
+const KNOT_FRAME_TOP_EXTRA = { unique: 15, dragon: 77 };
 // 横の結びは穴2つが外へはみ出すので、どの枠も左右に余白がある（龍は角の分も含めて 17）
 const KNOT_FRAME_SIDE_EXTRA = { basic: 15, unique: 15, token: 15, dragon: 17 };
 let knotFrameSequence = 0;

@@ -2321,3 +2321,9 @@
 - ユーザー指定：左右の辺の結びを「穴2つが外・1つが内」に。ChatGPT で銀の大きい枠の横の結びだけ描き直した design_assets/frame-silver-outside-knots-v2-original-shape/frame-silver-outside-knots.png から、結びの範囲（結びの枠の座標で y 141〜309、左右の端から75px）を切り出し、明るさを v1.15.539 の銀の7段から逆算して各枠の色で塗り、銀・金・トークン・龍6色の枠に差し替えた（scratch の sideknots.js）。右の結びは ChatGPT 版の描き込みが乱れていたので、左の結びを鏡に映して使っている。
 - 結びが外へはみ出すので、銀・金・トークンの枠にも左右15pxの余白を足した（KNOT_FRAME_SIDE_EXTRA = { basic: 15, unique: 15, token: 15, dragon: 17 }）。
 - npm test 347件成功。
+
+## Claude v1.15.544（2026-10-23）龍の角を短く太く
+
+- 「虫の触覚っぽい」との声で、ChatGPT で角を短く太く・後ろへ反る形・枝なし・節3本に描き直した design_assets/frame-dragon-horns-v5-short/frame-dragon-short-horns.png を採用。hornmake の手順で結びの枠の座標へ（上77・左右17）、色は従来どおり（scratch の dragonimport_v4.js）、横の結びは sideknots.js で外2つ・内1つに差し替え。KNOT_FRAME_TOP_EXTRA.dragon = 77。
+- 金の上辺：「同じ結びで面白くない」との声で、ChatGPT で左右の渦巻き＋中央の金の留め金（中央の下の輪なし）に描き直した design_assets/frame-gold-swirl-clasp-v1 を採用。ChatGPT に渡した元画像が左右に15pxずれた版だったので、上辺の差分だけを −15px ずらして今の金の枠（417×469）へ載せた（scratch の goldrank.js）。属性の色の留め金の案（claspcolor.js）は不採用。
+- npm test 347件成功。
